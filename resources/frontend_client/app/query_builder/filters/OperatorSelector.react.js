@@ -25,7 +25,7 @@ export default class OperatorSelector extends Component {
         return (
             <div className="border-bottom p1">
                 { operators.map(operator =>
-                    <button style={{padding: '0.5rem 1rem', fontSize: '0.8rem'}} className={cx("Button mr1 mb1", { "Button--purple": operator.name === filter[0] })} onClick={() => this.props.setOperator(operator.name)}>
+                    <button style={{padding: '0.5rem 1rem', fontSize: '0.8rem'}} className={cx("Button mr1 mb1", { "Button--purple": operator.name === filter[0] })} onClick={() => this.props.onOperatorChange(operator.name)}>
                         {operator.verbose_name}
                     </button>
                 )}
@@ -43,5 +43,5 @@ export default class OperatorSelector extends Component {
 OperatorSelector.propTypes = {
     filter: PropTypes.array.isRequired,
     field: PropTypes.object.isRequired,
-    setOperator: PropTypes.func.isRequired
+    onOperatorChange: PropTypes.func.isRequired
 };

@@ -225,7 +225,7 @@ export default React.createClass({
                     <FilterPopover
                         isNew={true}
                         tableMetadata={this.props.tableMetadata}
-                        commitFilter={this.addFilter}
+                        onCommitFilter={this.addFilter}
                         onClose={() => this.refs.filterPopover.close()}
                     />
                 </PopoverWithTrigger>

@@ -31,20 +31,17 @@ export default class FilterPopover extends Component {
     }
 
     commitFilter() {
-        console.log("COMMIT", this.state.filter);
-        this.props.commitFilter(this.state.filter);
+        this.props.onCommitFilter(this.state.filter);
         this.props.onClose();
     }
 
     setField(field) {
-        console.log("FIELD", field);
         let { filter } = this.state;
         filter[1] = field;
         this.setState({ filter, pane: "filter" });
     }
 
     setOperator(operator) {
-        console.log("OPERATOR", operator);
         let { filter } = this.state;
         if (filter[0] !== operator) {
             filter[0] = operator;
@@ -53,14 +50,12 @@ export default class FilterPopover extends Component {
     }
 
     setValue(index, value) {
-        console.log("VALUE", index, value);
         let { filter } = this.state;
         filter[index + 2] = value;
         this.setState({ filter: filter });
     }
 
     setValues(values) {
-        console.log("VALUES", values);
         let { filter } = this.state;
         this.setState({ filter: filter.slice(0,2).concat(values) });
     }
@@ -72,7 +67,6 @@ export default class FilterPopover extends Component {
 
     renderPicker(field, operator) {
         return operator.fields.map((operatorField, index) => {
-            console.log(operatorField)
             if (operatorField.type === "select") {
                 return (
                     <SelectPicker
@@ -153,7 +147,7 @@ export default class FilterPopover extends Component {
                         <OperatorSelector
                             filter={filter}
                             field={field}
-                            setOperator={this.setOperator}
+                            onOperatorChange={this.setOperator}
                         />
                         { selectedOperator && this.renderPicker(field, selectedOperator) }
                     </div>
@@ -171,7 +165,7 @@ export default class FilterPopover extends Component {
 FilterPopover.propTypes = {
     isNew: PropTypes.bool,
     filter: PropTypes.array,
-    commitFilter: PropTypes.func.isRequired,
+    onCommitFilter: PropTypes.func.isRequired,
     onClose: PropTypes.func.isRequired
 };
 
