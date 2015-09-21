@@ -105,7 +105,7 @@
     (let [dashcard (sel :one [DashboardCard :id] :id dashcard-id :dashboard_id id)]
       (when dashcard
         (upd DashboardCard dashcard-id :sizeX sizeX :sizeY sizeY :row row :col col))))
-  (events/publish-event :dashboard-reposition-cards {:id id :actor_id *current-user-id* :cards cards})
+  (events/publish-event :dashboard-reposition-cards {:id id :actor_id *current-user-id* :dashcards cards})
   {:status :ok})
 
 (define-routes)
