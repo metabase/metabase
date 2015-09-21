@@ -50,13 +50,13 @@ var DataGrid = {
         }
 
         // sort the column values sensibly
-        if (SchemaMetadata.isNumericType(data.cols[pivotCol])) {
+        if (SchemaMetadata.isNumeric(data.cols[pivotCol])) {
             pivotColValues.sort(compareNumbers);
         } else {
             pivotColValues.sort();
         }
 
-        if (SchemaMetadata.isNumericType(data.cols[normalCol])) {
+        if (SchemaMetadata.isNumeric(data.cols[normalCol])) {
             normalColValues.sort(compareNumbers);
         } else {
             normalColValues.sort();

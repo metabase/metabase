@@ -3,7 +3,7 @@
 import React, { Component, PropTypes } from "react";
 import _ from "underscore";
 import cx from "classnames";
-import { getUmbrellaType } from 'metabase/lib/field_type';
+import { getUmbrellaType, TIME, NUMBER, STRING, LOCATION } from 'metabase/lib/schema_metadata';
 
 import Icon from "metabase/components/Icon.react";
 
@@ -31,21 +31,20 @@ export default class FieldList extends Component {
         let name;
 
         switch(type) {
-            case '':
-            case 'time':
+            case TIME:
                 name = 'calendar';
                 break;
-            case 'location':
+            case LOCATION:
                 name = 'location';
                 break;
-            case 'string':
+            case STRING:
                 name = 'string';
                 break;
-            case 'number':
+            case NUMBER:
                 name = 'int';
                 break;
             default:
-                name = 'chevronup';
+                name = 'close';
         }
 
         return <Icon name={name} width={width} height={height} />

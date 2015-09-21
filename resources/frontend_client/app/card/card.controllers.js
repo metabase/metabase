@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import MetabaseAnalytics from '../lib/analytics';
 import DataGrid from "metabase/lib/data_grid";
+import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
 
 import DataReference from '../query_builder/DataReference.react';
 import GuiQueryEditor from '../query_builder/GuiQueryEditor.react';
@@ -73,8 +74,8 @@ CardControllers.controller('CardList', ['$scope', '$location', 'Card', function(
 }]);
 
 CardControllers.controller('CardDetail', [
-    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'MetabaseFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils', 'Revision',
-    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, MetabaseFormGenerator, Metabase, VisualizationSettings, QueryUtils, Revision) {
+    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'Metabase', 'VisualizationSettings', 'QueryUtils', 'Revision',
+    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, Metabase, VisualizationSettings, QueryUtils, Revision) {
         // promise helper
         $q.resolve = function(object) {
             var deferred = $q.defer();
@@ -696,7 +697,7 @@ CardControllers.controller('CardDetail', [
         }
 
         function markupTableMetadata(table) {
-            var updatedTable = MetabaseFormGenerator.addValidOperatorsToFields(table);
+            var updatedTable = addValidOperatorsToFields(table);
             return QueryUtils.populateQueryOptions(updatedTable);
         }
 
