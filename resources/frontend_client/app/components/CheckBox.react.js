@@ -1,9 +1,16 @@
 'use strict';
 
-import React, { Component } from 'react';
+import React, { Component, PropTypes } from 'react';
 import Icon from 'metabase/components/Icon.react';
 
 export default class CheckBox extends Component {
+    onClick() {
+        if (this.props.onChange) {
+            // TODO: use a proper event object?
+            this.props.onChange({ target: { checked: !this.props.checked }})
+        }
+    }
+
     render() {
         const { checked } = this.props;
         const style = {
@@ -16,9 +23,14 @@ export default class CheckBox extends Component {
             justifyContent: 'center',
         };
         return (
-            <div style={style}>
-                { checked? <Icon name='check' width={10} height={10} /> : null }
+            <div style={style} onClick={() => this.onClick()}>
+                { checked ? <Icon name='check' width={10} height={10} /> : null }
             </div>
         )
     }
 }
+
+CheckBox.propTypes = {
+    checked: PropTypes.bool,
+    onChange: PropTypes.func
+};
