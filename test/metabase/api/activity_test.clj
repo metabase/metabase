@@ -1,6 +1,7 @@
 (ns metabase.api.activity-test
   "Tests for /api/activity endpoints."
   (:require [expectations :refer :all]
+            [korma.core :as k]
             [metabase.db :as db]
             [metabase.http-client :refer :all]
             (metabase.models [activity :refer [Activity]]
@@ -19,7 +20,8 @@
 ;  2. :user and :model_exists are hydrated
 
 ; NOTE: timestamp matching was being a real PITA so I cheated a bit.  ideally we'd fix that
-(expect-let [activity1 (db/ins Activity
+(expect-let [_         (k/delete Activity)
+             activity1 (db/ins Activity
                          :topic     "install"
                          :details   {}
                          :timestamp (u/parse-iso8601 "2015-09-09T12:13:14.888Z"))
