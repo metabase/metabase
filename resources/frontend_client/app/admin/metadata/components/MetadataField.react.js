@@ -63,7 +63,7 @@ export default React.createClass({
             <li className="my1 flex">
                 <div className="MetadataTable-title flex flex-column flex-full bordered rounded mr1">
                     <Input className="AdminInput TableEditor-field-name text-bold border-bottom rounded-top" type="text" value={this.props.field.display_name} onBlurChange={this.onNameChange}/>
-                    <Input className="AdminInput TableEditor-field-description rounded-bottom" type="text" value={this.props.field.description} onBlurChange={this.onDescriptionChange} placeholder="No table description yet" />
+                    <Input className="AdminInput TableEditor-field-description rounded-bottom" type="text" value={this.props.field.description} onBlurChange={this.onDescriptionChange} placeholder="No column description yet" />
                 </div>
                 <div className="flex-half px1">
                     <Select
