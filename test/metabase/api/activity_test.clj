@@ -97,9 +97,7 @@
       :custom_id    nil
       :details      $})]
   (->> ((user->client :crowberto) :get 200 "activity")
-       (map #(dissoc % :timestamp))
-       ;; a little hacky, but we limit the possible results to just the test activity we manually generated
-       (filter #(contains? #{(:id activity1) (:id activity2) (:id activity3)} (:id %)))))
+       (map #(dissoc % :timestamp))))
 
 
 ;; GET /recent_views
@@ -158,7 +156,8 @@
                         :model    model
                         :model_id model-id
                         :timestamp (u/new-sql-timestamp))
-                      (Thread/sleep 25))]
+                      ;; we sleep a few milliseconds to ensure no events have the same timestamp
+                      (Thread/sleep 5))]
     (do
       (create-view (user->id :crowberto) "card" (:id card2))
       (create-view (user->id :crowberto) "dashboard" (:id dash1))
