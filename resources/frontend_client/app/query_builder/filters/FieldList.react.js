@@ -10,7 +10,17 @@ import Icon from "metabase/components/Icon.react";
 export default class FieldList extends Component {
     constructor(props) {
         super(props);
-        this.state = {};
+        this.state = {
+            openSection: 0
+        };
+    }
+
+    toggleSection(sectionIndex) {
+        if (this.state.openSection === sectionIndex) {
+            this.setState({ openSection: null });
+        } else {
+            this.setState({ openSection: sectionIndex });
+        }
     }
 
     renderTypeIcon(field) {
@@ -65,28 +75,29 @@ export default class FieldList extends Component {
 
         return (
             <div style={{width: '300px'}}>
-                {sections.map(section =>
+                {sections.map((section, sectionIndex) =>
                     <section>
-                      <div className="flex align-center p2 border-bottom">
-                          <h3>{section.name}</h3>
-                          <span className="flex-align-right">
-                              <Icon name="chevrondown" width={12} height={12} />
-                          </span>
-                      </div>
-
-                      <ul className="border-bottom">
-                        {section.fields.map(field => {
-                            return (
-                                <li>
-                                    <a className={cx('FieldList-item', 'flex align-center px2 py1 cursor-pointer', { 'FieldList-item--selected': _.isEqual(this.props.field, field.value) })}
-                                       onClick={this.props.setField.bind(null, field.value)}>
-                                        { this.renderTypeIcon(field.types) }
-                                        <h4 className="ml1">{field.name}</h4>
-                                    </a>
-                                </li>
-                            )
-                        })}
-                      </ul>
+                        <div className="flex align-center p2 border-bottom text-purple-hover" onClick={() => this.toggleSection(sectionIndex)}>
+                            <h3>{section.name}</h3>
+                            <span className="flex-align-right">
+                                <Icon name={this.state.openSection === sectionIndex ? "chevronup" : "chevrondown"} width={12} height={12} />
+                            </span>
+                        </div>
+                        { this.state.openSection === sectionIndex ?
+                            <ul className="border-bottom">
+                              {section.fields.map(field => {
+                                  return (
+                                      <li>
+                                          <a className={cx('FieldList-item', 'flex align-center px2 py1 cursor-pointer', { 'FieldList-item--selected': _.isEqual(this.props.field, field.value) })}
+                                             onClick={this.props.setField.bind(null, field.value)}>
+                                              { this.renderTypeIcon(field.types) }
+                                              <h4 className="ml1">{field.name}</h4>
+                                          </a>
+                                      </li>
+                                  )
+                              })}
+                            </ul>
+                        : null }
                     </section>
                 )}
             </div>
