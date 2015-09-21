@@ -15,7 +15,7 @@
 3. Leiningen (http://leiningen.org/)
 
 
-## devDependencies
+## Installing dependencies
 
 After you've installed the prerequisites and have a local copy of the repo
 you'll need to install the following:
