@@ -1,3 +1,11 @@
+
+> **This guide will teach you:**
+> How to compile your own copy of Metabase
+> How to set up a development environment
+> How to run the Metabase Server
+> How to contribute back to the Metabase project
+
+
 [![Circle CI](https://circleci.com/gh/metabase/metabase-init.svg?style=svg&circle-token=3ccf0aa841028af027f2ac9e8df17ce603e90ef9)](https://circleci.com/gh/metabase/metabase-init)
 
 ## Install Prerequisites
