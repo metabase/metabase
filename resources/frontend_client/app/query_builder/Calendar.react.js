@@ -19,12 +19,14 @@ export default class Calendar extends Component {
         this.next = this.next.bind(this);
         this.cycleMode = this.cycleMode.bind(this);
     }
+
     cycleMode() {
-        console.log('mode cycle y\'all')
-        let i = ++i%this.state.modes.length;
-        this.setState({
-            mode: this.modes[i]
-        })
+        // let i = this.currentMode
+        // console.log('mode cycle y\'all')
+        // let i = ++i%this.state.modes.length;
+        // this.setState({
+        //     mode: this.modes[i]
+        // })
     }
 
     previous() {
@@ -58,7 +60,7 @@ export default class Calendar extends Component {
     renderDayNames() {
         const names = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
         return (
-            <div className="Calendar-day-names Calendar-week border-bottom mb1">
+            <div className="Calendar-day-names Calendar-week border-bottom">
                 {names.map((name) => <span key={name} className="Calendar-day Calendar-day-name text-centered">{name}</span>)}
             </div>
         );
