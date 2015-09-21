@@ -32,7 +32,7 @@ describe('parseBaseType', () => {
         expect(parseBaseType('BooleanField')).toEqual('bool')
     })
     it('should know what it doesn\'t know', () => {
-        expect(parseBaseType('DERP DERP DERP')).toEqual('SODA')
+        expect(parseBaseType('DERP DERP DERP')).toEqual('unknown')
     })
 })
 
