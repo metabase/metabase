@@ -6,6 +6,7 @@ import _ from "underscore";
 
 import MetabaseAnalytics from 'metabase/lib/analytics';
 import MetabaseCore from 'metabase/lib/core';
+import MetabaseSettings from 'metabase/lib/settings';
 
 var MetabaseServices = angular.module('metabase.services', ['http-auth-interceptor', 'ipCookie', 'metabase.core.services']);
 
@@ -89,6 +90,7 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
                     var settings = _.indexBy(result, 'key');
 
                     service.model.siteSettings = settings;
+                    MetabaseSettings.setAll(settings);
 
                     $rootScope.$broadcast('appstate:site-settings', settings);
 
@@ -144,6 +146,17 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
 
             routeChangedImpl: function(event) {
                 // whenever we have a route change (including initial page load) we need to establish some context
+
+                // handle routing protections for /setup/
+                if ($location.path().indexOf('/setup') === 0 && !MetabaseSettings.hasSetupToken()) {
+                    // someone trying to access setup process without having a setup token, so block that.
+                    $location.path('/auth/login');
+                    return;
+                } else if ($location.path().indexOf('/setup') !== 0 && MetabaseSettings.hasSetupToken()) {
+                    // someone who has a setup token but isn't routing to setup yet, so send them there!
+                    $location.path('/setup/');
+                    return;
+                }
 
                 // if we don't have a current user then the only sensible destination is the login page
                 if (!service.model.currentUser) {
