@@ -68,8 +68,8 @@ var config = module.exports = {
             { test: /\.js$/, exclude: /node_modules/, loader: 'babel', query: { cacheDirectory: '.babel_cache', optional: BABEL_FEATURES }},
             { test: /\.js$/, exclude: /node_modules|\.spec\.js/, loader: 'eslint' },
             // CSS
-            { test: /\.css$/, loader: ExtractTextPlugin.extract('style-loader', 'css-loader?-restructuring&compatibility!cssnext-loader') }
-            // { test: /\.css$/, loader: 'style-loader!css-loader!cssnext-loader' }
+            { test: /\.css$/, loader: ExtractTextPlugin.extract('style', 'css?-restructuring&compatibility!cssnext') }
+            // { test: /\.css$/, loader: 'style!css!cssnext' }
         ],
         noParse: [
             /node_modules\/(angular|ng-|ace|react-onclickoutside|moment|underscore|jquery|d3)/ // doesn't include 'crossfilter', 'dc', and 'tether' due to use of 'require'
@@ -161,6 +161,8 @@ if (NODE_ENV === "hot") {
     config.module.loaders.unshift(
         { test: /\.react.js$/, exclude: /node_modules/, loaders: ['react-hot', 'babel?'+BABEL_FEATURES.map(function(f) { return 'optional[]='+f; }).join('&')] }
     );
+
+    config.module.loaders[config.module.loaders.length - 1].loader = 'style!css?-restructuring&compatibility!cssnext';
 
     config.plugins.unshift(
         new webpack.NoErrorsPlugin()
