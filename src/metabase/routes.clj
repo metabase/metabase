@@ -28,19 +28,16 @@
    :intercom_code         "gqfmsgf1"
    :anon_tracking_enabled (metabase.models.setting/get :anon-tracking-enabled)
    :site_name             (metabase.models.setting/get :site-name)
-   :setup_token           (setup/token-value)})
+   :setup_token           (setup/token-value)
+   :timezones             metabase.models.common/timezones})
 
 ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
-(let [redirect-to-setup? (fn [{:keys [uri]}]
-                           (and (setup/incomplete?)
-                                (not (re-matches #"^/setup/.*$" uri))))
-      index (fn [request]
-              (if (redirect-to-setup? request) (resp/redirect (format "/setup/init/%s" (setup/token-value)))
-                  (-> (resp/response (stencil/render-string
-                                       (load-index)
-                                       {:bootstrap_json (cheshire/generate-string (index-page-vars))}))
-                      (resp/content-type "text/html")
-                      (resp/header "Last-Modified" (u/now-with-format date-format-rfc2616)))))]
+(let [index (fn [request]
+              (-> (resp/response (stencil/render-string
+                                   (load-index)
+                                   {:bootstrap_json (cheshire/generate-string (index-page-vars))}))
+                  (resp/content-type "text/html")
+                  (resp/header "Last-Modified" (u/now-with-format date-format-rfc2616))))]
   (defroutes routes
     (GET "/" [] index)                                     ; ^/$           -> index.html
     (GET "/favicon.ico" [] (resp/resource-response "frontend_client/favicon.ico"))
