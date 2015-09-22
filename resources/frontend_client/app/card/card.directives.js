@@ -2,7 +2,7 @@
 
 /*global setTimeout */
 
-var CardDirectives = angular.module('corvus.card.directives', []);
+var CardDirectives = angular.module('metabase.card.directives', []);
 
 CardDirectives.directive('mbCardFavoriteButton', ['Card', function(Card) {
 
