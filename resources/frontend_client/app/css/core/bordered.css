@@ -66,6 +66,10 @@
     border-color: var(--purple-color) !important;
 }
 
+.border-error {
+    border-color: var(--error-color) !important;
+}
+
 .border-hover:hover {
   border-color: color(var(--border-color) shade(20%));
 }

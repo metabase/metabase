@@ -48,11 +48,7 @@ export function isDimension(field) {
 // will return a string with possible values of 'date', 'number', 'bool', 'string'
 // if the type cannot be parsed, then return undefined
 export function getUmbrellaType(field) {
-    if (field.special_type) {
-        return parseSpecialType(field.special_type);
-    } else {
-        return parseBaseType(field.base_type);
-    }
+    return parseSpecialType(field.special_type) || parseBaseType(field.base_type) || UNKNOWN;
 }
 
 export function parseBaseType(type) {
@@ -71,14 +67,12 @@ export function parseBaseType(type) {
             return STRING;
         case 'BooleanField':
             return BOOL;
-        default:
-            return UNKNOWN;
     }
 }
 
 export function parseSpecialType(type) {
     switch(type) {
-        case 'timestamp_millisecons':
+        case 'timestamp_milliseconds':
         case 'timestamp_seconds':
             return TIME;
         case 'city':
@@ -89,10 +83,9 @@ export function parseSpecialType(type) {
         case 'zipcode':
             return LOCATION;
         case 'name':
-        case 'id':
             return STRING;
-        default:
-            return UNKNOWN;
+        case 'number':
+            return NUMBER;
     }
 }
 

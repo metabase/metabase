@@ -6,7 +6,7 @@ import CheckBox from 'metabase/components/CheckBox.react';
 
 export default class SelectPicker extends Component {
     selectValue(key, selected) {
-        let values = this.props.values.slice();
+        let values = this.props.values.slice().filter(v => v != null);
         if (selected) {
             values.push(key);
         } else {

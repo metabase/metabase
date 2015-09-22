@@ -3,6 +3,7 @@
 import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.react";
+import cx from "classnames";
 
 export default class TextPicker extends Component {
 
@@ -25,7 +26,7 @@ export default class TextPicker extends Component {
     }
 
     render() {
-        let { values, multi } = this.props;
+        let { values, validations, multi } = this.props;
 
         if (values.length === 0) {
             values = values.concat(null);
@@ -36,7 +37,7 @@ export default class TextPicker extends Component {
                 <ul>
                     {values.map((value, index) =>
                         <li className="px1 pt1 relative">
-                            <input className="input block full border-purple" type="text" value={value} onChange={(e) => this.setValue(index, e.target.value)}/>
+                            <input className={cx("input block full border-purple", { "border-error": validations[index] === false })} type="text" value={value} onChange={(e) => this.setValue(index, e.target.value)}/>
                             { index > 0 ?
                                 <span className="absolute top right">
                                     <Icon name="close" className="cursor-pointer" width="16" height="16" onClick={() => this.removeValue(index)}/>
@@ -46,7 +47,7 @@ export default class TextPicker extends Component {
                     )}
                 </ul>
                 { multi ?
-                    <div className="px1">
+                    <div className="p1">
                         { values[values.length - 1] !== null ?
                             <a className="text-underline cursor-pointer" onClick={() => this.addValue()}>Add another value</a>
                         : null }
@@ -61,5 +62,9 @@ TextPicker.propTypes = {
     values: PropTypes.array.isRequired,
     setValues: PropTypes.func.isRequired,
     multi: PropTypes.bool,
-    index: PropTypes.number
+    validations: PropTypes.array
 };
+
+TextPicker.defaultProps = {
+    validations: []
+}
