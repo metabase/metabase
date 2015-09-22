@@ -13,9 +13,9 @@ export default class NumberPicker extends Component {
         }
     }
 
-    setValues(stringValues) {
+    onValuesChange(stringValues) {
         let values = stringValues.map(v => parseFloat(v))
-        this.props.setValues(values.map(v => isNaN(v) ? null : v));
+        this.props.onValuesChange(values.map(v => isNaN(v) ? null : v));
         let validations = values.map(v => !isNaN(v));
         this.setState({ values: stringValues, validations: validations });
     }
@@ -26,7 +26,7 @@ export default class NumberPicker extends Component {
                 {...this.props}
                 values={this.state.values}
                 validations={this.state.validations}
-                setValues={(values) => this.setValues(values)}
+                onValuesChange={(values) => this.onValuesChange(values)}
             />
         );
     }
@@ -34,7 +34,7 @@ export default class NumberPicker extends Component {
 
 TextPicker.propTypes = {
     values: PropTypes.array.isRequired,
-    setValues: PropTypes.func.isRequired,
+    onValuesChange: PropTypes.func.isRequired,
     multi: PropTypes.bool,
     index: PropTypes.number
 };

@@ -12,7 +12,7 @@ export default class SelectPicker extends Component {
         } else {
             values = values.filter(v => v !== key);
         }
-        this.props.setValues(values);
+        this.props.onValuesChange(values);
     }
 
     render() {
@@ -43,7 +43,7 @@ export default class SelectPicker extends Component {
 SelectPicker.propTypes = {
     options: PropTypes.object.isRequired,
     values: PropTypes.array.isRequired,
-    setValues: PropTypes.func.isRequired,
+    onValuesChange: PropTypes.func.isRequired,
     multi: PropTypes.bool,
     index: PropTypes.number
 };

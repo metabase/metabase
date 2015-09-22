@@ -10,19 +10,19 @@ export default class TextPicker extends Component {
     addValue() {
         let values = this.props.values.slice();
         values.push(null);
-        this.props.setValues(values);
+        this.props.onValuesChange(values);
     }
 
     removeValue(index) {
         let values = this.props.values.slice();
         values.splice(index, 1);
-        this.props.setValues(values);
+        this.props.onValuesChange(values);
     }
 
     setValue(index, value) {
         let values = this.props.values.slice();
         values[index] = value;
-        this.props.setValues(values);
+        this.props.onValuesChange(values);
     }
 
     render() {
@@ -60,7 +60,7 @@ export default class TextPicker extends Component {
 
 TextPicker.propTypes = {
     values: PropTypes.array.isRequired,
-    setValues: PropTypes.func.isRequired,
+    onValuesChange: PropTypes.func.isRequired,
     multi: PropTypes.bool,
     validations: PropTypes.array
 };

@@ -131,7 +131,7 @@ export default class FilterPopover extends Component {
                     <SelectPicker
                         options={operatorField.values}
                         values={this.state.filter.slice(2)}
-                        setValues={this.setValues}
+                        onValuesChange={this.setValues}
                         multi={operator.multi}
                         index={index}
                     />
@@ -140,7 +140,7 @@ export default class FilterPopover extends Component {
                 return (
                     <TextPicker
                         values={this.state.filter.slice(2)}
-                        setValues={this.setValues}
+                        onValuesChange={this.setValues}
                         multi={operator.multi}
                         index={index}
                     />
@@ -149,7 +149,7 @@ export default class FilterPopover extends Component {
                 return (
                     <NumberPicker
                         values={this.state.filter.slice(2)}
-                        setValues={this.setValues}
+                        onValuesChange={this.setValues}
                         multi={operator.multi}
                         index={index}
                     />
