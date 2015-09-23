@@ -330,9 +330,11 @@
                             :id         {:description "This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens."}
                             :product_id {:description "The product ID. This is an internal identifier for the product, NOT the SKU."}
                             :subtotal   {:description "The raw, pre-tax cost of the order. Note that this might be different in the future from the product price due to promotions, credits, etc."}
-                            :tax        {:description "This is the amount of local and federal taxes that are collected on the purchase. Note that other governmental fees on some products are not included here, but instead are accounted for in the subtotal."}
+                            :tax        {:description (str "This is the amount of local and federal taxes that are collected on the purchase. Note that other governmental fees "
+                                                           "on some products are not included here, but instead are accounted for in the subtotal.")}
                             :total      {:description "The total billed amount."}
-                            :user_id    {:description "The id of the user who made this order. Note that in some cases where an order was created on behalf of a customer who phoned the order in, this might be the employee who handled the request."}}}
+                            :user_id    {:description (str "The id of the user who made this order. Note that in some cases where an order was created on behalf "
+                                                           "of a customer who phoned the order in, this might be the employee who handled the request.")}}}
    :people {:description "This is a user account. Note that employees and customer support staff will have accounts."
             :columns     {:address    {:description "The street address of the account’s billing address"}
                           :birth_date {:description "The date of birth of the user"}
