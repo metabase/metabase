@@ -2,12 +2,10 @@
 
 import _ from "underscore";
 
-import Calendar from './Calendar.react';
 import Icon from "metabase/components/Icon.react";
 import FieldName from './FieldName.react';
-import FieldSelector from './FieldSelector.react';
 import Popover from "metabase/components/Popover.react";
-import ColumnarSelector from "metabase/components/ColumnarSelector.react";
+import FilterPopover from "./filters/FilterPopover.react";
 
 import Query from "metabase/lib/query";
 import moment from 'moment';
@@ -26,7 +24,7 @@ export default React.createClass({
 
     getInitialState: function() {
         return {
-            currentPane: this.props.filter[0] == undefined ? 0 : -1
+            isOpen: this.props.filter[0] == undefined
         };
     },
 
@@ -117,109 +115,12 @@ export default React.createClass({
         });
     },
 
-    isVisible: function() {
-        return this.state.currentPane >= 0 && this.state.currentPane < this.props.filter.length
-    },
-
-    selectPane: function(index) {
-        this.setState({ currentPane: index });
-    },
-
     hasField: function() {
         return Query.isValidField(this.state.field);
     },
 
     hasOperator: function() {
         return (typeof this.state.operator === "string");
-    },
-
-    setField: function(value) {
-        // whenever the field is set we completely clear the filter and reset it, this is because some operators and values don't
-        // make sense once you've changed the field, so starting fresh is the most sensible thing to do
-        if (!_.isEqual(this.state.field, value)) {
-            var filter = [null, value, null];
-            this.props.updateFilter(this.props.index, filter);
-        }
-        if (Query.isValidField(value)) {
-            this.selectPane(1);
-        }
-    },
-
-    setOperator: function(value) {
-        // different operators will lead to different filter scenarios, so handle that here
-        var operatorInfo = this.state.fieldDef.operators_lookup[value];
-        var filter = this.props.filter;
-
-        if (operatorInfo.validArgumentsFilters.length !== this.props.filter.length) {
-            // looks like our new filter operator expects a different length filter from our current
-            filter = [];
-            for(var i=0; i < operatorInfo.validArgumentsFilters.length + 2; i++) {
-                filter[i] = null;
-            }
-
-            // anything after 2 positions is going to be variable
-            for (var j=0; j < filter.length; j++) {
-                if (this.props.filter.length >= j+1) {
-                    filter[j] = this.props.filter[j];
-                }
-            }
-
-            // make sure we set the updated operator
-            filter[0] = value;
-
-        } else {
-            filter[0] = value;
-        }
-
-        this.props.updateFilter(this.props.index, filter);
-
-        this.selectPane(2);
-    },
-
-    setValue: function(index, value) {
-        var filter = this.props.filter;
-
-        if (value && value.length > 0) {
-            // value casting.  we need the value in the filter to be of the proper type
-            if (this.state.fieldDef.special_type === "timestamp_milliseconds" ||
-                this.state.fieldDef.special_type === "timestamp_seconds") {
-            } else if (this.state.fieldDef.base_type === "IntegerField" ||
-                    this.state.fieldDef.base_type === "SmallIntegerField" ||
-                    this.state.fieldDef.base_type === "BigIntegerField") {
-                value = parseInt(value);
-            } else if (this.state.fieldDef.base_type === "BooleanField") {
-                value = (value.toLowerCase() === "true") ? true : false;
-            } else if (this.state.fieldDef.base_type === "FloatField" ||
-                        this.state.fieldDef.base_type === "DecimalField") {
-                value = parseFloat(value);
-            }
-
-            // TODO: we may need to do some date formatting work on DateTimeField and DateField
-        } else {
-            value = null;
-        }
-
-        if (value !== undefined) {
-            filter[index + 2] = value;
-            this.props.updateFilter(this.props.index, filter);
-        }
-
-        var nextPane = index + 2 + 1;
-        if (nextPane < filter.length) {
-            this.selectPane(nextPane);
-        } else {
-            this.selectPane(-1);
-        }
-    },
-
-    setDateValue: function (index, date) {
-        this.setValue(index, date.format('YYYY-MM-DD'));
-    },
-
-    setTextValue: function(index) {
-        var value = this.refs.textFilterValue.getDOMNode().value;
-        // we always know the index will be 2 for the value of a filter
-        this.setValue(index, value);
     },
 
     removeFilterFn: function() {
@@ -239,7 +140,7 @@ export default React.createClass({
                 className={classes}
                 field={this.state.field}
                 fieldOptions={this.state.fieldOptions}
-                onClick={this.selectPane.bind(null, 0)}
+                onClick={this.open}
             />
         );
     },
@@ -259,7 +160,7 @@ export default React.createClass({
             "selected": !!operator
         })
         return (
-            <div className={classes} onClick={this.selectPane.bind(null, 1)}>
+            <div className={classes} onClick={this.open}>
                 <a className="QueryOption p1 flex align-center">{operatorName}</a>
             </div>
         );
@@ -273,7 +174,6 @@ export default React.createClass({
 
         // the first 2 positions of the filter are always for fieldId + fieldOperator
         return this.props.filter.slice(2).map((filterValue, valueIndex) => {
-            var filterIndex = valueIndex + 2;
             var value = this.state.values[valueIndex];
             if (this.state.fieldValues) {
                 var filterSectionClasses = cx({
@@ -291,7 +191,7 @@ export default React.createClass({
                     valueString = value != null ? value.toString() : "value";
                 }
                 return (
-                    <div key={valueIndex} className={filterSectionClasses} onClick={this.selectPane.bind(null, filterIndex)}>
+                    <div key={valueIndex} className={filterSectionClasses} onClick={this.open}>
                         <span className={cx(queryOptionClasses)}>{valueString}</span>
                     </div>
                 );
@@ -299,94 +199,16 @@ export default React.createClass({
         });
     },
 
-    renderFieldPane: function() {
-        return (
-            <FieldSelector
-                field={this.state.field}
-                fieldOptions={this.state.fieldOptions}
-                tableName={this.props.tableMetadata.display_name}
-                setField={this.setField}
-            />
-        );
+    open: function() {
+        this.setState({ isOpen: true });
     },
 
-    renderOperatorPane: function() {
-        var column = {
-            selectedItem: _.find(this.state.operatorList, (o) => o.name === this.state.operator),
-            items: this.state.operatorList,
-            itemTitleFn: (o) => o.verbose_name,
-            itemSelectFn: (o, index) => this.setOperator(o.name, index)
-        };
-        return (
-            <ColumnarSelector columns={[column]} />
-        );
-    },
-
-    renderValuePane: function(valueIndex) {
-        if (this.state.fieldValues && this.state.values && valueIndex <= this.state.values.length) {
-            var value = this.state.values[valueIndex];
-            if (this.state.fieldValues.values) {
-                var column = {
-                    selectedItem: _.find(this.state.fieldValues.values, (v) => v.key === value),
-                    items: this.state.fieldValues.values,
-                    itemTitleFn: (v) => v.name,
-                    itemSelectFn: (v, index) => this.setValue(valueIndex, v.key)
-                };
-                return (
-                    <ColumnarSelector columns={[column]} />
-                );
-            } else if (this.state.fieldValues.type === "date") {
-                var date = value ? moment(value) : moment();
-                return (
-                    <div className="flex layout-centered m2">
-                        <Calendar
-                            selected={date}
-                            onChange={this.setDateValue.bind(null, valueIndex)}
-                        />
-                    </div>
-                );
-            } else {
-                return (
-                    <div className="Filter-section Filter-section-value flex p2">
-                        <input
-                            className="QueryOption input mx1 flex-full"
-                            type="text"
-                            defaultValue={value}
-                            ref="textFilterValue"
-                            placeholder="What value?"
-                            autoFocus={true}
-                        />
-                        <button className="Button mx1 text-default text-normal" onClick={() => this.setTextValue(valueIndex, this.refs.textFilterValue.value)}>
-                            Add
-                        </button>
-                    </div>
-                );
-            }
-        }
-        return <div><div>{value}</div><pre>{JSON.stringify(this.state.fieldValues)}</pre></div>;
+    close: function() {
+        this.setState({ isOpen: false });
     },
 
     renderPopover: function() {
-        if (this.isVisible()) {
-            var pane;
-            if (this.state.currentPane === 0) {
-                pane = this.renderFieldPane();
-            } else if (this.state.currentPane === 1) {
-                pane = this.renderOperatorPane();
-            } else {
-                pane = this.renderValuePane(this.state.currentPane - 2);
-            }
-
-            var tabs = [
-                { name: "Field", enabled: true },
-                { name: "Operator", enabled: this.hasField() }
-            ];
-
-            var numValues = this.props.filter.length - 2;
-            for (var i = 0; i < numValues; i++) {
-                tabs.push({ name: "Value", enabled: this.hasField() && this.state.operator != null });
-            }
-
+        if (this.state.isOpen) {
             var tetherOptions = {
                 attachment: 'top left',
                 targetAttachment: 'bottom left',
@@ -395,25 +217,18 @@ export default React.createClass({
 
             return (
                 <Popover
-                    ref="popover"
+                    ref="filterPopover"
                     className="PopoverBody PopoverBody--withArrow FilterPopover"
                     isInitiallyOpen={this.state.field === null}
                     tetherOptions={tetherOptions}
-                    onClose={this.selectPane.bind(null, -1)}
+                    onClose={this.close}
                 >
-                    <ul className="PopoverHeader">
-                        {tabs.map((t, index) => {
-                            var classes = cx({
-                                "PopoverHeader-item": true,
-                                "PopoverHeader-item--withArrow": index < tabs.length,
-                                "cursor-pointer": t.enabled,
-                                "selected": this.state.currentPane === index,
-                                "disabled": !t.enabled
-                            });
-                            return <li key={index} className={classes} onClick={this.selectPane.bind(null, index)}>{t.name}</li>
-                        })}
-                    </ul>
-                    <div>{pane}</div>
+                    <FilterPopover
+                        filter={this.props.filter}
+                        tableMetadata={this.props.tableMetadata}
+                        onCommitFilter={(filter) => this.props.updateFilter(this.props.index, filter)}
+                        onClose={this.close}
+                    />
                 </Popover>
             );
         }
@@ -423,7 +238,7 @@ export default React.createClass({
         var classes = cx({
             "Query-filter": true,
             "px1": true,
-            "selected": this.isVisible()
+            "selected": this.state.isOpen
         });
         return (
             <div className={classes}>
