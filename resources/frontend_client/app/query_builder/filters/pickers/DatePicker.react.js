@@ -114,7 +114,7 @@ class DateShortcuts extends Component {
                     <li
                         key={index}
                         style={buttonStyles(index)}
-                        className={cx("Button Button--medium text-normal mr1 mb1 inline-block half text-centered", { "Button--purple": this.props.isSelectedShortcut(s) })}
+                        className={cx("Button Button-normal Button--medium text-normal mr1 mb1 inline-block half text-centered", { "Button--purple": this.props.isSelectedShortcut(s) })}
                         onClick={() => this.props.onSetShortcut(s)}
                     >
                         {s.name}
@@ -181,7 +181,7 @@ class RelativeDates extends Component {
                     { RELATIVE_SHORTCUTS[this.state.tab].map((s, index) =>
                         <li
                             key={index}
-                            className={cx("Button Button--medium mr1 mb1", { "Button--purple": this.props.isSelectedShortcut(s) })}
+                            className={cx("Button Button-normal Button--medium mr1 mb1", { "Button--purple": this.props.isSelectedShortcut(s) })}
                             onClick={() => this.props.onSetShortcut(s)}
                         >
                             {s.name}
