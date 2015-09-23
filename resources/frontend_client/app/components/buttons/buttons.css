@@ -47,6 +47,11 @@
     font-size: 0.6rem;
 }
 
+.Button--medium {
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+}
+
 .Button--primary {
   color: #fff;
   background: var(--primary-button-bg-color);

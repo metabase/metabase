@@ -91,12 +91,30 @@ class DateShortcuts extends Component {
     }
 
     render() {
+        const cols = 2;
+        const rows = Math.ceil(SHORTCUTS.length / cols);
+
+        function buttonStyles(index) {
+            let row =  Math.floor(index / cols);
+            let col = index % cols;
+            return {
+                margin: 0,
+                borderTopLeftRadius:     col !== 0        || row !== 0        ? 0 : undefined,
+                borderTopRightRadius:    col !== cols - 1 || row !== 0        ? 0 : undefined,
+                borderBottomLeftRadius:  col !== 0        || row !== rows - 1 ? 0 : undefined,
+                borderBottomRightRadius: col !== cols - 1 || row !== rows - 1 ? 0 : undefined,
+                borderTopWidth:          row !== 0                            ? 0 : undefined,
+                borderLeftWidth:         col !== 0                            ? 0 : undefined
+            };
+        }
+
         return (
-            <ul className="bordered rounded">
+            <ul>
                 { SHORTCUTS.map((s, index) =>
                     <li
                         key={index}
-                        className={cx("cursor-pointer text-bold py1 text-purple text-centered inline-block half", { "bg-brand": this.props.isSelectedShortcut(s) })}
+                        style={buttonStyles(index)}
+                        className={cx("Button Button--medium mr1 mb1 inline-block half", { "Button--purple": this.props.isSelectedShortcut(s) })}
                         onClick={() => this.props.onSetShortcut(s)}
                     >
                         {s.name}
@@ -139,7 +157,7 @@ class RelativeDates extends Component {
     }
 
     render() {
-        const tabStyles = function (state, condition) {
+        function tabStyles(state, condition) {
             return {
                 fontSize: '0.7rem',
                 fontWeight: 'bold',
@@ -162,7 +180,7 @@ class RelativeDates extends Component {
                     { RELATIVE_SHORTCUTS[this.state.tab].map((s, index) =>
                         <li
                             key={index}
-                            className={cx("h4 mr1 cursor-pointer bordered border-hover rounded p1 inline-block", { "bg-brand": this.props.isSelectedShortcut(s)})}
+                            className={cx("Button Button--medium mr1 mb1", { "Button--purple": this.props.isSelectedShortcut(s) })}
                             onClick={() => this.props.onSetShortcut(s)}
                         >
                             {s.name}

@@ -63,8 +63,7 @@ export default class OperatorSelector extends Component {
             <div className="border-bottom p1">
                 { visibleOperators.map(operator =>
                     <button
-                        style={{padding: '0.5rem 1rem', fontSize: '0.8rem'}}
-                        className={cx("Button Button--small mr1 mb1", { "Button--purple": operator.name === filter[0] })}
+                        className={cx("Button Button--medium mr1 mb1", { "Button--purple": operator.name === filter[0] })}
                         onClick={() => this.props.onOperatorChange(operator.name)}
                     >
                         {operator.verbose_name}
