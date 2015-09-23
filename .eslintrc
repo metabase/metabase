@@ -2,7 +2,7 @@
     "parser": "babel-eslint",
     "rules": {
         "no-undef": 2,
-        "no-unused-vars": [2, {"vars": "all", "args": "none", "varsIgnorePattern": "React|PropTypes|Component"}],
+        "no-unused-vars": [1, {"vars": "all", "args": "none", "varsIgnorePattern": "React|PropTypes|Component"}],
         "quotes": 0,
         "camelcase": 0,
         "eqeqeq": 0,
