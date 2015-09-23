@@ -114,7 +114,7 @@ class DateShortcuts extends Component {
                     <li
                         key={index}
                         style={buttonStyles(index)}
-                        className={cx("Button Button--medium mr1 mb1 inline-block half", { "Button--purple": this.props.isSelectedShortcut(s) })}
+                        className={cx("Button Button--medium text-normal mr1 mb1 inline-block half text-centered", { "Button--purple": this.props.isSelectedShortcut(s) })}
                         onClick={() => this.props.onSetShortcut(s)}
                     >
                         {s.name}
@@ -164,8 +164,9 @@ class RelativeDates extends Component {
                 textTransform: 'uppercase',
                 borderTopLeftRadius: 4,
                 borderTopRightRadius: 4,
-                backgroundColor: state === condition? '#fff' : '#fafafa`',
-                borderBottomColor: state === condition? '#fff': '#e0e0e0',
+                backgroundColor: (state === condition ? '#fff' : '#fafafa`'),
+                borderBottomColor: (state === condition ? '#fff': '#e0e0e0'),
+                color: (state !== condition ? '#d0d0d0' : undefined)
             }
         }
 

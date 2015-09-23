@@ -76,8 +76,8 @@ export default class Calendar extends Component {
     renderDayNames() {
         const names = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
         return (
-            <div className="Calendar-day-names Calendar-week border-bottom">
-                {names.map((name) => <span key={name} className="Calendar-day Calendar-day-name text-centered">{name}</span>)}
+            <div className="Calendar-day-names Calendar-week py1">
+                {names.map((name) => <span key={name} className="Calendar-day-name text-centered">{name}</span>)}
             </div>
         );
     }
@@ -148,7 +148,7 @@ class Week extends Component {
                 "Calendar-day--selected-end": date.isSame(this.props.selectedEnd),
                 "Calendar-day--week-start": i === 0,
                 "Calendar-day--week-end": i === 6,
-                "Calendar-day--in-range": (
+                "Calendar-day--in-range": !(date.isSame(this.props.selected) || date.isSame(this.props.selectedEnd)) && (
                     date.isSame(this.props.selected) || date.isSame(this.props.selectedEnd) ||
                     (this.props.selectedEnd && this.props.selectedEnd.isAfter(date) && date.isAfter(this.props.selected))
                 )
