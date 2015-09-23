@@ -56,6 +56,14 @@
     "Return a lazy sequence of all values of Field.
      This is used to implement `mark-json-field!`, and fallback implentations of `mark-no-preview-display-field!` and `mark-url-field!`
      if drivers *don't* implement `ISyncDriverFieldAvgLength` or `ISyncDriverFieldPercentUrls`, respectively.")
+  (table-rows-seq [this database table-name]
+    "Return a sequence of all the rows in a table with a given TABLE-NAME.
+     Currently, this is only used for iterating over the values in a `_metabase_metadata` table. As such, the results are not expected to be returned lazily.
+
+     (table-rows-seq driver (Database 2) \"_metabase_metadata\")
+     -> [{:keypath \"people.description\"
+          :value   \"...\"}
+         ...]")
 
   ;; Query Processing
   (process-query [this query]
