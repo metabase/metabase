@@ -1,19 +1,89 @@
 'use strict';
 
-import React, { Component } from 'react';
+import React, { Component, PropTypes } from 'react';
 import moment from 'moment';
+import _ from "underscore";
+import cx from "classnames";
 
 import Calendar from '../../Calendar.react';
 
-class DateShortcuts  extends Component {
-    isCurrentShortcut(shortcut) {
-        return this.props.shortcut === shortcut;
+const SHORTCUTS = [
+    { name: "Today",        operator: "TIME_INTERVAL", values: ["current", "day"]},
+    { name: "Yesterday",    operator: "TIME_INTERVAL", values: ["last", "day"]},
+    { name: "Past 7 days",  operator: "TIME_INTERVAL", values: [-7, "day"]},
+    { name: "Past 30 days", operator: "TIME_INTERVAL", values: [-30, "day"]}
+];
+
+const RELATIVE_SHORTCUTS = {
+    "Last": [
+        { name: "Week",  operator: "TIME_INTERVAL", values: ["last", "week"]},
+        { name: "Month", operator: "TIME_INTERVAL", values: ["last", "month"]},
+        { name: "Year",  operator: "TIME_INTERVAL", values: ["last", "year"]}
+    ],
+    "This": [
+        { name: "Week",  operator: "TIME_INTERVAL", values: ["current", "week"]},
+        { name: "Month", operator: "TIME_INTERVAL", values: ["current", "month"]},
+        { name: "Year",  operator: "TIME_INTERVAL", values: ["current", "year"]}
+    ]
+};
+
+export default class DatePicker extends Component {
+    constructor(props) {
+        super(props);
+
+        _.bindAll(this, "onChange", "isSelectedShortcut", "onSetShortcut");
+    }
+    onChange(start, end) {
+        let { filter } = this.props;
+        if (end) {
+            this.props.onFilterChange(["BETWEEN", filter[1], start, end]);
+        } else {
+            let operator = _.contains(["=", "<", ">"], filter[0]) ? filter[0] : "=";
+            this.props.onFilterChange([operator, filter[1], start]);
+        }
+    }
+    render() {
+        let { filter } = this.props
+        let start, end;
+        if (filter[0] !== "TIME_INTERVAL") {
+            start = filter[2] && moment(filter[2], "YYYY-MM-DD");
+            end = filter[3] && moment(filter[3], "YYYY-MM-DD");
+        }
+
+        return (
+            <div>
+                <div className="mx1 mt1">
+                    <Calendar
+                        selected={start}
+                        selectedEnd={end}
+                        onChange={this.onChange}
+                    />
+                </div>
+                <div className="px1 pt1">
+                    <DateShortcuts filter={this.props.filter} isSelectedShortcut={this.isSelectedShortcut} onSetShortcut={this.onSetShortcut} />
+                    <RelativeDates filter={this.props.filter} isSelectedShortcut={this.isSelectedShortcut} onSetShortcut={this.onSetShortcut} />
+                </div>
+            </div>
+        )
     }
 
-    shortcuts() {
-        return ['Today', 'Yesterday', 'Past 7 days', 'Past 30 days'];
+    isSelectedShortcut(shortcut) {
+        let { filter } = this.props;
+        return filter[0] === shortcut.operator && _.isEqual(filter.slice(2), shortcut.values);
     }
 
+    onSetShortcut(shortcut) {
+        let { filter } = this.props;
+        this.props.onFilterChange([shortcut.operator, filter[1], ...shortcut.values])
+    }
+}
+
+DatePicker.propTypes = {
+    filter: PropTypes.array.isRequired,
+    onFilterChange: PropTypes.func.isRequired
+};
+
+class DateShortcuts extends Component {
     selectedStyles() {
         return {
             'text-purple': true
@@ -23,21 +93,51 @@ class DateShortcuts  extends Component {
     render() {
         return (
             <ul className="bordered rounded">
-                { this.shortcuts().map((shortcut, index) => {
-                    return <li key={index} className="cursor-pointer text-bold py1 text-purple text-centered inline-block half">{shortcut}</li>
-                })}
+                { SHORTCUTS.map((s, index) =>
+                    <li
+                        key={index}
+                        className={cx("cursor-pointer text-bold py1 text-purple text-centered inline-block half", { "bg-brand": this.props.isSelectedShortcut(s) })}
+                        onClick={() => this.props.onSetShortcut(s)}
+                    >
+                        {s.name}
+                    </li>
+                )}
             </ul>
-        )
+        );
     }
 }
 
+DateShortcuts.propTypes = {
+    isSelectedShortcut: PropTypes.func.isRequired,
+    onSetShortcut: PropTypes.func.isRequired
+}
+
 class RelativeDates extends Component {
-    constructor() {
-        super();
+    constructor(props) {
+        super(props);
         this.state = {
-            selected: 'last'
+            tab: this._findTabWithSelection(props) || 'Last'
         }
     }
+
+    componentWillReceiveProps(nextProps) {
+        let tab = this._findTabWithSelection(nextProps);
+        if (tab && tab !== this.state.tab) {
+            this.setState({ tab });
+        }
+    }
+
+    _findTabWithSelection() {
+        for (let tab in RELATIVE_SHORTCUTS) {
+            for (let shortcut of RELATIVE_SHORTCUTS[tab]) {
+                if (this.props.isSelectedShortcut(shortcut)) {
+                    return tab;
+                }
+            }
+        }
+        return null;
+    }
+
     render() {
         const tabStyles = function (state, condition) {
             return {
@@ -52,36 +152,30 @@ class RelativeDates extends Component {
         }
 
         return (
-            <div className="px1 pt1">
-                <DateShortcuts selected="today" />
-                <div>
-                    <div style={{display: 'flex', justifyContent: 'center'}} className="mt1">
-                        <a style={tabStyles(this.state.selected, 'last')} className="py1 px2 cursor-pointer bordered" onClick={() => this.setState({ selected: 'last' })}>Last</a>
-                        <a style={tabStyles(this.state.selected, 'this')} className="py1 px2 cursor-pointer bordered" onClick={() => this.setState({ selected: 'this' })}>This</a>
-                    </div>
-                    <div style={{marginTop: '-1px', display: 'flex', justifyContent: 'center'}} className="border-top pt1">
-                        <h4 className="mr1 cursor-pointer bordered border-hover rounded p1 inline-block">Week</h4>
-                        <h4 className="mr1 cursor-pointer bordered border-hover rounded p1 inline-block">Month</h4>
-                        <h4 className="cursor-pointer bordered border-hover rounded p1 inline-block">Year</h4>
-                    </div>
+            <div>
+                <div style={{display: 'flex', justifyContent: 'center'}} className="mt1">
+                    { Object.keys(RELATIVE_SHORTCUTS).map(tab =>
+                        <a style={tabStyles(this.state.tab, tab)} className="py1 px2 cursor-pointer bordered" onClick={() => this.setState({ tab })}>{tab}</a>
+                    )}
                 </div>
+                <ul style={{marginTop: '-1px', display: 'flex', justifyContent: 'center'}} className="border-top pt1">
+                    { RELATIVE_SHORTCUTS[this.state.tab].map((s, index) =>
+                        <li
+                            key={index}
+                            className={cx("h4 mr1 cursor-pointer bordered border-hover rounded p1 inline-block", { "bg-brand": this.props.isSelectedShortcut(s)})}
+                            onClick={() => this.props.onSetShortcut(s)}
+                        >
+                            {s.name}
+                        </li>
+                    )}
+                </ul>
             </div>
         )
     }
 }
 
-export default class DatePicker extends Component {
-    setDateValue(index, date) {
-        this.setValue(index, date.format('YYYY-MM-DD'));
-    }
-    render() {
-        return (
-            <div>
-                <div className="mx1 mt1">
-                    <Calendar selected={moment()} />
-                </div>
-                <RelativeDates />
-            </div>
-        )
-    }
-}
+RelativeDates.propTypes = {
+    filter: PropTypes.array.isRequired,
+    isSelectedShortcut: PropTypes.func.isRequired,
+    onSetShortcut: PropTypes.func.isRequired
+};

@@ -26,7 +26,8 @@ const OPERATORS = {
     [TIME]: [
         { name: "=",       verbose_name: "Is" },
         { name: "<",       verbose_name: "Before" },
-        { name: ">",       verbose_name: "After" }
+        { name: ">",       verbose_name: "After" },
+        { name: "BETWEEN", verbose_name: "Between" }
     ]
 };
 

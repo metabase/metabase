@@ -12,6 +12,7 @@ import DatePicker from "./pickers/DatePicker.react";
 import Icon from "metabase/components/Icon.react";
 
 import Query from "metabase/lib/query";
+import * as SchemaMetadata from "metabase/lib/schema_metadata";
 
 import cx from "classnames";
 
@@ -27,7 +28,12 @@ export default class FilterPopover extends Component {
         this.setField = this.setField.bind(this);
         this.setOperator = this.setOperator.bind(this);
         this.setValues = this.setValues.bind(this);
+        this.setFilter = this.setFilter.bind(this);
         this.commitFilter = this.commitFilter.bind(this);
+    }
+
+    componentDidUpdate() {
+        console.log("FILTER", this.state.filter);
     }
 
     commitFilter() {
@@ -51,6 +57,10 @@ export default class FilterPopover extends Component {
             filter = this._updateOperator(filter, operator);
         }
         this.setState({ filter, pane: "filter" });
+    }
+
+    setFilter(filter) {
+        this.setState({ filter });
     }
 
     setOperator(operator) {
@@ -78,8 +88,11 @@ export default class FilterPopover extends Component {
 
         // update the operator
         filter = [operatorName, filter[1]];
-        for (var i = 0; i < operator.fields.length; i++) {
-            filter.push(undefined);
+
+        if (operator) {
+            for (var i = 0; i < operator.fields.length; i++) {
+                filter.push(undefined);
+            }
         }
         return filter;
     }
@@ -107,12 +120,11 @@ export default class FilterPopover extends Component {
         // field/operator combo is valid
         let { field } = this._getTarget(filter);
         let operator = field.operators_lookup[filter[0]];
-        if (!operator) {
-            return false;
-        }
-        // has the mininum number of arguments
-        if (filter.length - 2 < operator.fields.length) {
-            return false;
+        if (operator) {
+            // has the mininum number of arguments
+            if (filter.length - 2 < operator.fields.length) {
+                return false;
+            }
         }
         // arguments are non-null/undefined
         for (var i = 2; i < filter.length; i++) {
@@ -124,7 +136,19 @@ export default class FilterPopover extends Component {
         return true;
     }
 
-    renderPicker(field, operator) {
+    renderPicker(filter, field) {
+        let operator = field.operators_lookup[filter[0]];
+
+        // HACK: special case for dates
+        if (SchemaMetadata.isDate(field)) {
+            return (
+                <DatePicker
+                    filter={this.state.filter}
+                    onFilterChange={this.setFilter}
+                />
+            );
+        }
+
         return operator.fields.map((operatorField, index) => {
             if (operatorField.type === "select") {
                 return (
@@ -154,10 +178,6 @@ export default class FilterPopover extends Component {
                         index={index}
                     />
                 );
-            } else if (operatorField.type === "date") {
-                return (
-                    <DatePicker />
-                )
             }
             return <span>not implemented {operatorField.type} {operator.multi ? "true" : "false"}</span>;
         });
@@ -179,7 +199,6 @@ export default class FilterPopover extends Component {
         } else {
             let { filter } = this.state;
             let { table, field } = this._getTarget(filter);
-            let selectedOperator = field.operators_lookup[filter[0]];
 
             return (
                 <div style={{width: 300}}>
@@ -197,7 +216,7 @@ export default class FilterPopover extends Component {
                             field={field}
                             onOperatorChange={this.setOperator}
                         />
-                        { selectedOperator && this.renderPicker(field, selectedOperator) }
+                        { this.renderPicker(filter, field) }
                     </div>
                     <div className="FilterPopover-footer p1">
                         <button className={cx("Button", "Button--purple", "full", { "disabled": !this.isValid() })} onClick={this.commitFilter}>

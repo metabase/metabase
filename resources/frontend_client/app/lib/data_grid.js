@@ -2,7 +2,7 @@
 
 import _ from "underscore";
 
-import SchemaMetadata from "metabase/lib/schema_metadata";
+import * as SchemaMetadata from "metabase/lib/schema_metadata";
 
 function compareNumbers(a, b) {
     return a - b;

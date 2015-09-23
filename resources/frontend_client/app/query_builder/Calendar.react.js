@@ -2,13 +2,14 @@
 
 import React, { Component, PropTypes } from 'react';
 import cx from 'classnames';
+import moment from "moment";
 
 import Icon from 'metabase/components/Icon.react';
 
 export default class Calendar extends Component {
     constructor(props) {
         super(props);
-        let month = this.props.selected.clone();
+        let month = this.props.selected ? this.props.selected.clone() : moment();
         const modes = ['month', 'year', 'decade']
         this.state = {
             month: month,
@@ -18,6 +19,21 @@ export default class Calendar extends Component {
         this.previous = this.previous.bind(this);
         this.next = this.next.bind(this);
         this.cycleMode = this.cycleMode.bind(this);
+
+        this.onClickDay = this.onClickDay.bind(this);
+    }
+
+    onClickDay(date, e) {
+        let { selected, selectedEnd } = this.props;
+        if (!selected || selectedEnd) {
+            this.props.onChange(date.format("YYYY-MM-DD"), null);
+        } else if (!selectedEnd) {
+            if (date.isAfter(selected)) {
+                this.props.onChange(selected.format("YYYY-MM-DD"), date.format("YYYY-MM-DD"));
+            } else {
+                this.props.onChange(date.format("YYYY-MM-DD"), selected.format("YYYY-MM-DD"));
+            }
+        }
     }
 
     cycleMode() {
@@ -44,7 +60,7 @@ export default class Calendar extends Component {
     renderMonthHeader() {
         return (
             <div className="Calendar-header flex align-center">
-                <div className="bordered rounded p1 cursor-pointer transition-border border-hover px1"onClick={this.previous}>
+                <div className="bordered rounded p1 cursor-pointer transition-border border-hover px1" onClick={this.previous}>
                     <Icon name="chevronleft" width="10" height="12" />
                 </div>
                 <span className="flex-full" />
@@ -79,8 +95,9 @@ export default class Calendar extends Component {
                     key={date.toString()}
                     date={date.clone()}
                     month={this.state.month}
-                    onChange={this.props.onChange}
+                    onClickDay={this.onClickDay}
                     selected={this.props.selected}
+                    selectedEnd={this.props.selectedEnd}
                 />
             );
             date.add(1, "w");
@@ -94,7 +111,7 @@ export default class Calendar extends Component {
     }
     render() {
         return (
-            <div className="Calendar">
+            <div className={cx("Calendar", { "Calendar--range": this.props.selected && this.props.selectedEnd })}>
                 {this.renderMonthHeader()}
                 {this.renderDayNames()}
                 {this.renderWeeks()}
@@ -104,10 +121,17 @@ export default class Calendar extends Component {
 }
 
 Calendar.propTypes = {
-    selected: PropTypes.object.isRequired
+    selected: PropTypes.object,
+    selectedEnd: PropTypes.object,
+    onChange: PropTypes.func.isRequired
 };
 
 class Week extends Component {
+
+    _dayIsSelected(day) {
+        return
+    }
+
     render() {
         let days = [];
         let { date, month } = this.props;
@@ -116,15 +140,21 @@ class Week extends Component {
             let classes = cx({
                 'p1': true,
                 'cursor-pointer': true,
-                'bordered': true,
                 'text-centered': true,
                 "Calendar-day": true,
                 "Calendar-day--today": date.isSame(new Date(), "day"),
                 "Calendar-day--this-month": date.month() === month.month(),
-                "Calendar-day--selected": date.isSame(this.props.selected)
+                "Calendar-day--selected": date.isSame(this.props.selected),
+                "Calendar-day--selected-end": date.isSame(this.props.selectedEnd),
+                "Calendar-day--week-start": i === 0,
+                "Calendar-day--week-end": i === 6,
+                "Calendar-day--in-range": (
+                    date.isSame(this.props.selected) || date.isSame(this.props.selectedEnd) ||
+                    (this.props.selectedEnd && this.props.selectedEnd.isAfter(date) && date.isAfter(this.props.selected))
+                )
             });
             days.push(
-                <span key={date.toString()} className={classes} onClick={this.props.onChange.bind(null, date)}>
+                <span key={date.toString()} className={classes} onClick={this.props.onClickDay.bind(null, date)}>
                     {date.date()}
                 </span>
             );
@@ -140,6 +170,8 @@ class Week extends Component {
     }
 }
 
-Week.defaultProps = {
-    onChange: () => {}
+Week.propTypes = {
+    selected: PropTypes.object,
+    selectedEnd: PropTypes.object,
+    onClickDay: PropTypes.func.isRequired
 }
