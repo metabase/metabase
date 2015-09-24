@@ -65,9 +65,11 @@ export default class Setup extends Component {
                             <PreferencesStep {...this.props} stepNumber={PREFERENCES_STEP_NUMBER} />
 
                             { setupComplete ?
-                                <section className="SetupStep rounded full relative SetupStep--active shadowed flex flex-column layout-centered p4">
-                                    <h1 clasName="text-normal">You're all set up!</h1>
-                                    <a className="Button Button--primary" href="/">Take me to Metabase</a>
+                                <section className="SetupStep rounded SetupStep--active flex flex-column layout-centered p4">
+                                    <h1 style={{fontSize: "xx-large"}} className="text-normal pt2">You're all set up!</h1>
+                                    <div className="pt4 pb2">
+                                        <a className="Button Button--primary" href="/">Take me to Metabase</a>
+                                    </div>
                                 </section>
                             : null }
                         </div>

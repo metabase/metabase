@@ -35,12 +35,13 @@
     margin-bottom: 1.714em;
     background-color: #EDF2F8;
     flex: 1;
-    border: 1px dashed #e8e8e8;
+    border: 1px dotted var(--brand-color);
 }
 
 .SetupStep.SetupStep--active {
     background-color: #fff;
     border-style: solid;
+    border-color: color(var(--base-grey) shade(20%));
     color: var(--brand-color);
 }
 
@@ -48,6 +49,7 @@
     color: var(--success-color);
     background-color: #fff;
     border-style: solid;
+    border-color: color(var(--base-grey) shade(20%));
 }
 
 .SetupStep-indicator {
@@ -55,6 +57,7 @@
     width: var(--indicator-size);
     height: var(--indicator-size);
     border-radius: var(--indicator-border-radius);
+    border-color: color(var(--base-grey) shade(20%));
     font-weight: bold;
     line-height: 1;
     background-color: #fff;

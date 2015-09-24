@@ -38,7 +38,7 @@ export default class PreferencesStep extends Component {
             return (<CollapsedStep stepNumber={stepNumber} stepText={stepText} isCompleted={setupComplete}></CollapsedStep>)
         } else {
             return (
-                <section className="SetupStep rounded full relative SetupStep--active shadowed">
+                <section className="SetupStep rounded full relative SetupStep--active">
                     <div className="flex align-center py3">
                         <span className="SetupStep-indicator flex layout-centered absolute bordered">
                             <span className="SetupStep-number">{stepNumber}</span>

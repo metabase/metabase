@@ -92,7 +92,7 @@ export default class DatabaseStep extends Component {
             return (<CollapsedStep dispatch={dispatch} stepNumber={stepNumber} stepText={stepText} isCompleted={activeStep > stepNumber}></CollapsedStep>)
         } else {
             return (
-                <section className="SetupStep rounded full relative SetupStep--active shadowed">
+                <section className="SetupStep rounded full relative SetupStep--active">
                     <div className="flex align-center py3">
                         <span className="SetupStep-indicator flex layout-centered absolute bordered">
                             <span className="SetupStep-number">{stepNumber}</span>
@@ -121,7 +121,7 @@ export default class DatabaseStep extends Component {
                         : null }
 
                         <div className="Form-field Form-offset">
-                            <a href="#" onClick={this.skipDatabase.bind(this)}>I'll add my data later</a>
+                            <a style={{textDecoration: "none"}} href="#" onClick={this.skipDatabase.bind(this)}>I'll add my data later</a>
                         </div>
                     </div>
                 </section>
