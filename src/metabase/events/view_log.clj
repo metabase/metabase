@@ -1,6 +1,7 @@
 (ns metabase.events.view-log
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
+            [metabase.config :as config]
             [metabase.db :as db]
             [metabase.events :as events]
             [metabase.models.view-log :refer [ViewLog]]))
@@ -29,26 +30,6 @@
     :model    model
     :model_id model-id))
 
-(defn- topic->model
-  "Determine a valid `model` identifier for the given `topic`."
-  [topic]
-  {:pre [(contains? view-counts-topics topic)]}
-  ;; just take the first part of the topic name after splitting on dashes.
-  (first (clojure.string/split (name topic) #"-")))
-
-(defn- object->model-id
-  "Determine the appropriate `model_id` (if possible) for a given `object`."
-  [topic object]
-  (if (contains? (set (keys object)) :id)
-    (:id object)
-    (let [model (topic->model topic)]
-      (get object (keyword (format "%s_id" model))))))
-
-(defn- object->user-id
-  "Determine the appropriate `user_id` (if possible) for a given `object`."
-  [object]
-  (or (:actor_id object) (:user_id object) (:creator_id object)))
-
 (defn process-view-count-event
   "Handle processing for a single event notification received on the view-counts-channel"
   [event]
@@ -56,9 +37,9 @@
   (try
     (when-let [{topic :topic object :item} event]
       (record-view
-        (topic->model topic)
-        (object->model-id topic object)
-        (object->user-id object)))
+        (events/topic->model topic)
+        (events/object->model-id topic object)
+        (events/object->user-id object)))
     (catch Throwable e
       (log/warn (format "Failed to process activity event. %s" (:topic event)) e))))
 
@@ -67,4 +48,6 @@
 
 
 ;; this is what actually kicks off our listener for events
-(events/start-event-listener view-counts-topics view-counts-channel process-view-count-event)
+(when (config/is-prod?)
+  (log/info "Starting view-log events listener")
+  (events/start-event-listener view-counts-topics view-counts-channel process-view-count-event))

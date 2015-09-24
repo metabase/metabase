@@ -1,10 +1,10 @@
 'use strict';
 
 import ExpandableString from './ExpandableString.react';
-import Humanize from 'humanize';
 import Icon from 'metabase/components/Icon.react';
 import IconBorder from 'metabase/components/IconBorder.react';
 import LoadingSpinner from 'metabase/components/LoadingSpinner.react';
+import { singularize, inflect } from 'inflection';
 
 import cx from "classnames";
 
@@ -121,7 +121,7 @@ export default React.createClass({
                 </IconBorder>
             );
 
-            var relationName = Humanize.pluralize(fkCountValue, fk.origin.table.display_name);
+            var relationName = inflect(fk.origin.table.display_name, fkCountValue);
 
             var info = (
                 <div>
@@ -176,7 +176,7 @@ export default React.createClass({
             return false;
         }
 
-        var tableName = (this.props.tableMetadata) ? this.props.tableMetadata.display_name : "Unknown",
+        var tableName = (this.props.tableMetadata) ? singularize(this.props.tableMetadata.display_name) : "Unknown",
             // TODO: once we nail down the "title" column of each table this should be something other than the id
             idValue = this.getIdValue();
 

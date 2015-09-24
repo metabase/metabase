@@ -1,4 +1,4 @@
-(ns metabase.api.meta.field-test
+(ns metabase.api.field-test
   (:require [expectations :refer :all]
             [metabase.db :refer :all]
             (metabase.models [field :refer [Field]]
@@ -10,7 +10,7 @@
 
 
 
-;; ## GET /api/meta/field/:id
+;; ## GET /api/field/:id
 (expect
     (match-$ (Field (id :users :name))
       {:description nil
@@ -49,16 +49,16 @@
        :base_type       "TextField"
        :parent_id       nil
        :parent          nil})
-  ((user->client :rasta) :get 200 (format "meta/field/%d" (id :users :name))))
+  ((user->client :rasta) :get 200 (format "field/%d" (id :users :name))))
 
 
-;; ## GET /api/meta/field/:id/summary
+;; ## GET /api/field/:id/summary
 (expect [["count" 75]      ; why doesn't this come back as a dictionary ?
          ["distincts" 75]]
-  ((user->client :rasta) :get 200 (format "meta/field/%d/summary" (id :categories :name))))
+  ((user->client :rasta) :get 200 (format "field/%d/summary" (id :categories :name))))
 
 
-;; ## PUT /api/meta/field/:id
+;; ## PUT /api/field/:id
 ;; Check that we can update a Field
 ;; TODO - this should NOT be modifying a field from our test data, we should create new data to mess with
 (expect-eval-actual-first
@@ -82,14 +82,14 @@
               :base_type       "FloatField"
               :parent_id       nil
               :parent          nil})
-  ((user->client :crowberto) :put 200 (format "meta/field/%d" (id :venues :latitude)) {:special_type :fk}))
+  ((user->client :crowberto) :put 200 (format "field/%d" (id :venues :latitude)) {:special_type :fk}))
 
 (defn- field->field-values
   "Fetch the `FieldValues` object that corresponds to a given `Field`."
   [table-kw field-kw]
   (sel :one FieldValues :field_id (id table-kw field-kw)))
 
-;; ## GET /api/meta/field/:id/values
+;; ## GET /api/field/:id/values
 ;; Should return something useful for a field that has special_type :category
 (expect-eval-actual-first
     (match-$ (field->field-values :venues :price)
@@ -100,16 +100,16 @@
        :created_at            $
        :id                    $})
   (do (upd FieldValues (:id (field->field-values :venues :price)) :human_readable_values nil) ; clear out existing human_readable_values in case they're set
-      ((user->client :rasta) :get 200 (format "meta/field/%d/values" (id :venues :price)))))
+      ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))))
 
 ;; Should return nothing for a field whose special_type is *not* :category
 (expect
     {:values                {}
      :human_readable_values {}}
-  ((user->client :rasta) :get 200 (format "meta/field/%d/values" (id :venues :id))))
+  ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :id))))
 
 
-;; ## POST /api/meta/field/:id/value_map_update
+;; ## POST /api/field/:id/value_map_update
 
 ;; Check that we can set values
 (expect-eval-actual-first
@@ -124,11 +124,11 @@
         :updated_at            $
         :created_at            $
         :id                    $})]
-  [((user->client :crowberto) :post 200 (format "meta/field/%d/value_map_update" (id :venues :price)) {:values_map {:1 "$"
+  [((user->client :crowberto) :post 200 (format "field/%d/value_map_update" (id :venues :price)) {:values_map {:1 "$"
                                                                                                                     :2 "$$"
                                                                                                                     :3 "$$$"
                                                                                                                     :4 "$$$$"}})
-   ((user->client :rasta) :get 200 (format "meta/field/%d/values" (id :venues :price)))])
+   ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))])
 
 ;; Check that we can unset values
 (expect-eval-actual-first
@@ -144,13 +144,13 @@
                                                                                            :2 "$$"
                                                                                            :3 "$$$"
                                                                                            :4 "$$$$"})
-       ((user->client :crowberto) :post 200 (format "meta/field/%d/value_map_update" (id :venues :price))
+       ((user->client :crowberto) :post 200 (format "field/%d/value_map_update" (id :venues :price))
         {:values_map {}}))
-   ((user->client :rasta) :get 200 (format "meta/field/%d/values" (id :venues :price)))])
+   ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))])
 
 ;; Check that we get an error if we call value_map_update on something that isn't a category
 (expect "You can only update the mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'BooleanField'."
-  ((user->client :crowberto) :post 400 (format "meta/field/%d/value_map_update" (id :venues :id))
+  ((user->client :crowberto) :post 400 (format "field/%d/value_map_update" (id :venues :id))
    {:values_map {:1 "$"
                  :2 "$$"
                  :3 "$$$"

@@ -87,7 +87,8 @@
              :expectations {:global-vars {*warn-on-reflection* false}
                             :injections [(require 'metabase.test-setup)]
                             :resource-paths ["test_resources"]
-                            :env {:mb-test-setting-1 "ABCDEFG"}
+                            :env {:mb-test-setting-1 "ABCDEFG"
+                                  :mb-run-mode "test"}
                             :jvm-opts ["-Dmb.db.in.memory=true"
                                        "-Dmb.jetty.join=false"
                                        "-Dmb.jetty.port=3010"

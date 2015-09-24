@@ -86,12 +86,26 @@ export default class Activity extends Component {
             timeSince: item.timestamp.fromNow()
         };
 
+        function handleSubject(item) {
+            if(item.table) {
+                return {
+                    subject: "saved a question about",
+                    subjectRefName: item.table.display_name,
+                }
+            } else {
+                return {
+                    subject: "saved a question",
+                    subjectRefName: null
+                }
+            }
+        }
+
         switch (item.topic) {
             case "card-create":
             case "card-update":
-                description.subject = "saved a question about";
+                description.subject = handleSubject(item).subject;
                 description.subjectRefLink = Urls.tableRowsQuery(item.database_id, item.table_id);
-                description.subjectRefName = item.table.display_name;
+                description.subjectRefName = handleSubject(item).subjectRefName;
                 description.body = item.details.name;
                 description.bodyLink = (item.model_exists) ? Urls.modelToUrl(item.model, item.model_id) : null;
                 break;
@@ -125,6 +139,10 @@ export default class Activity extends Component {
             case "database-sync":
                 description.subject = "received the latest data from";
                 description.subjectRefName = item.database.name;
+                break;
+            case "install":
+                description.userName = "Hello World!";
+                description.subject = "Metabase is up and running.";
                 break;
             case "user-joined":
                 description.subject = "joined the party!";

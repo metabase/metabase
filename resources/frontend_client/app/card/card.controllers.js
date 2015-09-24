@@ -270,7 +270,7 @@ CardControllers.controller('CardDetail', [
                     card.dataset_query.query.order_by = [sortClause];
 
                     // run updated query
-                    runQuery(card.dataset_query);
+                    runQuery();
                 }
             },
             cellIsClickableFn: function(rowIndex, columnIndex) {
@@ -303,7 +303,7 @@ CardControllers.controller('CardDetail', [
                     card.dataset_query.query.filter = ["AND", ["=", coldef.id, value]];
 
                     // run it
-                    runQuery(card.dataset_query);
+                    runQuery();
 
                 } else if (coldef.special_type === "fk") {
                     // action is on an FK column
@@ -317,11 +317,11 @@ CardControllers.controller('CardDetail', [
                     loadTableInfo(card.dataset_query.query.source_table);
 
                     // run it
-                    runQuery(card.dataset_query);
+                    runQuery();
                 } else {
                     Query.addFilter(card.dataset_query.query);
                     Query.updateFilter(card.dataset_query.query, card.dataset_query.query.filter.length - 1, [filter, coldef.id, value]);
-                    runQuery(card.dataset_query);
+                    runQuery();
                  }
             },
             followForeignKeyFn: function(fk) {
@@ -346,7 +346,7 @@ CardControllers.controller('CardDetail', [
                 loadTableInfo(card.dataset_query.query.source_table);
 
                 // run it
-                runQuery(card.dataset_query);
+                runQuery();
             }
         };
 
@@ -424,7 +424,9 @@ CardControllers.controller('CardDetail', [
 
         // =====  Local helper functions
 
-        function runQuery(dataset_query) {
+        function runQuery() {
+            let dataset_query = card.dataset_query;
+
             if (dataset_query.query) {
                 Query.cleanQuery(dataset_query.query);
             }
@@ -801,7 +803,7 @@ CardControllers.controller('CardDetail', [
 
             // run the query
             if (Query.canRun(card.dataset_query.query) || card.dataset_query.type === "native") {
-                runQuery(card.dataset_query);
+                runQuery();
             }
 
             // trigger full rendering

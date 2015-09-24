@@ -1,4 +1,4 @@
-(ns metabase.api.meta.field
+(ns metabase.api.field
   (:require [compojure.core :refer [GET PUT POST]]
             [medley.core :as m]
             [metabase.api.common :refer :all]

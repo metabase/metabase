@@ -1,6 +1,7 @@
 (ns metabase.api.activity-test
   "Tests for /api/activity endpoints."
   (:require [expectations :refer :all]
+            [korma.core :as k]
             [metabase.db :as db]
             [metabase.http-client :refer :all]
             (metabase.models [activity :refer [Activity]]
@@ -19,8 +20,7 @@
 ;  2. :user and :model_exists are hydrated
 
 ; NOTE: timestamp matching was being a real PITA so I cheated a bit.  ideally we'd fix that
-(expect-let [_         (user->client :crowberto)            ; HACK. we do this to create the user-joined activity after first login before we delete it
-             _         (korma.core/delete Activity)         ; clear out any existing activity
+(expect-let [_         (k/delete Activity)
              activity1 (db/ins Activity
                          :topic     "install"
                          :details   {}
@@ -157,7 +157,9 @@
                         :user_id  user
                         :model    model
                         :model_id model-id
-                        :timestamp (u/new-sql-timestamp)))]
+                        :timestamp (u/new-sql-timestamp))
+                      ;; we sleep a few milliseconds to ensure no events have the same timestamp
+                      (Thread/sleep 5))]
     (do
       (create-view (user->id :crowberto) "card" (:id card2))
       (create-view (user->id :crowberto) "dashboard" (:id dash1))

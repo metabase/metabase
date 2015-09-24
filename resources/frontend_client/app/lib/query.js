@@ -54,15 +54,43 @@ var Query = {
         }
 
         if (query.order_by) {
-            query.order_by = query.order_by.filter((s) => Query.isValidField(s[0]) && s[1] != null)
+            query.order_by = query.order_by.filter((s) => {
+                let field = s[0];
+
+                if (Query.isAggregateField(field)) {
+                    // remove aggregation sort if we can't sort by this aggregation
+                    if (!Query.canSortByAggregateField(query)) {
+                        return false
+                    }
+                } else if (Query.hasValidBreakout(query)) {
+                    // remove sort if it references a non-broken-out field
+                    if (query.breakout.filter(b => b === field).length === 0) {
+                        return false;
+                    }
+                } else if (!Query.isBareRowsAggregation(query)) {
+                    // otherwise remove sort if it doesn't have a breakout but isn't a bare rows aggregation
+                    return false;
+                }
+                // remove incomplete sorts
+                if (Query.isValidField(s[0]) && s[1] != null) {
+                    return true;
+                }
+                return false;
+            });
             if (query.order_by.length === 0) {
                 delete query.order_by;
             }
         }
 
-        // TODO: limit
+        if (typeof query.limit !== "number") {
+            delete query.limit;
+        }
 
         return query;
+    },
+
+    isAggregateField: function(field) {
+        return Array.isArray(field) && field[0] === "aggregation";
     },
 
     canAddDimensions: function(query) {
@@ -101,8 +129,15 @@ var Query = {
     },
 
     removeDimension: function(query, index) {
-        // TODO: when we remove breakouts we also need to remove any limits/sorts that don't make sense
-        query.breakout.splice(index, 1);
+        let field = query.breakout.splice(index, 1)[0];
+
+        // remove sorts that referenced the dimension that was removed
+        if (query.order_by) {
+            query.order_by = query.order_by.filter(s => s[0] !== field);
+            if (query.order_by.length === 0) {
+                delete query.order_by;
+            }
+        }
     },
 
     hasEmptyAggregation: function(query) {
@@ -132,6 +167,11 @@ var Query = {
     },
 
     updateAggregation: function(query, aggregationClause) {
+        // when switching to or from "rows" aggregation clear out any sorting clauses
+        if ((query.aggregation[0] === "rows" || aggregationClause[0] === "rows") && query.aggregation[0] !== aggregationClause[0]) {
+            delete query.order_by;
+        }
+
         query.aggregation = aggregationClause;
 
         // for "rows" type aggregation we always clear out any dimensions because they don't make sense

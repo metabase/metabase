@@ -87,10 +87,10 @@ export default React.createClass({
         return query;
     },
 
-    setQuery: function(query, run) {
-        query = this.props.setQueryFn(query);
-        if (run || run === undefined) {
-            this.props.runQueryFn(query);
+    setQuery: function(query, run = true) {
+        this.props.setQueryFn(query);
+        if (run) {
+            this.props.runQueryFn();
         }
     },
 

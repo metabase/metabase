@@ -14,6 +14,7 @@
                   (resp/resource-response "frontend_client/index.html")))]
   (defroutes routes
     (GET "/" [] index)                                     ; ^/$           -> index.html
+    (GET "/favicon.ico" [] (resp/resource-response "frontend_client/favicon.ico"))
     (context "/api" [] api/routes)                         ; ^/api/        -> API routes
     (context "/app" []
       (route/resources "/" {:root "frontend_client/app"})  ; ^/app/        -> static files under frontend_client/app

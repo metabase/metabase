@@ -60,7 +60,7 @@ export default React.createClass({
     },
 
     runQuery: function() {
-        this.props.runQueryFn(this.props.card.dataset_query);
+        this.props.runQueryFn();
     },
 
     canRun: function() {

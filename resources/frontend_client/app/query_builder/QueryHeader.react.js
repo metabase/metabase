@@ -12,6 +12,8 @@ import QueryModeToggle from './QueryModeToggle.react';
 import QuestionSavedModal from 'metabase/components/QuestionSavedModal.react';
 import SaveQuestionModal from 'metabase/components/SaveQuestionModal.react';
 
+import Query from "metabase/lib/query";
+
 import inflection from "inflection";
 import cx from "classnames";
 
@@ -64,6 +66,11 @@ export default React.createClass({
 
     onSave: async function() {
         let card = this.props.card;
+
+        if (card.dataset_query.query) {
+            Query.cleanQuery(card.dataset_query.query);
+        }
+
         let updatedCard = await this.props.cardApi.update(card).$promise;
         if (this.props.fromUrl) {
             this.onGoBack();
