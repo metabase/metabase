@@ -6,6 +6,11 @@ SetupServices.factory('Setup', ['$resource', '$cookies', function($resource, $co
     return $resource('/api/setup/user', {}, {
         create_user: {
             method: 'POST'
+        },
+
+        setup: {
+            url: '/api/setup/',
+            method: 'POST'
         }
     });
 }]);

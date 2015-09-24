@@ -7,7 +7,7 @@ const mb_settings = _.clone(window.MetabaseBootstrap);
 // provides access to Metabase application settings
 const MetabaseSettings = {
     hasSetupToken: function() {
-        return mb_settings.setup_token !== undefined;
+        return (mb_settings.setup_token !== undefined && mb_settings.setup_token !== null);
     },
 
     get: function(propName, defaultValue) {

@@ -5,6 +5,7 @@ import _ from "underscore";
 /* Services */
 
 import MetabaseAnalytics from 'metabase/lib/analytics';
+import MetabaseCookies from 'metabase/lib/cookies';
 import MetabaseCore from 'metabase/lib/core';
 import MetabaseSettings from 'metabase/lib/settings';
 
@@ -31,6 +32,9 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
             init: function() {
 
                 if (!initPromise) {
+                    // hackery to allow MetabaseCookies to tie into Angular
+                    MetabaseCookies.bootstrap($rootScope, $location, ipCookie);
+
                     var deferred = $q.defer();
                     initPromise = deferred.promise;
 
@@ -150,7 +154,7 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
                 // handle routing protections for /setup/
                 if ($location.path().indexOf('/setup') === 0 && !MetabaseSettings.hasSetupToken()) {
                     // someone trying to access setup process without having a setup token, so block that.
-                    $location.path('/auth/login');
+                    $location.path('/');
                     return;
                 } else if ($location.path().indexOf('/setup') !== 0 && MetabaseSettings.hasSetupToken()) {
                     // someone who has a setup token but isn't routing to setup yet, so send them there!
