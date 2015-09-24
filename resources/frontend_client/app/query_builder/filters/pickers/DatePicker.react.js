@@ -147,7 +147,7 @@ class RelativeDates extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            tab: this._findTabWithSelection(props) || 'Last'
+            tab: this._findTabWithSelection(props) || Object.keys(RELATIVE_SHORTCUTS)[0]
         }
     }
 
