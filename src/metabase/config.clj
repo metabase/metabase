@@ -6,6 +6,7 @@
 (def ^:const app-defaults
   "Global application defaults"
   {;; Database Configuration  (general options?  dburl?)
+   :mb-run-mode "prod"
    :mb-db-type "h2"
    ;:mb-db-dbname "postgres"
    ;:mb-db-host "localhost"
@@ -62,3 +63,6 @@
           (m/filter-keys (fn [k] (re-matches prefix-regex (str k))) app-defaults)
           (m/filter-keys (fn [k] (re-matches prefix-regex (str k))) environ/env))
       (m/map-keys (fn [k] (let [kstr (str k)] (keyword (subs kstr (+ 1 (count prefix))))))))))
+
+(defn ^Boolean is-prod? [] (= :prod (config-kw :mb-run-mode)))
+(defn ^Boolean is-test? [] (= :test (config-kw :mb-run-mode)))
