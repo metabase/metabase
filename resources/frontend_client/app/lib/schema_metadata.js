@@ -8,7 +8,6 @@ export const NUMBER = 'NUMBER';
 export const STRING = 'STRING';
 export const BOOL = 'BOOL';
 export const LOCATION = 'LOCATION';
-export const UNKNOWN = 'UNKNOWN';
 
 const DateBaseTypes = ['DateTimeField', 'DateField'];
 const NumberBaseTypes = ['IntegerField', 'DecimalField', 'FloatField', 'BigIntegerField'];
@@ -48,7 +47,7 @@ export function isDimension(field) {
 // will return a string with possible values of 'date', 'number', 'bool', 'string'
 // if the type cannot be parsed, then return undefined
 export function getUmbrellaType(field) {
-    return parseSpecialType(field.special_type) || parseBaseType(field.base_type) || UNKNOWN;
+    return parseSpecialType(field.special_type) || parseBaseType(field.base_type);
 }
 
 export function parseBaseType(type) {
