@@ -19,54 +19,63 @@
                (:id)
                (sel :one Session :user_id))
       {:id $id})
-    (http/client :post 200 "setup/user" {:token setup-token
-                                         :first_name user-name
-                                         :last_name user-name
-                                         :email (str user-name "@metabase.com")
-                                         :password "anythingUP12!!"})))
+    (http/client :post 200 "setup" {:token setup-token
+                                    :first_name user-name
+                                    :last_name user-name
+                                    :email (str user-name "@metabase.com")
+                                    :password "anythingUP12!!"})))
 
 
 ;; Test input validations
+(expect {:errors {:token "field is a required param."}}
+  (http/client :post 400 "setup" {}))
+
+(expect {:errors {:token "Invalid value 'foobar' for 'token': Token does not match the setup token."}}
+  (http/client :post 400 "setup" {:token "foobar"}))
+
+;; all of these tests can reuse the same setup token
 (expect {:errors {:first_name "field is a required param."}}
-  (http/client :post 400 "setup/user" {}))
+  (http/client :post 400 "setup" {:token (setup/token-value)}))
 
 (expect {:errors {:last_name "field is a required param."}}
-  (http/client :post 400 "setup/user" {:first_name "anything"}))
+  (http/client :post 400 "setup" {:token (setup/token-value)
+                                  :user {:first_name "anything"}}))
 
 (expect {:errors {:email "field is a required param."}}
-  (http/client :post 400 "setup/user" {:first_name "anything"
-                                       :last_name "anything"}))
+  (http/client :post 400 "setup" {:token (setup/token-value)
+                                  :user {:first_name "anything"
+                                         :last_name "anything"}}))
 
 (expect {:errors {:password "field is a required param."}}
-  (http/client :post 400 "setup/user" {:first_name "anything"
-                                       :last_name "anything"
-                                       :email "anything@metabase.com"}))
-
-(expect {:errors {:token "field is a required param."}}
-  (http/client :post 400 "setup/user" {:first_name "anything"
-                                       :last_name "anything"
-                                       :email "anything@metabase.com"
-                                       :password "anythingUP12!!"}))
+  (http/client :post 400 "setup" {:token (setup/token-value)
+                                  :user {:first_name "anything"
+                                         :last_name "anything"
+                                         :email "anything@metabase.com"}}))
 
 ;; valid email + complex password
 (expect {:errors {:email "Invalid value 'anything' for 'email': Not a valid email address."}}
-  (http/client :post 400 "setup/user" {:token "anything"
-                                       :first_name "anything"
-                                       :last_name "anything"
-                                       :email "anything"
-                                       :password "anything"}))
+  (http/client :post 400 "setup" {:token (setup/token-value)
+                                  :user {:token "anything"
+                                         :first_name "anything"
+                                         :last_name "anything"
+                                         :email "anything"
+                                         :password "anything"}}))
 
 (expect {:errors {:password "Insufficient password strength"}}
-  (http/client :post 400 "setup/user" {:token "anything"
-                                       :first_name "anything"
-                                       :last_name "anything"
-                                       :email "anything@email.com"
-                                       :password "anything"}))
+  (http/client :post 400 "setup" {:token (setup/token-value)
+                                  :user {:token "anything"
+                                         :first_name "anything"
+                                         :last_name "anything"
+                                         :email "anything@email.com"
+                                         :password "anything"}}))
 
-;; token match
-(expect {:errors {:token "Invalid value 'anything' for 'token': Token does not match the setup token."}}
-  (http/client :post 400 "setup/user" {:token "anything"
-                                       :first_name "anything"
-                                       :last_name "anything"
-                                       :email "anything@email.com"
-                                       :password "anythingUP12!!"}))
+
+;; ## POST /api/setup/validate
+(expect {:errors {:token "field is a required param."}}
+  (http/client :post 400 "setup/validate" {}))
+
+(expect {:errors {:token "Invalid value 'foobar' for 'token': Token does not match the setup token."}}
+  (http/client :post 400 "setup/validate" {:token "foobar"}))
+
+(expect {:errors {:engine "field is a required param."}}
+  (http/client :post 400 "setup/validate" {:token (setup/token-value)}))

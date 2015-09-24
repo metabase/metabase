@@ -1,6 +1,7 @@
 "use strict";
 
 import React, { Component, PropTypes } from "react";
+import _ from "underscore";
 
 import DatabaseDetailsForm from "metabase/components/database/DatabaseDetailsForm.react";
 import FormField from "metabase/components/form/FormField.react";
@@ -8,7 +9,7 @@ import Icon from "metabase/components/Icon.react";
 import MetabaseCore from "metabase/lib/core";
 
 import CollapsedStep from "./CollapsedStep.react";
-import { setDatabaseDetails } from "../actions";
+import { setDatabaseDetails, validateDatabase } from "../actions";
 
 
 export default class DatabaseStep extends Component {
@@ -26,14 +27,35 @@ export default class DatabaseStep extends Component {
         });
     }
 
-    detailsCaptured(details) {
-        this.props.dispatch(setDatabaseDetails({
-            'nextStep': ++this.props.stepNumber,
-            'details': details
-        }));
+    async detailsCaptured(details) {
+        let databaseDetails = _.clone(details);
+        databaseDetails.engine = this.state.engine;
+
+        this.setState({
+            'formError': null
+        });
+
+        try {
+            // validate them first
+            await this.props.dispatch(validateDatabase(databaseDetails));
+
+            // now that they are good, store them
+            this.props.dispatch(setDatabaseDetails({
+                'nextStep': ++this.props.stepNumber,
+                'details': databaseDetails
+            }));
+        } catch (error) {
+            this.setState({
+                'formError': error
+            });
+        }
     }
 
     skipDatabase() {
+        this.setState({
+            'engine': ""
+        });
+
         this.props.dispatch(setDatabaseDetails({
             'nextStep': ++this.props.stepNumber,
             'details': null
@@ -59,7 +81,7 @@ export default class DatabaseStep extends Component {
 
     render() {
         let { activeStep, databaseDetails, dispatch, stepNumber } = this.props;
-        let { engine } = this.state;
+        let { engine, formError } = this.state;
 
         let stepText = 'Add your data';
         if (activeStep > stepNumber) {
@@ -88,7 +110,14 @@ export default class DatabaseStep extends Component {
                         </FormField>
 
                         { engine !== "" ?
-                            <DatabaseDetailsForm engine={engine} hiddenFields={['ssl']} submitFn={this.detailsCaptured.bind(this)} submitButtonText={'Next'}></DatabaseDetailsForm>
+                            <DatabaseDetailsForm
+                                details={databaseDetails}
+                                engine={engine}
+                                formError={formError}
+                                hiddenFields={['ssl']}
+                                submitFn={this.detailsCaptured.bind(this)}
+                                submitButtonText={'Next'}>
+                            </DatabaseDetailsForm>
                         : null }
 
                         <div className="Form-field Form-offset">
