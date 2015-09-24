@@ -31,7 +31,6 @@ export default class Setup extends Component {
 
     render() {
         let { activeStep, setupComplete } = this.props;
-        console.log('activeStep=', activeStep);
 
         if (activeStep === WELCOME_STEP_NUMBER) {
             return (

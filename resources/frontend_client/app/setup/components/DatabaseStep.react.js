@@ -16,7 +16,7 @@ export default class DatabaseStep extends Component {
 
     constructor(props) {
         super(props);
-        this.state = { 'engine': "" };
+        this.state = { 'engine': "", 'formError': null };
     }
 
     chooseDatabaseEngine() {

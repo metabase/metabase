@@ -72,7 +72,7 @@ export const submitSetup = createThunkAction(SUBMIT_SETUP, function() {
                 'token': MetabaseSettings.get('setup_token'),
                 'prefs': {
                     'site_name': userDetails.site_name,
-                    'allow_tracking': allowTracking
+                    'allow_tracking': allowTracking.toString()
                 },
                 'database': databaseDetails,
                 'user': userDetails
