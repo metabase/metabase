@@ -21,8 +21,6 @@ export default class PreferencesStep extends Component {
         e.preventDefault();
 
         // okay, this is the big one.  we actually submit everything to the api now and complete the process.
-        console.log('submitting setup data');
-
         this.props.dispatch(submitSetup());
     }
 

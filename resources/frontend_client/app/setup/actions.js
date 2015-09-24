@@ -89,8 +89,6 @@ export const submitSetup = createThunkAction(SUBMIT_SETUP, function() {
 });
 
 export const completeSetup = createAction(COMPLETE_SETUP, function(apiResponse) {
-    console.log('complete', apiResponse);
-
     // setup user session
     MetabaseCookies.setSessionCookie(apiResponse.id);
 
