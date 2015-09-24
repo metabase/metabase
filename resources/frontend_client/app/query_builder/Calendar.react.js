@@ -9,7 +9,7 @@ import Icon from 'metabase/components/Icon.react';
 export default class Calendar extends Component {
     constructor(props) {
         super(props);
-        let month = this.props.selected ? this.props.selected.clone() : moment();
+        let month = moment.utc(this.props.selected || undefined);
         const modes = ['month', 'year', 'decade']
         this.state = {
             month: month,
@@ -85,7 +85,7 @@ export default class Calendar extends Component {
     renderWeeks() {
         var weeks = [],
             done = false,
-            date = this.state.month.clone().startOf("month").add("w" -1).day("Sunday"),
+            date = moment.utc(this.state.month).startOf("month").add("w" -1).day("Sunday"),
             monthIndex = date.month(),
             count = 0;
 
@@ -93,7 +93,7 @@ export default class Calendar extends Component {
             weeks.push(
                 <Week
                     key={date.toString()}
-                    date={date.clone()}
+                    date={moment.utc(date)}
                     month={this.state.month}
                     onClickDay={this.onClickDay}
                     selected={this.props.selected}
@@ -144,13 +144,13 @@ class Week extends Component {
                 "Calendar-day": true,
                 "Calendar-day--today": date.isSame(new Date(), "day"),
                 "Calendar-day--this-month": date.month() === month.month(),
-                "Calendar-day--selected": date.isSame(this.props.selected),
-                "Calendar-day--selected-end": date.isSame(this.props.selectedEnd),
+                "Calendar-day--selected": date.isSame(this.props.selected, "day"),
+                "Calendar-day--selected-end": date.isSame(this.props.selectedEnd, "day"),
                 "Calendar-day--week-start": i === 0,
                 "Calendar-day--week-end": i === 6,
-                "Calendar-day--in-range": !(date.isSame(this.props.selected) || date.isSame(this.props.selectedEnd)) && (
-                    date.isSame(this.props.selected) || date.isSame(this.props.selectedEnd) ||
-                    (this.props.selectedEnd && this.props.selectedEnd.isAfter(date) && date.isAfter(this.props.selected))
+                "Calendar-day--in-range": !(date.isSame(this.props.selected, "day") || date.isSame(this.props.selectedEnd, "day")) && (
+                    date.isSame(this.props.selected, "day") || date.isSame(this.props.selectedEnd, "day") ||
+                    (this.props.selectedEnd && this.props.selectedEnd.isAfter(date, "day") && date.isAfter(this.props.selected, "day"))
                 )
             });
             days.push(
@@ -158,7 +158,7 @@ class Week extends Component {
                     {date.date()}
                 </span>
             );
-            date = date.clone();
+            date = moment.utc(date);
             date.add(1, "d");
         }
 

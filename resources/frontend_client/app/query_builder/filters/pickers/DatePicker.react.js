@@ -1,29 +1,31 @@
 'use strict';
 
 import React, { Component, PropTypes } from 'react';
+
+import Calendar from '../../Calendar.react';
+import { computeFilterTimeRange } from "metabase/lib/query_time";
+
 import moment from 'moment';
 import _ from "underscore";
 import cx from "classnames";
 
-import Calendar from '../../Calendar.react';
-
 const SHORTCUTS = [
-    { name: "Today",        operator: "TIME_INTERVAL", values: ["current", "day"]},
-    { name: "Yesterday",    operator: "TIME_INTERVAL", values: ["last", "day"]},
+    { name: "Today",        operator: ["=", "<", ">"], values: [["relative_datetime", "current"]]},
+    { name: "Yesterday",    operator: ["=", "<", ">"], values: [["relative_datetime", -1, "day"]]},
     { name: "Past 7 days",  operator: "TIME_INTERVAL", values: [-7, "day"]},
     { name: "Past 30 days", operator: "TIME_INTERVAL", values: [-30, "day"]}
 ];
 
 const RELATIVE_SHORTCUTS = {
-    "Last": [
-        { name: "Week",  operator: "TIME_INTERVAL", values: ["last", "week"]},
-        { name: "Month", operator: "TIME_INTERVAL", values: ["last", "month"]},
-        { name: "Year",  operator: "TIME_INTERVAL", values: ["last", "year"]}
-    ],
     "This": [
         { name: "Week",  operator: "TIME_INTERVAL", values: ["current", "week"]},
         { name: "Month", operator: "TIME_INTERVAL", values: ["current", "month"]},
         { name: "Year",  operator: "TIME_INTERVAL", values: ["current", "year"]}
+    ],
+    "Last": [
+        { name: "Week",  operator: "TIME_INTERVAL", values: ["last", "week"]},
+        { name: "Month", operator: "TIME_INTERVAL", values: ["last", "month"]},
+        { name: "Year",  operator: "TIME_INTERVAL", values: ["last", "year"]}
     ]
 };
 
@@ -43,11 +45,10 @@ export default class DatePicker extends Component {
         }
     }
     render() {
-        let { filter } = this.props
-        let start, end;
-        if (filter[0] !== "TIME_INTERVAL") {
-            start = filter[2] && moment(filter[2], "YYYY-MM-DD");
-            end = filter[3] && moment(filter[3], "YYYY-MM-DD");
+        let { filter } = this.props;
+        let [start, end] = computeFilterTimeRange(filter);
+        if (start && start.isSame(end, "day")) {
+            end = null;
         }
 
         return (
@@ -69,12 +70,25 @@ export default class DatePicker extends Component {
 
     isSelectedShortcut(shortcut) {
         let { filter } = this.props;
-        return filter[0] === shortcut.operator && _.isEqual(filter.slice(2), shortcut.values);
+        return (
+            (Array.isArray(shortcut.operator) ? _.contains(shortcut.operator, filter[0]): filter[0] === shortcut.operator ) &&
+            _.isEqual(filter.slice(2), shortcut.values)
+        );
     }
 
     onSetShortcut(shortcut) {
         let { filter } = this.props;
-        this.props.onFilterChange([shortcut.operator, filter[1], ...shortcut.values])
+        let operator;
+        if (Array.isArray(shortcut.operator)) {
+            if (_.contains(shortcut.operator, filter[0])) {
+                operator = filter[0];
+            } else {
+                operator = shortcut.operator[0];
+            }
+        } else {
+            operator = shortcut.operator;
+        }
+        this.props.onFilterChange([operator, filter[1], ...shortcut.values])
     }
 }
 

@@ -82,16 +82,16 @@ export default class FilterPopover extends Component {
         this.setState({ filter: filter.slice(0,2).concat(values) });
     }
 
-    _updateOperator(filter, operatorName) {
-        let { field } = this._getTarget(filter);
+    _updateOperator(oldFilter, operatorName) {
+        let { field } = this._getTarget(oldFilter);
         let operator = field.operators_lookup[operatorName];
 
         // update the operator
-        filter = [operatorName, filter[1]];
+        let filter = [operatorName, oldFilter[1]];
 
         if (operator) {
             for (var i = 0; i < operator.fields.length; i++) {
-                filter.push(undefined);
+                filter.push(oldFilter.length > i + 2 ? oldFilter[i + 2] : undefined);
             }
         }
         return filter;
