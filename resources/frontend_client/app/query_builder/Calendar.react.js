@@ -9,7 +9,7 @@ import Icon from 'metabase/components/Icon.react';
 export default class Calendar extends Component {
     constructor(props) {
         super(props);
-        let month = moment.utc(this.props.selected || undefined);
+        let month = moment(this.props.selected || undefined);
         const modes = ['month', 'year', 'decade']
         this.state = {
             month: month,
@@ -85,7 +85,7 @@ export default class Calendar extends Component {
     renderWeeks() {
         var weeks = [],
             done = false,
-            date = moment.utc(this.state.month).startOf("month").add("w" -1).day("Sunday"),
+            date = moment(this.state.month).startOf("month").add("w" -1).day("Sunday"),
             monthIndex = date.month(),
             count = 0;
 
@@ -93,7 +93,7 @@ export default class Calendar extends Component {
             weeks.push(
                 <Week
                     key={date.toString()}
-                    date={moment.utc(date)}
+                    date={moment(date)}
                     month={this.state.month}
                     onClickDay={this.onClickDay}
                     selected={this.props.selected}
@@ -158,7 +158,7 @@ class Week extends Component {
                     {date.date()}
                 </span>
             );
-            date = moment.utc(date);
+            date = moment(date);
             date.add(1, "d");
         }
 

@@ -62,9 +62,9 @@ export function expandTimeIntervalFilter(filter) {
 
 export function absolute(date) {
     if (typeof date === "string") {
-        return moment.utc(date);
+        return moment(date);
     } else if (Array.isArray(date) && date[0] === "relative_datetime") {
-        return moment.utc().add(date[1], date[2]);
+        return moment().add(date[1], date[2]);
     } else {
         console.warn("Unknown datetime format", date);
     }
@@ -83,8 +83,8 @@ function parseBucketing(field) {
 
 // 271821 BC and 275760 AD and should be far enough in the past/future
 function max() {
-    return moment.utc(new Date(864000000000000));
+    return moment(new Date(864000000000000));
 }
 function min() {
-    return moment.utc(new Date(-864000000000000));
+    return moment(new Date(-864000000000000));
 }

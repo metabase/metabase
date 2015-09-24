@@ -5,7 +5,6 @@ import React, { Component, PropTypes } from 'react';
 import Calendar from '../../Calendar.react';
 import { computeFilterTimeRange } from "metabase/lib/query_time";
 
-import moment from 'moment';
 import _ from "underscore";
 import cx from "classnames";
 
