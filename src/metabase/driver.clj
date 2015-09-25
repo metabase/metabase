@@ -30,8 +30,9 @@
    :mysql    {:id   "mysql"
               :name "MySQL"}})
 
-(defn is-engine? [engine]
+(defn is-engine?
   "Predicate function which validates if the given argument represents a valid driver identifier."
+  [engine]
   (if (not (nil? engine))
     (contains? (set (map name (keys available-drivers))) (name engine))
     false))

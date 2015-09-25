@@ -22,8 +22,9 @@
   "Java SimpleDateFormat representing rfc2616 style date used in http headers."
   "EEE, dd MMM yyyy HH:mm:ss zzz")
 
-(defn index-page-vars []
+(defn index-page-vars
   "Static values that we inject into the index.html page via Mustache."
+  []
   {:ga_code               "UA-60817802-1"
    :intercom_code         "gqfmsgf1"
    :anon_tracking_enabled (metabase.models.setting/get :anon-tracking-enabled)
