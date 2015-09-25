@@ -8,15 +8,19 @@ export default class NumberPicker extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            values: [],
-            validations: []
+            values: props.values,
+            validations: this._validate(props.values)
         }
+    }
+
+    _validate(values) {
+        return values.map(v => !isNaN(v));
     }
 
     onValuesChange(stringValues) {
         let values = stringValues.map(v => parseFloat(v))
         this.props.onValuesChange(values.map(v => isNaN(v) ? null : v));
-        let validations = values.map(v => !isNaN(v));
+        let validations = this._validate(values);
         this.setState({ values: stringValues, validations: validations });
     }
 
