@@ -70,7 +70,7 @@ export default class DatabaseStep extends Component {
 
         return (
             <label className="Select Form-offset mt1">
-                <select ref="engine" className="Select" defaultValue={engine} onChange={this.chooseDatabaseEngine.bind(this)}>
+                <select ref="engine" defaultValue={engine} onChange={this.chooseDatabaseEngine.bind(this)}>
                     {options}
                 </select>
             </label>
