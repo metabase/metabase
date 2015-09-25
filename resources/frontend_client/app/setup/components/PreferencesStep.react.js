@@ -1,9 +1,9 @@
 "use strict";
 
 import React, { Component, PropTypes } from "react";
-import cx from "classnames";
 
 import Icon from "metabase/components/Icon.react";
+import Toggle from "metabase/components/Toggle.react";
 
 import CollapsedStep from "./CollapsedStep.react";
 import { setAllowTracking, submitSetup } from "../actions";
@@ -50,12 +50,8 @@ export default class PreferencesStep extends Component {
                         </div>
 
                         <div className="Form-field Form-offset mr4">
-                            <div style={{borderWidth: "2px"}} className="bordered rounded p2">
-                                <div className={cx('Button-toggle', {'Button--toggled': allowTracking})} onClick={this.toggleTracking.bind(this)}>
-                                    <span className="Button-toggleIndicator">
-                                        <svg width="14px" height="14px" viewBox="0 0 16 16" fill="currentcolor"></svg>
-                                    </span>
-                                </div>
+                            <div style={{borderWidth: "2px"}} className="flex align-center bordered rounded p2">
+                                <Toggle value={allowTracking} onChange={this.toggleTracking.bind(this)} className="inline-block" />
                                 <span className="ml1">Allow Metabase to anonymously collect usage events</span>
                             </div>
                         </div>
