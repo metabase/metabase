@@ -1,77 +1,37 @@
 
-##Step 2: Configuring your Instance
-Create a Metabase account by entering your name and email.  Create a super-secretive password!
+##Step 2: Connecting to a database
+
+
+### Setting up the admin account
+The first account created when you install Metabase is an administrator account. If you were installing Metabase in production, you should be very careful with the password to this account as it will be used, among other things, to add other users, connect to databases and set up email. 
+
+For now, let's just create an account for ourselves to explore Metabsae. 
+
 
 ![accountsetup](images/AccountSetup.png)
 
-Once you have an account, you can now connect Metabase with your data.  Where does your data live?  Depending on where you keep your database, the steps to connect with Metabase vary.  Not to worry, though, we outlined the configuration steps for each platform Metabase supports.  
+At this point, you will need to get together some information about which database you want to use with Metabase. We'll need:
 
-###If you use Heroku: 
+    * The **hostname** of the server where your database lives
+    * The **port** the database server uses
+    * The **database name** where the data of interest lives
+    * The **username** you should use for the database
+    * The **password** you should use
 
-1. Go to [https://postgres.heroku.com/databases](https://postgres.heroku.com/databases).  
-2. Click on the database you want to connect to Metabase. 
-3. Write down the following information based on your database:
-    * Hostname
-    * Port
-    * Username
-    * Database Name
-    * Password
 
-You'll need to input this information into the remainder of the Metabase form.  
+If you use Heroku, you can find instructions on how to get this information [here](../frequently-asked-questions/questions#how-do-i-look-up-connection-information-for-databases-on-heroku). Likewise, if you are using Amazon RDS, you can follow the instructions [here](../frequently-asked-questions/questions#how-do-i-look-up-connection-information-for-databases-on-amazons-rds-service). 
 
-###If you use AMAZON RDS:
+If you don't have this information handy, ask the person responsonsible for administering the database for the above information.
 
-1. Go to your AWS Management Console. 
-    * Need help finding that?  Visit [https://**My_AWS_Account_ID**.signin.aws.amazon.com/console](https://**My_AWS_Account_ID**.signin.aws.amazon.com/console).  Be sure to insert your own AWS Account ID, though! 
-2.  Under "Database" services, click "RDS". 
-3.  Then click "Instances".
-4.  Select the database you want to connect to Metabase.  
-5.  Write down the following information based on your database:
-    * Hostname - This is listed as the "Endpoint" parameter
-    * Port - Find the port parameter under "Security and Network"
-    * Username - Find this under "Configuration Details"
-    * Database Name - Find this under "Configuration Details"
-    * Password - Ask your database administrator for the password. 
-
-You'll need this information to finish syncing Metabase with your database.  
-
-###If you use another REMOTE MySQL or POSTGRES: 
-
-1. Ask your database administrator (or check your own records) for the following information
-    * Hostname
-    * Port
-    * Username
-    * Database Name
-    * Password
-
-You'll need to input this information into the Metabase form.  
-
-###If you use MONGODB:
-
-1.  Collect the following information about the database you'd like to connect to Metabase. 
-    * Hostname
-    * Port
-    * Username
-    * Database Name
-    * Password
 
 Metabase needs this information to finish connecting to your database.  
 
-###If you use H2:
-
-1.  You'll need the file path for your database. 
-
-**Now that you have your database information,** use the information to fill out the remainder of the form.  
+**Now that you have your database information,** use the information to fill out the next step of the installation process. 
 
 ![adddatabase](images/AddDatabase.png)
 
-After you enter your database's information, Metabase will try to connect to your database and validate the credentials.  If you get a validation error, no need to panic.  Validation errors occur when the wrong credentials are entered.  Simply double check the spelling and punctuation of the information you entered and try to connect to the database once more. 
+After you enter your database's information, Metabase will try to connect to your database and validate the credentials.  If you Metabase is unable to connect, please verify the connection credentials and try again. 
 
 Once Metabase successfully connects to your database, it'll run a few queries against your database to build a model of your data.  Click the prompt "continue" to see what data Metabase found in your database!
-
- 
-   
-
-
 
 Now that you've connected Metabase to a database, let's [learn how to ask questions](03-asking-questions.md)

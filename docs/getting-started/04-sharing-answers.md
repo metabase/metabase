@@ -14,11 +14,11 @@ To do this, click on the "Save button"
 
 ![savebutton](images/SaveButton.png)
 
-Metabase will guess a meaningful name for the question, but you can (and should) use a naming scheme that helps you and others find it 6 months down the line.
+Metabase will guess a meaningful name for the question, but you can (and should) use a naming scheme that helps you and others find it 6 months down the line. 
 
 ![savecarddialog](images/SaveCardDialog.png)
 
-Once you have saved the card, you'll have a few options depending on whether you are creating a batch of related cards, or if you want to ask a new question.
+Once you have saved the card, you'll have a few options depending on whether you are creating a batch of related cards, or if you want to ask a new question. 
 
 ![cardsaved](images/CardSaved.png)
 
@@ -35,4 +35,6 @@ Once you've added a card to a dashboard, you can go to the dashboard and see som
 
 ![firstdashboard](images/FirstDashboard.png)
 
-You now have a dashboard with your question that you can share! If you want to learn more, check out our [User Guide](../users-guide/start.md)
+You now have a dashboard with your question that you can share! At this point you know enough to be dangerous and can switch to asking simple questions with your own database. 
+
+If you want to learn more, check out our [User Guide](../users-guide/start.md)

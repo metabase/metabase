@@ -1,6 +1,8 @@
 
 ##Step 3: Asking Questions 
 
+For the next few examples, we'll be using the Sample Dataset we ship with the server. If you want to follow along using your own database that you connected in Step 2, all of the steps should work in a similar manner, though obviously with different results.
+
 If you look at your homepage, you'll see the different tables that Metabase was able to find in your data source set and pulled for you.  Click a table you want to learn more about.  Note the number of rows.
 
 ![databaseconnected](images/DatabaseConnected.png)
