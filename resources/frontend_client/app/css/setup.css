@@ -61,6 +61,7 @@
     font-weight: bold;
     line-height: 1;
     background-color: #fff;
+    margin-top: -3px;
 }
 
 .SetupStep-check {

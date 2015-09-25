@@ -7,10 +7,10 @@ import cx from "classnames";
 import FormField from "metabase/components/form/FormField.react";
 import FormLabel from "metabase/components/form/FormLabel.react";
 import FormMessage from "metabase/components/form/FormMessage.react";
-import Icon from "metabase/components/Icon.react";
 import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
 
+import StepTitle from './StepTitle.react'
 import CollapsedStep from "./CollapsedStep.react";
 import { setUserDetails, validatePassword } from "../actions";
 
@@ -115,14 +115,8 @@ export default class UserStep extends Component {
         } else {
             return (
                 <section className="SetupStep SetupStep--active rounded full relative">
-                    <div className="flex align-center py3">
-                        <span className="SetupStep-indicator flex layout-centered absolute bordered">
-                            <span className="SetupStep-number">{stepNumber}</span>
-                            <Icon name={'check'} className="SetupStep-check" width={16} height={16}></Icon>
-                        </span>
-                        <h3 className="SetupStep-title ml4 my1">{stepText}</h3>
-                    </div>
-                    <form name="userForm" onSubmit={this.formSubmitted.bind(this)} noValidate>
+                    <StepTitle title={stepText} number={stepNumber} />
+                    <form name="userForm" onSubmit={this.formSubmitted.bind(this)} noValidate className="mt2">
                         <FormField className="Grid" fieldName="first_name" formError={formError}>
                             <div>
                                 <FormLabel title="First name" fieldName="first_name" formError={formError}></FormLabel>

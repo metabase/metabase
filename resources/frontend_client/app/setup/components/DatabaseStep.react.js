@@ -5,9 +5,9 @@ import _ from "underscore";
 
 import DatabaseDetailsForm from "metabase/components/database/DatabaseDetailsForm.react";
 import FormField from "metabase/components/form/FormField.react";
-import Icon from "metabase/components/Icon.react";
 import MetabaseCore from "metabase/lib/core";
 
+import StepTitle from './StepTitle.react'
 import CollapsedStep from "./CollapsedStep.react";
 import { setDatabaseDetails, validateDatabase } from "../actions";
 
@@ -91,15 +91,9 @@ export default class DatabaseStep extends Component {
         } else {
             return (
                 <section className="SetupStep rounded full relative SetupStep--active">
-                    <div className="flex align-center py3">
-                        <span className="SetupStep-indicator flex layout-centered absolute bordered">
-                            <span className="SetupStep-number">{stepNumber}</span>
-                            <Icon name={'check'} className="SetupStep-check" width={16} height={16}></Icon>
-                        </span>
-                        <h3 className="SetupStep-title ml4 my1">{stepText}</h3>
-                    </div>
-                    <div>
-                        <div className="Form-field Form-offset">
+                    <StepTitle title={stepText} number={stepNumber} />
+                    <div className="mb4">
+                        <div style={{maxWidth: 600}} className="Form-field Form-offset">
                             You’ll need some info about your database, like the username and password.  If you don’t have that right now, Metabase also comes with an Sample dataset you can get started with.
                         </div>
 
@@ -119,7 +113,7 @@ export default class DatabaseStep extends Component {
                         : null }
 
                         <div className="Form-field Form-offset">
-                            <a style={{textDecoration: "none"}} href="#" onClick={this.skipDatabase.bind(this)}>I'll add my data later</a>
+                            <a className="text-brand-hover" style={{textDecoration: "none"}} href="#" onClick={this.skipDatabase.bind(this)}>I'll add my data later</a>
                         </div>
                     </div>
                 </section>
