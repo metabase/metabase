@@ -463,15 +463,9 @@ export default React.createClass({
     },
 
     componentDidUpdate: function() {
-        // HACK: magic number "5" accounts for the borders between the sections
+        // HACK: magic number "5" accounts for the borders between the sections?
         let contentWidth = ["data", "filter", "view", "sortLimit"].reduce((acc, ref) => acc + React.findDOMNode(this.refs[`${ref}Section`]).offsetWidth, 0) + 5;
         let guiBuilderWidth = React.findDOMNode(this.refs.guiBuilder).offsetWidth;
-
-       // HACK: this is to account for the border being added/removed when toggling expansion,
-       // otherwise it will thrash between the two states if the window size is within 2 pixels of the threshold
-       if (this.state.expanded) {
-           contentWidth -= 2;
-       }
 
         let expanded = (contentWidth < guiBuilderWidth);
         if (this.state.expanded !== expanded) {
