@@ -138,17 +138,6 @@ export default class FilterPopover extends Component {
 
     renderPicker(filter, field) {
         let operator = field.operators_lookup[filter[0]];
-
-        // HACK: special case for dates
-        if (SchemaMetadata.isDate(field)) {
-            return (
-                <DatePicker
-                    filter={this.state.filter}
-                    onFilterChange={this.setFilter}
-                />
-            );
-        }
-
         return operator.fields.map((operatorField, index) => {
             if (operatorField.type === "select") {
                 return (
@@ -210,14 +199,22 @@ export default class FilterPopover extends Component {
                         <h3 className="mx1">-</h3>
                         <h3 className="text-default">{field.display_name}</h3>
                     </div>
-                    <div>
-                        <OperatorSelector
+                    { SchemaMetadata.isDate(field) ?
+                        <DatePicker
                             filter={filter}
-                            field={field}
+                            onFilterChange={this.setFilter}
                             onOperatorChange={this.setOperator}
                         />
-                        { this.renderPicker(filter, field) }
-                    </div>
+                    :
+                        <div>
+                            <OperatorSelector
+                                filter={filter}
+                                field={field}
+                                onOperatorChange={this.setOperator}
+                            />
+                            { this.renderPicker(filter, field) }
+                        </div>
+                    }
                     <div className="FilterPopover-footer p1">
                         <button className={cx("Button Button--purple full", { "disabled": !this.isValid() })} onClick={this.commitFilter}>
                             {this.props.isNew ? "Add filter" : "Update filter"}

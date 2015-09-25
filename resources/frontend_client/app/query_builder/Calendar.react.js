@@ -9,7 +9,7 @@ import Icon from 'metabase/components/Icon.react';
 export default class Calendar extends Component {
     constructor(props) {
         super(props);
-        let month = moment(this.props.selected || undefined);
+        let month = moment(props.selected || undefined);
         const modes = ['month', 'year', 'decade']
         this.state = {
             month: month,
@@ -134,7 +134,7 @@ class Week extends Component {
 
     render() {
         let days = [];
-        let { date, month } = this.props;
+        let { date, month, selected, selectedEnd } = this.props;
 
         for (let i = 0; i < 7; i++) {
             let classes = cx({
@@ -144,13 +144,13 @@ class Week extends Component {
                 "Calendar-day": true,
                 "Calendar-day--today": date.isSame(new Date(), "day"),
                 "Calendar-day--this-month": date.month() === month.month(),
-                "Calendar-day--selected": date.isSame(this.props.selected, "day"),
-                "Calendar-day--selected-end": date.isSame(this.props.selectedEnd, "day"),
+                "Calendar-day--selected": selected && date.isSame(selected, "day"),
+                "Calendar-day--selected-end": selectedEnd && date.isSame(selectedEnd, "day"),
                 "Calendar-day--week-start": i === 0,
                 "Calendar-day--week-end": i === 6,
-                "Calendar-day--in-range": !(date.isSame(this.props.selected, "day") || date.isSame(this.props.selectedEnd, "day")) && (
-                    date.isSame(this.props.selected, "day") || date.isSame(this.props.selectedEnd, "day") ||
-                    (this.props.selectedEnd && this.props.selectedEnd.isAfter(date, "day") && date.isAfter(this.props.selected, "day"))
+                "Calendar-day--in-range": !(date.isSame(selected, "day") || date.isSame(selectedEnd, "day")) && (
+                    date.isSame(selected, "day") || date.isSame(selectedEnd, "day") ||
+                    (selectedEnd && selectedEnd.isAfter(date, "day") && date.isAfter(selected, "day"))
                 )
             });
             days.push(
