@@ -20,7 +20,7 @@
                (sel :one Session :user_id))
       {:id $id})
     (let [resp (http/client :post 200 "setup" {:token setup-token
-                                               :prefs {:site_name "awesomesauce"}
+                                               :prefs {:site_name "Metabase Test"}
                                                :user  {:first_name user-name
                                                        :last_name  user-name
                                                        :email      (str user-name "@metabase.com")
