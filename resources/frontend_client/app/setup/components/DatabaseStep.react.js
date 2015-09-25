@@ -28,21 +28,18 @@ export default class DatabaseStep extends Component {
     }
 
     async detailsCaptured(details) {
-        let databaseDetails = _.clone(details);
-        databaseDetails.engine = this.state.engine;
-
         this.setState({
             'formError': null
         });
 
         try {
             // validate them first
-            await this.props.dispatch(validateDatabase(databaseDetails));
+            await this.props.dispatch(validateDatabase(details));
 
             // now that they are good, store them
             this.props.dispatch(setDatabaseDetails({
                 'nextStep': ++this.props.stepNumber,
-                'details': databaseDetails
+                'details': details
             }));
         } catch (error) {
             this.setState({
@@ -63,12 +60,13 @@ export default class DatabaseStep extends Component {
     }
 
     renderEngineSelect() {
-        let { engine } = this.state;
-        let options = [(<option value="">Select the type of Database you use</option>)];
+        let { engine } = this.state,
+            engines = _.keys(MetabaseCore.ENGINES).sort();
 
-        for (var opt in MetabaseCore.ENGINES) {
+        let options = [(<option value="">Select the type of Database you use</option>)];
+        engines.forEach(function(opt) {
             options.push((<option key={opt} value={opt}>{MetabaseCore.ENGINES[opt].name}</option>))
-        }
+        });
 
         return (
             <label className="Select Form-offset mt1">
@@ -111,7 +109,7 @@ export default class DatabaseStep extends Component {
 
                         { engine !== "" ?
                             <DatabaseDetailsForm
-                                details={databaseDetails}
+                                details={(databaseDetails && 'details' in databaseDetails) ? databaseDetails.details : null}
                                 engine={engine}
                                 formError={formError}
                                 hiddenFields={['ssl']}

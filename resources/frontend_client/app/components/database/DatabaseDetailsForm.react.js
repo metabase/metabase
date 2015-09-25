@@ -63,7 +63,9 @@ export default class DatabaseDetailsForm extends Component {
 
         // collect data
         let response = {
-            'name': React.findDOMNode(this.refs.name).value
+            'name': React.findDOMNode(this.refs.name).value,
+            'engine': engine,
+            'details': {}
         };
 
         for (var fieldIdx in MetabaseCore.ENGINES[engine].fields) {
@@ -79,7 +81,7 @@ export default class DatabaseDetailsForm extends Component {
                     val = field.transform(val);
                 }
 
-                response[field.fieldName] = val;
+                response.details[field.fieldName] = val;
             }
         }
 

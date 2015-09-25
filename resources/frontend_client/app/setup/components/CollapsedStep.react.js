@@ -27,7 +27,7 @@ export default class SetupCollapsedStep extends Component {
 
         return (
             <section className={classes}>
-                <div className="flex align-center py3">
+                <div className="flex align-center py2">
                     <span className="SetupStep-indicator flex layout-centered absolute bordered">
                         <span className="SetupStep-number">{stepNumber}</span>
                         <Icon name={'check'} className="SetupStep-check" width={16} height={16}></Icon>

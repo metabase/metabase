@@ -64,7 +64,7 @@
 
 (defendpoint POST "/validate"
   "Validate that we can connect to a database given a set of details."
-  [:as {{{:keys [host port engine] :as details} :details token :token} :body}]
+  [:as {{{:keys [engine] {:keys [host port] :as details} :details} :details token :token} :body}]
   {token      [Required SetupToken]
    engine     [Required DBEngine]}
   (let [engine           (keyword engine)
