@@ -50,23 +50,25 @@ export default class PreferencesStep extends Component {
                         </div>
 
                         <div className="Form-field Form-offset mr4">
-                            <div className="bordered rounded p2">
+                            <div style={{borderWidth: "2px"}} className="bordered rounded p2">
                                 <div className={cx('Button-toggle', {'Button--toggled': allowTracking})} onClick={this.toggleTracking.bind(this)}>
                                     <span className="Button-toggleIndicator">
                                         <svg width="14px" height="14px" viewBox="0 0 16 16" fill="currentcolor"></svg>
                                     </span>
                                 </div>
-                                Allow Metabase to anonymously collect usage events
+                                <span className="ml1">Allow Metabase to anonymously collect usage events</span>
                             </div>
                         </div>
 
-                        <div className="Form-field Form-offset">
-                            <ul>
-                                <li>Metabase never collects anything about your data or question results.</li>
-                                <li>All collection is completely anonymous.</li>
-                                <li>Collection can be turned off at any point in your admin settings.</li>
-                            </ul>
-                        </div>
+                        { allowTracking ?
+                            <div className="Form-field Form-offset">
+                                <ul style={{listStyle: "disc inside", lineHeight: "200%"}}>
+                                    <li>Metabase <span style={{fontWeight: "bold"}}>never</span> collects anything about your data or question results.</li>
+                                    <li>All collection is completely anonymous.</li>
+                                    <li>Collection can be turned off at any point in your admin settings.</li>
+                                </ul>
+                            </div>
+                        : null }
 
                         <div className="Form-actions">
                             <button className="Button Button--primary" ng-click="setUsagePreference()">
