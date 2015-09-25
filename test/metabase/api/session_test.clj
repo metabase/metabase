@@ -131,7 +131,7 @@
   (client :post 400 "session/reset_password" {:token "anything"}))
 
 ;; Test that malformed token returns 400
-(expect "Invalid reset token"
+(expect {:errors {:password "Invalid reset token"}}
   (client :post 400 "session/reset_password" {:token "not-found"
                                               :password "whateverUP12!!"}))
 
