@@ -48,9 +48,9 @@ export default class SpecificDatePicker extends Component {
                         selectedEnd={end}
                         onChange={this.onChange}
                     />
-                    <div>
-                        <span className={cx({ "text-purple": filter[0] === "<" })} onClick={this.toggleOperator.bind(this, "<")}>&lt;&lt; All before</span>
-                        <span className={cx({ "text-purple": filter[0] === ">" })} onClick={this.toggleOperator.bind(this, ">")}>All after &gt;&gt;</span>
+                    <div className={cx("py1", { "disabled": filter[2] == null })}>
+                        <span className={cx("inline-block text-centered text-purple-hover half py1 border-right", { "text-purple": filter[0] === "<" })} onClick={this.toggleOperator.bind(this, "<")}>&lt;&lt; All before</span>
+                        <span className={cx("inline-block text-centered text-purple-hover half py1", { "text-purple": filter[0] === ">" })} onClick={this.toggleOperator.bind(this, ">")}>All after &gt;&gt;</span>
                     </div>
                 </div>
             </div>

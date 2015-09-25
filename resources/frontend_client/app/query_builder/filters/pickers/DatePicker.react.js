@@ -18,8 +18,8 @@ export default class DatePicker extends Component {
     render() {
         return (
             <div>
-                <div>
-                    <button className={cx("Button Button--medium", { "Button--purple": this.state.pane === "relative" })} onClick={() => this.setState({ pane: "relative" })}>Relative date</button>
+                <div className="p1 border-bottom">
+                    <button className={cx("Button Button--medium mr1", { "Button--purple": this.state.pane === "relative" })} onClick={() => this.setState({ pane: "relative" })}>Relative date</button>
                     <button className={cx("Button Button--medium", { "Button--purple": this.state.pane === "specific" })} onClick={() => this.setState({ pane: "specific" })}>Specific date</button>
                 </div>
                 { this.state.pane === "relative" ?

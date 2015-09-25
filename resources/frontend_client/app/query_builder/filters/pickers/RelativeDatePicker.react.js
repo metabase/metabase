@@ -13,15 +13,15 @@ const SHORTCUTS = [
 ];
 
 const RELATIVE_SHORTCUTS = {
-    "This": [
-        { name: "Week",  operator: "TIME_INTERVAL", values: ["current", "week"]},
-        { name: "Month", operator: "TIME_INTERVAL", values: ["current", "month"]},
-        { name: "Year",  operator: "TIME_INTERVAL", values: ["current", "year"]}
-    ],
     "Last": [
         { name: "Week",  operator: "TIME_INTERVAL", values: ["last", "week"]},
         { name: "Month", operator: "TIME_INTERVAL", values: ["last", "month"]},
         { name: "Year",  operator: "TIME_INTERVAL", values: ["last", "year"]}
+    ],
+    "This": [
+        { name: "Week",  operator: "TIME_INTERVAL", values: ["current", "week"]},
+        { name: "Month", operator: "TIME_INTERVAL", values: ["current", "month"]},
+        { name: "Year",  operator: "TIME_INTERVAL", values: ["current", "year"]}
     ]
 };
 
@@ -57,9 +57,40 @@ export default class RelativeDatePicker extends Component {
 
     render() {
         return (
-            <div className="px1 pt1">
-                <DateShortcuts filter={this.props.filter} isSelectedShortcut={this.isSelectedShortcut} onSetShortcut={this.onSetShortcut} />
-                <RelativeDates filter={this.props.filter} isSelectedShortcut={this.isSelectedShortcut} onSetShortcut={this.onSetShortcut} />
+            <div className="p1 pt2">
+                <section>
+                    { SHORTCUTS.map((s, index) =>
+                        <span className={cx("inline-block half pb1", { "pr1": index % 2 === 0 })}>
+                            <button
+                                key={index}
+                                className={cx("Button Button-normal Button--medium text-normal text-centered full", { "Button--purple": this.isSelectedShortcut(s) })}
+                                onClick={() => this.onSetShortcut(s)}
+                            >
+                                {s.name}
+                            </button>
+                        </span>
+                    )}
+                </section>
+                {Object.keys(RELATIVE_SHORTCUTS).map(sectionName =>
+                    <section key={sectionName}>
+                        <div style={{}} className="border-bottom text-uppercase flex layout-centered mb2">
+                            <h6 style={{"position": "relative", "backgroundColor": "white", "top": "6px" }} className="px2">
+                                {{sectionName}}
+                            </h6>
+                        </div>
+                        <div className="flex">
+                            { RELATIVE_SHORTCUTS[sectionName].map((s, index) =>
+                                <button
+                                    key={index}
+                                    className={cx("Button Button-normal Button--medium flex-full mb1", { "Button--purple": this.isSelectedShortcut(s), "mr1": index !== RELATIVE_SHORTCUTS[sectionName].length - 1 })}
+                                    onClick={() => this.onSetShortcut(s)}
+                                >
+                                    {s.name}
+                                </button>
+                            )}
+                        </div>
+                    </section>
+                )}
             </div>
         );
     }
@@ -68,120 +99,4 @@ export default class RelativeDatePicker extends Component {
 RelativeDatePicker.propTypes = {
     filter: PropTypes.array.isRequired,
     onFilterChange: PropTypes.func.isRequired
-};
-
-class DateShortcuts extends Component {
-    selectedStyles() {
-        return {
-            'text-purple': true
-        }
-    }
-
-    render() {
-        const cols = 2;
-        const rows = Math.ceil(SHORTCUTS.length / cols);
-
-        function buttonStyles(index) {
-            let row =  Math.floor(index / cols);
-            let col = index % cols;
-            return {
-                margin: 0,
-                borderTopLeftRadius:     col !== 0        || row !== 0        ? 0 : undefined,
-                borderTopRightRadius:    col !== cols - 1 || row !== 0        ? 0 : undefined,
-                borderBottomLeftRadius:  col !== 0        || row !== rows - 1 ? 0 : undefined,
-                borderBottomRightRadius: col !== cols - 1 || row !== rows - 1 ? 0 : undefined,
-                borderTopWidth:          row !== 0                            ? 0 : undefined,
-                borderLeftWidth:         col !== 0                            ? 0 : undefined
-            };
-        }
-
-        return (
-            <ul>
-                { SHORTCUTS.map((s, index) =>
-                    <li
-                        key={index}
-                        style={buttonStyles(index)}
-                        className={cx("Button Button-normal Button--medium text-normal mr1 mb1 inline-block half text-centered", { "Button--purple": this.props.isSelectedShortcut(s) })}
-                        onClick={() => this.props.onSetShortcut(s)}
-                    >
-                        {s.name}
-                    </li>
-                )}
-            </ul>
-        );
-    }
-}
-
-DateShortcuts.propTypes = {
-    isSelectedShortcut: PropTypes.func.isRequired,
-    onSetShortcut: PropTypes.func.isRequired
-}
-
-class RelativeDates extends Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-            tab: this._findTabWithSelection(props) || Object.keys(RELATIVE_SHORTCUTS)[0]
-        }
-    }
-
-    componentWillReceiveProps(nextProps) {
-        let tab = this._findTabWithSelection(nextProps);
-        if (tab && tab !== this.state.tab) {
-            this.setState({ tab });
-        }
-    }
-
-    _findTabWithSelection() {
-        for (let tab in RELATIVE_SHORTCUTS) {
-            for (let shortcut of RELATIVE_SHORTCUTS[tab]) {
-                if (this.props.isSelectedShortcut(shortcut)) {
-                    return tab;
-                }
-            }
-        }
-        return null;
-    }
-
-    render() {
-        function tabStyles(state, condition) {
-            return {
-                fontSize: '0.7rem',
-                fontWeight: 'bold',
-                textTransform: 'uppercase',
-                borderTopLeftRadius: 4,
-                borderTopRightRadius: 4,
-                backgroundColor: (state === condition ? '#fff' : '#fafafa`'),
-                borderBottomColor: (state === condition ? '#fff': '#e0e0e0'),
-                color: (state !== condition ? '#d0d0d0' : undefined)
-            }
-        }
-
-        return (
-            <div>
-                <div style={{display: 'flex', justifyContent: 'center'}} className="mt1">
-                    { Object.keys(RELATIVE_SHORTCUTS).map(tab =>
-                        <a key={tab} style={tabStyles(this.state.tab, tab)} className="py1 px2 cursor-pointer bordered" onClick={() => this.setState({ tab })}>{tab}</a>
-                    )}
-                </div>
-                <ul style={{marginTop: '-1px', display: 'flex', justifyContent: 'center'}} className="border-top pt1">
-                    { RELATIVE_SHORTCUTS[this.state.tab].map((s, index) =>
-                        <li
-                            key={index}
-                            className={cx("Button Button-normal Button--medium mr1 mb1", { "Button--purple": this.props.isSelectedShortcut(s) })}
-                            onClick={() => this.props.onSetShortcut(s)}
-                        >
-                            {s.name}
-                        </li>
-                    )}
-                </ul>
-            </div>
-        )
-    }
-}
-
-RelativeDates.propTypes = {
-    filter: PropTypes.array.isRequired,
-    isSelectedShortcut: PropTypes.func.isRequired,
-    onSetShortcut: PropTypes.func.isRequired
 };
