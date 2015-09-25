@@ -76,12 +76,14 @@ export default class FieldList extends Component {
             <div style={{width: '300px'}}>
                 {sections.map((section, sectionIndex) =>
                     <section key={sectionIndex}>
-                        <div className="flex align-center p2 border-bottom text-purple-hover" onClick={() => this.toggleSection(sectionIndex)}>
-                            <h3>{section.name}</h3>
-                            <span className="flex-align-right">
-                                <Icon name={this.state.openSection === sectionIndex ? "chevronup" : "chevrondown"} width={12} height={12} />
-                            </span>
-                        </div>
+                        { sections.length > 1 ?
+                            <div className="flex align-center p2 border-bottom text-purple-hover" onClick={() => this.toggleSection(sectionIndex)}>
+                                <h3>{section.name}</h3>
+                                <span className="flex-align-right">
+                                    <Icon name={this.state.openSection === sectionIndex ? "chevronup" : "chevrondown"} width={12} height={12} />
+                                </span>
+                            </div>
+                        : null }
                         { this.state.openSection === sectionIndex ?
                             <ul className="border-bottom">
                               {section.fields.map((field, fieldIndex) => {
