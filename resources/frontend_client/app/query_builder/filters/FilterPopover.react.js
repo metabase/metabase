@@ -51,7 +51,7 @@ export default class FilterPopover extends Component {
             filter[1] = fieldId;
 
             // default to the first operator
-            let { field } = this._getTarget(filter);
+            let { field } = Query.getFieldTarget(filter[1], this.props.tableMetadata);
             let operator = field.valid_operators[0].name;
 
             filter = this._updateOperator(filter, operator);
@@ -83,7 +83,7 @@ export default class FilterPopover extends Component {
     }
 
     _updateOperator(oldFilter, operatorName) {
-        let { field } = this._getTarget(oldFilter);
+        let { field } = Query.getFieldTarget(oldFilter[1], this.props.tableMetadata);
         let operator = field.operators_lookup[operatorName];
 
         // update the operator
@@ -97,20 +97,6 @@ export default class FilterPopover extends Component {
         return filter;
     }
 
-    _getTarget(filter) {
-        let table, fieldId, field, fk;
-        if (Array.isArray(filter[1]) && filter[1][0] === "fk->") {
-            fk = this.props.tableMetadata.fields_lookup[filter[1][1]];
-            table = fk.target.table;
-            fieldId = filter[1][2];
-        } else {
-            table = this.props.tableMetadata;
-            fieldId = filter[1];
-        }
-        field = table.fields_lookup[fieldId];
-        return { table, field };
-    }
-
     isValid() {
         let { filter } = this.state;
         // has an operator name and field id
@@ -118,7 +104,7 @@ export default class FilterPopover extends Component {
             return false;
         }
         // field/operator combo is valid
-        let { field } = this._getTarget(filter);
+        let { field } = Query.getFieldTarget(filter[1], this.props.tableMetadata);
         let operator = field.operators_lookup[filter[0]];
         if (operator) {
             // has the mininum number of arguments
@@ -187,7 +173,7 @@ export default class FilterPopover extends Component {
             );
         } else {
             let { filter } = this.state;
-            let { table, field } = this._getTarget(filter);
+            let { table, field } = Query.getFieldTarget(filter[1], this.props.tableMetadata);
 
             return (
                 <div style={{width: 300}}>

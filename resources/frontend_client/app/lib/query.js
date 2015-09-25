@@ -345,6 +345,19 @@ var Query = {
         );
     },
 
+    getFieldTarget: function(field, tableMetadata) {
+        let table, fieldId, fk;
+        if (Array.isArray(field) && field[0] === "fk->") {
+            fk = tableMetadata.fields_lookup[field[1]];
+            table = fk.target.table;
+            fieldId = field[2];
+        } else {
+            table = tableMetadata;
+            fieldId = field;
+        }
+        return { table, field: table.fields_lookup[fieldId] };
+    },
+
     getFieldOptions: function(fields, includeJoins = false, filterFn = (fields) => fields, usedFields = {}) {
         var results = {
             count: 0,
