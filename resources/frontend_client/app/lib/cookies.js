@@ -17,8 +17,6 @@ var MetabaseCookies = {
     // set the session cookie.  if sessionId is null, clears the cookie
     setSessionCookie: function(sessionId) {
         if (sessionId) {
-            console.log('setting session', sessionId);
-
             // set a session cookie
             var isSecure = (mb_cookies.location.protocol() === "https") ? true : false;
             mb_cookies.ipCookie(METABASE_SESSION_COOKIE, sessionId, {
