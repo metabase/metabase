@@ -94,8 +94,8 @@
             (when (try (creds/bcrypt-verify token reset_token)
                        (catch Throwable _))
 
-              ;; check that the reset was triggered within the last 1 HOUR, after that the token is considered expired
-              (checkp (> (* 60 60 1000) (- (System/currentTimeMillis) (or reset_triggered 0)))
+              ;; check that the reset was triggered within the last 48 HOURS, after that the token is considered expired
+              (checkp (> (* 48 60 60 1000) (- (System/currentTimeMillis) (or reset_triggered 0)))
                 'password "Reset token has expired")
 
               (set-user-password user-id password)
