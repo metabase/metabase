@@ -22,7 +22,8 @@ export default class SetupCollapsedStep extends Component {
             'rounded': true,
             'full': true,
             'relative': true,
-            'SetupStep--completed shadowed': isCompleted
+            'SetupStep--completed shadowed': isCompleted,
+            'SetupStep--todo': !isCompleted
         });
 
         return (
