@@ -419,3 +419,12 @@ CoreServices.factory('Revision', ['$resource', function($resource) {
         }
     });
 }]);
+
+CoreServices.factory('Util', ['$resource', '$cookies', function($resource, $cookies) {
+    return $resource('/api/util/', {}, {
+        password_check: {
+            url: '/api/util/password_check',
+            method: 'POST'
+        }
+    });
+}]);

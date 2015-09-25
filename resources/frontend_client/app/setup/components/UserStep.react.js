@@ -11,18 +11,18 @@ import Icon from "metabase/components/Icon.react";
 import MetabaseUtils from "metabase/lib/utils";
 
 import CollapsedStep from "./CollapsedStep.react";
-import { setUserDetails } from "../actions";
+import { setUserDetails, validatePassword } from "../actions";
 
 
 export default class UserStep extends Component {
 
     constructor(props) {
         super(props);
-        this.state = { valid: false, formError: null }
+        this.state = { formError: null, valid: false, validPassword: false }
     }
 
     validateForm() {
-        let { valid } = this.state;
+        let { valid, validPassword } = this.state;
         let isValid = true;
 
         // required: first_name, last_name, email, password
@@ -31,9 +31,29 @@ export default class UserStep extends Component {
             if (node.required && MetabaseUtils.isEmpty(node.value)) isValid = false;
         };
 
+        if (!validPassword) {
+            isValid = false;
+        }
+
         if(isValid !== valid) {
             this.setState({
                 'valid': isValid
+            });
+        }
+    }
+
+    async onPasswordBlur() {
+        try {
+            await this.props.dispatch(validatePassword(React.findDOMNode(this.refs.password).value));
+
+            this.setState({
+                passwordError: false,
+                validPassword: true
+            });
+        } catch(error) {
+            this.setState({
+                passwordError: true,
+                validPassword: false
             });
         }
     }
@@ -84,7 +104,7 @@ export default class UserStep extends Component {
 
     render() {
         let { activeStep, dispatch, stepNumber, userDetails } = this.props;
-        let { formError, valid } = this.state;
+        let { formError, passwordError, valid } = this.state;
 
         const stepText = (activeStep <= stepNumber) ? 'What should we call you?' : 'Hi, ' + userDetails.first_name + '. nice to meet you!';
 
@@ -120,9 +140,9 @@ export default class UserStep extends Component {
                             <span className="Form-charm"></span>
                         </FormField>
 
-                        <FormField fieldName="password" formError={formError}>
+                        <FormField fieldName="password" formError={formError} error={passwordError}>
                             <FormLabel title="Create a password" help="Must be 8 characters long and include one upper case letter, one a number and one special character" fieldName="password" formError={formError}></FormLabel>
-                            <input ref="password" className="Form-input Form-offset full" name="password" type="password" defaultValue={(userDetails) ? userDetails.password : ""} placeholder="Shhh..." required onChange={this.onChange.bind(this)} />
+                            <input ref="password" className="Form-input Form-offset full" name="password" type="password" defaultValue={(userDetails) ? userDetails.password : ""} placeholder="Shhh..." required onChange={this.onChange.bind(this)} onBlur={this.onPasswordBlur.bind(this)}/>
                             <span className="Form-charm"></span>
                         </FormField>
 

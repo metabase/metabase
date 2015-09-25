@@ -36,6 +36,7 @@ function createThunkAction(actionType, actionThunkCreator) {
 
 // // resource wrappers
 const SetupApi = new AngularResourceProxy("Setup", ["create", "validate_db"]);
+const UtilApi = new AngularResourceProxy("Util", ["password_check"]);
 
 
 // action constants
@@ -44,6 +45,7 @@ export const SET_USER_DETAILS = 'SET_USER_DETAILS';
 export const SET_DATABASE_DETAILS = 'SET_DATABASE_DETAILS';
 export const SET_ALLOW_TRACKING = 'SET_ALLOW_TRACKING';
 export const VALIDATE_DATABASE = 'VALIDATE_DATABASE';
+export const VALIDATE_PASSWORD = 'VALIDATE_PASSWORD';
 export const SUBMIT_SETUP = 'SUBMIT_SETUP';
 export const COMPLETE_SETUP = 'COMPLETE_SETUP';
 
@@ -54,11 +56,20 @@ export const setUserDetails = createAction(SET_USER_DETAILS);
 export const setDatabaseDetails = createAction(SET_DATABASE_DETAILS);
 export const setAllowTracking = createAction(SET_ALLOW_TRACKING);
 
+
 export const validateDatabase = createThunkAction(VALIDATE_DATABASE, function(details) {
     return async function(dispatch, getState) {
         return await SetupApi.validate_db({
             'token': MetabaseSettings.get('setup_token'),
             'details': details
+        });
+    };
+});
+
+export const validatePassword = createThunkAction(VALIDATE_PASSWORD, function(password) {
+    return async function(dispatch, getState) {
+        return await UtilApi.password_check({
+            'password': password
         });
     };
 });

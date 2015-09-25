@@ -7,10 +7,10 @@ import cx from "classnames";
 export default class FormField extends Component {
 
     render() {
-        let { children, className, fieldName, formError } = this.props;
+        let { children, className, fieldName, formError, error } = this.props;
 
         const classes = cx('Form-field', className, {
-            'Form--fieldError': (formError && formError.data.errors && fieldName in formError.data.errors)
+            'Form--fieldError': (error === true || (formError && formError.data.errors && fieldName in formError.data.errors))
         });
 
         return (
