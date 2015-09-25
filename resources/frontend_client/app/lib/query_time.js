@@ -1,6 +1,7 @@
 "use strict";
 
 import moment from "moment";
+import inflection from "inflection";
 
 export function computeFilterTimeRange(filter) {
     let expandedFilter;
@@ -60,6 +61,77 @@ export function expandTimeIntervalFilter(filter) {
     }
 }
 
+export function generateTimeFilterValuesDescriptions(filter) {
+    let [operator, field, ...values] = filter;
+    let bucketing = parseBucketing(field);
+
+    if (operator === "TIME_INTERVAL") {
+        let [n, unit] = values;
+        return generateTimeIntervalDescription(n, unit);
+    } else {
+        return values.map(value => generateTimeValueDescription(value, bucketing));
+    }
+}
+
+export function generateTimeIntervalDescription(n, unit) {
+    if (unit === "day") {
+        switch (n) {
+            case "current":
+            case 0:
+                return "Today";
+            case "next":
+            case 1:
+                return "Tomorrow";
+            case "last":
+            case -1:
+                return "Yesterday";
+        }
+    }
+    unit = inflection.capitalize(unit);
+    if (typeof n === "string") {
+        if (n === "current") {
+            n = "this";
+        }
+        return [inflection.capitalize(n) + " " + unit];
+    } else {
+        if (n < 0) {
+            return ["Past " + (-n) + " " + inflection.inflect(unit, -n)];
+        } else if (n > 0) {
+            return ["Next " + (n) + " " + inflection.inflect(unit, n)];
+        } else {
+            return ["This " + unit];
+        }
+    }
+}
+
+export function generateTimeValueDescription(value, bucketing) {
+    if (typeof value === "string") {
+        return moment(value).format("MMMM D, YYYY");
+    } else if (Array.isArray(value) && value[0] === "relative_datetime") {
+        let n = value[1];
+        let unit = value[2];
+
+        if (n === "current") {
+            n = 0;
+            unit = bucketing;
+        }
+
+        if (bucketing === unit) {
+            return generateTimeIntervalDescription(n, unit);
+        } else {
+            // FIXME: what to do if the bucketing and unit don't match?
+            if (n === 0) {
+                return "Now";
+            } else {
+                return Math.abs(n) + " " + inflection.inflect(unit, Math.abs(n)) + (n < 0 ? " ago" : " from now");
+            }
+        }
+    } else {
+        console.warn("Unknown datetime format", value);
+        return "[Unknown]";
+    }
+}
+
 export function absolute(date) {
     if (typeof date === "string") {
         return moment(date);
@@ -75,7 +147,7 @@ function parseBucketing(field) {
         if (field[0] === "datetime_field") {
             return field[3];
         } else {
-            console.warn("Unknown field format: ", field);
+            console.warn("Unknown field format", field);
         }
     }
     return "day";

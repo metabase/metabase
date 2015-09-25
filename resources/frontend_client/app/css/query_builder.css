@@ -323,39 +323,35 @@
 /* FILTER BY SECTION */
 
 .Filter-section-field,
-.Filter-section-operator,
-.Filter-section-value {
+.Filter-section-operator {
     color: var(--purple-color);
 }
 
-.Filter-section-field.selected .QueryOption {
+.Filter-section-field .QueryOption {
     color: var(--purple-color);
 }
-.Filter-section-operator.selected .QueryOption {
+.Filter-section-operator .QueryOption {
     color: var(--purple-color);
     text-transform: lowercase;
 }
-.Filter-section-value.selected .QueryOption {
-    color: var(--purple-color);
+.Filter-section-value .QueryOption {
+    color: white;
+    background-color: var(--purple-color);
+    border: 1px solid color(var(--purple-color) shade(30%));
+    border-radius: 6px;
+    padding: 0.5em;
+    padding-top: 0.3em;
+    padding-bottom: 0.3em;
+    margin-bottom: 0.2em;
 }
 
-/* put quotes around numeric or text values */
-.Filter-section-value .QueryOption.QueryOption--text:before,
-.Filter-section-value .QueryOption.QueryOption--text:after,
-.Filter-section-value .QueryOption.QueryOption--number:before,
-.Filter-section-value .QueryOption.QueryOption--number:after,
-.Filter-section-value .QueryOption.QueryOption--select:before,
-.Filter-section-value .QueryOption.QueryOption--select:after {
-    content: '"';
+.Filter-section-value {
+    padding-right: 0.5em;
 }
 
 .Filter-section-sort-field.selected .QueryOption,
 .Filter-section-sort-direction.selected .QueryOption {
     color: inherit;
-}
-
-.Filter-section-value {
-    padding-right: 0.5em;
 }
 
 .FilterPopover .ColumnarSelector-row--selected,
@@ -364,23 +360,6 @@
 }
 .FilterPopover .ColumnarSelector-row:hover {
     background-color: var(--purple-color) !important;
-}
-
-.Filter-section-value .Button,
-.Filter-section-value .input {
-    padding: 0.5rem;
-}
-
-.Filter-section-value .input {
-    font-size: inherit;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-}
-
-.Filter-section-value .input:focus {
-    outline: none;
-    border-color: var(--purple-color);
-    box-shadow: 0 0 2px var(--purple-color);
 }
 
 /* VIEW SECTION */

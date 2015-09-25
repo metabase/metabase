@@ -1,15 +1,17 @@
 'use strict';
 
-import _ from "underscore";
-
 import Icon from "metabase/components/Icon.react";
 import FieldName from './FieldName.react';
 import Popover from "metabase/components/Popover.react";
 import FilterPopover from "./filters/FilterPopover.react";
 
 import Query from "metabase/lib/query";
-import moment from 'moment';
+import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
+import { isDate } from "metabase/lib/schema_metadata";
 
+
+import moment from 'moment';
+import _ from "underscore";
 import cx from "classnames";
 
 export default React.createClass({
@@ -33,170 +35,28 @@ export default React.createClass({
     },
 
     componentWillReceiveProps: function(newProps) {
-        var operator = newProps.filter[0],      // name of the operator
-            field = newProps.filter[1],         // id of the field
-            values = null;                       // filtering value
+        let { filter } = newProps;
+        let [operator, field, ...values] = filter;
 
-        if (newProps.filter.length > 2) {
-            values = [];
+        let target = Query.getFieldTarget(field, newProps.tableMetadata);
+        let fieldDef = target && target.field;
+        let operatorDef = fieldDef && fieldDef.operators_lookup[operator];
 
-            for (var i=2; i < newProps.filter.length; i++) {
-                var valuesIdx = i - 2;
-
-                values[valuesIdx] = null;
-                if (newProps.filter[i] !== null) {
-                    // always cast the underlying value to a string, otherwise we get strange behavior on dealing with input
-                    values[valuesIdx] = newProps.filter[i].toString();
-                }
-            }
+        if (!operatorDef) {
+            operatorDef = fieldDef && fieldDef.operators_lookup['='];
         }
-
-        // if we know what field we are filtering by we can extract the fieldDef to help us with filtering choices
-        var fieldDef
-        if (Array.isArray(field)) {
-            var fkDef = newProps.tableMetadata.fields_lookup[field[1]];
-            if (fkDef) {
-                fieldDef = fkDef.target.table.fields_lookup[field[2]];
-            }
-        } else {
-            fieldDef = newProps.tableMetadata.fields_lookup[field];
-        }
-
-        // once we know our field we can pull out the list of possible operators to filter on
-        // also, if we know the operator then we can pull out the possible values for the field (if available)
-        // TODO: why is fieldValues a function of the operator?
-        var operatorList = [],
-            fieldValues;
-        if (fieldDef) {
-            for(var idx in fieldDef.operators_lookup) {
-                var operatorDef = fieldDef.operators_lookup[idx];
-                operatorList.push(operatorDef);
-
-                if(operatorDef.name === operator) {
-                    // this is structured strangely
-                    fieldValues = operatorDef.fields[0];
-                }
-            }
-        }
-
-        // this converts our fieldValues into things that are safe for us to work with through HTML
-        // it also filters out values like NULL which we don't want in our value options
-        if (fieldValues && fieldValues.values) {
-            var safeValues = [];
-            for (var idx2 in fieldValues.values) {
-                var fieldValue = fieldValues.values[idx2];
-
-                var safeValue = {};
-                for(var key in fieldValue) {
-                    // NOTE: we specifically prevent any keys which are NULL values because those should be expressed using IS_NULL or NOT_NULL operators
-                    if (fieldValue[key] !== undefined && fieldValue[key] !== null) {
-                        safeValue[key] = fieldValue[key].toString();
-                    }
-                }
-
-                if (Object.getOwnPropertyNames(safeValue).length > 0) {
-                    safeValues.push(safeValue);
-                }
-            }
-
-            fieldValues.values = safeValues;
-        }
-
-        var fieldOptions = Query.getFieldOptions(newProps.tableMetadata.fields, true);
 
         this.setState({
             field: field,
-            operator: operator,
-            operatorList: operatorList,
-            values: values,
-            fieldValues: fieldValues,
             fieldDef: fieldDef,
-            fieldOptions: fieldOptions
+            operator: operator,
+            operatorDef: operatorDef,
+            values: values
         });
-    },
-
-    hasField: function() {
-        return Query.isValidField(this.state.field);
-    },
-
-    hasOperator: function() {
-        return (typeof this.state.operator === "string");
     },
 
     removeFilterFn: function() {
         this.props.removeFilter(this.props.index);
-    },
-
-    renderField: function() {
-        var classes = cx({
-            'Filter-section': true,
-            'Filter-section-field': true,
-            'px1': true,
-            'pt1': true
-        });
-
-        return (
-            <FieldName
-                className={classes}
-                field={this.state.field}
-                fieldOptions={this.state.fieldOptions}
-                onClick={this.open}
-            />
-        );
-    },
-
-    renderOperator: function() {
-        var operator;
-        // if we don't know our field yet then don't render anything
-        if (this.hasField()) {
-            operator = _.find(this.state.operatorList, (o) => o.name === this.state.operator);
-        }
-        var operatorName = operator ? operator.verbose_name : "operator";
-
-        var classes = cx({
-            "SelectionModule": true,
-            "Filter-section": true,
-            "Filter-section-operator": true,
-            "selected": !!operator
-        })
-        return (
-            <div className={classes} onClick={this.open}>
-                <a className="QueryOption p1 flex align-center">{operatorName}</a>
-            </div>
-        );
-    },
-
-    renderValues: function() {
-        // if we don't know our field AND operator yet then don't render anything
-        if (!this.hasField() || this.state.operator === null) {
-            return false;
-        }
-
-        // the first 2 positions of the filter are always for fieldId + fieldOperator
-        return this.props.filter.slice(2).map((filterValue, valueIndex) => {
-            var value = this.state.values[valueIndex];
-            if (this.state.fieldValues) {
-                var filterSectionClasses = cx({
-                    "Filter-section": true,
-                    "Filter-section-value": true,
-                    "selected": filterValue != null
-                });
-                var queryOptionClasses = {};
-                queryOptionClasses["QueryOption"] = true
-                queryOptionClasses["QueryOption--" + this.state.fieldValues.type] = true;
-                var valueString;
-                if (this.state.fieldValues.type === "date") {
-                    valueString = value ? moment(value).format("MMMM D, YYYY") : "date";
-                } else {
-                    valueString = value != null ? value.toString() : "value";
-                }
-                return (
-                    <div key={valueIndex} className={filterSectionClasses} onClick={this.open}>
-                        <span className={cx(queryOptionClasses)}>{valueString}</span>
-                    </div>
-                );
-            }
-        });
     },
 
     open: function() {
@@ -205,6 +65,49 @@ export default React.createClass({
 
     close: function() {
         this.setState({ isOpen: false });
+    },
+
+    renderField: function() {
+        return (
+            <FieldName
+                className="Filter-section Filter-section-field"
+                field={this.state.field}
+                tableMetadata={this.props.tableMetadata}
+                onClick={this.open}
+            />
+        );
+    },
+
+    renderOperator: function() {
+        var { operatorDef } = this.state;
+        return (
+            <div className="SelectionModule Filter-section Filter-section-operator" onClick={this.open}>
+                <a className="QueryOption p1 flex align-center">{operatorDef && operatorDef.verbose_name}</a>
+            </div>
+        );
+    },
+
+    renderValues: function() {
+        let { operatorDef, fieldDef, values } = this.state;
+
+        if (operatorDef.multi && values.length > 1) {
+            values = [values.length + " selections"];
+        }
+
+        if (isDate(fieldDef)) {
+            values = generateTimeFilterValuesDescriptions(this.props.filter);
+            console.log("XXX", values)
+        }
+
+        // the first 2 positions of the filter are always for fieldId + fieldOperator
+        return values.map((value, valueIndex) => {
+            var valueString = value != null ? value.toString() : null;
+            return (
+                <div key={valueIndex} className="Filter-section Filter-section-value" onClick={this.open}>
+                    <span className="QueryOption">{valueString}</span>
+                </div>
+            );
+        });
     },
 
     renderPopover: function() {
@@ -242,12 +145,12 @@ export default React.createClass({
         });
         return (
             <div className={classes}>
-                <div>
-                    <div>
+                <div className="ml1">
+                    <div className="flex align-center">
                         {this.renderField()}
+                        {this.renderOperator()}
                     </div>
                     <div className="flex align-center">
-                        {this.renderOperator()}
                         {this.renderValues()}
                     </div>
                     {this.renderPopover()}

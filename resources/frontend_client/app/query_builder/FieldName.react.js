@@ -12,7 +12,7 @@ export default React.createClass({
     displayName: "FieldName",
     propTypes: {
         field: React.PropTypes.oneOfType([React.PropTypes.number, React.PropTypes.array]),
-        fieldOptions: React.PropTypes.object.isRequired,
+        tableMetadata: React.PropTypes.object.isRequired,
         onClick: React.PropTypes.func,
         removeField: React.PropTypes.func
     },
@@ -27,8 +27,10 @@ export default React.createClass({
         var targetTitle, fkTitle, fkIcon;
         var field = this.props.field;
 
+        let fieldOptions = Query.getFieldOptions(this.props.tableMetadata.fields, true);
+
         if (Array.isArray(field) && field[0] === 'fk->') {
-            var fkDef = _.find(this.props.fieldOptions.fks, (fk) => _.isEqual(fk.field.id, field[1]));
+            var fkDef = _.find(fieldOptions.fks, (fk) => _.isEqual(fk.field.id, field[1]));
             if (fkDef) {
                 fkTitle = (<span>{fkDef.field.display_name}</span>);
                 var targetDef = _.find(fkDef.fields, (f) => _.isEqual(f.id, field[2]));
@@ -38,7 +40,7 @@ export default React.createClass({
                 }
             }
         } else {
-            var fieldDef = _.find(this.props.fieldOptions.fields, (f) => _.isEqual(f.id, field));
+            var fieldDef = _.find(fieldOptions.fields, (f) => _.isEqual(f.id, field));
             if (fieldDef) {
                 targetTitle = (<span>{fieldDef.display_name}</span>);
             }

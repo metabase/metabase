@@ -28,7 +28,7 @@ export default class NumberPicker extends Component {
         return (
             <TextPicker
                 {...this.props}
-                values={this.state.values}
+                values={this.state.values.slice(0, this.props.values.length)}
                 validations={this.state.validations}
                 onValuesChange={(values) => this.onValuesChange(values)}
             />

@@ -85,13 +85,19 @@ export default class FilterPopover extends Component {
     _updateOperator(oldFilter, operatorName) {
         let { field } = Query.getFieldTarget(oldFilter[1], this.props.tableMetadata);
         let operator = field.operators_lookup[operatorName];
+        let oldOperator = field.operators_lookup[oldFilter[0]];
 
         // update the operator
         let filter = [operatorName, oldFilter[1]];
 
         if (operator) {
             for (var i = 0; i < operator.fields.length; i++) {
-                filter.push(oldFilter.length > i + 2 ? oldFilter[i + 2] : undefined);
+                filter.push(undefined);
+            }
+            if (operator.multi && oldOperator && oldOperator.multi) {
+                for (var i = 2; i < oldFilter.length; i++) {
+                    filter[i] = oldFilter[i];
+                }
             }
         }
         return filter;
@@ -125,12 +131,20 @@ export default class FilterPopover extends Component {
     renderPicker(filter, field) {
         let operator = field.operators_lookup[filter[0]];
         return operator.fields.map((operatorField, index) => {
+            let values, onValuesChange;
+            if (operator.multi) {
+                values = this.state.filter.slice(2);
+                onValuesChange = (values) => this.setValues(values);
+            } else {
+                values = [this.state.filter[2 + index]];
+                onValuesChange = (values) => this.setValue(index, values[0]);
+            }
             if (operatorField.type === "select") {
                 return (
                     <SelectPicker
                         options={operatorField.values}
-                        values={this.state.filter.slice(2)}
-                        onValuesChange={this.setValues}
+                        values={values}
+                        onValuesChange={onValuesChange}
                         multi={operator.multi}
                         index={index}
                     />
@@ -138,8 +152,8 @@ export default class FilterPopover extends Component {
             } else if (operatorField.type === "text") {
                 return (
                     <TextPicker
-                        values={this.state.filter.slice(2)}
-                        onValuesChange={this.setValues}
+                        values={values}
+                        onValuesChange={onValuesChange}
                         multi={operator.multi}
                         index={index}
                     />
@@ -147,8 +161,8 @@ export default class FilterPopover extends Component {
             } else if (operatorField.type === "number") {
                 return (
                     <NumberPicker
-                        values={this.state.filter.slice(2)}
-                        onValuesChange={this.setValues}
+                        values={values}
+                        onValuesChange={onValuesChange}
                         multi={operator.multi}
                         index={index}
                     />
