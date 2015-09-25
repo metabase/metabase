@@ -75,7 +75,7 @@ export default class FieldList extends Component {
         return (
             <div style={{width: '300px'}}>
                 {sections.map((section, sectionIndex) =>
-                    <section>
+                    <section key={sectionIndex}>
                         <div className="flex align-center p2 border-bottom text-purple-hover" onClick={() => this.toggleSection(sectionIndex)}>
                             <h3>{section.name}</h3>
                             <span className="flex-align-right">
@@ -84,9 +84,9 @@ export default class FieldList extends Component {
                         </div>
                         { this.state.openSection === sectionIndex ?
                             <ul className="border-bottom">
-                              {section.fields.map(field => {
+                              {section.fields.map((field, fieldIndex) => {
                                   return (
-                                      <li>
+                                      <li key={fieldIndex}>
                                           <a className={cx('FieldList-item', 'flex align-center px2 py1 cursor-pointer', { 'FieldList-item--selected': _.isEqual(this.props.field, field.value) })}
                                              onClick={this.props.setField.bind(null, field.value)}>
                                               { this.renderTypeIcon(field.types) }

@@ -161,7 +161,7 @@ class RelativeDates extends Component {
             <div>
                 <div style={{display: 'flex', justifyContent: 'center'}} className="mt1">
                     { Object.keys(RELATIVE_SHORTCUTS).map(tab =>
-                        <a style={tabStyles(this.state.tab, tab)} className="py1 px2 cursor-pointer bordered" onClick={() => this.setState({ tab })}>{tab}</a>
+                        <a key={tab} style={tabStyles(this.state.tab, tab)} className="py1 px2 cursor-pointer bordered" onClick={() => this.setState({ tab })}>{tab}</a>
                     )}
                 </div>
                 <ul style={{marginTop: '-1px', display: 'flex', justifyContent: 'center'}} className="border-top pt1">
