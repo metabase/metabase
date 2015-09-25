@@ -1,9 +1,9 @@
 'use strict';
 
 import Icon from "metabase/components/Icon.react";
-import FieldName from './FieldName.react';
+import FieldName from '../FieldName.react';
 import Popover from "metabase/components/Popover.react";
-import FilterPopover from "./filters/FilterPopover.react";
+import FilterPopover from "./FilterPopover.react";
 
 import Query from "metabase/lib/query";
 import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
