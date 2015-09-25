@@ -253,36 +253,40 @@
     }
 }
 
+/* un-expanded (default) */
 .GuiBuilder-row {
     border-bottom: 1px solid #e0e0e0;
 }
-
 .GuiBuilder-row:last-child {
-    border-bottom: none;
+    border-bottom-color: transparent;
 }
-
-.GuiBuilder-section {
-    position: relative;
-    min-height: 48px;
-    min-width: 120px;
-}
-
 .GuiBuilder-data {
     border-right: 1px solid #e0e0e0;
+}
+.GuiBuilder-filtered-by {
+    border-right: 1px solid transparent;
 }
 .GuiBuilder-sort-limit {
     border-left: 1px solid #e0e0e0;
 }
 
+/* expanded */
 .GuiBuilder.GuiBuilder--expand {
     flex-direction: row;
 }
 .GuiBuilder.GuiBuilder--expand .GuiBuilder-row:last-child {
-    border-right: none;
-    border-bottom: 1px solid #e0e0e0;
+    border-right-color: transparent;
+    border-bottom-color: #e0e0e0;
 }
 .GuiBuilder.GuiBuilder--expand .GuiBuilder-filtered-by {
-    border-right: 1px solid #e0e0e0;
+    border-right-color: #e0e0e0;
+}
+
+
+.GuiBuilder-section {
+    position: relative;
+    min-height: 48px;
+    min-width: 120px;
 }
 
 .GuiBuilder-section-label {
