@@ -87,7 +87,7 @@
   [:as {{:keys [token password] :as body} :body}]
   {token    Required
    password [Required ComplexPassword]}
-  (api-let [400 "Invalid reset token"] [[_ user-id] (re-matches #"(^\d+)_.+$" token)
+  (api-let [400 "Invalid reset token"] [[_ user-id]                           (re-matches #"(^\d+)_.+$" token)
                                         user-id                               (Integer/parseInt user-id)
                                         {:keys [reset_token reset_triggered]} (sel :one :fields [User :reset_triggered :reset_token] :id user-id)]
     ;; Make sure the plaintext token matches up with the hashed one for this user
