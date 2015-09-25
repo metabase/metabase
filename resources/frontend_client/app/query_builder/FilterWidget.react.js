@@ -9,9 +9,6 @@ import Query from "metabase/lib/query";
 import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
 import { isDate } from "metabase/lib/schema_metadata";
 
-
-import moment from 'moment';
-import _ from "underscore";
 import cx from "classnames";
 
 export default React.createClass({
@@ -72,7 +69,7 @@ export default React.createClass({
             <FieldName
                 className="Filter-section Filter-section-field"
                 field={this.state.field}
-                tableMetadata={this.props.tableMetadata}
+                fieldOptions={Query.getFieldOptions(this.props.tableMetadata.fields, true)}
                 onClick={this.open}
             />
         );

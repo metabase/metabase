@@ -2,7 +2,7 @@
 
 import React, { Component, PropTypes } from "react";
 
-import FieldList from "./FieldList.react";
+import FieldList from "../FieldList.react";
 import OperatorSelector from "./OperatorSelector.react";
 import SelectPicker from "./pickers/SelectPicker.react";
 import TextPicker from "./pickers/TextPicker.react";

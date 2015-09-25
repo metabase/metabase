@@ -1,6 +1,6 @@
 "use strict";
 
-import FieldSelector from "./FieldSelector.react";
+import FieldList from "./FieldList.react";
 import FieldName from "./FieldName.react";
 import Popover from "metabase/components/Popover.react";
 
@@ -47,7 +47,7 @@ export default React.createClass({
                     tetherOptions={tetherOptions}
                     onClose={this.toggle}
                 >
-                    <FieldSelector
+                    <FieldList
                         tableName={this.props.tableName}
                         field={this.props.field}
                         fieldOptions={this.props.fieldOptions}
