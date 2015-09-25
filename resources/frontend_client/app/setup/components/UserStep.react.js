@@ -8,6 +8,7 @@ import FormField from "metabase/components/form/FormField.react";
 import FormLabel from "metabase/components/form/FormLabel.react";
 import FormMessage from "metabase/components/form/FormMessage.react";
 import Icon from "metabase/components/Icon.react";
+import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
 
 import CollapsedStep from "./CollapsedStep.react";
@@ -18,7 +19,7 @@ export default class UserStep extends Component {
 
     constructor(props) {
         super(props);
-        this.state = { formError: null, valid: false, validPassword: false }
+        this.state = { formError: null, passwordError: null, valid: false, validPassword: false }
     }
 
     validateForm() {
@@ -47,12 +48,12 @@ export default class UserStep extends Component {
             await this.props.dispatch(validatePassword(React.findDOMNode(this.refs.password).value));
 
             this.setState({
-                passwordError: false,
+                passwordError: null,
                 validPassword: true
             });
         } catch(error) {
             this.setState({
-                passwordError: true,
+                passwordError: error.data.errors.password,
                 validPassword: false
             });
         }
@@ -106,6 +107,7 @@ export default class UserStep extends Component {
         let { activeStep, dispatch, stepNumber, userDetails } = this.props;
         let { formError, passwordError, valid } = this.state;
 
+        const passwordComplexityDesc = MetabaseSettings.passwordComplexity();
         const stepText = (activeStep <= stepNumber) ? 'What should we call you?' : 'Hi, ' + userDetails.first_name + '. nice to meet you!';
 
         if (activeStep !== stepNumber) {
@@ -140,8 +142,9 @@ export default class UserStep extends Component {
                             <span className="Form-charm"></span>
                         </FormField>
 
-                        <FormField fieldName="password" formError={formError} error={passwordError}>
-                            <FormLabel title="Create a password" help="Must be 8 characters long and include one upper case letter, one a number and one special character" fieldName="password" formError={formError}></FormLabel>
+                        <FormField fieldName="password" formError={formError} error={(passwordError !== null)}>
+                            <FormLabel title="Create a password" fieldName="password" formError={formError} message={passwordError}></FormLabel>
+                            <span style={{fontWeight: "normal"}} className="Form-label Form-offset">{passwordComplexityDesc}</span>
                             <input ref="password" className="Form-input Form-offset full" name="password" type="password" defaultValue={(userDetails) ? userDetails.password : ""} placeholder="Shhh..." required onChange={this.onChange.bind(this)} onBlur={this.onPasswordBlur.bind(this)}/>
                             <span className="Form-charm"></span>
                         </FormField>

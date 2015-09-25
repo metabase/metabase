@@ -27,10 +27,12 @@
   []
   {:ga_code               "UA-60817802-1"
    :intercom_code         "gqfmsgf1"
-   :anon_tracking_enabled (metabase.models.setting/get :anon-tracking-enabled)
-   :site_name             (metabase.models.setting/get :site-name)
+   :password_complexity   (metabase.util.password/active-password-complexity)
    :setup_token           (setup/token-value)
-   :timezones             metabase.models.common/timezones})
+   :timezones             metabase.models.common/timezones
+   ;; all of these values are dynamic settings from the admin UI but we include them here for bootstrapping availability
+   :anon-tracking-enabled (metabase.models.setting/get :anon-tracking-enabled)
+   :-site-name            (metabase.models.setting/get :-site-name)})
 
 ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
 (let [index (fn [request]
