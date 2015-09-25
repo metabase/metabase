@@ -27,6 +27,7 @@
    This endpoint both creates the user AND logs them in and returns a session ID."
   [:as {{:keys [token] {:keys [name engine details]} :database {:keys [first_name last_name email password]} :user {:keys [allow_tracking site_name]} :prefs} :body, :as request}]
   {token      [Required SetupToken]
+   site_name  [Required NonEmptyString]
    first_name [Required NonEmptyString]
    last_name  [Required NonEmptyString]
    email      [Required Email]
@@ -45,7 +46,7 @@
     (set-user-password (:id new-user) password)
     ;; set a couple preferences
     (setting/set :site-name site_name)
-    (setting/set :anon-tracking-enabled allow_tracking)
+    (setting/set :anon-tracking-enabled (or allow_tracking "true"))
     ;; setup database (if needed)
     (when (driver/is-engine? engine)
       (->> (ins Database :name name :engine engine :details details)
