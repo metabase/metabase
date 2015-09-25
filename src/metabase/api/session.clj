@@ -87,23 +87,24 @@
   [:as {{:keys [token password] :as body} :body}]
   {token    Required
    password [Required ComplexPassword]}
-  (api-let [400 "Invalid reset token"] [[_ user-id]                           (re-matches #"(^\d+)_.+$" token)
-                                        user-id                               (Integer/parseInt user-id)
-                                        {:keys [reset_token reset_triggered]} (sel :one :fields [User :reset_triggered :reset_token] :id user-id)]
-    ;; Make sure the plaintext token matches up with the hashed one for this user
-    (check (try (creds/bcrypt-verify token reset_token)
-                (catch Throwable _))
-      [400 "Invalid reset token"]
+  (or (when-let [[_ user-id] (re-matches #"(^\d+)_.+$" token)]
+        (let [user-id (Integer/parseInt user-id)]
+          (when-let [{:keys [reset_token reset_triggered]} (sel :one :fields [User :reset_triggered :reset_token] :id user-id)]
+            ;; Make sure the plaintext token matches up with the hashed one for this user
+            (when (try (creds/bcrypt-verify token reset_token)
+                       (catch Throwable _))
 
-      ;; check that the reset was triggered within the last 1 HOUR, after that the token is considered expired
-      (> (* 60 60 1000) (- (System/currentTimeMillis) (or reset_triggered 0)))
-      [400 "Reset token has expired"])
-    (set-user-password user-id password)
-    ;; after a successful password update go ahead and offer the client a new session that they can use
-    (let [session-id (create-session user-id)]
-      (events/publish-event :user-login {:user_id user-id :session_id session-id})
-      {:success    true
-       :session_id session-id})))
+              ;; check that the reset was triggered within the last 1 HOUR, after that the token is considered expired
+              (checkp (> (* 60 60 1000) (- (System/currentTimeMillis) (or reset_triggered 0)))
+                'password "Reset token has expired")
+
+              (set-user-password user-id password)
+              ;; after a successful password update go ahead and offer the client a new session that they can use
+              (let [session-id (create-session user-id)]
+                (events/publish-event :user-login {:user_id user-id :session_id session-id})
+                {:success    true
+                 :session_id session-id})))))
+      (throw (invalid-param-exception :password "Invalid reset token"))))
 
 
 (defendpoint GET "/properties"

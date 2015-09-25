@@ -131,17 +131,17 @@
   (client :post 400 "session/reset_password" {:token "anything"}))
 
 ;; Test that malformed token returns 400
-(expect "Invalid reset token"
+(expect {:errors {:password "Invalid reset token"}}
   (client :post 400 "session/reset_password" {:token "not-found"
                                               :password "whateverUP12!!"}))
 
 ;; Test that invalid token returns 400
-(expect "Invalid reset token"
+(expect {:errors {:password "Invalid reset token"}}
   (client :post 400 "session/reset_password" {:token "1_not-found"
                                               :password "whateverUP12!!"}))
 
 ;; Test that old token can expire
-(expect "Reset token has expired"
+(expect {:errors {:password "Reset token has expired"}}
   (let [token (str (user->id :rasta) "_" (java.util.UUID/randomUUID))]
     (upd User (user->id :rasta) :reset_token token, :reset_triggered 0)
     (client :post 400 "session/reset_password" {:token token
