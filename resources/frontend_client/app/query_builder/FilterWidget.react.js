@@ -338,7 +338,7 @@ export default React.createClass({
             } else if (this.state.fieldValues.type === "date") {
                 var date = value ? moment(value) : moment();
                 return (
-                    <div className="flex full-height layout-centered m2">
+                    <div className="flex layout-centered m2">
                         <Calendar
                             selected={date}
                             onChange={this.setDateValue.bind(null, valueIndex)}

@@ -36,6 +36,10 @@
 
 (extend-ICanReadWrite DashboardEntity :read :public-perms, :write :public-perms)
 
+
+;;; ## ---------------------------------------- REVISIONS ----------------------------------------
+
+
 (defn- serialize-instance [_ id {:keys [ordered_cards], :as dashboard}]
   (-> dashboard
       (select-keys [:description :name :public_perms])
@@ -44,7 +48,7 @@
 
 (defn- revert-to-revision [_ dashboard-id serialized-dashboard]
   ;; Update the dashboard description / name / permissions
-
+  (m/mapply upd Dashboard dashboard-id (dissoc serialized-dashboard :cards))
   ;; Now update the cards as needed
   (let [serialized-cards    (:cards serialized-dashboard)
         id->serialized-card (zipmap (map :id serialized-cards) serialized-cards)
