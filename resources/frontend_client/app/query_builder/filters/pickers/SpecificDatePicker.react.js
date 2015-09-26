@@ -7,6 +7,7 @@ import { computeFilterTimeRange } from "metabase/lib/query_time";
 
 import _ from "underscore";
 import cx from "classnames";
+import moment from "moment";
 
 export default class SpecificDatePicker extends Component {
     constructor(props) {
@@ -36,6 +37,14 @@ export default class SpecificDatePicker extends Component {
     render() {
         let { filter } = this.props;
         let [start, end] = computeFilterTimeRange(filter);
+
+        let initial;
+        if (start && end) {
+            initial = Math.abs(moment().diff(start)) < Math.abs(moment().diff(end)) ? start : end;
+        } else if (start) {
+            initial = start;
+        }
+
         if (start && start.isSame(end, "day")) {
             end = null;
         }
@@ -44,6 +53,7 @@ export default class SpecificDatePicker extends Component {
             <div>
                 <div className="mx1 mt1">
                     <Calendar
+                        initial={initial}
                         selected={start}
                         selectedEnd={end}
                         onChange={this.onChange}

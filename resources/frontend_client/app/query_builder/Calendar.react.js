@@ -6,15 +6,15 @@ import moment from "moment";
 
 import Icon from 'metabase/components/Icon.react';
 
+const MODES = ['month', 'year', 'decade'];
+
 export default class Calendar extends Component {
     constructor(props) {
         super(props);
-        let month = moment(props.selected || undefined);
-        const modes = ['month', 'year', 'decade']
+
         this.state = {
-            month: month,
-            modes: modes,
-            currentMode: modes[0]
+            current: moment(props.initial || undefined),
+            currentMode: MODES[0]
         };
         this.previous = this.previous.bind(this);
         this.next = this.next.bind(this);
@@ -46,13 +46,13 @@ export default class Calendar extends Component {
     }
 
     previous() {
-        let month = this.state.month;
+        let month = this.state.current;
         month.add(-1, "M");
         this.setState({ month: month });
     }
 
     next() {
-        let month = this.state.month;
+        let month = this.state.current;
         month.add(1, "M");
         this.setState({ month: month });
     }
@@ -64,7 +64,7 @@ export default class Calendar extends Component {
                     <Icon name="chevronleft" width="10" height="12" />
                 </div>
                 <span className="flex-full" />
-                <h4 className="bordered border-hover cursor-pointer rounded p1" onClick={this.cycleMode}>{this.state.month.format("MMMM YYYY")}</h4>
+                <h4 className="bordered border-hover cursor-pointer rounded p1" onClick={this.cycleMode}>{this.state.current.format("MMMM YYYY")}</h4>
                 <span className="flex-full" />
                 <div className="bordered border-hover rounded p1 transition-border cursor-pointer px1" onClick={this.next}>
                     <Icon name="chevronright" width="10" height="12" />
@@ -85,7 +85,7 @@ export default class Calendar extends Component {
     renderWeeks() {
         var weeks = [],
             done = false,
-            date = moment(this.state.month).startOf("month").add("w" -1).day("Sunday"),
+            date = moment(this.state.current).startOf("month").add("w" -1).day("Sunday"),
             monthIndex = date.month(),
             count = 0;
 
@@ -94,7 +94,7 @@ export default class Calendar extends Component {
                 <Week
                     key={date.toString()}
                     date={moment(date)}
-                    month={this.state.month}
+                    month={this.state.current}
                     onClickDay={this.onClickDay}
                     selected={this.props.selected}
                     selectedEnd={this.props.selectedEnd}
