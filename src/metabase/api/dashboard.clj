@@ -57,8 +57,7 @@
                                :description description
                                :name name
                                :public_perms public_perms))
-  (events/publish-event :dashboard-update {:id id :actor_id *current-user-id*})
-  (push-revision :entity Dashboard, :object (Dashboard id)))
+  (events/publish-event :dashboard-update {:id id :actor_id *current-user-id*}))
 
 (defendpoint DELETE "/:id"
   "Delete a `Dashboard`."
@@ -78,7 +77,6 @@
   (check-400 (exists? Card :id cardId))
   (let [result (ins DashboardCard :card_id cardId :dashboard_id id)]
     (events/publish-event :dashboard-add-cards {:id id :actor_id *current-user-id* :dashcards [result]})
-    (push-revision :entity Dashboard, :object (Dashboard id))
     result))
 
 (defendpoint DELETE "/:id/cards"
@@ -90,7 +88,6 @@
   (let [dashcard (sel :one DashboardCard :id dashcardId)
         result (del DashboardCard :id dashcardId :dashboard_id id)]
     (events/publish-event :dashboard-remove-cards {:id id :actor_id *current-user-id* :dashcards [dashcard]})
-    (push-revision :entity Dashboard, :object (Dashboard id))
     result))
 
 (defendpoint POST "/:id/reposition"
@@ -108,8 +105,7 @@
     (let [dashcard (sel :one [DashboardCard :id] :id dashcard-id :dashboard_id id)]
       (when dashcard
         (upd DashboardCard dashcard-id :sizeX sizeX :sizeY sizeY :row row :col col))))
-  (events/publish-event :dashboard-reposition-cards {:id id :actor_id *current-user-id* :cards cards})
-  (push-revision :entity Dashboard, :object (Dashboard id))
+  (events/publish-event :dashboard-reposition-cards {:id id :actor_id *current-user-id* :dashcards cards})
   {:status :ok})
 
 (define-routes)

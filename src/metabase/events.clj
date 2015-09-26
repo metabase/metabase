@@ -91,3 +91,26 @@
       (catch Exception e
         (log/error "Unexpected error listening on events" e)))
     (recur)))
+
+
+;;; ## ---------------------------------------- HELPER FUNCTIONS ----------------------------------------
+
+
+(defn topic->model
+  "Determine a valid `model` identifier for the given `topic`."
+  [topic]
+  ;; just take the first part of the topic name after splitting on dashes.
+  (first (clojure.string/split (name topic) #"-")))
+
+(defn object->model-id
+  "Determine the appropriate `model_id` (if possible) for a given `object`."
+  [topic object]
+  (if (contains? (set (keys object)) :id)
+    (:id object)
+    (let [model (topic->model topic)]
+      (get object (keyword (format "%s_id" model))))))
+
+(defn object->user-id
+  "Determine the appropriate `user_id` (if possible) for a given `object`."
+  [object]
+  (or (:actor_id object) (:user_id object) (:creator_id object)))
