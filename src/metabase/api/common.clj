@@ -70,7 +70,7 @@
 
 ;;; #### checkp- functions: as in "check param". These functions expect that you pass a symbol so they can throw exceptions w/ relevant error messages.
 
-(defn- invalid-param-exception
+(defn invalid-param-exception
   "Create an `ExceptionInfo` that contains information about an invalid API params in the expected format."
   [field-name message]
   (ex-info (format "Invalid field: %s" field-name)
