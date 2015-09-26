@@ -1,45 +1,76 @@
 
-> **This guide will teach you:**
-> How to compile your own copy of Metabase
-> How to set up a development environment
-> How to run the Metabase Server
-> How to contribute back to the Metabase project
+> **This guide will teach you:**  
+> How to compile your own copy of Metabase  
+> How to set up a development environment  
+> How to run the Metabase Server  
+> How to contribute back to the Metabase project  
 
 
 [![Circle CI](https://circleci.com/gh/metabase/metabase-init.svg?style=svg&circle-token=3ccf0aa841028af027f2ac9e8df17ce603e90ef9)](https://circleci.com/gh/metabase/metabase-init)
 
-## Install Prerequisites
+# Install Prerequisites
+
+These are the set of tools which are required in order to complete any build of the Metabase code.  Follow the links to download and install them on your own before continuing.
 
 1. Oracle JDK 8 (http://www.oracle.com/technetwork/java/javase/downloads/index.html)
 2. Node.js for npm (http://nodejs.org/)
 3. Leiningen (http://leiningen.org/)
 
 
-## Installing dependencies
+# Build Metabase
 
-After you've installed the prerequisites and have a local copy of the repo
-you'll need to install the following:
+The entire Metabase application is compiled and assembled into a single .jar file which can run on any modern JVM.  There is a script which will execute all steps in the process and output the final artifact for you.
+
+    ./build-uberjar
+
+After running the build script simply look in `target/uberjar` for the output .jar file and you are ready to go.
+
+
+# Development Environment
+
+If you plan to work on the Metabase code and make changes then you'll need to understand a few more things.
+
+### Overview
+
+The Metabase application has two basic compnents:
+
+1. a backend written in Clojure which contains a REST API as well as all the relevant code for talking to databases and processing queries.
+2. a frontend written as a Javascript single-page application which provides the web UI.
+
+Both components are built and assembled together into a single jar file which runs the entire application.
+
+### 3rd party dependencies
+
+Metabase depends on lots of other 3rd party libraries to run, so as you are developing you'll need to keep those up to date.  These don't run automatically during development, so kick them off manually when needed.
 
 ```sh
-# install clojure  dependencies
+# clojure dependencies
 $ lein deps
-# install frontend dependencies from npm
+# javascript dependencies
 $ npm install
 ```
 
-## Frontend overview
-To start working, you'll need to build the frontend JS and CSS
+### Development server (quick start)
 
-We use these technologies for our FE build process to allow us to use modules, es6 syntax,
-and css variables.
+Run your backend development server with
+
+    lein ring server
+
+Start the frontend build process with
+
+    npm run build-hot
+
+This will get you a full development server running on port :3000 by default.
+
+
+## Frontend development
+We use these technologies for our FE build process to allow us to use modules, es6 syntax, and css variables.
 
 - webpack
 - babel
 - cssnext
 
-## NPM scripts & frontend build process
-
-Frontend tasks are managed by NPM. All available tasks can be found in package.json under "scripts".
+Frontend tasks are managed by `npm`. All available tasks can be found in `package.json` under *scripts*.
 
 To build the frontend client without watching for changes, you can use:
 
@@ -55,59 +86,55 @@ $ npm run build-hot
 
 Note that at this time if you change CSS variables, those changes will only be picked up when a build is restarted.
 
-## Usage
+There is also an option to reload changes on save without hot reloading if you prefer that.
 
-Then run the HTTP server with
+```sh
+$ npm run build-watch
+```
+
+#### Unit Tests / Linting
+
+Run unit tests with
+
+    npm run test             # Karma
+    npm run test-e2e         # Protractor
+
+Run the linters with
+
+    npm run lint
+
+
+## Backend development
+Leiningen and your REPL are the main development tools for the backend.  There are some directions below on how to setup your REPL for easier development.
+
+And of course your Jetty development server is available via
 
     lein ring server
 
 
-## Clojure Unit Tests / Linting
+#### Unit Tests / Linting
 
-Check that the project can compile successfully with
+Run unit tests with
 
-    ./build-uberjar
+    lein test
+
+or a specific test with
+
+    lein test metabase.api.session-test  
+
+By default, the tests only run against the `h2` dataset (built-in test database). You can specify which datasets/drivers to run tests against with the env var `MB_TEST_DATASETS`:
+
+    MB_TEST_DATASETS=h2,postgres,mysql,mongo lein test
+
+At the time of this writing, the valid datasets are `h2`, `postgres`, `mysql`, and `mongo`.
 
 Run the linters with
 
     lein eastwood                        # Clojure linters
     lein bikeshed --max-line-length 240
 
-Run unit tests with
 
-    lein test
-
-By default, the tests only run against the `generic-sql` dataset (an H2 test database).
-You can run specify which datasets/drivers to run tests against with the env var `MB_TEST_DATASETS`:
-
-    MB_TEST_DATASETS=generic-sql,mongo lein test
-
-At the time of this writing, the valid datasets are `generic-sql` and `mongo`.
-
-## Documentation
-
-#### Instant Cheatsheet
-
-Start up an instant cheatsheet for the project + dependencies by running
-
-    lein instant-cheatsheet
-
-#### Marginalia
-
-Available at http://metabase.github.io/metabase-init/.
-
-You can generate and view documentation with
-
-    lein marg
-    open ./docs/uberdoc.html
-
-You can update the GitHub pages documentation using
-
-    make dox
-
-You should be on the `master` branch without any uncommited local changes before doing so. Also, make sure you've fetched the branch `gh-pages` and can push it back to `origin`.
-
-## Bootstrapping (for Development)
+#### Bootstrapping (for REPL)
 
 To quickly get your dev environment set up, use the `bootstrap` function to create a new User and Organization.
 Open a REPL in Emacs or with `lein repl` and enter the following:
@@ -121,7 +148,7 @@ Open a REPL in Emacs or with `lein repl` and enter the following:
 
 You'll be walked through the steps to get started.
 
-## API Client (for Development)
+#### API Client (for REPL)
 
 You can make API calls from the REPL using `metabase.http-client`:
 
@@ -161,6 +188,33 @@ Will give you a list of out-of-date dependencies.
 Once's this repo is made public, this Clojars badge will work and show the status as well:
 
 [![Dependencies Status](http://jarkeeper.com/metabase/metabase-init/status.png)](http://jarkeeper.com/metabase/metabase-init)
+
+
+## Documentation
+
+#### Instant Cheatsheet
+
+Start up an instant cheatsheet for the project + dependencies by running
+
+    lein instant-cheatsheet
+
+#### Marginalia
+
+Available at http://metabase.github.io/metabase-init/.
+
+You can generate and view documentation with
+
+    lein marg
+    open ./docs/uberdoc.html
+
+You can update the GitHub pages documentation using
+
+    make dox
+
+You should be on the `master` branch without any uncommited local changes before doing so. Also, make sure you've fetched the branch `gh-pages` and can push it back to `origin`.
+
+
+
 
 # Contributing
 
