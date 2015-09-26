@@ -96,11 +96,13 @@ export default React.createClass({
                     </span>
                 </div>
                 <div className={"mt2 " + (this.isHidden() ? "disabled" : "")}>
-                    <div className="text-uppercase text-grey-3 py1 flex">
-                        <div className="flex-full px1">Column</div>
-                        <div className="flex-half px1">Visibility</div>
-                        <div className="flex-half px1">Type</div>
-                        <div className="flex-half px1">Details</div>
+                    <div className="text-uppercase text-grey-3 py1">
+                        <div style={{minWidth: 420}} className="float-left">Column</div>
+                        <div className="flex clearfix">
+                            <div className="flex-half px1">Visibility</div>
+                            <div className="flex-half px1">Type</div>
+                            <div className="flex-half px1">Details</div>
+                        </div>
                     </div>
                     <ol className="border-top border-bottom scroll-y">
                         {fields}
