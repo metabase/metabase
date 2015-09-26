@@ -91,12 +91,17 @@ export default class FilterPopover extends Component {
         let filter = [operatorName, oldFilter[1]];
 
         if (operator) {
-            for (var i = 0; i < operator.fields.length; i++) {
+            for (let i = 0; i < operator.fields.length; i++) {
                 filter.push(undefined);
             }
-            if (operator.multi && oldOperator && oldOperator.multi) {
-                for (var i = 2; i < oldFilter.length; i++) {
-                    filter[i] = oldFilter[i];
+            if (oldOperator) {
+                // copy over values of the same type
+                for (let i = 0; i < oldFilter.length - 2; i++) {
+                    let field = operator.multi ? operator.fields[0] : operator.fields[i];
+                    let oldField = oldOperator.multi ? oldOperator.fields[0] : oldOperator.fields[i];
+                    if (field && oldField && field.type === oldField.type) {
+                        filter[i + 2] = oldFilter[i + 2];
+                    }
                 }
             }
         }
