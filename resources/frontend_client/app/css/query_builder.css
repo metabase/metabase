@@ -554,9 +554,26 @@
 
 .List-item:hover,
 .List-item--selected {
-    background-color: #B8A2CC;
+    background-color: currentColor;
     border-color: rgba(0,0,0,0.2);
+    /*color: white;*/
+}
+
+.List-item-title {
+    color: var(--default-font-color);
+}
+
+.List-item:hover .List-item-title,
+.List-item--selected .List-item-title {
     color: white;
+}
+
+.List-section-header {
+    color: var(--default-font-color);
+}
+
+.List-section-header:hover {
+    color: currentColor;
 }
 
 .List-item:hover .Icon,

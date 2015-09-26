@@ -48,6 +48,7 @@ export default React.createClass({
                     onClose={this.toggle}
                 >
                     <FieldList
+                        className="text-green"
                         tableName={this.props.tableName}
                         field={this.props.field}
                         fieldOptions={this.props.fieldOptions}

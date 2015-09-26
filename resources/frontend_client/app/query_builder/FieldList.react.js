@@ -87,11 +87,11 @@ export default class FieldList extends Component {
         let sections = [mainSection].concat(fkSections);
 
         return (
-            <div style={{width: '300px'}}>
+            <div className={this.props.className} style={{width: '300px'}}>
                 {sections.map((section, sectionIndex) =>
                     <section key={sectionIndex}>
                         { sections.length > 1 ?
-                            <div className="flex align-center p2 border-bottom text-purple-hover" onClick={() => this.toggleSection(sectionIndex)}>
+                            <div className="List-section-header flex align-center p2 border-bottom" onClick={() => this.toggleSection(sectionIndex)}>
                                 <h3>{section.name}</h3>
                                 <span className="flex-align-right">
                                     <Icon name={this.state.openSection === sectionIndex ? "chevronup" : "chevrondown"} width={12} height={12} />
@@ -107,11 +107,11 @@ export default class FieldList extends Component {
                                                  onClick={this.props.onFieldChange.bind(null, item.value)}
                                             >
                                                 { this.renderTypeIcon(item.field) }
-                                                <h4 className="ml1">{item.field.display_name}</h4>
+                                                <h4 className="List-item-title ml1">{item.field.display_name}</h4>
                                             </a>
                                             { this.props.enableTimeGrouping && isDate(item.field) ?
                                                 <PopoverWithTrigger
-                                                    className="PopoverBody"
+                                                    className={"PopoverBody " + this.props.className}
                                                     triggerElement={this.renderTimeGroupingTrigger(field)}
                                                     tetherOptions={{
                                                         attachment: 'top left',

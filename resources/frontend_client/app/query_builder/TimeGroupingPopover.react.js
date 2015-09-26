@@ -40,14 +40,14 @@ export default class TimeGroupingPopover extends Component {
         let { field } = this.props;
         return (
             <div className="p2" style={{width:"250px"}}>
-                <h3 className="mx2">Group time by</h3>
+                <h3 className="List-section-header mx2">Group time by</h3>
                 <ul className="py1">
                 { BUCKETINGS.map((bucketing, bucketingIndex) =>
                     bucketing == null ?
-                        <hr />
+                        <hr style={{ "border": "none" }}/>
                     :
                         <li className={cx("List-item", { "List-item--selected": parseFieldBucketing(field) === bucketing })}>
-                            <a className="px2 py1 cursor-pointer" onClick={this.setField.bind(this, bucketing)}>
+                            <a className="List-item-title px2 py1 cursor-pointer" onClick={this.setField.bind(this, bucketing)}>
                                 {formatBucketing(bucketing)}
                             </a>
                         </li>
