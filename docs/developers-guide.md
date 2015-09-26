@@ -164,7 +164,7 @@ You can make API calls from the REPL using `metabase.http-client`:
 ;;     ...}
 ```
 
-## Developing with Emacs
+#### Developing with Emacs
 
 `.dir-locals.el` contains some Emacs Lisp that tells `clojure-mode` how to indent Metabase macros and which arguments are docstrings. Whenever this file is updated,
 Emacs will ask you if the code is safe to load. You can answer `!` to save it as safe.
@@ -178,7 +178,7 @@ You'll probably want to tell Emacs to store customizations in a different file. 
   (load-file custom-file))
 ```
 
-## Checking for Out-of-Date Dependencies
+#### Checking for Out-of-Date Dependencies
 
     lein ancient                   # list all out-of-date dependencies
     lein ancient latest lein-ring  # list latest version of artifact lein-ring
