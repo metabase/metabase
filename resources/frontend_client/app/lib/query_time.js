@@ -12,7 +12,7 @@ export function computeFilterTimeRange(filter) {
     }
 
     let [operator, field, ...values] = expandedFilter;
-    let bucketing = parseBucketing(field);
+    let bucketing = parseFieldBucketing(field);
 
     let start, end;
     if (operator === "=" && values[0]) {
@@ -63,7 +63,7 @@ export function expandTimeIntervalFilter(filter) {
 
 export function generateTimeFilterValuesDescriptions(filter) {
     let [operator, field, ...values] = filter;
-    let bucketing = parseBucketing(field);
+    let bucketing = parseFieldBucketing(field);
 
     if (operator === "TIME_INTERVAL") {
         let [n, unit] = values;
@@ -132,6 +132,12 @@ export function generateTimeValueDescription(value, bucketing) {
     }
 }
 
+export function formatBucketing(bucketing) {
+    let words = bucketing.split("-");
+    words[0] = inflection.capitalize(words[0]);
+    return words.join(" ");
+}
+
 export function absolute(date) {
     if (typeof date === "string") {
         return moment(date);
@@ -142,15 +148,30 @@ export function absolute(date) {
     }
 }
 
-function parseBucketing(field) {
+export function parseFieldBucketing(field) {
     if (Array.isArray(field)) {
         if (field[0] === "datetime_field") {
             return field[3];
+        } if (field[0] === "fk->") {
+            return "day";
         } else {
             console.warn("Unknown field format", field);
         }
     }
     return "day";
+}
+
+export function parseFieldTarget(field) {
+    if (Array.isArray(field)) {
+        if (field[0] === "datetime_field") {
+            return field[1];
+        } if (field[0] === "fk->") {
+            return field;
+        } else {
+            console.warn("Unknown field format", field);
+        }
+    }
+    return field;
 }
 
 // 271821 BC and 275760 AD and should be far enough in the past/future

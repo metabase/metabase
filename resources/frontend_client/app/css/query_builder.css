@@ -542,17 +542,35 @@
     border-right: 1px solid color(var(--base-grey) shade(40%));
 }
 
-.FieldList-item .Icon {
+.List-item {
+    display: flex;
+    border-radius: 6px;
+    border: 2px solid transparent;
+}
+
+.List-item .Icon {
     color: #ddd;
 }
 
-.FieldList-item:hover,
-.FieldList-item--selected {
+.List-item:hover,
+.List-item--selected {
     background-color: #B8A2CC;
+    border-color: rgba(0,0,0,0.2);
     color: white;
 }
 
-.FieldList-item:hover .Icon,
-.FieldList-item--selected .Icon {
+.List-item:hover .Icon,
+.List-item--selected .Icon {
     color: white;
+}
+
+.FieldList-grouping-trigger {
+    display: none;
+}
+
+.List-item:hover .FieldList-grouping-trigger,
+.List-item--selected .FieldList-grouping-trigger {
+    display: flex;
+    border-left: 2px solid rgba(0,0,0,0.1);
+    color: rgba(255,255,255,0.5);
 }

@@ -186,7 +186,7 @@ export default class FilterPopover extends Component {
                         field={this.state.filter[1]}
                         fieldOptions={Query.getFieldOptions(this.props.tableMetadata.fields, true)}
                         tableName={this.props.tableMetadata.display_name}
-                        setField={this.setField}
+                        onFieldChange={this.setField}
                     />
                 </div>
             );

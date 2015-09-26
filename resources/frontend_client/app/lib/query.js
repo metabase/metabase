@@ -340,6 +340,7 @@ var Query = {
             typeof field === "number" ||
             (Array.isArray(field) && (
                 (field[0] === 'fk->' && typeof field[1] === "number" && typeof field[2] === "number") ||
+                (field[0] === 'datetime_field' && Query.isValidField(field[1]) && field[2] === "as" && typeof field[3] === "string") ||
                 (field[0] === 'aggregation' && typeof field[1] === "number")
             ))
         );

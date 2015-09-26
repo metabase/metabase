@@ -5,6 +5,7 @@ import _ from "underscore";
 import Icon from "metabase/components/Icon.react";
 
 import Query from "metabase/lib/query";
+import { parseFieldTarget, parseFieldBucketing, formatBucketing } from "metabase/lib/query_time";
 
 import cx from "classnames";
 
@@ -27,6 +28,9 @@ export default React.createClass({
         let targetTitle, fkTitle, fkIcon;
         let { field, fieldOptions } = this.props;
 
+        let bucketing = parseFieldBucketing(field);
+        field = parseFieldTarget(field);
+
         if (Array.isArray(field) && field[0] === 'fk->') {
             var fkDef = _.find(fieldOptions.fks, (fk) => _.isEqual(fk.field.id, field[1]));
             if (fkDef) {
@@ -44,9 +48,14 @@ export default React.createClass({
             }
         }
 
+        let bucketingTitle;
+        if (bucketing !== "day") {
+            bucketingTitle = ": " + formatBucketing(bucketing);
+        }
+
         var titleElement;
         if (fkTitle || targetTitle) {
-            titleElement = <span className="QueryOption">{fkTitle}{fkIcon}{targetTitle}</span>;
+            titleElement = <span className="QueryOption">{fkTitle}{fkIcon}{targetTitle}{bucketingTitle}</span>;
         } else {
             titleElement = <span className="QueryOption">field</span>;
         }

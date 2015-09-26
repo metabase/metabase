@@ -51,7 +51,8 @@ export default React.createClass({
                         tableName={this.props.tableName}
                         field={this.props.field}
                         fieldOptions={this.props.fieldOptions}
-                        setField={this.setField}
+                        onFieldChange={this.setField}
+                        enableTimeGrouping={true}
                     />
                 </Popover>
             );

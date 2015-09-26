@@ -1,11 +1,16 @@
 "use strict";
 
 import React, { Component, PropTypes } from "react";
-import _ from "underscore";
-import cx from "classnames";
-import { getUmbrellaType, TIME, NUMBER, STRING, LOCATION } from 'metabase/lib/schema_metadata';
 
 import Icon from "metabase/components/Icon.react";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
+import TimeGroupingPopover from "./TimeGroupingPopover.react";
+
+import { isDate, getUmbrellaType, TIME, NUMBER, STRING, LOCATION } from 'metabase/lib/schema_metadata';
+import { parseFieldBucketing, parseFieldTarget } from "metabase/lib/query_time";
+
+import _ from "underscore";
+import cx from "classnames";
 
 export default class FieldList extends Component {
     constructor(props) {
@@ -50,14 +55,24 @@ export default class FieldList extends Component {
         return <Icon name={name} width={width} height={height} />
     }
 
+    renderTimeGroupingTrigger(field) {
+        return (
+            <div className="FieldList-grouping-trigger flex align-center p1 cursor-pointer">
+                <h4 className="mr1">by {parseFieldBucketing(field).split("-").join(" ")}</h4>
+                <Icon name="chevronright" width={16} height={16} />
+            </div>
+        )
+    }
+
     render() {
-        let { tableName, fieldOptions } = this.props;
+        let { tableName, field, fieldOptions } = this.props;
+
+        let fieldTarget = parseFieldTarget(field);
 
         let mainSection = {
             name: tableName,
             fields: fieldOptions.fields.map(field => ({
-                types: { base_type: field.base_type, special_type: field.special_type },
-                name: field.display_name,
+                field: field,
                 value: field.id
             }))
         };
@@ -65,8 +80,7 @@ export default class FieldList extends Component {
         let fkSections = fieldOptions.fks.map(fk => ({
             name: fk.field.target.table.display_name,
             fields: fk.fields.map(field => ({
-                types: { base_type: field.base_type, special_type: field.special_type },
-                name: field.display_name,
+                field: field,
                 value: ["fk->", fk.field.id, field.id]
             }))
         }));
@@ -85,15 +99,34 @@ export default class FieldList extends Component {
                             </div>
                         : null }
                         { this.state.openSection === sectionIndex ?
-                            <ul className="border-bottom">
-                              {section.fields.map((field, fieldIndex) => {
+                            <ul className="border-bottom p1">
+                              {section.fields.map((item, itemIndex) => {
                                   return (
-                                      <li key={fieldIndex}>
-                                          <a className={cx('FieldList-item', 'flex align-center px2 py1 cursor-pointer', { 'FieldList-item--selected': _.isEqual(this.props.field, field.value) })}
-                                             onClick={this.props.setField.bind(null, field.value)}>
-                                              { this.renderTypeIcon(field.types) }
-                                              <h4 className="ml1">{field.name}</h4>
-                                          </a>
+                                      <li key={itemIndex} className={cx("List-item flex", { 'List-item--selected': _.isEqual(fieldTarget, item.value) })}>
+                                            <a className="flex-full flex align-center px2 py1 cursor-pointer"
+                                                 onClick={this.props.onFieldChange.bind(null, item.value)}
+                                            >
+                                                { this.renderTypeIcon(item.field) }
+                                                <h4 className="ml1">{item.field.display_name}</h4>
+                                            </a>
+                                            { this.props.enableTimeGrouping && isDate(item.field) ?
+                                                <PopoverWithTrigger
+                                                    className="PopoverBody"
+                                                    triggerElement={this.renderTimeGroupingTrigger(field)}
+                                                    tetherOptions={{
+                                                        attachment: 'top left',
+                                                        targetAttachment: 'top right',
+                                                        targetOffset: '0 0'
+                                                        // constraints: [{ to: 'window', attachment: 'together', pin: ['top', 'bottom']}]
+                                                    }}
+                                                >
+                                                    <TimeGroupingPopover
+                                                        field={field}
+                                                        value={item.value}
+                                                        onFieldChange={this.props.onFieldChange}
+                                                    />
+                                                </PopoverWithTrigger>
+                                            : null }
                                       </li>
                                   )
                               })}
@@ -110,5 +143,6 @@ FieldList.propTypes = {
     field: PropTypes.oneOfType([React.PropTypes.number, React.PropTypes.array]),
     fieldOptions: PropTypes.object.isRequired,
     tableName: PropTypes.string,
-    setField: PropTypes.func.isRequired
+    onFieldChange: PropTypes.func.isRequired,
+    enableTimeGrouping: PropTypes.bool
 };

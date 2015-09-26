@@ -93,7 +93,6 @@ export default React.createClass({
 
         if (isDate(fieldDef)) {
             values = generateTimeFilterValuesDescriptions(this.props.filter);
-            console.log("XXX", values)
         }
 
         // the first 2 positions of the filter are always for fieldId + fieldOperator
