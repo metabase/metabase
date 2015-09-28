@@ -1,5 +1,7 @@
 'use strict';
 
+import MetabaseSettings from "metabase/lib/settings";
+
 var AuthControllers = angular.module('metabase.auth.controllers', [
     'metabase.auth.services',
     'ipCookie',
@@ -99,6 +101,7 @@ AuthControllers.controller('PasswordReset', ['$scope', '$routeParams', '$locatio
         }
 
         $scope.resetSuccess = false;
+        $scope.passwordComplexity = MetabaseSettings.passwordComplexity(false);
         $scope.newUserJoining = ($location.hash() === 'new');
 
         $scope.resetPassword = function(password) {
