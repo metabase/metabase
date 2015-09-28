@@ -16,16 +16,14 @@
 (defonce ^:private sync-databases-trigger (atom nil))
 
 ;; simple job which looks up all databases and runs a sync on them
-;; TODO - skip the sample dataset?
 (jobs/defjob SyncDatabases
   [ctx]
-  (dorun
-    (for [database (db/sel :many Database)]
-      (try
-        ;; NOTE: this happens synchronously for now to avoid excessive load if there are lots of databases
-        (driver/sync-database! database)
-        (catch Exception e
-          (log/error "Error syncing database: " (:id database) e))))))
+  (doseq [database (db/sel :many Database, :name [not= @(resolve 'metabase.core/sample-dataset-name)])] ; Skip the sample dataset
+    (try
+      ;; NOTE: this happens synchronously for now to avoid excessive load if there are lots of databases
+      (driver/sync-database! database)
+      (catch Exception e
+        (log/error "Error syncing database: " (:id database) e)))))
 
 ;; this is what actually adds our task to the scheduler
 (when (config/is-prod?)

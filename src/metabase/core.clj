@@ -149,7 +149,7 @@
     (.stop ^org.eclipse.jetty.server.Server @jetty-instance)
     (reset! jetty-instance nil)))
 
-(def ^:private ^:const sample-dataset-name "Sample Dataset")
+(def ^:const sample-dataset-name "Sample Dataset")
 (def ^:private ^:const sample-dataset-filename "sample-dataset.db.mv.db")
 
 (defn- add-sample-dataset! []
