@@ -14,14 +14,16 @@ export default class NumberPicker extends Component {
     }
 
     _validate(values) {
-        return values.map(v => !isNaN(v));
+        return values.map(v => v === undefined || !isNaN(v));
     }
 
     onValuesChange(stringValues) {
         let values = stringValues.map(v => parseFloat(v))
         this.props.onValuesChange(values.map(v => isNaN(v) ? null : v));
-        let validations = this._validate(values);
-        this.setState({ values: stringValues, validations: validations });
+        this.setState({
+            values: stringValues,
+            validations: this._validate(values)
+        });
     }
 
     render() {
