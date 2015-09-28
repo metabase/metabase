@@ -84,7 +84,7 @@
 
 (def ^:private ^:const reset-token-ttl-ms
   "Number of milliseconds a password reset is considered valid."
-  (* 60 60 1000))
+  (* 48 60 60 1000)) ; token considered valid for 48 hours
 
 (defn- valid-reset-token->user-id
   "Check if a password reset token is valid. If so, return the `User` ID it corresponds to."
@@ -95,7 +95,7 @@
         ;; Make sure the plaintext token matches up with the hashed one for this user
         (when (try (creds/bcrypt-verify token reset_token)
                    (catch Throwable _))
-          ;; check that the reset was triggered within the last 1 HOUR, after that the token is considered expired
+          ;; check that the reset was triggered within the last 48 HOURS, after that the token is considered expired
           (let [token-age (- (System/currentTimeMillis) reset_triggered)]
             (when (< token-age reset-token-ttl-ms)
               user-id)))))))
