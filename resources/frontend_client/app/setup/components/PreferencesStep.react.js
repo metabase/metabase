@@ -40,7 +40,7 @@ export default class PreferencesStep extends Component {
                     <StepTitle title={stepText} number={stepNumber} />
                     <form onSubmit={this.formSubmitted.bind(this)} novalidate>
                         <div className="Form-field Form-offset">
-                            In order to help us improve Metabase, we'd like to collect certain data about usage through Google Analytics.  <a className="link" href="">Here's a full list of everything we track and why.</a>
+                            In order to help us improve Metabase, we'd like to collect certain data about usage through Google Analytics.  <a className="link" href="http://www.metabase.com/docs/latest/information-collection.html" target="_blank">Here's a full list of everything we track and why.</a>
                         </div>
 
                         <div className="Form-field Form-offset mr4">
