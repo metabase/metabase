@@ -185,6 +185,20 @@ import _ from "underscore";
         'description': 'A field that should never be shown anywhere.'
     }];
 
+    this.field_visibility_types = [{
+        'id': 'everywhere',
+        'name': 'Everywhere',
+        'description': 'The default setting.  This field will be displayed normally in tables and charts.'
+    }, {
+        'id': 'detail_views',
+        'name': 'Only in Detail Views',
+        'description': "This field will only be displayed when viewing the details of a single record. Use this for information that's lengthy or that isn't useful in a table or chart."
+    }, {
+        'id': 'do_not_include',
+        'name': 'Do Not Include',
+        'description': 'Metabase will never retrieve this field. Use this for sensitive or irrelevant information.'
+    }];
+
     this.boolean_types = [{
         'id': true,
         'name': 'Yes'
