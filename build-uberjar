@@ -3,7 +3,7 @@
 echo "Running 'npm install' to download javascript dependencies..." &&
 npm install &&
 
-echo "Running 'webpack -p' to assemble and minify frontend assets..."
+echo "Running 'webpack -p' to assemble and minify frontend assets..." &&
 ./node_modules/webpack/bin/webpack.js -p &&
 
 if [ -f resources/sample-dataset.db.mv.db ]; then
