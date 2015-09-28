@@ -11,4 +11,4 @@
 
 (def ^:const tag
   "Git tag for this version of Metabase."
-  "v0.11.1")
+  "[UNDEFINED]") ; set version by running ./build-uberjar generate_version_info
