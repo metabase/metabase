@@ -115,15 +115,12 @@
 
   ;; Now start the task runner
   (task/start-scheduler!)
-  (task/start-task-runner!)
 
   (log/info "Metabase Initialization COMPLETE")
   true)
 
-;; TODO - uh, when do we *stop* the task runner ?
 
 ;; ## Jetty (Web) Server
-
 
 (def ^:private jetty-instance
   (atom nil))
