@@ -24,6 +24,7 @@
                  [cheshire "5.5.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
                  [clj-http-lite "0.2.1"]                              ; HTTP client; lightweight version of clj-http that uses HttpURLConnection instead of Apache
                  [clj-time "0.10.0"]                                  ; library for dealing with date/time
+                 [clojurewerkz/quartzite "2.0.0"]                     ; scheduling library
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
                  [com.cemerick/friend "0.2.1"]                        ; auth library
                  [com.draines/postal "1.11.3"]                        ; SMTP library
@@ -58,7 +59,8 @@
   :javac-options ["-target" "1.6" "-source" "1.6"]
   ;; :jar-exclusions [#"\.java"] Circle CI doesn't like regexes because it's using the EDN reader and is retarded
   :ring {:handler metabase.core/app
-         :init metabase.core/init}
+         :init metabase.core/init
+         :destroy metabase.core/destroy}
   :eastwood {:exclude-namespaces [:test-paths]
              :add-linters [:unused-private-vars]
              :exclude-linters [:constant-test                         ; korma macros generate some forms with if statements that are always logically true or false
