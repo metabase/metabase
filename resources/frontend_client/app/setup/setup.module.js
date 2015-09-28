@@ -1,23 +1,16 @@
 'use strict';
 
-var Setup = angular.module('metabase.setup', [
-    'metabase.setup.controllers',
-    'metabase.setup.directives'
-]);
+var Setup = angular.module('metabase.setup', ['metabase.setup.controllers']);
 
 Setup.config(['$routeProvider', function($routeProvider) {
 
-    $routeProvider.when('/setup/init/:setupToken', {
-        template: '',
-        controller: 'SetupInit'
-    });
-
-    $routeProvider.when('/setup/welcome', {
-        templateUrl: '/app/setup/partials/setup_welcome.html'
-    });
-
-    $routeProvider.when('/setup/info', {
-        templateUrl: '/app/setup/partials/setup_info.html',
-        controller: 'SetupInfo'
+    $routeProvider.when('/setup/', {
+        template: '<div mb-redux-component class="flex flex-column flex-full" />',
+        controller: 'SetupController',
+        resolve: {
+            appState: ["AppState", function(AppState) {
+                return AppState.init();
+            }]
+        }
     });
 }]);
