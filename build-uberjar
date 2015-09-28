@@ -16,6 +16,9 @@ generate_version_info() {
 
         # Ok, now generate the appropriate file. Ha! we are ghetto
         cat src/metabase/version.clj.template | perl -pe "s/{{VERSION}}/$LATEST_TAG/" > src/metabase/version.clj
+
+        # We don't want these version changes being passed along to master so to git to ignore them
+        git update-index --assume-unchanged src/metabase/version.clj
     fi
 }
 
