@@ -43,4 +43,3 @@
                                      (cron/schedule (cron/cron-schedule "0 0 0 * * ? *")))))
   ;; submit ourselves to the scheduler
   (task/schedule-task! @sync-databases-job @sync-databases-trigger))
-
