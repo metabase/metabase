@@ -1,7 +1,7 @@
 (ns metabase.task.sync-databases
   (:require [clojure.tools.logging :as log]
-            [clojurewerkz.quartzite.jobs :as jobs]
-            [clojurewerkz.quartzite.triggers :as triggers]
+            (clojurewerkz.quartzite [jobs :as jobs]
+                                    [triggers :as triggers])
             [clojurewerkz.quartzite.schedule.cron :as cron]
             (metabase [config :as config]
                       [core :refer [sample-dataset-id]]
