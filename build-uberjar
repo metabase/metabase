@@ -1,17 +1,53 @@
 #! /bin/bash
 
-echo "Running 'npm install' to download javascript dependencies..." &&
-npm install &&
+# Generate the src/metabase/version.clj file
+generate_version_info() {
+    # Skip on CircleCI since this is interactive
+    if [ ! $CI ]; then
+        LATEST_TAG=$(git describe master --tags --abbrev=0)
 
-echo "Running 'webpack -p' to assemble and minify frontend assets..." &&
-./node_modules/webpack/bin/webpack.js -p &&
+        echo "Tagging this uberjar as version $LATEST_TAG"
+        read -e -p "Is this OK? [y/n] " TAG_IS_OKAY_Y_OR_N
 
-if [ -f resources/sample-dataset.db.mv.db ]; then
-    echo "Sample Dataset already generated."
+        if [ $TAG_IS_OKAY_Y_OR_N != "y" ]; then
+            "Stopping now! Please check that you've pushed the correct tag to origin/master and try again. 😿"
+            exit 1
+        fi
+
+        # Ok, now generate the appropriate file. Ha! we are ghetto
+        cat src/metabase/version.clj.template | perl -pe "s/{{VERSION}}/$LATEST_TAG/" > src/metabase/version.clj
+    fi
+}
+
+build_frontend() {
+    echo "Running 'npm install' to download javascript dependencies..." &&
+    npm install &&
+
+    echo "Running 'webpack -p' to assemble and minify frontend assets..." &&
+    ./node_modules/webpack/bin/webpack.js -p
+}
+
+generate_sample_dataset() {
+    if [ -f resources/sample-dataset.db.mv.db ]; then
+        echo "Sample Dataset already generated."
+    else
+        echo "Running 'lein generate-sample-dataset' to generate the sample dataset..."
+        lein generate-sample-dataset
+    fi
+}
+
+build_uberjar() {
+    echo "Running 'lein uberjar'..."
+    lein uberjar
+}
+
+all() {
+    generate_version_info && build_frontend && generate_sample_dataset && build_uberjar
+}
+
+# Default to running all but let someone specify if desired
+if [ $1 ]; then
+    $1
 else
-    echo "Running 'lein generate-sample-dataset' to generate the sample dataset..."
-    lein generate-sample-dataset
-fi &&
-
-echo "Running 'lein uberjar'..." &&
-lein uberjar
+    all
+fi
