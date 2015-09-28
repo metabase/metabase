@@ -246,23 +246,47 @@
     border: 1px solid #e0e0e0;
 }
 
+/* for medium breakpoint only expand if data reference is not shown */
+@media screen and (--breakpoint-min-md) {
+    .GuiBuilder {
+        font-size: 1.0em;
+    }
+}
+
+/* un-expanded (default) */
 .GuiBuilder-row {
     border-bottom: 1px solid #e0e0e0;
 }
-
 .GuiBuilder-row:last-child {
-    border-bottom: none;
+    border-bottom-color: transparent;
 }
+.GuiBuilder-data {
+    border-right: 1px solid #e0e0e0;
+}
+.GuiBuilder-filtered-by {
+    border-right: 1px solid transparent;
+}
+.GuiBuilder-sort-limit {
+    border-left: 1px solid #e0e0e0;
+}
+
+/* expanded */
+.GuiBuilder.GuiBuilder--expand {
+    flex-direction: row;
+}
+.GuiBuilder.GuiBuilder--expand .GuiBuilder-row:last-child {
+    border-right-color: transparent;
+    border-bottom-color: #e0e0e0;
+}
+.GuiBuilder.GuiBuilder--expand .GuiBuilder-filtered-by {
+    border-right-color: #e0e0e0;
+}
+
 
 .GuiBuilder-section {
     position: relative;
     min-height: 48px;
     min-width: 120px;
-    border-right: 1px solid #e0e0e0;
-}
-
-.GuiBuilder-section:last-child {
-    border-right: none;
 }
 
 .GuiBuilder-section-label {
@@ -272,38 +296,6 @@
     left: 10px;
     padding-left: 10px;
     padding-right: 10px;
-}
-
-/* for medium breakpoint only expand if data reference is not shown */
-@media screen and (--breakpoint-min-md) {
-    .GuiBuilder {
-        font-size: 1.0em;
-    }
-    .QueryBuilder:not(.QueryBuilder--showDataReference) .GuiBuilder {
-        flex-direction: row;
-    }
-    .QueryBuilder:not(.QueryBuilder--showDataReference) .GuiBuilder-row:last-child {
-        border-right: none;
-        border-bottom: 1px solid #e0e0e0;
-    }
-    .QueryBuilder:not(.QueryBuilder--showDataReference) .GuiBuilder-section:last-child {
-        border-right: 1px solid #e0e0e0;
-    }
-}
-
-/* for large breakpoint always expand */
-@media screen and (--breakpoint-min-lg) {
-    .GuiBuilder {
-        font-size: 1.1em;
-        flex-direction: row;
-    }
-    .GuiBuilder-row:last-child {
-        border-right: none;
-        border-bottom: 1px solid #e0e0e0;
-    }
-    .GuiBuilder-section:last-child {
-        border-right: 1px solid #e0e0e0;
-    }
 }
 
 .QueryOption {
