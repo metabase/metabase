@@ -47,7 +47,7 @@ export default class TimeGroupingPopover extends Component {
                         <hr style={{ "border": "none" }}/>
                     :
                         <li className={cx("List-item", { "List-item--selected": parseFieldBucketing(field) === bucketing })}>
-                            <a className="List-item-title px2 py1 cursor-pointer" onClick={this.setField.bind(this, bucketing)}>
+                            <a className="List-item-title full px2 py1 cursor-pointer" onClick={this.setField.bind(this, bucketing)}>
                                 {formatBucketing(bucketing)}
                             </a>
                         </li>
