@@ -17,6 +17,7 @@
             (metabase [config :as config]
                       [db :as db]
                       [driver :as driver]
+                      [events :as events]
                       [routes :as routes]
                       [setup :as setup]
                       [task :as task])
@@ -25,8 +26,7 @@
                                  [format :refer :all])
             (metabase.models [setting :refer [defsetting]]
                              [database :refer [Database]]
-                             [user :refer [User]])
-            [metabase.events :as events]))
+                             [user :refer [User]])))
 
 ;; ## CONFIG
 
@@ -85,11 +85,19 @@
                            setup-url
                            "\n\n"))))
 
+(defn destroy
+  "General application shutdown function which should be called once at application shuddown."
+  []
+  (log/info "Metabase Shutting Down ...")
+  (task/stop-scheduler!)
+  (log/info "Metabase Shutdown COMPLETE"))
 
 (defn init
   "General application initialization function which should be run once at application startup."
   []
   (log/info "Metabase Initializing ... ")
+  ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
+  (.addShutdownHook (Runtime/getRuntime) (Thread. destroy))
   (log/debug "Using Config:\n" (with-out-str (clojure.pprint/pprint config/config-all)))
 
   ;; Bootstrap the event system
@@ -106,15 +114,13 @@
     (events/publish-event :install {}))
 
   ;; Now start the task runner
-  (task/start-task-runner!)
+  (task/start-scheduler!)
 
   (log/info "Metabase Initialization COMPLETE")
   true)
 
-;; TODO - uh, when do we *stop* the task runner ?
 
 ;; ## Jetty (Web) Server
-
 
 (def ^:private jetty-instance
   (atom nil))
