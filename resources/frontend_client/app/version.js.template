@@ -8,4 +8,6 @@
 
 'use strict';
 
-var METABASE_VERSION = "{{VERSION}}";
+!function() {
+    this.METABASE_VERSION = "{{VERSION}}";
+}();

@@ -8,4 +8,6 @@
 
 'use strict';
 
-var METABASE_VERSION = "[UNDEFINED]"; // this is a placeholder; run ./build_uberjare generate_version_info to add an appropriate value
+!function() {
+    this.METABASE_VERSION = "[UNDEFINED]"; // this is a placeholder; run ./build_uberjare generate_version_info to add an appropriate value
+}();
