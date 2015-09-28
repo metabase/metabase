@@ -48,10 +48,7 @@ export default React.createClass({
             }
         }
 
-        let bucketingTitle;
-        if (bucketing !== "day") {
-            bucketingTitle = ": " + formatBucketing(bucketing);
-        }
+        let bucketingTitle = ": " + formatBucketing(bucketing);
 
         var titleElement;
         if (fkTitle || targetTitle) {
