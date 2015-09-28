@@ -548,6 +548,7 @@
     border: 2px solid transparent;
 }
 
+.List-section-header .Icon,
 .List-item .Icon {
     color: #ddd;
 }

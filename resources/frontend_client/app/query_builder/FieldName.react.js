@@ -8,6 +8,8 @@ import Query from "metabase/lib/query";
 import { parseFieldTarget, parseFieldBucketing, formatBucketing } from "metabase/lib/query_time";
 import { isDate } from "metabase/lib/schema_metadata";
 
+import { stripId } from "metabase/lib/humanize";
+
 import cx from "classnames";
 
 export default React.createClass({
@@ -36,7 +38,7 @@ export default React.createClass({
         if (Array.isArray(field) && field[0] === 'fk->') {
             let fkDef = _.find(fieldOptions.fks, (fk) => _.isEqual(fk.field.id, field[1]));
             if (fkDef) {
-                fkTitle = (<span>{fkDef.field.display_name}</span>);
+                fkTitle = (<span>{stripId(fkDef.field.display_name)}</span>);
                 fieldDef = _.find(fkDef.fields, (f) => _.isEqual(f.id, field[2]));
                 if (fieldDef) {
                     fkIcon = (<span className="px1"><Icon name="connections" width="10" height="10" /></span>);

@@ -8,6 +8,7 @@ import TimeGroupingPopover from "./TimeGroupingPopover.react";
 
 import { isDate, getUmbrellaType, TIME, NUMBER, STRING, LOCATION } from 'metabase/lib/schema_metadata';
 import { parseFieldBucketing, parseFieldTarget } from "metabase/lib/query_time";
+import { stripId, singularize } from "metabase/lib/humanize";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -35,7 +36,7 @@ export default class FieldList extends Component {
         let { tableName, field, fieldOptions } = newProps;
 
         let mainSection = {
-            name: tableName,
+            name: singularize(tableName),
             fields: fieldOptions.fields.map(field => ({
                 field: field,
                 value: field.id
@@ -43,7 +44,7 @@ export default class FieldList extends Component {
         };
 
         let fkSections = fieldOptions.fks.map(fk => ({
-            name: fk.field.target.table.display_name,
+            name: stripId(fk.field.display_name),
             fields: fk.fields.map(field => ({
                 field: field,
                 value: ["fk->", fk.field.id, field.id]
@@ -75,7 +76,7 @@ export default class FieldList extends Component {
     renderTypeIcon(field) {
         let type = getUmbrellaType(field);
         let name = ICON_MAPPING[type] || 'close';
-        return <Icon name={name} width={18} height={18} />
+        return <Icon name={name} width={18} height={18} />;
     }
 
     renderTimeGroupingTrigger(field) {
@@ -95,9 +96,14 @@ export default class FieldList extends Component {
             <div className={this.props.className} style={{width: '300px'}}>
                 {sections.map((section, sectionIndex) =>
                     <section key={sectionIndex}>
-                        <div className="p2 border-bottom">
+                        <div className="p1 border-bottom">
                             { sections.length > 1 ?
-                                <div className="List-section-header cursor-pointer full flex align-center" onClick={() => this.toggleSection(sectionIndex)}>
+                                <div className="List-section-header px2 py1 cursor-pointer full flex align-center" onClick={() => this.toggleSection(sectionIndex)}>
+                                    { sectionIndex > 0 ?
+                                        <span className="mr2">
+                                            <Icon name="connections" width={18} height={18} />
+                                        </span>
+                                    : null }
                                     <h4>{section.name}</h4>
                                     <span className="flex-align-right">
                                         <Icon name={openSection === sectionIndex ? "chevronup" : "chevrondown"} width={12} height={12} />
@@ -108,7 +114,7 @@ export default class FieldList extends Component {
                             }
                         </div>
                         { openSection === sectionIndex ?
-                            <ul className="border-bottom p1">
+                            <ul className="p1 border-bottom">
                               {section.fields.map((item, itemIndex) => {
                                   return (
                                       <li key={itemIndex} className={cx("List-item flex", { 'List-item--selected': _.isEqual(fieldTarget, item.value) })}>
@@ -116,7 +122,7 @@ export default class FieldList extends Component {
                                                  onClick={this.props.onFieldChange.bind(null, item.value)}
                                             >
                                                 { this.renderTypeIcon(item.field) }
-                                                <h4 className="List-item-title ml1">{item.field.display_name}</h4>
+                                                <h4 className="List-item-title ml2">{item.field.display_name}</h4>
                                             </a>
                                             { this.props.enableTimeGrouping && isDate(item.field) ?
                                                 <PopoverWithTrigger

@@ -12,7 +12,8 @@ import DatePicker from "./pickers/DatePicker.react";
 import Icon from "metabase/components/Icon.react";
 
 import Query from "metabase/lib/query";
-import * as SchemaMetadata from "metabase/lib/schema_metadata";
+import { isDate } from "metabase/lib/schema_metadata";
+import { singularize } from "metabase/lib/humanize";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -202,12 +203,12 @@ export default class FilterPopover extends Component {
                     <div className="FilterPopover-header text-grey-3 p1 mt1 flex align-center">
                         <a className="cursor-pointer flex align-center" onClick={this.clearField}>
                             <Icon name="chevronleft" width="18" height="18"/>
-                            <h3 className="inline-block">{table.display_name}</h3>
+                            <h3 className="inline-block">{singularize(table.display_name)}</h3>
                         </a>
                         <h3 className="mx1">-</h3>
                         <h3 className="text-default">{field.display_name}</h3>
                     </div>
-                    { SchemaMetadata.isDate(field) ?
+                    { isDate(field) ?
                         <DatePicker
                             filter={filter}
                             onFilterChange={this.setFilter}
