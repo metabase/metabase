@@ -6,6 +6,7 @@ import Icon from "metabase/components/Icon.react";
 
 import Query from "metabase/lib/query";
 import { parseFieldTarget, parseFieldBucketing, formatBucketing } from "metabase/lib/query_time";
+import { isDate } from "metabase/lib/schema_metadata";
 
 import cx from "classnames";
 
@@ -25,30 +26,33 @@ export default React.createClass({
     },
 
     render: function() {
-        let targetTitle, fkTitle, fkIcon;
+        let targetTitle, fkTitle, fkIcon, bucketingTitle;
         let { field, fieldOptions } = this.props;
 
         let bucketing = parseFieldBucketing(field);
         field = parseFieldTarget(field);
 
+        let fieldDef;
         if (Array.isArray(field) && field[0] === 'fk->') {
-            var fkDef = _.find(fieldOptions.fks, (fk) => _.isEqual(fk.field.id, field[1]));
+            let fkDef = _.find(fieldOptions.fks, (fk) => _.isEqual(fk.field.id, field[1]));
             if (fkDef) {
                 fkTitle = (<span>{fkDef.field.display_name}</span>);
-                var targetDef = _.find(fkDef.fields, (f) => _.isEqual(f.id, field[2]));
-                if (targetDef) {
-                    targetTitle = (<span>{targetDef.display_name}</span>);
+                fieldDef = _.find(fkDef.fields, (f) => _.isEqual(f.id, field[2]));
+                if (fieldDef) {
                     fkIcon = (<span className="px1"><Icon name="connections" width="10" height="10" /></span>);
                 }
             }
         } else {
-            var fieldDef = _.find(fieldOptions.fields, (f) => _.isEqual(f.id, field));
-            if (fieldDef) {
-                targetTitle = (<span>{fieldDef.display_name}</span>);
-            }
+            fieldDef = _.find(fieldOptions.fields, (f) => _.isEqual(f.id, field));
         }
 
-        let bucketingTitle = ": " + formatBucketing(bucketing);
+        if (fieldDef) {
+            targetTitle = (<span>{fieldDef.display_name}</span>);
+        }
+
+        if (fieldDef && isDate(fieldDef)) {
+            bucketingTitle = ": " + formatBucketing(bucketing);
+        }
 
         var titleElement;
         if (fkTitle || targetTitle) {
