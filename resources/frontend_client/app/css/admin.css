@@ -302,6 +302,15 @@
     font-size: 14px;
 }
 
+.TableEditor-field-visibility {
+    color: var(--orange-color);
+}
+
+.TableEditor-field-visibility .ColumnarSelector-row:hover {
+    background-color: var(--orange-color) !important;
+    color: white !important;
+}
+
 .TableEditor-field-type {
     color: var(--purple-color);
 }
