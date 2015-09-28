@@ -110,7 +110,7 @@ export default class FieldList extends Component {
                                     </span>
                                 </div>
                             :
-                                <h4 className="text-default">{section.name}</h4>
+                                <h4 className="px2 py1 text-default">{section.name}</h4>
                             }
                         </div>
                         { openSection === sectionIndex ?
