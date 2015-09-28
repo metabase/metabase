@@ -16,7 +16,7 @@ export default class DatePicker extends Component {
     }
 
     _detectPane(props) {
-        if (typeof props.filter[2] === "string") {
+        if (props.filter[0] !== "TIME_INTERVAL" && typeof props.filter[2] === "string") {
             return "specific";
         } else {
             return "relative";
