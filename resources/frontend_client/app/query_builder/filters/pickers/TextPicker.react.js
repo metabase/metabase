@@ -28,10 +28,6 @@ export default class TextPicker extends Component {
     render() {
         let { values, validations, multi } = this.props;
 
-        if (values.length === 0) {
-            values = values.concat(null);
-        }
-
         return (
             <div>
                 <ul>
@@ -48,7 +44,7 @@ export default class TextPicker extends Component {
                 </ul>
                 { multi ?
                     <div className="p1">
-                        { values[values.length - 1] !== null ?
+                        { values[values.length - 1] != null ?
                             <a className="text-underline cursor-pointer" onClick={() => this.addValue()}>Add another value</a>
                         : null }
                     </div>
