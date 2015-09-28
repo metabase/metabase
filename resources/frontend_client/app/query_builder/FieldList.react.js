@@ -12,6 +12,13 @@ import { parseFieldBucketing, parseFieldTarget } from "metabase/lib/query_time";
 import _ from "underscore";
 import cx from "classnames";
 
+const ICON_MAPPING = {
+    [TIME]:  'calendar',
+    [LOCATION]: 'location',
+    [STRING]: 'string',
+    [NUMBER]: 'int'
+};
+
 export default class FieldList extends Component {
     constructor(props) {
         super(props);
@@ -66,30 +73,9 @@ export default class FieldList extends Component {
     }
 
     renderTypeIcon(field) {
-        const width = 18;
-        const height = 18;
-        const type = getUmbrellaType(field);
-
-        let name;
-
-        switch(type) {
-            case TIME:
-                name = 'calendar';
-                break;
-            case LOCATION:
-                name = 'location';
-                break;
-            case STRING:
-                name = 'string';
-                break;
-            case NUMBER:
-                name = 'int';
-                break;
-            default:
-                name = 'close';
-        }
-
-        return <Icon name={name} width={width} height={height} />
+        let type = getUmbrellaType(field);
+        let name = ICON_MAPPING[type] || 'close';
+        return <Icon name={name} width={18} height={18} />
     }
 
     renderTimeGroupingTrigger(field) {
