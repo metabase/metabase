@@ -27,6 +27,12 @@ export default React.createClass({
         toggleExpandCollapseFn: React.PropTypes.func.isRequired
     },
 
+    getInitialState: function() {
+        return {
+            expanded: true
+        };
+    },
+
     setQuery: function(dataset_query) {
         this.props.setQueryFn(dataset_query);
     },
@@ -367,6 +373,7 @@ export default React.createClass({
         var isInitiallyOpen = !this.props.query.database || !this.props.query.query.source_table;
         return (
             <DataSelector
+                ref="dataSection"
                 className="arrow-right"
                 includeTables={true}
                 query={this.props.query}
@@ -381,7 +388,7 @@ export default React.createClass({
 
     renderFilterSection: function() {
         return (
-            <div className="GuiBuilder-section GuiBuilder-filtered-by flex align-center">
+            <div className="GuiBuilder-section GuiBuilder-filtered-by flex align-center" ref="filterSection">
                 <span className="GuiBuilder-section-label Query-label">Filtered by</span>
                 {this.renderFilters()}
             </div>
@@ -390,7 +397,7 @@ export default React.createClass({
 
     renderViewSection: function() {
         return (
-            <div className="GuiBuilder-section GuiBuilder-view flex-full flex align-center px1">
+            <div className="GuiBuilder-section GuiBuilder-view flex align-center px1" ref="viewSection">
                 <span className="GuiBuilder-section-label Query-label">View</span>
                 {this.renderAggregation()}
                 {this.renderBreakouts()}
@@ -416,7 +423,7 @@ export default React.createClass({
         }
 
         return (
-            <div className="GuiBuilder-section GuiBuilder-sort-limit flex align-center">
+            <div className="GuiBuilder-section GuiBuilder-sort-limit flex align-center" ref="sortLimitSection">
 
                 <PopoverWithTrigger className="PopoverBody PopoverBody--withArrow"
                                     tetherOptions={tetherOptions}
@@ -434,22 +441,34 @@ export default React.createClass({
         );
     },
 
+    componentDidUpdate: function() {
+        // HACK: magic number "5" accounts for the borders between the sections?
+        let contentWidth = ["data", "filter", "view", "sortLimit"].reduce((acc, ref) => acc + React.findDOMNode(this.refs[`${ref}Section`]).offsetWidth, 0) + 5;
+        let guiBuilderWidth = React.findDOMNode(this.refs.guiBuilder).offsetWidth;
+
+        let expanded = (contentWidth < guiBuilderWidth);
+        if (this.state.expanded !== expanded) {
+            this.setState({ expanded });
+        }
+    },
+
     render: function() {
         var classes = cx({
             'GuiBuilder': true,
-            'GuiBuilder--narrow': this.props.isShowingDataReference,
+            'GuiBuilder--expand': this.state.expanded,
             'rounded': true,
             'shadowed': true
-        })
+        });
         return (
             <div className="wrapper">
-                <div className={classes}>
+                <div className={classes} ref="guiBuilder">
                     <div className="GuiBuilder-row flex">
                         {this.renderDataSection()}
                         {this.renderFilterSection()}
                     </div>
                     <div className="GuiBuilder-row flex flex-full">
                         {this.renderViewSection()}
+                        <div className="flex-full"></div>
                         {this.renderSortLimitSection()}
                     </div>
                 </div>

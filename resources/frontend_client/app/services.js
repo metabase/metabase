@@ -319,6 +319,10 @@ CoreServices.factory('Session', ['$resource', '$cookies', function($resource, $c
         reset_password: {
             url: '/api/session/reset_password',
             method: 'POST'
+        },
+        password_reset_token_valid: {
+            url: '/api/session/password_reset_token_valid',
+            method: 'GET'
         }
     });
 }]);

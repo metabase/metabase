@@ -96,6 +96,11 @@
     (fetch-chunk 0 field-values-lazy-seq-chunk-size
                  max-sync-lazy-seq-results)))
 
+(defn- table-rows-seq [_ database table-name]
+  (k/select (-> (k/create-entity table-name)
+                (k/database (db->korma-db database)))))
+
+
 (defn- table-fks [_ table]
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db table)]
     (->> (.getImportedKeys md nil nil (:name table))
@@ -144,7 +149,8 @@
    :active-table-names            active-table-names
    :active-column-names->type     active-column-names->type
    :table-pks                     table-pks
-   :field-values-lazy-seq         field-values-lazy-seq})
+   :field-values-lazy-seq         field-values-lazy-seq
+   :table-rows-seq                table-rows-seq})
 
 (def ^:const GenericSQLISyncDriverTableFKsMixin
   "Generic SQL implementation of the `ISyncDriverTableFKs` protocol."

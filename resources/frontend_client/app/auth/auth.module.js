@@ -22,4 +22,8 @@ Auth.config(['$routeProvider', function($routeProvider) {
         templateUrl: '/app/auth/partials/password_reset.html',
         controller: 'PasswordReset'
     });
+
+    $routeProvider.when('/auth/password_reset_token_expired', {
+        templateUrl: '/app/auth/partials/password_reset_token_expired.html'
+    });
 }]);
