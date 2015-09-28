@@ -15,21 +15,17 @@ import Query from "metabase/lib/query";
 import * as SchemaMetadata from "metabase/lib/schema_metadata";
 
 import cx from "classnames";
+import _ from "underscore";
 
 export default class FilterPopover extends Component {
     constructor(props) {
         super(props);
 
         this.state = {
-            filter: (props.isNew ? [] : props.filter),
-            pane: props.isNew ? "field" : "filter"
+            filter: (props.isNew ? [] : props.filter)
         };
 
-        this.setField = this.setField.bind(this);
-        this.setOperator = this.setOperator.bind(this);
-        this.setValues = this.setValues.bind(this);
-        this.setFilter = this.setFilter.bind(this);
-        this.commitFilter = this.commitFilter.bind(this);
+        _.bindAll(this, "setField", "clearField", "setOperator", "setValues", "setFilter", "commitFilter");
     }
 
     componentDidUpdate() {
@@ -56,7 +52,7 @@ export default class FilterPopover extends Component {
 
             filter = this._updateOperator(filter, operator);
         }
-        this.setState({ filter, pane: "filter" });
+        this.setState({ filter });
     }
 
     setFilter(filter) {
@@ -133,6 +129,12 @@ export default class FilterPopover extends Component {
         return true;
     }
 
+    clearField() {
+        let { filter } = this.state;
+        filter[1] = null;
+        this.setState({ filter });
+    }
+
     renderPicker(filter, field) {
         let operator = field.operators_lookup[filter[0]];
         return operator.fields.map((operatorField, index) => {
@@ -179,7 +181,7 @@ export default class FilterPopover extends Component {
 
     render() {
         let { filter } = this.state;
-        if (this.state.pane === "field") {
+        if (filter[1] == undefined) {
             return (
                 <div className="FilterPopover">
                     <FieldList
@@ -198,7 +200,7 @@ export default class FilterPopover extends Component {
             return (
                 <div style={{width: 300}}>
                     <div className="FilterPopover-header text-grey-3 p1 mt1 flex align-center">
-                        <a className="cursor-pointer flex align-center" onClick={() => this.setState({ pane: "field" })}>
+                        <a className="cursor-pointer flex align-center" onClick={this.clearField}>
                             <Icon name="chevronleft" width="18" height="18"/>
                             <h3 className="inline-block">{table.display_name}</h3>
                         </a>
