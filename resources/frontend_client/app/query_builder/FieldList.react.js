@@ -95,14 +95,18 @@ export default class FieldList extends Component {
             <div className={this.props.className} style={{width: '300px'}}>
                 {sections.map((section, sectionIndex) =>
                     <section key={sectionIndex}>
-                        { sections.length > 1 ?
-                            <div className="List-section-header flex align-center p2 border-bottom" onClick={() => this.toggleSection(sectionIndex)}>
-                                <h3>{section.name}</h3>
-                                <span className="flex-align-right">
-                                    <Icon name={openSection === sectionIndex ? "chevronup" : "chevrondown"} width={12} height={12} />
-                                </span>
-                            </div>
-                        : null }
+                        <div className="p2 border-bottom">
+                            { sections.length > 1 ?
+                                <div className="List-section-header cursor-pointer full flex align-center" onClick={() => this.toggleSection(sectionIndex)}>
+                                    <h4>{section.name}</h4>
+                                    <span className="flex-align-right">
+                                        <Icon name={openSection === sectionIndex ? "chevronup" : "chevrondown"} width={12} height={12} />
+                                    </span>
+                                </div>
+                            :
+                                <h4 className="text-default">{section.name}</h4>
+                            }
+                        </div>
                         { openSection === sectionIndex ?
                             <ul className="border-bottom p1">
                               {section.fields.map((item, itemIndex) => {
