@@ -15,10 +15,13 @@ generate_version_info() {
         fi
 
         # Ok, now generate the appropriate file. Ha! we are ghetto
-        cat src/metabase/version.clj.template | perl -pe "s/{{VERSION}}/$LATEST_TAG/" > src/metabase/version.clj
+        TEMPLATES="src/metabase/version.clj resources/frontend_client/app/version.js"
+        for template in $TEMPLATES; do
+            cat "$template.template" | perl -pe "s/{{VERSION}}/$LATEST_TAG/" > $template
 
-        # We don't want these version changes being passed along to master so tell git to ignore them
-        git update-index --assume-unchanged src/metabase/version.clj
+            # We don't want these version changes being passed along to master so tell git to ignore them
+            git update-index --assume-unchanged $template
+        done
     fi
 }
 
