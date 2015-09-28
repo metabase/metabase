@@ -42,7 +42,8 @@
     "redux-thunk": "^0.1.0",
     "reselect": "0.0.2",
     "tether": "^1.1.0",
-    "underscore": "^1.8.3"
+    "underscore": "^1.8.3",
+    "z-index": "0.0.1"
   },
   "devDependencies": {
     "angular-mocks": "1.2.28",
