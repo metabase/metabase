@@ -80,8 +80,8 @@ export default React.createClass({
 
         return (
             <div className="relative flex full mt3 mb1">
-                {visualizationSettings}
-                <div className="absolute left right ml-auto mr-auto layout-centered flex">
+                <span className="relative z3">{visualizationSettings}</span>
+                <div className="absolute flex layout-centered left right z2">
                     <RunButton
                         canRun={this.canRun()}
                         isDirty={this.queryIsDirty()}
@@ -89,7 +89,7 @@ export default React.createClass({
                         runFn={this.runQuery}
                     />
                 </div>
-                <div className="flex-align-right flex align-center">
+                <div className="absolute right z3 flex align-center">
                     {!this.queryIsDirty() && this.renderCount()}
                     {this.renderDownloadButton()}
                 </div>
