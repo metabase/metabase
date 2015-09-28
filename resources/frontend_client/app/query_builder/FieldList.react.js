@@ -20,6 +20,43 @@ export default class FieldList extends Component {
         };
     }
 
+    componentWillMount() {
+        this.componentWillReceiveProps(this.props);
+    }
+
+    componentWillReceiveProps(newProps) {
+        let { tableName, field, fieldOptions } = newProps;
+
+        let mainSection = {
+            name: tableName,
+            fields: fieldOptions.fields.map(field => ({
+                field: field,
+                value: field.id
+            }))
+        };
+
+        let fkSections = fieldOptions.fks.map(fk => ({
+            name: fk.field.target.table.display_name,
+            fields: fk.fields.map(field => ({
+                field: field,
+                value: ["fk->", fk.field.id, field.id]
+            }))
+        }));
+
+        let sections = [mainSection].concat(fkSections);
+        let fieldTarget = parseFieldTarget(field);
+
+        let openSection = 0;
+        for (let i = 0; i < sections.length; i++) {
+            if (_.some(sections[i].fields, (item) => _.isEqual(fieldTarget, item.value))) {
+                openSection = i;
+                break;
+            }
+        }
+
+        this.setState({ sections, fieldTarget, openSection });
+    }
+
     toggleSection(sectionIndex) {
         if (this.state.openSection === sectionIndex) {
             this.setState({ openSection: null });
@@ -65,26 +102,8 @@ export default class FieldList extends Component {
     }
 
     render() {
-        let { tableName, field, fieldOptions } = this.props;
-
-        let fieldTarget = parseFieldTarget(field);
-
-        let mainSection = {
-            name: tableName,
-            fields: fieldOptions.fields.map(field => ({
-                field: field,
-                value: field.id
-            }))
-        };
-
-        let fkSections = fieldOptions.fks.map(fk => ({
-            name: fk.field.target.table.display_name,
-            fields: fk.fields.map(field => ({
-                field: field,
-                value: ["fk->", fk.field.id, field.id]
-            }))
-        }));
-        let sections = [mainSection].concat(fkSections);
+        let { field } = this.props;
+        let { sections, fieldTarget, openSection } = this.state;
 
         return (
             <div className={this.props.className} style={{width: '300px'}}>
@@ -94,11 +113,11 @@ export default class FieldList extends Component {
                             <div className="List-section-header flex align-center p2 border-bottom" onClick={() => this.toggleSection(sectionIndex)}>
                                 <h3>{section.name}</h3>
                                 <span className="flex-align-right">
-                                    <Icon name={this.state.openSection === sectionIndex ? "chevronup" : "chevrondown"} width={12} height={12} />
+                                    <Icon name={openSection === sectionIndex ? "chevronup" : "chevrondown"} width={12} height={12} />
                                 </span>
                             </div>
                         : null }
-                        { this.state.openSection === sectionIndex ?
+                        { openSection === sectionIndex ?
                             <ul className="border-bottom p1">
                               {section.fields.map((item, itemIndex) => {
                                   return (
