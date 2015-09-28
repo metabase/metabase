@@ -106,7 +106,7 @@
    A setting can be set from the SuperAdmin page or via the corresponding env var,
    eg. `MB_MANDRILL_API_KEY` for the example above.
 
-   You may optionally pass any of the kvarg OPTIONS below, which are kept as part of the
+   You may optionally pass any of the kwarg OPTIONS below, which are kept as part of the
    metadata of the `Setting` under the key `::options`:
 
      *  `:internal` - This `Setting` is for internal use and shouldn't be exposed in the UI (i.e., not
