@@ -3,13 +3,8 @@
 echo "Running 'npm install' to download javascript dependencies..." &&
 npm install &&
 
-if [ -n "$CI_DISABLE_WEBPACK_MINIFICATION" ]; then
-    echo "Running 'webpack' to assemble and minify frontend assets..."
-    ./node_modules/webpack/bin/webpack.js
-else
-    echo "Running 'webpack -p' to assemble and minify frontend assets..."
-    ./node_modules/webpack/bin/webpack.js -p
-fi &&
+echo "Running 'webpack -p' to assemble and minify frontend assets..."
+./node_modules/webpack/bin/webpack.js -p &&
 
 if [ -f resources/sample-dataset.db.mv.db ]; then
     echo "Sample Dataset already generated."
