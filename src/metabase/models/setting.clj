@@ -5,7 +5,8 @@
             [environ.core :as env]
             [korma.core :as k]
             [metabase.db :refer [sel del]]
-            [metabase.models.interface :refer :all]))
+            [metabase.models.interface :refer :all]
+            [metabase.util :as u]))
 
 ;; Settings are a fast + simple way to create a setting that can be set
 ;; from the SuperAdmin page. They are saved to the Database, but intelligently
@@ -71,7 +72,7 @@
                         (k/set-fields {:value v})
                         (k/where {:key (name k)}))
       (k/insert Setting
-                (k/values {:key (name k)
+                (k/values {:key   (name k)
                            :value v})))
   (restore-cache-if-needed)
   (swap! cached-setting->value assoc k v)
@@ -103,16 +104,21 @@
      (mandrill-api-key nil)       ; delete the value
 
    A setting can be set from the SuperAdmin page or via the corresponding env var,
-   eg. `MB_MANDRILL_API_KEY` for the example above."
-  {:arglists '([setting-name description]
-               [setting-name description default-value])}
-  [nm description & [default-value]]
+   eg. `MB_MANDRILL_API_KEY` for the example above.
+
+   You may optionally pass any of the kwarg OPTIONS below, which are kept as part of the
+   metadata of the `Setting` under the key `::options`:
+
+     *  `:internal` - This `Setting` is for internal use and shouldn't be exposed in the UI (i.e., not
+        returned by the corresponding endpoints). Default: `false`"
+  [nm description & [default-value & {:as options}]]
   {:pre [(symbol? nm)
          (string? description)]}
   (let [setting-key (keyword nm)]
     `(defn ~nm ~description
-       {::is-setting? true
-        ::default-value ~default-value}
+       {::is-setting?   true
+        ::default-value ~default-value
+        ::options       ~options}
        ([]
         (or (get ~setting-key)
             (get-from-env-var ~setting-key)
@@ -161,13 +167,15 @@
   [(k/table :setting)])
 
 (defn- settings-list
-  "Return a list of all Settings (as created with `defsetting`)."
+  "Return a list of all Settings (as created with `defsetting`).
+   This excludes Settings created with the option `:internal`."
   []
   (->> (all-ns)
        (mapcat ns-interns)
        vals
        (map meta)
        (filter ::is-setting?)
+       (filter (complement (u/rpartial get-in [::options :internal]))) ; filter out :internal Settings
        (map (fn [{k :name desc :doc default ::default-value}]
               {:key         (keyword k)
                :description desc
