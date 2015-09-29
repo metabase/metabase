@@ -25,15 +25,27 @@ describe('query_time', () => {
 
     describe('absolute', () => {
         it ('should pass through absolute dates', () => {
-            expect(absolute("2009-08-07T06:05:04Z").format("YYYY-MM-DD HH:mm:ss")).toBe("2009-08-07 06:05:04");
+            expect(
+                absolute("2009-08-07T06:05:04Z").format("YYYY-MM-DD HH:mm:ss")
+            ).toBe(
+                moment("2009-08-07 06:05:04Z").format("YYYY-MM-DD HH:mm:ss")
+            );
         });
 
         it ('should convert relative_datetime "current"', () => {
-            expect(absolute(["relative_datetime", "current"]).format("YYYY-MM-DD HH")).toBe(moment.utc().format("YYYY-MM-DD HH"));
+            expect(
+                absolute(["relative_datetime", "current"]).format("YYYY-MM-DD HH")
+            ).toBe(
+                moment().format("YYYY-MM-DD HH")
+            );
         });
 
         it ('should convert relative_datetime -1 "month"', () => {
-            expect(absolute(["relative_datetime", -1, "month"]).format("YYYY-MM-DD HH")).toBe(moment.utc().subtract(1, "month").format("YYYY-MM-DD HH"));
+            expect(
+                absolute(["relative_datetime", -1, "month"]).format("YYYY-MM-DD HH")
+            ).toBe(
+                moment().subtract(1, "month").format("YYYY-MM-DD HH")
+            );
         });
     });
 
@@ -42,7 +54,7 @@ describe('query_time', () => {
             it ('should handle "="', () => {
                 let [start, end] = computeFilterTimeRange(["=", 1, "2009-08-07"]);
                 expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual("2009-08-07 00:00:00");
-                expect(end).toEqual(null);
+                expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual("2009-08-07 23:59:59");
             });
             it ('should handle "<"', () => {
                 let [start, end] = computeFilterTimeRange(["<", 1, "2009-08-07"]);
@@ -51,49 +63,49 @@ describe('query_time', () => {
             });
             it ('should handle ">"', () => {
                 let [start, end] = computeFilterTimeRange([">", 1, "2009-08-07"]);
-                expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual("2009-08-07 00:00:00");
+                expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual("2009-08-07 23:59:59");
                 expect(end.year()).toBeGreaterThan(10000);
             });
             it ('should handle "BETWEEN"', () => {
                 let [start, end] = computeFilterTimeRange(["BETWEEN", 1, "2009-08-07", "2009-08-09"]);
                 expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual("2009-08-07 00:00:00");
-                expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual("2009-08-09 00:00:00");
+                expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual("2009-08-09 23:59:59");
             });
         })
 
         describe('relative dates', () => {
             it ('should handle "="', () => {
                 let [start, end] = computeFilterTimeRange(["=", 1, ["relative_datetime", "current"]]);
-                expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment.utc().format("YYYY-MM-DD 00:00:00"));
-                expect(end).toEqual(null);
+                expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().format("YYYY-MM-DD 00:00:00"));
+                expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().format("YYYY-MM-DD 23:59:59"));
             });
             it ('should handle "<"', () => {
                 let [start, end] = computeFilterTimeRange(["<", 1, ["relative_datetime", "current"]]);
                 expect(start.year()).toBeLessThan(-10000);
-                expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment.utc().format("YYYY-MM-DD 00:00:00"));
+                expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().format("YYYY-MM-DD 00:00:00"));
             });
             it ('should handle ">"', () => {
                 let [start, end] = computeFilterTimeRange([">", 1, ["relative_datetime", "current"]]);
-                expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment.utc().format("YYYY-MM-DD 00:00:00"));
+                expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().format("YYYY-MM-DD 23:59:59"));
                 expect(end.year()).toBeGreaterThan(10000);
             });
             it ('should handle "BETWEEN"', () => {
                 let [start, end] = computeFilterTimeRange(["BETWEEN", 1, ["relative_datetime", -1, "day"], ["relative_datetime", 1, "day"]]);
-                expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment.utc().subtract(1, "day").format("YYYY-MM-DD 00:00:00"));
-                expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment.utc().add(1, "day").format("YYYY-MM-DD 00:00:00"));
+                expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().subtract(1, "day").format("YYYY-MM-DD 00:00:00"));
+                expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().add(1, "day").format("YYYY-MM-DD 23:59:59"));
             });
         });
 
         describe('TIME_INTERVAL', () => {
             it ('should handle "Past x days"', () => {
                 let [start, end] = computeFilterTimeRange(["TIME_INTERVAL", 1, -7, "day"]);
-                expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment.utc().subtract(8, "day").format("YYYY-MM-DD 00:00:00"));
-                expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment.utc().subtract(1, "day").format("YYYY-MM-DD 00:00:00"));
+                expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().subtract(8, "day").format("YYYY-MM-DD 00:00:00"));
+                expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().subtract(1, "day").format("YYYY-MM-DD 23:59:59"));
             });
             // it ('should handle "last week"', () => {
             //     let [start, end] = computeFilterTimeRange(["TIME_INTERVAL", 1, "last", "week"]);
-            //     expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment.utc().subtract(1, "week").format("YYYY-MM-DD 00:00:00"));
-            //     expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment.utc().subtract(1, "day").format("YYYY-MM-DD 00:00:00"));
+            //     expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().subtract(1, "week").startOf("week").format("YYYY-MM-DD 00:00:00"));
+            //     expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().subtract(1, "week").endOf("week")..format("YYYY-MM-DD 23:59:59"));
             // });
         });
     });

@@ -20,11 +20,11 @@ export function computeFilterTimeRange(filter) {
         start = point.clone().startOf(bucketing);
         end = point.clone().endOf(bucketing);
     } else if (operator === ">" && values[0]) {
-        start = absolute(values[0]).startOf(bucketing);
+        start = absolute(values[0]).endOf(bucketing);
         end = max();
     } else if (operator === "<" && values[0]) {
         start = min();
-        end = absolute(values[0]).endOf(bucketing);
+        end = absolute(values[0]).startOf(bucketing);
     } else if (operator === "BETWEEN" && values[0] && values[1]) {
         start = absolute(values[0]).startOf(bucketing);
         end = absolute(values[1]).endOf(bucketing);
@@ -51,7 +51,7 @@ export function expandTimeIntervalFilter(filter) {
     field = ["datetime_field", field, "as", unit];
 
     if (n < -1) {
-        return ["BETWEEN", field, ["relative_datetime", n, unit], ["relative_datetime", -1, unit]];
+        return ["BETWEEN", field, ["relative_datetime", n-1, unit], ["relative_datetime", -1, unit]];
     } else if (n > 1) {
         return ["BETWEEN", field, ["relative_datetime", 1, unit], ["relative_datetime", n, unit]];
     } else if (n === 0) {
