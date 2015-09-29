@@ -17,11 +17,15 @@ const OPERATORS = {
         { name: "<",       verbose_name: "Less than" },
         { name: "BETWEEN", verbose_name: "Between" },
         { name: ">=",      verbose_name: "Greater than or equal to", advanced: true },
-        { name: "<=",      verbose_name: "Less than or equal to", advanced: true }
+        { name: "<=",      verbose_name: "Less than or equal to", advanced: true },
+        { name: "IS_NULL", verbose_name: "Is empty", advanced: true },
+        { name: "NOT_NULL",verbose_name: "Not empty", advanced: true }
     ],
     [STRING]: [
         { name: "=",       verbose_name: "Is" },
-        { name: "!=",      verbose_name: "Is not" }
+        { name: "!=",      verbose_name: "Is not" },
+        { name: "IS_NULL", verbose_name: "Is empty", advanced: true },
+        { name: "NOT_NULL",verbose_name: "Not empty", advanced: true }
     ],
     [TIME]: [
         { name: "=",       verbose_name: "Is" },
