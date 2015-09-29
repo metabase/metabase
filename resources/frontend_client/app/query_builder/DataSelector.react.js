@@ -1,38 +1,61 @@
 "use strict";
 
+import React, { Component, PropTypes } from "react";
+
 import Icon from "metabase/components/Icon.react";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
-import ColumnarSelector from "metabase/components/ColumnarSelector.react";
+import AccordianList from "./AccordianList.react";
 
-import Table from 'metabase/lib/table';
+import { isQueryable } from 'metabase/lib/table';
 
-export default React.createClass({
-    displayName: "DataSelector",
-    propTypes: {
-        query: React.PropTypes.object.isRequired,
-        databases: React.PropTypes.array.isRequired,
-        tables: React.PropTypes.array,
-        setDatabaseFn: React.PropTypes.func.isRequired,
-        setSourceTableFn: React.PropTypes.func,
-        isInitiallyOpen: React.PropTypes.bool,
-        name: React.PropTypes.string
-    },
+import _ from "underscore";
 
-    getDefaultProps: function() {
-        return {
-            name: "Data",
-            isInitiallyOpen: false,
-            includeTables: false
-        };
-    },
+export default class DataSelector extends Component {
+    constructor(props) {
+        super(props);
 
-    toggle: function() {
+        _.bindAll(this, "onChange", "itemIsSelected", "sectionIsSelected");
+    }
+
+    onChange(item) {
+        if (item.database != null) {
+            this.props.setDatabaseFn(item.database.id);
+        }
+        if (item.table != null) {
+            this.props.setSourceTableFn(item.table.id);
+        }
         this.refs.popover.toggle();
-    },
+    }
 
-    render: function() {
-        var database = this.props.databases && this.props.databases.filter((t) => t.id === this.props.query.database)[0]
-        var table = this.props.tables && this.props.tables.filter((t) => t.id === this.props.query.query.source_table)[0]
+    sectionIsSelected(section, sectionIndex) {
+        if (this.props.includeTables) {
+            return section.items[0].database.id === this.getDatabaseId();
+        } else {
+            return true;
+        }
+    }
+
+    itemIsSelected(item) {
+        if (this.props.includeTables) {
+            return item.table.id === this.getTableId();
+        } else {
+            return item.database.id === this.getDatabaseId();
+        }
+    }
+
+    getDatabaseId() {
+        return this.props.query.database;
+    }
+
+    getTableId() {
+        return this.props.query.query && this.props.query.query.source_table;
+    }
+
+    render() {
+        let dbId = this.getDatabaseId();
+        let tableId = this.getTableId();
+        var database = _.find(this.props.databases, (db) => db.id === dbId);
+        var table = _.find(database.tables, (table) => table.id === tableId);
 
         var content;
         if (this.props.includeTables) {
@@ -56,55 +79,64 @@ export default React.createClass({
             </span>
         )
 
-        var columns = [
-            {
-                title: "Databases",
-                selectedItem: database,
-                items: this.props.databases,
-                itemTitleFn: (db) => db.name,
-                itemSelectFn: (db) => {
-                    this.props.setDatabaseFn(db.id)
-                    if (!this.props.includeTables) {
-                        this.toggle();
-                    }
-                }
-            }
-        ];
-
+        let sections;
         if (this.props.includeTables) {
-            if (database && this.props.tables) {
-                columns.push({
-                    title: database.name + " Tables",
-                    selectedItem: table,
-                    items: this.props.tables.filter(Table.isQueryable),
-                    itemTitleFn: (table) => table.display_name,
-                    itemSelectFn: (table) => { this.props.setSourceTableFn(table.id); this.toggle() }
-                });
-            } else {
-                columns.push(null);
-            }
+            sections = this.props.databases.map(database => ({
+                name: database.name,
+                items: database.tables.filter(isQueryable).map(table => ({
+                    name: table.display_name,
+                    database: database,
+                    table: table
+                }))
+            }))
+        } else {
+            sections = [{
+                items: this.props.databases.map(database => ({
+                    name: database.name,
+                    database: database
+                }))
+            }];
         }
 
-        var tetherOptions = {
-            attachment: 'top left',
-            targetAttachment: 'bottom left',
-            targetOffset: '5px 0'
-        };
-
-        var name = this.props.name;
-        var classes = "GuiBuilder-section GuiBuilder-data flex align-center " + (this.props.className || "");
         return (
-            <div className={classes}>
-                <span className="GuiBuilder-section-label Query-label">{name}</span>
-                <PopoverWithTrigger ref="popover"
-                                    className="PopoverBody PopoverBody--withArrow"
-                                    isInitiallyOpen={this.props.isInitiallyOpen}
-                                    tetherOptions={tetherOptions}
-                                    triggerElement={triggerElement}
-                                    triggerClasses="flex align-center">
-                    <ColumnarSelector columns={columns}/>
+            <div className={"GuiBuilder-section GuiBuilder-data flex align-center " + this.props.className}>
+                <span className="GuiBuilder-section-label Query-label">{this.props.name}</span>
+                <PopoverWithTrigger
+                    ref="popover"
+                    className="PopoverBody PopoverBody--withArrow"
+                    isInitiallyOpen={this.props.isInitiallyOpen}
+                    triggerElement={triggerElement}
+                    triggerClasses="flex align-center"
+                    tetherOptions={{
+                        attachment: 'top left',
+                        targetAttachment: 'bottom left',
+                        targetOffset: '5px 0'
+                    }}
+                >
+                    <AccordianList
+                        sections={sections}
+                        onChange={this.onChange}
+                        sectionIsSelected={this.sectionIsSelected}
+                        itemIsSelected={this.itemIsSelected}
+                    />
                 </PopoverWithTrigger>
             </div>
         );
-    },
-})
+    }
+}
+
+DataSelector.propTypes = {
+    query: React.PropTypes.object.isRequired,
+    databases: React.PropTypes.array.isRequired,
+    setDatabaseFn: React.PropTypes.func.isRequired,
+    setSourceTableFn: React.PropTypes.func,
+    isInitiallyOpen: React.PropTypes.bool,
+    name: React.PropTypes.string
+};
+
+DataSelector.defaultProps = {
+    name: "Data",
+    className: "",
+    isInitiallyOpen: false,
+    includeTables: false
+};

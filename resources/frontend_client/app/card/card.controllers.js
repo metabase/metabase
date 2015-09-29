@@ -189,7 +189,6 @@ CardControllers.controller('CardDetail', [
             isRunning: false,
             isShowingDataReference: null,
             databases: null,
-            tables: null,
             tableMetadata: null,
             tableForeignKeys: null,
             query: null,
@@ -378,7 +377,6 @@ CardControllers.controller('CardDetail', [
             editorModel.isRunning = isRunning;
             editorModel.isShowingDataReference = $scope.isShowingDataReference;
             editorModel.databases = databases;
-            editorModel.tables = tables;
             editorModel.tableMetadata = tableMetadata;
             editorModel.tableForeignKeys = tableForeignKeys;
             editorModel.query = card.dataset_query;
@@ -932,7 +930,15 @@ CardControllers.controller('CardDetail', [
 
         // TODO: while we wait for the databases list we should put something on screen
         // grab our database list, then handle the rest
-        Metabase.db_list(function (dbs) {
+        async function loadDatabasesAndTables() {
+            let dbs = await Metabase.db_list().$promise;
+            return await * dbs.map(async function(db) {
+                db.tables = await Metabase.db_tables({ dbId: db.id }).$promise;
+                return db;
+            });
+        }
+
+        loadDatabasesAndTables().then(function(dbs) {
             databases = dbs;
 
             if (dbs.length < 1) {
