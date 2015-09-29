@@ -82,7 +82,6 @@
     display: flex;
     align-items: center;
     font-size: 0.75em;
-    height: 56px;
     border: 2px solid transparent;
     border-radius: var(--default-border-radius);
 }
@@ -285,7 +284,7 @@
 
 .GuiBuilder-section {
     position: relative;
-    min-height: 48px;
+    min-height: 55px;
     min-width: 120px;
 }
 

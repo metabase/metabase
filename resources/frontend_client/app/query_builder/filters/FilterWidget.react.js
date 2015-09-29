@@ -1,4 +1,6 @@
-'use strict';
+"use strict";
+
+import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.react";
 import FieldName from '../FieldName.react';
@@ -11,27 +13,20 @@ import { isDate } from "metabase/lib/schema_metadata";
 
 import cx from "classnames";
 
-export default React.createClass({
-    displayName: 'FilterWidget',
-    propTypes: {
-        filter: React.PropTypes.array.isRequired,
-        tableMetadata: React.PropTypes.object.isRequired,
-        index: React.PropTypes.number.isRequired,
-        updateFilter: React.PropTypes.func.isRequired,
-        removeFilter: React.PropTypes.func.isRequired
-    },
+export default class FilterWidget extends Component {
 
-    getInitialState: function() {
-        return {
+    constructor(props) {
+        super(props);
+        this.state = {
             isOpen: this.props.filter[0] == undefined
         };
-    },
+    }
 
-    componentWillMount: function() {
+    componentWillMount() {
         this.componentWillReceiveProps(this.props);
-    },
+    }
 
-    componentWillReceiveProps: function(newProps) {
+    componentWillReceiveProps(newProps) {
         let { filter } = newProps;
         let [operator, field, ...values] = filter;
 
@@ -50,21 +45,21 @@ export default React.createClass({
             operatorDef: operatorDef,
             values: values
         });
-    },
+    }
 
-    removeFilterFn: function() {
+    removeFilterFn() {
         this.props.removeFilter(this.props.index);
-    },
+    }
 
-    open: function() {
+    open() {
         this.setState({ isOpen: true });
-    },
+    }
 
-    close: function() {
+    close() {
         this.setState({ isOpen: false });
-    },
+    }
 
-    renderField: function() {
+    renderField() {
         return (
             <FieldName
                 className="Filter-section Filter-section-field"
@@ -73,18 +68,19 @@ export default React.createClass({
                 onClick={this.open}
             />
         );
-    },
+    }
 
-    renderOperator: function() {
+    renderOperator() {
         var { operatorDef } = this.state;
         return (
-            <div className="SelectionModule Filter-section Filter-section-operator" onClick={this.open}>
-                <a className="QueryOption p1 flex align-center">{operatorDef && operatorDef.verbose_name}</a>
+            <div className="Filter-section Filter-section-operator" onClick={this.open}>
+                &nbsp;
+                <a className="QueryOption flex align-center">{operatorDef && operatorDef.verbose_name}</a>
             </div>
         );
-    },
+    }
 
-    renderValues: function() {
+    renderValues() {
         let { operatorDef, fieldDef, values } = this.state;
 
         if (operatorDef.multi && values.length > 1) {
@@ -104,9 +100,9 @@ export default React.createClass({
                 </div>
             );
         });
-    },
+    }
 
-    renderPopover: function() {
+    renderPopover() {
         if (this.state.isOpen) {
             var tetherOptions = {
                 attachment: 'top left',
@@ -131,18 +127,13 @@ export default React.createClass({
                 </Popover>
             );
         }
-    },
+    }
 
-    render: function() {
-        var classes = cx({
-            "Query-filter": true,
-            "px1": true,
-            "selected": this.state.isOpen
-        });
+    render() {
         return (
-            <div className={classes}>
+            <div className={cx("Query-filter px1", { "selected": this.state.isOpen })}>
                 <div className="ml1">
-                    <div className="flex align-center">
+                    <div className="flex align-center" style={{"padding": "0.5em", "paddingTop": "0.3em", "paddingBottom": "0.3em"}}>
                         {this.renderField()}
                         {this.renderOperator()}
                     </div>
@@ -157,4 +148,12 @@ export default React.createClass({
             </div>
         );
     }
-});
+}
+
+FilterWidget.propTypes = {
+    filter: PropTypes.array.isRequired,
+    tableMetadata: PropTypes.object.isRequired,
+    index: PropTypes.number.isRequired,
+    updateFilter: PropTypes.func.isRequired,
+    removeFilter: PropTypes.func.isRequired
+};
