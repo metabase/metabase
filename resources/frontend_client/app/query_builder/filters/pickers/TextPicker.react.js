@@ -38,6 +38,7 @@ export default class TextPicker extends Component {
                                 type="text"
                                 value={value}
                                 onChange={(e) => this.setValue(index, e.target.value)}
+                                placeholder="Enter desired value"
                                 autoFocus={true}
                             />
                             { index > 0 ?
