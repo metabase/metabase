@@ -7,8 +7,8 @@ version() {
         VERSION=$(./version)
 
         read -e -p "What version string we use for this uberjar? [$VERSION] " VERSION_RESPONSE
-        if [ $VERSION_RESPONSE ]; then
-            VERSION=$VERSION_RESPONSE
+        if [ "$VERSION_RESPONSE" ]; then
+            VERSION="$VERSION_RESPONSE"
         fi
 
         echo "Tagging uberjar with version '$VERSION'."
