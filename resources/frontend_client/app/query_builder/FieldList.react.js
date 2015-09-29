@@ -104,7 +104,7 @@ export default class FieldList extends Component {
 
     renderTypeIcon(field) {
         let type = getUmbrellaType(field);
-        let name = ICON_MAPPING[type] || 'close';
+        let name = ICON_MAPPING[type] || 'unknown';
         return <Icon name={name} width={18} height={18} />;
     }
 
