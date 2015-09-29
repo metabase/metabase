@@ -1,0 +1,8 @@
+#! /bin/bash
+
+# Return the version string used to describe this version of Metabase.
+
+TAG=$(git describe origin/master --tags --abbrev=0)
+HASH=$(git show-ref --head --hash=7 head)
+BRANCH=$(git symbolic-ref --short HEAD)
+echo "$TAG ($HASH $BRANCH)"

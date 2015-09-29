@@ -1,12 +1,12 @@
 #! /bin/bash
 
-# Generate the src/metabase/version.clj file
-generate_version_info() {
+# Generate the resources/version.properties file
+version() {
     # Skip on CircleCI since this is interactive
     if [ ! $CI ]; then
-        LATEST_TAG=$(git describe origin/master --tags --abbrev=0)
+        VERSION=$(./version)
 
-        echo "Tagging this uberjar as version $LATEST_TAG"
+        echo "Tagging this uberjar as version '$VERSION'"
         read -e -p "Is this OK? [y/n] " TAG_IS_OKAY_Y_OR_N
 
         if [ $TAG_IS_OKAY_Y_OR_N != "y" ]; then
@@ -14,18 +14,16 @@ generate_version_info() {
             exit 1
         fi
 
-        # Ok, now generate the appropriate file. Ha! we are ghetto
-        TEMPLATES="src/metabase/version.clj resources/frontend_client/app/version.js"
-        for template in $TEMPLATES; do
-            cat "$template.template" | perl -pe "s/{{VERSION}}/$LATEST_TAG/" > $template
+        # Ok, now generate the appropriate version.properties file.
+        VERSION_PROPERTIES_FILE=resources/version.properties
+        echo "version=$VERSION" > $VERSION_PROPERTIES_FILE
 
-            # We don't want these version changes being passed along to master so tell git to ignore them
-            git update-index --assume-unchanged $template
-        done
+        # # We don't want these version changes being passed along to master so tell git to ignore them
+        # git update-index --assume-unchanged $VERSION_PROPERTIES_FILE
     fi
 }
 
-build_frontend() {
+frontend() {
     echo "Running 'npm install' to download javascript dependencies..." &&
     npm install &&
 
@@ -33,7 +31,7 @@ build_frontend() {
     ./node_modules/webpack/bin/webpack.js -p
 }
 
-generate_sample_dataset() {
+sample-dataset() {
     if [ -f resources/sample-dataset.db.mv.db ]; then
         echo "Sample Dataset already generated."
     else
@@ -42,13 +40,13 @@ generate_sample_dataset() {
     fi
 }
 
-build_uberjar() {
+uberjar() {
     echo "Running 'lein uberjar'..."
     lein uberjar
 }
 
 all() {
-    generate_version_info && build_frontend && generate_sample_dataset && build_uberjar
+    version && frontend && sample-dataset && uberjar
 }
 
 # Default to running all but let someone specify if desired

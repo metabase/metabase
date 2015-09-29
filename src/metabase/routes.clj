@@ -8,18 +8,15 @@
             [metabase.api.routes :as api]
             (metabase.models common
                              [setting :as setting])
-            [metabase.setup :as setup]
-            [metabase.util :as u]
+            (metabase [config :as config]
+                      [setup :as setup]
+                      [util :as u])
             metabase.util.password))
-
-(defn- load-index-template
-  "Slurp in the Metabase index.html file as a `String`"
-  []
-  (slurp (io/resource "frontend_client/index.html")))
 
 (def ^:private ^:const date-format-rfc2616
   "Java SimpleDateFormat representing rfc2616 style date used in http headers."
   "EEE, dd MMM yyyy HH:mm:ss zzz")
+
 
 (defn- index-page-vars
   "Static values that we inject into the index.html page via Mustache."
@@ -29,23 +26,27 @@
    :password_complexity   (metabase.util.password/active-password-complexity)
    :setup_token           (setup/token-value)
    :timezones             metabase.models.common/timezones
+   ;; Version info
+   :version               (config/mb-version)
    ;; all of these values are dynamic settings from the admin UI but we include them here for bootstrapping availability
    :anon-tracking-enabled (setting/get :anon-tracking-enabled)
    :-site-name            (setting/get :-site-name)})
 
+(defn- index [request]
+  (-> (io/resource "frontend_client/index.html")
+      slurp
+      (stencil/render-string {:bootstrap_json (json/generate-string (index-page-vars))})
+      resp/response
+      (resp/content-type "text/html")
+      (resp/header "Last-Modified" (u/now-with-format date-format-rfc2616))))
+
 ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
-(let [index (fn [request]
-              (-> (resp/response (stencil/render-string
-                                   (load-index-template)
-                                   {:bootstrap_json (json/generate-string (index-page-vars))}))
-                  (resp/content-type "text/html")
-                  (resp/header "Last-Modified" (u/now-with-format date-format-rfc2616))))]
-  (defroutes routes
-    (GET "/" [] index)                                     ; ^/$           -> index.html
-    (GET "/favicon.ico" [] (resp/resource-response "frontend_client/favicon.ico"))
-    (context "/api" [] api/routes)                         ; ^/api/        -> API routes
-    (context "/app" []
-      (route/resources "/" {:root "frontend_client/app"})  ; ^/app/        -> static files under frontend_client/app
-      (route/not-found {:status 404                        ;                  return 404 for anything else starting with ^/app/ that doesn't exist
-                        :body "Not found."}))
-    (GET "*" [] index)))                                   ; Anything else (e.g. /user/edit_current) should serve up index.html; Angular app will handle the rest
+(defroutes routes
+  (GET "/" [] index)                                     ; ^/$           -> index.html
+  (GET "/favicon.ico" [] (resp/resource-response "frontend_client/favicon.ico"))
+  (context "/api" [] api/routes)                         ; ^/api/        -> API routes
+  (context "/app" []
+    (route/resources "/" {:root "frontend_client/app"})  ; ^/app/        -> static files under frontend_client/app
+    (route/not-found {:status 404                        ; return 404 for anything else starting with ^/app/ that doesn't exist
+                      :body "Not found."}))
+  (GET "*" [] index))                                    ; Anything else (e.g. /user/edit_current) should serve up index.html; Angular app will handle the rest
