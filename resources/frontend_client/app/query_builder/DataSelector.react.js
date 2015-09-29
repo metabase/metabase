@@ -114,6 +114,7 @@ export default class DataSelector extends Component {
                     }}
                 >
                     <AccordianList
+                        className="text-brand"
                         sections={sections}
                         onChange={this.onChange}
                         sectionIsSelected={this.sectionIsSelected}

@@ -88,6 +88,7 @@ export default class AggregationWidget extends Component {
                 <div className="flex align-center">
                     <span className="text-bold">of</span>
                     <FieldWidget
+                        color="green"
                         className="View-section-aggregation-target SelectionModule p1"
                         tableName={this.props.tableMetadata.display_name}
                         field={this.props.aggregation[1]}

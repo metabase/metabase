@@ -272,6 +272,7 @@ export default class GuiQueryEditor extends Component {
                 breakoutList.push(
                     <FieldWidget
                         key={index}
+                        color="green"
                         className="View-section-breakout SelectionModule p1"
                         placeholder='field'
                         field={breakout}
