@@ -6,13 +6,12 @@ version() {
     if [ ! $CI ]; then
         VERSION=$(./version)
 
-        echo "Tagging this uberjar as version '$VERSION'"
-        read -e -p "Is this OK? [y/n] " TAG_IS_OKAY_Y_OR_N
-
-        if [ $TAG_IS_OKAY_Y_OR_N != "y" ]; then
-            "Stopping now! Please check that you've pushed the correct tag to origin/master and try again. 😿"
-            exit 1
+        read -e -p "What version string we use for this uberjar? [$VERSION] " VERSION_RESPONSE
+        if [ $VERSION_RESPONSE ]; then
+            VERSION=$VERSION_RESPONSE
         fi
+
+        echo "Tagging uberjar with version '$VERSION'."
 
         # Ok, now generate the appropriate version.properties file.
         echo "version=$VERSION" > resources/version.properties
