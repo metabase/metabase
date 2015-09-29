@@ -8,6 +8,7 @@ export const NUMBER = 'NUMBER';
 export const STRING = 'STRING';
 export const BOOL = 'BOOL';
 export const LOCATION = 'LOCATION';
+export const UNKNOWN = 'UNKNOWN';
 
 const DateBaseTypes = ['DateTimeField', 'DateField'];
 const NumberBaseTypes = ['IntegerField', 'DecimalField', 'FloatField', 'BigIntegerField'];
@@ -171,118 +172,112 @@ function longitudeFieldSelectArgument(field, table) {
     };
 }
 
-var FilterOperators = {
-    'IS': {
-        'name': "=",
-        'verbose_name': "Is",
-        'validArgumentsFilters': [equivalentArgument],
-        'multi': true
+const OPERATORS = {
+    "=": {
+        validArgumentsFilters: [equivalentArgument],
+        multi: true
     },
-    'IS_NOT': {
-        'name': "!=",
-        'verbose_name': "Is Not",
-        'validArgumentsFilters': [equivalentArgument],
-        'multi': true
+    "!=": {
+        validArgumentsFilters: [equivalentArgument],
+        multi: true
     },
-    'IS_NULL': {
-        'name': "IS_NULL",
-        'verbose_name': "Is Null",
-        'validArgumentsFilters': []
+    "IS_NULL": {
+        validArgumentsFilters: []
     },
-    'IS_NOT_NULL': {
-        'name': "NOT_NULL",
-        'verbose_name': "Is Not Null",
-        'validArgumentsFilters': []
+    "NOT_NULL": {
+        validArgumentsFilters: []
     },
-    'LESS_THAN': {
-        'name': "<",
-        'verbose_name': "Less Than",
-        'validArgumentsFilters': [comparableArgument]
+    "<": {
+        validArgumentsFilters: [comparableArgument]
     },
-    'LESS_THAN_OR_EQUAL': {
-        'name': "<=",
-        'verbose_name': "Less Than or Equal To",
-        'validArgumentsFilters': [comparableArgument]
+    "<=": {
+        validArgumentsFilters: [comparableArgument]
     },
-    'GREATER_THAN': {
-        'name': ">",
-        'verbose_name': "Greater Than",
-        'validArgumentsFilters': [comparableArgument]
+    ">": {
+        validArgumentsFilters: [comparableArgument]
     },
-    'GREATER_THAN_OR_EQUAL': {
-        'name': ">=",
-        'verbose_name': "Greater Than or Equal To",
-        'validArgumentsFilters': [comparableArgument]
+    ">=": {
+        validArgumentsFilters: [comparableArgument]
     },
-    'INSIDE': {
-        'name': "INSIDE",
-        'verbose_name': "Inside - (Lat,Long) for upper left, (Lat,Long) for lower right",
-        'validArgumentsFilters': [longitudeFieldSelectArgument, numberArgument, numberArgument, numberArgument, numberArgument]
+    "INSIDE": {
+        validArgumentsFilters: [longitudeFieldSelectArgument, numberArgument, numberArgument, numberArgument, numberArgument],
+        placeholders: ["Select longitude field", "Enter upper latitude", "Enter left longitude", "Enter lower latitude", "Enter right latitude"]
     },
-    'BETWEEN': {
-        'name': "BETWEEN",
-        'verbose_name': "Between - Min, Max",
-        'validArgumentsFilters': [comparableArgument, comparableArgument]
+    "BETWEEN": {
+        validArgumentsFilters: [comparableArgument, comparableArgument]
     },
-    'STARTS_WITH': {
-        'name': "STARTS_WITH",
-        'verbose_name': "Starts With",
-        'validArgumentsFilters': [freeformArgument]
+    "STARTS_WITH": {
+        validArgumentsFilters: [freeformArgument]
     },
-    'ENDS_WITH': {
-        'name': "ENDS_WITH",
-        'verbose_name': "Ends With",
-        'validArgumentsFilters': [freeformArgument]
+    "ENDS_WITH": {
+        validArgumentsFilters: [freeformArgument]
     },
-    'CONTAINS': {
-        'name': "CONTAINS",
-        'verbose_name': "Contains",
-        'validArgumentsFilters': [freeformArgument]
+    "CONTAINS": {
+        validArgumentsFilters: [freeformArgument]
     }
 };
 
-var BaseOperators = ['IS', 'IS_NOT', 'IS_NULL', 'IS_NOT_NULL'];
-
-var AdditionalOperators = {
-    'CharField': ['STARTS_WITH', 'ENDS_WITH', 'CONTAINS'],
-    'TextField': ['STARTS_WITH', 'ENDS_WITH', 'CONTAINS'],
-    'IntegerField': ['LESS_THAN', 'LESS_THAN_OR_EQUAL', 'GREATER_THAN', 'GREATER_THAN_OR_EQUAL', 'BETWEEN'],
-    'BigIntegerField': ['LESS_THAN', 'LESS_THAN_OR_EQUAL', 'GREATER_THAN', 'GREATER_THAN_OR_EQUAL', 'BETWEEN'],
-    'DecimalField': ['LESS_THAN', 'LESS_THAN_OR_EQUAL', 'GREATER_THAN', 'GREATER_THAN_OR_EQUAL', 'BETWEEN'],
-    'FloatField': ['LESS_THAN', 'LESS_THAN_OR_EQUAL', 'GREATER_THAN', 'GREATER_THAN_OR_EQUAL', 'BETWEEN'],
-    'DateTimeField': ['LESS_THAN', 'LESS_THAN_OR_EQUAL', 'GREATER_THAN', 'GREATER_THAN_OR_EQUAL', 'BETWEEN'],
-    'DateField': ['LESS_THAN', 'LESS_THAN_OR_EQUAL', 'GREATER_THAN', 'GREATER_THAN_OR_EQUAL', 'BETWEEN'],
-    'LatLongField': ['INSIDE'],
-    'latitude': ['INSIDE']
+// ordered list of operators and metadata per type
+const OPERATORS_BY_TYPE_ORDERED = {
+    [NUMBER]: [
+        { name: "=",       verboseName: "Equal" },
+        { name: "!=",      verboseName: "Not equal" },
+        { name: ">",       verboseName: "Greater than" },
+        { name: "<",       verboseName: "Less than" },
+        { name: "BETWEEN", verboseName: "Between" },
+        { name: ">=",      verboseName: "Greater than or equal to", advanced: true },
+        { name: "<=",      verboseName: "Less than or equal to", advanced: true },
+        { name: "IS_NULL", verboseName: "Is empty", advanced: true },
+        { name: "NOT_NULL",verboseName: "Not empty", advanced: true }
+    ],
+    [STRING]: [
+        { name: "=",       verboseName: "Is" },
+        { name: "!=",      verboseName: "Is not" },
+        { name: "IS_NULL", verboseName: "Is empty", advanced: true },
+        { name: "NOT_NULL",verboseName: "Not empty", advanced: true }
+    ],
+    [TIME]: [
+        { name: "=",       verboseName: "Is" },
+        { name: "<",       verboseName: "Before" },
+        { name: ">",       verboseName: "After" },
+        { name: "BETWEEN", verboseName: "Between" }
+    ],
+    [LOCATION]: [
+        { name: "=",       verboseName: "Is" },
+        { name: "!=",      verboseName: "Is not" },
+        { name: "INSIDE",  verboseName: "Inside" }
+    ],
+    [BOOL]: [
+    ],
+    [UNKNOWN]: [
+        { name: "=",       verboseName: "Is" },
+        { name: "!=",      verboseName: "Is not" }
+    ]
 };
 
-function formatOperator(cls, field, table) {
-    return {
-        'name': cls.name,
-        'verbose_name': cls.verbose_name,
-        'validArgumentsFilters': cls.validArgumentsFilters,
-        'fields': _.map(cls.validArgumentsFilters, function(validArgumentsFilter) {
-            return validArgumentsFilter(field, table);
-        }),
-        'multi': !!cls.multi
-    };
+const MORE_VERBOSE_NAMES = {
+    "equal": "is equal to",
+    "not equal": "is not equal to",
+    "before": "is before",
+    "after": "is afer",
+    "not empty": "is not empty",
+    "less than": "is less than",
+    "greater than": "is greater than",
+    "less than or equal to": "is less than or equal to",
+    "greater than or equal to": "is greater than or equal to",
 }
 
 function getOperators(field, table) {
-    // All fields have the base operators
-    var validOperators = BaseOperators;
-
-    // Check to see if the field's base type offers additional operators
-    if (field.base_type in AdditionalOperators) {
-        validOperators = validOperators.concat(AdditionalOperators[field.base_type]);
-    }
-    // Check to see if the field's semantic type offers additional operators
-    if (field.special_type in AdditionalOperators) {
-        validOperators = validOperators.concat(AdditionalOperators[field.special_type]);
-    }
-    // Wrap them up and send them back
-    return _.map(validOperators, function(operator) {
-        return formatOperator(FilterOperators[operator], field, table);
+    let type = getUmbrellaType(field) || UNKNOWN;
+    return OPERATORS_BY_TYPE_ORDERED[type].map(operatorForType => {
+        let operator = OPERATORS[operatorForType.name];
+        let verboseNameLower = operatorForType.verboseName.toLowerCase();
+        return {
+            ...operator,
+            ...operatorForType,
+            moreVerboseName: MORE_VERBOSE_NAMES[verboseNameLower] || verboseNameLower,
+            fields: operator.validArgumentsFilters.map(validArgumentsFilter => validArgumentsFilter(field, table))
+        };
     });
 }
 

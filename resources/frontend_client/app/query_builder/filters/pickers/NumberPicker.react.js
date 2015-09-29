@@ -38,9 +38,14 @@ export default class NumberPicker extends Component {
     }
 }
 
-TextPicker.propTypes = {
+NumberPicker.propTypes = {
     values: PropTypes.array.isRequired,
     onValuesChange: PropTypes.func.isRequired,
-    multi: PropTypes.bool,
-    index: PropTypes.number
+    placeholder: PropTypes.string,
+    validations: PropTypes.array,
+    multi: PropTypes.bool
+};
+
+NumberPicker.defaultProps = {
+    placeholder: "Enter desired number"
 };

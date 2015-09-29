@@ -60,7 +60,7 @@ export default class RelativeDatePicker extends Component {
             <div className="p1 pt2">
                 <section>
                     { SHORTCUTS.map((s, index) =>
-                        <span className={cx("inline-block half pb1", { "pr1": index % 2 === 0 })}>
+                        <span key={index} className={cx("inline-block half pb1", { "pr1": index % 2 === 0 })}>
                             <button
                                 key={index}
                                 className={cx("Button Button-normal Button--medium text-normal text-centered full", { "Button--purple": this.isSelectedShortcut(s) })}

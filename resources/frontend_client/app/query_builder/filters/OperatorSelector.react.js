@@ -4,36 +4,7 @@ import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.react";
 
-import { getUmbrellaType, NUMBER, STRING, TIME } from "metabase/lib/schema_metadata";
-
 import cx from "classnames";
-
-// TODO: merge into schema_metadata?
-const OPERATORS = {
-    [NUMBER]: [
-        { name: "=",       verbose_name: "Equal" },
-        { name: "!=",      verbose_name: "Not equal" },
-        { name: ">",       verbose_name: "Greater than" },
-        { name: "<",       verbose_name: "Less than" },
-        { name: "BETWEEN", verbose_name: "Between" },
-        { name: ">=",      verbose_name: "Greater than or equal to", advanced: true },
-        { name: "<=",      verbose_name: "Less than or equal to", advanced: true },
-        { name: "IS_NULL", verbose_name: "Is empty", advanced: true },
-        { name: "NOT_NULL",verbose_name: "Not empty", advanced: true }
-    ],
-    [STRING]: [
-        { name: "=",       verbose_name: "Is" },
-        { name: "!=",      verbose_name: "Is not" },
-        { name: "IS_NULL", verbose_name: "Is empty", advanced: true },
-        { name: "NOT_NULL",verbose_name: "Not empty", advanced: true }
-    ],
-    [TIME]: [
-        { name: "=",       verbose_name: "Is" },
-        { name: "<",       verbose_name: "Before" },
-        { name: ">",       verbose_name: "After" },
-        { name: "BETWEEN", verbose_name: "Between" }
-    ]
-};
 
 export default class OperatorSelector extends Component {
     constructor(props) {
@@ -48,12 +19,6 @@ export default class OperatorSelector extends Component {
         let { expanded } = this.state;
 
         let operators = field.valid_operators;
-
-        // use overide order/name/visibility
-        let type = getUmbrellaType(field);
-        if (type in OPERATORS) {
-            operators = OPERATORS[type].map(o => ({ ...field.operators_lookup[o.name], ...o }))
-        }
 
         let defaultOperators = operators.filter(o => !o.advanced);
         let expandedOperators = operators.filter(o => o.advanced);
@@ -71,7 +36,7 @@ export default class OperatorSelector extends Component {
                         className={cx("Button Button-normal Button--medium mr1 mb1", { "Button--purple": operator.name === filter[0] })}
                         onClick={() => this.props.onOperatorChange(operator.name)}
                     >
-                        {operator.verbose_name}
+                        {operator.verboseName}
                     </button>
                 )}
                 { !expanded && expandedOperators.length > 0 ?

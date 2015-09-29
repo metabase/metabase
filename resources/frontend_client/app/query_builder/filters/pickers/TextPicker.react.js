@@ -38,7 +38,7 @@ export default class TextPicker extends Component {
                                 type="text"
                                 value={value}
                                 onChange={(e) => this.setValue(index, e.target.value)}
-                                placeholder="Enter desired value"
+                                placeholder={this.props.placeholder}
                                 autoFocus={true}
                             />
                             { index > 0 ?
@@ -64,10 +64,12 @@ export default class TextPicker extends Component {
 TextPicker.propTypes = {
     values: PropTypes.array.isRequired,
     onValuesChange: PropTypes.func.isRequired,
-    multi: PropTypes.bool,
-    validations: PropTypes.array
+    placeholder: PropTypes.string,
+    validations: PropTypes.array,
+    multi: PropTypes.bool
 };
 
 TextPicker.defaultProps = {
-    validations: []
+    validations: [],
+    placeholder: "Enter desired text"
 }

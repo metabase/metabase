@@ -78,7 +78,7 @@ export default class FilterWidget extends Component {
         return (
             <div className="Filter-section Filter-section-operator" onClick={this.open}>
                 &nbsp;
-                <a className="QueryOption flex align-center">{operatorDef && operatorDef.verbose_name}</a>
+                <a className="QueryOption flex align-center">{operatorDef && operatorDef.moreVerboseName}</a>
             </div>
         );
     }

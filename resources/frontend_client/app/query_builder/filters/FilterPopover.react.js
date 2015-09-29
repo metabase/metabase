@@ -96,7 +96,7 @@ export default class FilterPopover extends Component {
                 for (let i = 0; i < oldFilter.length - 2; i++) {
                     let field = operator.multi ? operator.fields[0] : operator.fields[i];
                     let oldField = oldOperator.multi ? oldOperator.fields[0] : oldOperator.fields[i];
-                    if (field && oldField && field.type === oldField.type) {
+                    if (field && oldField && field.type === oldField.type && oldFilter[i + 2] !== undefined) {
                         filter[i + 2] = oldFilter[i + 2];
                     }
                 }
@@ -140,6 +140,7 @@ export default class FilterPopover extends Component {
         let operator = field.operators_lookup[filter[0]];
         return operator.fields.map((operatorField, index) => {
             let values, onValuesChange;
+            let placeholder = operator.placeholders && operator.placeholders[index] || undefined;
             if (operator.multi) {
                 values = this.state.filter.slice(2);
                 onValuesChange = (values) => this.setValues(values);
@@ -153,8 +154,8 @@ export default class FilterPopover extends Component {
                         options={operatorField.values}
                         values={values}
                         onValuesChange={onValuesChange}
+                        placeholder={placeholder}
                         multi={operator.multi}
-                        index={index}
                     />
                 );
             } else if (operatorField.type === "text") {
@@ -162,8 +163,8 @@ export default class FilterPopover extends Component {
                     <TextPicker
                         values={values}
                         onValuesChange={onValuesChange}
+                        placeholder={placeholder}
                         multi={operator.multi}
-                        index={index}
                     />
                 );
             } else if (operatorField.type === "number") {
@@ -171,8 +172,8 @@ export default class FilterPopover extends Component {
                     <NumberPicker
                         values={values}
                         onValuesChange={onValuesChange}
+                        placeholder={placeholder}
                         multi={operator.multi}
-                        index={index}
                     />
                 );
             }
