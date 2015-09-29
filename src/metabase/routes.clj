@@ -1,28 +1,27 @@
 (ns metabase.routes
-  (:require [cheshire.core :as cheshire]
-            [compojure.core :refer [context defroutes GET]]
-            [compojure.route :as route]
+  (:require [clojure.java.io :as io]
+            [cheshire.core :as json]
+            (compojure [core :refer [context defroutes GET]]
+                       [route :as route])
             [ring.util.response :as resp]
             [stencil.core :as stencil]
             [metabase.api.routes :as api]
+            (metabase.models common
+                             [setting :as setting])
             [metabase.setup :as setup]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            metabase.util.password))
 
 (defn- load-index-template
   "Slurp in the Metabase index.html file as a `String`"
   []
-  (slurp (clojure.java.io/resource "frontend_client/index.html")))
+  (slurp (io/resource "frontend_client/index.html")))
 
-(def load-index
-  "Memoized version of `load-index-template`"
-  ;(memoize load-index-template)
-  load-index-template)
-
-(def date-format-rfc2616
+(def ^:private ^:const date-format-rfc2616
   "Java SimpleDateFormat representing rfc2616 style date used in http headers."
   "EEE, dd MMM yyyy HH:mm:ss zzz")
 
-(defn index-page-vars
+(defn- index-page-vars
   "Static values that we inject into the index.html page via Mustache."
   []
   {:ga_code               "UA-60817802-1"
@@ -31,14 +30,14 @@
    :setup_token           (setup/token-value)
    :timezones             metabase.models.common/timezones
    ;; all of these values are dynamic settings from the admin UI but we include them here for bootstrapping availability
-   :anon-tracking-enabled (metabase.models.setting/get :anon-tracking-enabled)
-   :-site-name            (metabase.models.setting/get :-site-name)})
+   :anon-tracking-enabled (setting/get :anon-tracking-enabled)
+   :-site-name            (setting/get :-site-name)})
 
 ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
 (let [index (fn [request]
               (-> (resp/response (stencil/render-string
-                                   (load-index)
-                                   {:bootstrap_json (cheshire/generate-string (index-page-vars))}))
+                                   (load-index-template)
+                                   {:bootstrap_json (json/generate-string (index-page-vars))}))
                   (resp/content-type "text/html")
                   (resp/header "Last-Modified" (u/now-with-format date-format-rfc2616))))]
   (defroutes routes
