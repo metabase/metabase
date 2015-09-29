@@ -30,6 +30,13 @@
    :mysql    {:id   "mysql"
               :name "MySQL"}})
 
+(defn is-engine?
+  "Predicate function which validates if the given argument represents a valid driver identifier."
+  [engine]
+  (if (not (nil? engine))
+    (contains? (set (map name (keys available-drivers))) (name engine))
+    false))
+
 (defn class->base-type
   "Return the `Field.base_type` that corresponds to a given class returned by the DB."
   [klass]
