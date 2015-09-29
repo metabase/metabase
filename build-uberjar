@@ -15,11 +15,7 @@ version() {
         fi
 
         # Ok, now generate the appropriate version.properties file.
-        VERSION_PROPERTIES_FILE=resources/version.properties
-        echo "version=$VERSION" > $VERSION_PROPERTIES_FILE
-
-        # # We don't want these version changes being passed along to master so tell git to ignore them
-        # git update-index --assume-unchanged $VERSION_PROPERTIES_FILE
+        echo "version=$VERSION" > resources/version.properties
     fi
 }
 
