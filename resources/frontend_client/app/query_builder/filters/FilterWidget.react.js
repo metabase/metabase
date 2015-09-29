@@ -12,14 +12,18 @@ import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
 import { isDate } from "metabase/lib/schema_metadata";
 
 import cx from "classnames";
+import _ from "underscore";
 
 export default class FilterWidget extends Component {
 
     constructor(props) {
         super(props);
+
         this.state = {
             isOpen: this.props.filter[0] == undefined
         };
+
+        _.bindAll(this, "open", "close", "removeFilter");
     }
 
     componentWillMount() {
@@ -47,7 +51,7 @@ export default class FilterWidget extends Component {
         });
     }
 
-    removeFilterFn() {
+    removeFilter() {
         this.props.removeFilter(this.props.index);
     }
 
@@ -142,7 +146,7 @@ export default class FilterWidget extends Component {
                     </div>
                     {this.renderPopover()}
                 </div>
-                <a className="text-grey-2 no-decoration px1 flex align-center" href="#" onClick={this.removeFilterFn}>
+                <a className="text-grey-2 no-decoration px1 flex align-center" href="#" onClick={this.removeFilter}>
                     <Icon name='close' width="14px" height="14px" />
                 </a>
             </div>

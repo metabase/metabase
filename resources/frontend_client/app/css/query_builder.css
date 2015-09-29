@@ -76,6 +76,7 @@
     overflow-x: scroll;
     max-width: 400px;
     white-space: nowrap;
+    height: 55px;
 }
 
 .Query-filter {
