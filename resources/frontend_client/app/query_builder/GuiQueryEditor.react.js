@@ -1,4 +1,6 @@
-'use strict';
+"use strict";
+
+import React, { Component, PropTypes } from "react";
 
 import AggregationWidget from './AggregationWidget.react';
 import DataSelector from './DataSelector.react';
@@ -14,59 +16,59 @@ import MetabaseAnalytics from 'metabase/lib/analytics';
 import Query from "metabase/lib/query";
 
 import cx from "classnames";
+import _ from "underscore";
 
-export default React.createClass({
-    displayName: 'GuiQueryEditor',
-    propTypes: {
-        databases: React.PropTypes.array.isRequired,
-        query: React.PropTypes.object.isRequired,
-        tableMetadata: React.PropTypes.object, // can't be required, sometimes null
-        isShowingDataReference: React.PropTypes.bool.isRequired,
-        setQueryFn: React.PropTypes.func.isRequired,
-        setDatabaseFn: React.PropTypes.func.isRequired,
-        setSourceTableFn: React.PropTypes.func.isRequired,
-        toggleExpandCollapseFn: React.PropTypes.func.isRequired
-    },
+export default class GuiQueryEditor extends Component {
+    constructor(props) {
+        super(props);
 
-    getInitialState: function() {
-        return {
+        this.state = {
             expanded: true
         };
-    },
 
-    setQuery: function(dataset_query) {
+        _.bindAll(
+            this,
+            "addFilter", "updateFilter", "removeFilter",
+            "updateAggregation",
+            "addDimension", "updateDimension", "removeDimension",
+            "addSort", "updateSort", "removeSort",
+            "updateLimit"
+        );
+    }
+
+    setQuery(dataset_query) {
         this.props.setQueryFn(dataset_query);
-    },
+    }
 
-    addDimension: function() {
+    addDimension() {
         Query.addDimension(this.props.query.query);
         this.setQuery(this.props.query);
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Add GroupBy');
-    },
+    }
 
-    updateDimension: function(index, dimension) {
+    updateDimension(index, dimension) {
         Query.updateDimension(this.props.query.query, dimension, index);
         this.setQuery(this.props.query);
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Modify GroupBy');
-    },
+    }
 
-    removeDimension: function(index) {
+    removeDimension(index) {
         Query.removeDimension(this.props.query.query, index);
         this.setQuery(this.props.query);
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove GroupBy');
-    },
+    }
 
-    updateAggregation: function(aggregationClause) {
+    updateAggregation(aggregationClause) {
         Query.updateAggregation(this.props.query.query, aggregationClause);
         this.setQuery(this.props.query);
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Aggregation', aggregationClause[0]);
-    },
+    }
 
-    addFilter: function(filter) {
+    addFilter(filter) {
         let query = this.props.query.query;
         Query.addFilter(query);
         Query.updateFilter(query, Query.getFilters(query).length - 1, filter);
@@ -74,30 +76,30 @@ export default React.createClass({
         this.setQuery(this.props.query);
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Add Filter');
-    },
+    }
 
-    updateFilter: function(index, filter) {
+    updateFilter(index, filter) {
         Query.updateFilter(this.props.query.query, index, filter);
         this.setQuery(this.props.query);
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Modify Filter');
-    },
+    }
 
-    removeFilter: function(index) {
+    removeFilter(index) {
         Query.removeFilter(this.props.query.query, index);
         this.setQuery(this.props.query);
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Filter');
-    },
+    }
 
-    addLimit: function() {
+    addLimit() {
         Query.addLimit(this.props.query.query);
         this.setQuery(this.props.query);
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Limit');
-    },
+    }
 
-    updateLimit: function(limit) {
+    updateLimit(limit) {
         if (limit) {
             Query.updateLimit(this.props.query.query, limit);
             MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Limit');
@@ -106,71 +108,56 @@ export default React.createClass({
             MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Limit');
         }
         this.setQuery(this.props.query);
-    },
+    }
 
-    addSort: function() {
+    addSort() {
         Query.addSort(this.props.query.query);
         this.setQuery(this.props.query);
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Sort', 'manual');
-    },
+    }
 
-    updateSort: function(index, sort) {
+    updateSort(index, sort) {
         Query.updateSort(this.props.query.query, index, sort);
         this.setQuery(this.props.query);
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Sort', 'manual');
-    },
+    }
 
-    removeSort: function(index) {
+    removeSort(index) {
         Query.removeSort(this.props.query.query, index);
         this.setQuery(this.props.query);
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Sort');
-    },
+    }
 
-    renderAdd: function(text, onClick) {
-        let classes = "text-grey-2 text-grey-4-hover cursor-pointer text-bold no-decoration flex align-center mx2 transition-color";
+    renderAdd(text, onClick) {
+        let classes = "text-grey-2 text-grey-4-hover cursor-pointer text-bold no-decoration flex align-center transition-color";
         return (
             <a className={classes} onClick={onClick}>
                 {this.renderAddIcon()}
                 { text ? (<span className="ml1">{text}</span>) : (null) }
             </a>
         )
-    },
+    }
 
-    renderAddIcon: function () {
+    renderAddIcon() {
         return (
             <IconBorder borderRadius="3px">
                 <Icon name="add" width="14px" height="14px" />
             </IconBorder>
         )
-    },
+    }
 
-    renderDbSelector: function() {
-        if(this.props.databases && this.props.databases.length > 1) {
-            return (
-                <div className={this.props.querySectionClasses + ' mt1 lg-mt2'}>
-                    <span className="Query-label">Data source:</span>
-                    <DatabaseSelector
-                        databases={this.props.databases}
-                        setDatabase={this.setDatabase}
-                        currentDatabaseId={this.props.query.database}
-                    />
-                </div>
-            );
-        }
-    },
-
-    renderFilters: function() {
-        var enabled;
-        var filterList;
-        var addFilterButton;
+    renderFilters() {
+        let enabled;
+        let filterList;
+        let addFilterButton;
 
         if (this.props.tableMetadata) {
             enabled = true;
 
-            var queryFilters = Query.getFilters(this.props.query.query);
+            let queryFilters = Query.getFilters(this.props.query.query);
             if (queryFilters && queryFilters.length > 0) {
                 filterList = queryFilters.map((filter, index) => {
                     if(index > 0) {
@@ -202,24 +189,19 @@ export default React.createClass({
             addFilterButton = this.renderAdd("Add filters to narrow your answer");
         }
 
-        var tetherOptions = {
-            attachment: 'top center',
-            targetAttachment: 'bottom center',
-            targetOffset: '5px 20px'
-        }
-
-        var querySectionClasses = cx({
-            "Query-section": true,
-            disabled: !enabled
-        });
         return (
-            <div className={querySectionClasses}>
+            <div className={cx("Query-section", { disabled: !enabled })}>
                 <div className="Query-filters">
                     {filterList}
                 </div>
+                <div className="mx2">
                 <PopoverWithTrigger ref="filterPopover"
                                     className="PopoverBody PopoverBody--withArrow"
-                                    tetherOptions={tetherOptions}
+                                    tetherOptions={{
+                                        attachment: 'top center',
+                                        targetAttachment: 'bottom left',
+                                        targetOffset: '4px 14px'
+                                    }}
                                     triggerElement={addFilterButton}
                                     triggerClasses="flex align-center">
                     <FilterPopover
@@ -229,11 +211,12 @@ export default React.createClass({
                         onClose={() => this.refs.filterPopover.close()}
                     />
                 </PopoverWithTrigger>
+                </div>
             </div>
         );
-    },
+    }
 
-    renderAggregation: function() {
+    renderAggregation() {
         // aggregation clause.  must have table details available
         if (this.props.tableMetadata) {
             return (
@@ -251,9 +234,9 @@ export default React.createClass({
                 </div>
             );
         }
-    },
+    }
 
-    renderBreakouts: function() {
+    renderBreakouts() {
         var enabled;
         var breakoutList;
         var addBreakoutButton;
@@ -326,9 +309,9 @@ export default React.createClass({
                 {addBreakoutButton}
             </div>
         );
-    },
+    }
 
-    renderSort: function() {
+    renderSort() {
         var sortFieldOptions;
 
         if (this.props.tableMetadata) {
@@ -370,9 +353,9 @@ export default React.createClass({
                 </div>
             );
         }
-    },
+    }
 
-    renderLimit: function() {
+    renderLimit() {
         var limitOptions = [undefined, 1, 10, 25, 100, 1000].map((count) => {
             var name = count || "None";
             var classes = cx({
@@ -388,9 +371,9 @@ export default React.createClass({
                 {limitOptions}
             </ul>
         )
-    },
+    }
 
-    renderDataSection: function() {
+    renderDataSection() {
         var isInitiallyOpen = !this.props.query.database || !this.props.query.query.source_table;
         return (
             <DataSelector
@@ -405,18 +388,18 @@ export default React.createClass({
                 isInitiallyOpen={isInitiallyOpen}
             />
         );
-    },
+    }
 
-    renderFilterSection: function() {
+    renderFilterSection() {
         return (
             <div className="GuiBuilder-section GuiBuilder-filtered-by flex align-center" ref="filterSection">
                 <span className="GuiBuilder-section-label Query-label">Filtered by</span>
                 {this.renderFilters()}
             </div>
         );
-    },
+    }
 
-    renderViewSection: function() {
+    renderViewSection() {
         return (
             <div className="GuiBuilder-section GuiBuilder-view flex align-center px1" ref="viewSection">
                 <span className="GuiBuilder-section-label Query-label">View</span>
@@ -424,9 +407,9 @@ export default React.createClass({
                 {this.renderBreakouts()}
             </div>
         );
-    },
+    }
 
-    renderSortLimitSection: function() {
+    renderSortLimitSection() {
         var tetherOptions = {
             attachment: 'top right',
             targetAttachment: 'bottom center',
@@ -460,9 +443,9 @@ export default React.createClass({
                 </PopoverWithTrigger>
             </div>
         );
-    },
+    }
 
-    componentDidUpdate: function() {
+    componentDidUpdate() {
         // HACK: magic number "5" accounts for the borders between the sections?
         let contentWidth = ["data", "filter", "view", "sortLimit"].reduce((acc, ref) => acc + React.findDOMNode(this.refs[`${ref}Section`]).offsetWidth, 0) + 5;
         let guiBuilderWidth = React.findDOMNode(this.refs.guiBuilder).offsetWidth;
@@ -471,9 +454,9 @@ export default React.createClass({
         if (this.state.expanded !== expanded) {
             this.setState({ expanded });
         }
-    },
+    }
 
-    render: function() {
+    render() {
         var classes = cx({
             'GuiBuilder': true,
             'GuiBuilder--expand': this.state.expanded,
@@ -496,4 +479,15 @@ export default React.createClass({
             </div>
         );
     }
-});
+}
+
+GuiQueryEditor.propTypes = {
+    databases: PropTypes.array.isRequired,
+    query: PropTypes.object.isRequired,
+    tableMetadata: PropTypes.object, // can't be required, sometimes null
+    isShowingDataReference: PropTypes.bool.isRequired,
+    setQueryFn: PropTypes.func.isRequired,
+    setDatabaseFn: PropTypes.func.isRequired,
+    setSourceTableFn: PropTypes.func.isRequired,
+    toggleExpandCollapseFn: PropTypes.func.isRequired
+};
