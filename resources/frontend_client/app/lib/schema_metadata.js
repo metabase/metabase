@@ -12,17 +12,16 @@ export const UNKNOWN = 'UNKNOWN';
 
 const DateBaseTypes = ['DateTimeField', 'DateField'];
 const NumberBaseTypes = ['IntegerField', 'DecimalField', 'FloatField', 'BigIntegerField'];
+const BooleanTypes = ["BooleanField"];
+
 const SummableBaseTypes = ['IntegerField', 'DecimalField', 'FloatField', 'BigIntegerField'];
 const CategoryBaseTypes = ["BooleanField"];
 
 const DateSpecialTypes = ['timestamp_milliseconds', 'timestamp_seconds'];
 const CategorySpecialTypes = ["category", "zip_code", "city", "state", "country"];
 
-function isInTypes(type, type_collection) {
-    if (_.indexOf(type_collection, type) >= 0) {
-        return true;
-    }
-    return false;
+function isInTypes(type, typeCollection) {
+    return _.contains(typeCollection, type);
 }
 
 export function isDate(field) {
@@ -31,6 +30,10 @@ export function isDate(field) {
 
 export function isNumeric(field) {
     return isInTypes(field.base_type, NumberBaseTypes);
+}
+
+export function isBoolean(field) {
+    return isInTypes(field.base_type, BooleanTypes);
 }
 
 export function isSummable(field) {
@@ -91,84 +94,87 @@ export function parseSpecialType(type) {
 
 function freeformArgument(field, table) {
     return {
-        'type': "text"
+        type: "text"
     };
 }
 
 function numberArgument(field, table) {
     return {
-        'type': "number"
+        type: "number"
     };
 }
 
 
 function comparableArgument(field, table) {
-
-    var inputType = "text";
     if (isNumeric(field)) {
-        inputType = "number";
+        return {
+            type: "number"
+        };
     }
+
     if (isDate(field)) {
-        inputType = "date";
+        return {
+            type: "date"
+        };
     }
+
     return {
-        'type': inputType
+        type: "text"
     };
 }
 
 
 function equivalentArgument(field, table) {
-
-    var input_type = "text";
-    if (isDate(field)) {
-        input_type = "date";
-    }
-    if (isNumeric(field)) {
-        input_type = "number";
+    if (isBoolean(field)) {
+        return {
+            type: "select",
+            values: [
+                { key: true, name: "True" },
+                { key: false, name: "False" }
+            ]
+        };
     }
 
     if (isCategory(field)) {
-        // DON'T UNDERSTAND WHY I HAVE TO DO THIS (!)
-        if (!table.field_values) {
-            table.field_values = {};
-            for (var fld in table.fields) {
-                table.field_values[fld.id] = fld.display_name; // ???
-            }
-        }
-
         if (field.id in table.field_values && table.field_values[field.id].length > 0) {
-            var valid_values = table.field_values[field.id];
-            valid_values.sort();
+            let validValues = table.field_values[field.id];
+            validValues.sort();
             return {
-                "type": "select",
-                'values': _.map(valid_values, function(value) {
-                    return {
-                        'key': value,
-                        'name': value
-                    };
-                })
+                type: "select",
+                values: validValues.map(value => ({
+                    key: value,
+                    name: value
+                }))
             };
         }
     }
+
+    if (isDate(field)) {
+        return {
+            type: "date"
+        };
+    }
+
+    if (isNumeric(field)) {
+        return {
+            type: "number"
+        };
+    }
+
     return {
-        'type': input_type
+        type: "text"
     };
 }
 
 function longitudeFieldSelectArgument(field, table) {
-    var longitudeFields = _.filter(table.fields, function(field) {
-        return field.special_type == "longitude";
-    });
-    var validValues = _.map(longitudeFields, function(field) {
-        return {
-            'key': field.id,
-            'name': field.display_name
-        };
-    });
-
     return {
-        "values": validValues,
-        "type": "select"
+        type: "select",
+        values: table.fields
+            .filter(field => field.special_type === "longitude")
+            .map(field => ({
+                key: field.id,
+                name: field.display_name
+            }))
     };
 }
 
