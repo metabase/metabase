@@ -1,6 +1,5 @@
 "use strict";
 
-import _ from "underscore";
 import { createAction } from "redux-actions";
 import moment from "moment";
 import { normalize, Schema, arrayOf } from "normalizr";
@@ -46,15 +45,13 @@ export const DELETE_USER = 'DELETE_USER';
 export const FETCH_USERS = 'FETCH_USERS';
 export const GRANT_ADMIN = 'GRANT_ADMIN';
 export const REVOKE_ADMIN = 'REVOKE_ADMIN';
-export const SHOW_ADD_PERSON = 'SHOW_ADD_PERSON';
-export const SHOW_EDIT_DETAILS = 'SHOW_EDIT_DETAILS';
+export const SHOW_MODAL = 'SHOW_MODAL';
 export const UPDATE_USER = 'UPDATE_USER';
 
 
 // action creators
 
-export const showAddPersonModal = createAction(SHOW_ADD_PERSON);
-export const showEditDetailsModal = createAction(SHOW_EDIT_DETAILS);
+export const showModal = createAction(SHOW_MODAL);
 
 export const createUser = createThunkAction(CREATE_USER, function(user) {
     return async function(dispatch, getState) {
@@ -70,7 +67,7 @@ export const createUser = createThunkAction(CREATE_USER, function(user) {
 
 export const deleteUser = createThunkAction(DELETE_USER, function(user) {
     return async function(dispatch, getState) {
-        let resp = await UserApi.delete({
+        await UserApi.delete({
             userId: user.id
         });
         return user;

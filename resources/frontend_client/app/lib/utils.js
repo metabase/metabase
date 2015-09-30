@@ -1,7 +1,15 @@
 'use strict';
 
+import generatePassword from "password-generator";
+
+
 // provides functions for building urls to things we care about
 var MetabaseUtils = {
+    generatePassword: function(length) {
+        const len = length || 14;
+        return generatePassword(len, false);
+    },
+
     isEmpty: function(str) {
         return (!str || 0 === str.length);
     },

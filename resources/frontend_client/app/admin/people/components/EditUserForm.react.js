@@ -6,8 +6,6 @@ import cx from "classnames";
 
 import FormField from "metabase/components/form/FormField.react";
 import FormLabel from "metabase/components/form/FormLabel.react";
-import FormMessage from "metabase/components/form/FormMessage.react";
-import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
 
 

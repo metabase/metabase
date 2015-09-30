@@ -10,21 +10,15 @@ import {
     FETCH_USERS,
     GRANT_ADMIN,
     REVOKE_ADMIN,
-    SHOW_ADD_PERSON,
-    SHOW_EDIT_DETAILS,
+    SHOW_MODAL,
     UPDATE_USER
 } from './actions';
 
 
-export const showAddPersonModal = handleActions({
-    [SHOW_ADD_PERSON]: { next: (state, { payload }) => payload }
-}, false);
-
-export const showEditDetailsModal = handleActions({
-    [SHOW_EDIT_DETAILS]: { next: (state, { payload }) => payload }
+export const modal = handleActions({
+    [SHOW_MODAL]: { next: (state, { payload }) => payload }
 }, null);
 
-// {  let newState = { ...state }; delete newState[user.id]; return newState; }
 
 export const users = handleActions({
     [FETCH_USERS]: { next: (state, { payload }) => ({ ...payload.entities.user }) },

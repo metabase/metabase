@@ -4,20 +4,28 @@ import React, { Component, PropTypes } from "react";
 import _ from "underscore";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.react";
+import MetabaseSettings from "metabase/lib/settings";
+import MetabaseUtils from "metabase/lib/utils";
 import Modal from "metabase/components/Modal.react";
 import ModalContent from "metabase/components/ModalContent.react";
 import UserAvatar from "metabase/components/UserAvatar.react";
 
 import EditUserForm from "./EditUserForm.react";
+import PasswordReveal from "./PasswordReveal.react";
 import UserActionsSelect from "./UserActionsSelect.react";
 import UserRoleSelect from "./UserRoleSelect.react";
 import { createUser,
          fetchUsers,
          grantAdmin,
          revokeAdmin,
-         showAddPersonModal,
-         showEditDetailsModal,
+         showModal,
          updateUser } from "../actions";
+
+
+const MODAL_ADD_PERSON = 'MODAL_ADD_PERSON';
+const MODAL_EDIT_DETAILS = 'MODAL_EDIT_DETAILS';
+const MODAL_USER_ADDED_WITH_INVITE = 'MODAL_USER_ADDED_WITH_INVITE';
+const MODAL_USER_ADDED_WITH_PASSWORD = 'MODAL_USER_ADDED_WITH_PASSWORD';
 
 
 export default class AdminPeople extends Component {
@@ -44,72 +52,139 @@ export default class AdminPeople extends Component {
         }
     }
 
-    onAddPerson(user) {
+    async onAddPerson(user) {
         // close the modal no matter what
-        this.props.dispatch(showAddPersonModal(null));
+        this.props.dispatch(showModal(null));
 
         if (user) {
             // time to create a new user!
 
-            // if email is not setup -> generate temp password and allow user to retrieve it
-            // when email available -> confirm that invitation was sent
+            if (false && MetabaseSettings.isEmailConfigured()) {
+                // when email available -> confirm that invitation was sent
 
-            this.props.dispatch(createUser(user));
+                this.props.dispatch(createUser(user));
+
+                this.props.dispatch(showModal({
+                    type: MODAL_USER_ADDED_WITH_INVITE,
+                    details: {
+                        user: user
+                    }
+                }));
+
+            } else {
+                // if email is not setup -> generate temp password and allow user to retrieve it
+                let autoPassword = MetabaseUtils.generatePassword();
+                user.password = autoPassword;
+
+                this.props.dispatch(createUser(user));
+
+                this.props.dispatch(showModal({
+                    type: MODAL_USER_ADDED_WITH_PASSWORD,
+                    details: {
+                        user: user
+                    }
+                }));
+            }
         }
-    }
-
-    renderAddPersonModal() {
-        if (!this.props.showAddPersonModal) return false;
-
-        return (
-            <Modal>
-                <ModalContent title="Add Person"
-                              closeFn={() => this.props.dispatch(showAddPersonModal(false))}>
-                    <EditUserForm
-                        buttonText="Add Person"
-                        submitFn={this.onAddPerson.bind(this)} />
-                </ModalContent>
-            </Modal>
-        );
     }
 
     onEditDetails(user) {
         // close the modal no matter what
-        this.props.dispatch(showEditDetailsModal(null));
+        this.props.dispatch(showModal(null));
 
         if (user) {
             this.props.dispatch(updateUser(user));
         }
     }
 
-    renderEditDetailsModal() {
-        if (!this.props.showEditDetailsModal) return false;
+    renderModal(modalType, modalDetails) {
 
-        return (
-            <Modal>
-                <ModalContent title="Edit Details"
-                              closeFn={() => this.props.dispatch(showEditDetailsModal(null))}>
-                    <EditUserForm
-                        user={this.props.showEditDetailsModal}
-                        submitFn={this.onEditDetails.bind(this)} />
-                </ModalContent>
-            </Modal>
-        );
+        if (modalType === MODAL_ADD_PERSON) {
+
+            return (
+                <Modal>
+                    <ModalContent title="Add Person"
+                                  closeFn={() => this.props.dispatch(showModal(null))}>
+                        <EditUserForm
+                            buttonText="Add Person"
+                            submitFn={this.onAddPerson.bind(this)} />
+                    </ModalContent>
+                </Modal>
+            );
+
+        } else if (modalType === MODAL_EDIT_DETAILS) {
+            let { user } = modalDetails;
+
+            return (
+                <Modal>
+                    <ModalContent title="Edit Details"
+                                  closeFn={() => this.props.dispatch(showModal(null))}>
+                        <EditUserForm
+                            user={user}
+                            submitFn={this.onEditDetails.bind(this)} />
+                    </ModalContent>
+                </Modal>
+            );
+
+        } else if (modalType === MODAL_USER_ADDED_WITH_PASSWORD) {
+            let { user } = modalDetails;
+
+            return (
+                <Modal>
+                    <ModalContent title={user.first_name+" has been added"}
+                                  closeFn={() => this.props.dispatch(showModal(null))}>
+                        <div>
+                            <p>We couldn’t send them an email invitation,
+                            so make sure to tell them to log in using <span className="text-bold">{user.email}</span>
+                            and this password we’ve generated for them:</p>
+
+                            <PasswordReveal password={user.password}></PasswordReveal>
+
+                            <p>If you want to be able to send email invites, just go to the <a className="link" href="/admin/settings">Email Settings</a> page.</p>
+
+                            <div className="Form-actions">
+                                <button className="Button Button--primary mr2" onClick={() => this.props.dispatch(showModal(null))}>Done</button>
+                                or <a className="link ml1 text-bold" href="" onClick={() => this.props.dispatch(showModal({type: MODAL_ADD_PERSON}))}>Add another person</a>
+                            </div>
+                        </div>
+                    </ModalContent>
+                </Modal>
+            );
+
+        } else if (modalType === MODAL_USER_ADDED_WITH_INVITE) {
+            let { user } = modalDetails;
+
+            return (
+                <Modal>
+                    <ModalContent title={user.first_name+" has been added"}
+                                  closeFn={() => this.props.dispatch(showModal(null))}>
+                        <div>
+                            <p>We’ve sent an invite to <span className="text-bold">{user.email}</span> with instructions to set their password.</p>
+
+                            <div className="Form-actions">
+                                <button className="Button Button--primary mr2" onClick={() => this.props.dispatch(showModal(null))}>Done</button>
+                                or <a className="link ml1 text-bold" href="" onClick={() => this.props.dispatch(showModal({type: MODAL_ADD_PERSON}))}>Add another person</a>
+                            </div>
+                        </div>
+                    </ModalContent>
+                </Modal>
+            );
+        }
     }
 
     render() {
         let users = _.values(this.props.users);
+        let { modal } = this.props;
         let { error } = this.state;
 
         return (
             <LoadingAndErrorWrapper loading={!users} error={error}>
             {() =>
                 <div className="wrapper">
-                    {this.renderAddPersonModal()}
-                    {this.renderEditDetailsModal()}
+                    { modal ? this.renderModal(modal.type, modal.details) : null }
 
                     <section className="PageHeader clearfix">
-                        <a className="Button Button--primary float-right" href="#" onClick={() => this.props.dispatch(showAddPersonModal(true))}>Add person</a>
+                        <a className="Button Button--primary float-right" href="#" onClick={() => this.props.dispatch(showModal({type: MODAL_ADD_PERSON}))}>Add person</a>
                         <h2 className="PageTitle">People</h2>
                     </section>
 
