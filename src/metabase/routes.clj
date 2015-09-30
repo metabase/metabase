@@ -9,14 +9,8 @@
             (metabase.models common
                              [setting :as setting])
             (metabase [config :as config]
-                      [setup :as setup]
-                      [util :as u])
+                      [setup :as setup])
             metabase.util.password))
-
-(def ^:private ^:const date-format-rfc2616
-  "Java SimpleDateFormat representing rfc2616 style date used in http headers."
-  "EEE, dd MMM yyyy HH:mm:ss zzz")
-
 
 (defn- index-page-vars
   "Static values that we inject into the index.html page via Mustache."
@@ -36,8 +30,7 @@
       slurp
       (stencil/render-string {:bootstrap_json (json/generate-string (index-page-vars))})
       resp/response
-      (resp/content-type "text/html")
-      (resp/header "Last-Modified" (u/now-with-format date-format-rfc2616))))
+      (resp/content-type "text/html")))
 
 ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
 (defroutes routes
