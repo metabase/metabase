@@ -47,7 +47,7 @@ export default class SelectPicker extends Component {
                 { placeholder ?
                     <h5>{placeholder}</h5>
                 : null }
-                { multi && false ?
+                { multi ?
                     <ul>
                         {options.map((option, index) =>
                             <li key={index}>
