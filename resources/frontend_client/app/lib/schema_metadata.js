@@ -141,10 +141,12 @@ function equivalentArgument(field, table) {
             validValues.sort();
             return {
                 type: "select",
-                values: validValues.map(value => ({
-                    key: value,
-                    name: value
-                }))
+                values: validValues
+                    .filter(value => value != null)
+                    .map(value => ({
+                        key: value,
+                        name: value
+                    }))
             };
         }
     }

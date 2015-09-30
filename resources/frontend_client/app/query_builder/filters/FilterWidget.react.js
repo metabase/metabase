@@ -94,7 +94,6 @@ export default class FilterWidget extends Component {
             values = generateTimeFilterValuesDescriptions(this.props.filter);
         }
 
-        // the first 2 positions of the filter are always for fieldId + fieldOperator
         return values.map((value, valueIndex) => {
             var valueString = value != null ? value.toString() : null;
             return (
