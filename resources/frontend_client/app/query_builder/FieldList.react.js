@@ -9,7 +9,7 @@ import TimeGroupingPopover from "./TimeGroupingPopover.react";
 
 import { isDate, getUmbrellaType, TIME, NUMBER, STRING, LOCATION } from 'metabase/lib/schema_metadata';
 import { parseFieldBucketing, parseFieldTarget } from "metabase/lib/query_time";
-import { stripId, singularize } from "metabase/lib/humanize";
+import { stripId, singularize } from "metabase/lib/formatting";
 
 import _ from "underscore";
 

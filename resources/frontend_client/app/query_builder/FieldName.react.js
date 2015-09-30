@@ -8,7 +8,7 @@ import Query from "metabase/lib/query";
 import { parseFieldTarget, parseFieldBucketing, formatBucketing } from "metabase/lib/query_time";
 import { isDate } from "metabase/lib/schema_metadata";
 
-import { stripId } from "metabase/lib/humanize";
+import { stripId } from "metabase/lib/formatting";
 
 import cx from "classnames";
 
