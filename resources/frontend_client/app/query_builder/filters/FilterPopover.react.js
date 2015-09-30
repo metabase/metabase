@@ -86,7 +86,11 @@ export default class FilterPopover extends Component {
 
         if (operator) {
             for (let i = 0; i < operator.fields.length; i++) {
-                filter.push(undefined);
+                if (operator.defaults && operator.defaults[i] !== undefined) {
+                    filter.push(operator.defaults[i]);
+                } else {
+                    filter.push();
+                }
             }
             if (oldOperator) {
                 // copy over values of the same type
