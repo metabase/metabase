@@ -1,9 +1,12 @@
 (ns metabase.config
-  (:require [environ.core :as environ]
+  (:require (clojure.java [io :as io]
+                          [shell :as shell])
+            [clojure.string :as s]
+            [environ.core :as environ]
             [medley.core :as m])
-  (:import (clojure.lang Keyword)))
+  (:import clojure.lang.Keyword))
 
-(def ^:const app-defaults
+(def ^:private ^:const app-defaults
   "Global application defaults"
   {;; Database Configuration  (general options?  dburl?)
    :mb-run-mode "prod"
@@ -39,15 +42,16 @@
 
 
 ;; These are convenience functions for accessing config values that ensures a specific return type
-(defn ^Integer config-int [k] (when-let [val (config-str k)] (Integer/parseInt val)))
-(defn ^Boolean config-bool [k] (when-let [val (config-str k)] (Boolean/parseBoolean val)))
-(defn ^Keyword config-kw [k] (when-let [val (config-str k)] (keyword val)))
+(defn ^Integer config-int  [k] (some-> k config-str Integer/parseInt))
+(defn ^Boolean config-bool [k] (some-> k config-str Boolean/parseBoolean))
+(defn ^Keyword config-kw   [k] (some-> k config-str keyword))
 
 
 (def ^:const config-all
   "Global application configuration as a dictionary.
    Combines hard coded defaults with optional user specified overrides from environment variables."
-  (into {} (map (fn [k] [k (config-str k)]) (keys app-defaults))))
+  (into {} (for [k (keys app-defaults)]
+               [k (config-str k)])))
 
 
 (defn config-match
@@ -64,5 +68,31 @@
           (m/filter-keys (fn [k] (re-matches prefix-regex (str k))) environ/env))
       (m/map-keys (fn [k] (let [kstr (str k)] (keyword (subs kstr (+ 1 (count prefix))))))))))
 
+(defn ^Boolean is-dev?  [] (= :dev  (config-kw :mb-run-mode)))
 (defn ^Boolean is-prod? [] (= :prod (config-kw :mb-run-mode)))
 (defn ^Boolean is-test? [] (= :test (config-kw :mb-run-mode)))
+
+
+;;; Version stuff
+;; Metabase version is of the format `GIT-TAG (GIT-SHORT-HASH GIT-BRANCH)`
+
+(defn- version-info-from-shell-script []
+  {:long  (-> (shell/sh "./version")           :out s/trim)
+   :short (-> (shell/sh "./version" "--short") :out s/trim)})
+
+(defn- version-info-from-properties-file []
+  (with-open [reader (io/reader "resources/version.properties")]
+    (let [props (java.util.Properties.)]
+      (.load props reader)
+      (into {} (for [[k v] props]
+                 [(keyword k) v])))))
+
+(defn mb-version-info
+  "Return information about the current version of Metabase.
+   This comes from `resources/version.properties` for prod builds and is fetched from `git` via the `./version` script for dev.
+
+     (mb-version) -> {:long \"v0.11.1 (6509c49 master)\", :short \"v0.11.1\"}"
+  []
+  (if (is-prod?)
+    (version-info-from-properties-file)
+    (version-info-from-shell-script)))

@@ -26,7 +26,7 @@ const MetabaseSettings = {
         return (mb_settings.setup_token !== undefined && mb_settings.setup_token !== null);
     },
 
-    passwordComplexity: function() {
+    passwordComplexity: function(capitalize) {
         const complexity = this.get('password_complexity');
 
         const clauseDescription = function(clause) {
@@ -38,7 +38,7 @@ const MetabaseSettings = {
             }
         };
 
-        let description = "Must be "+complexity.total+" characters long",
+        let description = (capitalize === false) ? "must be "+complexity.total+" characters long" : "Must be "+complexity.total+" characters long",
             clauses = [];
 
         ["lower", "upper", "digit", "special"].forEach(function(clause) {
