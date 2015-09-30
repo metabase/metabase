@@ -30,10 +30,6 @@ export default class FilterPopover extends Component {
         _.bindAll(this, "setField", "clearField", "setOperator", "setValues", "setFilter", "commitFilter");
     }
 
-    componentDidUpdate() {
-        console.log("FILTER", this.state.filter);
-    }
-
     commitFilter() {
         this.props.onCommitFilter(this.state.filter);
         this.props.onClose();
