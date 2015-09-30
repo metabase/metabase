@@ -1,6 +1,7 @@
 "use strict";
 
 import React, { Component, PropTypes } from 'react';
+import _ from "underscore";
 import cx from "classnames";
 import OnClickOut from 'react-onclickout';
 
@@ -19,10 +20,7 @@ export default class DashboardsDropdown extends Component {
             modalOpen: false
         };
 
-        this.toggleDropdown = this.toggleDropdown.bind(this);
-        this.closeDropdown = this.closeDropdown.bind(this);
-        this.toggleModal = this.toggleModal.bind(this);
-        this.closeModal = this.closeModal.bind(this);
+        _.bindAll(this, "toggleDropdown", "closeDropdown", "toggleModal", "closeModal");
     }
 
     onCreateDashboard(newDashboard) {
@@ -64,7 +62,7 @@ export default class DashboardsDropdown extends Component {
             <Modal>
                 <CreateDashboardModal
                     createDashboardFn={this.onCreateDashboard.bind(this)}
-                    closeFn={() => this.closeModal()} />
+                    closeFn={this.closeModal} />
             </Modal>
         );
     }
@@ -73,19 +71,12 @@ export default class DashboardsDropdown extends Component {
         let { dashboards } = this.props;
         let { dropdownOpen, modalOpen } = this.state;
 
-        let dropDownClasses = cx({
-            'NavDropdown': true,
-            'inline-block': true,
-            'cursor-pointer': true,
-            'open': dropdownOpen,
-        })
-
         return (
             <div>
                 { modalOpen ? this.renderCreateDashboardModal() : null }
 
                 <OnClickOut onClickOut={this.closeDropdown}>
-                    <div className={dropDownClasses}>
+                    <div className={cx('NavDropdown inline-block cursor-pointer', { 'open': dropdownOpen })}>
                         <a className="NavDropdown-button NavItem text-white cursor-pointer p2 flex align-center" onClick={this.toggleDropdown}>
                             <span className="NavDropdown-button-layer">
                                 Dashboards
