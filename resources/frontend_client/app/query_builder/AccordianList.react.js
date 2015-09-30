@@ -103,7 +103,7 @@ export default class AccordianList extends Component {
                             </div>
                         : null }
                         { openSection === sectionIndex ?
-                            <ul className="p1 border-bottom">
+                            <ul style={{maxHeight: 400}} className="p1 border-bottom scroll-y">
                               {section.items.map((item, itemIndex) => {
                                   return (
                                       <li key={itemIndex} className={cx("List-item flex", { 'List-item--selected': this.itemIsSelected(item) })}>
