@@ -4,6 +4,10 @@ import React, { Component, PropTypes } from "react";
 
 import CheckBox from 'metabase/components/CheckBox.react';
 
+import { capitalize } from "metabase/lib/formatting";
+
+import cx from "classnames";
+
 export default class SelectPicker extends Component {
     selectValue(key, selected) {
         let values;
@@ -20,8 +24,18 @@ export default class SelectPicker extends Component {
         this.props.onValuesChange(values);
     }
 
+    nameForOption(option) {
+        if (option.name === "") {
+            return "Empty";
+        } else if (typeof option.name === "string") {
+            return option.name;
+        } else {
+            return capitalize(String(option.name));
+        }
+    }
+
     render() {
-        let { values, options, placeholder } = this.props;
+        let { values, options, placeholder, multi } = this.props;
 
         let checked = {};
         for (let value of values) {
@@ -29,20 +43,40 @@ export default class SelectPicker extends Component {
         }
 
         return (
-            <div className="px1 pt1" style={{maxHeight: '200px', overflowY: 'scroll'}}>
+            <div className="px1 pt1" style={{maxHeight: '400px', overflowY: 'scroll'}}>
                 { placeholder ?
                     <h5>{placeholder}</h5>
                 : null }
-                <ul>
-                    {options.map((option, index) =>
-                        <li key={index}>
-                            <label className="flex align-center full cursor-pointer p1" onClick={(e) => this.selectValue(option.key, !checked[option.key])}>
-                                <CheckBox checked={checked[option.key]} />
-                                <h4 className="ml1">{option.name}</h4>
-                            </label>
-                        </li>
-                    )}
-                </ul>
+                { multi && false ?
+                    <ul>
+                        {options.map((option, index) =>
+                            <li key={index}>
+                                <label className="flex align-center cursor-pointer p1" onClick={() => this.selectValue(option.key, !checked[option.key])}>
+                                    <CheckBox checked={checked[option.key]} />
+                                    <h4 className="ml1">{this.nameForOption(option)}</h4>
+                                </label>
+                            </li>
+                        )}
+                    </ul>
+                :
+                    <div className="flex flex-wrap py1">
+                        {options.map((option, index) =>
+                            <div className="half" style={{ padding: "0.15em" }}>
+                                <button
+                                    style={{ height: "95px" }}
+                                    className={cx("full rounded bordered border-purple text-centered text-bold", {
+                                        "text-purple bg-white": values[0] !== option.key,
+                                        "text-white bg-purple-light": values[0] === option.key
+                                    })}
+                                    onClick={() => this.selectValue(option.key, true)}
+                                >
+                                    {this.nameForOption(option)}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                }
+
             </div>
         );
     }
