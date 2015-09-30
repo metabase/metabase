@@ -17,15 +17,15 @@
                           [tiles :as tiles]
                           [user :as user]
                           [util :as util])
-            [metabase.middleware.auth :as auth]))
+            [metabase.middleware :as middleware]))
 
 (def ^:private +apikey
   "Wrap API-ROUTES so they may only be accessed with proper apikey credentials."
-  auth/enforce-api-key)
+  middlware/enforce-api-key)
 
 (def ^:private +auth
   "Wrap API-ROUTES so they may only be accessed with proper authentiaction credentials."
-  auth/enforce-authentication)
+  middlware/enforce-authentication)
 
 (defroutes routes
   (context "/activity"     [] (+auth activity/routes))

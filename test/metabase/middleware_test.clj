@@ -1,9 +1,9 @@
-(ns metabase.middleware.auth-test
+(ns metabase.middleware-test
   (:require [expectations :refer :all]
             [korma.core :as k]
             [ring.mock.request :as mock]
             [metabase.api.common :refer [*current-user-id* *current-user*]]
-            [metabase.middleware.auth :refer :all]
+            [metabase.middleware :refer :all]
             [metabase.models.session :refer [Session]]
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
@@ -170,3 +170,33 @@
 ;; invalid apikey, expect 403
 (expect response-forbidden
   (api-key-enforced-handler (request-with-api-key "foobar")))
+
+
+
+;;; # ------------------------------------------------------------ FORMATTING TESTS ------------------------------------------------------------
+
+;; `format`, being a middleware function, expects a `handler`
+;; and returns a function that actually affects the response.
+;; Since we're just interested in testing the returned function pass it `identity` as a handler
+;; so whatever we pass it is unaffected
+(def fmt (format-response identity))
+
+;; check basic stripping
+(expect {:a 1}
+        (fmt {:a 1
+              :b (fn [] 2)}))
+
+;; check recursive stripping w/ map
+(expect {:response {:a 1}}
+        (fmt {:response {:a 1
+                         :b (fn [] 2)}}))
+
+;; check recursive stripping w/ array
+(expect [{:a 1}]
+        (fmt [{:a 1
+               :b (fn [] 2)}]))
+
+;; check combined recursive stripping
+(expect [{:a [{:b 1}]}]
+        (fmt [{:a [{:b 1
+                    :c (fn [] 2)} ]}]))
