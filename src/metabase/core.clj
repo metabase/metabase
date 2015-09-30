@@ -95,7 +95,7 @@
 (defn init
   "General application initialization function which should be run once at application startup."
   []
-  (log/info "Metabase Initializing ... ")
+  (log/info (format "Starting Metabase version %s..." ((config/mb-version-info) :long)))
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
   (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable destroy))
   (log/debug "Using Config:\n" (with-out-str (clojure.pprint/pprint config/config-all)))
