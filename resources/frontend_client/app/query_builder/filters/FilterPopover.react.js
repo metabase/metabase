@@ -89,7 +89,7 @@ export default class FilterPopover extends Component {
                 if (operator.defaults && operator.defaults[i] !== undefined) {
                     filter.push(operator.defaults[i]);
                 } else {
-                    filter.push();
+                    filter.push(undefined);
                 }
             }
             if (oldOperator) {
