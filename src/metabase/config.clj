@@ -81,7 +81,7 @@
    :short (-> (shell/sh "./version" "--short") :out s/trim)})
 
 (defn- version-info-from-properties-file []
-  (with-open [reader (io/reader "resources/version.properties")]
+  (with-open [reader (io/reader (io/resource "version.properties"))]
     (let [props (java.util.Properties.)]
       (.load props reader)
       (into {} (for [[k v] props]
