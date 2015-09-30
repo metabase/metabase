@@ -1,17 +1,15 @@
 'use strict';
 
-import _ from "underscore";
-
-import MetabaseAnalytics from '../lib/analytics';
-import DataGrid from "metabase/lib/data_grid";
-
-import FixedDataTable from 'fixed-data-table';
+import { Table, Column } from 'fixed-data-table';
 import Icon from "metabase/components/Icon.react";
 import Popover from "metabase/components/Popover.react";
 
+import MetabaseAnalytics from '../lib/analytics';
+import DataGrid from "metabase/lib/data_grid";
+import { formatCell } from "metabase/lib/formatting";
+
+import _ from "underscore";
 import cx from "classnames";
-var Table = FixedDataTable.Table;
-var Column = FixedDataTable.Column;
 
 export default React.createClass({
     displayName: 'QueryVisualizationTable',
@@ -42,7 +40,8 @@ export default React.createClass({
             colDefs: null,
             popover: null,
             data: null,
-            rawData: null
+            rawData: null,
+            contentWidths: null
         };
     },
 
@@ -90,15 +89,16 @@ export default React.createClass({
     calculateColumnWidths: function(availableWidth, minColumnWidth, colDefs, prevAvailableWidth, prevColumnWidths) {
         // TODO: maintain column spacing on a window resize
 
-        var calcColumnWidth = (colDefs.length > 0) ? availableWidth / colDefs.length : minColumnWidth;
-        var columnWidths = colDefs.map(function (column, idx) {
-            return (minColumnWidth > calcColumnWidth) ? minColumnWidth : calcColumnWidth;
+        return colDefs.map((coldDef, index) => {
+            if (this.state.contentWidths) {
+                return Math.max(this.state.contentWidths[index]) + 20;
+            } else {
+                return 300;
+            }
         });
-
-        return columnWidths;
     },
 
-    calculateSizing: function(prevState) {
+    calculateSizing: function(prevState, force) {
         var element = this.getDOMNode(); //React.findDOMNode(this);
 
         // account for padding of our parent
@@ -110,13 +110,13 @@ export default React.createClass({
         var width = element.parentElement.offsetWidth - paddingLeft - paddingRight;
         var height = element.parentElement.offsetHeight - paddingTop;
 
-        if (width !== prevState.width || height !== prevState.height) {
+        if (width !== prevState.width || height !== prevState.height || force) {
             var updatedState = {
                 width: width,
                 height: height
             };
 
-            if (width !== prevState.width) {
+            if (width !== prevState.width || force) {
                 // NOTE: we remove 2 pixels from width to allow for a border pixel on each side
                 var tableColumnWidths = this.calculateColumnWidths(width - 2, this.props.minColumnWidth, this.state.data.cols, prevState.width, prevState.columnWidths);
                 updatedState.columnWidths = tableColumnWidths;
@@ -169,36 +169,37 @@ export default React.createClass({
     },
 
     cellRenderer: function(cellData, cellDataKey, rowData, rowIndex, columnData, width) {
-        // TODO: should we be casting all values toString()?
-        cellData = (cellData !== null) ? cellData.toString() : null;
+        cellData = cellData != null ? formatCell(cellData, this.props.data.cols[cellDataKey]) : null;
 
         var key = 'cl'+rowIndex+'_'+cellDataKey;
         if (this.props.cellIsClickableFn(rowIndex, cellDataKey)) {
-            return (<a key={key} className="link" href="#" onClick={this.cellClicked.bind(null, rowIndex, cellDataKey)}>{cellData}</a>);
+            return (
+                <a key={key} className="link cellData" href="#" onClick={this.cellClicked.bind(null, rowIndex, cellDataKey)}>{cellData}</a>
+            );
         } else {
             var popover = null;
             if (this.state.popover && this.state.popover.rowIndex === rowIndex && this.state.popover.cellDataKey === cellDataKey) {
-                var tetherOptions = {
-                    targetAttachment: "middle center",
-                    attachment: "middle center"
-                };
-                var operators = ["<", "=", "≠", ">"].map(function(operator) {
-                    return (<li key={operator} className="p2 text-brand-hover" onClick={this.popoverFilterClicked.bind(null, rowIndex, cellDataKey, operator)}>{operator}</li>);
-                }, this);
                 popover = (
                     <Popover
-                        tetherOptions={tetherOptions}
+                        tetherOptions={{
+                            targetAttachment: "middle center",
+                            attachment: "middle center"
+                        }}
                         onClose={this.onClosePopover}
                     >
                         <div className="bg-white bordered shadowed p1">
-                            <ul className="h1 flex align-center">{operators}</ul>
+                            <ul className="h1 flex align-center">
+                                { ["<", "=", "≠", ">"].map(operator =>
+                                    <li key={operator} className="p2 text-brand-hover" onClick={this.popoverFilterClicked.bind(null, rowIndex, cellDataKey, operator)}>{operator}</li>
+                                )}
+                            </ul>
                         </div>
                     </Popover>
                 );
             }
             return (
-                <div key={key}>
-                    <div onClick={this.showPopover.bind(null, rowIndex, cellDataKey)}>{cellData}</div>
+                <div key={key} onClick={this.showPopover.bind(null, rowIndex, cellDataKey)}>
+                    <span className="cellData">{cellData}</span>
                     {popover}
                 </div>
             );
@@ -243,7 +244,9 @@ export default React.createClass({
 
             return (
                 <div key={columnIndex} className={headerClasses} onClick={this.setSort.bind(null, fieldId)}>
-                    {colVal}
+                    <span className="cellData">
+                        {colVal}
+                    </span>
                     <span className="ml1">
                         {sortChevron}
                     </span>
@@ -282,14 +285,10 @@ export default React.createClass({
             );
         });
 
-        var classes = cx({
-            'MB-DataTable': true,
-            'MB-DataTable--pivot': this.props.pivot
-        });
-
         return (
-            <span className={classes}>
+            <span className={cx('MB-DataTable', { 'MB-DataTable--pivot': this.props.pivot })}>
                 <Table
+                    ref="table"
                     rowHeight={35}
                     rowGetter={this.rowGetter}
                     rowsCount={this.state.data.rows.length}
@@ -297,10 +296,24 @@ export default React.createClass({
                     maxHeight={this.state.height}
                     headerHeight={50}
                     isColumnResizing={this.isColumnResizing}
-                    onColumnResizeEndCallback={component.columnResized}>
+                    onColumnResizeEndCallback={component.columnResized}
+                >
                     {tableColumns}
                 </Table>
             </span>
         );
+    },
+
+    componentDidUpdate: function() {
+        if (!this.state.contentWidths) {
+            let tableElement = React.findDOMNode(this.refs.table);
+            let contentWidths = [];
+            for (let rowElement of tableElement.querySelectorAll(".fixedDataTableRowLayout_rowWrapper")) {
+                for (let [index, cellDataElement] of Object.entries(rowElement.querySelectorAll(".cellData"))) {
+                    contentWidths[index] = Math.max(contentWidths[index] || 0, cellDataElement.offsetWidth);
+                }
+            }
+            this.setState({ contentWidths }, () => this.calculateSizing(this.state, true));
+        }
     }
 });
