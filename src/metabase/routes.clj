@@ -26,7 +26,7 @@
    :password_complexity   (metabase.util.password/active-password-complexity)
    :setup_token           (setup/token-value)
    :timezones             metabase.models.common/timezones
-   :version               (config/mb-version)
+   :version               (config/mb-version-info)
    ;; all of these values are dynamic settings from the admin UI but we include them here for bootstrapping availability
    :anon-tracking-enabled (setting/get :anon-tracking-enabled)
    :-site-name            (setting/get :-site-name)})
