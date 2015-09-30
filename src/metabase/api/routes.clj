@@ -21,11 +21,11 @@
 
 (def ^:private +apikey
   "Wrap API-ROUTES so they may only be accessed with proper apikey credentials."
-  middlware/enforce-api-key)
+  middleware/enforce-api-key)
 
 (def ^:private +auth
   "Wrap API-ROUTES so they may only be accessed with proper authentiaction credentials."
-  middlware/enforce-authentication)
+  middleware/enforce-authentication)
 
 (defroutes routes
   (context "/activity"     [] (+auth activity/routes))

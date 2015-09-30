@@ -1,15 +1,15 @@
 (ns metabase.api.notify-test
   (:require [clj-http.lite.client :as client]
             [expectations :refer :all]
-            (metabase. [http-client :as http]
-                       [middleware :as middleware])))
+            (metabase [http-client :as http]
+                      [middleware :as middleware])))
 
 
 ;; ## /api/notify/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
 
-(expect (get middlware/response-forbidden :body) (http/client :post 403 "notify/db/100"))
+(expect (get middleware/response-forbidden :body) (http/client :post 403 "notify/db/100"))
 
 
 ;; ## POST /api/notify/db/:id

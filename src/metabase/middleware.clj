@@ -12,7 +12,7 @@
             [metabase.db :refer [sel]]
             (metabase.models [interface :refer [api-serialize]]
                              [session :refer [Session]]
-                             [user :refer [User current-user-fields]])
+                             [user :refer [User]])
             [metabase.util :as u]))
 
 ;;; # ------------------------------------------------------------ UTIL FNS ------------------------------------------------------------
