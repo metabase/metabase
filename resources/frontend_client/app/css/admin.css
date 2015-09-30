@@ -284,6 +284,13 @@
     min-width: 90px;
 }
 
+.AdminSelectBorderless {
+    display: inline-block;
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 3px;
+}
+
 
 .MetadataTable-title {
     background-color: #FCFCFC;
@@ -409,4 +416,34 @@
 
 .SettingsPassword {
     width: 200px;
+}
+
+.UserRolePopover .ColumnarSelector-column {
+    min-height: 180px;
+}
+
+.UserActionsSelect {
+    padding-top: 1em;
+    min-width: 180px;
+}
+
+.UserActionsSelect li {
+    padding: var(--padding-1) var(--padding-2) var(--padding-1) var(--padding-2);
+}
+
+.UserActionsSelect li:hover {
+    background-color: var(--brand-color);
+    color: #fff;
+}
+
+.UserActionsSelect li.Remove {
+    margin-top: var(--padding-1);
+    padding: var(--padding-2);
+    border-top: 1px solid #EAEAEA;
+    color: var(--error-color);
+}
+
+.UserActionsSelect li.Remove:hover {
+    background-color: var(--error-color);
+    color: #fff;
 }

@@ -1,6 +1,6 @@
 'use strict';
 
-import React, { Component } from 'react';
+import React, { Component, PropTypes } from 'react';
 import cx from 'classnames';
 
 export default class UserAvatar extends Component {
@@ -51,5 +51,10 @@ export default class UserAvatar extends Component {
 }
 
 UserAvatar.defaultProps = {
-    background: 'bg-brand',
+    background: 'bg-brand'
+}
+
+UserAvatar.propTypes = {
+    background: PropTypes.string,
+    user: PropTypes.object.isRequired
 }
