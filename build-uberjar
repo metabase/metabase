@@ -37,8 +37,23 @@ uberjar() {
     lein uberjar
 }
 
+sign() {
+    echo 'Signing jar...'
+
+    UBERJAR_FILE=$(ls target/uberjar/metabase-*-standalone.jar)
+    if [ ! -e "$UBERJAR_FILE" ]; then
+        echo "Couldn't find standalone uberjar in target/uberjar!"
+        echo "Try again when you're ready to quit playing games."
+        exit 1
+    fi
+
+    JARSIGNER_ALIAS=metabase
+
+    jarsigner $UBERJAR_FILE $JARSIGNER_ALIAS
+}
+
 all() {
-    version && frontend && sample-dataset && uberjar
+    version && frontend && sample-dataset && uberjar && sign
 }
 
 # Default to running all but let someone specify one or more sub-tasks to run instead if desired
