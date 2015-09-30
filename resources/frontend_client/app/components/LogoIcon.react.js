@@ -21,7 +21,7 @@ export default class LogoIcon extends React.Component {
     }
 }
 
-LogoIcon.PropTypes = {
+LogoIcon.propTypes = {
 	width: PropTypes.number,
     height: PropTypes.number
 }
