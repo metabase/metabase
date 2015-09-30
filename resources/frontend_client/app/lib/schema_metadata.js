@@ -248,10 +248,15 @@ const OPERATORS_BY_TYPE_ORDERED = {
         { name: "INSIDE",  verboseName: "Inside" }
     ],
     [BOOL]: [
+        { name: "=",       verboseName: "Is", multi: false },
+        { name: "IS_NULL", verboseName: "Is empty" },
+        { name: "NOT_NULL",verboseName: "Not empty" }
     ],
     [UNKNOWN]: [
         { name: "=",       verboseName: "Is" },
-        { name: "!=",      verboseName: "Is not" }
+        { name: "!=",      verboseName: "Is not" },
+        { name: "IS_NULL", verboseName: "Is empty", advanced: true },
+        { name: "NOT_NULL",verboseName: "Not empty", advanced: true }
     ]
 };
 
