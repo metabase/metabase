@@ -1,7 +1,8 @@
 ;; -*- comment-column: 35; -*-
 (ns metabase.core
   (:gen-class)
-  (:require [clojure.string :as s]
+  (:require [clojure.java.io :as io]
+            [clojure.string :as s]
             [clojure.tools.logging :as log]
             [colorize.core :as color]
             [ring.adapter.jetty :as ring-jetty]
@@ -160,11 +161,9 @@
   (when-not (sample-dataset-id)
     (try
       (log/info "Loading sample dataset...")
-      (let [resource (-> (Thread/currentThread) ; hunt down the sample dataset DB file inside the current JAR
-                         .getContextClassLoader
-                         (.getResource sample-dataset-filename))]
+      (let [resource (io/resource sample-dataset-filename)]
         (if-not resource
-          (log/error (format "Can't load sample dataset: the DB file '%s' can't be found by the ClassLoader." sample-dataset-filename))
+          (log/error (format "Can't load sample dataset: the DB file '%s' can't be found." sample-dataset-filename))
           (let [h2-file (-> (.getPath resource)
                             (s/replace #"^file:" "zip:")        ; to connect to an H2 DB inside a JAR just replace file: with zip:
                             (s/replace #"\.mv\.db$" "")         ; strip the .mv.db suffix from the path
