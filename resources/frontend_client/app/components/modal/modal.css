@@ -29,6 +29,10 @@
   overflow-y: scroll;
 }
 
+.Modal.Modal--small {
+  width: 480px;
+}
+
 .modal-backdrop, /* used by angular-ui-bootstrap */
 .Modal-backdrop {
     position: absolute;
@@ -43,6 +47,10 @@
     min-height: 200px;
     display: flex;
     flex-direction: column;
+}
+
+.Modal-content.Modal-content--small .Modal-body {
+    min-height: unset;
 }
 
 .Modal-body .Form-inputs {
