@@ -23,7 +23,7 @@
       "Don't try to pass an encrypted password to (ins User). Password encryption is handled by pre-insert.")
     (let [salt     (.toString (java.util.UUID/randomUUID))
           defaults {:date_joined  (u/new-sql-timestamp)
-                    :last_login   (u/new-sql-timestamp)
+                    :last_login   nil
                     :is_staff     true
                     :is_active    true
                     :is_superuser false}]

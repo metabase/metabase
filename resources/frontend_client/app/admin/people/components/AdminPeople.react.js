@@ -301,7 +301,7 @@ export default class AdminPeople extends Component {
                                             user={user}
                                             onChangeFn={this.onRoleChange.bind(this)} />
                                     </td>
-                                    <td>{user.last_login.fromNow()}</td>
+                                    <td>{ user.last_login ? user.last_login.fromNow() : "Never" }</td>
                                     <td className="text-right">
                                         <UserActionsSelect user={user} dispatch={this.props.dispatch} />
                                     </td>

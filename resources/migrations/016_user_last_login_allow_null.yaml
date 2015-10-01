@@ -1,0 +1,8 @@
+databaseChangeLog:
+  - changeSet:
+      id: 16
+      author: agilliland
+      changes:
+        - dropNotNullConstraint:
+            tableName: core_user
+            columnName: last_login
