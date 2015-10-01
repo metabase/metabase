@@ -12,16 +12,6 @@ import { deleteUser, resendInvite, showModal } from "../actions";
 
 export default class UserActionsSelect extends Component {
 
-    constructor(props) {
-        super(props);
-
-        this.styles = {
-            menuList: {
-                minWidth: "90px"
-            }
-        };
-    }
-
     onEditDetails() {
         this.props.dispatch(showModal({type: MODAL_EDIT_DETAILS, details: {user: this.props.user}}));
         this.refs.popover.toggle();
@@ -63,11 +53,13 @@ export default class UserActionsSelect extends Component {
                                 triggerElement={triggerElement}>
                 <ul className="UserActionsSelect">
                     <li onClick={this.onEditDetails.bind(this)}>Edit Details</li>
+
                     { (user.last_login === null && MetabaseSettings.isEmailConfigured()) ?
                         <li onClick={this.onResendInvite.bind(this)}>Re-send Invite</li>
                     :
                         <li onClick={this.onResetPassword.bind(this)}>Reset Password</li>
                     }
+
                     <li className="Remove" onClick={this.onRemoveUser.bind(this)}>Remove</li>
                 </ul>
             </PopoverWithTrigger>

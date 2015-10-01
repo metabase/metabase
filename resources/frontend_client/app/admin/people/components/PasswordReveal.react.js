@@ -7,7 +7,23 @@ export default class PasswordReveal extends Component {
 
     constructor(props) {
         super(props);
+
         this.state = { visible: false };
+
+        this.styles = {
+            container: {
+                borderWidth: "2px"
+            },
+
+            input: {
+                border: "none",
+                padding: "0.5em"
+            },
+
+            label: {
+                top: "-12px"
+            }
+        }
     }
 
     onToggleVisibility() {
@@ -21,11 +37,15 @@ export default class PasswordReveal extends Component {
         const { visible } = this.state;
 
         return (
-            <div>
+            <div style={this.styles.container} className="bordered rounded p2 relative">
+                <div style={this.styles.label} className="absolute text-centered left right">
+                    <span className="px1 bg-white h6 text-bold text-grey-3 text-uppercase">Temporary Password</span>
+                </div>
+
                 { visible ?
-                    <input type="text" value={password} />
+                    <input style={this.styles.input} className="text-grey-2 text-normal" type="text" value={password} />
                 :
-                    <input type="password" value={password} />
+                    <input style={this.styles.input} type="password" value={password} />
                 }
 
                 { visible ?

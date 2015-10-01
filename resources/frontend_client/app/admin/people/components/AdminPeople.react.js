@@ -190,11 +190,12 @@ export default class AdminPeople extends Component {
             let { user } = modalDetails;
 
             return (
-                <Modal>
+                <Modal className="Modal Modal--small">
                     <ModalContent title={"We've Re-sent "+user.first_name+"'s Invite"}
-                                  closeFn={() => this.props.dispatch(showModal(null))}>
+                                  closeFn={() => this.props.dispatch(showModal(null))}
+                                  className="Modal-content Modal-content--small NewForm">
                         <div>
-                            <p>Any previous email invites they have will no longer work.</p>
+                            <div className="px4 pb4">Any previous email invites they have will no longer work.</div>
 
                             <div className="Form-actions">
                                 <button className="Button Button--primary mr2" onClick={() => this.props.dispatch(showModal(null))}>Okay</button>
@@ -230,13 +231,16 @@ export default class AdminPeople extends Component {
             let { user, password } = modalDetails;
 
             return (
-                <Modal>
+                <Modal className="Modal Modal--small">
                     <ModalContent title={user.first_name+"'s Password Has Been Reset"}
-                                  closeFn={() => this.props.dispatch(showModal(null))}>
+                                  closeFn={() => this.props.dispatch(showModal(null))}
+                                  className="Modal-content Modal-content--small NewForm">
                         <div>
-                            <p>Here’s a temporary password they can use it log in and then change their password.</p>
+                            <div className="px4 pb4">
+                                <span className="pb3 block">Here’s a temporary password they can use to log in and then change their password.</span>
 
-                            <PasswordReveal password={password}></PasswordReveal>
+                                <PasswordReveal password={password}></PasswordReveal>
+                            </div>
 
                             <div className="Form-actions">
                                 <button className="Button Button--primary mr2" onClick={() => this.props.dispatch(showModal(null))}>Done</button>
@@ -250,11 +254,12 @@ export default class AdminPeople extends Component {
             let { user } = modalDetails;
 
             return (
-                <Modal>
+                <Modal className="Modal Modal--small">
                     <ModalContent title={user.first_name+"'s Password Has Been Reset"}
-                                  closeFn={() => this.props.dispatch(showModal(null))}>
+                                  closeFn={() => this.props.dispatch(showModal(null))}
+                                  className="Modal-content Modal-content--small NewForm">
                         <div>
-                            <p>We've sent them an email with instructions for creating a new password.</p>
+                            <div className="px4 pb4">We've sent them an email with instructions for creating a new password.</div>
 
                             <div className="Form-actions">
                                 <button className="Button Button--primary mr2" onClick={() => this.props.dispatch(showModal(null))}>Done</button>

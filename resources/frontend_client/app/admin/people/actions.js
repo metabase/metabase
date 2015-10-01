@@ -114,7 +114,7 @@ export const resendInvite = createThunkAction(RESEND_INVITE, function(user) {
         // make api call
         await UserApi.send_invite({id: user.id});
 
-        this.props.dispatch(showModal({type: MODAL_INVITE_RESENT, details: {user: this.props.user}}));
+        dispatch(showModal({type: MODAL_INVITE_RESENT, details: {user: user}}));
 
         return user;
     };
