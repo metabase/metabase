@@ -23,7 +23,7 @@ MetabaseControllers.controller('Metabase', ['$scope', '$location', 'MetabaseCore
 
     $scope.$on("appstate:site-settings", function(event, settings) {
         // change in global settings
-        $scope.siteName = settings['site-name'].value;
+        $scope.siteName = settings.site_name;
     });
 
     $scope.$on("appstate:user", function(event, user) {

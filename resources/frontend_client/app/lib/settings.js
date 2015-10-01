@@ -26,6 +26,10 @@ const MetabaseSettings = {
         return mb_settings.email_configured;
     },
 
+    isTrackingEnabled: function() {
+        return mb_settings.anon_tracking_enabled || false;
+    },
+
     hasSetupToken: function() {
         return (mb_settings.setup_token !== undefined && mb_settings.setup_token !== null);
     },

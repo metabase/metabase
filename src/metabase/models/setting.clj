@@ -6,6 +6,7 @@
             [korma.core :as k]
             [metabase.db :refer [sel del]]
             [metabase.models.interface :refer :all]
+            [metabase.setup :as setup]
             [metabase.util :as u]))
 
 ;; Settings are a fast + simple way to create a setting that can be set
@@ -149,6 +150,19 @@
                        :value (k settings))))
          (sort-by :key))))
 
+(defn public-settings
+  "Return a simple map of key/value pairs which represent the public settings for the application."
+  []
+  {:ga_code               "UA-60817802-1"
+   :intercom_code         "gqfmsgf1"
+   :password_complexity   (metabase.util.password/active-password-complexity)
+   :setup_token           (setup/token-value)
+   :timezones             metabase.models.common/timezones
+   :version               (metabase.config/mb-version-info)
+   ;; all of these values are dynamic settings controlled at runtime
+   :anon_tracking_enabled (= "true" (get :anon-tracking-enabled))
+   :site_name             (get :site-name)
+   :email_configured      (not (clojure.string/blank? (get :email-smtp-host)))})
 
 ;; # IMPLEMENTATION
 
