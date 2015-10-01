@@ -283,14 +283,14 @@ export default class AdminPeople extends Component {
                 <div className="wrapper">
                     { modal ? this.renderModal(modal.type, modal.details) : null }
 
-                    <section className="PageHeader clearfix">
+                    <section className="PageHeader clearfix px2">
                         <a className="Button Button--primary float-right" href="#" onClick={() => this.props.dispatch(showModal({type: MODAL_ADD_PERSON}))}>Add person</a>
                         <h2 className="PageTitle">People</h2>
                     </section>
 
                     <section>
                         <table className="ContentTable">
-                            <thead>
+                            <thead style={{borderTop: "none"}}>
                                 <tr>
                                     <th>Name</th>
                                     <th>Email</th>
