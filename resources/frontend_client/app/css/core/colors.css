@@ -13,6 +13,7 @@
   --warning-color: #E35050;
 
   --gold-color: #F9D45C;
+  --orange-color: #F9A354;
   --purple-color: #A989C5;
   --purple-light-color: #C5ABDB;
   --green-color: #9CC177;
@@ -97,6 +98,7 @@
 
 .bg-gold { background-color: var(--gold-color); }
 .bg-purple { background-color: var(--purple-color); }
+.bg-purple-light { background-color: var(--purple-light-color); }
 .bg-green { background-color: var(--green-color); }
 
 /* alt */

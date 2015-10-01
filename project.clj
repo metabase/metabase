@@ -24,6 +24,7 @@
                  [cheshire "5.5.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
                  [clj-http-lite "0.2.1"]                              ; HTTP client; lightweight version of clj-http that uses HttpURLConnection instead of Apache
                  [clj-time "0.10.0"]                                  ; library for dealing with date/time
+                 [clojurewerkz/quartzite "2.0.0"]                     ; scheduling library
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
                  [com.cemerick/friend "0.2.1"]                        ; auth library
                  [com.draines/postal "1.11.3"]                        ; SMTP library
@@ -59,7 +60,8 @@
   :javac-options ["-target" "1.6" "-source" "1.6"]
   ;; :jar-exclusions [#"\.java"] Circle CI doesn't like regexes because it's using the EDN reader and is retarded
   :ring {:handler metabase.core/app
-         :init metabase.core/init}
+         :init metabase.core/init
+         :destroy metabase.core/destroy}
   :eastwood {:exclude-namespaces [:test-paths]
              :add-linters [:unused-private-vars]
              :exclude-linters [:constant-test                         ; korma macros generate some forms with if statements that are always logically true or false
@@ -69,7 +71,7 @@
                                   [expectations "2.1.2"]              ; unit tests
                                   [marginalia "0.8.0"]                ; for documentation
                                   [ring/ring-mock "0.2.0"]]
-                   :plugins [[cider/cider-nrepl "0.9.1"]              ; Interactive development w/ cider NREPL in Emacs
+                   :plugins [[cider/cider-nrepl "0.10.0-SNAPSHOT"]    ; Interactive development w/ cider NREPL in Emacs
                              [jonase/eastwood "0.2.1"]                ; Linting
                              [lein-ancient "0.6.7"]                   ; Check project for outdated dependencies + plugins w/ 'lein ancient'
                              [lein-bikeshed "0.2.0"]                  ; Linting
@@ -77,8 +79,9 @@
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'
                              [lein-instant-cheatsheet "2.1.4"]        ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
                              [lein-marginalia "0.8.0"]                ; generate documentation with 'lein marg'
-                             [refactor-nrepl "1.1.0"]]                ; support for advanced refactoring in Emacs/LightTable
+                             [refactor-nrepl "2.0.0-SNAPSHOT"]]       ; support for advanced refactoring in Emacs/LightTable
                    :global-vars {*warn-on-reflection* true}           ; Emit warnings on all reflection calls
+                   :env {:mb-run-mode "dev"}
                    :jvm-opts ["-Dlogfile.path=target/log"
                               "-Xms1024m"                             ; give JVM a decent heap size to start with
                               "-Xmx2048m"                             ; hard limit of 2GB so we stop hitting the 4GB container limit on CircleCI

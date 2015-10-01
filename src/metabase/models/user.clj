@@ -53,13 +53,6 @@
     (cascade-delete 'ViewLog :user_id id)))
 
 
-(def ^:const current-user-fields
-  "The fields we should return for `*current-user*` (used by `metabase.middleware.current-user`)"
-  (concat (:metabase.models.interface/default-fields User)
-          [:is_active
-           :is_staff])) ; but not `password` !
-
-
 ;; ## Related Functions
 
 (declare create-user

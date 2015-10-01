@@ -69,3 +69,9 @@
         max-width: var(--md-width);
     }
 }
+
+@media screen and (--breakpoint-min-md) {
+    .wrapper.wrapper--small {
+        max-width: var(--sm-width);
+    }
+}
