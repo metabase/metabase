@@ -76,30 +76,32 @@ export default class EditUserForm extends Component {
         const { formError, valid } = this.state;
 
         return (
-            <form className="Form-new" name="userForm" onSubmit={this.formSubmitted.bind(this)} noValidate className="mt2">
-                <FormField fieldName="first_name" formError={formError}>
-                    <FormLabel title="First name" fieldName="first_name" formError={formError}></FormLabel>
-                    <input ref="firstName" className="Form-input Form-offset full" name="name" defaultValue={(user) ? user.first_name : null} placeholder="Johnny" onChange={this.onChange.bind(this)} />
-                    <span className="Form-charm"></span>
-                </FormField>
+            <form onSubmit={this.formSubmitted.bind(this)} noValidate>
+                <div className="px4 pb2">
+                    <FormField fieldName="first_name" formError={formError}>
+                        <FormLabel title="First name" fieldName="first_name" formError={formError}></FormLabel>
+                        <input ref="firstName" className="Form-input full" name="name" defaultValue={(user) ? user.first_name : null} placeholder="Johnny" onChange={this.onChange.bind(this)} />
 
-                <FormField fieldName="last_name" formError={formError}>
-                    <FormLabel title="Last name" fieldName="last_name" formError={formError}></FormLabel>
-                    <input ref="lastName" className="Form-input Form-offset" name="name" defaultValue={(user) ? user.last_name : null} placeholder="Appleseed" required onChange={this.onChange.bind(this)} />
-                    <span className="Form-charm"></span>
-                </FormField>
+                    </FormField>
 
-                <FormField fieldName="email" formError={formError}>
-                    <FormLabel title="Email address" fieldName="email" formError={formError}></FormLabel>
-                    <input ref="email" className="Form-input Form-offset full" name="email" defaultValue={(user) ? user.email : null} placeholder="youlooknicetoday@email.com" required onChange={this.onChange.bind(this)} />
-                    <span className="Form-charm"></span>
-                </FormField>
+                    <FormField fieldName="last_name" formError={formError}>
+                        <FormLabel title="Last name" fieldName="last_name" formError={formError}></FormLabel>
+                        <input ref="lastName" className="Form-input full" name="name" defaultValue={(user) ? user.last_name : null} placeholder="Appleseed" required onChange={this.onChange.bind(this)} />
+
+                    </FormField>
+
+                    <FormField fieldName="email" formError={formError}>
+                        <FormLabel title="Email address" fieldName="email" formError={formError}></FormLabel>
+                        <input ref="email" className="Form-input full" name="email" defaultValue={(user) ? user.email : null} placeholder="youlooknicetoday@email.com" required onChange={this.onChange.bind(this)} />
+
+                    </FormField>
+                </div>
 
                 <div className="Form-actions">
-                    <button className={cx("Button", "mr2", {"Button--primary": valid})} disabled={!valid}>
+                    <button className={cx("Button", {"Button--primary": valid})} disabled={!valid}>
                         { buttonText ? buttonText : "Save Changes" }
                     </button>
-                    or <a className="link ml1 text-bold" href="" onClick={this.cancel.bind(this)}>Cancel</a>
+                    <span className="pl1">or<a className="link ml1 text-bold" href="" onClick={this.cancel.bind(this)}>Cancel</a></span>
                 </div>
             </form>
         );
