@@ -36,25 +36,31 @@ var EXTRA_SETTINGS_METADATA = {
     "email-from-address":   { display_name: "From Address",       section: "Email",   index: 5, type: "string" },
 };
 
-SettingsAdminControllers.controller('SettingsEditor', ['$scope', 'Settings', 'AppState', 'settings', function($scope, Settings, AppState, settings) {
-    $scope.SettingsEditor = SettingsEditor;
+SettingsAdminControllers.controller('SettingsEditor', ['$scope', '$location', 'Settings', 'AppState', 'settings',
+    function($scope, $location, Settings, AppState, settings) {
+        $scope.SettingsEditor = SettingsEditor;
 
-    $scope.updateSetting = async function(setting) {
-        await Settings.put({ key: setting.key }, setting).$promise;
-        AppState.refreshSiteSettings();
+        if ('section' in $location.search()) {
+            $scope.initialSection = $location.search().section;
+        }
+
+        $scope.updateSetting = async function(setting) {
+            await Settings.put({ key: setting.key }, setting).$promise;
+            AppState.refreshSiteSettings();
+        }
+
+        $scope.sections = {};
+        settings.forEach(function(setting) {
+            var defaults = { display_name: keyToDisplayName(setting.key), placeholder: setting.default };
+            setting = _.extend(defaults, EXTRA_SETTINGS_METADATA[setting.key], setting);
+            var sectionName = setting.section || "Other";
+            $scope.sections[sectionName] = $scope.sections[sectionName] || [];
+            $scope.sections[sectionName].push(setting);
+        });
+        _.each($scope.sections, (section) => section.sort((a, b) => a.index - b.index))
+
+        function keyToDisplayName(key) {
+            return Humanize.capitalizeAll(key.replace(/-/g, " ")).trim();
+        }
     }
-
-    $scope.sections = {};
-    settings.forEach(function(setting) {
-        var defaults = { display_name: keyToDisplayName(setting.key), placeholder: setting.default };
-        setting = _.extend(defaults, EXTRA_SETTINGS_METADATA[setting.key], setting);
-        var sectionName = setting.section || "Other";
-        $scope.sections[sectionName] = $scope.sections[sectionName] || [];
-        $scope.sections[sectionName].push(setting);
-    });
-    _.each($scope.sections, (section) => section.sort((a, b) => a.index - b.index))
-
-    function keyToDisplayName(key) {
-        return Humanize.capitalizeAll(key.replace(/-/g, " ")).trim();
-    }
-}]);
+]);
