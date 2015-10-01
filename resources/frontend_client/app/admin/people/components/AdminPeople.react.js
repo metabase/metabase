@@ -63,34 +63,24 @@ export default class AdminPeople extends Component {
         this.props.dispatch(showModal(null));
 
         if (user) {
-            // time to create a new user!
+            let modal = MODAL_USER_ADDED_WITH_INVITE;
 
-            if (false && MetabaseSettings.isEmailConfigured()) {
-                // when email available -> confirm that invitation was sent
-
-                this.props.dispatch(createUser(user));
-
-                this.props.dispatch(showModal({
-                    type: MODAL_USER_ADDED_WITH_INVITE,
-                    details: {
-                        user: user
-                    }
-                }));
-
-            } else {
-                // if email is not setup -> generate temp password and allow user to retrieve it
-                let autoPassword = MetabaseUtils.generatePassword();
-                user.password = autoPassword;
-
-                this.props.dispatch(createUser(user));
-
-                this.props.dispatch(showModal({
-                    type: MODAL_USER_ADDED_WITH_PASSWORD,
-                    details: {
-                        user: user
-                    }
-                }));
+            // we assume invite style creation and tweak as needed if email not available
+            if (!MetabaseSettings.isEmailConfigured()) {
+                modal = MODAL_USER_ADDED_WITH_PASSWORD;
+                user.password = MetabaseUtils.generatePassword();
             }
+
+            // create the user
+            this.props.dispatch(createUser(user));
+
+            // carry on
+            this.props.dispatch(showModal({
+                type: modal,
+                details: {
+                    user: user
+                }
+            }));
         }
     }
 
@@ -146,21 +136,24 @@ export default class AdminPeople extends Component {
             let { user } = modalDetails;
 
             return (
-                <Modal>
+                <Modal className="Modal Modal--small">
                     <ModalContent title={user.first_name+" has been added"}
-                                  closeFn={() => this.props.dispatch(showModal(null))}>
+                                  closeFn={() => this.props.dispatch(showModal(null))}
+                                  className="Modal-content Modal-content--small NewForm">
                         <div>
-                            <p>We couldn’t send them an email invitation,
-                            so make sure to tell them to log in using <span className="text-bold">{user.email}</span>
-                            and this password we’ve generated for them:</p>
+                            <div className="px4 pb4">
+                                <div className="pb4">We couldn’t send them an email invitation,
+                                so make sure to tell them to log in using <span className="text-bold">{user.email} </span>
+                                and this password we’ve generated for them:</div>
 
-                            <PasswordReveal password={user.password}></PasswordReveal>
+                                <PasswordReveal password={user.password}></PasswordReveal>
 
-                            <p>If you want to be able to send email invites, just go to the <a className="link" href="/admin/settings">Email Settings</a> page.</p>
+                                <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pt4 text-centered">If you want to be able to send email invites, just go to the <a className="link text-bold" href="/admin/settings">Email Settings</a> page.</div>
+                            </div>
 
                             <div className="Form-actions">
-                                <button className="Button Button--primary mr2" onClick={() => this.props.dispatch(showModal(null))}>Done</button>
-                                or <a className="link ml1 text-bold" href="" onClick={() => this.props.dispatch(showModal({type: MODAL_ADD_PERSON}))}>Add another person</a>
+                                <button className="Button Button--primary" onClick={() => this.props.dispatch(showModal(null))}>Done</button>
+                                <span className="pl1">or<a className="link ml1 text-bold" href="" onClick={() => this.props.dispatch(showModal({type: MODAL_ADD_PERSON}))}>Add another person</a></span>
                             </div>
                         </div>
                     </ModalContent>
@@ -171,15 +164,16 @@ export default class AdminPeople extends Component {
             let { user } = modalDetails;
 
             return (
-                <Modal>
+                <Modal className="Modal Modal--small">
                     <ModalContent title={user.first_name+" has been added"}
-                                  closeFn={() => this.props.dispatch(showModal(null))}>
+                                  closeFn={() => this.props.dispatch(showModal(null))}
+                                  className="Modal-content Modal-content--small NewForm">
                         <div>
-                            <p>We’ve sent an invite to <span className="text-bold">{user.email}</span> with instructions to set their password.</p>
+                            <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pb4">We’ve sent an invite to <span className="text-bold">{user.email}</span> with instructions to set their password.</div>
 
                             <div className="Form-actions">
-                                <button className="Button Button--primary mr2" onClick={() => this.props.dispatch(showModal(null))}>Done</button>
-                                or <a className="link ml1 text-bold" href="" onClick={() => this.props.dispatch(showModal({type: MODAL_ADD_PERSON}))}>Add another person</a>
+                                <button className="Button Button--primary" onClick={() => this.props.dispatch(showModal(null))}>Done</button>
+                                <span className="pl1">or<a className="link ml1 text-bold" href="" onClick={() => this.props.dispatch(showModal({type: MODAL_ADD_PERSON}))}>Add another person</a></span>
                             </div>
                         </div>
                     </ModalContent>
