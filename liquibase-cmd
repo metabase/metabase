@@ -1,0 +1,93 @@
+#! /bin/bash
+
+# Script for running liquibase commands.
+# This script interactively gathers some information about your Metabase setup and then enters a REPL where you can run Liquibase
+# commands like 'releaseLocks'.
+
+get-jar-path() {
+    while [ ! -f "$JAR_PATH" ]; do
+        read -e -p "What's the path to your Metabase jar file? " JAR_PATH
+        JAR_PATH=$(eval echo "$JAR_PATH")
+    done
+    JAR_DIRECTORY=$(dirname "$JAR_PATH")
+}
+
+get-h2-info() {
+    while [ ! -f "$H2_DB_PATH.h2.db" ]; do
+        DEFAULT_H2_DB_PATH="$JAR_DIRECTORY/metabase.db"
+        read -e -p "What's the path to your H2 DB? [$DEFAULT_H2_DB_PATH] " H2_DB_PATH
+        test "$H2_DB_PATH" || H2_DB_PATH="$DEFAULT_H2_DB_PATH"
+    done
+
+    H2_DB_PATH=$(eval echo "$H2_DB_PATH")
+    DB_URL="jdbc:h2:file:$H2_DB_PATH;MV_STORE=FALSE"
+
+    # delete DB lock file if needed
+    DB_LOCK_FILE="$H2_DB_PATH.lock.db"
+
+    if [ -f "$DB_LOCK_FILE" ]; then
+        echo 'Deleting DB lock file...'
+        rm -f $DB_LOCK_FILE
+
+        # wait a few seconds and see if file is recreated; if so, quit
+        sleep 2s
+        if [ -f "$DB_LOCK_FILE" ]; then
+            echo "$DB_LOCK_FILE still exists. There are probably some java processes that are still connected."
+            echo "Please stop the offending processes (you can use 'pkill java') and try again."
+            exit 1
+        fi
+    fi
+}
+
+get-postgres-info() {
+    echo "Please enter information about your Postgres DB:"
+
+    while [ ! "$DB_NAME" ]; do
+        read -p "DB name: " DB_NAME
+    done
+
+    read -p "DB host: [localhost] " DB_HOST
+    test "$DB_HOST" || DB_HOST='localhost'
+
+    read -p "DB port: [5432] " DB_PORT
+    test "$DB_PORT" || DB_PORT='5432'
+
+    while [ ! "$DB_USERNAME" ]; do
+        read -p "DB username: " DB_USERNAME
+    done
+
+    read -p "DB password: [none] " DB_PASSWORD
+
+    DB_URL="jdbc:postgresql://$DB_HOST:$DB_PORT/$DB_NAME?user=$DB_USERNAME&password=$DB_PASSWORD"
+}
+
+get-db-type() {
+    while [[ "$DB_TYPE" != 'postgres' && "$DB_TYPE" != 'h2' ]]; do
+        read -p "What DB type are you using ('h2' or 'postgres')? [h2] " DB_TYPE
+        test "$DB_TYPE" || DB_TYPE=h2
+    done
+}
+
+get-db-info() {
+    get-db-type &&
+    case "$DB_TYPE" in
+        h2)       get-h2-info ;;
+        postgres) get-postgres-info ;;
+    esac
+}
+
+# ----------------------------------------------------------------------------------------------------
+
+get-jar-path && get-db-info
+
+echo 'Ready to start running some liquibase commands. Press RETURN for help, and ^C when you are finished.'
+
+while true; do
+    echo    ""
+    echo    "liquibase --classpath='$JAR_PATH' \\"
+    echo    "          --changeLogFile='migrations/liquibase.json' \\"
+    echo    "          --url='$DB_URL' \\"
+    read -p "          " CMDS
+    echo ""
+    java -cp "$JAR_PATH" liquibase.integration.commandline.Main --classpath="$JAR_PATH" --changeLogFile="migrations/liquibase.json" --url="$DB_URL" $CMDS
+done
