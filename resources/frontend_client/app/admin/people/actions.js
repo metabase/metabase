@@ -4,12 +4,6 @@ import { createAction } from "redux-actions";
 import moment from "moment";
 import { normalize, Schema, arrayOf } from "normalizr";
 
-import MetabaseUtils from "metabase/lib/utils";
-
-import { MODAL_INVITE_RESENT,
-         MODAL_RESET_PASSWORD_MANUAL,
-         MODAL_RESET_PASSWORD_EMAIL } from "./components/AdminPeople.react";
-
 
 // HACK: just use our Angular resources for now
 function AngularResourceProxy(serviceName, methods) {
@@ -111,36 +105,19 @@ export const grantAdmin = createThunkAction(GRANT_ADMIN, function(user) {
 
 export const resendInvite = createThunkAction(RESEND_INVITE, function(user) {
     return async function(dispatch, getState) {
-        // make api call
-        await UserApi.send_invite({id: user.id});
-
-        dispatch(showModal({type: MODAL_INVITE_RESENT, details: {user: user}}));
-
-        return user;
+        return await UserApi.send_invite({id: user.id});
     };
 });
 
-export const resetPasswordManually = createThunkAction(RESET_PASSWORD_MANUAL, function(user) {
+export const resetPasswordManually = createThunkAction(RESET_PASSWORD_MANUAL, function(user, password) {
     return async function(dispatch, getState) {
-        // generate a password
-        const password = MetabaseUtils.generatePassword();
-
-        await UserApi.update_password({id: user.id, password: password});
-
-        dispatch(showModal({type: MODAL_RESET_PASSWORD_MANUAL, details: {password: password, user: user}}));
-
-        return user;
+        return await UserApi.update_password({id: user.id, password: password});
     };
 });
 
 export const resetPasswordViaEmail = createThunkAction(RESET_PASSWORD_EMAIL, function(user) {
     return async function(dispatch, getState) {
-        // trigger normal password reset process
-        await SessionApi.forgot_password({email: user.email});
-
-        dispatch(showModal({type: MODAL_RESET_PASSWORD_EMAIL, details: {user: user}}));
-
-        return user;
+        return await SessionApi.forgot_password({email: user.email});
     };
 });
 

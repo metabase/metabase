@@ -6,8 +6,11 @@ import Icon from "metabase/components/Icon.react";
 import MetabaseSettings from "metabase/lib/settings";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 
-import { MODAL_EDIT_DETAILS, MODAL_RESET_PASSWORD } from "./AdminPeople.react";
-import { deleteUser, resendInvite, showModal } from "../actions";
+import { MODAL_EDIT_DETAILS,
+         MODAL_INVITE_RESENT,
+         MODAL_REMOVE_USER,
+         MODAL_RESET_PASSWORD } from "./AdminPeople.react";
+import { resendInvite, showModal } from "../actions";
 
 
 export default class UserActionsSelect extends Component {
@@ -19,6 +22,7 @@ export default class UserActionsSelect extends Component {
 
     onResendInvite() {
         this.props.dispatch(resendInvite(this.props.user));
+        this.props.dispatch(showModal({type: MODAL_INVITE_RESENT, details: {user: this.props.user}}));
         this.refs.popover.toggle();
     }
 
@@ -28,7 +32,7 @@ export default class UserActionsSelect extends Component {
     }
 
     onRemoveUser() {
-        this.props.dispatch(deleteUser(this.props.user));
+        this.props.dispatch(showModal({type: MODAL_REMOVE_USER, details: {user: this.props.user}}));
         this.refs.popover.toggle();
     }
 

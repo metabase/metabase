@@ -15,6 +15,7 @@ import PasswordReveal from "./PasswordReveal.react";
 import UserActionsSelect from "./UserActionsSelect.react";
 import UserRoleSelect from "./UserRoleSelect.react";
 import { createUser,
+         deleteUser,
          fetchUsers,
          grantAdmin,
          resetPasswordManually,
@@ -27,6 +28,7 @@ import { createUser,
 export const MODAL_ADD_PERSON = 'MODAL_ADD_PERSON';
 export const MODAL_EDIT_DETAILS = 'MODAL_EDIT_DETAILS';
 export const MODAL_INVITE_RESENT = 'MODAL_INVITE_RESENT';
+export const MODAL_REMOVE_USER = 'MODAL_REMOVE_USER';
 export const MODAL_RESET_PASSWORD = 'MODAL_RESET_PASSWORD';
 export const MODAL_RESET_PASSWORD_MANUAL = 'MODAL_RESET_PASSWORD_MANUAL';
 export const MODAL_RESET_PASSWORD_EMAIL = 'MODAL_RESET_PASSWORD_EMAIL';
@@ -97,10 +99,31 @@ export default class AdminPeople extends Component {
         if (MetabaseSettings.isEmailConfigured()) {
             // trigger password reset email
             this.props.dispatch(resetPasswordViaEmail(user));
+
+            // show confirmation modal
+            this.props.dispatch(showModal({
+                type: MODAL_RESET_PASSWORD_EMAIL,
+                details: {user: user}
+            }));
+
         } else {
-            // manually set user password
-            this.props.dispatch(resetPasswordManually(user));
+            // generate a password
+            const password = MetabaseUtils.generatePassword();
+
+            // trigger the reset
+            this.props.dispatch(resetPasswordManually(user, password));
+
+            // show confirmation modal
+            this.props.dispatch(showModal({
+                type: MODAL_RESET_PASSWORD_MANUAL,
+                details: {password: password, user: user}
+            }));
         }
+    }
+
+    onRemoveUserConfirm(user) {
+        this.props.dispatch(showModal(null));
+        this.props.dispatch(deleteUser(user));
     }
 
     renderModal(modalType, modalDetails) {
@@ -199,7 +222,29 @@ export default class AdminPeople extends Component {
                 </Modal>
             );
 
-        }  else if (modalType === MODAL_RESET_PASSWORD) {
+        } else if (modalType === MODAL_REMOVE_USER) {
+            let { user } = modalDetails;
+
+            return (
+                <Modal className="Modal Modal--small">
+                    <ModalContent title={"Remove "+user.common_name}
+                                  closeFn={() => this.props.dispatch(showModal(null))}
+                                  className="Modal-content Modal-content--small NewForm">
+                        <div>
+                            <div className="px4 pb4">
+                                Are you sure you want to do this? {user.first_name} won't be able to log in anymore.  This can't be undone.
+                            </div>
+
+                            <div className="Form-actions">
+                                <button className="Button Button--warning" onClick={() => this.onRemoveUserConfirm(user)}>Yes</button>
+                                <button className="Button Button--primary ml2" onClick={() => this.props.dispatch(showModal(null))}>No</button>
+                            </div>
+                        </div>
+                    </ModalContent>
+                </Modal>
+            );
+
+        } else if (modalType === MODAL_RESET_PASSWORD) {
             let { user } = modalDetails;
 
             return (
