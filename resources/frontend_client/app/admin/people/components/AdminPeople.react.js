@@ -208,15 +208,18 @@ export default class AdminPeople extends Component {
             let { user } = modalDetails;
 
             return (
-                <Modal>
+                <Modal className="Modal Modal--small">
                     <ModalContent title={"Reset "+user.first_name+"'s Password"}
-                                  closeFn={() => this.props.dispatch(showModal(null))}>
+                                  closeFn={() => this.props.dispatch(showModal(null))}
+                                  className="Modal-content Modal-content--small NewForm">
                         <div>
-                            <p>Are you sure you want to do this?</p>
+                            <div className="px4 pb4">
+                                Are you sure you want to do this?
+                            </div>
 
                             <div className="Form-actions">
-                                <button style={{backgroundColor: "#E35050", color: "#fff"}} className="Button mr2" onClick={() => this.onPasswordResetConfirm(user)}>Yes</button>
-                                <button className="Button Button--primary" onClick={() => this.props.dispatch(showModal(null))}>No</button>
+                                <button className="Button Button--warning" onClick={() => this.onPasswordResetConfirm(user)}>Yes</button>
+                                <button className="Button Button--primary ml2" onClick={() => this.props.dispatch(showModal(null))}>No</button>
                             </div>
                         </div>
                     </ModalContent>
