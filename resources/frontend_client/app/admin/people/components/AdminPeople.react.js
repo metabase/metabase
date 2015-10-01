@@ -17,15 +17,21 @@ import UserRoleSelect from "./UserRoleSelect.react";
 import { createUser,
          fetchUsers,
          grantAdmin,
+         resetPasswordManually,
+         resetPasswordViaEmail,
          revokeAdmin,
          showModal,
          updateUser } from "../actions";
 
 
-const MODAL_ADD_PERSON = 'MODAL_ADD_PERSON';
-const MODAL_EDIT_DETAILS = 'MODAL_EDIT_DETAILS';
-const MODAL_USER_ADDED_WITH_INVITE = 'MODAL_USER_ADDED_WITH_INVITE';
-const MODAL_USER_ADDED_WITH_PASSWORD = 'MODAL_USER_ADDED_WITH_PASSWORD';
+export const MODAL_ADD_PERSON = 'MODAL_ADD_PERSON';
+export const MODAL_EDIT_DETAILS = 'MODAL_EDIT_DETAILS';
+export const MODAL_INVITE_RESENT = 'MODAL_INVITE_RESENT';
+export const MODAL_RESET_PASSWORD = 'MODAL_RESET_PASSWORD';
+export const MODAL_RESET_PASSWORD_MANUAL = 'MODAL_RESET_PASSWORD_MANUAL';
+export const MODAL_RESET_PASSWORD_EMAIL = 'MODAL_RESET_PASSWORD_EMAIL';
+export const MODAL_USER_ADDED_WITH_INVITE = 'MODAL_USER_ADDED_WITH_INVITE';
+export const MODAL_USER_ADDED_WITH_PASSWORD = 'MODAL_USER_ADDED_WITH_PASSWORD';
 
 
 export default class AdminPeople extends Component {
@@ -94,6 +100,16 @@ export default class AdminPeople extends Component {
 
         if (user) {
             this.props.dispatch(updateUser(user));
+        }
+    }
+
+    onPasswordResetConfirm(user) {
+        if (MetabaseSettings.isEmailConfigured()) {
+            // trigger password reset email
+            this.props.dispatch(resetPasswordViaEmail(user));
+        } else {
+            // manually set user password
+            this.props.dispatch(resetPasswordManually(user));
         }
     }
 
@@ -169,6 +185,82 @@ export default class AdminPeople extends Component {
                     </ModalContent>
                 </Modal>
             );
+
+        } else if (modalType === MODAL_INVITE_RESENT) {
+            let { user } = modalDetails;
+
+            return (
+                <Modal>
+                    <ModalContent title={"We've Re-sent "+user.first_name+"'s Invite"}
+                                  closeFn={() => this.props.dispatch(showModal(null))}>
+                        <div>
+                            <p>Any previous email invites they have will no longer work.</p>
+
+                            <div className="Form-actions">
+                                <button className="Button Button--primary mr2" onClick={() => this.props.dispatch(showModal(null))}>Okay</button>
+                            </div>
+                        </div>
+                    </ModalContent>
+                </Modal>
+            );
+
+        }  else if (modalType === MODAL_RESET_PASSWORD) {
+            let { user } = modalDetails;
+
+            return (
+                <Modal>
+                    <ModalContent title={"Reset "+user.first_name+"'s Password"}
+                                  closeFn={() => this.props.dispatch(showModal(null))}>
+                        <div>
+                            <p>Are you sure you want to do this?</p>
+
+                            <div className="Form-actions">
+                                <button style={{backgroundColor: "#E35050", color: "#fff"}} className="Button mr2" onClick={() => this.onPasswordResetConfirm(user)}>Yes</button>
+                                <button className="Button Button--primary" onClick={() => this.props.dispatch(showModal(null))}>No</button>
+                            </div>
+                        </div>
+                    </ModalContent>
+                </Modal>
+            );
+
+        } else if (modalType === MODAL_RESET_PASSWORD_MANUAL) {
+            let { user, password } = modalDetails;
+
+            return (
+                <Modal>
+                    <ModalContent title={user.first_name+"'s Password Has Been Reset"}
+                                  closeFn={() => this.props.dispatch(showModal(null))}>
+                        <div>
+                            <p>Here’s a temporary password they can use it log in and then change their password.</p>
+
+                            <PasswordReveal password={password}></PasswordReveal>
+
+                            <div className="Form-actions">
+                                <button className="Button Button--primary mr2" onClick={() => this.props.dispatch(showModal(null))}>Done</button>
+                            </div>
+                        </div>
+                    </ModalContent>
+                </Modal>
+            );
+
+        } else if (modalType === MODAL_RESET_PASSWORD_EMAIL) {
+            let { user } = modalDetails;
+
+            return (
+                <Modal>
+                    <ModalContent title={user.first_name+"'s Password Has Been Reset"}
+                                  closeFn={() => this.props.dispatch(showModal(null))}>
+                        <div>
+                            <p>We've sent them an email with instructions for creating a new password.</p>
+
+                            <div className="Form-actions">
+                                <button className="Button Button--primary mr2" onClick={() => this.props.dispatch(showModal(null))}>Done</button>
+                            </div>
+                        </div>
+                    </ModalContent>
+                </Modal>
+            );
+
         }
     }
 

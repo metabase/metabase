@@ -5,7 +5,8 @@ import React, { Component, PropTypes } from "react";
 import Icon from "metabase/components/Icon.react";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 
-import { deleteUser, showEditDetailsModal } from "../actions";
+import { MODAL_EDIT_DETAILS, MODAL_RESET_PASSWORD } from "./AdminPeople.react";
+import { deleteUser, resendInvite, showModal } from "../actions";
 
 
 export default class UserActionsSelect extends Component {
@@ -21,16 +22,18 @@ export default class UserActionsSelect extends Component {
     }
 
     onEditDetails() {
-        this.props.dispatch(showEditDetailsModal(this.props.user));
+        this.props.dispatch(showModal({type: MODAL_EDIT_DETAILS, details: {user: this.props.user}}));
         this.refs.popover.toggle();
     }
 
     onResendInvite() {
-
+        this.props.dispatch(resendInvite(this.props.user));
+        this.refs.popover.toggle();
     }
 
     onResetPassword() {
-
+        this.props.dispatch(showModal({type: MODAL_RESET_PASSWORD, details: {user: this.props.user}}));
+        this.refs.popover.toggle();
     }
 
     onRemoveUser() {

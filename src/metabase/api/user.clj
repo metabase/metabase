@@ -81,11 +81,11 @@
 (defendpoint PUT "/:id/password"
   "Update a user's password."
   [id :as {{:keys [password old_password]} :body}]
-  {password     [Required ComplexPassword]
-   old_password Required}
+  {password     [Required ComplexPassword]}
   (check-self-or-superuser id)
   (let-404 [user (sel :one [User :password_salt :password] :id id :is_active true)]
-    (checkp (creds/bcrypt-verify (str (:password_salt user) old_password) (:password user)) "old_password" "Invalid password"))
+    (when-not (:is_superuser @*current-user*)
+      (checkp (creds/bcrypt-verify (str (:password_salt user) old_password) (:password user)) "old_password" "Invalid password")))
   (set-user-password id password)
   (User id))
 

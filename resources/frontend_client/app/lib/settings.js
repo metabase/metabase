@@ -23,8 +23,7 @@ const MetabaseSettings = {
     // these are all special accessors which provide a lookup of a property plus some additional help
 
     isEmailConfigured: function() {
-        // for now just assume that if they set an SMTP host that they are running with emails
-        return (mb_settings['email-smtp-host'] !== undefined && mb_settings['email-smtp-host'] !== null);
+        return mb_settings.email_configured;
     },
 
     hasSetupToken: function() {

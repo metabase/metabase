@@ -29,7 +29,8 @@
    :version               (config/mb-version-info)
    ;; all of these values are dynamic settings from the admin UI but we include them here for bootstrapping availability
    :anon-tracking-enabled (setting/get :anon-tracking-enabled)
-   :-site-name            (setting/get :-site-name)})
+   :-site-name            (setting/get :-site-name)
+   :email_configured      (not (clojure.string/blank? (setting/get :email-smtp-host)))})
 
 (defn- index [request]
   (-> (io/resource "frontend_client/index.html")

@@ -4,6 +4,12 @@ import { createAction } from "redux-actions";
 import moment from "moment";
 import { normalize, Schema, arrayOf } from "normalizr";
 
+import MetabaseUtils from "metabase/lib/utils";
+
+import { MODAL_INVITE_RESENT,
+         MODAL_RESET_PASSWORD_MANUAL,
+         MODAL_RESET_PASSWORD_EMAIL } from "./components/AdminPeople.react";
+
 
 // HACK: just use our Angular resources for now
 function AngularResourceProxy(serviceName, methods) {
@@ -36,7 +42,8 @@ const user = new Schema('user');
 
 
 // resource wrappers
-const UserApi = new AngularResourceProxy("User", ["list", "update", "create", "delete"]);
+const SessionApi = new AngularResourceProxy("Session", ["forgot_password"]);
+const UserApi = new AngularResourceProxy("User", ["list", "update", "create", "delete", "update_password"]);
 
 
 // action constants
@@ -44,6 +51,9 @@ export const CREATE_USER = 'CREATE_USER';
 export const DELETE_USER = 'DELETE_USER';
 export const FETCH_USERS = 'FETCH_USERS';
 export const GRANT_ADMIN = 'GRANT_ADMIN';
+export const RESEND_INVITE = 'RESEND_INVITE';
+export const RESET_PASSWORD_EMAIL = 'RESET_PASSWORD_EMAIL';
+export const RESET_PASSWORD_MANUAL = 'RESET_PASSWORD_MANUAL';
 export const REVOKE_ADMIN = 'REVOKE_ADMIN';
 export const SHOW_MODAL = 'SHOW_MODAL';
 export const UPDATE_USER = 'UPDATE_USER';
@@ -96,6 +106,40 @@ export const grantAdmin = createThunkAction(GRANT_ADMIN, function(user) {
         updatedUser.last_login = (updatedUser.last_login) ? moment(updatedUser.last_login) : null;
 
         return updatedUser;
+    };
+});
+
+export const resendInvite = createThunkAction(RESEND_INVITE, function(user) {
+    return async function(dispatch, getState) {
+        // TODO - make api call
+
+        this.props.dispatch(showModal({type: MODAL_INVITE_RESENT, details: {user: this.props.user}}));
+
+        return user;
+    };
+});
+
+export const resetPasswordManually = createThunkAction(RESET_PASSWORD_MANUAL, function(user) {
+    return async function(dispatch, getState) {
+        // generate a password
+        const password = MetabaseUtils.generatePassword();
+
+        await UserApi.update_password({id: user.id, password: password});
+
+        dispatch(showModal({type: MODAL_RESET_PASSWORD_MANUAL, details: {password: password, user: user}}));
+
+        return user;
+    };
+});
+
+export const resetPasswordViaEmail = createThunkAction(RESET_PASSWORD_EMAIL, function(user) {
+    return async function(dispatch, getState) {
+        // trigger normal password reset process
+        await SessionApi.forgot_password({email: user.email});
+
+        dispatch(showModal({type: MODAL_RESET_PASSWORD_EMAIL, details: {user: user}}));
+
+        return user;
     };
 });
 
