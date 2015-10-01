@@ -1,115 +1,164 @@
 "use strict";
 
-import Icon from "metabase/components/Icon.react";
+import React, { Component, PropTypes } from 'react';
+import cx from 'classnames';
+import moment from "moment";
 
-import cx from "classnames";
+import Icon from 'metabase/components/Icon.react';
 
-export default React.createClass({
-    displayName: "Calendar",
-    propTypes: {
-        selected: React.PropTypes.object.isRequired
-    },
+const MODES = ['month', 'year', 'decade'];
 
-    getInitialState: function() {
-        return {
-            month: this.props.selected.clone()
+export default class Calendar extends Component {
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            current: moment(props.initial || undefined),
+            currentMode: MODES[0]
         };
-    },
+        this.previous = this.previous.bind(this);
+        this.next = this.next.bind(this);
+        this.cycleMode = this.cycleMode.bind(this);
 
-    previous: function() {
-        var month = this.state.month;
+        this.onClickDay = this.onClickDay.bind(this);
+    }
+
+    onClickDay(date, e) {
+        let { selected, selectedEnd } = this.props;
+        if (!selected || selectedEnd) {
+            this.props.onChange(date.format("YYYY-MM-DD"), null);
+        } else if (!selectedEnd) {
+            if (date.isAfter(selected)) {
+                this.props.onChange(selected.format("YYYY-MM-DD"), date.format("YYYY-MM-DD"));
+            } else {
+                this.props.onChange(date.format("YYYY-MM-DD"), selected.format("YYYY-MM-DD"));
+            }
+        }
+    }
+
+    cycleMode() {
+        // let i = this.currentMode
+        // console.log('mode cycle y\'all')
+        // let i = ++i%this.state.modes.length;
+        // this.setState({
+        //     mode: this.modes[i]
+        // })
+    }
+
+    previous() {
+        let month = this.state.current;
         month.add(-1, "M");
         this.setState({ month: month });
-    },
+    }
 
-    next: function() {
-        var month = this.state.month;
+    next() {
+        let month = this.state.current;
         month.add(1, "M");
         this.setState({ month: month });
-    },
+    }
 
-    render: function() {
+    renderMonthHeader() {
         return (
-            <div className="Calendar">
-                {this.renderMonthHeader()}
-                {this.renderDayNames()}
-                {this.renderWeeks()}
-            </div>
-        );
-    },
-
-    renderMonthHeader: function() {
-        return (
-            <div className="Calendar-header flex align-center px2 mb1">
-                <Icon name="chevronleft" width="10" height="12" onClick={this.previous} />
+            <div className="Calendar-header flex align-center">
+                <div className="bordered rounded p1 cursor-pointer transition-border border-hover px1" onClick={this.previous}>
+                    <Icon name="chevronleft" width="10" height="12" />
+                </div>
                 <span className="flex-full" />
-                <span className="h3 text-bold">{this.state.month.format("MMMM YYYY")}</span>
+                <h4 className="bordered border-hover cursor-pointer rounded p1" onClick={this.cycleMode}>{this.state.current.format("MMMM YYYY")}</h4>
                 <span className="flex-full" />
-                <Icon name="chevronright" width="10" height="12" onClick={this.next} />
+                <div className="bordered border-hover rounded p1 transition-border cursor-pointer px1" onClick={this.next}>
+                    <Icon name="chevronright" width="10" height="12" />
+                </div>
             </div>
         )
-    },
+    }
 
-    renderDayNames: function() {
-        var names = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+    renderDayNames() {
+        const names = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
         return (
-            <div className="Calendar-day-names Calendar-week border-bottom mb1">
-                {names.map((name) => <span key={name} className="Calendar-day Calendar-day-name">{name}</span>)}
+            <div className="Calendar-day-names Calendar-week py1">
+                {names.map((name) => <span key={name} className="Calendar-day-name text-centered">{name}</span>)}
             </div>
         );
-    },
+    }
 
-    renderWeeks: function() {
+    renderWeeks() {
         var weeks = [],
             done = false,
-            date = this.state.month.clone().startOf("month").add("w" -1).day("Sunday"),
+            date = moment(this.state.current).startOf("month").add("w" -1).day("Sunday"),
             monthIndex = date.month(),
             count = 0;
 
         while (!done) {
-            weeks.push(<Week
-                key={date.toString()}
-                date={date.clone()}
-                month={this.state.month}
-                onChange={this.props.onChange}
-                selected={this.props.selected}
-            />);
+            weeks.push(
+                <Week
+                    key={date.toString()}
+                    date={moment(date)}
+                    month={this.state.current}
+                    onClickDay={this.onClickDay}
+                    selected={this.props.selected}
+                    selectedEnd={this.props.selectedEnd}
+                />
+            );
             date.add(1, "w");
             done = count++ > 2 && monthIndex !== date.month();
             monthIndex = date.month();
         }
 
         return (
-            <div className="Calendar-weeks mt1">{weeks}</div>
+            <div className="Calendar-weeks">{weeks}</div>
         );
     }
-});
+    render() {
+        return (
+            <div className={cx("Calendar", { "Calendar--range": this.props.selected && this.props.selectedEnd })}>
+                {this.renderMonthHeader()}
+                {this.renderDayNames()}
+                {this.renderWeeks()}
+            </div>
+        );
+    }
+}
 
-var Week = React.createClass({
-    getDefaultProps: function() {
-        return {
-            onChange: () => {}
-        };
-    },
+Calendar.propTypes = {
+    selected: PropTypes.object,
+    selectedEnd: PropTypes.object,
+    onChange: PropTypes.func.isRequired
+};
 
-    render: function() {
-        var days = [],
-            date = this.props.date,
-            month = this.props.month;
+class Week extends Component {
 
-        for (var i = 0; i < 7; i++) {
-            var classes = cx({
+    _dayIsSelected(day) {
+        return
+    }
+
+    render() {
+        let days = [];
+        let { date, month, selected, selectedEnd } = this.props;
+
+        for (let i = 0; i < 7; i++) {
+            let classes = cx({
+                'p1': true,
+                'cursor-pointer': true,
+                'text-centered': true,
                 "Calendar-day": true,
                 "Calendar-day--today": date.isSame(new Date(), "day"),
                 "Calendar-day--this-month": date.month() === month.month(),
-                "Calendar-day--selected": date.isSame(this.props.selected)
+                "Calendar-day--selected": selected && date.isSame(selected, "day"),
+                "Calendar-day--selected-end": selectedEnd && date.isSame(selectedEnd, "day"),
+                "Calendar-day--week-start": i === 0,
+                "Calendar-day--week-end": i === 6,
+                "Calendar-day--in-range": !(date.isSame(selected, "day") || date.isSame(selectedEnd, "day")) && (
+                    date.isSame(selected, "day") || date.isSame(selectedEnd, "day") ||
+                    (selectedEnd && selectedEnd.isAfter(date, "day") && date.isAfter(selected, "day"))
+                )
             });
             days.push(
-                <span key={date.toString()} className={classes} onClick={this.props.onChange.bind(null, date)}>
+                <span key={date.toString()} className={classes} onClick={this.props.onClickDay.bind(null, date)}>
                     {date.date()}
                 </span>
             );
-            date = date.clone();
+            date = moment(date);
             date.add(1, "d");
         }
 
@@ -119,4 +168,10 @@ var Week = React.createClass({
             </div>
         );
     }
-});
+}
+
+Week.propTypes = {
+    selected: PropTypes.object,
+    selectedEnd: PropTypes.object,
+    onClickDay: PropTypes.func.isRequired
+}

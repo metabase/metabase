@@ -98,6 +98,7 @@
 
 .bg-gold { background-color: var(--gold-color); }
 .bg-purple { background-color: var(--purple-color); }
+.bg-purple-light { background-color: var(--purple-light-color); }
 .bg-green { background-color: var(--green-color); }
 
 /* alt */
