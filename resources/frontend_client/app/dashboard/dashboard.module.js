@@ -7,7 +7,6 @@ var Dashboard = angular.module('metabase.dashboard', [
     'metabase.services',
     'metabase.dashboard.services',
     'metabase.dashboard.controllers',
-    'metabase.dashboard.directives',
     'metabase.card.services'
 ]);
 
