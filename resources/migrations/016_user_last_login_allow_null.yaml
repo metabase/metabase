@@ -6,3 +6,9 @@ databaseChangeLog:
         - dropNotNullConstraint:
             tableName: core_user
             columnName: last_login
+            columnDataType: DATETIME
+        - modifySql:
+            dbms: postgresql
+            replace:
+              replace: WITHOUT
+              with: WITH
