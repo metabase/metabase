@@ -1,7 +1,7 @@
 ;; -*- comment-column: 35; -*-
 (ns metabase.core
   (:gen-class)
-  (:require [clojure.java.browse :refer [browse-url]]
+  (:require [clojure.java.io :as io]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
             [colorize.core :as color]
@@ -13,17 +13,15 @@
                              [keyword-params :refer [wrap-keyword-params]]
                              [params :refer [wrap-params]]
                              [session :refer [wrap-session]])
-            [medley.core :as medley]
+            [medley.core :as m]
             (metabase [config :as config]
                       [db :as db]
                       [driver :as driver]
                       [events :as events]
+                      [middleware :as mb-middleware]
                       [routes :as routes]
                       [setup :as setup]
                       [task :as task])
-            (metabase.middleware [auth :as auth]
-                                 [log-api-call :refer :all]
-                                 [format :refer :all])
             (metabase.models [setting :refer [defsetting]]
                              [database :refer [Database]]
                              [user :refer [User]])))
@@ -54,21 +52,21 @@
 (def app
   "The primary entry point to the HTTP server"
   (-> routes/routes
-      (log-api-call :request :response)
-      add-security-headers         ; [METABASE] Add HTTP headers to API responses to prevent them from being cached
-      format-response              ; [METABASE] Do formatting before converting to JSON so serializer doesn't barf
-      (wrap-json-body              ; extracts json POST body and makes it avaliable on request
+      (mb-middleware/log-api-call :request :response)
+      mb-middleware/add-security-headers              ; [METABASE] Add HTTP headers to API responses to prevent them from being cached
+      mb-middleware/format-response                   ; [METABASE] Do formatting before converting to JSON so serializer doesn't barf
+      (wrap-json-body                                 ; extracts json POST body and makes it avaliable on request
         {:keywords? true})
-      wrap-json-response           ; middleware to automatically serialize suitable objects as JSON in responses
-      wrap-keyword-params          ; converts string keys in :params to keyword keys
-      wrap-params                  ; parses GET and POST params as :query-params/:form-params and both as :params
-      auth/bind-current-user       ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
-      auth/wrap-current-user-id    ; looks for :metabase-session-id and sets :metabase-user-id if Session ID is valid
-      auth/wrap-api-key            ; looks for a Metabase API Key on the request and assocs as :metabase-api-key
-      auth/wrap-session-id         ; looks for a Metabase Session ID and assoc as :metabase-session-id
-      wrap-cookies                 ; Parses cookies in the request map and assocs as :cookies
-      wrap-session                 ; reads in current HTTP session and sets :session/key
-      wrap-gzip))                  ; GZIP response if client can handle it
+      wrap-json-response                              ; middleware to automatically serialize suitable objects as JSON in responses
+      wrap-keyword-params                             ; converts string keys in :params to keyword keys
+      wrap-params                                     ; parses GET and POST params as :query-params/:form-params and both as :params
+      mb-middleware/bind-current-user                 ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
+      mb-middleware/wrap-current-user-id              ; looks for :metabase-session-id and sets :metabase-user-id if Session ID is valid
+      mb-middleware/wrap-api-key                      ; looks for a Metabase API Key on the request and assocs as :metabase-api-key
+      mb-middleware/wrap-session-id                   ; looks for a Metabase Session ID and assoc as :metabase-session-id
+      wrap-cookies                                    ; Parses cookies in the request map and assocs as :cookies
+      wrap-session                                    ; reads in current HTTP session and sets :session/key
+      wrap-gzip))                                     ; GZIP response if client can handle it
 
 (defn- -init-create-setup-token
   "Create and set a new setup token, and open the setup URL on the user's system."
@@ -95,7 +93,7 @@
 (defn init
   "General application initialization function which should be run once at application startup."
   []
-  (log/info "Metabase Initializing ... ")
+  (log/info (format "Starting Metabase version %s..." ((config/mb-version-info) :long)))
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
   (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable destroy))
   (log/debug "Using Config:\n" (with-out-str (clojure.pprint/pprint config/config-all)))
@@ -129,14 +127,14 @@
   "Start the embedded Jetty web server."
   []
   (when-not @jetty-instance
-    (let [jetty-config (cond-> (medley/filter-vals identity {:port (config/config-int :mb-jetty-port)
-                                                             :host (config/config-str :mb-jetty-host)
-                                                             :max-threads (config/config-int :mb-jetty-maxthreads)
-                                                             :min-threads (config/config-int :mb-jetty-minthreads)
-                                                             :max-queued (config/config-int :mb-jetty-maxqueued)
-                                                             :max-idle-time (config/config-int :mb-jetty-maxidletime)})
-                               (config/config-str :mb-jetty-join) (assoc :join? (config/config-bool :mb-jetty-join))
-                               (config/config-str :mb-jetty-daemon) (assoc :daemon? (config/config-bool :mb-jetty-daemon)))]
+    (let [jetty-config (cond-> (m/filter-vals identity {:port (config/config-int :mb-jetty-port)
+                                                        :host (config/config-str :mb-jetty-host)
+                                                        :max-threads (config/config-int :mb-jetty-maxthreads)
+                                                        :min-threads (config/config-int :mb-jetty-minthreads)
+                                                        :max-queued (config/config-int :mb-jetty-maxqueued)
+                                                        :max-idle-time (config/config-int :mb-jetty-maxidletime)})
+                         (config/config-str :mb-jetty-join) (assoc :join? (config/config-bool :mb-jetty-join))
+                         (config/config-str :mb-jetty-daemon) (assoc :daemon? (config/config-bool :mb-jetty-daemon)))]
       (log/info "Launching Embedded Jetty Webserver with config:\n" (with-out-str (clojure.pprint/pprint jetty-config)))
       (->> (ring-jetty/run-jetty app jetty-config)
            (reset! jetty-instance)))))
@@ -163,11 +161,9 @@
   (when-not (sample-dataset-id)
     (try
       (log/info "Loading sample dataset...")
-      (let [resource (-> (Thread/currentThread) ; hunt down the sample dataset DB file inside the current JAR
-                         .getContextClassLoader
-                         (.getResource sample-dataset-filename))]
+      (let [resource (io/resource sample-dataset-filename)]
         (if-not resource
-          (log/error (format "Can't load sample dataset: the DB file '%s' can't be found by the ClassLoader." sample-dataset-filename))
+          (log/error (format "Can't load sample dataset: the DB file '%s' can't be found." sample-dataset-filename))
           (let [h2-file (-> (.getPath resource)
                             (s/replace #"^file:" "zip:")        ; to connect to an H2 DB inside a JAR just replace file: with zip:
                             (s/replace #"\.mv\.db$" "")         ; strip the .mv.db suffix from the path

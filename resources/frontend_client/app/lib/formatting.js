@@ -1,6 +1,7 @@
 "use strict";
 
 import d3 from "d3";
+import inflection from "inflection";
 
 var precisionNumberFormatter = d3.format(".2r");
 var fixedNumberFormatter = d3.format(",.f");
@@ -39,4 +40,17 @@ export function formatCell(value, column) {
     } else {
         return String(value);
     }
+}
+
+export function singularize(...args) {
+    return inflection.singularize(...args);
+}
+
+export function capitalize(...args) {
+    return inflection.capitalize(...args);
+}
+
+// Removes trailing "id" from field names
+export function stripId(name) {
+    return name && name.replace(/ id$/i, "");
 }

@@ -25,3 +25,4 @@ profiles.clj
 /coverage
 /resources/sample-dataset.db.trace.db
 /deploy/artifacts/*
+/resources/version.properties

@@ -1,39 +1,38 @@
 "use strict";
 
-import FieldSelector from "./FieldSelector.react";
+import React, { Component, PropTypes } from "react";
+
+import FieldList from "./FieldList.react";
 import FieldName from "./FieldName.react";
 import Popover from "metabase/components/Popover.react";
 
 import Query from "metabase/lib/query";
 
-export default React.createClass({
-    displayName: "FieldWidget",
-    propTypes: {
-        field: React.PropTypes.oneOfType([React.PropTypes.number, React.PropTypes.array]),
-        fieldOptions: React.PropTypes.object.isRequired,
-        setField: React.PropTypes.func.isRequired,
-        removeField: React.PropTypes.func,
-        isInitiallyOpen: React.PropTypes.bool
-    },
+import _ from "underscore";
 
-    getInitialState: function() {
-        return {
-            isOpen: this.props.isInitiallyOpen || false
+export default class FieldWidget extends Component {
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            isOpen: props.isInitiallyOpen || false
         };
-    },
 
-    setField:function(value) {
+        _.bindAll(this, "toggle", "setField");
+    }
+
+    setField(value) {
         this.props.setField(value);
         if (Query.isValidField(value)) {
             this.toggle();
         }
-    },
+    }
 
-    toggle: function() {
+    toggle() {
         this.setState({ isOpen: !this.state.isOpen });
-    },
+    }
 
-    renderPopover: function() {
+    renderPopover() {
         if (this.state.isOpen) {
             var tetherOptions = {
                 attachment: 'top center',
@@ -47,18 +46,20 @@ export default React.createClass({
                     tetherOptions={tetherOptions}
                     onClose={this.toggle}
                 >
-                    <FieldSelector
+                    <FieldList
+                        className={"text-" + this.props.color}
                         tableName={this.props.tableName}
                         field={this.props.field}
                         fieldOptions={this.props.fieldOptions}
-                        setField={this.setField}
+                        onFieldChange={this.setField}
+                        enableTimeGrouping={true}
                     />
                 </Popover>
             );
         }
-    },
+    }
 
-    render: function() {
+    render() {
         return (
             <div className="flex align-center">
                 <FieldName
@@ -72,4 +73,16 @@ export default React.createClass({
             </div>
         );
     }
-});
+}
+
+FieldWidget.propTypes = {
+    field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
+    fieldOptions: PropTypes.object.isRequired,
+    setField: PropTypes.func.isRequired,
+    removeField: PropTypes.func,
+    isInitiallyOpen: PropTypes.bool
+};
+
+FieldWidget.defaultProps = {
+    color: "brand"
+};

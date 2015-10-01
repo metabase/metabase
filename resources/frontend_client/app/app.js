@@ -13,7 +13,6 @@ var Metabase = angular.module('metabase', [
     'metabase.components',
     'metabase.card',
     'metabase.dashboard',
-    'metabase.explore',
     'metabase.home',
     'metabase.user',
     'metabase.setup',

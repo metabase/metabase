@@ -245,7 +245,6 @@ export default React.createClass({
                 <div className="SelectionModule-trigger flex align-center">
                     <a className="QueryOption p1 flex align-center" onClick={this._toggleOpen}>
                         {placeholder}
-                        { selection ? (<Icon className="ml1" name="chevrondown" width="8px" height="8px" />) : (null) }
                     </a>
                     {remove}
                 </div>
