@@ -1,7 +1,8 @@
 ;; -*- comment-column: 35; -*-
 (ns metabase.core
   (:gen-class)
-  (:require [clojure.java.io :as io]
+  (:require (clojure.java [io :as io]
+                          [shell :as shell])
             [clojure.string :as s]
             [clojure.tools.logging :as log]
             [colorize.core :as color]
@@ -177,10 +178,24 @@
       (catch Throwable e
         (log/error (format "Failed to load sample dataset: %s" (.getMessage e)))))))
 
+(defn- run-script [script-name & args]
+  (let [script-resource (io/resource (str "scripts/" script-name))]
+    (when-not script-resource
+      (throw (Exception. (format "No script named %s." script-name))))
+    ;; Now copy the file from path/to/metabase.jar!/scripts/<file> to ./<file>
+    ;; because we can't run scripts bundled inside the jar
+    (let [script (str "./" script-name)]
+      (io/copy (slurp script-resource) (io/file script))
+      (shell/sh "chmod" "+x" script)
+      (println "\n\nScript copied to:" script) ; use println here instead of log/* because this is guaranteed to happen interactively
+      (println "Running script...\n")
+      (-> (apply shell/sh script args)
+          :out
+          println))))
+;; TODO - should we delete the "temporary" script (e.g. ./<script>) when we're done?
+;; or should we advise the user they can run it again from there instead of via the uberjar ??
 
-(defn -main
-  "Launch Metabase in standalone mode."
-  [& args]
+(defn- start-metabase []
   (log/info "Starting Metabase in STANDALONE mode")
   (try
     ;; run our initialization process
@@ -192,3 +207,11 @@
     (catch Exception e
       (.printStackTrace e)
       (log/error "Metabase Initialization FAILED: " (.getMessage e)))))
+
+(defn -main
+  "Launch Metabase in standalone mode."
+  [first-arg & rest-args]
+  (if (= first-arg "--script")
+    (do (apply run-script rest-args) ; run a script like java -jar path/to/metabase.jar --script [my-script-name] [args....]
+        (System/exit 0))
+    (start-metabase)))
