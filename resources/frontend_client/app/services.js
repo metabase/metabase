@@ -369,6 +369,13 @@ CoreServices.factory('User', ['$resource', '$cookies', function($resource, $cook
             params: {
                 'userId': '@userId'
             }
+        },
+        send_invite: {
+            url: '/api/user/:userId/send_invite',
+            method: 'POST',
+            params: {
+                'userId': '@id'
+            }
         }
     });
 }]);

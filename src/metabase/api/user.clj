@@ -4,9 +4,9 @@
             [medley.core :refer [mapply]]
             [metabase.api.common :refer :all]
             [metabase.db :refer [sel upd upd-non-nil-keys exists?]]
+            [metabase.email.messages :as email]
             (metabase.models [hydrate :refer [hydrate]]
-                             [user :refer [User create-user set-user-password]])
-            [ring.util.request :as req]))
+                             [user :refer [User create-user set-user-password set-user-password-reset-token form-password-reset-url]])))
 
 (defn ^:private check-self-or-superuser
   "Check that USER-ID is `*current-user-id*` or that `*current-user*` is a superuser, or throw a 403."
@@ -88,6 +88,16 @@
       (checkp (creds/bcrypt-verify (str (:password_salt user) old_password) (:password user)) "old_password" "Invalid password")))
   (set-user-password id password)
   (User id))
+
+
+(defendpoint POST "/:id/send_invite"
+  "Resend the user invite email for a given user."
+  [id]
+  (when-let [user (sel :one User :id id :is_active true)]
+    (let [reset-token (set-user-password-reset-token id)
+          ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
+          join-url    (str (form-password-reset-url reset-token) "#new")]
+      (email/send-new-user-email user @*current-user* join-url))))
 
 
 (defendpoint DELETE "/:id"

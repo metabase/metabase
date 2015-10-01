@@ -43,7 +43,7 @@ const user = new Schema('user');
 
 // resource wrappers
 const SessionApi = new AngularResourceProxy("Session", ["forgot_password"]);
-const UserApi = new AngularResourceProxy("User", ["list", "update", "create", "delete", "update_password"]);
+const UserApi = new AngularResourceProxy("User", ["list", "update", "create", "delete", "update_password", "send_invite"]);
 
 
 // action constants
@@ -111,7 +111,8 @@ export const grantAdmin = createThunkAction(GRANT_ADMIN, function(user) {
 
 export const resendInvite = createThunkAction(RESEND_INVITE, function(user) {
     return async function(dispatch, getState) {
-        // TODO - make api call
+        // make api call
+        await UserApi.send_invite({id: user.id});
 
         this.props.dispatch(showModal({type: MODAL_INVITE_RESENT, details: {user: this.props.user}}));
 

@@ -3,6 +3,7 @@
 import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.react";
+import MetabaseSettings from "metabase/lib/settings";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 
 import { MODAL_EDIT_DETAILS, MODAL_RESET_PASSWORD } from "./AdminPeople.react";
@@ -62,7 +63,7 @@ export default class UserActionsSelect extends Component {
                                 triggerElement={triggerElement}>
                 <ul className="UserActionsSelect">
                     <li onClick={this.onEditDetails.bind(this)}>Edit Details</li>
-                    { user.last_login === null ?
+                    { (user.last_login === null && MetabaseSettings.isEmailConfigured()) ?
                         <li onClick={this.onResendInvite.bind(this)}>Re-send Invite</li>
                     :
                         <li onClick={this.onResetPassword.bind(this)}>Reset Password</li>
