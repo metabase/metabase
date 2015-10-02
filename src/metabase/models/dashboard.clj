@@ -32,6 +32,7 @@
         map->DashboardInstance))
 
   (pre-cascade-delete [_ {:keys [id]}]
+    (cascade-delete 'Revision :model "Dashboard" :model_id id)
     (cascade-delete DashboardCard :dashboard_id id)))
 
 (extend-ICanReadWrite DashboardEntity :read :public-perms, :write :public-perms)

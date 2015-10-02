@@ -31,6 +31,7 @@
         :tables (delay (sel :many 'metabase.models.table/Table :db_id id :active true (order :display_name :ASC))))))
 
   (pre-cascade-delete [_ {:keys [id] :as database}]
+    (cascade-delete 'metabase.models.card/Card :database_id id)
     (cascade-delete 'metabase.models.table/Table :db_id id)))
 
 (extend-ICanReadWrite DatabaseEntity :read :always, :write :superuser)
