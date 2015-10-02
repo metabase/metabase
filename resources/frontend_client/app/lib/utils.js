@@ -17,7 +17,7 @@ var MetabaseUtils = {
                 var uc = password.match(/([A-Z])/g);
                 var lc = password.match(/([a-z])/g);
                 var di = password.match(/([\d])/g);
-                var sc = password.match(/([\?\-])/g);
+                var sc = password.match(/([!@#\$%\^\&*\)\(+=._-{}])/g);
 
                 return (uc && uc.length >= (complexity.upper || 0) &&
                         lc && lc.length >= (complexity.lower || 0) &&

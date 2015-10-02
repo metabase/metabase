@@ -48,7 +48,7 @@ describe('utils', () => {
 
         it('can enforce special character requirements', () => {
             expect(
-                (MetabaseUtils.generatePassword(14, {special: 2}).match(/([\?\-])/g).length >= 2)
+                (MetabaseUtils.generatePassword(14, {special: 2}).match(/([!@#\$%\^\&*\)\(+=._-{}])/g).length >= 2)
             ).toBe(
                 true
             );
