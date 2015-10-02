@@ -18,7 +18,8 @@
        set
        (map (fn [events-ns]
               (log/info "\tloading tasks namespace: " events-ns)
-              (require events-ns)))
+              (require events-ns)
+              ((ns-resolve events-ns (symbol "task-init")))))
        dorun))
 
 (defn start-scheduler!
