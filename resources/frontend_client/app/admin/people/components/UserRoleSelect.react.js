@@ -19,22 +19,22 @@ export default class UserRoleSelect extends Component {
         let { user, onChangeFn } = this.props;
         const roleDef = (user.is_superuser) ? MetabaseCore.user_roles[1] : MetabaseCore.user_roles[0];
 
-        var triggerElement = (
+        const triggerElement = (
             <div className={"flex align-center"}>
                 <span className="mr1">{roleDef.name}</span>
                 <Icon className="text-grey-2" name="chevrondown"  width="10" height="10"/>
             </div>
         );
 
-        var sections = {};
+        let sections = {};
         MetabaseCore.user_roles.forEach(function (option) {
-            var sectionName = option.section || "";
+            let sectionName = option.section || "";
             sections[sectionName] = sections[sectionName] || { title: sectionName || undefined, items: [] };
             sections[sectionName].items.push(option);
         });
         sections = Object.keys(sections).map((sectionName) => sections[sectionName]);
 
-        var columns = [
+        const columns = [
             {
                 selectedItem: roleDef,
                 sections: sections,
@@ -47,7 +47,7 @@ export default class UserRoleSelect extends Component {
             }
         ];
 
-        var tetherOptions = {
+        const tetherOptions = {
             attachment: 'top center',
             targetAttachment: 'bottom center',
             targetOffset: '5px 0',

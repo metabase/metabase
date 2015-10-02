@@ -134,189 +134,209 @@ export default class AdminPeople extends Component {
         this.props.dispatch(deleteUser(user));
     }
 
+    renderAddPersonModal(modalDetails) {
+        return (
+            <Modal>
+                <ModalContent title="Add Person"
+                              closeFn={() => this.props.dispatch(showModal(null))}>
+                    <EditUserForm
+                        buttonText="Add Person"
+                        submitFn={this.onAddPerson.bind(this)} />
+                </ModalContent>
+            </Modal>
+        );
+    }
+
+    renderEditDetailsModal(modalDetails) {
+        let { user } = modalDetails;
+
+        return (
+            <Modal>
+                <ModalContent title="Edit Details"
+                              closeFn={() => this.props.dispatch(showModal(null))}>
+                    <EditUserForm
+                        user={user}
+                        submitFn={this.onEditDetails.bind(this)} />
+                </ModalContent>
+            </Modal>
+        );
+    }
+
+    renderUserAddedWithPasswordModal(modalDetails) {
+        let { user } = modalDetails;
+
+        return (
+            <Modal className="Modal Modal--small">
+                <ModalContent title={user.first_name+" has been added"}
+                              closeFn={() => this.props.dispatch(showModal(null))}
+                              className="Modal-content Modal-content--small NewForm">
+                    <div>
+                        <div className="px4 pb4">
+                            <div className="pb4">We couldn’t send them an email invitation,
+                            so make sure to tell them to log in using <span className="text-bold">{user.email} </span>
+                            and this password we’ve generated for them:</div>
+
+                            <PasswordReveal password={user.password}></PasswordReveal>
+
+                            <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pt4 text-centered">If you want to be able to send email invites, just go to the <a className="link text-bold" href="/admin/settings/?section=Email">Email Settings</a> page.</div>
+                        </div>
+
+                        <div className="Form-actions">
+                            <button className="Button Button--primary" onClick={() => this.props.dispatch(showModal(null))}>Done</button>
+                            <span className="pl1">or<a className="link ml1 text-bold" href="" onClick={() => this.props.dispatch(showModal({type: MODAL_ADD_PERSON}))}>Add another person</a></span>
+                        </div>
+                    </div>
+                </ModalContent>
+            </Modal>
+        );
+    }
+
+    renderUserAddedWithInviteModal(modalDetails) {
+        let { user } = modalDetails;
+
+        return (
+            <Modal className="Modal Modal--small">
+                <ModalContent title={user.first_name+" has been added"}
+                              closeFn={() => this.props.dispatch(showModal(null))}
+                              className="Modal-content Modal-content--small NewForm">
+                    <div>
+                        <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pb4">We’ve sent an invite to <span className="text-bold">{user.email}</span> with instructions to set their password.</div>
+
+                        <div className="Form-actions">
+                            <button className="Button Button--primary" onClick={() => this.props.dispatch(showModal(null))}>Done</button>
+                            <span className="pl1">or<a className="link ml1 text-bold" href="" onClick={() => this.props.dispatch(showModal({type: MODAL_ADD_PERSON}))}>Add another person</a></span>
+                        </div>
+                    </div>
+                </ModalContent>
+            </Modal>
+        );
+    }
+
+    renderInviteResentModal(modalDetails) {
+        let { user } = modalDetails;
+
+        return (
+            <Modal className="Modal Modal--small">
+                <ModalContent title={"We've Re-sent "+user.first_name+"'s Invite"}
+                              closeFn={() => this.props.dispatch(showModal(null))}
+                              className="Modal-content Modal-content--small NewForm">
+                    <div>
+                        <div className="px4 pb4">Any previous email invites they have will no longer work.</div>
+
+                        <div className="Form-actions">
+                            <button className="Button Button--primary mr2" onClick={() => this.props.dispatch(showModal(null))}>Okay</button>
+                        </div>
+                    </div>
+                </ModalContent>
+            </Modal>
+        );
+    }
+
+    renderRemoveUserModal(modalDetails) {
+        let { user } = modalDetails;
+
+        return (
+            <Modal className="Modal Modal--small">
+                <ModalContent title={"Remove "+user.common_name}
+                              closeFn={() => this.props.dispatch(showModal(null))}
+                              className="Modal-content Modal-content--small NewForm">
+                    <div>
+                        <div className="px4 pb4">
+                            Are you sure you want to do this? {user.first_name} won't be able to log in anymore.  This can't be undone.
+                        </div>
+
+                        <div className="Form-actions">
+                            <button className="Button Button--warning" onClick={() => this.onRemoveUserConfirm(user)}>Yes</button>
+                            <button className="Button Button--primary ml2" onClick={() => this.props.dispatch(showModal(null))}>No</button>
+                        </div>
+                    </div>
+                </ModalContent>
+            </Modal>
+        );
+    }
+
+    renderResetPasswordModal(modalDetails) {
+        let { user } = modalDetails;
+
+        return (
+            <Modal className="Modal Modal--small">
+                <ModalContent title={"Reset "+user.first_name+"'s Password"}
+                              closeFn={() => this.props.dispatch(showModal(null))}
+                              className="Modal-content Modal-content--small NewForm">
+                    <div>
+                        <div className="px4 pb4">
+                            Are you sure you want to do this?
+                        </div>
+
+                        <div className="Form-actions">
+                            <button className="Button Button--warning" onClick={() => this.onPasswordResetConfirm(user)}>Yes</button>
+                            <button className="Button Button--primary ml2" onClick={() => this.props.dispatch(showModal(null))}>No</button>
+                        </div>
+                    </div>
+                </ModalContent>
+            </Modal>
+        );
+    }
+
+    renderPasswordResetManuallyModal(modalDetails) {
+        let { user, password } = modalDetails;
+
+        return (
+            <Modal className="Modal Modal--small">
+                <ModalContent title={user.first_name+"'s Password Has Been Reset"}
+                              closeFn={() => this.props.dispatch(showModal(null))}
+                              className="Modal-content Modal-content--small NewForm">
+                    <div>
+                        <div className="px4 pb4">
+                            <span className="pb3 block">Here’s a temporary password they can use to log in and then change their password.</span>
+
+                            <PasswordReveal password={password}></PasswordReveal>
+                        </div>
+
+                        <div className="Form-actions">
+                            <button className="Button Button--primary mr2" onClick={() => this.props.dispatch(showModal(null))}>Done</button>
+                        </div>
+                    </div>
+                </ModalContent>
+            </Modal>
+        );
+    }
+
+    renderPasswordResetViaEmailModal(modalDetails) {
+        let { user } = modalDetails;
+
+        return (
+            <Modal className="Modal Modal--small">
+                <ModalContent title={user.first_name+"'s Password Has Been Reset"}
+                              closeFn={() => this.props.dispatch(showModal(null))}
+                              className="Modal-content Modal-content--small NewForm">
+                    <div>
+                        <div className="px4 pb4">We've sent them an email with instructions for creating a new password.</div>
+
+                        <div className="Form-actions">
+                            <button className="Button Button--primary mr2" onClick={() => this.props.dispatch(showModal(null))}>Done</button>
+                        </div>
+                    </div>
+                </ModalContent>
+            </Modal>
+        );
+    }
+
     renderModal(modalType, modalDetails) {
 
-        if (modalType === MODAL_ADD_PERSON) {
-
-            return (
-                <Modal>
-                    <ModalContent title="Add Person"
-                                  closeFn={() => this.props.dispatch(showModal(null))}>
-                        <EditUserForm
-                            buttonText="Add Person"
-                            submitFn={this.onAddPerson.bind(this)} />
-                    </ModalContent>
-                </Modal>
-            );
-
-        } else if (modalType === MODAL_EDIT_DETAILS) {
-            let { user } = modalDetails;
-
-            return (
-                <Modal>
-                    <ModalContent title="Edit Details"
-                                  closeFn={() => this.props.dispatch(showModal(null))}>
-                        <EditUserForm
-                            user={user}
-                            submitFn={this.onEditDetails.bind(this)} />
-                    </ModalContent>
-                </Modal>
-            );
-
-        } else if (modalType === MODAL_USER_ADDED_WITH_PASSWORD) {
-            let { user } = modalDetails;
-
-            return (
-                <Modal className="Modal Modal--small">
-                    <ModalContent title={user.first_name+" has been added"}
-                                  closeFn={() => this.props.dispatch(showModal(null))}
-                                  className="Modal-content Modal-content--small NewForm">
-                        <div>
-                            <div className="px4 pb4">
-                                <div className="pb4">We couldn’t send them an email invitation,
-                                so make sure to tell them to log in using <span className="text-bold">{user.email} </span>
-                                and this password we’ve generated for them:</div>
-
-                                <PasswordReveal password={user.password}></PasswordReveal>
-
-                                <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pt4 text-centered">If you want to be able to send email invites, just go to the <a className="link text-bold" href="/admin/settings/?section=Email">Email Settings</a> page.</div>
-                            </div>
-
-                            <div className="Form-actions">
-                                <button className="Button Button--primary" onClick={() => this.props.dispatch(showModal(null))}>Done</button>
-                                <span className="pl1">or<a className="link ml1 text-bold" href="" onClick={() => this.props.dispatch(showModal({type: MODAL_ADD_PERSON}))}>Add another person</a></span>
-                            </div>
-                        </div>
-                    </ModalContent>
-                </Modal>
-            );
-
-        } else if (modalType === MODAL_USER_ADDED_WITH_INVITE) {
-            let { user } = modalDetails;
-
-            return (
-                <Modal className="Modal Modal--small">
-                    <ModalContent title={user.first_name+" has been added"}
-                                  closeFn={() => this.props.dispatch(showModal(null))}
-                                  className="Modal-content Modal-content--small NewForm">
-                        <div>
-                            <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pb4">We’ve sent an invite to <span className="text-bold">{user.email}</span> with instructions to set their password.</div>
-
-                            <div className="Form-actions">
-                                <button className="Button Button--primary" onClick={() => this.props.dispatch(showModal(null))}>Done</button>
-                                <span className="pl1">or<a className="link ml1 text-bold" href="" onClick={() => this.props.dispatch(showModal({type: MODAL_ADD_PERSON}))}>Add another person</a></span>
-                            </div>
-                        </div>
-                    </ModalContent>
-                </Modal>
-            );
-
-        } else if (modalType === MODAL_INVITE_RESENT) {
-            let { user } = modalDetails;
-
-            return (
-                <Modal className="Modal Modal--small">
-                    <ModalContent title={"We've Re-sent "+user.first_name+"'s Invite"}
-                                  closeFn={() => this.props.dispatch(showModal(null))}
-                                  className="Modal-content Modal-content--small NewForm">
-                        <div>
-                            <div className="px4 pb4">Any previous email invites they have will no longer work.</div>
-
-                            <div className="Form-actions">
-                                <button className="Button Button--primary mr2" onClick={() => this.props.dispatch(showModal(null))}>Okay</button>
-                            </div>
-                        </div>
-                    </ModalContent>
-                </Modal>
-            );
-
-        } else if (modalType === MODAL_REMOVE_USER) {
-            let { user } = modalDetails;
-
-            return (
-                <Modal className="Modal Modal--small">
-                    <ModalContent title={"Remove "+user.common_name}
-                                  closeFn={() => this.props.dispatch(showModal(null))}
-                                  className="Modal-content Modal-content--small NewForm">
-                        <div>
-                            <div className="px4 pb4">
-                                Are you sure you want to do this? {user.first_name} won't be able to log in anymore.  This can't be undone.
-                            </div>
-
-                            <div className="Form-actions">
-                                <button className="Button Button--warning" onClick={() => this.onRemoveUserConfirm(user)}>Yes</button>
-                                <button className="Button Button--primary ml2" onClick={() => this.props.dispatch(showModal(null))}>No</button>
-                            </div>
-                        </div>
-                    </ModalContent>
-                </Modal>
-            );
-
-        } else if (modalType === MODAL_RESET_PASSWORD) {
-            let { user } = modalDetails;
-
-            return (
-                <Modal className="Modal Modal--small">
-                    <ModalContent title={"Reset "+user.first_name+"'s Password"}
-                                  closeFn={() => this.props.dispatch(showModal(null))}
-                                  className="Modal-content Modal-content--small NewForm">
-                        <div>
-                            <div className="px4 pb4">
-                                Are you sure you want to do this?
-                            </div>
-
-                            <div className="Form-actions">
-                                <button className="Button Button--warning" onClick={() => this.onPasswordResetConfirm(user)}>Yes</button>
-                                <button className="Button Button--primary ml2" onClick={() => this.props.dispatch(showModal(null))}>No</button>
-                            </div>
-                        </div>
-                    </ModalContent>
-                </Modal>
-            );
-
-        } else if (modalType === MODAL_RESET_PASSWORD_MANUAL) {
-            let { user, password } = modalDetails;
-
-            return (
-                <Modal className="Modal Modal--small">
-                    <ModalContent title={user.first_name+"'s Password Has Been Reset"}
-                                  closeFn={() => this.props.dispatch(showModal(null))}
-                                  className="Modal-content Modal-content--small NewForm">
-                        <div>
-                            <div className="px4 pb4">
-                                <span className="pb3 block">Here’s a temporary password they can use to log in and then change their password.</span>
-
-                                <PasswordReveal password={password}></PasswordReveal>
-                            </div>
-
-                            <div className="Form-actions">
-                                <button className="Button Button--primary mr2" onClick={() => this.props.dispatch(showModal(null))}>Done</button>
-                            </div>
-                        </div>
-                    </ModalContent>
-                </Modal>
-            );
-
-        } else if (modalType === MODAL_RESET_PASSWORD_EMAIL) {
-            let { user } = modalDetails;
-
-            return (
-                <Modal className="Modal Modal--small">
-                    <ModalContent title={user.first_name+"'s Password Has Been Reset"}
-                                  closeFn={() => this.props.dispatch(showModal(null))}
-                                  className="Modal-content Modal-content--small NewForm">
-                        <div>
-                            <div className="px4 pb4">We've sent them an email with instructions for creating a new password.</div>
-
-                            <div className="Form-actions">
-                                <button className="Button Button--primary mr2" onClick={() => this.props.dispatch(showModal(null))}>Done</button>
-                            </div>
-                        </div>
-                    </ModalContent>
-                </Modal>
-            );
-
+        switch(modalType) {
+            case MODAL_ADD_PERSON:               return this.renderAddPersonModal(modalDetails);
+            case MODAL_EDIT_DETAILS:             return this.renderEditDetailsModal(modalDetails);
+            case MODAL_USER_ADDED_WITH_PASSWORD: return this.renderUserAddedWithPasswordModal(modalDetails);
+            case MODAL_USER_ADDED_WITH_INVITE:   return this.renderUserAddedWithInviteModal(modalDetails);
+            case MODAL_INVITE_RESENT:            return this.renderInviteResentModal(modalDetails);
+            case MODAL_REMOVE_USER:              return this.renderRemoveUserModal(modalDetails);
+            case MODAL_RESET_PASSWORD:           return this.renderResetPasswordModal(modalDetails);
+            case MODAL_RESET_PASSWORD_MANUAL:    return this.renderPasswordResetManuallyModal(modalDetails);
+            case MODAL_RESET_PASSWORD_EMAIL:     return this.renderPasswordResetViaEmailModal(modalDetails);
         }
+
+        return null;
     }
 
     render() {
