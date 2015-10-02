@@ -1,4 +1,6 @@
-'use strict';
+"use strict";
+
+import React, { Component, PropTypes } from "react";
 
 import { Table, Column } from 'fixed-data-table';
 import Icon from "metabase/components/Icon.react";
@@ -11,29 +13,11 @@ import { formatCell } from "metabase/lib/formatting";
 import _ from "underscore";
 import cx from "classnames";
 
-export default React.createClass({
-    displayName: 'QueryVisualizationTable',
-    propTypes: {
-        data: React.PropTypes.object,
-        sort: React.PropTypes.array,
-        setSortFn: React.PropTypes.func,
-        isCellClickableFn: React.PropTypes.func,
-        cellClickedFn: React.PropTypes.func
-    },
+export default class QueryVisualizationTable extends Component {
+    constructor(props) {
+        super(props);
 
-    // local variables
-    isColumnResizing: false,
-
-    // React lifecycle
-    getDefaultProps: function() {
-        return {
-            maxRows: 2000,
-            minColumnWidth: 75
-        };
-    },
-
-    getInitialState: function() {
-        return {
+        this.state = {
             width: 0,
             height: 0,
             columnWidths: [],
@@ -43,9 +27,13 @@ export default React.createClass({
             rawData: null,
             contentWidths: null
         };
-    },
 
-    componentWillMount: function() {
+        _.bindAll(this, "onClosePopover", "rowGetter");
+
+        this.isColumnResizing = false;
+    }
+
+    componentWillMount() {
         if (this.props.data) {
             this.setState({
                 colDefs: JSON.stringify(this.props.data.cols),
@@ -53,9 +41,9 @@ export default React.createClass({
                 rawData: this.props.data
             });
         }
-    },
+    }
 
-    componentWillReceiveProps: function(newProps) {
+    componentWillReceiveProps(newProps) {
         // TODO: check if our data has changed
         if (newProps.data !== this.state.rawData) {
             // if the columns have changed then reset any column widths we have setup
@@ -67,13 +55,13 @@ export default React.createClass({
                 columnWidths: this.calculateColumnWidths(this.state.width, this.props.minColumnWidth, gridData.cols)
             });
         }
-    },
+    }
 
-    componentDidMount: function() {
-        this.calculateSizing(this.getInitialState());
-    },
+    componentDidMount() {
+        this.calculateSizing(this.state);
+    }
 
-    shouldComponentUpdate: function(nextProps, nextState) {
+    shouldComponentUpdate(nextProps, nextState) {
         // this is required because we don't pass in the containing element size as a property :-/
         // if size changes don't update yet because state will change in a moment
         this.calculateSizing(nextState);
@@ -82,11 +70,11 @@ export default React.createClass({
         // NOTE: this is essentially the same as React.addons.PureRenderMixin but
         // we currently need to recalculate the container size here.
         return !_.isEqual(this.props, nextProps) || !_.isEqual(this.state, nextState);
-    },
+    }
 
     // availableWidth, minColumnWidth, # of columns
     // previousWidths, prevWidth
-    calculateColumnWidths: function(availableWidth, minColumnWidth, colDefs, prevAvailableWidth, prevColumnWidths) {
+    calculateColumnWidths(availableWidth, minColumnWidth, colDefs, prevAvailableWidth, prevColumnWidths) {
         // TODO: maintain column spacing on a window resize
 
         return colDefs.map((coldDef, index) => {
@@ -96,10 +84,10 @@ export default React.createClass({
                 return 300;
             }
         });
-    },
+    }
 
-    calculateSizing: function(prevState, force) {
-        var element = this.getDOMNode(); //React.findDOMNode(this);
+    calculateSizing(prevState, force) {
+        var element = React.findDOMNode(this);
 
         // account for padding of our parent
         var style = window.getComputedStyle(element.parentElement, null);
@@ -124,28 +112,28 @@ export default React.createClass({
 
             this.setState(updatedState);
         }
-    },
+    }
 
-    isSortable: function() {
+    isSortable() {
         return (this.props.setSortFn !== undefined);
-    },
+    }
 
-    setSort: function(fieldId) {
+    setSort(fieldId) {
         this.props.setSortFn(fieldId);
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Sort', 'table column');
-    },
+    }
 
-    cellClicked: function(rowIndex, columnIndex) {
+    cellClicked(rowIndex, columnIndex) {
         this.props.cellClickedFn(rowIndex, columnIndex);
-    },
+    }
 
-    popoverFilterClicked: function(rowIndex, columnIndex, operator) {
+    popoverFilterClicked(rowIndex, columnIndex, operator) {
         this.props.cellClickedFn(rowIndex, columnIndex, operator);
         this.setState({ popover: null });
-    },
+    }
 
-    rowGetter: function(rowIndex) {
+    rowGetter(rowIndex) {
         var row = {
             hasPopover: this.state.popover && this.state.popover.rowIndex === rowIndex || false
         };
@@ -153,28 +141,28 @@ export default React.createClass({
             row[i] = this.state.data.rows[rowIndex][i];
         }
         return row;
-    },
+    }
 
-    showPopover: function(rowIndex, cellDataKey) {
+    showPopover(rowIndex, cellDataKey) {
         this.setState({
             popover: {
                 rowIndex: rowIndex,
                 cellDataKey: cellDataKey
             }
         });
-    },
+    }
 
-    onClosePopover: function() {
+    onClosePopover() {
         this.setState({ popover: null });
-    },
+    }
 
-    cellRenderer: function(cellData, cellDataKey, rowData, rowIndex, columnData, width) {
+    cellRenderer(cellData, cellDataKey, rowData, rowIndex, columnData, width) {
         cellData = cellData != null ? formatCell(cellData, this.props.data.cols[cellDataKey]) : null;
 
         var key = 'cl'+rowIndex+'_'+cellDataKey;
         if (this.props.cellIsClickableFn(rowIndex, cellDataKey)) {
             return (
-                <a key={key} className="link cellData" href="#" onClick={this.cellClicked.bind(null, rowIndex, cellDataKey)}>{cellData}</a>
+                <a key={key} className="link cellData" href="#" onClick={this.cellClicked.bind(this, rowIndex, cellDataKey)}>{cellData}</a>
             );
         } else {
             var popover = null;
@@ -190,7 +178,7 @@ export default React.createClass({
                         <div className="bg-white bordered shadowed p1">
                             <ul className="h1 flex align-center">
                                 { ["<", "=", "≠", ">"].map(operator =>
-                                    <li key={operator} className="p2 text-brand-hover" onClick={this.popoverFilterClicked.bind(null, rowIndex, cellDataKey, operator)}>{operator}</li>
+                                    <li key={operator} className="p2 text-brand-hover" onClick={this.popoverFilterClicked.bind(this, rowIndex, cellDataKey, operator)}>{operator}</li>
                                 )}
                             </ul>
                         </div>
@@ -198,24 +186,24 @@ export default React.createClass({
                 );
             }
             return (
-                <div key={key} onClick={this.showPopover.bind(null, rowIndex, cellDataKey)}>
+                <div key={key} onClick={this.showPopover.bind(this, rowIndex, cellDataKey)}>
                     <span className="cellData">{cellData}</span>
                     {popover}
                 </div>
             );
         }
-    },
+    }
 
-    columnResized: function(width, idx) {
+    columnResized(width, idx) {
         var tableColumnWidths = this.state.columnWidths.slice();
         tableColumnWidths[idx] = width;
         this.setState({
             columnWidths: tableColumnWidths
         });
         this.isColumnResizing = false;
-    },
+    }
 
-    tableHeaderRenderer: function(columnIndex) {
+    tableHeaderRenderer(columnIndex) {
         var column = this.state.data.cols[columnIndex],
             colVal = (column && column.display_name && column.display_name.toString()) ||
                      (column && column.name && column.name.toString());
@@ -243,7 +231,7 @@ export default React.createClass({
             var fieldId = (column.id) ? column.id : "agg";
 
             return (
-                <div key={columnIndex} className={headerClasses} onClick={this.setSort.bind(null, fieldId)}>
+                <div key={columnIndex} className={headerClasses} onClick={this.setSort.bind(this, fieldId)}>
                     <span className="cellData">
                         {colVal}
                     </span>
@@ -255,17 +243,16 @@ export default React.createClass({
         } else {
             return (<div className={headerClasses}>{colVal}</div>);
         }
-    },
+    }
 
-    render: function() {
+    render() {
         if(!this.state.data) {
             return false;
         }
 
-        var component = this;
-        var tableColumns = this.state.data.cols.map(function (column, idx) {
+        var tableColumns = this.state.data.cols.map((column, idx) => {
             var colVal = (column !== null) ? column.name.toString() : null;
-            var colWidth = component.state.columnWidths[idx];
+            var colWidth = this.state.columnWidths[idx];
 
             if (!colWidth) {
                 colWidth = 75;
@@ -277,8 +264,8 @@ export default React.createClass({
                     className="MB-DataTable-column"
                     width={colWidth}
                     isResizable={true}
-                    headerRenderer={component.tableHeaderRenderer.bind(null, idx)}
-                    cellRenderer={component.cellRenderer}
+                    headerRenderer={this.tableHeaderRenderer.bind(this, idx)}
+                    cellRenderer={this.cellRenderer.bind(this)}
                     dataKey={idx}
                     label={colVal}>
                 </Column>
@@ -296,15 +283,15 @@ export default React.createClass({
                     maxHeight={this.state.height}
                     headerHeight={50}
                     isColumnResizing={this.isColumnResizing}
-                    onColumnResizeEndCallback={component.columnResized}
+                    onColumnResizeEndCallback={this.columnResized}
                 >
                     {tableColumns}
                 </Table>
             </span>
         );
-    },
+    }
 
-    componentDidUpdate: function() {
+    componentDidUpdate() {
         if (!this.state.contentWidths) {
             let tableElement = React.findDOMNode(this.refs.table);
             let contentWidths = [];
@@ -316,4 +303,17 @@ export default React.createClass({
             this.setState({ contentWidths }, () => this.calculateSizing(this.state, true));
         }
     }
-});
+}
+
+QueryVisualizationTable.propTypes = {
+    data: PropTypes.object,
+    sort: PropTypes.array,
+    setSortFn: PropTypes.func,
+    isCellClickableFn: PropTypes.func,
+    cellClickedFn: PropTypes.func
+};
+
+QueryVisualizationTable.defaultProps = {
+    maxRows: 2000,
+    minColumnWidth: 75
+};
