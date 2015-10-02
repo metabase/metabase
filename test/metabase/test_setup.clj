@@ -79,10 +79,10 @@
   {:expectations-options :before-run}
   []
   ;; We can shave about a second from unit test launch time by doing the various setup stages in on different threads
-  (let [setup-db           (future (time (do (log/info "Setting up test DB and running migrations...")
-                                             (db/setup-db :auto-migrate true)
-                                             (load-test-datasets)
-                                             (metabase.models.setting/set :site-name "Metabase Test"))))]
+  (let [setup-db (future (time (do (log/info "Setting up test DB and running migrations...")
+                                   (db/setup-db :auto-migrate true)
+                                   (load-test-datasets)
+                                   (metabase.models.setting/set :site-name "Metabase Test"))))]
     (core/start-jetty)
     @setup-db))
 
