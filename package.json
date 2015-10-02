@@ -68,7 +68,6 @@
     "karma-jasmine": "^0.3.5",
     "karma-nyan-reporter": "^0.2.2",
     "karma-webpack": "^1.7.0",
-    "ng-annotate-webpack-plugin": "^0.1.2",
     "node-libs-browser": "^0.5.2",
     "protractor": "^2.1.0",
     "react-hot-loader": "^1.2.8",
