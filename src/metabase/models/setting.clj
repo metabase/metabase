@@ -4,8 +4,10 @@
             [clojure.string :as s]
             [environ.core :as env]
             [korma.core :as k]
+            [metabase.config :as config]
             [metabase.db :refer [sel del]]
-            [metabase.models.interface :refer :all]
+            [metabase.models [common :as common]
+                             [interface :refer :all]]
             [metabase.setup :as setup]
             [metabase.util :as u]))
 
@@ -157,8 +159,8 @@
    :intercom_code         "gqfmsgf1"
    :password_complexity   (metabase.util.password/active-password-complexity)
    :setup_token           (setup/token-value)
-   :timezones             metabase.models.common/timezones
-   :version               (metabase.config/mb-version-info)
+   :timezones             common/timezones
+   :version               (config/mb-version-info)
    ;; all of these values are dynamic settings controlled at runtime
    :anon_tracking_enabled (= "true" (get :anon-tracking-enabled))
    :site_name             (get :site-name)
