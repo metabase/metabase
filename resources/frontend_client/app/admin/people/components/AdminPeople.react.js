@@ -54,7 +54,15 @@ export default class AdminPeople extends Component {
 
     onRoleChange(user, roleDef) {
         if (roleDef.id === "user" && user.is_superuser) {
-            this.props.dispatch(revokeAdmin(user));
+            // check that this isn't the last admin in the system
+            let admins = _.pick(this.props.users, function(value, key, object) {
+                return value.is_superuser;
+            });
+
+            if (admins && _.keys(admins).length > 1) {
+                this.props.dispatch(revokeAdmin(user));
+            }
+
         } else if (roleDef.id === "admin" && !user.is_superuser) {
             this.props.dispatch(grantAdmin(user));
         }
