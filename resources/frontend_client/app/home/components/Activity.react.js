@@ -137,8 +137,12 @@ export default class Activity extends Component {
                 description.bodyLink = Urls.card(item.details.dashcards[0].card_id);
                 break;
             case "database-sync":
+                // NOTE: this is a relic from the very early days of the activity feed when we accidentally didn't
+                //       capture the name/description/engine of a Database properly in the details and so it was
+                //       possible for a database to be deleted and we'd lose any way of knowing what it's name was :(
+                const oldName = (item.database && 'name' in item.database) ? item.database.name : "Unknown";
                 description.subject = "received the latest data from";
-                description.subjectRefName = item.database.name;
+                description.subjectRefName = (item.details.name) ? item.details.name : oldName;
                 break;
             case "install":
                 description.userName = "Hello World!";
