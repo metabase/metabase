@@ -49,6 +49,7 @@
        :id              $
        :updated_at      $
        :name            "Test Database"
+       :is_sample       false
        :organization_id nil
        :description     nil})
   ((user->client :rasta) :get 200 (format "database/%d" (db-id))))
@@ -62,6 +63,7 @@
        :details         $
        :updated_at      $
        :name            "Test Database"
+       :is_sample       false
        :organization_id nil
        :description     nil})
   ((user->client :crowberto) :get 200 (format "database/%d" (db-id))))
@@ -77,6 +79,7 @@
          :details         {:host "localhost", :port 5432, :dbname "fakedb", :user "cam"}
          :updated_at      $
          :name            db-name
+         :is_sample       false
          :organization_id nil
          :description     nil})
     (create-db db-name)))
@@ -132,6 +135,7 @@
                                 :id              $
                                 :updated_at      $
                                 :name            "Test Database"
+                                :is_sample       false
                                 :organization_id nil
                                 :description     nil})))
                          (match-$ (sel :one Database :name db-name)
@@ -140,6 +144,7 @@
                             :id              $
                             :updated_at      $
                             :name            $
+                            :is_sample       false
                             :organization_id nil
                             :description     nil}))))
     (do
@@ -163,6 +168,7 @@
             :id              $
             :updated_at      $
             :name            "Test Database"
+            :is_sample       false
             :organization_id nil
             :description     nil
             :tables [(match-$ (Table (id :categories))
