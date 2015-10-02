@@ -32,6 +32,6 @@
         (log/error (format "Failed to load sample dataset: %s" (.getMessage e)))))))
 
 (defn update-sample-dataset-if-needed! []
-  ;; TODO - fill this out
-  ;; NOTE: we don't want to sync the sample dataset unless it has actually changed
-  nil)
+  ;; TODO - it would be a bit nicer if we skipped this when the data hasn't changed
+  (when-let [db (db/sel :one Database :is_sample true)]
+    (driver/sync-database! db)))

@@ -6,6 +6,7 @@
             [metabase.events :as events]
             (metabase.models [activity :refer [Activity]]
                              [dashboard :refer [Dashboard]]
+                             [database :refer [Database]]
                              [session :refer [Session]])))
 
 
@@ -79,17 +80,20 @@
       :dashboard-remove-cards (record-activity topic object add-remove-card-details))))
 
 (defn- process-database-activity [topic object]
-  (let [database-details-fn (fn [obj] (-> obj
+  (let [database            (db/sel :one Database :id (events/object->model-id topic object))
+        database-details-fn (fn [obj] (-> obj
                                           (assoc :status "started")
                                           (dissoc :database_id :custom_id)))
-        database-table-fn (fn [obj] {:database-id (events/object->model-id topic obj)})]
-    (case topic
-      :database-sync-begin (record-activity :database-sync object database-details-fn database-table-fn)
-      :database-sync-end   (let [{activity-id :id} (db/sel :one Activity :custom_id (:custom_id object))]
-                             (db/upd Activity activity-id
-                               :details (-> object
-                                            (assoc :status "completed")
-                                            (dissoc :database_id :custom_id)))))))
+        database-table-fn   (fn [obj] {:database-id (events/object->model-id topic obj)})]
+    ;; NOTE: we are skipping any handling of activity for sample databases
+    (when (= false (:is_sample database))
+      (case topic
+        :database-sync-begin (record-activity :database-sync object database-details-fn database-table-fn)
+        :database-sync-end   (let [{activity-id :id} (db/sel :one Activity :custom_id (:custom_id object))]
+                               (db/upd Activity activity-id
+                                 :details (-> object
+                                              (assoc :status "completed")
+                                              (dissoc :database_id :custom_id))))))))
 
 (defn- process-user-activity [topic object]
   ;; we only care about login activity when its the users first session (a.k.a. new user!)
