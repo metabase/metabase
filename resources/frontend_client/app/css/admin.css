@@ -426,24 +426,3 @@
     padding-top: 1em;
     min-width: 180px;
 }
-
-.UserActionsSelect li {
-    padding: var(--padding-1) var(--padding-2) var(--padding-1) var(--padding-2);
-}
-
-.UserActionsSelect li:hover {
-    background-color: var(--brand-color);
-    color: #fff;
-}
-
-.UserActionsSelect li.Remove {
-    margin-top: var(--padding-1);
-    padding: var(--padding-2);
-    border-top: 1px solid #EAEAEA;
-    color: var(--error-color);
-}
-
-.UserActionsSelect li.Remove:hover {
-    background-color: var(--error-color);
-    color: #fff;
-}

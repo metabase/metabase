@@ -176,7 +176,7 @@ export default class AdminPeople extends Component {
                             so make sure to tell them to log in using <span className="text-bold">{user.email} </span>
                             and this password we’ve generated for them:</div>
 
-                            <PasswordReveal password={user.password}></PasswordReveal>
+                            <PasswordReveal password={user.password} />
 
                             <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pt4 text-centered">If you want to be able to send email invites, just go to the <a className="link text-bold" href="/admin/settings/?section=Email">Email Settings</a> page.</div>
                         </div>
@@ -290,7 +290,7 @@ export default class AdminPeople extends Component {
                         <div className="px4 pb4">
                             <span className="pb3 block">Here’s a temporary password they can use to log in and then change their password.</span>
 
-                            <PasswordReveal password={password}></PasswordReveal>
+                            <PasswordReveal password={password} />
                         </div>
 
                         <div className="Form-actions">
