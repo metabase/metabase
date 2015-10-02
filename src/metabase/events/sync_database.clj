@@ -39,7 +39,7 @@
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
-;; this is what actually kicks off our listener for events
-(when (config/is-prod?)
-  (log/info "Starting database sync events listener")
-  (events/start-event-listener sync-database-topics sync-database-channel process-sync-database-event))
+(defn events-init []
+  (when-not (config/is-test?)
+    (log/info "Starting database sync events listener")
+    (events/start-event-listener sync-database-topics sync-database-channel process-sync-database-event)))

@@ -27,8 +27,7 @@
         (catch Exception e
           (log/error "Error syncing database: " (:id database) e))))))
 
-;; this is what actually adds our task to the scheduler
-(when (config/is-prod?)
+(defn task-init []
   (log/info "Submitting sync-database task to scheduler")
   ;; build our job
   (reset! sync-databases-job (jobs/build
