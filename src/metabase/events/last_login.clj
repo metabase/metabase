@@ -38,7 +38,7 @@
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
-;; this is what actually kicks off our listener for events
-(when (config/is-dev?)
-  (log/info "Starting last-login events listener")
-  (events/start-event-listener last-login-topics last-login-channel process-last-login-event))
+(defn events-init []
+  (when-not (config/is-test?)
+    (log/info "Starting last-login events listener")
+    (events/start-event-listener last-login-topics last-login-channel process-last-login-event)))

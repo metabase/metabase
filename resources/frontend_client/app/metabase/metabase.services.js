@@ -44,6 +44,10 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
                 return angular.toJson(data);
             }
         },
+        db_add_sample_dataset: {
+            url: '/api/database/sample_dataset',
+            method: 'POST'
+        },
         db_get: {
             url: '/api/database/:dbId',
             method: 'GET',

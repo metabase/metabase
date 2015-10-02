@@ -31,7 +31,8 @@
               (log/info "\tloading events namespace: " events-ns)
               (require events-ns)
               ;; look for `events-init` function in the namespace and call it if it exists
-              ((ns-resolve events-ns 'events-init))))
+              (when-let [init-fn (ns-resolve events-ns 'events-init)]
+                (init-fn))))
        dorun))
 
 (defn initialize-events!

@@ -67,6 +67,7 @@
                        :id $
                        :updated_at $
                        :name "Test Database"
+                       :is_sample false
                        :organization_id nil
                        :description nil})
        :name        "VENUES"
@@ -128,6 +129,7 @@
                         :id              $
                         :updated_at      $
                         :name            "Test Database"
+                        :is_sample       false
                         :organization_id nil
                         :description     nil})
        :name         "CATEGORIES"
@@ -208,6 +210,7 @@
                         :id              $
                         :updated_at      $
                         :name            "Test Database"
+                        :is_sample       false
                         :organization_id nil
                         :description     nil})
        :name         "USERS"
@@ -321,6 +324,7 @@
                         :id              $
                         :updated_at      $
                         :name            "Test Database"
+                        :is_sample       false
                         :organization_id nil
                         :description     nil})
        :name         "USERS"
@@ -418,6 +422,7 @@
                       {:description     nil
                        :organization_id $
                        :name            "Test Database"
+                       :is_sample       false
                        :updated_at      $
                        :details         $
                        :id              $
@@ -484,6 +489,7 @@
                                                             {:description     nil,
                                                              :organization_id nil,
                                                              :name            "Test Database",
+                                                             :is_sample       false,
                                                              :updated_at      $,
                                                              :id              $,
                                                              :engine          "h2",

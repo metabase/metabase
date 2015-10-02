@@ -9,6 +9,15 @@ DatabasesControllers.controller('DatabaseList', ['$scope', 'Metabase', 'Metabase
     $scope.ENGINES = MetabaseCore.ENGINES;
 
     $scope.databases = [];
+    $scope.hasSampleDataset = false;
+
+    function hasSampleDataset(databases) {
+        for (let i=0; i < databases.length; i++) {
+            if (databases[i].is_sample) return true;
+        }
+
+        return false;
+    }
 
     $scope.delete = function(databaseId) {
         if ($scope.databases) {
@@ -19,14 +28,27 @@ DatabasesControllers.controller('DatabaseList', ['$scope', 'Metabase', 'Metabase
                 $scope.databases = _.filter($scope.databases, function(database) {
                     return database.id != databaseId;
                 });
+                $scope.hasSampleDataset = hasSampleDataset($scope.databases);
             }, function(error) {
                 console.log('error deleting database', error);
             });
         }
     };
 
+    $scope.addSampleDataset = function() {
+        if (!hasSampleDataset($scope.databases)) {
+            Metabase.db_add_sample_dataset().$promise.then(function(result) {
+                $scope.databases.push(result);
+                $scope.hasSampleDataset = true;
+            }, function(error) {
+                console.log('error adding sample dataset', error);
+            });
+        }
+    };
+
     Metabase.db_list(function(databases) {
         $scope.databases = databases;
+        $scope.hasSampleDataset = hasSampleDataset(databases);
     }, function(error) {
         console.log('error getting database list', error);
     });
