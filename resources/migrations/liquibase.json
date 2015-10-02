@@ -13,6 +13,7 @@
       {"include": {"file": "migrations/012_add_card_query_fields.yaml"}},
       {"include": {"file": "migrations/013_add_activity_table.yaml"}},
       {"include": {"file": "migrations/014_add_view_log_table.yaml"}},
-      {"include": {"file": "migrations/015_add_revision_is_creation_field.yaml"}}
+      {"include": {"file": "migrations/015_add_revision_is_creation_field.yaml"}},
+      {"include": {"file": "migrations/017_add_database_is_sample_field.yaml"}}
   ]
 }

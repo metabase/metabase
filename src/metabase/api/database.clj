@@ -11,6 +11,7 @@
                              [database :refer [Database]]
                              [field :refer [Field]]
                              [table :refer [Table]])
+            [metabase.sample-data :as sample-data]
             [metabase.util :as u]))
 
 (defannotation DBEngine
@@ -33,6 +34,13 @@
   (check-superuser)
   (let-500 [new-db (ins Database :name name :engine engine :details details)]
     (events/publish-event :database-create new-db)))
+
+(defendpoint POST "/sample_dataset"
+  "Add the sample dataset as a new `Database`."
+  []
+  (check-superuser)
+  (sample-data/add-sample-dataset!)
+  (sel :one Database :is_sample true))
 
 (defendpoint GET "/form_input"
   "Values of options for the create/edit `Database` UI."
