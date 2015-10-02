@@ -20,7 +20,8 @@
                       [routes :as routes]
                       [sample-data :as sample-data]
                       [setup :as setup]
-                      [task :as task])
+                      [task :as task]
+                      [util :as u])
             (metabase.models [setting :refer [defsetting]]
                              [database :refer [Database]]
                              [user :refer [User]])))
@@ -66,6 +67,10 @@
       wrap-cookies                                    ; Parses cookies in the request map and assocs as :cookies
       wrap-session                                    ; reads in current HTTP session and sets :session/key
       wrap-gzip))                                     ; GZIP response if client can handle it
+
+
+;;; ## ---------------------------------------- LIFECYCLE ----------------------------------------
+
 
 (defn- -init-create-setup-token
   "Create and set a new setup token, and open the setup URL on the user's system."
@@ -127,7 +132,8 @@
   true)
 
 
-;; ## Jetty (Web) Server
+;;; ## ---------------------------------------- Jetty (Web) Server ----------------------------------------
+
 
 (def ^:private jetty-instance
   (atom nil))
@@ -157,9 +163,10 @@
     (reset! jetty-instance nil)))
 
 
-(defn -main
-  "Launch Metabase in standalone mode."
-  [& args]
+;;; ## ---------------------------------------- App Main ----------------------------------------
+
+
+(defn- start-normally []
   (log/info "Starting Metabase in STANDALONE mode")
   (try
     ;; run our initialization process
@@ -169,3 +176,21 @@
     (catch Exception e
       (.printStackTrace e)
       (log/error "Metabase Initialization FAILED: " (.getMessage e)))))
+
+(defn- run-cmd [cmd & args]
+  (let [cmd->fn {:migrate (fn [direction]
+                            (db/migrate (keyword direction)))}]
+    (if-let [f (cmd->fn cmd)]
+      (do (apply f args)
+          (println "Success.")
+          (System/exit 0))
+      (do (println "Unrecognized command:" (name cmd))
+          (println "Valid commands are:\n" (u/pprint-to-str (map name (keys cmd->fn))))
+          (System/exit 1)))))
+
+(defn -main
+  "Launch Metabase in standalone mode."
+  [& [cmd & args]]
+  (if cmd
+    (apply run-cmd (keyword cmd) args) ; run a command like `java -jar metabase.jar migrate release-locks` or `lein run migrate release-locks`
+    (start-normally)))                 ; with no command line args just start Metabase normally
