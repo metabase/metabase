@@ -24,14 +24,13 @@
   "Search Classpath for namespaces that start with `metabase.events.`, and call their `events-init` function if it exists."
   []
   (doseq [events-ns (->> (ns-find/find-namespaces (clojure.java.classpath/classpath))
-                         (map name)
-                         (filter (partial re-find #"^metabase\.events\."))
-                         (map symbol))]
+                         (filter (fn [ns-symb]
+                                   (re-find #"^metabase\.events\." (name ns-symb)))))]
     (log/info "\tloading events namespace: " events-ns)
     (require events-ns)
     ;; look for `events-init` function in the namespace and call it if it exists
-    (when-let [events-init (ns-resolve events-ns 'events-init)]
-      (events-init))))
+    (when-let [init-fn (ns-resolve events-ns 'events-init)]
+      (init-fn))))
 
 (defn initialize-events!
   "Initialize the asynchronous internal events system."
