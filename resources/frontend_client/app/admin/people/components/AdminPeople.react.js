@@ -8,10 +8,10 @@ import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
 import Modal from "metabase/components/Modal.react";
 import ModalContent from "metabase/components/ModalContent.react";
+import PasswordReveal from "metabase/components/PasswordReveal.react";
 import UserAvatar from "metabase/components/UserAvatar.react";
 
 import EditUserForm from "./EditUserForm.react";
-import PasswordReveal from "./PasswordReveal.react";
 import UserActionsSelect from "./UserActionsSelect.react";
 import UserRoleSelect from "./UserRoleSelect.react";
 import { createUser,
