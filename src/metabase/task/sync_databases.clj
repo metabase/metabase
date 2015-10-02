@@ -4,9 +4,9 @@
                                     [triggers :as triggers])
             [clojurewerkz.quartzite.schedule.cron :as cron]
             (metabase [config :as config]
-                      [core :refer [sample-dataset-id]]
                       [db :as db]
                       [driver :as driver]
+                      [sample-data :refer [sample-dataset-id]]
                       [task :as task])
             [metabase.models.database :refer [Database]]))
 
