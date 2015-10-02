@@ -30,3 +30,8 @@
             (driver/sync-database! db))))
       (catch Throwable e
         (log/error (format "Failed to load sample dataset: %s" (.getMessage e)))))))
+
+(defn update-sample-dataset-if-needed! []
+  ;; TODO - fill this out
+  ;; NOTE: we don't want to sync the sample dataset unless it has actually changed
+  nil)

@@ -95,27 +95,33 @@
   (log/info (format "Starting Metabase version %s..." ((config/mb-version-info) :long)))
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
   (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable destroy))
-  (log/debug "Using Config:\n" (with-out-str (clojure.pprint/pprint config/config-all)))
-
-  ;; Bootstrap the event system
-  (events/initialize-events!)
 
   ;; startup database.  validates connection & runs any necessary migrations
   (db/setup-db :auto-migrate (config/config-bool :mb-db-automigrate))
 
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database
-  (when-not (db/sel :one :fields [User :id])
-    (log/info "Looks like this is a new installation ... preparing setup wizard")
-    ;; create setup token
-    (-init-create-setup-token)
-    ;; add the sample dataset DB
-    (sample-data/add-sample-dataset!)
-    ;; publish install event
-    (events/publish-event :install {}))
+  (let [new-install (nil? (db/sel :one :fields [User :id]))]
 
-  ;; Now start the task runner
-  (task/start-scheduler!)
+    ;; Bootstrap the event system
+    (events/initialize-events!)
+
+    ;; Now start the task runner
+    (task/start-scheduler!)
+
+    (when new-install
+      (log/info "Looks like this is a new installation ... preparing setup wizard")
+      ;; create setup token
+      (-init-create-setup-token)
+      ;; publish install event
+      (events/publish-event :install {}))
+
+    ;; deal with our sample dataset as needed
+    (if new-install
+      ;; add the sample dataset DB for fresh installs
+      (sample-data/add-sample-dataset!)
+      ;; otherwise update if appropriate
+      (sample-data/update-sample-dataset-if-needed!)))
 
   (log/info "Metabase Initialization COMPLETE")
   true)
