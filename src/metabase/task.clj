@@ -36,7 +36,8 @@
   []
   (log/debug "Stopping Quartz Scheduler")
   ;; tell quartz to stop everything
-  (qs/shutdown @quartz-scheduler)
+  (when @quartz-scheduler
+    (qs/shutdown @quartz-scheduler))
   ;; reset our scheduler reference
   (reset! quartz-scheduler nil))
 
