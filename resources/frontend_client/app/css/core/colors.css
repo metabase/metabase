@@ -52,8 +52,15 @@
 
 /* error */
 
-.text-error { color: var(--error-color); }
-.bg-error { background-color: var(--error-color); }
+.text-error,
+.text-error-hover:hover {
+  color: var(--error-color);
+}
+
+.bg-error,
+.bg-error-hover:hover {
+  background-color: var(--error-color);
+}
 
 /* heads up */
 

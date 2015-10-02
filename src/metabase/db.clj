@@ -12,7 +12,13 @@
             [metabase.db.internal :as i]
             [metabase.models.interface :as models]
             [metabase.util :as u])
-  (:import com.metabase.corvus.migrations.LiquibaseMigrations))
+  (:import java.io.StringWriter
+           java.sql.Connection
+           liquibase.Liquibase
+           (liquibase.database DatabaseFactory Database)
+           liquibase.database.jvm.JdbcConnection
+           liquibase.exception.DatabaseException
+           liquibase.resource.ClassLoaderResourceAccessor))
 
 ;; ## DB FILE, JDBC/KORMA DEFINITONS
 
@@ -54,14 +60,25 @@
 
 ;; ## MIGRATE
 
+(def ^:private ^:const changelog-file
+  "migrations/liquibase.json")
+
 (defn migrate
   "Migrate the database `:up`, `:down`, or `:print`."
   [jdbc-connection-details direction]
-  (let [conn (jdbc/get-connection jdbc-connection-details)]
-    (case direction
-      :up    (LiquibaseMigrations/setupDatabase conn)
-      :down  (LiquibaseMigrations/teardownDatabase conn)
-      :print (LiquibaseMigrations/genSqlDatabase conn))))
+  (try
+    (jdbc/with-db-transaction [conn jdbc-connection-details]
+      (let [^Database  database  (-> (DatabaseFactory/getInstance)
+                                     (.findCorrectDatabaseImplementation (JdbcConnection. (jdbc/get-connection conn))))
+            ^Liquibase liquibase (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database)]
+        (case direction
+          :up    (.update liquibase "")
+          :down  (.rollback liquibase 10000 "")
+          :print (let [writer (StringWriter.)]
+                   (.update liquibase "" writer)
+                   (.toString writer)))))
+    (catch Throwable e
+      (throw (DatabaseException. e)))))
 
 
 ;; ## SETUP-DB

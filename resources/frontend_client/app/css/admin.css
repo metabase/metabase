@@ -284,6 +284,13 @@
     min-width: 90px;
 }
 
+.AdminSelectBorderless {
+    display: inline-block;
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 3px;
+}
+
 
 .MetadataTable-title {
     background-color: #FCFCFC;
@@ -409,4 +416,13 @@
 
 .SettingsPassword {
     width: 200px;
+}
+
+.UserRolePopover .ColumnarSelector-column {
+    min-height: 180px;
+}
+
+.UserActionsSelect {
+    padding-top: 1em;
+    min-width: 180px;
 }
