@@ -108,7 +108,7 @@ export default class AdminPeople extends Component {
 
         } else {
             // generate a password
-            const password = MetabaseUtils.generatePassword();
+            const password = MetabaseUtils.generatePassword(14, MetabaseSettings.get('password_complexity'));
 
             // trigger the reset
             this.props.dispatch(resetPasswordManually(user, password));
