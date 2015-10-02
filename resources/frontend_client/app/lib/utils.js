@@ -5,9 +5,35 @@ import generatePassword from "password-generator";
 
 // provides functions for building urls to things we care about
 var MetabaseUtils = {
-    generatePassword: function(length) {
+    generatePassword: function(length, complexity) {
         const len = length || 14;
-        return generatePassword(len, false);
+
+        if (!complexity) {
+            return generatePassword(len, false);
+
+        } else {
+
+            function isStrongEnough(password) {
+                var uc = password.match(/([A-Z])/g);
+                var lc = password.match(/([a-z])/g);
+                var di = password.match(/([\d])/g);
+                var sc = password.match(/([\?\-])/g);
+
+                return (uc && uc.length >= (complexity.upper || 0) &&
+                        lc && lc.length >= (complexity.lower || 0) &&
+                        di && di.length >= (complexity.digit || 0) &&
+                        sc && sc.length >= (complexity.special || 0));
+            }
+
+            let password="",
+                tries=0;
+            while(!isStrongEnough(password) && tries < 100) {
+                password = generatePassword(len, false, /[\w\d\?\-]/);
+                tries++;
+            }
+
+            return password;
+        }
     },
 
     isEmpty: function(str) {
