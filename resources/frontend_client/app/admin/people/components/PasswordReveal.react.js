@@ -16,8 +16,9 @@ export default class PasswordReveal extends Component {
             },
 
             input: {
-                border: "none",
-                padding: "0.5em"
+                fontSize: '1.2rem',
+                letterSpacing: '2',
+                color: '#676C72'
             },
 
             label: {
@@ -37,21 +38,21 @@ export default class PasswordReveal extends Component {
         const { visible } = this.state;
 
         return (
-            <div style={this.styles.container} className="bordered rounded p2 relative">
+            <div style={this.styles.container} className="bordered rounded p3 relative">
                 <div style={this.styles.label} className="absolute text-centered left right">
                     <span className="px1 bg-white h6 text-bold text-grey-3 text-uppercase">Temporary Password</span>
                 </div>
 
                 { visible ?
-                    <input style={this.styles.input} className="text-grey-2 text-normal" type="text" value={password} />
+                    <span style={this.styles.input} className="text-grey-2 text-normal mr3">{password}</span>
                 :
-                    <input style={this.styles.input} type="password" value={password} />
+                    <span style={this.styles.input} className="mr3">&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;</span>
                 }
 
                 { visible ?
-                    <a href="#" className="link" onClick={this.onToggleVisibility.bind(this)}>Hide</a>
+                    <a href="#" className="link text-bold" onClick={this.onToggleVisibility.bind(this)}>Hide</a>
                 :
-                    <a href="#" className="link" onClick={this.onToggleVisibility.bind(this)}>Show</a>
+                    <a href="#" className="link text-bold" onClick={this.onToggleVisibility.bind(this)}>Show</a>
                 }
             </div>
         );
