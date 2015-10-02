@@ -275,7 +275,7 @@ export default class QueryVisualizationTable extends Component {
                     rowGetter={this.rowGetter}
                     rowsCount={this.state.data.rows.length}
                     width={this.state.width}
-                    maxHeight={this.state.height}
+                    height={this.state.height}
                     headerHeight={50}
                     isColumnResizing={this.isColumnResizing}
                     onColumnResizeEndCallback={this.columnResized}

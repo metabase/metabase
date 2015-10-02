@@ -13,15 +13,6 @@
     transition: opacity .3s linear;
 }
 
-/* these two rules cause the table to take up the full available height */
-.MB-DataTable {
-    display: flex;
-    flex-direction: column;
-}
-.public_fixedDataTable_main {
-    flex: 1;
-}
-
 .PagingButtons {
     border: 1px solid #ddd;
 }
