@@ -10,6 +10,7 @@ import cx from 'classnames';
 export default React.createClass({
     displayName: "SettingsEditor",
     propTypes: {
+        initialSection: React.string,
         sections: React.PropTypes.object.isRequired,
         updateSetting: React.PropTypes.func.isRequired
     },
@@ -18,6 +19,14 @@ export default React.createClass({
         return {
             currentSection: Object.keys(this.props.sections)[0]
         };
+    },
+
+    componentWillMount: function() {
+        if (this.props.initialSection) {
+            this.setState({
+                currentSection: this.props.initialSection
+            });
+        }
     },
 
     selectSection: function(section) {

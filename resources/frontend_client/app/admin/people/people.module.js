@@ -6,12 +6,7 @@ var AdminPeople = angular.module('metabaseadmin.people', [
 
 AdminPeople.config(['$routeProvider', function ($routeProvider) {
     $routeProvider.when('/admin/people/', {
-        templateUrl: '/app/admin/people/partials/people.html',
+        template: '<div mb-redux-component class="flex flex-column flex-full" />',
         controller: 'PeopleList'
-    });
-
-    $routeProvider.when('/admin/people/add', {
-        templateUrl: '/app/admin/people/partials/people_add.html',
-        controller: 'PeopleAdd'
     });
 }]);

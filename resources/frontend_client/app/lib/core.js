@@ -5,6 +5,16 @@ import _ from "underscore";
 
 (function() {
 
+    this.user_roles = [{
+        'id': 'user',
+        'name': 'User',
+        'description': 'Can do everything except access the Admin Panel.'
+    }, {
+        'id': 'admin',
+        'name': 'Admin',
+        'description': "Can access the Admin Panel to add or remove users and modify database settings."
+    }];
+
     this.perms = [{
         'id': 0,
         'name': 'Private'

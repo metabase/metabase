@@ -29,6 +29,7 @@
     "jquery": "^2.1.4",
     "moment": "^2.10.6",
     "normalizr": "^0.1.3",
+    "password-generator": "^2.0.1",
     "react": "^0.13.3",
     "react-grid-layout": "^0.8.5",
     "react-onclickout": "^1.1.0",
