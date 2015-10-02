@@ -1,0 +1,15 @@
+#! /bin/bash
+FILENAME=$1
+
+if [ ! "$FILENAME" ]; then
+    echo "Usage: $0 <file>"
+    exit 1
+fi
+
+echo "File is: $FILENAME"
+
+if [ -f "$FILENAME" ]; then
+    echo 'FILE EXISTS.'
+else
+    echo 'FILE DOES NOT EXIST.'
+fi
