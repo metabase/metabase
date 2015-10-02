@@ -122,7 +122,7 @@
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
-;; this is what actually kicks off our listener for events
-(when (config/is-prod?)
-  (log/info "Starting activity-feed events listener")
-  (events/start-event-listener activity-feed-topics activity-feed-channel process-activity-event))
+(defn events-init []
+  (when-not (config/is-test?)
+    (log/info "Starting activity-feed events listener")
+    (events/start-event-listener activity-feed-topics activity-feed-channel process-activity-event)))

@@ -22,7 +22,8 @@
        set
        (map (fn [events-ns]
               (log/info "\tloading events namespace: " events-ns)
-              (require events-ns)))
+              (require events-ns)
+              ((ns-resolve events-ns (symbol "events-init")))))
        dorun))
 
 (defn initialize-events!
