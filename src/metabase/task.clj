@@ -27,7 +27,8 @@
               (log/info "\tloading tasks namespace: " events-ns)
               (require events-ns)
               ;; look for `task-init` function in the namespace and call it if it exists
-              ((ns-resolve events-ns 'task-init))))
+              (when-let [init-fn (ns-resolve events-ns 'task-init)]
+                (init-fn))))
        dorun))
 
 (defn start-scheduler!
@@ -45,7 +46,8 @@
   []
   (log/debug "Stopping Quartz Scheduler")
   ;; tell quartz to stop everything
-  (qs/shutdown @quartz-scheduler)
+  (when @quartz-scheduler
+    (qs/shutdown @quartz-scheduler))
   ;; reset our scheduler reference
   (reset! quartz-scheduler nil))
 

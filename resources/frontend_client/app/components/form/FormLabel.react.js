@@ -19,9 +19,12 @@ export default class FormLabel extends Component {
     }
 }
 
+FormLabel.defaultProps = {
+    offset: true
+};
+
 FormLabel.propTypes = {
     fieldName: PropTypes.string.isRequired,
     formError: PropTypes.object,
     message: PropTypes.string,
-    offset: true,
-}
+};
