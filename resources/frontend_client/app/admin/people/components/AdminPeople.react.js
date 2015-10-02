@@ -312,9 +312,10 @@ export default class AdminPeople extends Component {
     }
 
     render() {
-        let users = _.values(this.props.users);
-        let { modal } = this.props;
+        let { modal, users } = this.props;
         let { error } = this.state;
+
+        users = _.values(users).sort((a, b) => (b.date_joined - a.date_joined));
 
         return (
             <LoadingAndErrorWrapper loading={!users} error={error}>

@@ -63,6 +63,7 @@ export const createUser = createThunkAction(CREATE_USER, function(user) {
         user.is_superuser = false;
 
         let newUser = await UserApi.create(user);
+        newUser.date_joined = (newUser.date_joined) ? moment(newUser.date_joined) : null;
         newUser.last_login = (newUser.last_login) ? moment(newUser.last_login) : null;
 
         return newUser;
@@ -83,6 +84,7 @@ export const fetchUsers = createThunkAction(FETCH_USERS, function() {
         let users = await UserApi.list();
 
         for (var u of users) {
+            u.date_joined = (u.date_joined) ? moment(u.date_joined) : null;
             u.last_login = (u.last_login) ? moment(u.last_login) : null;
         }
 
@@ -97,6 +99,7 @@ export const grantAdmin = createThunkAction(GRANT_ADMIN, function(user) {
 
         // do the update
         let updatedUser = await UserApi.update(user);
+        updatedUser.date_joined = (updatedUser.date_joined) ? moment(updatedUser.date_joined) : null;
         updatedUser.last_login = (updatedUser.last_login) ? moment(updatedUser.last_login) : null;
 
         return updatedUser;
@@ -128,6 +131,7 @@ export const revokeAdmin = createThunkAction(REVOKE_ADMIN, function(user) {
 
         // do the update
         let updatedUser = await UserApi.update(user);
+        updatedUser.date_joined = (updatedUser.date_joined) ? moment(updatedUser.date_joined) : null;
         updatedUser.last_login = (updatedUser.last_login) ? moment(updatedUser.last_login) : null;
 
         return updatedUser;
@@ -138,6 +142,7 @@ export const updateUser = createThunkAction(UPDATE_USER, function(user) {
     return async function(dispatch, getState) {
         let updatedUser = await UserApi.update(user);
 
+        updatedUser.date_joined = (updatedUser.date_joined) ? moment(updatedUser.date_joined) : null;
         updatedUser.last_login = (updatedUser.last_login) ? moment(updatedUser.last_login) : null;
 
         return updatedUser;

@@ -28,7 +28,6 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
             },
 
             init: function() {
-                console.log(window.MetabaseBootstrap);
 
                 if (!initPromise) {
                     // hackery to allow MetabaseCookies to tie into Angular
