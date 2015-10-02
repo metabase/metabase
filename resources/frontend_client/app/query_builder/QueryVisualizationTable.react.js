@@ -21,39 +21,34 @@ export default class QueryVisualizationTable extends Component {
             width: 0,
             height: 0,
             columnWidths: [],
-            colDefs: null,
             popover: null,
             data: null,
             rawData: null,
             contentWidths: null
         };
 
-        _.bindAll(this, "onClosePopover", "rowGetter");
+        _.bindAll(this, "onClosePopover", "rowGetter", "cellRenderer", "columnResized");
 
         this.isColumnResizing = false;
     }
 
     componentWillMount() {
-        if (this.props.data) {
-            this.setState({
-                colDefs: JSON.stringify(this.props.data.cols),
-                data: (this.props.pivot) ? DataGrid.pivot(this.props.data) : this.props.data,
-                rawData: this.props.data
-            });
-        }
+        this.componentWillReceiveProps(this.props);
     }
 
     componentWillReceiveProps(newProps) {
-        // TODO: check if our data has changed
-        if (newProps.data !== this.state.rawData) {
-            // if the columns have changed then reset any column widths we have setup
-            var gridData = (newProps.pivot) ? DataGrid.pivot(newProps.data) : newProps.data;
+        if (newProps.data && newProps.data !== this.state.rawData) {
+            let gridData = (newProps.pivot) ? DataGrid.pivot(newProps.data) : newProps.data;
             this.setState({
-                colDefs: JSON.stringify(this.props.data.cols),
                 data: gridData,
-                rawData: this.props.data,
-                columnWidths: this.calculateColumnWidths(this.state.width, this.props.minColumnWidth, gridData.cols)
+                rawData: this.props.data
             });
+            if (JSON.stringify(this.state.data && this.state.data.cols) !== JSON.stringify(gridData.cols)) {
+                this.setState({
+                    columnWidths: gridData.cols.map(col => 0), // content cells don't wrap so this is fine
+                    contentWidths: null
+                });
+            }
         }
     }
 
@@ -72,18 +67,28 @@ export default class QueryVisualizationTable extends Component {
         return !_.isEqual(this.props, nextProps) || !_.isEqual(this.state, nextState);
     }
 
-    // availableWidth, minColumnWidth, # of columns
-    // previousWidths, prevWidth
-    calculateColumnWidths(availableWidth, minColumnWidth, colDefs, prevAvailableWidth, prevColumnWidths) {
-        // TODO: maintain column spacing on a window resize
+    componentDidUpdate() {
+        if (!this.state.contentWidths) {
+            let tableElement = React.findDOMNode(this.refs.table);
+            let contentWidths = [];
+            for (let rowElement of tableElement.querySelectorAll(".fixedDataTableRowLayout_rowWrapper")) {
+                for (let [index, cellDataElement] of Object.entries(rowElement.querySelectorAll(".public_fixedDataTableCell_cellContent"))) {
+                    contentWidths[index] = Math.max(contentWidths[index] || 0, cellDataElement.offsetWidth);
+                }
+            }
+            this.setState({ contentWidths }, () => this.calculateColumnWidths(this.state.data.cols));
+        }
+    }
 
-        return colDefs.map((coldDef, index) => {
+    calculateColumnWidths(cols) {
+        let columnWidths = cols.map((col, index) => {
             if (this.state.contentWidths) {
-                return Math.max(this.state.contentWidths[index]) + 20;
+                return Math.min(this.state.contentWidths[index] + 1, 300); // + 1 to make sure it doen't wrap?
             } else {
                 return 300;
             }
         });
+        this.setState({ columnWidths });
     }
 
     calculateSizing(prevState, force) {
@@ -99,18 +104,7 @@ export default class QueryVisualizationTable extends Component {
         var height = element.parentElement.offsetHeight - paddingTop;
 
         if (width !== prevState.width || height !== prevState.height || force) {
-            var updatedState = {
-                width: width,
-                height: height
-            };
-
-            if (width !== prevState.width || force) {
-                // NOTE: we remove 2 pixels from width to allow for a border pixel on each side
-                var tableColumnWidths = this.calculateColumnWidths(width - 2, this.props.minColumnWidth, this.state.data.cols, prevState.width, prevState.columnWidths);
-                updatedState.columnWidths = tableColumnWidths;
-            }
-
-            this.setState(updatedState);
+            this.setState({ width, height });
         }
     }
 
@@ -212,10 +206,7 @@ export default class QueryVisualizationTable extends Component {
             colVal = "Unset";
         }
 
-        var headerClasses = cx({
-            'MB-DataTable-header' : true,
-            'flex': true,
-            'align-center': true,
+        var headerClasses = cx('MB-DataTable-header align-center', {
             'MB-DataTable-header--sorted': (this.props.sort && (this.props.sort[0][0] === column.id)),
         });
 
@@ -232,7 +223,7 @@ export default class QueryVisualizationTable extends Component {
 
             return (
                 <div key={columnIndex} className={headerClasses} onClick={this.setSort.bind(this, fieldId)}>
-                    <span className="cellData">
+                    <span>
                         {colVal}
                     </span>
                     <span className="ml1">
@@ -241,7 +232,11 @@ export default class QueryVisualizationTable extends Component {
                 </div>
             );
         } else {
-            return (<div className={headerClasses}>{colVal}</div>);
+            return (
+                <span className={headerClasses}>
+                    {colVal}
+                </span>
+            );
         }
     }
 
@@ -265,7 +260,7 @@ export default class QueryVisualizationTable extends Component {
                     width={colWidth}
                     isResizable={true}
                     headerRenderer={this.tableHeaderRenderer.bind(this, idx)}
-                    cellRenderer={this.cellRenderer.bind(this)}
+                    cellRenderer={this.cellRenderer}
                     dataKey={idx}
                     label={colVal}>
                 </Column>
@@ -273,7 +268,7 @@ export default class QueryVisualizationTable extends Component {
         });
 
         return (
-            <span className={cx('MB-DataTable', { 'MB-DataTable--pivot': this.props.pivot })}>
+            <span className={cx('MB-DataTable', { 'MB-DataTable--pivot': this.props.pivot, 'MB-DataTable--ready': this.state.contentWidths })}>
                 <Table
                     ref="table"
                     rowHeight={35}
@@ -289,19 +284,6 @@ export default class QueryVisualizationTable extends Component {
                 </Table>
             </span>
         );
-    }
-
-    componentDidUpdate() {
-        if (!this.state.contentWidths) {
-            let tableElement = React.findDOMNode(this.refs.table);
-            let contentWidths = [];
-            for (let rowElement of tableElement.querySelectorAll(".fixedDataTableRowLayout_rowWrapper")) {
-                for (let [index, cellDataElement] of Object.entries(rowElement.querySelectorAll(".cellData"))) {
-                    contentWidths[index] = Math.max(contentWidths[index] || 0, cellDataElement.offsetWidth);
-                }
-            }
-            this.setState({ contentWidths }, () => this.calculateSizing(this.state, true));
-        }
     }
 }
 
