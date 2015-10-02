@@ -5,6 +5,8 @@
 
   --primary-button-border-color: #509EE3;
   --primary-button-bg-color: #509EE3;
+  --warning-button-border-color: #E35050;
+  --warning-button-bg-color: #E35050;
   --selected-button-bg-color: #F4F6F8;
 
   --danger-button-bg-color: #EF8C8C;
@@ -66,6 +68,18 @@
   color: #fff;
   border-color: color(var(--primary-button-border-color) shade(10%));
   background-color: color(var(--primary-button-bg-color) shade(10%));
+}
+
+.Button--warning {
+  color: #fff;
+  background: var(--warning-button-bg-color);
+  border: 1px solid var(--warning-button-border-color);
+}
+
+.Button--warning:hover {
+  color: #fff;
+  border-color: color(var(--warning-button-border-color) shade(10%));
+  background-color: color(var(--warning-button-bg-color) shade(10%));
 }
 
 .Button--cancel {

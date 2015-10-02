@@ -2,12 +2,11 @@
 
 import _ from "underscore";
 
-/* Services */
-
 import MetabaseAnalytics from 'metabase/lib/analytics';
 import MetabaseCookies from 'metabase/lib/cookies';
 import MetabaseCore from 'metabase/lib/core';
 import MetabaseSettings from 'metabase/lib/settings';
+
 
 var MetabaseServices = angular.module('metabase.services', ['http-auth-interceptor', 'ipCookie', 'metabase.core.services']);
 
@@ -25,7 +24,6 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
             model: {
                 setupToken: null,
                 currentUser: null,
-                siteSettings: null,
                 appContext: 'none'
             },
 
@@ -51,7 +49,7 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
                     // start Intercom updater
                     // this tells Intercom to update every 60s if we have a currently logged in user
                     $interval(function() {
-                        if (service.model.currentUser && isTracking()) {
+                        if (service.model.currentUser && MetabaseSettings.isTrackingEnabled()) {
                             window.Intercom('update');
                         }
                     }, 60000);
@@ -89,12 +87,11 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
 
             refreshSiteSettings: function() {
 
-                var settingsRefresh = Session.properties(function(result) {
+                var settingsRefresh = Session.properties(function(settings) {
 
-                    var settings = _.indexBy(result, 'key');
-
-                    service.model.siteSettings = settings;
-                    MetabaseSettings.setAll(settings);
+                    MetabaseSettings.setAll(_.omit(settings, function(value, key, object) {
+                        return (key.indexOf('$') === 0);
+                    }));
 
                     $rootScope.$broadcast('appstate:site-settings', settings);
 
@@ -187,14 +184,6 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
             }
         };
 
-        function isTracking() {
-            var settings = service.model.siteSettings;
-            if (!settings) return false;
-
-            var tracking = settings['anon-tracking-enabled']['value'];
-            return (tracking === "true" || tracking === null);
-        }
-
         function startupIntercom(user) {
             window.Intercom('boot', {
                 app_id: "gqfmsgf1",
@@ -237,14 +226,14 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
         });
 
         $rootScope.$on("appstate:user", function(event, user) {
-            if (isTracking()) {
+            if (MetabaseSettings.isTrackingEnabled()) {
                 startupIntercom(user);
             }
         });
 
         // enable / disable GA based on opt-out of anonymous tracking
         $rootScope.$on("appstate:site-settings", function(event, settings) {
-            if (isTracking()) {
+            if (MetabaseSettings.isTrackingEnabled()) {
                 // we are doing tracking
                 window['ga-disable-UA-60817802-1'] = null;
 
@@ -309,8 +298,7 @@ CoreServices.factory('Session', ['$resource', '$cookies', function($resource, $c
         },
         properties: {
             url: '/api/session/properties',
-            method: 'GET',
-            isArray: true
+            method: 'GET'
         },
         forgot_password: {
             url: '/api/session/forgot_password',
@@ -368,6 +356,13 @@ CoreServices.factory('User', ['$resource', '$cookies', function($resource, $cook
             method: 'DELETE',
             params: {
                 'userId': '@userId'
+            }
+        },
+        send_invite: {
+            url: '/api/user/:userId/send_invite',
+            method: 'POST',
+            params: {
+                'userId': '@id'
             }
         }
     });
