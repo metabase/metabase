@@ -52,8 +52,15 @@
 
 /* error */
 
-.text-error { color: var(--error-color); }
-.bg-error { background-color: var(--error-color); }
+.text-error,
+.text-error-hover:hover {
+  color: var(--error-color);
+}
+
+.bg-error,
+.bg-error-hover:hover {
+  background-color: var(--error-color);
+}
 
 /* heads up */
 
@@ -98,6 +105,7 @@
 
 .bg-gold { background-color: var(--gold-color); }
 .bg-purple { background-color: var(--purple-color); }
+.bg-purple-light { background-color: var(--purple-light-color); }
 .bg-green { background-color: var(--green-color); }
 
 /* alt */

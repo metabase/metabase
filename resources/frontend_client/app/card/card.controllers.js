@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import MetabaseAnalytics from '../lib/analytics';
 import DataGrid from "metabase/lib/data_grid";
+import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
 
 import DataReference from '../query_builder/DataReference.react';
 import GuiQueryEditor from '../query_builder/GuiQueryEditor.react';
@@ -73,8 +74,8 @@ CardControllers.controller('CardList', ['$scope', '$location', 'Card', function(
 }]);
 
 CardControllers.controller('CardDetail', [
-    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'MetabaseFormGenerator', 'Metabase', 'VisualizationSettings', 'QueryUtils', 'Revision',
-    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, MetabaseFormGenerator, Metabase, VisualizationSettings, QueryUtils, Revision) {
+    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'Metabase', 'VisualizationSettings', 'QueryUtils', 'Revision',
+    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, Metabase, VisualizationSettings, QueryUtils, Revision) {
         // promise helper
         $q.resolve = function(object) {
             var deferred = $q.defer();
@@ -188,7 +189,6 @@ CardControllers.controller('CardDetail', [
             isRunning: false,
             isShowingDataReference: null,
             databases: null,
-            tables: null,
             tableMetadata: null,
             tableForeignKeys: null,
             query: null,
@@ -377,7 +377,6 @@ CardControllers.controller('CardDetail', [
             editorModel.isRunning = isRunning;
             editorModel.isShowingDataReference = $scope.isShowingDataReference;
             editorModel.databases = databases;
-            editorModel.tables = tables;
             editorModel.tableMetadata = tableMetadata;
             editorModel.tableForeignKeys = tableForeignKeys;
             editorModel.query = card.dataset_query;
@@ -400,7 +399,7 @@ CardControllers.controller('CardDetail', [
             visualizationModel.isObjectDetail = isObjectDetail;
 
             if (queryResult && !queryResult.error) {
-                visualizationModel.downloadLink = '/api/meta/dataset/csv?query=' + encodeURIComponent(JSON.stringify(card.dataset_query));
+                visualizationModel.downloadLink = '/api/dataset/csv?query=' + encodeURIComponent(JSON.stringify(card.dataset_query));
             } else {
                 visualizationModel.downloadLink = null;
             }
@@ -696,7 +695,7 @@ CardControllers.controller('CardDetail', [
         }
 
         function markupTableMetadata(table) {
-            var updatedTable = MetabaseFormGenerator.addValidOperatorsToFields(table);
+            var updatedTable = addValidOperatorsToFields(table);
             return QueryUtils.populateQueryOptions(updatedTable);
         }
 
@@ -931,7 +930,15 @@ CardControllers.controller('CardDetail', [
 
         // TODO: while we wait for the databases list we should put something on screen
         // grab our database list, then handle the rest
-        Metabase.db_list(function (dbs) {
+        async function loadDatabasesAndTables() {
+            let dbs = await Metabase.db_list().$promise;
+            return await * dbs.map(async function(db) {
+                db.tables = await Metabase.db_tables({ dbId: db.id }).$promise;
+                return db;
+            });
+        }
+
+        loadDatabasesAndTables().then(function(dbs) {
             databases = dbs;
 
             if (dbs.length < 1) {

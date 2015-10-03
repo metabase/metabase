@@ -5,6 +5,8 @@
 
   --primary-button-border-color: #509EE3;
   --primary-button-bg-color: #509EE3;
+  --warning-button-border-color: #E35050;
+  --warning-button-bg-color: #E35050;
   --selected-button-bg-color: #F4F6F8;
 
   --danger-button-bg-color: #EF8C8C;
@@ -47,6 +49,15 @@
     font-size: 0.6rem;
 }
 
+.Button--medium {
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+}
+
+.Button-normal {
+    font-weight: normal;
+}
+
 .Button--primary {
   color: #fff;
   background: var(--primary-button-bg-color);
@@ -59,6 +70,18 @@
   background-color: color(var(--primary-button-bg-color) shade(10%));
 }
 
+.Button--warning {
+  color: #fff;
+  background: var(--warning-button-bg-color);
+  border: 1px solid var(--warning-button-border-color);
+}
+
+.Button--warning:hover {
+  color: #fff;
+  border-color: color(var(--warning-button-border-color) shade(10%));
+  background-color: color(var(--warning-button-bg-color) shade(10%));
+}
+
 .Button--cancel {
   border-radius: 99px;
 }
@@ -67,6 +90,12 @@
     background-color: white;
     color: color(var(--base-grey) shade(30%));
     border-color: color(var(--base-grey) shade(30%));
+}
+
+.Button--purple {
+    color: white;
+    background-color: #A989C5;
+    border: 1px solid #885AB1;
 }
 
 .Button-group {

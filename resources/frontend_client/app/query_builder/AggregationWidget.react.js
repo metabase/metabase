@@ -1,26 +1,28 @@
-'use strict';
+"use strict";
 
-import _ from "underscore";
+import React, { Component, PropTypes } from "react";
 
 import SelectionModule from './SelectionModule.react';
 import FieldWidget from './FieldWidget.react';
-import Icon from "metabase/components/Icon.react";
 
 import Query from "metabase/lib/query";
 
-export default React.createClass({
-    displayName: 'AggregationWidget',
-    propTypes: {
-        aggregation: React.PropTypes.array.isRequired,
-        tableMetadata: React.PropTypes.object.isRequired,
-        updateAggregation: React.PropTypes.func.isRequired
-    },
+import _ from "underscore";
 
-    componentWillMount: function() {
+export default class AggregationWidget extends Component {
+    constructor(props) {
+        super(props);
+
+        this.state = {};
+
+        _.bindAll(this, "setAggregation", "setAggregationTarget");
+    }
+
+    componentWillMount() {
         this.componentWillReceiveProps(this.props);
-    },
+    }
 
-    componentWillReceiveProps: function(newProps) {
+    componentWillReceiveProps(newProps) {
         // build a list of aggregations that are valid, taking into account specifically if we have valid fields available
         var aggregationFieldOptions = [];
         var availableAggregations = [];
@@ -43,9 +45,9 @@ export default React.createClass({
             availableAggregations: availableAggregations,
             aggregationFieldOptions: aggregationFieldOptions
         });
-    },
+    }
 
-    setAggregation: function(aggregation) {
+    setAggregation(aggregation) {
         var queryAggregation = [aggregation];
 
         // check to see if this aggregation type requires another choice
@@ -59,16 +61,16 @@ export default React.createClass({
         });
 
         this.props.updateAggregation(queryAggregation);
-    },
+    }
 
-    setAggregationTarget: function(target) {
+    setAggregationTarget(target) {
         var queryAggregation = this.props.aggregation;
         queryAggregation[1] = target;
 
         this.props.updateAggregation(queryAggregation);
-    },
+    }
 
-    render: function() {
+    render() {
         if (this.props.aggregation.length === 0) {
             // we can't do anything without a valid aggregation
             return;
@@ -86,6 +88,7 @@ export default React.createClass({
                 <div className="flex align-center">
                     <span className="text-bold">of</span>
                     <FieldWidget
+                        color="green"
                         className="View-section-aggregation-target SelectionModule p1"
                         tableName={this.props.tableMetadata.display_name}
                         field={this.props.aggregation[1]}
@@ -93,7 +96,6 @@ export default React.createClass({
                         setField={this.setAggregationTarget}
                         isInitiallyOpen={aggregationTargetListOpen}
                     />
-                    <Icon name="chevrondown" width="8px" height="8px" />
                 </div>
             );
         }
@@ -116,4 +118,10 @@ export default React.createClass({
             </div>
         );
     }
-});
+}
+
+AggregationWidget.propTypes = {
+    aggregation: PropTypes.array.isRequired,
+    tableMetadata: PropTypes.object.isRequired,
+    updateAggregation: PropTypes.func.isRequired
+};

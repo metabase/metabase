@@ -59,13 +59,15 @@ export default class ProfileLink extends Component {
                                             Admin Panel
                                         </a>
                                     </li>
-                                :
+                                : null }
+
+                                { user.is_superuser && context === 'admin' ?
                                     <li>
                                         <a onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration" href="/">
                                             Exit Admin
                                         </a>
                                     </li>
-                                }
+                                : null }
                                 <li className="border-top border-light">
                                     <a className="Dropdown-item block text-white no-decoration" href="/auth/logout">Logout</a>
                                 </li>

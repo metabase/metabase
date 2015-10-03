@@ -21,14 +21,12 @@
 
 
 (defn process-sync-database-event
-  "Handle processing for a single event notification received on the revisions-channel"
+  "Handle processing for a single event notification received on the sync-database-channel"
   [sync-database-event]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
-    (log/info "holla")
     (when-let [{topic :topic object :item} sync-database-event]
       (when-let [database (db/sel :one Database :id (events/object->model-id topic object))]
-        (log/info "kicking off" database)
         ;; just kick off a sync on another thread
         (future (driver/sync-database! database))))
     (catch Throwable e
@@ -39,7 +37,7 @@
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
-;; this is what actually kicks off our listener for events
-(when (config/is-prod?)
-  (log/info "Starting database sync events listener")
-  (events/start-event-listener sync-database-topics sync-database-channel process-sync-database-event))
+(defn events-init []
+  (when-not (config/is-test?)
+    (log/info "Starting database sync events listener")
+    (events/start-event-listener sync-database-topics sync-database-channel process-sync-database-event)))

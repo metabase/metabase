@@ -1,6 +1,13 @@
 (ns metabase.events
   "Provides a very simply event bus using `core.async` to allow publishing and subscribing to intersting
-   topics happening throughout the Metabase system in a decoupled way."
+   topics happening throughout the Metabase system in a decoupled way.
+
+   ## Regarding Events Initialization:
+
+   The most appropriate way to initialize event listeners in any `metabase.events.*` namespace is to implement the
+   `events-init` function which accepts zero arguments.  This function is dynamically resolved and called exactly
+   once when the application goes through normal startup procedures.  Inside this function you can do any work
+   needed and add your events subscribers to the bus as usual via `start-event-listener`."
   (:require clojure.java.classpath
             [clojure.core.async :as async]
             [clojure.tools.logging :as log]
@@ -14,16 +21,16 @@
   (atom nil))
 
 (defn- find-and-load-event-handlers
-  "Search Classpath for namespaces that start with `metabase.events.`, then `require` them so initialization can happen."
+  "Search Classpath for namespaces that start with `metabase.events.`, and call their `events-init` function if it exists."
   []
-  (->> (ns-find/find-namespaces (clojure.java.classpath/classpath))
-       (filter (fn [ns-symb]
-                 (re-find #"^metabase\.events\." (name ns-symb))))
-       set
-       (map (fn [events-ns]
-              (log/info "\tloading events namespace: " events-ns)
-              (require events-ns)))
-       dorun))
+  (doseq [events-ns (->> (ns-find/find-namespaces (clojure.java.classpath/classpath))
+                         (filter (fn [ns-symb]
+                                   (re-find #"^metabase\.events\." (name ns-symb)))))]
+    (log/info "\tloading events namespace: " events-ns)
+    (require events-ns)
+    ;; look for `events-init` function in the namespace and call it if it exists
+    (when-let [init-fn (ns-resolve events-ns 'events-init)]
+      (init-fn))))
 
 (defn initialize-events!
   "Initialize the asynchronous internal events system."

@@ -2,7 +2,10 @@
   (:require [clojure.tools.logging :as log]
             [korma.core :as k]
             [metabase.db :as db]
-            [metabase.models.card :refer [Card]]))
+            (metabase.models [card :refer [Card]]
+                             [database :refer [Database]]
+                             [setting :as setting])
+            [metabase.sample-data :as sample-data]))
 
 (defn- set-card-database-and-table-ids
   "Upgrade for the `Card` model when `:database_id`, `:table_id`, and `:query_type` were added and needed populating.

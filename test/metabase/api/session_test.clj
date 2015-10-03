@@ -169,12 +169,6 @@
 
 
 ;; GET /session/properties
-;; Check that a non-superuser can't read settings
 (expect
-  [{:key "anon-tracking-enabled"
-    :description "Enable the collection of anonymous usage data in order to help Metabase improve."
-    :default "true"}
-   {:key "site-name"
-    :description "The name used for this instance of Metabase."
-    :default "Metabase"}]
-  (mapv #(dissoc % :value) ((user->client :rasta) :get 200 "session/properties")))
+  (vec (keys (metabase.models.setting/public-settings)))
+  (vec (keys ((user->client :rasta) :get 200 "session/properties"))))

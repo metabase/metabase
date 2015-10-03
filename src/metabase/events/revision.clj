@@ -54,7 +54,7 @@
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
-;; this is what actually kicks off our listener for events
-(when (config/is-prod?)
-  (log/info "Starting revision events listener")
-  (events/start-event-listener revisions-topics revisions-channel process-revision-event))
+(defn events-init []
+  (when-not (config/is-test?)
+    (log/info "Starting revision events listener")
+    (events/start-event-listener revisions-topics revisions-channel process-revision-event)))
