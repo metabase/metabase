@@ -7,7 +7,7 @@ var SettingsAdmin = angular.module('metabaseadmin.settings', [
 
 SettingsAdmin.config(['$routeProvider', function($routeProvider) {
     $routeProvider.when('/admin/settings/', {
-        template: '<div class="flex flex-column flex-full" mb-react-component="SettingsEditor"></div>',
+        template: '<div class="flex flex-column flex-full scroll-x" mb-react-component="SettingsEditor"></div>',
         controller: 'SettingsEditor',
         resolve: {
             settings: ['Settings', async function(Settings) {

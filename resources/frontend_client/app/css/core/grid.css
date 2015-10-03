@@ -2,6 +2,10 @@
 
 }
 
+.force-content > * {
+  min-width: -webkit-min-content;
+}
+
 .Grid {
   display: flex;
   flex-wrap: wrap;
