@@ -279,6 +279,7 @@ export default class QueryVisualizationTable extends Component {
                     headerHeight={50}
                     isColumnResizing={this.isColumnResizing}
                     onColumnResizeEndCallback={this.columnResized}
+                    allowCellsRecycling={true}
                 >
                     {tableColumns}
                 </Table>
