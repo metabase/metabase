@@ -1,6 +1,6 @@
 'use strict';
 
-var webpackConfig = require('../../../webpack.config');
+var webpackConfig = require('../../webpack.config');
 webpackConfig.module.postLoaders = [
     { test: /\.js$/, exclude: /(\.spec\.js|vendor|node_modules)/, loader: 'istanbul-instrumenter' }
 ];
@@ -9,9 +9,9 @@ module.exports = function(config) {
     config.set({
         basePath: '../',
         files: [
-            'app/dist/vendor.bundle.js',
-            'app/dist/app.bundle.js',
-            '../../node_modules/angular-mocks/angular-mocks.js',
+            '../resources/frontend_client/app/dist/vendor.bundle.js',
+            '../resources/frontend_client/app/dist/app.bundle.js',
+            '../node_modules/angular-mocks/angular-mocks.js',
             'test/unit/**/*.spec.js'
         ],
         exclude: [
@@ -31,7 +31,7 @@ module.exports = function(config) {
             module: webpackConfig.module
         },
         coverageReporter: {
-            dir: '../../coverage/',
+            dir: '../coverage/',
             subdir: function(browser) {
                 return browser.toLowerCase().split(/[ /-]/)[0];
             },
