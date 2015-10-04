@@ -52,12 +52,10 @@
                  [swiss-arrows "1.0.0"]]                              ; 'Magic wand' macro -<>, etc.
   :plugins [[lein-environ "1.0.0"]                                    ; easy access to environment variables
             [lein-ring "0.9.3"]]                                      ; start the HTTP server with 'lein ring server'
-  :java-source-paths ["src/java"]
   :main ^:skip-aot metabase.core
   :manifest {"Liquibase-Package" "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"}
   :target-path "target/%s"
   :javac-options ["-target" "1.6" "-source" "1.6"]
-  ;; :jar-exclusions [#"\.java"] Circle CI doesn't like regexes because it's using the EDN reader and is retarded
   :ring {:handler metabase.core/app
          :init metabase.core/init
          :destroy metabase.core/destroy}

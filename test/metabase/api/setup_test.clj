@@ -12,14 +12,13 @@
 
 ;; ## POST /api/setup/user
 ;; Check that we can create a new superuser via setup-token
-(let [setup-token (setup/token-create)
-      user-name (random-name)]
+(let [user-name (random-name)]
   (expect-eval-actual-first
     (match-$ (->> (sel :one User :email (str user-name "@metabase.com"))
                (:id)
                (sel :one Session :user_id))
       {:id $id})
-    (let [resp (http/client :post 200 "setup" {:token setup-token
+    (let [resp (http/client :post 200 "setup" {:token (setup/token-create)
                                                :prefs {:site_name "Metabase Test"}
                                                :user  {:first_name user-name
                                                        :last_name  user-name

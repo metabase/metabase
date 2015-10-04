@@ -1,80 +1,62 @@
-'use strict';
+"use strict";
 
-import _ from "underscore";
+import React, { Component, PropTypes } from "react";
 
-import MetabaseAnalytics from '../lib/analytics';
-import DataGrid from "metabase/lib/data_grid";
-
-import FixedDataTable from 'fixed-data-table';
+import { Table, Column } from 'fixed-data-table';
 import Icon from "metabase/components/Icon.react";
 import Popover from "metabase/components/Popover.react";
 
+import MetabaseAnalytics from '../lib/analytics';
+import DataGrid from "metabase/lib/data_grid";
+import { formatCell } from "metabase/lib/formatting";
+
+import _ from "underscore";
 import cx from "classnames";
-var Table = FixedDataTable.Table;
-var Column = FixedDataTable.Column;
 
-export default React.createClass({
-    displayName: 'QueryVisualizationTable',
-    propTypes: {
-        data: React.PropTypes.object,
-        sort: React.PropTypes.array,
-        setSortFn: React.PropTypes.func,
-        isCellClickableFn: React.PropTypes.func,
-        cellClickedFn: React.PropTypes.func
-    },
+export default class QueryVisualizationTable extends Component {
+    constructor(props) {
+        super(props);
 
-    // local variables
-    isColumnResizing: false,
-
-    // React lifecycle
-    getDefaultProps: function() {
-        return {
-            maxRows: 2000,
-            minColumnWidth: 75
-        };
-    },
-
-    getInitialState: function() {
-        return {
+        this.state = {
             width: 0,
             height: 0,
             columnWidths: [],
-            colDefs: null,
             popover: null,
             data: null,
-            rawData: null
+            rawData: null,
+            contentWidths: null
         };
-    },
 
-    componentWillMount: function() {
-        if (this.props.data) {
+        _.bindAll(this, "onClosePopover", "rowGetter", "cellRenderer", "columnResized");
+
+        this.isColumnResizing = false;
+    }
+
+    componentWillMount() {
+        this.componentWillReceiveProps(this.props);
+    }
+
+    componentWillReceiveProps(newProps) {
+        if (newProps.data && newProps.data !== this.state.rawData) {
+            let gridData = (newProps.pivot) ? DataGrid.pivot(newProps.data) : newProps.data;
             this.setState({
-                colDefs: JSON.stringify(this.props.data.cols),
-                data: (this.props.pivot) ? DataGrid.pivot(this.props.data) : this.props.data,
+                data: gridData,
                 rawData: this.props.data
             });
+            if (JSON.stringify(this.state.data && this.state.data.cols) !== JSON.stringify(gridData.cols)) {
+                this.setState({
+                    columnWidths: gridData.cols.map(col => 0), // content cells don't wrap so this is fine
+                    contentWidths: null
+                });
+            }
         }
-    },
+    }
 
-    componentWillReceiveProps: function(newProps) {
-        // TODO: check if our data has changed
-        if (newProps.data !== this.state.rawData) {
-            // if the columns have changed then reset any column widths we have setup
-            var gridData = (newProps.pivot) ? DataGrid.pivot(newProps.data) : newProps.data;
-            this.setState({
-                colDefs: JSON.stringify(this.props.data.cols),
-                data: gridData,
-                rawData: this.props.data,
-                columnWidths: this.calculateColumnWidths(this.state.width, this.props.minColumnWidth, gridData.cols)
-            });
-        }
-    },
+    componentDidMount() {
+        this.calculateSizing(this.state);
+    }
 
-    componentDidMount: function() {
-        this.calculateSizing(this.getInitialState());
-    },
-
-    shouldComponentUpdate: function(nextProps, nextState) {
+    shouldComponentUpdate(nextProps, nextState) {
         // this is required because we don't pass in the containing element size as a property :-/
         // if size changes don't update yet because state will change in a moment
         this.calculateSizing(nextState);
@@ -83,23 +65,34 @@ export default React.createClass({
         // NOTE: this is essentially the same as React.addons.PureRenderMixin but
         // we currently need to recalculate the container size here.
         return !_.isEqual(this.props, nextProps) || !_.isEqual(this.state, nextState);
-    },
+    }
 
-    // availableWidth, minColumnWidth, # of columns
-    // previousWidths, prevWidth
-    calculateColumnWidths: function(availableWidth, minColumnWidth, colDefs, prevAvailableWidth, prevColumnWidths) {
-        // TODO: maintain column spacing on a window resize
+    componentDidUpdate() {
+        if (!this.state.contentWidths) {
+            let tableElement = React.findDOMNode(this.refs.table);
+            let contentWidths = [];
+            for (let rowElement of tableElement.querySelectorAll(".fixedDataTableRowLayout_rowWrapper")) {
+                for (let [index, cellDataElement] of Object.entries(rowElement.querySelectorAll(".public_fixedDataTableCell_cellContent"))) {
+                    contentWidths[index] = Math.max(contentWidths[index] || 0, cellDataElement.offsetWidth);
+                }
+            }
+            this.setState({ contentWidths }, () => this.calculateColumnWidths(this.state.data.cols));
+        }
+    }
 
-        var calcColumnWidth = (colDefs.length > 0) ? availableWidth / colDefs.length : minColumnWidth;
-        var columnWidths = colDefs.map(function (column, idx) {
-            return (minColumnWidth > calcColumnWidth) ? minColumnWidth : calcColumnWidth;
+    calculateColumnWidths(cols) {
+        let columnWidths = cols.map((col, index) => {
+            if (this.state.contentWidths) {
+                return Math.min(this.state.contentWidths[index] + 1, 300); // + 1 to make sure it doen't wrap?
+            } else {
+                return 300;
+            }
         });
+        this.setState({ columnWidths });
+    }
 
-        return columnWidths;
-    },
-
-    calculateSizing: function(prevState) {
-        var element = this.getDOMNode(); //React.findDOMNode(this);
+    calculateSizing(prevState, force) {
+        var element = React.findDOMNode(this);
 
         // account for padding of our parent
         var style = window.getComputedStyle(element.parentElement, null);
@@ -110,42 +103,31 @@ export default React.createClass({
         var width = element.parentElement.offsetWidth - paddingLeft - paddingRight;
         var height = element.parentElement.offsetHeight - paddingTop;
 
-        if (width !== prevState.width || height !== prevState.height) {
-            var updatedState = {
-                width: width,
-                height: height
-            };
-
-            if (width !== prevState.width) {
-                // NOTE: we remove 2 pixels from width to allow for a border pixel on each side
-                var tableColumnWidths = this.calculateColumnWidths(width - 2, this.props.minColumnWidth, this.state.data.cols, prevState.width, prevState.columnWidths);
-                updatedState.columnWidths = tableColumnWidths;
-            }
-
-            this.setState(updatedState);
+        if (width !== prevState.width || height !== prevState.height || force) {
+            this.setState({ width, height });
         }
-    },
+    }
 
-    isSortable: function() {
+    isSortable() {
         return (this.props.setSortFn !== undefined);
-    },
+    }
 
-    setSort: function(fieldId) {
+    setSort(fieldId) {
         this.props.setSortFn(fieldId);
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Sort', 'table column');
-    },
+    }
 
-    cellClicked: function(rowIndex, columnIndex) {
+    cellClicked(rowIndex, columnIndex) {
         this.props.cellClickedFn(rowIndex, columnIndex);
-    },
+    }
 
-    popoverFilterClicked: function(rowIndex, columnIndex, operator) {
+    popoverFilterClicked(rowIndex, columnIndex, operator) {
         this.props.cellClickedFn(rowIndex, columnIndex, operator);
         this.setState({ popover: null });
-    },
+    }
 
-    rowGetter: function(rowIndex) {
+    rowGetter(rowIndex) {
         var row = {
             hasPopover: this.state.popover && this.state.popover.rowIndex === rowIndex || false
         };
@@ -153,68 +135,69 @@ export default React.createClass({
             row[i] = this.state.data.rows[rowIndex][i];
         }
         return row;
-    },
+    }
 
-    showPopover: function(rowIndex, cellDataKey) {
+    showPopover(rowIndex, cellDataKey) {
         this.setState({
             popover: {
                 rowIndex: rowIndex,
                 cellDataKey: cellDataKey
             }
         });
-    },
+    }
 
-    onClosePopover: function() {
+    onClosePopover() {
         this.setState({ popover: null });
-    },
+    }
 
-    cellRenderer: function(cellData, cellDataKey, rowData, rowIndex, columnData, width) {
-        // TODO: should we be casting all values toString()?
-        cellData = (cellData !== null) ? cellData.toString() : null;
+    cellRenderer(cellData, cellDataKey, rowData, rowIndex, columnData, width) {
+        cellData = cellData != null ? formatCell(cellData, this.props.data.cols[cellDataKey]) : null;
 
         var key = 'cl'+rowIndex+'_'+cellDataKey;
         if (this.props.cellIsClickableFn(rowIndex, cellDataKey)) {
-            return (<a key={key} className="link" href="#" onClick={this.cellClicked.bind(null, rowIndex, cellDataKey)}>{cellData}</a>);
+            return (
+                <a key={key} className="link cellData" href="#" onClick={this.cellClicked.bind(this, rowIndex, cellDataKey)}>{cellData}</a>
+            );
         } else {
             var popover = null;
             if (this.state.popover && this.state.popover.rowIndex === rowIndex && this.state.popover.cellDataKey === cellDataKey) {
-                var tetherOptions = {
-                    targetAttachment: "middle center",
-                    attachment: "middle center"
-                };
-                var operators = ["<", "=", "≠", ">"].map(function(operator) {
-                    return (<li key={operator} className="p2 text-brand-hover" onClick={this.popoverFilterClicked.bind(null, rowIndex, cellDataKey, operator)}>{operator}</li>);
-                }, this);
                 popover = (
                     <Popover
-                        tetherOptions={tetherOptions}
+                        tetherOptions={{
+                            targetAttachment: "middle center",
+                            attachment: "middle center"
+                        }}
                         onClose={this.onClosePopover}
                     >
                         <div className="bg-white bordered shadowed p1">
-                            <ul className="h1 flex align-center">{operators}</ul>
+                            <ul className="h1 flex align-center">
+                                { ["<", "=", "≠", ">"].map(operator =>
+                                    <li key={operator} className="p2 text-brand-hover" onClick={this.popoverFilterClicked.bind(this, rowIndex, cellDataKey, operator)}>{operator}</li>
+                                )}
+                            </ul>
                         </div>
                     </Popover>
                 );
             }
             return (
-                <div key={key}>
-                    <div onClick={this.showPopover.bind(null, rowIndex, cellDataKey)}>{cellData}</div>
+                <div key={key} onClick={this.showPopover.bind(this, rowIndex, cellDataKey)}>
+                    <span className="cellData">{cellData}</span>
                     {popover}
                 </div>
             );
         }
-    },
+    }
 
-    columnResized: function(width, idx) {
+    columnResized(width, idx) {
         var tableColumnWidths = this.state.columnWidths.slice();
         tableColumnWidths[idx] = width;
         this.setState({
             columnWidths: tableColumnWidths
         });
         this.isColumnResizing = false;
-    },
+    }
 
-    tableHeaderRenderer: function(columnIndex) {
+    tableHeaderRenderer(columnIndex) {
         var column = this.state.data.cols[columnIndex],
             colVal = (column && column.display_name && column.display_name.toString()) ||
                      (column && column.name && column.name.toString());
@@ -223,10 +206,7 @@ export default React.createClass({
             colVal = "Unset";
         }
 
-        var headerClasses = cx({
-            'MB-DataTable-header' : true,
-            'flex': true,
-            'align-center': true,
+        var headerClasses = cx('MB-DataTable-header align-center', {
             'MB-DataTable-header--sorted': (this.props.sort && (this.props.sort[0][0] === column.id)),
         });
 
@@ -242,27 +222,32 @@ export default React.createClass({
             var fieldId = (column.id) ? column.id : "agg";
 
             return (
-                <div key={columnIndex} className={headerClasses} onClick={this.setSort.bind(null, fieldId)}>
-                    {colVal}
+                <div key={columnIndex} className={headerClasses} onClick={this.setSort.bind(this, fieldId)}>
+                    <span>
+                        {colVal}
+                    </span>
                     <span className="ml1">
                         {sortChevron}
                     </span>
                 </div>
             );
         } else {
-            return (<div className={headerClasses}>{colVal}</div>);
+            return (
+                <span className={headerClasses}>
+                    {colVal}
+                </span>
+            );
         }
-    },
+    }
 
-    render: function() {
+    render() {
         if(!this.state.data) {
             return false;
         }
 
-        var component = this;
-        var tableColumns = this.state.data.cols.map(function (column, idx) {
+        var tableColumns = this.state.data.cols.map((column, idx) => {
             var colVal = (column !== null) ? column.name.toString() : null;
-            var colWidth = component.state.columnWidths[idx];
+            var colWidth = this.state.columnWidths[idx];
 
             if (!colWidth) {
                 colWidth = 75;
@@ -274,33 +259,44 @@ export default React.createClass({
                     className="MB-DataTable-column"
                     width={colWidth}
                     isResizable={true}
-                    headerRenderer={component.tableHeaderRenderer.bind(null, idx)}
-                    cellRenderer={component.cellRenderer}
+                    headerRenderer={this.tableHeaderRenderer.bind(this, idx)}
+                    cellRenderer={this.cellRenderer}
                     dataKey={idx}
                     label={colVal}>
                 </Column>
             );
         });
 
-        var classes = cx({
-            'MB-DataTable': true,
-            'MB-DataTable--pivot': this.props.pivot
-        });
-
         return (
-            <span className={classes}>
+            <span className={cx('MB-DataTable', { 'MB-DataTable--pivot': this.props.pivot, 'MB-DataTable--ready': this.state.contentWidths })}>
                 <Table
+                    ref="table"
                     rowHeight={35}
                     rowGetter={this.rowGetter}
                     rowsCount={this.state.data.rows.length}
                     width={this.state.width}
-                    maxHeight={this.state.height}
+                    height={this.state.height}
                     headerHeight={50}
                     isColumnResizing={this.isColumnResizing}
-                    onColumnResizeEndCallback={component.columnResized}>
+                    onColumnResizeEndCallback={this.columnResized}
+                    allowCellsRecycling={true}
+                >
                     {tableColumns}
                 </Table>
             </span>
         );
     }
-});
+}
+
+QueryVisualizationTable.propTypes = {
+    data: PropTypes.object,
+    sort: PropTypes.array,
+    setSortFn: PropTypes.func,
+    isCellClickableFn: PropTypes.func,
+    cellClickedFn: PropTypes.func
+};
+
+QueryVisualizationTable.defaultProps = {
+    maxRows: 2000,
+    minColumnWidth: 75
+};

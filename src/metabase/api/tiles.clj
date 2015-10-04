@@ -3,58 +3,104 @@
             [compojure.core :refer [GET]]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
-            [metabase.driver :as driver])
-  (:import (java.util ArrayList
-                      Collection)))
+            [metabase.driver :as driver]
+            [metabase.util :as u])
+  (:import java.awt.Color
+           java.awt.image.BufferedImage
+           (java.io ByteArrayOutputStream IOException)
+           javax.imageio.ImageIO))
+
+;;; # ------------------------------------------------------------ CONSTANTS ------------------------------------------------------------
+
+(def ^:private ^:const tile-size             256.0)
+(def ^:private ^:const pixel-origin          (float (/ tile-size 2)))
+(def ^:private ^:const pin-size              5)
+(def ^:private ^:const pixels-per-lon-degree (float (/ tile-size 360)))
+(def ^:private ^:const pixels-per-lon-radian (float (/ tile-size (* 2 Math/PI))))
 
 
-(def ^:const tile-size 256)
-(def ^:const pixel-origin (float (/ tile-size 2)))
-(def ^:const pixel-per-lon-degree (float (/ tile-size 360.0)))
-(def ^:const pixel-per-lon-radian (float (/ tile-size (* 2 Math/PI))))
+;;; # ------------------------------------------------------------ UTIL FNS ------------------------------------------------------------
 
-(defn- radians->degrees [rad]
-  (/ rad (float (/ Math/PI 180))))
+(defn- degrees->radians ^double [^double degrees]
+  (* degrees (/ Math/PI 180.0)))
 
-(defn- tile-lat-lon
-  "Get the Latitude & Longitude of the upper left corner of a given tile"
-  [x y zoom]
+(defn- radians->degrees ^double [^double radians]
+  (/ radians (/ Math/PI 180.0)))
+
+
+;;; # ------------------------------------------------------------ QUERY FNS ------------------------------------------------------------
+
+(defn- x+y+zoom->lat-lon
+  "Get the latitude & longitude of the upper left corner of a given tile."
+  [^double x, ^double y, ^long zoom]
   (let [num-tiles   (bit-shift-left 1 zoom)
-        corner-x    (float (/ (* x tile-size) num-tiles))
-        corner-y    (float (/ (* y tile-size) num-tiles))
-        lon         (float (/ (- corner-x pixel-origin) pixel-per-lon-degree))
-        lat-radians (/ (- corner-y pixel-origin) (* pixel-per-lon-radian -1))
+        corner-x    (/ (* x tile-size) num-tiles)
+        corner-y    (/ (* y tile-size) num-tiles)
+        lon         (/ (- corner-x pixel-origin) pixels-per-lon-degree)
+        lat-radians (/ (- corner-y pixel-origin) (* pixels-per-lon-radian -1))
         lat         (radians->degrees (- (* 2 (Math/atan (Math/exp lat-radians)))
                                          (/ Math/PI 2)))]
-    {:lat lat
-     :lon lon}))
-
+    {:lat lat, :lon lon}))
 
 (defn- query-with-inside-filter
-  "Add an 'Inside' filter to the given query to restrict results to a bounding box"
+  "Add an `INSIDE` filter to the given query to restrict results to a bounding box"
   [details lat-field-id lon-field-id x y zoom]
-  (let [{top-lt-lat :lat top-lt-lon :lon} (tile-lat-lon x y zoom)
-        {bot-rt-lat :lat bot-rt-lon :lon} (tile-lat-lon (+ x 1) (+ y 1) zoom)
-        inside-filter ["INSIDE", lat-field-id, lon-field-id, top-lt-lat, top-lt-lon, bot-rt-lat, bot-rt-lon]]
-    (update-in details [:filter]
+  (let [top-left      (x+y+zoom->lat-lon      x       y  zoom)
+        bottom-right  (x+y+zoom->lat-lon (inc x) (inc y) zoom)
+        inside-filter ["INSIDE" lat-field-id lon-field-id (top-left :lat) (top-left :lon) (bottom-right :lat) (bottom-right :lon)]]
+    (update details :filter
       #(match %
-        ["AND" & _]              (conj % inside-filter)
-        [(_ :guard string?) & _] (conj ["AND"] % inside-filter)
-        :else                    inside-filter))))
+         ["AND" & _]              (conj % inside-filter)
+         [(_ :guard string?) & _] (conj ["AND"] % inside-filter)
+         :else                    inside-filter))))
 
 
-(defn- extract-points
-  "Takes in a dataset query result object and pulls out the Latitude/Longitude pairs into nested `java.util.ArrayLists`.
-   This is specific to the way we plan to feed data into `com.metabase.corvus.api.tiles.GoogleMapPinsOverlay`."
-  [lat-col-idx lon-col-idx {{:keys [rows cols]} :data}]
-  (if-not (> (count rows) 0)
-    ;; if we have no rows then return an empty list of points
-    (ArrayList. (ArrayList.))
-    ;; otherwise we go over the data, pull out the lat/lon columns, and convert them to ArrayLists
-    (ArrayList. ^Collection (map (fn [row]
-                                   (ArrayList. ^Collection (vector (nth row lat-col-idx) (nth row lon-col-idx))))
-                                 rows))))
+;;; # ------------------------------------------------------------ RENDERING ------------------------------------------------------------
 
+(defn- ^BufferedImage create-tile [zoom points]
+  (let [num-tiles (bit-shift-left 1 zoom)
+        tile      (BufferedImage. tile-size tile-size (BufferedImage/TYPE_INT_ARGB))
+        graphics  (.getGraphics tile)]
+    (.setColor graphics Color/red)
+    (try
+      (doseq [[^double lat, ^double lon] points]
+        (let [sin-y      (-> (Math/sin (degrees->radians lat))
+                             (Math/max -0.9999)                           ; bound sin-y between -0.9999 and 0.9999 (why ?))
+                             (Math/min 0.9999))
+              point      {:x (+ pixel-origin
+                                (* lon pixels-per-lon-degree))
+                          :y (+ pixel-origin
+                                (* 0.5
+                                   (Math/log (/ (+ 1 sin-y)
+                                                (- 1 sin-y)))
+                                   (* pixels-per-lon-radian -1.0)))}      ; huh?
+              map-pixel  {:x (int (Math/floor (* (point :x) num-tiles)))
+                          :y (int (Math/floor (* (point :y) num-tiles)))}
+              tile-pixel {:x (mod (map-pixel :x) tile-size)
+                          :y (mod (map-pixel :y) tile-size)}]
+          ;; now draw a "pin" at the given tile pixel location
+          (.fillOval graphics (tile-pixel :x) (tile-pixel :y) pin-size pin-size)))
+      (catch Throwable e
+        (.printStackTrace e))
+      (finally
+        (.dispose graphics)))
+    tile))
+
+(defn- tile->byte-array [^BufferedImage tile]
+  (let [output-stream (ByteArrayOutputStream.)]
+    (try
+      (do (ImageIO/write tile "png" output-stream) ; wrap this in a do or eastwood complains about unused return values
+          (.flush output-stream)
+          (.toByteArray output-stream))
+      (catch IOException e
+        (byte-array 0)) ; return empty byte array if we fail for some reason
+      (finally
+        (try
+          (.close output-stream)
+          (catch Throwable _))))))
+
+
+;;; # ------------------------------------------------------------ ENDPOINT ------------------------------------------------------------
 
 (defendpoint GET "/:zoom/:x/:y/:lat-field/:lon-field/:lat-col-idx/:lon-col-idx/"
   "This endpoints provides an image with the appropriate pins rendered given a json query.
@@ -69,16 +115,17 @@
    lat-col-idx String->Integer
    lon-col-idx String->Integer
    query       String->Dict}
-  (let [updated-query (assoc query :query (query-with-inside-filter (:query query) lat-field lon-field x y zoom))
-        result (driver/dataset-query updated-query {:executed_by *current-user-id*
-                                                    :synchronously true})
-        lat-lon-points (extract-points lat-col-idx lon-col-idx result)]
+  (let [updated-query (update query :query #(query-with-inside-filter % lat-field lon-field x y zoom))
+        result        (driver/dataset-query updated-query {:executed_by   *current-user-id*
+                                                           :synchronously true})
+        points        (for [row (-> result :data :rows)]
+                        [(nth row lat-col-idx) (nth row lon-col-idx)])]
     ;; manual ring response here.  we simply create an inputstream from the byte[] of our image
     {:status  200
      :headers {"Content-Type" "image/png"}
-     :body    (-> (com.metabase.corvus.api.tiles.GoogleMapPinsOverlay. zoom lat-lon-points)
-                  (.toByteArray)
-                  (java.io.ByteArrayInputStream.))}))
+     :body    (-> (create-tile zoom points)
+                  tile->byte-array
+                  java.io.ByteArrayInputStream.)}))
 
 
 (define-routes)

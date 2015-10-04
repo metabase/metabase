@@ -81,6 +81,7 @@
 
 (defn- process-database-activity [topic object]
   (let [database            (db/sel :one Database :id (events/object->model-id topic object))
+        object              (merge object (select-keys database [:name :description :engine]))
         database-details-fn (fn [obj] (-> obj
                                           (assoc :status "started")
                                           (dissoc :database_id :custom_id)))

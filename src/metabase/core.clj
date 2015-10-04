@@ -106,7 +106,7 @@
 
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database
-  (let [new-install (nil? (db/sel :one :fields [User :id]))]
+  (let [new-install (not (db/exists? User))]
 
     ;; Bootstrap the event system
     (events/initialize-events!)

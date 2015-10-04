@@ -3,7 +3,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             (clojure [set :as set]
-                     [string :as str])
+                     [string :as s])
             [environ.core :refer [env]]
             (korma [core :as k]
                    [db :as kdb])
@@ -53,8 +53,8 @@
   "Connection details for Korma / JDBC."
   (delay (let [details @db-connection-details]
            (case (config/config-kw :mb-db-type)
-             :h2       (kdb/h2 (assoc details :naming {:keys   str/lower-case
-                                                       :fields str/upper-case}))
+             :h2       (kdb/h2 (assoc details :naming {:keys   s/lower-case
+                                                       :fields s/upper-case}))
              :postgres (kdb/postgres (assoc details :db (:dbname details)))))))
 
 

@@ -399,7 +399,7 @@ CardControllers.controller('CardDetail', [
             visualizationModel.isObjectDetail = isObjectDetail;
 
             if (queryResult && !queryResult.error) {
-                visualizationModel.downloadLink = '/api/meta/dataset/csv?query=' + encodeURIComponent(JSON.stringify(card.dataset_query));
+                visualizationModel.downloadLink = '/api/dataset/csv?query=' + encodeURIComponent(JSON.stringify(card.dataset_query));
             } else {
                 visualizationModel.downloadLink = null;
             }
