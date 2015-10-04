@@ -93,7 +93,7 @@ export default class Navbar extends Component {
                         <a className="NavItem cursor-pointer text-white no-decoration flex align-center p2" href="/card/">Saved Questions</a>
                     </li>
                     <li className="ml2">
-                        <a className="rounded inline-block bg-white text-brand cursor-pointer p2 no-decoration" href="/q">New <span className="hide sm-show">Question</span></a>
+                        <a className="rounded shadowed inline-block bg-white text-brand cursor-pointer p2 no-decoration" href="/q">New <span className="hide sm-show">Question</span></a>
                     </li>
                     <li className="flex-align-right">
                         <div className="inline-block text-white"><ProfileLink {...this.props}></ProfileLink></div>

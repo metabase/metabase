@@ -60,6 +60,7 @@ export default class Homepage extends Component {
                 <div className="relative felx flex-column flex-full md-pl4">
                     <div className="HomeLayout">
                         <div className="HomeLayout-mainColumn">
+                            <div style={{paddingLeft: "0.75rem"}} className="pt4 h2 text-normal">Activity</div>
                             <Activity {...this.props} />
                         </div>
                     </div>
