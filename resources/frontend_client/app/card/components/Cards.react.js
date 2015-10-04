@@ -40,7 +40,7 @@ export default class Cards extends Component {
         let items = cards.slice().sort((a, b) => b.created_at - a.created_at);
 
         return (
-            <ul className="pt2 ml1">
+            <ul className="ml1">
                 {items.map(item =>
                     <li key={item.id} className="flex pt2">
                         <div className="pb2 mr2">
