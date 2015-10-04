@@ -54,13 +54,15 @@ MetabaseControllers.controller('Nav', ['$scope', '$routeParams', '$location', '$
     function($scope, $routeParams, $location, $rootScope, AppState, Dashboard) {
 
         function refreshDashboards() {
-            Dashboard.list({
-                'filterMode': 'all'
-            }, function (dashes) {
-                $scope.dashboards = dashes;
-            }, function (error) {
-                console.log('error getting dahsboards list', error);
-            });
+            if (AppState.model.currentUser) {
+                Dashboard.list({
+                    'filterMode': 'all'
+                }, function (dashes) {
+                    $scope.dashboards = dashes;
+                }, function (error) {
+                    console.log('error getting dahsboards list', error);
+                });
+            }
         }
 
         function setNavContext(context) {
@@ -109,6 +111,18 @@ MetabaseControllers.controller('Nav', ['$scope', '$routeParams', '$location', '$
 
         $scope.$on("dashboard:update", function(event, dashboardId) {
             refreshDashboards();
+        });
+
+        $scope.$on("appstate:user", function(event, dashboardId) {
+            refreshDashboards();
+        });
+
+        $scope.$on("appstate:login", function(event, dashboardId) {
+            refreshDashboards();
+        });
+
+        $scope.$on("appstate:logout", function(event, dashboardId) {
+            $scope.dashboards = [];
         });
 
         // always initialize with a fresh listing
