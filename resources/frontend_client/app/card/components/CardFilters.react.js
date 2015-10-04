@@ -39,9 +39,9 @@ export default class CardFilters extends Component {
 
         return (
             <div className="p2">
-                <div className="text-brand clearfix pt2">
+                <div className="text-dark-grey clearfix pt2">
                     <Icon className="float-left" name={'filter'} width={36} height={36}></Icon>
-                    <div className="h3">Filter saved questions</div>
+                    <div className="h4 text-uppercase">Filter saved questions</div>
                 </div>
                 <div className="rounded bg-white" style={{border: '1px solid #E5E5E5'}}>
                     <ul className="cursor-pointer">
