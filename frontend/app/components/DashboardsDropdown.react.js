@@ -17,6 +17,14 @@ export default class DashboardsDropdown extends Component {
             modalOpen: false
         };
 
+        this.styles = {
+            dashIcon: {
+                width: '101px',
+                height: '85px',
+                backgroundImage: 'url("/app/components/icons/assets/dash_empty_state.svg")'
+            }
+        }
+
         _.bindAll(this, "toggleDropdown", "closeDropdown", "toggleModal", "closeModal");
     }
 
@@ -82,11 +90,11 @@ export default class DashboardsDropdown extends Component {
                             <div className="NavDropdown-content DashboardList">
                                 { dashboards.length === 0 ?
                                     <div className="NavDropdown-content-layer text-white text-centered">
-                                        <div className="p2"><span className="QuestionCircle">?</span></div>
+                                        <div className="p2"><div style={this.styles.dashIcon} className="ml-auto mr-auto"></div></div>
                                         <div className="px2 py1 text-bold">You don’t have any dashboards yet.</div>
                                         <div className="px2 pb2 text-light">Dashboards group visualizations for frequent questions in a single handy place.</div>
                                         <div className="border-top border-light">
-                                            <a className="Dropdown-item block text-white no-decoration" href="#" onClick={this.toggleModal}>Create a new dashboard</a>
+                                            <a className="Dropdown-item block text-white no-decoration" href="#" onClick={this.toggleModal}>Create your first dashboard</a>
                                         </div>
                                     </div>
                                 :
