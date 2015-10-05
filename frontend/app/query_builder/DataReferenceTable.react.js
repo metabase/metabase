@@ -1,5 +1,3 @@
-'use strict';
-
 import DataReferenceQueryButton from './DataReferenceQueryButton.react';
 
 import inflection from 'inflection';

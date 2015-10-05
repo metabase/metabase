@@ -1,5 +1,3 @@
-'use strict';
-
 import React, { Component, PropTypes } from 'react';
 import OnClickOut from 'react-onclickout';
 import cx from 'classnames';

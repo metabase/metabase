@@ -1,5 +1,3 @@
-'use strict';
-
 import cx from "classnames";
 
 export default React.createClass({

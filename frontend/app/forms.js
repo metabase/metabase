@@ -1,5 +1,3 @@
-'use strict';
-
 /* Services */
 
 var MetabaseForms = angular.module('metabase.forms', ['metabase.directives']);

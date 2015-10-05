@@ -1,5 +1,3 @@
-"use strict";
-
 import QueryVisualizationChart from "metabase/query_builder/QueryVisualizationChart.react.js";
 
 export default class ChartCard extends React.Component {

@@ -1,5 +1,3 @@
-'use strict';
-
 var webpackConfig = require('../../webpack.config');
 webpackConfig.module.postLoaders = [
     { test: /\.js$/, exclude: /(\.spec\.js|vendor|node_modules)/, loader: 'istanbul-instrumenter' }

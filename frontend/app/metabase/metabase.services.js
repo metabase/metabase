@@ -1,5 +1,3 @@
-'use strict';
-
 // Metabase Services
 var MetabaseServices = angular.module('metabase.metabase.services', [
     'ngResource',

@@ -1,5 +1,3 @@
-'use strict';
-
 import _ from "underscore";
 
 import Popover from "metabase/components/Popover.react";

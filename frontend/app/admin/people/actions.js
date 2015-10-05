@@ -1,5 +1,3 @@
-"use strict";
-
 import { createAction } from "redux-actions";
 import moment from "moment";
 import { normalize, Schema, arrayOf } from "normalizr";

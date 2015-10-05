@@ -1,5 +1,3 @@
-'use strict';
-
 import { Provider } from 'react-redux';
 import { DevTools, DebugPanel } from 'redux-devtools/lib/react';
 

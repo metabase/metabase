@@ -1,5 +1,3 @@
-'use strict';
-
 import React, { Component, PropTypes, findDOMNode } from 'react';
 import cx from "classnames";
 

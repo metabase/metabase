@@ -1,5 +1,3 @@
-'use strict';
-
 import MetadataHeader from './MetadataHeader.react';
 import MetadataTableList from './MetadataTableList.react';
 import MetadataTable from './MetadataTable.react';

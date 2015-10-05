@@ -1,5 +1,3 @@
-"use strict";
-
 import React, { Component, PropTypes } from "react";
 
 import { parseFieldBucketing, formatBucketing } from "metabase/lib/query_time";

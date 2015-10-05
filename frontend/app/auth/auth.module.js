@@ -1,5 +1,3 @@
-'use strict';
-
 var Auth = angular.module('metabase.auth', ['metabase.auth.controllers']);
 
 Auth.config(['$routeProvider', function($routeProvider) {

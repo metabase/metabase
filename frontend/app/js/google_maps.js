@@ -1,4 +1,3 @@
-'use strict';
 /*global google*/
 
 window.google = window.google || {};

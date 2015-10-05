@@ -1,5 +1,3 @@
-"use strict";
-
 import Icon from "metabase/components/Icon.react";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 

@@ -1,5 +1,3 @@
-'use strict';
-
 var Home = angular.module('metabase.home', [
     'metabase.home.controllers',
 ]);

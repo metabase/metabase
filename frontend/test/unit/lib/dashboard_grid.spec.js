@@ -1,5 +1,3 @@
-'use strict';
-
 import { getPositionForNewDashCard } from 'metabase/lib/dashboard_grid';
 
 

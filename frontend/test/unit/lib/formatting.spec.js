@@ -1,5 +1,3 @@
-'use strict';
-
 import { formatNumber, formatScalar } from 'metabase/lib/formatting';
 
 describe('formatting', () => {

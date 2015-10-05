@@ -1,5 +1,3 @@
-'use strict';
-
 import _ from "underscore";
 
 import * as SchemaMetadata from "metabase/lib/schema_metadata";

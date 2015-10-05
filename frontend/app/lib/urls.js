@@ -1,5 +1,3 @@
-'use strict';
-
 // provides functions for building urls to things we care about
 var Urls = {
     card: function(card_id) {

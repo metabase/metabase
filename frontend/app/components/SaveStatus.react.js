@@ -1,5 +1,3 @@
-'use strict';
-
 import Icon from "metabase/components/Icon.react";
 import LoadingSpinner from "metabase/components/LoadingSpinner.react";
 

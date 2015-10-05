@@ -1,5 +1,3 @@
-'use strict';
-
 import { CardRenderer } from '../card/card.charting';
 
 import { hasLatitudeAndLongitudeColumns } from "metabaes/lib/schema_metadata";

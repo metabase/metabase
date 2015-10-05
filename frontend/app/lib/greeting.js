@@ -1,5 +1,3 @@
-"use strict";
-
 const greetingPrefixes = [
     'Hey there',
     'How\'s it going',

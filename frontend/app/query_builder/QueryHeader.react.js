@@ -1,5 +1,3 @@
-'use strict';
-
 import ActionButton from 'metabase/components/ActionButton.react';
 import AddToDashSelectDashModal from 'metabase/components/AddToDashSelectDashModal.react';
 import DeleteQuestionModal from 'metabase/components/DeleteQuestionModal.react';

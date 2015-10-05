@@ -1,5 +1,3 @@
-"use strict";
-
 import { formatScalar } from "metabase/lib/formatting";
 
 export default class ScalarCard extends React.Component {

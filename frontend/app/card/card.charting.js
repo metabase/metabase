@@ -1,4 +1,3 @@
-'use strict';
 /*global google*/
 
 import _ from "underscore";

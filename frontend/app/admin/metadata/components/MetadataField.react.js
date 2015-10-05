@@ -1,5 +1,3 @@
-"use strict";
-
 import Input from "metabase/components/Input.react";
 import Select from "metabase/components/Select.react";
 

@@ -1,5 +1,3 @@
-'use strict';
-
 import DataReferenceQueryButton from './DataReferenceQueryButton.react';
 import Icon from "metabase/components/Icon.react";
 import Query from "metabase/lib/query";

@@ -1,5 +1,3 @@
-"use strict";
-
 var AdminUserDirectives = angular.module('metabase.user.directives', []);
 
 
