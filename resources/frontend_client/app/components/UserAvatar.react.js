@@ -36,6 +36,7 @@ export default class UserAvatar extends Component {
         const classes = {
             'flex': true,
             'align-center': true,
+            'justify-center': true
         }
         classes[background] = true;
 
