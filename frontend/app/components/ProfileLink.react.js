@@ -39,7 +39,7 @@ export default class ProfileLink extends Component {
     render() {
         const { user, context } = this.props;
         const { aboutModalOpen, dropdownOpen } = this.state;
-        const version = MetabaseSettings.get('version').short;
+        const { hash, tag } = MetabaseSettings.get('version');
 
         let dropDownClasses = cx({
             'NavDropdown': true,
@@ -115,8 +115,8 @@ export default class ProfileLink extends Component {
                                 </div>
                                 <h2 className="text-dark">Thanks for using Metabase!</h2>
                                 <p className="pt2">
-                                    <h3 className="text-dark">You're on version {version}</h3>
-                                    <span className="text-grey-3">build #hash</span>
+                                    <h3 className="text-dark">You're on version {tag}</h3>
+                                    <span className="text-grey-3">build #{hash}</span>
                                 </p>
                                 <p className="pt2">
                                     If you require the legalese ...
@@ -124,7 +124,7 @@ export default class ProfileLink extends Component {
                             </div>
                             <div style={{borderWidth: "2px"}} className="p2 h5 text-centered text-grey-3 border-top">
                                 <span className="block"><span className="text-bold">Metabase</span> is a registered Trademark of Metabase, Inc</span>
-                                <span>and is built in San Francisco, CA</span>
+                                <span>and is built with care in San Francisco, CA</span>
                             </div>
                         </Modal>
                     : null }
