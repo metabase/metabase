@@ -125,11 +125,22 @@ export default React.createClass({
     renderDownloadButton: function() {
         // NOTE: we expect our component provider set this to something falsey if download not available
         if (this.props.downloadLink) {
-            return (
-                <a className="mx1" href={this.props.downloadLink} title="Download this data" target="_blank">
-                    <Icon name='download' width="16px" height="16px" />
-                </a>
-            );
+            if (window.OSX) {
+                const downloadLink = this.props.downloadLink;
+                return (
+                    <a classname="mx1" href="#" title="Download this data" onClick={function() {
+                        window.OSX.saveCSV(downloadLink);
+                    }}>
+                        <Icon name='download' width="16px" height="16px" />
+                    </a>
+                );
+            } else {
+                return (
+                    <a className="mx1" href={this.props.downloadLink} title="Download this data" target="_blank">
+                        <Icon name='download' width="16px" height="16px" />
+                    </a>
+                );
+            }
         }
     },
 
