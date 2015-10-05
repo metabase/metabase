@@ -4,7 +4,6 @@ import cx from "classnames";
 import OnClickOut from 'react-onclickout';
 
 import CreateDashboardModal from "metabase/components/CreateDashboardModal.react";
-import Icon from "metabase/components/Icon.react";
 import Modal from "metabase/components/Modal.react";
 
 
@@ -66,7 +65,7 @@ export default class DashboardsDropdown extends Component {
     }
 
     render() {
-        let { dashboards } = this.props;
+        let { children, dashboards } = this.props;
         let { dropdownOpen, modalOpen } = this.state;
 
         return (
@@ -75,11 +74,8 @@ export default class DashboardsDropdown extends Component {
 
                 <OnClickOut onClickOut={this.closeDropdown}>
                     <div className={cx('NavDropdown inline-block cursor-pointer', { 'open': dropdownOpen })}>
-                        <a className="NavDropdown-button NavItem text-white cursor-pointer p2 flex align-center" onClick={this.toggleDropdown}>
-                            <span className="NavDropdown-button-layer">
-                                Dashboards
-                                <Icon className="ml1" name={'chevrondown'} width={8} height={8}></Icon>
-                            </span>
+                        <a onClick={this.toggleDropdown}>
+                            {children}
                         </a>
 
                         { dropdownOpen ?

@@ -64,22 +64,7 @@ MetabaseControllers.controller('Nav', ['$scope', '$routeParams', '$location', '$
         }
 
         function setNavContext(context) {
-            switch (context) {
-                case "admin":
-                    $scope.context = 'admin';
-                    break;
-                case "setup":
-                    $scope.context = 'setup';
-                    break;
-                case "auth":
-                    $scope.context = 'auth';
-                    break;
-                case "none":
-                    $scope.context = 'none';
-                    break;
-                default:
-                    $scope.context = 'main';
-            }
+            $scope.context = context;
         }
 
         $scope.Navbar = Navbar;
