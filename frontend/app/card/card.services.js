@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { harmony } from 'metabase/lib/colors'
+import { normal, harmony } from 'metabase/lib/colors'
 
 // Card Services
 var CardServices = angular.module('metabase.card.services', ['ngResource', 'ngCookies']);
@@ -294,7 +294,7 @@ CardServices.service('QueryUtils', function() {
 
 CardServices.service('VisualizationSettings', [function() {
 
-    var DEFAULT_COLOR_HARMONY = harmony;
+    var DEFAULT_COLOR_HARMONY = Object.values(normal);
 
     var DEFAULT_COLOR = DEFAULT_COLOR_HARMONY[0];
 
