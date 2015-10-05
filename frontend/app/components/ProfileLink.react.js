@@ -116,7 +116,7 @@ export default class ProfileLink extends Component {
                                 <h2 className="text-dark">Thanks for using Metabase!</h2>
                                 <p className="pt2">
                                     <h3 className="text-dark">You're on version {tag}</h3>
-                                    <span className="text-grey-3">build #{hash}</span>
+                                    <span className="text-grey-3">build <a className="link" href={"https://github.com/metabase/metabase/commit/"+hash} target="_blank">#{hash}</a></span>
                                 </p>
                                 <p className="pt2">
                                     If you require the legalese ...
