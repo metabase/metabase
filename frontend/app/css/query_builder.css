@@ -236,16 +236,16 @@
 }
 
 
-.QueryError-image--noResults {
+.QueryError-image--noRows {
   width: 120px;
   height: 120px;
-  /*background-image: url('../../../resources/frontend_client/app/img/no_results.svg');*/
+  background-image: url('/app/img/no_results.svg');
 }
 
 .QueryError-image--queryError {
   width: 120px;
   height: 120px;
-  /*background-image: url('../../../resources/frontend_client/app/img/no_understand.svg');*/
+  background-image: url('/app/img/no_understand.svg');
 }
 
 .QueryError-messageText {
