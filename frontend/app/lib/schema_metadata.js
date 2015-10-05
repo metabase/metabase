@@ -43,7 +43,7 @@ export function isCategory(field) {
 }
 
 export function isDimension(field) {
-    return isDate(field) || isCategory(field) || isInTypes(field.field_type, ['dimension']);
+    return isDate(field) || isCategory(field) || isInTypes(field.field_type, ['dimension']) || isInTypes(field.special_type, ['fk', 'id', 'name']);
 }
 
 // will return a string with possible values of 'date', 'number', 'bool', 'string'
