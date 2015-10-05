@@ -226,3 +226,10 @@
       margin-right: auto;
   }
 }
+
+.Sidebar-header {
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    line-height: 16px;
+    text-transform: uppercase;
+}

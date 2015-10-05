@@ -29,7 +29,7 @@ export default class RecentViews extends Component {
             <div className="p2">
                 <div className="text-dark-grey clearfix pt2 pb2">
                     <Icon className="float-left" name={'clock'} width={18} height={18}></Icon>
-                    <span className="pl1 h4 text-uppercase">Recently Viewed</span>
+                    <span className="pl2 Sidebar-header">Recently Viewed</span>
                 </div>
                 <div className="rounded bg-white" style={{border: '1px solid #E5E5E5'}}>
                     {recentViews.length > 0 ?
