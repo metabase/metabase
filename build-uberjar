@@ -4,14 +4,16 @@
 version() {
     # Skip on CircleCI since this is interactive
     if [ ! $CI ]; then
-        VERSION=$(./version)
-        SHORT_VERSION=$(./version --short)
+        VERSION_INFO=$(./version)
+        IFS=', ' read -a info <<< ${VERSION_INFO}
 
-        echo "Tagging uberjar with version '$VERSION'..."
+        echo "Tagging uberjar with version '$VERSION_INFO'..."
 
         # Ok, now generate the appropriate version.properties file.
-        echo "long=$VERSION" > resources/version.properties
-        echo "short=$SHORT_VERSION" >> resources/version.properties
+        echo "tag=${info[0]}" > resources/version.properties
+        echo "hash=${info[1]}" >> resources/version.properties
+        echo "branch=${info[2]}" >> resources/version.properties
+        echo "date=${info[3]}" >> resources/version.properties
     fi
 }
 
