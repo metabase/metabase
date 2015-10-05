@@ -360,10 +360,12 @@ function applyChartYAxis(chart, card, coldefs, data, minPixelsPerTick) {
 
 function applyChartColors(dcjsChart, card) {
     // Set the color for the bar/line
-    var settings = card.visualization_settings,
-        chartColor = (card.display === 'bar') ? settings.bar.color : settings.line.lineColor,
-        colorList = (card.display === 'bar') ? settings.bar.colors : settings.line.colors;
-    return dcjsChart.ordinalColors([chartColor].concat(colorList));
+    let settings = card.visualization_settings;
+    let chartColor = (card.display === 'bar') ? settings.bar.color : settings.line.lineColor;
+    let colorList = (card.display === 'bar') ? settings.bar.colors : settings.line.colors;
+    // dedup colors list to ensure stacked charts don't have the same color
+    let uniqueColors = _.uniq([chartColor].concat(colorList));
+    return dcjsChart.ordinalColors(uniqueColors);
 }
 
 function applyChartTooltips(dcjsChart, card, cols) {
