@@ -1,6 +1,6 @@
 import { CardRenderer } from '../card/card.charting';
 
-import { hasLatitudeAndLongitudeColumns } from "metabaes/lib/schema_metadata";
+import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 
 export default React.createClass({
     displayName: 'QueryVisualizationChart',

@@ -1,7 +1,7 @@
 import Icon from "metabase/components/Icon.react";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 
-import { hasLatitudeAndLongitudeColumns } from "metabaes/lib/schema_metadata";
+import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 
 import cx from "classnames";
 
