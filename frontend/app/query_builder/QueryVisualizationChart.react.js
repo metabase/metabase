@@ -85,6 +85,7 @@ export default React.createClass({
                 var cardIsh = {
                     name: this.props.card.name,
                     display: this.props.card.display,
+                    dataset_query: this.props.card.dataset_query,
                     visualization_settings: vizSettings
                 };
 
