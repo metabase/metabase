@@ -1,5 +1,3 @@
-'use strict';
-
 import Icon from "metabase/components/Icon.react";
 
 export default React.createClass({

@@ -1,5 +1,3 @@
-'use strict';
-
 var Setup = angular.module('metabase.setup', ['metabase.setup.controllers']);
 
 Setup.config(['$routeProvider', function($routeProvider) {

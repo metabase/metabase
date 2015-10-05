@@ -1,5 +1,3 @@
-'use strict';
-
 import { createStore, applyMiddleware, combineReducers, compose } from 'redux';
 import promiseMiddleware from 'redux-promise';
 import thunkMidleware from "redux-thunk";

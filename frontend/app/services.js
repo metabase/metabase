@@ -1,5 +1,3 @@
-'use strict';
-
 import _ from "underscore";
 
 import MetabaseAnalytics from 'metabase/lib/analytics';

@@ -1,5 +1,3 @@
-'use strict';
-
 var AdminPeople = angular.module('metabaseadmin.people', [
     'metabaseadmin.people.controllers'
 ]);

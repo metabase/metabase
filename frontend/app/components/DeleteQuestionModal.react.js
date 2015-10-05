@@ -1,5 +1,3 @@
-'use strict';
-
 import ModalContent from "metabase/components/ModalContent.react";
 
 import inflection from "inflection";

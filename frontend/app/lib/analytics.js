@@ -1,4 +1,3 @@
-'use strict';
 /*global ga*/
 
 // Simple module for in-app analytics.  Currently sends data to GA but could be extended to anything else.

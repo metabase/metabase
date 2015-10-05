@@ -1,5 +1,3 @@
-'use strict';
-
 import CreateDashboardModal from 'metabase/components/CreateDashboardModal.react';
 import ModalContent from "metabase/components/ModalContent.react";
 import SortableItemList from 'metabase/components/SortableItemList.react';

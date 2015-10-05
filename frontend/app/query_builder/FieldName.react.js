@@ -1,5 +1,3 @@
-"use strict";
-
 import _ from "underscore";
 
 import Icon from "metabase/components/Icon.react";

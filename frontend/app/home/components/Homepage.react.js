@@ -1,5 +1,3 @@
-"use strict";
-
 import React, { Component, PropTypes } from "react";
 
 import Greeting from "metabase/lib/greeting";

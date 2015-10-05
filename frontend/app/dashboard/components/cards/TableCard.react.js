@@ -1,5 +1,3 @@
-"use strict";
-
 export default class TableCard extends React.Component {
 
     /* returns custom title for column set by user, or native label if

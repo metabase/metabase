@@ -1,5 +1,3 @@
-'use strict';
-
 import OnClickOutside from 'react-onclickoutside';
 
 // this feels a little silly, but we have this component ONLY so that we can add the OnClickOutside functionality on an

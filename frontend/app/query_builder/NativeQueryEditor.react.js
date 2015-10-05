@@ -1,4 +1,3 @@
-'use strict';
 /*global ace*/
 
 import DataSelector from './DataSelector.react';

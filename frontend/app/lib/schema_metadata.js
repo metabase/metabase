@@ -1,5 +1,3 @@
-'use strict';
-
 import _ from "underscore";
 
 // create a standardized set of strings to return

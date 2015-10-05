@@ -1,5 +1,3 @@
-'use strict';
-
 import 'metabase/auth/auth.controllers';
 
 describe('metabase.auth.controllers', function() {

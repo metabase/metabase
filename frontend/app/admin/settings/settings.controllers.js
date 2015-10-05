@@ -1,5 +1,3 @@
-'use strict';
-
 import _ from "underscore";
 
 import SettingsEditor from './components/SettingsEditor.react';

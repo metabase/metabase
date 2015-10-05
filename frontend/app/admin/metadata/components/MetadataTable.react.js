@@ -1,5 +1,3 @@
-'use strict';
-
 import Input from "metabase/components/Input.react";
 import MetadataField from "./MetadataField.react";
 import ProgressBar from "metabase/components/ProgressBar.react";

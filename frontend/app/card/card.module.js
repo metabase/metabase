@@ -1,5 +1,3 @@
-'use strict';
-
 // Card
 var Card = angular.module('metabase.card', [
     'ngRoute',

@@ -1,5 +1,3 @@
-'use strict';
-
 import DataReferenceMain from './DataReferenceMain.react';
 import DataReferenceTable from './DataReferenceTable.react';
 import DataReferenceField from './DataReferenceField.react';

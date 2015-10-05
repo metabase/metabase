@@ -1,5 +1,3 @@
-'use strict';
-
 import { loadIcon } from 'metabase/icon_paths';
 
 export default class Icon extends React.Component {

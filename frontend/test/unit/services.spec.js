@@ -1,5 +1,3 @@
-'use strict';
-
 import 'metabase/services';
 import 'metabase/metabase/metabase.services';
 

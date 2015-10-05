@@ -1,5 +1,3 @@
-"use strict";
-
 import Input from "metabase/components/Input.react";
 
 export default class Header extends React.Component {

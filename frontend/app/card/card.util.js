@@ -1,5 +1,3 @@
-"use strict";
-
 import Query from "metabase/lib/query";
 
 export function serializeCardForUrl(card) {

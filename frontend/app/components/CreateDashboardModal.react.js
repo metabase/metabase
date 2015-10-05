@@ -1,5 +1,3 @@
-'use strict';
-
 import FormField from "metabase/components/FormField.react";
 import ModalContent from "metabase/components/ModalContent.react";
 

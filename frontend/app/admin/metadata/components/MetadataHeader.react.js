@@ -1,5 +1,3 @@
-'use strict';
-
 import SaveStatus from "metabase/components/SaveStatus.react";
 import Toggle from "metabase/components/Toggle.react";
 

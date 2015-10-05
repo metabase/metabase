@@ -1,5 +1,3 @@
-'use strict';
-
 // Dashboard
 var Dashboard = angular.module('metabase.dashboard', [
     'ngRoute',

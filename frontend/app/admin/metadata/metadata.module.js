@@ -1,5 +1,3 @@
-'use strict';
-
 angular
 .module('metabase.admin.metadata', [
     'metabase.admin.metadata.controllers'

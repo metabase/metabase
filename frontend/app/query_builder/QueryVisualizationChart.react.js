@@ -1,5 +1,3 @@
-'use strict';
-
 import { CardRenderer } from '../card/card.charting';
 
 export default React.createClass({
