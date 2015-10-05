@@ -3,6 +3,8 @@
 import Icon from "metabase/components/Icon.react";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 
+import { hasLatitudeAndLongitudeColumns } from "metabaes/lib/schema_metadata";
+
 import cx from "classnames";
 
 export default React.createClass({
@@ -55,23 +57,6 @@ export default React.createClass({
         this.refs.colorPopover.toggle();
     },
 
-    hasLatitudeAndLongitudeColumns: function(columnDefs) {
-        var hasLatitude = false,
-            hasLongitude = false;
-        columnDefs.forEach(function(col, index) {
-            if (col.special_type &&
-                    col.special_type === "latitude") {
-                hasLatitude = true;
-
-            } else if (col.special_type &&
-                    col.special_type === "longitude") {
-                hasLongitude = true;
-            }
-        });
-
-        return (hasLatitude && hasLongitude);
-    },
-
     isSensibleChartDisplay: function(display) {
         var data = (this.props.result) ? this.props.result.data : null;
         switch (display) {
@@ -83,7 +68,7 @@ export default React.createClass({
                 return (data && data.rows && data.rows.length === 1 && data.cols && data.cols.length === 1);
             case "pin_map":
                 // when we have a latitude and longitude a pin map is cool
-                return (data && this.hasLatitudeAndLongitudeColumns(data.cols));
+                return (data && hasLatitudeAndLongitudeColumns(data.cols));
             case "line":
             case "area":
                 // if we have 2x2 or more then that's enough to make a line/area chart

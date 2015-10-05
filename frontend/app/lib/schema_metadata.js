@@ -391,3 +391,17 @@ export function addValidOperatorsToFields(table) {
     table.breakout_options = getBreakouts(table.fields);
     return table;
 }
+
+export function hasLatitudeAndLongitudeColumns(columnDefs) {
+    let hasLatitude = false;
+    let hasLongitude = false;
+    for (let col of columnDefs) {
+        if (col.special_type === "latitude") {
+            hasLatitude = true;
+        }
+        if (col.special_type === "longitude") {
+            hasLongitude = true;
+        }
+    }
+    return hasLatitude && hasLongitude;
+}

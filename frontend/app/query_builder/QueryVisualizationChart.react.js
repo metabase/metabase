@@ -2,6 +2,8 @@
 
 import { CardRenderer } from '../card/card.charting';
 
+import { hasLatitudeAndLongitudeColumns } from "metabaes/lib/schema_metadata";
+
 export default React.createClass({
     displayName: 'QueryVisualizationChart',
     propTypes: {
@@ -56,7 +58,7 @@ export default React.createClass({
             // then lets inform the user that this isn't going to work so they can do something better
             var dataError;
             if (this.props.card.display === "pin_map" &&
-                    !this.hasLatitudeAndLongitudeColumns(this.props.data.cols)) {
+                    !hasLatitudeAndLongitudeColumns(this.props.data.cols)) {
                 dataError = "Bummer.  We can't actually do a pin map for this data because we require both a latitude and longitude column.";
             } else if (this.props.data.columns && this.props.data.columns.length < 2) {
                 dataError = "Doh!  The data from your query doesn't fit the chosen display choice.  This visualization requires at least 2 columns of data.";
