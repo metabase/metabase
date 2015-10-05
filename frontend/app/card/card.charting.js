@@ -388,21 +388,15 @@ function applyChartTooltips(dcjsChart, card, cols) {
 
         chart.selectAll('rect.bar,circle.dot,g.pie-slice path,circle.bubble,g.row rect')
             .call(tip)
-            .on('mouseover.tip', function(x) {
+            .on('mouseover.tip', function(slice) {
                 tip.show.apply(tip, arguments);
                 if (card.display === "pie") {
-                    var arc = d3.svg.arc()
-                        .outerRadius(chart.radius()).innerRadius(x.innerRadius)
-                        .padAngle(x.padAngle).startAngle(x.startAngle).endAngle(x.endAngle);
-                    var centroid = arc.centroid();
-                    var pieRect = this.parentNode.parentNode.getBoundingClientRect();
-                    var pieCenter = [pieRect.left + chart.radius(), pieRect.top + chart.radius()];
                     var tooltip = d3.select('.ChartTooltip');
-                    var tooltipRect = tooltip[0][0].getBoundingClientRect();
-                    var tooltipOffset = [-tooltipRect.width / 2, -tooltipRect.height - 20];
+                    let tooltipOffset = getTooltipOffset(tooltip);
+                    let sliceCentroid = getPieSliceCentroid(this, slice);
                     tooltip.style({
-                        top: pieCenter[1] + tooltipOffset[1] + centroid[1] + "px",
-                        left: pieCenter[0] + tooltipOffset[0] + centroid[0] + "px",
+                        top: tooltipOffset.y + sliceCentroid.y + "px",
+                        left: tooltipOffset.x + sliceCentroid.x + "px",
                         "pointer-events": "none" // d3-tip forces "pointer-events: all" which cases flickering when the tooltip is under the cursor
                     });
                 }
@@ -411,6 +405,32 @@ function applyChartTooltips(dcjsChart, card, cols) {
 
         chart.selectAll('title').remove();
     });
+}
+
+function getPieSliceCentroid(element, slice) {
+    var parent = element.parentNode.parentNode;
+    var radius = parent.getBoundingClientRect().height / 2;
+    var innerRadius = 0;
+
+    var centroid = d3.svg.arc()
+        .outerRadius(radius).innerRadius(innerRadius)
+        .padAngle(slice.padAngle).startAngle(slice.startAngle).endAngle(slice.endAngle)
+        .centroid();
+
+    var pieRect = parent.getBoundingClientRect();
+
+    return {
+        x: pieRect.left + radius + centroid[0],
+        y: pieRect.top + radius + centroid[1]
+    };
+}
+
+function getTooltipOffset(tooltip) {
+    var tooltipRect = tooltip[0][0].getBoundingClientRect();
+    return {
+        x: -tooltipRect.width / 2,
+        y: -tooltipRect.height - 30
+    };
 }
 
 function lineAndBarOnRender(dcjsChart, card) {
