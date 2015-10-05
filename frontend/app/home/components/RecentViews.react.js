@@ -22,6 +22,23 @@ export default class RecentViews extends Component {
         }
     }
 
+    renderIllustration(item) {
+        if (item.model === 'card' && 'display' in item.model_object) {
+            const icon = '/app/components/icons/assets/illustration_visualization_'+item.model_object.display+'.png';
+            return (
+                <img className="float-left" style={{height: "24px"}} src={icon} />
+            );
+
+        } else if(item.model === 'dashboard') {
+            return (
+                <img className="float-left" style={{height: "24px"}} src="/app/components/icons/assets/illustration_visualization_dashboard.png" />
+            );
+
+        } else {
+            return null;
+        }
+    }
+
     render() {
         let { recentViews } = this.props;
 
@@ -33,10 +50,11 @@ export default class RecentViews extends Component {
                 </div>
                 <div className="rounded bg-white" style={{border: '1px solid #E5E5E5'}}>
                     {recentViews.length > 0 ?
-                        <ul className="px3 py2">
+                        <ul className="p2">
                             {recentViews.map((item, index) =>
-                                <li key={index} className="py1 ml1">
-                                    <a className="link text-dark" href={Urls.modelToUrl(item.model, item.model_id)}>{item.model_object.name}</a>
+                                <li key={index} className="py1 ml1 clearfix">
+                                    {this.renderIllustration(item)}
+                                    <a className="ml1 link" href={Urls.modelToUrl(item.model, item.model_id)}>{item.model_object.name}</a>
                                 </li>
                             )}
                         </ul>
