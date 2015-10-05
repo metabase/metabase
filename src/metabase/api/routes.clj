@@ -15,16 +15,17 @@
                           [setup :as setup]
                           [table :as table]
                           [tiles :as tiles]
-                          [user :as user])
-            [metabase.middleware.auth :as auth]))
+                          [user :as user]
+                          [util :as util])
+            [metabase.middleware :as middleware]))
 
 (def ^:private +apikey
   "Wrap API-ROUTES so they may only be accessed with proper apikey credentials."
-  auth/enforce-api-key)
+  middleware/enforce-api-key)
 
 (def ^:private +auth
   "Wrap API-ROUTES so they may only be accessed with proper authentiaction credentials."
-  auth/enforce-authentication)
+  middleware/enforce-authentication)
 
 (defroutes routes
   (context "/activity"     [] (+auth activity/routes))
@@ -43,6 +44,7 @@
   (context "/table"        [] (+auth table/routes))
   (context "/tiles"        [] (+auth tiles/routes))
   (context "/user"         [] (+auth user/routes))
+  (context "/util"         [] util/routes)
   (route/not-found (fn [{:keys [request-method uri]}]
                      {:status 404
                       :body   (str (.toUpperCase (name request-method)) " " uri " is not yet implemented.")})))

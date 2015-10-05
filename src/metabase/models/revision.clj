@@ -24,18 +24,20 @@
   (describe-diff [this object1 object2]
     "Return a string describing the difference between OBJECT1 and OBJECT2."))
 
-;;; ## Default Impl
 
-(extend-protocol IRevisioned
-  Object
-  (serialize-instance [_ _ instance]
-    (->> (dissoc instance :created_at :updated_at)
-         (into {})                                 ; if it's a record type like CardInstance we need to convert it to a regular map or filter-vals won't work
-         (m/filter-vals (complement delay?))))
-  (revert-to-revision [entity id serialized-instance]
-    (m/mapply upd entity id serialized-instance))
-  (describe-diff [entity o1 o2]
-    (diff-str (:name entity) o1 o2)))
+;;; # Reusable Base Implementations for IRevisioned functions
+
+;; NOTE that we do not provide a base implementation for `serialize-instance`, that should be done per entity.
+
+(defn default-revert-to-revision
+  "Default implementation of `revert-to-revision` which simply does an update using the values from `serialized-instance`."
+  [entity id serialized-instance]
+  (m/mapply upd entity id serialized-instance))
+
+(defn default-describe-diff
+  "Default implementation of `describe-diff` which calls `diff-str` on the 2 objects."
+  [entity o1 o2]
+  (diff-str (:name entity) o1 o2))
 
 
 ;;; # Revision Entity
@@ -103,8 +105,10 @@
 (defn push-revision
   "Record a new `Revision` for ENTITY with ID.
    Returns OBJECT."
-  {:arglists '([& {:keys [object entity id user-id skip-serialization? is-reversion?]}])}
-  [& {object :object, :keys [entity id user-id skip-serialization? is-reversion?], :or {user-id *current-user-id*, id (:id object), skip-serialization? false, is-reversion? false}}]
+  {:arglists '([& {:keys [object entity id user-id is-creation? skip-serialization? is-reversion?]}])}
+  [& {object :object,
+      :keys [entity id user-id is-creation? skip-serialization? is-reversion?],
+      :or {id (:id object), is-creation? false, skip-serialization? false, is-reversion? false}}]
   {:pre [(metabase-entity? entity)
          (integer? user-id)
          (db/exists? User :id user-id)
@@ -114,7 +118,7 @@
   (let [object (if skip-serialization? object
                    (serialize-instance entity id object))]
     (assert (map? object))
-    (ins Revision :model (:name entity) :model_id id, :user_id user-id, :object object, :is_reversion is-reversion?))
+    (ins Revision :model (:name entity) :model_id id, :user_id user-id, :object object, :is_creation is-creation?, :is_reversion is-reversion?))
   (delete-old-revisions entity id)
   object)
 

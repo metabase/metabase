@@ -2,7 +2,7 @@
   (:require clojure.java.classpath
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase.db :refer [exists? ins sel upd]]
+            [metabase.db :refer [ins sel upd]]
             (metabase.driver [interface :as i]
                              [query-processor :as qp])
             (metabase.models [database :refer [Database]]
@@ -29,6 +29,13 @@
               :name "MongoDB"}
    :mysql    {:id   "mysql"
               :name "MySQL"}})
+
+(defn is-engine?
+  "Predicate function which validates if the given argument represents a valid driver identifier."
+  [engine]
+  (if (not (nil? engine))
+    (contains? (set (map name (keys available-drivers))) (name engine))
+    false))
 
 (defn class->base-type
   "Return the `Field.base_type` that corresponds to a given class returned by the DB."

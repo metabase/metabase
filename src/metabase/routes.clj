@@ -1,22 +1,28 @@
 (ns metabase.routes
-  (:require [compojure.core :refer [context defroutes GET]]
-            [compojure.route :as route]
+  (:require [clojure.java.io :as io]
+            [cheshire.core :as json]
+            (compojure [core :refer [context defroutes GET]]
+                       [route :as route])
             [ring.util.response :as resp]
+            [stencil.core :as stencil]
             [metabase.api.routes :as api]
-            [metabase.setup :as setup]))
+            [metabase.models.setting :as setting]))
+
+(defn- index [_]
+  (-> (io/resource "frontend_client/index.html")
+      slurp
+      (stencil/render-string {:bootstrap_json (json/generate-string (setting/public-settings))})
+      resp/response
+      (resp/content-type "text/html")
+      (resp/header "Last-Modified" "{now} GMT")))
 
 ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
-(let [redirect-to-setup? (fn [{:keys [uri]}]
-                           (and (setup/incomplete?)
-                                (not (re-matches #"^/setup/.*$" uri))))
-      index (fn [request]
-              (if (redirect-to-setup? request) (resp/redirect (format "/setup/init/%s" (setup/token-value)))
-                  (resp/resource-response "frontend_client/index.html")))]
-  (defroutes routes
-    (GET "/" [] index)                                     ; ^/$           -> index.html
-    (context "/api" [] api/routes)                         ; ^/api/        -> API routes
-    (context "/app" []
-      (route/resources "/" {:root "frontend_client/app"})  ; ^/app/        -> static files under frontend_client/app
-      (route/not-found {:status 404                        ;                  return 404 for anything else starting with ^/app/ that doesn't exist
-                        :body "Not found."}))
-    (GET "*" [] index)))                                   ; Anything else (e.g. /user/edit_current) should serve up index.html; Angular app will handle the rest
+(defroutes routes
+  (GET "/" [] index)                                     ; ^/$           -> index.html
+  (GET "/favicon.ico" [] (resp/resource-response "frontend_client/favicon.ico"))
+  (context "/api" [] api/routes)                         ; ^/api/        -> API routes
+  (context "/app" []
+    (route/resources "/" {:root "frontend_client/app"})  ; ^/app/        -> static files under frontend_client/app
+    (route/not-found {:status 404                        ; return 404 for anything else starting with ^/app/ that doesn't exist
+                      :body "Not found."}))
+  (GET "*" [] index))                                    ; Anything else (e.g. /user/edit_current) should serve up index.html; Angular app will handle the rest

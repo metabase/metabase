@@ -33,6 +33,7 @@
                               (expect-with-all-drivers 1)
                               (expect-with-dataset 1)
                               (expect-with-datasets 1)
+                              (format-color 2)
                               (ins 1)
                               (let-400 1)
                               (let-404 1)

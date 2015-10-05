@@ -1,7 +1,9 @@
 (ns metabase.models.card
   (:require [korma.core :refer :all, :exclude [defentity update]]
+            [medley.core :as m]
             [metabase.db :refer :all]
             (metabase.models [interface :refer :all]
+                             [revision :as revision]
                              [user :refer [User]])))
 
 (def ^:const display-types
@@ -56,7 +58,23 @@
                                                           :dashboards)))))
 
   (pre-cascade-delete [_ {:keys [id]}]
+    (cascade-delete 'Revision :model "Card" :model_id id)
     (cascade-delete 'DashboardCard :card_id id)
     (cascade-delete 'CardFavorite :card_id id)))
 
 (extend-ICanReadWrite CardEntity :read :public-perms, :write :public-perms)
+
+
+;;; ## ---------------------------------------- REVISIONS ----------------------------------------
+
+
+(defn- serialize-instance [_ _ instance]
+  (->> (dissoc instance :created_at :updated_at)
+       (into {})                                 ; if it's a record type like CardInstance we need to convert it to a regular map or filter-vals won't work
+       (m/filter-vals (complement delay?))))
+
+(extend CardEntity
+  revision/IRevisioned
+  {:serialize-instance serialize-instance
+   :revert-to-revision revision/default-revert-to-revision
+   :describe-diff      revision/default-describe-diff})

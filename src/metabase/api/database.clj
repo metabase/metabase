@@ -5,11 +5,13 @@
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
+            [metabase.events :as events]
             (metabase.models common
                              [hydrate :refer [hydrate]]
                              [database :refer [Database]]
                              [field :refer [Field]]
                              [table :refer [Table]])
+            [metabase.sample-data :as sample-data]
             [metabase.util :as u]))
 
 (defannotation DBEngine
@@ -31,10 +33,14 @@
   ;; TODO - we should validate the contents of `details` here based on the engine
   (check-superuser)
   (let-500 [new-db (ins Database :name name :engine engine :details details)]
-    ;; kick off background job to gather schema metadata about our new db
-    (future (driver/sync-database! new-db))
-    ;; make sure we return the newly created db object
-    new-db))
+    (events/publish-event :database-create new-db)))
+
+(defendpoint POST "/sample_dataset"
+  "Add the sample dataset as a new `Database`."
+  []
+  (check-superuser)
+  (sample-data/add-sample-dataset!)
+  (sel :one Database :is_sample true))
 
 (defendpoint GET "/form_input"
   "Values of options for the create/edit `Database` UI."

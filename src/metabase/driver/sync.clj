@@ -28,6 +28,7 @@
          set-field-display-name-if-needed!
          sync-database-active-tables!
          sync-field!
+         sync-metabase-metadata-table!
          sync-table-active-fields-and-pks!
          sync-table-fks!
          sync-table-fields-metadata!
@@ -72,16 +73,54 @@
               (when (seq new-table-names)
                 (log/debug (u/format-color 'blue "Found new tables: %s" new-table-names))
                 (doseq [new-table-name new-table-names]
-                  (ins Table :db_id (:id database), :active true, :name new-table-name)))))
+                  ;; If it's a _metabase_metadata table then we'll handle later once everything else has been synced
+                  (when-not (= (s/lower-case new-table-name) "_metabase_metadata")
+                    (ins Table :db_id (:id database), :active true, :name new-table-name))))))
 
           ;; Now sync the active tables
           (->> (sel :many Table :db_id (:id database) :active true)
                (map #(assoc % :db (delay database))) ; replace default delays with ones that reuse database (and don't require a DB call)
                (sync-database-active-tables! driver))
 
+          ;; Ok, now if we had a _metabase_metadata table from earlier we can go ahead and sync from it
+          (sync-metabase-metadata-table! driver database)
+
           (events/publish-event :database-sync-end {:database_id (:id database) :custom_id tracking-hash :running_time (- (System/currentTimeMillis) start-time)})
           (log/info (u/format-color 'magenta "Finished syncing %s database %s. (%d ms)" (name (:engine database)) (:name database)
                                     (- (System/currentTimeMillis) start-time))))))))
+
+(defn- sync-metabase-metadata-table!
+  "Databases may include a table named `_metabase_metadata` (case-insentive) which includes descriptions or other metadata about the `Tables` and `Fields`
+   it contains. This table is *not* synced normally, i.e. a Metabase `Table` is not created for it. Instead, *this* function is called, which reads the data it
+   contains and updates the relevant Metabase objects.
+
+   The table should have the following schema:
+
+     column  | type    | example
+     --------+---------+-------------------------------------------------
+     keypath | varchar | \"products.created_at.description\"
+     value   | varchar | \"The date the product was added to our catalog.\"
+
+   `keypath` is of the form `table-name.key` or `table-name.field-name.key`, where `key` is the name of some property of `Table` or `Field`.
+
+   This functionality is currently only used by the Sample Dataset."
+  [driver database]
+  (doseq [table-name (active-table-names driver database)]
+    (when (= (s/lower-case table-name) "_metabase_metadata")
+      (doseq [{:keys [keypath value]} (table-rows-seq driver database table-name)]
+        (let [[_ table-name field-name k] (re-matches #"^([^.]+)\.(?:([^.]+)\.)?([^.]+)$" keypath)]
+          (try (when (not= 1 (if field-name
+                               (k/update Field
+                                         (k/where {:name field-name, :table_id (k/subselect Table
+                                                                                            (k/fields :id)
+                                                                                            (k/where {:db_id (:id database), :name table-name}))})
+                                         (k/set-fields {(keyword k) value}))
+                               (k/update Table
+                                         (k/where {:name table-name, :db_id (:id database)})
+                                         (k/set-fields {(keyword k) value}))))
+                 (log/error (u/format-color "Error syncing _metabase_metadata: no matching keypath: %s" keypath)))
+               (catch Throwable e
+                 (log/error (u/format-color 'red "Error in _metabase_metadata: %s" (.getMessage e))))))))))
 
 (defn sync-table!
   "Sync a *single* TABLE by running all the sync steps for it.
@@ -501,7 +540,7 @@
                                                          [#"^active$"       bool-or-int :category]
                                                          [#"^city$"         text        :city]
                                                          [#"^country$"      text        :country]
-                                                         [#"^countrycode$"  text        :country]
+                                                         [#"^countryCode$"  text        :country]
                                                          [#"^currency$"     int-or-text :category]
                                                          [#"^first_name$"   text        :name]
                                                          [#"^full_name$"    text        :name]

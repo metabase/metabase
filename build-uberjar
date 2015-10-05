@@ -1,22 +1,55 @@
 #! /bin/bash
 
-echo "Running 'npm install' to download javascript dependencies..." &&
-npm install &&
+# Generate the resources/version.properties file
+version() {
+    # Skip on CircleCI since this is interactive
+    if [ ! $CI ]; then
+        VERSION=$(./version)
+        SHORT_VERSION=$(./version --short)
 
-if [ -n "$CI_DISABLE_WEBPACK_MINIFICATION" ]; then
-    echo "Running 'webpack' to assemble and minify frontend assets..."
-    ./node_modules/webpack/bin/webpack.js
-else
-    echo "Running 'webpack -p' to assemble and minify frontend assets..."
+        echo "Tagging uberjar with version '$VERSION'..."
+
+        # Ok, now generate the appropriate version.properties file.
+        echo "long=$VERSION" > resources/version.properties
+        echo "short=$SHORT_VERSION" >> resources/version.properties
+    fi
+}
+
+frontend() {
+    echo "Running 'npm install' to download javascript dependencies..." &&
+    npm install &&
+
+    echo "Running 'webpack -p' to assemble and minify frontend assets..." &&
     ./node_modules/webpack/bin/webpack.js -p
-fi &&
+}
 
-if [ -f resources/sample-dataset.db.mv.db ]; then
-    echo "Sample Dataset already generated."
+sample-dataset() {
+    if [ -f resources/sample-dataset.db.mv.db ]; then
+        echo "Sample Dataset already generated."
+    else
+        echo "Running 'lein generate-sample-dataset' to generate the sample dataset..."
+        lein generate-sample-dataset
+    fi
+}
+
+uberjar() {
+    echo "Running 'lein uberjar'..."
+    lein uberjar
+}
+
+all() {
+    version && frontend && sample-dataset && uberjar
+}
+
+# Default to running all but let someone specify one or more sub-tasks to run instead if desired
+# e.g.
+# ./build-uberjar                  # do everything
+# ./build-uberjar version          # just update version.properties
+# ./build-uberjar version uberjar  # just update version.properties and build uberjar
+if [ "$1" ]; then
+    for cmd in "$@"; do
+        $cmd
+    done
 else
-    echo "Running 'lein generate-sample-dataset' to generate the sample dataset..."
-    lein generate-sample-dataset
-fi &&
-
-echo "Running 'lein uberjar'..." &&
-lein uberjar
+    all
+fi

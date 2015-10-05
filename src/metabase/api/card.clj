@@ -98,8 +98,7 @@
                     :name name
                     :public_perms public_perms
                     :visualization_settings visualization_settings)
-  (events/publish-event :card-update (assoc (sel :one Card :id id) :actor_id *current-user-id*))
-  (push-revision :entity Card, :object (Card id)))
+  (events/publish-event :card-update (assoc (sel :one Card :id id) :actor_id *current-user-id*)))
 
 (defendpoint DELETE "/:id"
   "Delete a `Card`."

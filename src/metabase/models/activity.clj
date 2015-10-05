@@ -1,7 +1,6 @@
 (ns metabase.models.activity
   (:require [korma.core :refer :all, :exclude [defentity update]]
-            [metabase.api.common :refer [*current-user-id*]]
-            [metabase.db :refer :all]
+            [metabase.db :refer [exists?]]
             [metabase.events :as events]
             (metabase.models [card :refer [Card]]
                              [dashboard :refer [Dashboard]]

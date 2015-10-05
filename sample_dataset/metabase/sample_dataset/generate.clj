@@ -1,5 +1,6 @@
 (ns metabase.sample-dataset.generate
-  (:require [clojure.math.numeric-tower :as math]
+  (:require [clojure.java.io :as io]
+            [clojure.math.numeric-tower :as math]
             [clojure.string :as s]
             (faker [address :as address]
                    [company :as company]
@@ -73,7 +74,7 @@
         (+ min))))
 
 (def ^:private ^:const product-names
-  {:adjective '[Small, Ergonomic, Rustic, Intelligent, Gorgeous, Incredible, Fantastic, Practical, Sleek, Awesome, Enormous, Mediocre, Synergistic, Heavy Duty, Lightweight, Aerodynamic, Durable]
+  {:adjective '[Small, Ergonomic, Rustic, Intelligent, Gorgeous, Incredible, Fantastic, Practical, Sleek, Awesome, Enormous, Mediocre, Synergistic, Heavy-Duty, Lightweight, Aerodynamic, Durable]
    :material  '[Steel, Wooden, Concrete, Plastic, Cotton, Granite, Rubber, Leather, Silk, Wool, Linen, Marble, Iron, Bronze, Copper, Aluminum, Paper]
    :product   '[Chair, Car, Computer, Gloves, Pants, Shirt, Table, Shoes, Hat, Plate, Knife, Bottle, Coat, Lamp, Keyboard, Bag, Bench, Clock, Watch, Wallet]})
 
@@ -323,13 +324,58 @@
     :field        "PRODUCT_ID"
     :dest-table   "PRODUCTS"}])
 
+(def ^:private ^:const annotations
+  {:orders   {:description "This is a confirmed order for a product from a user."
+              :columns     {:created_at {:description "The date and time an order was submitted."}
+                            :id         {:description "This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens."}
+                            :product_id {:description "The product ID. This is an internal identifier for the product, NOT the SKU."}
+                            :subtotal   {:description "The raw, pre-tax cost of the order. Note that this might be different in the future from the product price due to promotions, credits, etc."}
+                            :tax        {:description (str "This is the amount of local and federal taxes that are collected on the purchase. Note that other governmental fees "
+                                                           "on some products are not included here, but instead are accounted for in the subtotal.")}
+                            :total      {:description "The total billed amount."}
+                            :user_id    {:description (str "The id of the user who made this order. Note that in some cases where an order was created on behalf "
+                                                           "of a customer who phoned the order in, this might be the employee who handled the request.")}}}
+   :people {:description "This is a user account. Note that employees and customer support staff will have accounts."
+            :columns     {:address    {:description "The street address of the account’s billing address"}
+                          :birth_date {:description "The date of birth of the user"}
+                          :city       {:description "The city of the account’s billing address"}
+                          :created_at {:description "The date the user record was created. Also referred to as the user’s \"join date\""}
+                          :email      {:description "The contact email for the account."}
+                          :id         {:description "A unique identifier given to each user."}
+                          :latitude   {:description "This is the latitude of the user on sign-up. It might be updated in the future to the last seen location."}
+                          :longitude  {:description "This is the longitude of the user on sign-up. It might be updated in the future to the last seen location."}
+                          :name       {:description "The name of the user who owns an account"}
+                          :password   {:description "This is the salted password of the user. It should not be visible"
+                                       :field_type  :sensitive}
+                          :source     {:description "The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter"}
+                          :state      {:description "The state or province of the account’s billing address"}
+                          :zip        {:description  "The postal code of the account’s billing address"
+                                       :special_type :zip_code}}}
+   :products {:description "This is our product catalog. It includes all products ever sold by the Sample Company."
+              :columns      {:category   {:description "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget"}
+                             :created_at {:description "The date the product was added to our catalog."}
+                             :ean        {:description "The international article number. A 13 digit number uniquely identifying the product."}
+                             :id         {:description "The numerical product number. Only used internally. All external communication should use the title or EAN."}
+                             :price      {:description "The list price of the product. Note that this is not always the price the product sold for due to discounts, promotions, etc."}
+                             :rating     {:description "The average rating users have given the product. This ranges from 1 - 5"}
+                             :title      {:description "The name of the product as it should be displayed to customers."}
+                             :vendor     {:description "The source of the product."}}}
+   :reviews  {:description "These are reviews our customers have left on products. Note that these are not tied to orders so it is possible people have reviewed products they did not purchase from us."
+              :columns     {:body       {:description  "The review the user left. Limited to 2000 characters."
+                                         :special_type :desc}
+                            :created_at {:description "The day and time a review was written by a user."}
+                            :id         {:description "A unique internal identifier for the review. Should not be used externally."}
+                            :product_id {:description "The product the review was for"}
+                            :rating     {:description "The rating (on a scale of 1-5) the user left."}
+                            :reviewer   {:description "The user who left the review"}}}})
+
 (defn create-h2-db
   ([filename]
    (create-h2-db filename (create-random-data)))
   ([filename data]
    (println "Deleting existing db...")
-   (clojure.java.io/delete-file (str filename ".mv.db") :silently)
-   (clojure.java.io/delete-file (str filename ".trace.db") :silently)
+   (io/delete-file (str filename ".mv.db") :silently)
+   (io/delete-file (str filename ".trace.db") :silently)
    (println "Creating db...")
    (let [db (kdb/h2 {:db         (format "file:%s;UNDO_LOG=0;CACHE_SIZE=131072;QUERY_CACHE_SIZE=128;COMPRESS=TRUE;MULTI_THREADED=TRUE;MVCC=TRUE;DEFRAG_ALWAYS=TRUE;MAX_COMPACT_TIME=5000;ANALYZE_AUTO=100"
                                          filename)
@@ -358,10 +404,24 @@
                                              [(s/upper-case (name k)) v])
                                            (into {})))))))
 
+     ;; Insert the _metabase_metadata table
+     (println "Inserting _metabase_metadata...")
+     (k/exec-raw db (format "CREATE TABLE \"_METABASE_METADATA\" (\"keypath\" VARCHAR(255),  \"value\" VARCHAR(255), PRIMARY KEY (\"keypath\"));"))
+     (-> (k/create-entity "_METABASE_METADATA")
+         (k/database db)
+         (k/insert (k/values (reduce concat (for [[table-name {table-description :description, columns :columns}] annotations]
+                                              (let [table-name (s/upper-case (name table-name))]
+                                                (conj (for [[column-name kvs] columns
+                                                            [k v]             kvs]
+                                                        {:keypath (format "%s.%s.%s" table-name (s/upper-case (name column-name)) (name k))
+                                                         :value   (name v)})
+                                                      {:keypath (format "%s.description" table-name)
+                                                       :value table-description})))))))
+
      ;; Create the 'GUEST' user
      (println "Preparing database for export...")
      (k/exec-raw db "CREATE USER GUEST PASSWORD 'guest';")
-     (doseq [table (keys data)]
+     (doseq [table (conj (keys data) "_METABASE_METADATA")]
        (k/exec-raw db (format "GRANT SELECT ON %s TO GUEST;" (s/upper-case (name table)))))
 
      (println "Done."))))

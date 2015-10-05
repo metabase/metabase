@@ -3,8 +3,8 @@
   (:require [expectations :refer :all]
             [metabase.db :refer :all]
             [metabase.driver.mongo.test-data :as mongo-data :refer [mongo-test-db-id]]
-            [metabase.http-client :as http]
-            [metabase.middleware.auth :as auth]
+            (metabase [http-client :as http]
+                      [middleware :as middleware])
             (metabase.models [field :refer [Field]]
                              [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])
@@ -19,8 +19,8 @@
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
 
-(expect (get auth/response-unauthentic :body) (http/client :get 401 "table"))
-(expect (get auth/response-unauthentic :body) (http/client :get 401 (format "table/%d" (id :users))))
+(expect (get middleware/response-unauthentic :body) (http/client :get 401 "table"))
+(expect (get middleware/response-unauthentic :body) (http/client :get 401 (format "table/%d" (id :users))))
 
 
 ;; ## GET /api/table?org
@@ -67,6 +67,7 @@
                        :id $
                        :updated_at $
                        :name "Test Database"
+                       :is_sample false
                        :organization_id nil
                        :description nil})
        :name        "VENUES"
@@ -128,6 +129,7 @@
                         :id              $
                         :updated_at      $
                         :name            "Test Database"
+                        :is_sample       false
                         :organization_id nil
                         :description     nil})
        :name         "CATEGORIES"
@@ -208,6 +210,7 @@
                         :id              $
                         :updated_at      $
                         :name            "Test Database"
+                        :is_sample       false
                         :organization_id nil
                         :description     nil})
        :name         "USERS"
@@ -321,6 +324,7 @@
                         :id              $
                         :updated_at      $
                         :name            "Test Database"
+                        :is_sample       false
                         :organization_id nil
                         :description     nil})
        :name         "USERS"
@@ -418,6 +422,7 @@
                       {:description     nil
                        :organization_id $
                        :name            "Test Database"
+                       :is_sample       false
                        :updated_at      $
                        :details         $
                        :id              $
@@ -484,6 +489,7 @@
                                                             {:description     nil,
                                                              :organization_id nil,
                                                              :name            "Test Database",
+                                                             :is_sample       false,
                                                              :updated_at      $,
                                                              :id              $,
                                                              :engine          "h2",

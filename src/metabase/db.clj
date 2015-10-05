@@ -3,7 +3,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             (clojure [set :as set]
-                     [string :as str])
+                     [string :as s])
             [environ.core :refer [env]]
             (korma [core :as k]
                    [db :as kdb])
@@ -12,7 +12,13 @@
             [metabase.db.internal :as i]
             [metabase.models.interface :as models]
             [metabase.util :as u])
-  (:import com.metabase.corvus.migrations.LiquibaseMigrations))
+  (:import java.io.StringWriter
+           java.sql.Connection
+           liquibase.Liquibase
+           (liquibase.database DatabaseFactory Database)
+           liquibase.database.jvm.JdbcConnection
+           liquibase.exception.DatabaseException
+           liquibase.resource.ClassLoaderResourceAccessor))
 
 ;; ## DB FILE, JDBC/KORMA DEFINITONS
 
@@ -47,21 +53,42 @@
   "Connection details for Korma / JDBC."
   (delay (let [details @db-connection-details]
            (case (config/config-kw :mb-db-type)
-             :h2       (kdb/h2 (assoc details :naming {:keys   str/lower-case
-                                                       :fields str/upper-case}))
+             :h2       (kdb/h2 (assoc details :naming {:keys   s/lower-case
+                                                       :fields s/upper-case}))
              :postgres (kdb/postgres (assoc details :db (:dbname details)))))))
 
 
 ;; ## MIGRATE
 
+(def ^:private ^:const changelog-file
+  "migrations/liquibase.json")
+
 (defn migrate
-  "Migrate the database `:up`, `:down`, or `:print`."
-  [jdbc-connection-details direction]
-  (let [conn (jdbc/get-connection jdbc-connection-details)]
-    (case direction
-      :up    (LiquibaseMigrations/setupDatabase conn)
-      :down  (LiquibaseMigrations/teardownDatabase conn)
-      :print (LiquibaseMigrations/genSqlDatabase conn))))
+  "Migrate the database:
+
+   *  `:up`            - Migrate up
+   *  `:down`          - Rollback *all* migrations
+   *  `:print`         - Just print the SQL for running the migrations, don't actually run them.
+   *  `:release-locks` - Manually release migration locks left by an earlier failed migration.
+                         (This shouldn't be necessary now that we run migrations inside a transaction,
+                         but is available just in case)."
+  ([direction]
+   (migrate @jdbc-connection-details direction))
+  ([jdbc-connection-details direction]
+   (try
+     (jdbc/with-db-transaction [conn jdbc-connection-details]
+       (let [^Database  database  (-> (DatabaseFactory/getInstance)
+                                      (.findCorrectDatabaseImplementation (JdbcConnection. (jdbc/get-connection conn))))
+             ^Liquibase liquibase (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database)]
+         (case direction
+           :up            (.update liquibase "")
+           :down          (.rollback liquibase 10000 "")
+           :print         (let [writer (StringWriter.)]
+                            (.update liquibase "" writer)
+                            (.toString writer))
+           :release-locks (.forceReleaseLocks liquibase))))
+     (catch Throwable e
+       (throw (DatabaseException. e))))))
 
 
 ;; ## SETUP-DB
@@ -105,10 +132,10 @@
 
   ;; Run through our DB migration process and make sure DB is fully prepared
   (if auto-migrate
-    (migrate @jdbc-connection-details :up)
+    (migrate :up)
     ;; if we are not doing auto migrations then print out migration sql for user to run manually
     ;; then throw an exception to short circuit the setup process and make it clear we can't proceed
-    (let [sql (migrate @jdbc-connection-details :print)]
+    (let [sql (migrate :print)]
       (log/info (str "Database Upgrade Required\n\n"
                      "NOTICE: Your database requires updates to work with this version of Metabase.  "
                      "Please execute the following sql commands on your database before proceeding.\n\n"

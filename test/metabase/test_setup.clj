@@ -6,7 +6,6 @@
             [expectations :refer :all]
             (metabase [core :as core]
                       [db :as db]
-                      [task :as task]
                       [util :as u])
             (metabase.models [table :refer [Table]])
             [metabase.test.data.datasets :as datasets]))
@@ -80,19 +79,16 @@
   {:expectations-options :before-run}
   []
   ;; We can shave about a second from unit test launch time by doing the various setup stages in on different threads
-  (let [setup-db           (future (time (do (log/info "Setting up test DB and running migrations...")
-                                             (db/setup-db :auto-migrate true)
-                                             (load-test-datasets)
-                                             (metabase.models.setting/set :site-name "Metabase Test"))))
-        start-task-runner! (future (task/start-task-runner!))]
+  (let [setup-db (future (time (do (log/info "Setting up test DB and running migrations...")
+                                   (db/setup-db :auto-migrate true)
+                                   (load-test-datasets)
+                                   (metabase.models.setting/set :site-name "Metabase Test"))))]
     (core/start-jetty)
-    @setup-db
-    @start-task-runner!))
+    @setup-db))
 
 
 (defn test-teardown
   {:expectations-options :after-run}
   []
   (log/info "Shutting down Metabase unit test runner")
-  (task/stop-task-runner!)
   (core/stop-jetty))

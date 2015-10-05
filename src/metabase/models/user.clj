@@ -23,7 +23,7 @@
       "Don't try to pass an encrypted password to (ins User). Password encryption is handled by pre-insert.")
     (let [salt     (.toString (java.util.UUID/randomUUID))
           defaults {:date_joined  (u/new-sql-timestamp)
-                    :last_login   (u/new-sql-timestamp)
+                    :last_login   nil
                     :is_staff     true
                     :is_active    true
                     :is_superuser false}]
@@ -53,13 +53,6 @@
     (cascade-delete 'ViewLog :user_id id)))
 
 
-(def ^:const current-user-fields
-  "The fields we should return for `*current-user*` (used by `metabase.middleware.current-user`)"
-  (concat (:metabase.models.interface/default-fields User)
-          [:is_active
-           :is_staff])) ; but not `password` !
-
-
 ;; ## Related Functions
 
 (declare create-user
@@ -69,7 +62,7 @@
 
 (defn create-user
   "Convenience function for creating a new `User` and sending out the welcome email."
-  [first-name last-name email-address & {:keys [send-welcome invitor]
+  [first-name last-name email-address & {:keys [send-welcome invitor password]
                                          :or {send-welcome false}}]
   {:pre [(string? first-name)
          (string? last-name)
@@ -78,7 +71,9 @@
                         :email email-address
                         :first_name first-name
                         :last_name last-name
-                        :password (str (java.util.UUID/randomUUID)))]
+                        :password (if (not (nil? password))
+                                    password
+                                    (str (java.util.UUID/randomUUID))))]
     (when send-welcome
       (let [reset-token (set-user-password-reset-token (:id new-user))
             ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user

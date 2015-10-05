@@ -25,6 +25,7 @@
                         :id $
                         :updated_at $
                         :name "Test Database"
+                        :is_sample false
                         :organization_id nil
                         :description nil})
                  :name "USERS"

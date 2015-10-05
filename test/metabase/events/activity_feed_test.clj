@@ -192,14 +192,21 @@
     :model_id    (db-id)
     :database_id (db-id)
     :custom_id   "abc"
-    :details     {:status "started"}}
+    :details     {:status      "started"
+                  :name        (:name (db))
+                  :description (:description (db))
+                  :engine      (name (:engine (db)))}}
    {:topic       :database-sync
     :user_id     nil
     :model       "database"
     :model_id    (db-id)
     :database_id (db-id)
     :custom_id   "abc"
-    :details     {:status "completed" :running_time 0}}]
+    :details     {:status       "completed"
+                  :running_time 0
+                  :name         (:name (db))
+                  :description  (:description (db))
+                  :engine       (name (:engine (db)))}}]
   (do
     (k/delete Activity)
     (let [_            (process-activity-event {:topic :database-sync-begin

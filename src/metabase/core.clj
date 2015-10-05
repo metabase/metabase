@@ -1,8 +1,7 @@
 ;; -*- comment-column: 35; -*-
 (ns metabase.core
   (:gen-class)
-  (:require [clojure.java.browse :refer [browse-url]]
-            [clojure.string :as s]
+  (:require [clojure.string :as s]
             [clojure.tools.logging :as log]
             [colorize.core :as color]
             [ring.adapter.jetty :as ring-jetty]
@@ -13,20 +12,19 @@
                              [keyword-params :refer [wrap-keyword-params]]
                              [params :refer [wrap-params]]
                              [session :refer [wrap-session]])
-            [medley.core :as medley]
+            [medley.core :as m]
             (metabase [config :as config]
                       [db :as db]
-                      [driver :as driver]
+                      [events :as events]
+                      [middleware :as mb-middleware]
                       [routes :as routes]
+                      [sample-data :as sample-data]
                       [setup :as setup]
-                      [task :as task])
-            (metabase.middleware [auth :as auth]
-                                 [log-api-call :refer :all]
-                                 [format :refer :all])
+                      [task :as task]
+                      [util :as u])
             (metabase.models [setting :refer [defsetting]]
                              [database :refer [Database]]
-                             [user :refer [User]])
-            [metabase.events :as events]))
+                             [user :refer [User]])))
 
 ;; ## CONFIG
 
@@ -54,21 +52,25 @@
 (def app
   "The primary entry point to the HTTP server"
   (-> routes/routes
-      (log-api-call :request :response)
-      add-security-headers         ; [METABASE] Add HTTP headers to API responses to prevent them from being cached
-      format-response              ; [METABASE] Do formatting before converting to JSON so serializer doesn't barf
-      (wrap-json-body              ; extracts json POST body and makes it avaliable on request
+      (mb-middleware/log-api-call :request :response)
+      mb-middleware/add-security-headers              ; [METABASE] Add HTTP headers to API responses to prevent them from being cached
+      mb-middleware/format-response                   ; [METABASE] Do formatting before converting to JSON so serializer doesn't barf
+      (wrap-json-body                                 ; extracts json POST body and makes it avaliable on request
         {:keywords? true})
-      wrap-json-response           ; middleware to automatically serialize suitable objects as JSON in responses
-      wrap-keyword-params          ; converts string keys in :params to keyword keys
-      wrap-params                  ; parses GET and POST params as :query-params/:form-params and both as :params
-      auth/bind-current-user       ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
-      auth/wrap-current-user-id    ; looks for :metabase-session-id and sets :metabase-user-id if Session ID is valid
-      auth/wrap-api-key            ; looks for a Metabase API Key on the request and assocs as :metabase-api-key
-      auth/wrap-session-id         ; looks for a Metabase Session ID and assoc as :metabase-session-id
-      wrap-cookies                 ; Parses cookies in the request map and assocs as :cookies
-      wrap-session                 ; reads in current HTTP session and sets :session/key
-      wrap-gzip))                  ; GZIP response if client can handle it
+      wrap-json-response                              ; middleware to automatically serialize suitable objects as JSON in responses
+      wrap-keyword-params                             ; converts string keys in :params to keyword keys
+      wrap-params                                     ; parses GET and POST params as :query-params/:form-params and both as :params
+      mb-middleware/bind-current-user                 ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
+      mb-middleware/wrap-current-user-id              ; looks for :metabase-session-id and sets :metabase-user-id if Session ID is valid
+      mb-middleware/wrap-api-key                      ; looks for a Metabase API Key on the request and assocs as :metabase-api-key
+      mb-middleware/wrap-session-id                   ; looks for a Metabase Session ID and assoc as :metabase-session-id
+      wrap-cookies                                    ; Parses cookies in the request map and assocs as :cookies
+      wrap-session                                    ; reads in current HTTP session and sets :session/key
+      wrap-gzip))                                     ; GZIP response if client can handle it
+
+
+;;; ## ---------------------------------------- LIFECYCLE ----------------------------------------
+
 
 (defn- -init-create-setup-token
   "Create and set a new setup token, and open the setup URL on the user's system."
@@ -85,35 +87,52 @@
                            setup-url
                            "\n\n"))))
 
+(defn destroy
+  "General application shutdown function which should be called once at application shuddown."
+  []
+  (log/info "Metabase Shutting Down ...")
+  (task/stop-scheduler!)
+  (log/info "Metabase Shutdown COMPLETE"))
 
 (defn init
   "General application initialization function which should be run once at application startup."
   []
-  (log/info "Metabase Initializing ... ")
-  (log/debug "Using Config:\n" (with-out-str (clojure.pprint/pprint config/config-all)))
-
-  ;; Bootstrap the event system
-  (events/initialize-events!)
+  (log/info (format "Starting Metabase version %s..." ((config/mb-version-info) :long)))
+  ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
+  (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable destroy))
 
   ;; startup database.  validates connection & runs any necessary migrations
   (db/setup-db :auto-migrate (config/config-bool :mb-db-automigrate))
 
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database
-  (when-not (db/sel :one :fields [User :id])
-    (log/info "Looks like this is a new installation ... preparing setup wizard")
-    (-init-create-setup-token)
-    (events/publish-event :install {}))
+  (let [new-install (not (db/exists? User))]
 
-  ;; Now start the task runner
-  (task/start-task-runner!)
+    ;; Bootstrap the event system
+    (events/initialize-events!)
+
+    ;; Now start the task runner
+    (task/start-scheduler!)
+
+    (when new-install
+      (log/info "Looks like this is a new installation ... preparing setup wizard")
+      ;; create setup token
+      (-init-create-setup-token)
+      ;; publish install event
+      (events/publish-event :install {}))
+
+    ;; deal with our sample dataset as needed
+    (if new-install
+      ;; add the sample dataset DB for fresh installs
+      (sample-data/add-sample-dataset!)
+      ;; otherwise update if appropriate
+      (sample-data/update-sample-dataset-if-needed!)))
 
   (log/info "Metabase Initialization COMPLETE")
   true)
 
-;; TODO - uh, when do we *stop* the task runner ?
 
-;; ## Jetty (Web) Server
+;;; ## ---------------------------------------- Jetty (Web) Server ----------------------------------------
 
 
 (def ^:private jetty-instance
@@ -123,14 +142,14 @@
   "Start the embedded Jetty web server."
   []
   (when-not @jetty-instance
-    (let [jetty-config (cond-> (medley/filter-vals identity {:port (config/config-int :mb-jetty-port)
-                                                             :host (config/config-str :mb-jetty-host)
-                                                             :max-threads (config/config-int :mb-jetty-maxthreads)
-                                                             :min-threads (config/config-int :mb-jetty-minthreads)
-                                                             :max-queued (config/config-int :mb-jetty-maxqueued)
-                                                             :max-idle-time (config/config-int :mb-jetty-maxidletime)})
-                               (config/config-str :mb-jetty-join) (assoc :join? (config/config-bool :mb-jetty-join))
-                               (config/config-str :mb-jetty-daemon) (assoc :daemon? (config/config-bool :mb-jetty-daemon)))]
+    (let [jetty-config (cond-> (m/filter-vals identity {:port (config/config-int :mb-jetty-port)
+                                                        :host (config/config-str :mb-jetty-host)
+                                                        :max-threads (config/config-int :mb-jetty-maxthreads)
+                                                        :min-threads (config/config-int :mb-jetty-minthreads)
+                                                        :max-queued (config/config-int :mb-jetty-maxqueued)
+                                                        :max-idle-time (config/config-int :mb-jetty-maxidletime)})
+                         (config/config-str :mb-jetty-join) (assoc :join? (config/config-bool :mb-jetty-join))
+                         (config/config-str :mb-jetty-daemon) (assoc :daemon? (config/config-bool :mb-jetty-daemon)))]
       (log/info "Launching Embedded Jetty Webserver with config:\n" (with-out-str (clojure.pprint/pprint jetty-config)))
       (->> (ring-jetty/run-jetty app jetty-config)
            (reset! jetty-instance)))))
@@ -143,41 +162,35 @@
     (.stop ^org.eclipse.jetty.server.Server @jetty-instance)
     (reset! jetty-instance nil)))
 
-(def ^:private ^:const sample-dataset-name "Sample Dataset")
-(def ^:private ^:const sample-dataset-filename "sample-dataset.db.mv.db")
 
-(defn- add-sample-dataset! []
-  (when-not (db/exists? Database :name sample-dataset-name)
-    (try
-      (log/info "Loading sample dataset...")
-      (let [resource (-> (Thread/currentThread) ; hunt down the sample dataset DB file inside the current JAR
-                         .getContextClassLoader
-                         (.getResource sample-dataset-filename))]
-        (if-not resource
-          (log/error (format "Can't load sample dataset: the DB file '%s' can't be found by the ClassLoader." sample-dataset-filename))
-          (let [h2-file (-> (.getPath resource)
-                            (s/replace #"^file:" "zip:")         ; to connect to an H2 DB inside a JAR just replace file: with zip:
-                            (s/replace #"\.mv\.db$" "")          ; strip the .mv.db suffix from the path
-                            (str ";USER=GUEST;PASSWORD=guest"))] ; specify the GUEST user account created for the DB
-            (driver/sync-database! (db/ins Database
-                                     :name    sample-dataset-name
-                                     :details {:db h2-file}
-                                     :engine  :h2)))))
-      (catch Throwable e
-        (log/error (format "Failed to load sample dataset: %s" (.getMessage e)))))))
+;;; ## ---------------------------------------- App Main ----------------------------------------
 
 
-(defn -main
-  "Launch Metabase in standalone mode."
-  [& args]
+(defn- start-normally []
   (log/info "Starting Metabase in STANDALONE mode")
   (try
     ;; run our initialization process
     (init)
-    ;; add the sample dataset DB if applicable
-    (add-sample-dataset!)
     ;; launch embedded webserver
     (start-jetty)
     (catch Exception e
       (.printStackTrace e)
       (log/error "Metabase Initialization FAILED: " (.getMessage e)))))
+
+(defn- run-cmd [cmd & args]
+  (let [cmd->fn {:migrate (fn [direction]
+                            (db/migrate (keyword direction)))}]
+    (if-let [f (cmd->fn cmd)]
+      (do (apply f args)
+          (println "Success.")
+          (System/exit 0))
+      (do (println "Unrecognized command:" (name cmd))
+          (println "Valid commands are:\n" (u/pprint-to-str (map name (keys cmd->fn))))
+          (System/exit 1)))))
+
+(defn -main
+  "Launch Metabase in standalone mode."
+  [& [cmd & args]]
+  (if cmd
+    (apply run-cmd (keyword cmd) args) ; run a command like `java -jar metabase.jar migrate release-locks` or `lein run migrate release-locks`
+    (start-normally)))                 ; with no command line args just start Metabase normally

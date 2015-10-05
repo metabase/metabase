@@ -1,6 +1,7 @@
 (ns metabase.api.activity-test
   "Tests for /api/activity endpoints."
   (:require [expectations :refer :all]
+            [korma.core :as k]
             [metabase.db :as db]
             [metabase.http-client :refer :all]
             (metabase.models [activity :refer [Activity]]
@@ -19,7 +20,8 @@
 ;  2. :user and :model_exists are hydrated
 
 ; NOTE: timestamp matching was being a real PITA so I cheated a bit.  ideally we'd fix that
-(expect-let [activity1 (db/ins Activity
+(expect-let [_         (k/delete Activity)
+             activity1 (db/ins Activity
                          :topic     "install"
                          :details   {}
                          :timestamp (u/parse-iso8601 "2015-09-09T12:13:14.888Z"))
@@ -97,9 +99,7 @@
       :custom_id    nil
       :details      $})]
   (->> ((user->client :crowberto) :get 200 "activity")
-       (map #(dissoc % :timestamp))
-       ;; a little hacky, but we limit the possible results to just the test activity we manually generated
-       (filter #(contains? #{(:id activity1) (:id activity2) (:id activity3)} (:id %)))))
+       (map #(dissoc % :timestamp))))
 
 
 ;; GET /recent_views
@@ -158,7 +158,8 @@
                         :model    model
                         :model_id model-id
                         :timestamp (u/new-sql-timestamp))
-                      (Thread/sleep 25))]
+                      ;; we sleep a few milliseconds to ensure no events have the same timestamp
+                      (Thread/sleep 5))]
     (do
       (create-view (user->id :crowberto) "card" (:id card2))
       (create-view (user->id :crowberto) "dashboard" (:id dash1))

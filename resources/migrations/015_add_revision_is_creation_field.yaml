@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 15
+      author: agilliland
+      changes:
+        - addColumn:
+            tableName: revision
+            columns:
+              - column:
+                  name: is_creation
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false

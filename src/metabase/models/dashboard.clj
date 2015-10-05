@@ -32,9 +32,14 @@
         map->DashboardInstance))
 
   (pre-cascade-delete [_ {:keys [id]}]
+    (cascade-delete 'Revision :model "Dashboard" :model_id id)
     (cascade-delete DashboardCard :dashboard_id id)))
 
 (extend-ICanReadWrite DashboardEntity :read :public-perms, :write :public-perms)
+
+
+;;; ## ---------------------------------------- REVISIONS ----------------------------------------
+
 
 (defn- serialize-instance [_ id {:keys [ordered_cards], :as dashboard}]
   (-> dashboard
@@ -44,7 +49,7 @@
 
 (defn- revert-to-revision [_ dashboard-id serialized-dashboard]
   ;; Update the dashboard description / name / permissions
-
+  (m/mapply upd Dashboard dashboard-id (dissoc serialized-dashboard :cards))
   ;; Now update the cards as needed
   (let [serialized-cards    (:cards serialized-dashboard)
         id->serialized-card (zipmap (map :id serialized-cards) serialized-cards)

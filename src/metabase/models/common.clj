@@ -1,7 +1,5 @@
 (ns metabase.models.common
-  (:require [clojure.string :as s]
-            [metabase.api.common :refer [*current-user* *current-user-id* check]]
-            [metabase.util :as u]))
+  (:require [clojure.string :as s]))
 
 (def ^:const timezones
   ["GMT"
