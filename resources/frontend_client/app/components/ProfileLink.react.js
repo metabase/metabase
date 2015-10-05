@@ -5,6 +5,7 @@ import OnClickOut from 'react-onclickout';
 import cx from 'classnames';
 import _ from "underscore";
 
+import MetabaseSettings from "metabase/lib/settings";
 import Modal from "metabase/components/Modal.react";
 
 import UserAvatar from './UserAvatar.react';
@@ -40,6 +41,7 @@ export default class ProfileLink extends Component {
     render() {
         const { user, context } = this.props;
         const { aboutModalOpen, dropdownOpen } = this.state;
+        const version = MetabaseSettings.get('version').short;
 
         let dropDownClasses = cx({
             'NavDropdown': true,
@@ -115,7 +117,7 @@ export default class ProfileLink extends Component {
                                 </div>
                                 <h2 className="text-dark">Thanks for using Metabase!</h2>
                                 <p className="pt2">
-                                    <h3 className="text-dark">You're on version X.Y.Z</h3>
+                                    <h3 className="text-dark">You're on version {version}</h3>
                                     <span className="text-grey-3">build #hash</span>
                                 </p>
                                 <p className="pt2">
