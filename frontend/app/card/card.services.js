@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { harmony } from '../lib/colors'
+import { harmony } from 'metabase/lib/colors'
 
 // Card Services
 var CardServices = angular.module('metabase.card.services', ['ngResource', 'ngCookies']);
