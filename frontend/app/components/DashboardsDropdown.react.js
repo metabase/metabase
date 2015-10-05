@@ -87,7 +87,7 @@ export default class DashboardsDropdown extends Component {
                         </a>
 
                         { dropdownOpen ?
-                            <div className="NavDropdown-content DashboardList">
+                            <div className="NavDropdown-content DashboardList NavDropdown-content--dashboards">
                                 { dashboards.length === 0 ?
                                     <div className="NavDropdown-content-layer text-white text-centered">
                                         <div className="p2"><div style={this.styles.dashIcon} className="ml-auto mr-auto"></div></div>

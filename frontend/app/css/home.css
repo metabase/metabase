@@ -94,6 +94,11 @@
     top: 38px;
     min-width: 200px;
 }
+
+.NavDropdown .NavDropdown-content.NavDropdown-content--dashboards {
+  top: 33px;
+}
+
 .NavDropdown .NavDropdown-button:before,
 .NavDropdown .NavDropdown-content:before {
     content:"";
@@ -230,6 +235,6 @@
 .Sidebar-header {
     font-size: 13px;
     letter-spacing: 0.5px;
-    line-height: 16px;
+    line-height: 1;
     text-transform: uppercase;
 }
