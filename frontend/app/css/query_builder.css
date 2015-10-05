@@ -221,17 +221,37 @@
     background-color: rgba(255, 255, 255, 0.82);
 }
 
+/* query errors */
 .QueryError {
     flex-direction: column;
     justify-content: center;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
-.QueryError-iconWrapper {
-    padding: 2em;
-    margin-bottom: 2em;
-    border: 4px solid var(--error-color);
-    border-radius: 99px;
+.QueryError-image {
+    border: 1px solid #ddd;
+    background-repeat: no-repeat;
 }
+
+
+.QueryError-image--noResults {
+  width: 120px;
+  height: 120px;
+  /*background-image: url('../../../resources/frontend_client/app/img/no_results.svg');*/
+}
+
+.QueryError-image--queryError {
+  width: 120px;
+  height: 120px;
+  /*background-image: url('../../../resources/frontend_client/app/img/no_understand.svg');*/
+}
+
+.QueryError-messageText {
+  line-height: 1.4;
+}
+
 
 /* GUI BUILDER */
 
