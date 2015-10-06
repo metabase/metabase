@@ -17,8 +17,7 @@ body {
     display: flex;
     flex-direction: column;
     text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: subpixel-antialiased;
-            font-smoothing: subpixel-antialiased;
+    -webkit-font-smoothing: antialiased;
 }
 
 /*
