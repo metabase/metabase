@@ -106,7 +106,7 @@ export default class DashboardsDropdown extends Component {
                                                         {dash.name}
                                                     </div>
                                                     { dash.description ?
-                                                        <div className="mt1 text-light text-brand-light">
+                                                        <div className="mt1 text-brand-light">
                                                             {dash.description}
                                                         </div>
                                                     : null }
