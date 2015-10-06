@@ -43,14 +43,6 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
                     }, function(error) {
                         deferred.resolve();
                     });
-
-                    // start Intercom updater
-                    // this tells Intercom to update every 60s if we have a currently logged in user
-                    $interval(function() {
-                        if (service.model.currentUser && MetabaseSettings.isTrackingEnabled()) {
-                            window.Intercom('update');
-                        }
-                    }, 60000);
                 }
 
                 return initPromise;
@@ -184,18 +176,6 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
             }
         };
 
-        function startupIntercom(user) {
-            window.Intercom('boot', {
-                app_id: "gqfmsgf1",
-                name: user.common_name,
-                email: user.email
-            });
-        }
-
-        function teardownIntercom() {
-            window.Intercom('shutdown');
-        }
-
         // listen for location changes and use that as a trigger for page view tracking
         $rootScope.$on('$locationChangeSuccess', function() {
             // NOTE: we are only taking the path right now to avoid accidentally grabbing sensitive data like table/field ids
@@ -220,15 +200,6 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
             Session.delete({
                 'session_id': session_id
             });
-
-            // close down intercom
-            teardownIntercom();
-        });
-
-        $rootScope.$on("appstate:user", function(event, user) {
-            if (MetabaseSettings.isTrackingEnabled()) {
-                startupIntercom(user);
-            }
         });
 
         // enable / disable GA based on opt-out of anonymous tracking
@@ -237,17 +208,9 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
             if (MetabaseSettings.isTrackingEnabled()) {
                 // we are doing tracking
                 window['ga-disable-'+ga_code] = null;
-
-                if (currentUserPromise) {
-                    currentUserPromise.then(function(user) {
-                        startupIntercom(user);
-                    });
-                }
             } else {
                 // tracking is disabled
                 window['ga-disable-'+ga_code] = true;
-
-                teardownIntercom();
             }
         });
 
