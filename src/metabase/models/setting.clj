@@ -162,7 +162,8 @@
    :timezones             common/timezones
    :version               (config/mb-version-info)
    ;; all of these values are dynamic settings controlled at runtime
-   :anon_tracking_enabled (= "true" (get :anon-tracking-enabled))
+   :anon_tracking_enabled (let [tracking? (get :anon-tracking-enabled)]
+                            (or (nil? tracking?) (= "true" tracking?)))
    :site_name             (get :site-name)
    :email_configured      (not (s/blank? (get :email-smtp-host)))})
 
