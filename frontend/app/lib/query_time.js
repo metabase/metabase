@@ -1,5 +1,3 @@
-"use strict";
-
 import moment from "moment";
 import inflection from "inflection";
 

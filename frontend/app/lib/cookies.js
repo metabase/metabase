@@ -1,5 +1,3 @@
-'use strict';
-
 export const METABASE_SESSION_COOKIE = 'metabase.SESSION_ID';
 
 var mb_cookies = {};

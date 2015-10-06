@@ -1,5 +1,3 @@
-"use strict";
-
 import ColumnarSelector from "metabase/components/ColumnarSelector.react";
 import Icon from "metabase/components/Icon.react";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";

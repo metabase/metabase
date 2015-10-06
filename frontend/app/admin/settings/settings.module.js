@@ -1,5 +1,3 @@
-'use strict';
-
 var SettingsAdmin = angular.module('metabaseadmin.settings', [
     'metabaseadmin.settings.controllers',
     'metabase.services'

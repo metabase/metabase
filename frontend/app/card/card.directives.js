@@ -1,5 +1,3 @@
-'use strict';
-
 /*global setTimeout */
 
 var CardDirectives = angular.module('metabase.card.directives', []);

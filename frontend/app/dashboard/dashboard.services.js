@@ -1,5 +1,3 @@
-'use strict';
-
 // Dashboard Services
 var DashboardServices = angular.module('metabase.dashboard.services', ['ngResource', 'ngCookies']);
 

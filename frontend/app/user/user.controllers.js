@@ -1,5 +1,3 @@
-"use strict";
-
 var UserControllers = angular.module('metabase.user.controllers', ['metabase.forms']);
 
 UserControllers.controller('EditCurrentUser', ['$scope', function($scope) {

@@ -1,5 +1,3 @@
-'use strict';
-
 /* Filters */
 
 var MetabaseFilters = angular.module('metabase.filters', []);

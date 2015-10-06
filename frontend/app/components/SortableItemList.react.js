@@ -1,5 +1,3 @@
-'use strict';
-
 import RadioSelect from 'metabase/components/RadioSelect.react';
 
 export default class SortableItemList extends React.Component {

@@ -1,5 +1,3 @@
-"use strict";
-
 export default React.createClass({
     displayName: "Input",
     propTypes: {

@@ -1,5 +1,3 @@
-'use strict';
-
 import React, { Component, PropTypes } from 'react';
 import cx from 'classnames';
 
@@ -13,9 +11,6 @@ export default class UserAvatar extends Component {
             borderRadius: '99px',
             width: '2rem',
             height: '2rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
         }
     }
     userInitials() {
@@ -39,6 +34,7 @@ export default class UserAvatar extends Component {
         const classes = {
             'flex': true,
             'align-center': true,
+            'justify-center': true
         }
         classes[background] = true;
 

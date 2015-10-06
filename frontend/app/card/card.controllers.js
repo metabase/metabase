@@ -1,5 +1,6 @@
-'use strict';
-
+import { createStore, applyMiddleware, combineReducers, compose } from 'redux';
+import promiseMiddleware from 'redux-promise';
+import thunkMidleware from "redux-thunk";
 import _ from "underscore";
 
 import MetabaseAnalytics from '../lib/analytics';
@@ -15,62 +16,31 @@ import QueryVisualization from '../query_builder/QueryVisualization.react';
 import Query from "metabase/lib/query";
 import { serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from './card.util';
 
+import SavedQuestionsApp from './containers/SavedQuestionsApp.react';
+import * as reducers from './reducers';
+
+const finalCreateStore = compose(
+  applyMiddleware(
+      thunkMidleware,
+      promiseMiddleware
+  ),
+  createStore
+);
+
+const reducer = combineReducers(reducers);
+
 //  Card Controllers
 var CardControllers = angular.module('metabase.card.controllers', []);
 
-CardControllers.controller('CardList', ['$scope', '$location', 'Card', function($scope, $location, Card) {
-
-    // $scope.cards: the list of cards being displayed
-
-    $scope.deleteCard = function(cardId) {
-        Card.delete({
-            'cardId': cardId
-        }, function(result) {
-            $scope.cards = _.filter($scope.cards, function(card) {
-                return card.id != cardId;
-            });
-            $scope.searchFilter = undefined;
-        });
+CardControllers.controller('CardList', ['$scope', '$location', function($scope, $location) {
+    $scope.Component = SavedQuestionsApp;
+    $scope.props = {
+        user: $scope.user,
+        onChangeLocation: function(url) {
+            $scope.$apply(() => $location.url(url));
+        }
     };
-
-    $scope.unfavorite = function(unfavIdx) {
-        var cardToUnfav = $scope.cards[unfavIdx];
-        Card.unfavorite({
-            'cardId': cardToUnfav.id
-        }, function(result) {
-            $scope.cards.splice(unfavIdx, 1);
-        });
-    };
-
-    $scope.filter = function(filterMode) {
-        $scope.filterMode = filterMode;
-
-        Card.list({
-            'filterMode': filterMode
-        }, function(cards) {
-            $scope.cards = cards;
-        }, function(error) {
-            console.log('error getting cards list', error);
-        });
-    };
-
-    $scope.inlineSave = function(card, idx) {
-        Card.update(card, function(result) {
-            if (result && !result.error) {
-                $scope.cards[idx] = result;
-            } else {
-                return "error";
-            }
-        });
-    };
-
-    // determine the appropriate filter to start with
-    if ($scope.hash && $scope.hash === 'fav') {
-        $scope.filter('fav');
-    } else {
-        $scope.filter('all');
-    }
-
+    $scope.store = finalCreateStore(reducer, {});
 }]);
 
 CardControllers.controller('CardDetail', [

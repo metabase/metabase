@@ -1,5 +1,3 @@
-'use strict';
-
 import 'metabase/filters';
 
 describe('metabase.filters', function() {

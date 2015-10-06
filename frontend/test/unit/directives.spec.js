@@ -1,5 +1,3 @@
-'use strict';
-
 import 'metabase/directives';
 
 describe('metabase.directives', function() {

@@ -1,5 +1,3 @@
-'use strict';
-
 import _ from "underscore";
 
 // create a standardized set of strings to return
@@ -45,7 +43,7 @@ export function isCategory(field) {
 }
 
 export function isDimension(field) {
-    return isDate(field) || isCategory(field) || isInTypes(field.field_type, ['dimension']);
+    return isDate(field) || isCategory(field) || isInTypes(field.field_type, ['dimension']) || isInTypes(field.special_type, ['fk', 'id', 'name']);
 }
 
 // will return a string with possible values of 'date', 'number', 'bool', 'string'
@@ -390,4 +388,18 @@ export function addValidOperatorsToFields(table) {
     table.aggregation_options = getAggregators(table.fields);
     table.breakout_options = getBreakouts(table.fields);
     return table;
+}
+
+export function hasLatitudeAndLongitudeColumns(columnDefs) {
+    let hasLatitude = false;
+    let hasLongitude = false;
+    for (let col of columnDefs) {
+        if (col.special_type === "latitude") {
+            hasLatitude = true;
+        }
+        if (col.special_type === "longitude") {
+            hasLongitude = true;
+        }
+    }
+    return hasLatitude && hasLongitude;
 }

@@ -1,8 +1,8 @@
-"use strict";
-
 import React, { Component, PropTypes } from "react";
 
 import LogoIcon from 'metabase/components/LogoIcon.react';
+import MetabaseSettings from "metabase/lib/settings";
+
 import UserStep from './UserStep.react';
 import DatabaseStep from './DatabaseStep.react';
 import PreferencesStep from './PreferencesStep.react';
@@ -22,9 +22,10 @@ export default class Setup extends Component {
     }
 
     renderFooter() {
+        const { tag } = MetabaseSettings.get('version');
         return (
             <div className="SetupHelp bordered border-dashed p2 rounded mb4" >
-                If you feel stuck, <a className="link" href="http://www.metabase.com/docs/latest/getting-started">our getting started guide</a> is just a click away.
+                If you feel stuck, <a className="link" href={"http://www.metabase.com/docs/"+tag+"/getting-started/start.html"} target="_blank">our getting started guide</a> is just a click away.
             </div>
         );
     }

@@ -1,5 +1,3 @@
-'use strict';
-
 /* just a spinner, sitting here, spinning endlessly */
 
 var LoadingSpinner = React.createClass({

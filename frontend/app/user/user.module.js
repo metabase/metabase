@@ -1,5 +1,3 @@
-"use strict";
-
 var UserAdmin = angular.module('metabase.user', [
     'ngRoute',
     'ngCookies',

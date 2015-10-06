@@ -1,4 +1,3 @@
-'use strict';
 /*global google*/
 
 import _ from "underscore";
@@ -361,10 +360,12 @@ function applyChartYAxis(chart, card, coldefs, data, minPixelsPerTick) {
 
 function applyChartColors(dcjsChart, card) {
     // Set the color for the bar/line
-    var settings = card.visualization_settings,
-        chartColor = (card.display === 'bar') ? settings.bar.color : settings.line.lineColor,
-        colorList = (card.display === 'bar') ? settings.bar.colors : settings.line.colors;
-    return dcjsChart.ordinalColors([chartColor].concat(colorList));
+    let settings = card.visualization_settings;
+    let chartColor = (card.display === 'bar') ? settings.bar.color : settings.line.lineColor;
+    let colorList = (card.display === 'bar') ? settings.bar.colors : settings.line.colors;
+    // dedup colors list to ensure stacked charts don't have the same color
+    let uniqueColors = _.uniq([chartColor].concat(colorList));
+    return dcjsChart.ordinalColors(uniqueColors);
 }
 
 function applyChartTooltips(dcjsChart, card, cols) {
@@ -389,21 +390,15 @@ function applyChartTooltips(dcjsChart, card, cols) {
 
         chart.selectAll('rect.bar,circle.dot,g.pie-slice path,circle.bubble,g.row rect')
             .call(tip)
-            .on('mouseover.tip', function(x) {
+            .on('mouseover.tip', function(slice) {
                 tip.show.apply(tip, arguments);
                 if (card.display === "pie") {
-                    var arc = d3.svg.arc()
-                        .outerRadius(chart.radius()).innerRadius(x.innerRadius)
-                        .padAngle(x.padAngle).startAngle(x.startAngle).endAngle(x.endAngle);
-                    var centroid = arc.centroid();
-                    var pieRect = this.parentNode.parentNode.getBoundingClientRect();
-                    var pieCenter = [pieRect.left + chart.radius(), pieRect.top + chart.radius()];
                     var tooltip = d3.select('.ChartTooltip');
-                    var tooltipRect = tooltip[0][0].getBoundingClientRect();
-                    var tooltipOffset = [-tooltipRect.width / 2, -tooltipRect.height - 20];
+                    let tooltipOffset = getTooltipOffset(tooltip);
+                    let sliceCentroid = getPieSliceCentroid(this, slice);
                     tooltip.style({
-                        top: pieCenter[1] + tooltipOffset[1] + centroid[1] + "px",
-                        left: pieCenter[0] + tooltipOffset[0] + centroid[0] + "px",
+                        top: tooltipOffset.y + sliceCentroid.y + "px",
+                        left: tooltipOffset.x + sliceCentroid.x + "px",
                         "pointer-events": "none" // d3-tip forces "pointer-events: all" which cases flickering when the tooltip is under the cursor
                     });
                 }
@@ -412,6 +407,32 @@ function applyChartTooltips(dcjsChart, card, cols) {
 
         chart.selectAll('title').remove();
     });
+}
+
+function getPieSliceCentroid(element, slice) {
+    var parent = element.parentNode.parentNode;
+    var radius = parent.getBoundingClientRect().height / 2;
+    var innerRadius = 0;
+
+    var centroid = d3.svg.arc()
+        .outerRadius(radius).innerRadius(innerRadius)
+        .padAngle(slice.padAngle).startAngle(slice.startAngle).endAngle(slice.endAngle)
+        .centroid();
+
+    var pieRect = parent.getBoundingClientRect();
+
+    return {
+        x: pieRect.left + radius + centroid[0],
+        y: pieRect.top + radius + centroid[1]
+    };
+}
+
+function getTooltipOffset(tooltip) {
+    var tooltipRect = tooltip[0][0].getBoundingClientRect();
+    return {
+        x: -tooltipRect.width / 2,
+        y: -tooltipRect.height - 30
+    };
 }
 
 function lineAndBarOnRender(dcjsChart, card) {
@@ -778,9 +799,6 @@ export var CardRenderer = {
                     value: row[1]
                 };
             }),
-            keys = _.map(data, function(d) {
-                return d.key;
-            }),
             sumTotalValue = _.reduce(data, function(acc, d) {
                 return acc + d.value;
             }, 0);
@@ -799,13 +817,8 @@ export var CardRenderer = {
                         .dimension(dimension)
                         .group(group)
                         .colors(settings.pie.colors)
-                        .colorCalculator(function(d) {
-                            var index = _.indexOf(keys, d.key);
-                            return settings.pie.colors[index % settings.pie.colors.length];
-                        })
-                        .label(function(row) {
-                            return row.key == null ? '[unset]' : row.key;
-                        })
+                        .colorCalculator((d, i) => settings.pie.colors[((i * 5) + Math.floor(i / 5)) % settings.pie.colors.length])
+                        .label(row => row.key == null ? '[unset]' : row.key)
                         .title(function(d) {
                             // ghetto rounding to 1 decimal digit since Math.round() doesn't let
                             // you specify a precision and always rounds to int

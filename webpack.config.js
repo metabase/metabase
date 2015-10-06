@@ -20,10 +20,10 @@ function hasArg(arg) {
 var SRC_PATH = __dirname + '/frontend';
 var BUILD_PATH = __dirname + '/resources/frontend_client';
 
-// All JS files except dist and test
-var JS_SRC = glob.sync(SRC_PATH + '/app/**/*.js', { ignore: SRC_PATH + '/app/dist/**/*.js' });
-// All CSS files in app/css and app/components
-var CSS_SRC = glob.sync(SRC_PATH + '/app/css/**/*.css').concat(glob.sync(SRC_PATH + '/app/components/**/*.css'));
+// All JS files in frontend/app
+var JS_SRC = glob.sync(SRC_PATH + '/app/**/*.js');
+// All CSS files in frontend/app
+var CSS_SRC = glob.sync(SRC_PATH + '/app/**/*.css');
 
 // Need to scan the CSS files for variable and custom media used across files
 // NOTE: this requires "webpack -w" (watch mode) to be restarted when variables change :(

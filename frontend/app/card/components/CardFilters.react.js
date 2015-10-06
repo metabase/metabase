@@ -1,5 +1,3 @@
-"use strict";
-
 import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.react";
@@ -39,9 +37,9 @@ export default class CardFilters extends Component {
 
         return (
             <div className="p2">
-                <div className="text-brand clearfix pt2">
-                    <Icon className="float-left" name={'filter'} width={36} height={36}></Icon>
-                    <div className="h3">Filter saved questions</div>
+                <div className="text-dark-grey flex align-center py2">
+                    <Icon className="inline-block" name={'filter'} width={18} height={18}></Icon>
+                    <div className="pl1 Sidebar-header inline-block">Filter saved questions</div>
                 </div>
                 <div className="rounded bg-white" style={{border: '1px solid #E5E5E5'}}>
                     <ul className="cursor-pointer">

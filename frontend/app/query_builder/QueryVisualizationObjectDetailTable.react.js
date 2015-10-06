@@ -1,5 +1,3 @@
-'use strict';
-
 import ExpandableString from './ExpandableString.react';
 import Icon from 'metabase/components/Icon.react';
 import IconBorder from 'metabase/components/IconBorder.react';

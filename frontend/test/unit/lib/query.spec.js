@@ -1,4 +1,3 @@
-'use strict';
 /*eslint-env jasmine */
 
 import Query from 'metabase/lib/query';

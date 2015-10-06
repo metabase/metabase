@@ -1,5 +1,3 @@
-'use strict';
-
 import generatePassword from "password-generator";
 
 

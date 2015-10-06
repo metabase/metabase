@@ -1,5 +1,3 @@
-"use strict";
-
 import React, { Component, PropTypes } from 'react';
 import cx from "classnames";
 
@@ -12,6 +10,27 @@ import ProfileLink from "metabase/components/ProfileLink.react";
 // TODO - this relies on props.location, which is angular's $location service
 
 export default class Navbar extends Component {
+
+    constructor() {
+        super();
+
+        this.styles = {
+            navButton: {
+                paddingLeft: "1.0rem",
+                paddingRight: "1.0rem",
+                paddingTop: "0.75rem",
+                paddingBottom: "0.75rem"
+            },
+
+            newQuestion: {
+                paddingLeft: "1.0rem",
+                paddingRight: "1.0rem",
+                paddingTop: "0.75rem",
+                paddingBottom: "0.75rem",
+                boxShadow: "0px 2px 2px 0px rgba(77, 136, 189, 0.69)"
+            }
+        };
+    }
 
     isActive(path) {
         return this.props.location.path().indexOf(path) >= 0;
@@ -57,12 +76,6 @@ export default class Navbar extends Component {
         );
     }
 
-    renderAuthNav() {
-        return (
-            <nav className="py2 sm-py1 xl-py3 relative"></nav>
-        );
-    }
-
     renderEmptyNav() {
         return (
             <nav className="py2 sm-py1 xl-py3 relative">
@@ -79,18 +92,30 @@ export default class Navbar extends Component {
 
     renderMainNav() {
         return (
-            <nav className="CheckBg CheckBg-offset sm-py2 sm-py1 xl-py3 relative bg-brand">
-                <ul className="wrapper flex align-center">
+            <nav className="CheckBg CheckBg-offset relative bg-brand sm-py2 sm-py1 xl-py3">
+                <ul className="pl4 pr1 flex align-center">
                     <li>
                         <a className="NavItem cursor-pointer text-white flex align-center my1" href="/">
                             <LogoIcon className="text-white m1"></LogoIcon>
                         </a>
                     </li>
-                    <li>
-                        <DashboardsDropdown {...this.props}></DashboardsDropdown>
+                    <li className="pl3">
+                        <DashboardsDropdown {...this.props}>
+                            <a style={this.styles.navButton} className="NavDropdown-button NavItem text-white text-bold cursor-pointer px2 flex align-center">
+                                <span className="NavDropdown-button-layer">
+                                    Dashboards
+                                    <Icon className="ml1" name={'chevrondown'} width={8} height={8}></Icon>
+                                </span>
+                            </a>
+                        </DashboardsDropdown>
+                    </li>
+                    <li className="pl1">
+                        <a style={this.styles.navButton} className="NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2" href="/card/">Saved Questions</a>
+                    </li>
+                    <li className="pl3">
+                        <a style={this.styles.newQuestion} className="rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration" href="/q">New <span className="hide sm-show">Question</span></a>
                     </li>
                     <li className="flex-align-right">
-                        <a className="rounded inline-block bg-white text-brand cursor-pointer p2 no-decoration" href="/q">New <span className="hide sm-show">Question</span></a>
                         <div className="inline-block text-white"><ProfileLink {...this.props}></ProfileLink></div>
                     </li>
                 </ul>
@@ -105,7 +130,7 @@ export default class Navbar extends Component {
 
         switch (context) {
             case "admin": return this.renderAdminNav();
-            case "auth": return this.renderAuthNav();
+            case "auth": return null;
             case "none": return this.renderEmptyNav();
             case "setup": return null;
             default: return this.renderMainNav();

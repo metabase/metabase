@@ -1,5 +1,3 @@
-"use strict";
-
 import React, { Component, PropTypes } from "react";
 
 import CheckBox from 'metabase/components/CheckBox.react';

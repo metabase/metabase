@@ -1,5 +1,3 @@
-'use strict';
-
 import inflection from 'inflection';
 
 import cx from "classnames";

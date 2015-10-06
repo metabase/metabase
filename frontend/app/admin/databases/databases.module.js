@@ -1,5 +1,3 @@
-'use strict';
-
 var AdminDatabases = angular.module('metabaseadmin.databases', [
     'metabaseadmin.databases.controllers'
 ]);

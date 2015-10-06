@@ -1,5 +1,7 @@
-'use strict';
 /*global ga*/
+
+import MetabaseSettings from "metabase/lib/settings";
+
 
 // Simple module for in-app analytics.  Currently sends data to GA but could be extended to anything else.
 var MetabaseAnalytics = {
@@ -16,8 +18,11 @@ var MetabaseAnalytics = {
 
     // track an event
     trackEvent: function(category, action, label, value) {
+        const { tag } = MetabaseSettings.get('version');
+
         // category & action are required, rest are optional
         if (category && action) {
+            ga('set', 'dimension1', tag);
             ga('send', 'event', category, action, label, value);
         }
     }

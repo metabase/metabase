@@ -1,5 +1,3 @@
-'use strict';
-
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.react";
 import ModalContent from "metabase/components/ModalContent.react";
 import SortableItemList from "metabase/components/SortableItemList.react";

@@ -1,5 +1,3 @@
-'use strict';
-
 import _ from "underscore";
 
 import ProgressBar from "metabase/components/ProgressBar.react";

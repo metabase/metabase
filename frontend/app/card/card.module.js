@@ -1,5 +1,3 @@
-'use strict';
-
 // Card
 var Card = angular.module('metabase.card', [
     'ngRoute',
@@ -28,5 +26,15 @@ Card.config(['$routeProvider', function($routeProvider) {
     $routeProvider.when('/card/:cardId/:serializedCard', {
         templateUrl: '/app/card/partials/card_detail.html',
         controller: 'CardDetail'
+    });
+
+    $routeProvider.when('/card/', {
+        template:   '<div mb-redux-component class="flex flex-column flex-full" />',
+        controller: 'CardList',
+        resolve: {
+            appState: ["AppState", function(AppState) {
+                return AppState.init();
+            }]
+        }
     });
 }]);

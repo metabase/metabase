@@ -1,4 +1,3 @@
-'use strict';
 /*global exports*/
 
 import _ from "underscore";
