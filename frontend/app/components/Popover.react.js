@@ -88,26 +88,38 @@ export default class Popover extends Component {
                     ...this.props.tetherOptions
                 });
             } else {
+                let bestOptions;
+                let bestOffScreen = -Infinity;
                 for (let attachmentX of ["center", "left", "right"]) {
                     let [offsetY, offsetX] = [5, 0];
                     if (attachmentX === "left") {
                         offsetX = -(offsetX + 24);
                     } else if (attachmentX === "right") {
-                        offsetX = offsetX + 24;
+                        offsetX = (offsetX + 24);
                     }
-                    this._setTetherOptions({
+                    let options = {
                         ...tetherOptions,
                         attachment: "top " + attachmentX,
                         targetAttachment: "bottom center",
-                        targetOffset: [offsetY, offsetX].map(o => o + "px").join(" "),
-                        constraints: [{ to: 'window', attachment: 'together', pin: ['top', 'bottom']}]
-                    });
+                        targetOffset: [offsetY, offsetX].map(o => o + "px").join(" ")
+                    }
+                    this._setTetherOptions(options);
+                    // test to see how much of the popover is off-screen
                     let elementRect = Tether.Utils.getBounds(tetherOptions.element);
-                    let obscured = Math.min(elementRect.left, 0) + Math.min(elementRect.right, 0);
-                    if (obscured === 0) {
+                    let offScreen = Math.min(elementRect.left, 0) + Math.min(elementRect.right, 0);
+                    if (offScreen === 0) {
+                        bestOptions = options;
                         break;
+                    } else if (offScreen > bestOffScreen) {
+                        bestOptions = options;
+                        bestOffScreen = offScreen;
                     }
                 }
+                // re-set the best options with constraints (setting constraints aboves messes with positioning)
+                this._setTetherOptions({
+                    ...bestOptions,
+                    constraints: [{ to: 'window', attachment: 'together', pin: ['top', 'bottom']}]
+                });
             }
         } else {
             // if the popover isn't open then actively unmount our popover
