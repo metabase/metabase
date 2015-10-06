@@ -233,9 +233,10 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
 
         // enable / disable GA based on opt-out of anonymous tracking
         $rootScope.$on("appstate:site-settings", function(event, settings) {
+            const ga_code = MetabaseSettings.get('ga_code');
             if (MetabaseSettings.isTrackingEnabled()) {
                 // we are doing tracking
-                window['ga-disable-UA-60817802-1'] = null;
+                window['ga-disable-'+ga_code] = null;
 
                 if (currentUserPromise) {
                     currentUserPromise.then(function(user) {
@@ -244,7 +245,7 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
                 }
             } else {
                 // tracking is disabled
-                window['ga-disable-UA-60817802-1'] = true;
+                window['ga-disable-'+ga_code] = true;
 
                 teardownIntercom();
             }

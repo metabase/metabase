@@ -3,6 +3,7 @@ import _ from "underscore";
 
 import DatabaseDetailsForm from "metabase/components/database/DatabaseDetailsForm.react";
 import FormField from "metabase/components/form/FormField.react";
+import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseCore from "metabase/lib/core";
 
 import StepTitle from './StepTitle.react'
@@ -23,6 +24,8 @@ export default class DatabaseStep extends Component {
         this.setState({
             'engine': engine
         });
+
+        MetabaseAnalytics.trackEvent('Setup', 'Choose Database', engine);
     }
 
     async detailsCaptured(details) {
@@ -39,7 +42,12 @@ export default class DatabaseStep extends Component {
                 'nextStep': ++this.props.stepNumber,
                 'details': details
             }));
+
+            MetabaseAnalytics.trackEvent('Setup', 'Database Step', this.state.engine);
+
         } catch (error) {
+            MetabaseAnalytics.trackEvent('Setup', 'Error', 'database validation: '+this.state.engine);
+
             this.setState({
                 'formError': error
             });
@@ -55,6 +63,8 @@ export default class DatabaseStep extends Component {
             'nextStep': ++this.props.stepNumber,
             'details': null
         }));
+
+        MetabaseAnalytics.trackEvent('Setup', 'Database Step');
     }
 
     renderEngineSelect() {

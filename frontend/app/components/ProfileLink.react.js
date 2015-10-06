@@ -87,7 +87,7 @@ export default class ProfileLink extends Component {
                                 : null }
 
                                 <li>
-                                    <a className="Dropdown-item block text-white no-decoration" href="http://www.metabase.com/docs/" target="_blank">
+                                    <a className="Dropdown-item block text-white no-decoration" href={"http://www.metabase.com/docs/"+tag} target="_blank">
                                         Help
                                     </a>
                                 </li>
