@@ -230,6 +230,13 @@
     margin-right: auto;
 }
 
+.QueryError-iconWrapper {
+    padding: 2em;
+    margin-bottom: 2em;
+    border: 4px solid var(--error-color);
+    border-radius: 99px;
+}
+
 .QueryError-image {
     background-repeat: no-repeat;
     margin-bottom: 1rem;

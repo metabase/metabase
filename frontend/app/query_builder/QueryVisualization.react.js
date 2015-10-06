@@ -165,18 +165,32 @@ export default React.createClass({
             );
         } else {
             if (this.props.result.error) {
-                viz = (
-                    <div className="QueryError flex full align-center">
-                        <div className="QueryError-image QueryError-image--queryError"></div>
-                        <div className="QueryError-message text-centered">
-                            <h1 className="text-bold">We couldn't understand your question.</h1>
-                            <p className="QueryError-messageText">Your question might contain an invalid parameter or some other error.</p>
-                            <button className="Button" onClick={() => window.history.back() }>
-                                Back to last run
-                            </button>
+                if (this.props.card.dataset_query && this.props.card.dataset_query.type === 'native') {
+                    viz = (
+                        <div className="QueryError flex full align-center text-error">
+                            <div className="QueryError-iconWrapper">
+                                <svg className="QueryError-icon" viewBox="0 0 32 32" width="64" height="64" fill="currentcolor">
+                                    <path d="M4 8 L8 4 L16 12 L24 4 L28 8 L20 16 L28 24 L24 28 L16 20 L8 28 L4 24 L12 16 z "></path>
+                                </svg>
+                            </div>
+                            <span className="QueryError-message">{this.props.result.error}</span>
                         </div>
-                    </div>
-                );
+                    );
+
+                } else {
+                    viz = (
+                        <div className="QueryError flex full align-center">
+                            <div className="QueryError-image QueryError-image--queryError"></div>
+                            <div className="QueryError-message text-centered">
+                                <h1 className="text-bold">We couldn't understand your question.</h1>
+                                <p className="QueryError-messageText">Your question might contain an invalid parameter or some other error.</p>
+                                <button className="Button" onClick={() => window.history.back() }>
+                                    Back to last run
+                                </button>
+                            </div>
+                        </div>
+                    );
+                }
 
             } else if (this.props.result.data) {
                 if (this.props.isObjectDetail) {
