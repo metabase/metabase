@@ -22,7 +22,7 @@ export default class PreferencesStep extends Component {
         // okay, this is the big one.  we actually submit everything to the api now and complete the process.
         this.props.dispatch(submitSetup());
 
-        MetabaseAnalytics.trackEvent('Setup', 'Preferences Step');
+        MetabaseAnalytics.trackEvent('Setup', 'Preferences Step', this.props.allowTracking);
     }
 
     render() {

@@ -1,6 +1,7 @@
 //import _ from "underscore";
 import { createAction } from "redux-actions";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseCookies from "metabase/lib/cookies";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -92,6 +93,8 @@ export const submitSetup = createThunkAction(SUBMIT_SETUP, function() {
 
             return null;
         } catch (error) {
+            MetabaseAnalytics.trackEvent('Setup', 'Error', 'save');
+
             return error;
         }
     };

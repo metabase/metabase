@@ -44,7 +44,10 @@ export default class DatabaseStep extends Component {
             }));
 
             MetabaseAnalytics.trackEvent('Setup', 'Database Step', this.state.engine);
+
         } catch (error) {
+            MetabaseAnalytics.trackEvent('Setup', 'Error', 'database validation: '+this.state.engine);
+
             this.setState({
                 'formError': error
             });

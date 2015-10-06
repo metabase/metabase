@@ -55,6 +55,8 @@ export default class UserStep extends Component {
                 passwordError: error.data.errors.password,
                 validPassword: false
             });
+
+            MetabaseAnalytics.trackEvent('Setup', 'Error', 'password validation');
         }
     }
 
