@@ -52,7 +52,7 @@ export default class ProfileLink extends Component {
         return (
             <OnClickOut onClickOut={this.closeDropdown}>
                 <div className={dropDownClasses}>
-                    <a className="NavDropdown-button NavItem flex align-center p2" onClick={this.toggleDropdown}>
+                    <a className="NavDropdown-button NavItem flex align-center p2 transition-background" onClick={this.toggleDropdown}>
                         <div className="NavDropdown-button-layer">
                             <div className="flex align-center">
                                 <UserAvatar user={user} style={{backgroundColor: 'transparent'}}/>
