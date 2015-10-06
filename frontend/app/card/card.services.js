@@ -295,8 +295,9 @@ CardServices.service('QueryUtils', function() {
 CardServices.service('VisualizationSettings', [function() {
 
     var DEFAULT_COLOR_HARMONY = Object.values(normal);
-
     var DEFAULT_COLOR = DEFAULT_COLOR_HARMONY[0];
+
+    var EXPANDED_COLOR_HARMONY = harmony;
 
     /* *** visualization settings ***
      *
@@ -397,7 +398,7 @@ CardServices.service('VisualizationSettings', [function() {
             'dataLabels_enabled': false,
             'dataLabels_color': '#777',
             'connectorColor': '#999',
-            'colors': DEFAULT_COLOR_HARMONY
+            'colors': EXPANDED_COLOR_HARMONY
         },
         'bar': {
             'colors': DEFAULT_COLOR_HARMONY,
