@@ -8,6 +8,7 @@ import Modal from "metabase/components/Modal.react";
 
 import UserAvatar from './UserAvatar.react';
 import Icon from './Icon.react';
+import LogoIcon from './LogoIcon.react';
 
 
 export default class ProfileLink extends Component {
@@ -39,7 +40,7 @@ export default class ProfileLink extends Component {
     render() {
         const { user, context } = this.props;
         const { aboutModalOpen, dropdownOpen } = this.state;
-        const { hash, tag } = MetabaseSettings.get('version');
+        const { tag, date } = MetabaseSettings.get('version');
 
         let dropDownClasses = cx({
             'NavDropdown': true,
@@ -105,22 +106,26 @@ export default class ProfileLink extends Component {
                     : null }
 
                     { aboutModalOpen ?
-                        <Modal>
-                            <div className="p4 text-centered relative">
-                                <span className="absolute top right p4 text-normal cursor-pointer" onClick={this.closeModal}>
-                                    <Icon name={'close'} width={24} height={24} />
+                        <Modal className="Modal Modal--small">
+                            <div className="px4 pt4 pb2 text-centered relative">
+                                <span className="absolute top right p4 text-normal text-grey-3 cursor-pointer" onClick={this.closeModal}>
+                                    <Icon name={'close'} width={16} height={16} />
                                 </span>
-                                <div className="text-error pb2">
-                                    <Icon name={'cards'} width={48} height={48} />
+                                <div className="text-brand pb2">
+                                    <LogoIcon width={48} height={48} />
                                 </div>
-                                <h2 className="text-dark">Thanks for using Metabase!</h2>
+                                <h2 style={{fontSize: "1.75em"}} className="text-dark">Thanks for using Metabase!</h2>
                                 <p className="pt2">
                                     <h3 className="text-dark">You're on version {tag}</h3>
-                                    <span className="text-grey-3">build <a className="link" href={"https://github.com/metabase/metabase/commit/"+hash} target="_blank">#{hash}</a></span>
+                                    <span className="text-grey-3 text-bold">built on {date}</span>
                                 </p>
-                                <p className="pt2">
+                                <p className="pt2 text-grey-3 text-bold">
                                     If you require the legalese ...
                                 </p>
+                                <div className="pt1">
+                                    <span className="inline-block half text-centered py1"><a className="link text-bold" href="">License Agreement</a></span>
+                                    <span style={{borderWidth: "2px"}} className="inline-block half text-centered py1 border-left"><a className="link text-bold" href="">Terms of Service</a></span>
+                                </div>
                             </div>
                             <div style={{borderWidth: "2px"}} className="p2 h5 text-centered text-grey-3 border-top">
                                 <span className="block"><span className="text-bold">Metabase</span> is a registered Trademark of Metabase, Inc</span>
