@@ -47,7 +47,7 @@
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
-;; this is what actually kicks off our listener for events
-(when (config/is-prod?)
-  (log/info "Starting view-log events listener")
-  (events/start-event-listener view-counts-topics view-counts-channel process-view-count-event))
+(defn events-init []
+  (when-not (config/is-test?)
+    (log/info "Starting view-log events listener")
+    (events/start-event-listener view-counts-topics view-counts-channel process-view-count-event)))

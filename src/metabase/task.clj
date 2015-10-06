@@ -1,5 +1,12 @@
 (ns metabase.task
-  "Background task scheduling via Quartzite.  Individual tasks are defined in `metabase.task.*`"
+  "Background task scheduling via Quartzite.  Individual tasks are defined in `metabase.task.*`.
+
+   ## Regarding Task Initialization:
+
+   The most appropriate way to initialize tasks in any `metabase.task.*` namespace is to implement the
+   `task-init` function which accepts zero arguments.  This function is dynamically resolved and called
+   exactly once when the application goes through normal startup procedures.  Inside this function you
+   can do any work needed and add your task to the scheduler as usual via `schedule-task!`."
   (:require clojure.java.classpath
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
@@ -18,7 +25,10 @@
        set
        (map (fn [events-ns]
               (log/info "\tloading tasks namespace: " events-ns)
-              (require events-ns)))
+              (require events-ns)
+              ;; look for `task-init` function in the namespace and call it if it exists
+              (when-let [init-fn (ns-resolve events-ns 'task-init)]
+                (init-fn))))
        dorun))
 
 (defn start-scheduler!
@@ -36,7 +46,8 @@
   []
   (log/debug "Stopping Quartz Scheduler")
   ;; tell quartz to stop everything
-  (qs/shutdown @quartz-scheduler)
+  (when @quartz-scheduler
+    (qs/shutdown @quartz-scheduler))
   ;; reset our scheduler reference
   (reset! quartz-scheduler nil))
 

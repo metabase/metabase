@@ -46,11 +46,14 @@
                                         (:dbname (:details database)) (:details database) ; entire Database obj
                                         (:dbname database)            database            ; connection details map only
                                         :else                         (throw (Exception. (str "with-mongo-connection failed: bad connection details:" (:details database)))))
-         server-address   (mg/server-address host port)
-         credentials      (when user
-                            (mcred/create user dbname pass))
-         conn             (mg/connect server-address mongo-connection-options credentials)
-         mongo-connection (mg/get-db conn dbname)]
+        server-address   (mg/server-address host port)
+        credentials      (when user
+                           (mcred/create user dbname pass))
+        connect          (partial mg/connect server-address mongo-connection-options)
+        conn             (if credentials
+                           (connect credentials)
+                           (connect))
+        mongo-connection (mg/get-db conn dbname)]
     (log/debug (color/cyan "<< OPENED NEW MONGODB CONNECTION >>"))
     (try
       (binding [*mongo-connection* mongo-connection]

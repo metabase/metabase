@@ -125,7 +125,6 @@
 (defendpoint GET "/properties"
   "Get all global properties and their values. These are the specific `Settings` which are meant to be public."
   []
-  (filter #(contains? #{:site-name :anon-tracking-enabled} (:key %)) (setting/all-with-descriptions)))
-
+  (setting/public-settings))
 
 (define-routes)

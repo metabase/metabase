@@ -1,12 +1,15 @@
 (ns metabase.models.setting
   (:refer-clojure :exclude [get set])
-  (:require [clojure.core.match :refer [match]]
-            [clojure.string :as s]
+  (:require [clojure.string :as s]
             [environ.core :as env]
             [korma.core :as k]
+            [metabase.config :as config]
             [metabase.db :refer [sel del]]
-            [metabase.models.interface :refer :all]
-            [metabase.util :as u]))
+            [metabase.models [common :as common]
+                             [interface :refer :all]]
+            [metabase.setup :as setup]
+            [metabase.util :as u]
+            [metabase.util.password :as password]))
 
 ;; Settings are a fast + simple way to create a setting that can be set
 ;; from the SuperAdmin page. They are saved to the Database, but intelligently
@@ -149,6 +152,19 @@
                        :value (k settings))))
          (sort-by :key))))
 
+(defn public-settings
+  "Return a simple map of key/value pairs which represent the public settings for the front-end application."
+  []
+  {:ga_code               "UA-60817802-1"
+   :intercom_code         "gqfmsgf1"
+   :password_complexity   (password/active-password-complexity)
+   :setup_token           (setup/token-value)
+   :timezones             common/timezones
+   :version               (config/mb-version-info)
+   ;; all of these values are dynamic settings controlled at runtime
+   :anon_tracking_enabled (= "true" (get :anon-tracking-enabled))
+   :site_name             (get :site-name)
+   :email_configured      (not (s/blank? (get :email-smtp-host)))})
 
 ;; # IMPLEMENTATION
 

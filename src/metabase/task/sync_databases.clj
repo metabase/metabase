@@ -4,7 +4,6 @@
                                     [triggers :as triggers])
             [clojurewerkz.quartzite.schedule.cron :as cron]
             (metabase [config :as config]
-                      [core :refer [sample-dataset-id]]
                       [db :as db]
                       [driver :as driver]
                       [task :as task])
@@ -20,15 +19,14 @@
 (jobs/defjob SyncDatabases
   [ctx]
   (dorun
-   (for [database (db/sel :many Database, :id [not= (some-> (sample-dataset-id) Integer/parseInt)])] ; skip Sample Dataset DB
+   (for [database (db/sel :many Database :is_sample false)] ; skip Sample Dataset DB
       (try
         ;; NOTE: this happens synchronously for now to avoid excessive load if there are lots of databases
         (driver/sync-database! database)
         (catch Exception e
           (log/error "Error syncing database: " (:id database) e))))))
 
-;; this is what actually adds our task to the scheduler
-(when (config/is-prod?)
+(defn task-init []
   (log/info "Submitting sync-database task to scheduler")
   ;; build our job
   (reset! sync-databases-job (jobs/build

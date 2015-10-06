@@ -2,7 +2,7 @@
   (:require clojure.java.classpath
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase.db :refer [exists? ins sel upd]]
+            [metabase.db :refer [ins sel upd]]
             (metabase.driver [interface :as i]
                              [query-processor :as qp])
             (metabase.models [database :refer [Database]]
