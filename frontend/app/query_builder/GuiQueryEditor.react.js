@@ -130,13 +130,22 @@ export default class GuiQueryEditor extends Component {
     }
 
     renderAdd(text, onClick) {
-        let classes = "text-grey-2 text-grey-4-hover cursor-pointer text-bold no-decoration flex align-center transition-color";
-        return (
-            <a className={classes} onClick={onClick}>
-                {this.renderAddIcon()}
-                { text ? (<span className="ml1">{text}</span>) : (null) }
-            </a>
-        )
+        let className = "text-grey-2 text-bold flex align-center text-grey-4-hover cursor-pointer no-decoration transition-color";
+        if (onClick) {
+            return (
+                <a className={className} onClick={onClick}>
+                    {this.renderAddIcon()}
+                    { text && <span className="ml1">{text}</span> }
+                </a>
+            );
+        } else {
+            return (
+                <span className={className}>
+                    {this.renderAddIcon()}
+                    { text && <span className="ml1">{text}</span> }
+                </span>
+            );
+        }
     }
 
     renderAddIcon() {

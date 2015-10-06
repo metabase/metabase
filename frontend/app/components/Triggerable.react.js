@@ -40,6 +40,7 @@ export default ComposedComponent => class extends Component {
                     {...this.props}
                     isOpen={this.state.isOpen}
                     onClose={this.onClose.bind(this)}
+                    getTriggerTarget={() => this.refs.trigger}
                 />
             </a>
         );

@@ -3,10 +3,22 @@ import React, { Component, PropTypes } from "react";
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper.react";
 import Tether from "tether";
 
+import cx from "classnames";
+
+const DEFAULT_TETHER_OPTIONS = {
+    attachment: "top center",
+    targetAttachment: "bottom center",
+    targetOffset: "15px 0",
+    optimizations: {
+        moveElement: false // always moves to <body> anyway!
+    }
+};
+
 export default class Popover extends Component {
     constructor(props) {
         super(props);
-        this.state = {};
+
+        this.handleClickOutside = this.handleClickOutside.bind(this);
     }
 
     componentWillMount() {
@@ -43,24 +55,20 @@ export default class Popover extends Component {
 
     _popoverComponent() {
         return (
-            <OnClickOutsideWrapper handleClickOutside={this.handleClickOutside.bind(this)}>
-                <div className={this.props.className}>
+            <OnClickOutsideWrapper handleClickOutside={this.handleClickOutside}>
+                <div className={cx("PopoverBody", { "PopoverBody--withArrow": this.props.hasArrow }, this.props.className)}>
                     {this.props.children}
                 </div>
             </OnClickOutsideWrapper>
         );
     }
 
-    _tetherOptions() {
-        // sensible defaults for most popovers
-        return {
-            attachment: 'bottom right',
-            targetAttachment: 'top right',
-            targetOffset: '10px 0',
-            optimizations: {
-                moveElement: false // always moves to <body> anyway!
-            }
-        };
+    _setTetherOptions(tetherOptions) {
+        if (this._tether) {
+            this._tether.setOptions(tetherOptions);
+        } else {
+            this._tether = new Tether(tetherOptions);
+        }
     }
 
     _renderPopover() {
@@ -72,17 +80,19 @@ export default class Popover extends Component {
                 </div>
             , this._popoverElement);
 
-            var tetherOptions = this.props.tetherOptions || this._tetherOptions();
+            var tetherOptions = { ...DEFAULT_TETHER_OPTIONS, ...this.props.tetherOptions };
 
-            // NOTE: these must be set here because they relate to OUR component and can't be passed in
             tetherOptions.element = this._popoverElement;
-            tetherOptions.target = React.findDOMNode(this).parentNode;
 
-            if (this._tether !== undefined && this._tether !== null) {
-                this._tether.setOptions(tetherOptions);
-            } else {
-                this._tether = new Tether(tetherOptions);
+            if (!tetherOptions.target && this.props.getTriggerTarget) {
+                tetherOptions.target = React.findDOMNode(this.props.getTriggerTarget());
             }
+            if (!tetherOptions.target) {
+                tetherOptions.target = React.findDOMNode(this).parentNode;
+            }
+
+            this._setTetherOptions(tetherOptions);
+
         } else {
             // if the popover isn't open then actively unmount our popover
             React.unmountComponentAtNode(this._popoverElement);
@@ -90,15 +100,20 @@ export default class Popover extends Component {
     }
 
     render() {
-        return <span />;
+        return <span className="hide" />;
     }
 }
 
 Popover.propTypes = {
-    isOpen: PropTypes.bool
+    isOpen: PropTypes.bool,
+    hasArrow: PropTypes.bool,
+    getTriggerTarget: PropTypes.func,
+    tetherOptions: PropTypes.object
 };
 
 Popover.defaultProps = {
-    className: "Popover",
-    isOpen: true
+    isOpen: true,
+    hasArrow: true,
+    attachmentsX: ["center", "left", "right"],
+    attachmentsY: ["top", "bottom"]
 };
