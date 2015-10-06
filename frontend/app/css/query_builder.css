@@ -221,9 +221,13 @@
     background-color: rgba(255, 255, 255, 0.82);
 }
 
+/* query errors */
 .QueryError {
     flex-direction: column;
     justify-content: center;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .QueryError-iconWrapper {
@@ -232,6 +236,28 @@
     border: 4px solid var(--error-color);
     border-radius: 99px;
 }
+
+.QueryError-image {
+    background-repeat: no-repeat;
+    margin-bottom: 1rem;
+}
+
+.QueryError-image--noRows {
+  width: 120px;
+  height: 120px;
+  background-image: url('/app/img/no_results.svg');
+}
+
+.QueryError-image--queryError {
+  width: 120px;
+  height: 120px;
+  background-image: url('/app/img/no_understand.svg');
+}
+
+.QueryError-messageText {
+  line-height: 1.4;
+}
+
 
 /* GUI BUILDER */
 
