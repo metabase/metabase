@@ -1,5 +1,6 @@
 import React, { Component, PropTypes } from "react";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
 import Toggle from "metabase/components/Toggle.react";
 
 import StepTitle from './StepTitle.react';
@@ -20,6 +21,8 @@ export default class PreferencesStep extends Component {
 
         // okay, this is the big one.  we actually submit everything to the api now and complete the process.
         this.props.dispatch(submitSetup());
+
+        MetabaseAnalytics.trackEvent('Setup', 'Preferences Step');
     }
 
     render() {
