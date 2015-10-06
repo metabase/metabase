@@ -19,9 +19,10 @@ export default class DashboardsDropdown extends Component {
 
         this.styles = {
             dashIcon: {
-                width: '101px',
-                height: '85px',
-                backgroundImage: 'url("/app/components/icons/assets/dash_empty_state.svg")'
+                width: '105px',
+                height: '90px',
+                backgroundImage: 'url("/app/components/icons/assets/dash_empty_state.svg")',
+                backgroundRepeat: 'no-repeat'
             }
         }
 
