@@ -62,8 +62,6 @@ mk_release_artifacts() {
     rm -f $ARTIFACTS_DIR/*
     mv -f $RELEASE_FILE $ARTIFACTS_DIR/
     mv -f $UBERJAR_DIR/$METABASE_JAR_NAME $ARTIFACTS_DIR/$RELEASE_JAR_FILE_NAME
-
-    upload_release_artifacts
 }
 
 create_eb_version() {

@@ -55,6 +55,7 @@
   :main ^:skip-aot metabase.core
   :manifest {"Liquibase-Package" "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"}
   :target-path "target/%s"
+  :java-agents [[com.newrelic.agent.java/newrelic-agent "3.20.0"]]     ; NewRelic Java Agent
   :javac-options ["-target" "1.6" "-source" "1.6"]
   :ring {:handler metabase.core/app
          :init metabase.core/init

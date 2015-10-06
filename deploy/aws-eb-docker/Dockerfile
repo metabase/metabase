@@ -16,6 +16,10 @@ COPY ./metabase-standalone.jar /app/
 COPY ./run_metabase.sh /app/
 RUN chmod 755 /app/run_metabase.sh
 
+# newrelic stuff
+COPY ./newrelic.jar /app/
+COPY ./newrelic.yml /app/
+
 # make our webserver port available
 EXPOSE 3000
 
