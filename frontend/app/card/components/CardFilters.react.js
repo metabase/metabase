@@ -38,7 +38,7 @@ export default class CardFilters extends Component {
         return (
             <div className="p2">
                 <div className="text-dark-grey flex align-center py2">
-                    <Icon className="inline-block" style={{ marginTop: 3 }} name={'filter'} width={36} height={36}></Icon>
+                    <Icon className="inline-block" name={'filter'} width={18} height={18}></Icon>
                     <div className="pl1 Sidebar-header inline-block">Filter saved questions</div>
                 </div>
                 <div className="rounded bg-white" style={{border: '1px solid #E5E5E5'}}>
