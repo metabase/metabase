@@ -23,6 +23,13 @@
 .NavItem:hover {
     background-color: rgba(255, 255, 255, 0.08);
 }
+.NavNewQuestion {
+    box-shadow: 0px 2px 2px 0px rgba(77, 136, 189, 0.69);
+}
+.NavNewQuestion:hover {
+    box-shadow: 0px 3px 2px 2px rgba(77, 136, 189, 0.75);
+    color: #3875AC;
+}
 
 .Greeting {
     padding-top: 2rem;

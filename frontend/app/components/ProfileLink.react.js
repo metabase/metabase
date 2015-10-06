@@ -52,7 +52,7 @@ export default class ProfileLink extends Component {
         return (
             <OnClickOut onClickOut={this.closeDropdown}>
                 <div className={dropDownClasses}>
-                    <a className="NavDropdown-button NavItem flex align-center p2" onClick={this.toggleDropdown}>
+                    <a className="NavDropdown-button NavItem flex align-center p2 transition-background" onClick={this.toggleDropdown}>
                         <div className="NavDropdown-button-layer">
                             <div className="flex align-center">
                                 <UserAvatar user={user} style={{backgroundColor: 'transparent'}}/>
@@ -87,7 +87,7 @@ export default class ProfileLink extends Component {
                                 : null }
 
                                 <li>
-                                    <a className="Dropdown-item block text-white no-decoration" href="http://www.metabase.com/docs/" target="_blank">
+                                    <a className="Dropdown-item block text-white no-decoration" href={"http://www.metabase.com/docs/"+tag} target="_blank">
                                         Help
                                     </a>
                                 </li>
