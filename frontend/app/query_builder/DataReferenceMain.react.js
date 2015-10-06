@@ -1,5 +1,6 @@
-import inflection from 'inflection';
+import { isQueryable } from "metabase/lib/table";
 
+import inflection from 'inflection';
 import cx from "classnames";
 
 export default React.createClass({
@@ -25,8 +26,8 @@ export default React.createClass({
                     this.state.databases[database.id] = null; // null indicates loading
                     this.props.Metabase.db_tables({
                         'dbId': database.id
-                    }).$promise.then((db) => {
-                        this.state.databases[database.id] = db;
+                    }).$promise.then((tables) => {
+                        this.state.databases[database.id] = tables.filter(isQueryable);
                         this.setState({ databases: this.state.databases });
                     });
                 }
