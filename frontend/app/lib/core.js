@@ -392,7 +392,8 @@ import _ from "underscore";
                 fieldName: "port",
                 type: "text",
                 transform: parseInt,
-                placeholder: "27017"
+                placeholder: "27017",
+                placeholderIsDefault: true
             }, {
                 displayName: "Database name",
                 fieldName: "dbname",
