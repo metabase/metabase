@@ -4,7 +4,6 @@ import cx from "classnames";
 import OnClickOut from 'react-onclickout';
 
 import CreateDashboardModal from "metabase/components/CreateDashboardModal.react";
-import Icon from "metabase/components/Icon.react";
 import Modal from "metabase/components/Modal.react";
 
 
@@ -17,6 +16,14 @@ export default class DashboardsDropdown extends Component {
             dropdownOpen: false,
             modalOpen: false
         };
+
+        this.styles = {
+            dashIcon: {
+                width: '101px',
+                height: '85px',
+                backgroundImage: 'url("/app/components/icons/assets/dash_empty_state.svg")'
+            }
+        }
 
         _.bindAll(this, "toggleDropdown", "closeDropdown", "toggleModal", "closeModal");
     }
@@ -66,7 +73,7 @@ export default class DashboardsDropdown extends Component {
     }
 
     render() {
-        let { dashboards } = this.props;
+        let { children, dashboards } = this.props;
         let { dropdownOpen, modalOpen } = this.state;
 
         return (
@@ -75,22 +82,19 @@ export default class DashboardsDropdown extends Component {
 
                 <OnClickOut onClickOut={this.closeDropdown}>
                     <div className={cx('NavDropdown inline-block cursor-pointer', { 'open': dropdownOpen })}>
-                        <a className="NavDropdown-button NavItem text-white cursor-pointer p2 flex align-center" onClick={this.toggleDropdown}>
-                            <span className="NavDropdown-button-layer">
-                                Dashboards
-                                <Icon className="ml1" name={'chevrondown'} width={8} height={8}></Icon>
-                            </span>
+                        <a onClick={this.toggleDropdown}>
+                            {children}
                         </a>
 
                         { dropdownOpen ?
-                            <div className="NavDropdown-content DashboardList">
+                            <div className="NavDropdown-content DashboardList NavDropdown-content--dashboards">
                                 { dashboards.length === 0 ?
                                     <div className="NavDropdown-content-layer text-white text-centered">
-                                        <div className="p2"><span className="QuestionCircle">?</span></div>
+                                        <div className="p2"><div style={this.styles.dashIcon} className="ml-auto mr-auto"></div></div>
                                         <div className="px2 py1 text-bold">You don’t have any dashboards yet.</div>
                                         <div className="px2 pb2 text-light">Dashboards group visualizations for frequent questions in a single handy place.</div>
                                         <div className="border-top border-light">
-                                            <a className="Dropdown-item block text-white no-decoration" href="#" onClick={this.toggleModal}>Create a new dashboard</a>
+                                            <a className="Dropdown-item block text-white no-decoration" href="#" onClick={this.toggleModal}>Create your first dashboard</a>
                                         </div>
                                     </div>
                                 :
