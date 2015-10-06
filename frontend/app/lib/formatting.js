@@ -30,7 +30,7 @@ export function formatCell(value, column) {
     } else if (typeof value === "string") {
         return value;
     } else if (typeof value === "number") {
-        if (column.special_type === "latitude" || column.special_type === "longitude") {
+        if (column && (column.special_type === "latitude" || column.special_type === "longitude")) {
             return decimalDegreesFormatter(value)
         } else {
             return formatNumber(value);
