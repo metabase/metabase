@@ -54,7 +54,16 @@ export default class Popover extends Component {
         );
     }
 
-    _setTetherOptions(tetherOptions) {
+    _setTetherOptions(tetherOptions, o) {
+        if (o) {
+            tetherOptions = {
+                ...tetherOptions,
+                attachment: `${o.attachmentY} ${o.attachmentX}`,
+                targetAttachment: `${o.targetAttachmentY} ${o.targetAttachmentX}`,
+                targetOffset: `${o.offsetY}px ${o.offsetX}px`
+            }
+        }
+        console.log(tetherOptions)
         if (this._tether) {
             this._tether.setOptions(tetherOptions);
         } else {
@@ -88,38 +97,66 @@ export default class Popover extends Component {
                     ...this.props.tetherOptions
                 });
             } else {
-                let bestOptions;
-                let bestOffScreen = -Infinity;
+                let best = {
+                    attachmentX: "center",
+                    attachmentY: "top",
+                    targetAttachmentX: "center",
+                    targetAttachmentY: "bottom",
+                    offsetX: 0,
+                    offsetY: 5
+                };
+                let bestOffScreen;
+
+                // try horizontal positions
+                bestOffScreen = -Infinity;
                 for (let attachmentX of ["center", "left", "right"]) {
-                    let [offsetY, offsetX] = [5, 0];
-                    if (attachmentX === "left") {
-                        offsetX = -(offsetX + 24);
-                    } else if (attachmentX === "right") {
-                        offsetX = (offsetX + 24);
-                    }
+                    // compute the options for this attachment position then set it
                     let options = {
-                        ...tetherOptions,
-                        attachment: "top " + attachmentX,
-                        targetAttachment: "bottom center",
-                        targetOffset: [offsetY, offsetX].map(o => o + "px").join(" ")
+                        ...best,
+                        attachmentX: attachmentX,
+                        targetAttachmentX: "center",
+                        offsetX: ({ "center": 0, "left": -24, "right": 24 })[attachmentX]
                     }
-                    this._setTetherOptions(options);
+                    this._setTetherOptions(tetherOptions, options);
                     // test to see how much of the popover is off-screen
                     let elementRect = Tether.Utils.getBounds(tetherOptions.element);
                     let offScreen = Math.min(elementRect.left, 0) + Math.min(elementRect.right, 0);
+                    // if none then we're done, otherwise check to see if it's the best option so far
                     if (offScreen === 0) {
-                        bestOptions = options;
+                        best = options;
                         break;
                     } else if (offScreen > bestOffScreen) {
-                        bestOptions = options;
+                        best = options;
                         bestOffScreen = offScreen;
                     }
                 }
-                // re-set the best options with constraints (setting constraints aboves messes with positioning)
-                this._setTetherOptions({
-                    ...bestOptions,
-                    constraints: [{ to: 'window', attachment: 'together', pin: ['top', 'bottom']}]
-                });
+
+                // try vertical positions
+                bestOffScreen = -Infinity;
+                for (let attachmentY of ["top", "bottom"]) {
+                    // compute the options for this attachment position then set it
+                    let options = {
+                        ...best,
+                        attachmentY: attachmentY,
+                        targetAttachmentY: (attachmentY === "top" ? "bottom" : "top"),
+                        offsetY: ({ "top": 5, "bottom": -5 })[attachmentY]
+                    }
+                    this._setTetherOptions(tetherOptions, options);
+                    // test to see how much of the popover is off-screen
+                    let elementRect = Tether.Utils.getBounds(tetherOptions.element);
+                    let offScreen = Math.min(elementRect.top, 0) + Math.min(elementRect.bottom, 0);
+                    // if none then we're done, otherwise check to see if it's the best option so far
+                    if (offScreen === 0) {
+                        best = options;
+                        break;
+                    } else if (offScreen > bestOffScreen) {
+                        best = options;
+                        bestOffScreen = offScreen;
+                    }
+                }
+
+                // finally set the best options
+                this._setTetherOptions(tetherOptions, best);
             }
         } else {
             // if the popover isn't open then actively unmount our popover
