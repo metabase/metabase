@@ -97,7 +97,7 @@
 (defn init
   "General application initialization function which should be run once at application startup."
   []
-  (log/info (format "Starting Metabase version %s..." ((config/mb-version-info) :long)))
+  (log/info (format "Starting Metabase version %s..." (config/mb-version-string)))
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
   (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable destroy))
 

@@ -121,6 +121,8 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
                     routeContext = 'setup';
                 } else if ($location.path().indexOf('/admin/') === 0) {
                     routeContext = 'admin';
+                } else if ($location.path() === '/') {
+                    routeContext = 'home';
                 } else {
                     routeContext = 'main';
                 }

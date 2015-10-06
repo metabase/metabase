@@ -181,7 +181,7 @@ export default class Activity extends Component {
                                 <div className="text-normal text-grey-2">Save a question and get this baby going!</div>
                             </div>
                         :
-                            <ul className="pt2 pb4 relative">
+                            <ul className="pb4 relative">
                                 {activity.map(item =>
                                     <li key={item.id} className="mt3">
                                         <ActivityItem
