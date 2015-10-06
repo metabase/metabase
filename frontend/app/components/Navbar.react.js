@@ -27,7 +27,7 @@ export default class Navbar extends Component {
                 paddingRight: "1.0rem",
                 paddingTop: "0.75rem",
                 paddingBottom: "0.75rem",
-                boxShadow: "0px 3px 2px 0px #4D88BD"
+                boxShadow: "0px 2px 2px 0px rgba(77, 136, 189, 0.69)"
             }
         };
     }
