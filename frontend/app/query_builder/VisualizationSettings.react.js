@@ -83,12 +83,6 @@ export default React.createClass({
     },
 
     renderChartTypePicker: function() {
-        var tetherOptions = {
-            attachment: 'top left',
-            targetAttachment: 'bottom left',
-            targetOffset: '5px 25px'
-        };
-
         var iconName = this.visualizationTypeNames[this.props.card.display].iconName;
         var triggerElement = (
             <span className="px2 py1 text-bold cursor-pointer text-default flex align-center">
@@ -123,7 +117,6 @@ export default React.createClass({
                 <span className="GuiBuilder-section-label Query-label">Visualization</span>
                 <PopoverWithTrigger ref="displayPopover"
                                     className="ChartType-popover"
-                                    tetherOptions={tetherOptions}
                                     triggerElement={triggerElement}
                                     triggerClasses="flex align-center">
                     <ul className="pt1 pb1">

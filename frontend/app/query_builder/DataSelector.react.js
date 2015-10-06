@@ -104,11 +104,6 @@ export default class DataSelector extends Component {
                     isInitiallyOpen={this.props.isInitiallyOpen}
                     triggerElement={triggerElement}
                     triggerClasses="flex align-center"
-                    tetherOptions={{
-                        attachment: 'top left',
-                        targetAttachment: 'bottom left',
-                        targetOffset: '5px 0'
-                    }}
                 >
                     <AccordianList
                         className="text-brand"

@@ -86,8 +86,8 @@ export default class FieldList extends Component {
                         tetherOptions={{
                             attachment: 'top left',
                             targetAttachment: 'top right',
-                            targetOffset: '0 0'
-                            // constraints: [{ to: 'window', attachment: 'together', pin: ['top', 'bottom']}]
+                            targetOffset: '0 0',
+                            constraints: [{ to: 'window', attachment: 'together', pin: ['left', 'right']}]
                         }}
                     >
                         <TimeGroupingPopover

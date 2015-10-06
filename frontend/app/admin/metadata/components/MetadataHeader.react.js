@@ -39,11 +39,6 @@ export default React.createClass({
                     this.refs.databasePopover.toggle();
                 }
             }];
-            var tetherOptions = {
-                attachment: 'top center',
-                targetAttachment: 'bottom center',
-                targetOffset: '10px 0'
-            };
             var triggerElement = (
                 <span className="text-bold cursor-pointer text-default">
                     {database.name}
@@ -53,7 +48,6 @@ export default React.createClass({
             return (
                 <PopoverWithTrigger
                     ref="databasePopover"
-                    tetherOptions={tetherOptions}
                     triggerElement={triggerElement}
                 >
                     <ColumnarSelector columns={columns}/>

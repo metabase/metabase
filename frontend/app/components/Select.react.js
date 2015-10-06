@@ -57,17 +57,9 @@ export default React.createClass({
             }
         ];
 
-        var tetherOptions = {
-            attachment: 'top center',
-            targetAttachment: 'bottom center',
-            targetOffset: '5px 0',
-            constraints: [{ to: 'window', attachment: 'together', pin: ['top', 'bottom']}]
-        };
-
         return (
             <PopoverWithTrigger ref="popover"
                                 className={this.props.className}
-                                tetherOptions={tetherOptions}
                                 triggerElement={triggerElement}
                                 triggerClasses={"AdminSelect " + (this.props.className || "")}>
                 <ColumnarSelector columns={columns}/>

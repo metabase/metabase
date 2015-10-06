@@ -45,17 +45,9 @@ export default class UserRoleSelect extends Component {
             }
         ];
 
-        const tetherOptions = {
-            attachment: 'top center',
-            targetAttachment: 'bottom center',
-            targetOffset: '5px 0',
-            constraints: [{ to: 'window', attachment: 'together', pin: ['top', 'bottom']}]
-        };
-
         return (
             <PopoverWithTrigger ref="popover"
                                 className="UserRolePopover block"
-                                tetherOptions={tetherOptions}
                                 triggerElement={triggerElement}
                                 triggerClasses={cx("AdminSelectBorderless", "py1", {"text-purple": user.is_superuser, "text-brand": !user.is_superuser})}>
                 <ColumnarSelector columns={columns}/>
