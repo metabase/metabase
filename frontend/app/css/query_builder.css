@@ -231,10 +231,9 @@
 }
 
 .QueryError-image {
-    border: 1px solid #ddd;
     background-repeat: no-repeat;
+    margin-bottom: 1rem;
 }
-
 
 .QueryError-image--noRows {
   width: 120px;

@@ -162,7 +162,7 @@ export default React.createClass({
                         <div className="QueryError-message text-centered">
                             <h1 className="text-bold">We couldn't understand your question.</h1>
                             <p className="QueryError-messageText">Your question might contain an invalid parameter or some other error.</p>
-                            <button className="Button">
+                            <button className="Button" onClick={() => window.history.back() }>
                                 Back to last run
                             </button>
                         </div>
@@ -190,7 +190,7 @@ export default React.createClass({
                             <div className="QueryError-message text-centered">
                                 <h1 className="text-bold">No results!</h1>
                                 <p className="QueryError-messageText">This may be the answer you’re looking for. If not, chances are your filters are too specific. Try removing or changing your filters to see more data.</p>
-                                <button className="Button">
+                                <button className="Button" onClick={() => window.history.back() }>
                                     Back to last run
                                 </button>
                             </div>
