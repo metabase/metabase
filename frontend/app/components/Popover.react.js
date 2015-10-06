@@ -5,15 +5,6 @@ import Tether from "tether";
 
 import cx from "classnames";
 
-const DEFAULT_TETHER_OPTIONS = {
-    attachment: "top center",
-    targetAttachment: "bottom center",
-    targetOffset: "15px 0",
-    optimizations: {
-        moveElement: false // always moves to <body> anyway!
-    }
-};
-
 export default class Popover extends Component {
     constructor(props) {
         super(props);
@@ -80,7 +71,7 @@ export default class Popover extends Component {
                 </div>
             , this._popoverElement);
 
-            var tetherOptions = { ...DEFAULT_TETHER_OPTIONS, ...this.props.tetherOptions };
+            var tetherOptions = {};
 
             tetherOptions.element = this._popoverElement;
 
@@ -91,8 +82,33 @@ export default class Popover extends Component {
                 tetherOptions.target = React.findDOMNode(this).parentNode;
             }
 
-            this._setTetherOptions(tetherOptions);
-
+            if (this.props.tetherOptions) {
+                this._setTetherOptions({
+                    ...tetherOptions,
+                    ...this.props.tetherOptions
+                });
+            } else {
+                for (let attachmentX of ["center", "left", "right"]) {
+                    let [offsetY, offsetX] = [5, 0];
+                    if (attachmentX === "left") {
+                        offsetX = -(offsetX + 24);
+                    } else if (attachmentX === "right") {
+                        offsetX = offsetX + 24;
+                    }
+                    this._setTetherOptions({
+                        ...tetherOptions,
+                        attachment: "top " + attachmentX,
+                        targetAttachment: "bottom center",
+                        targetOffset: [offsetY, offsetX].map(o => o + "px").join(" "),
+                        constraints: [{ to: 'window', attachment: 'together', pin: ['top', 'bottom']}]
+                    });
+                    let elementRect = Tether.Utils.getBounds(tetherOptions.element);
+                    let obscured = Math.min(elementRect.left, 0) + Math.min(elementRect.right, 0);
+                    if (obscured === 0) {
+                        break;
+                    }
+                }
+            }
         } else {
             // if the popover isn't open then actively unmount our popover
             React.unmountComponentAtNode(this._popoverElement);
@@ -113,8 +129,5 @@ Popover.propTypes = {
 
 Popover.defaultProps = {
     isOpen: true,
-    hasArrow: true,
-    isHorizontal: false,
-    attachmentsX: ["center", "left", "right"],
-    attachmentsY: ["top", "bottom"]
+    hasArrow: true
 };

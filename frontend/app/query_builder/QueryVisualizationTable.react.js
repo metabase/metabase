@@ -161,6 +161,7 @@ export default class QueryVisualizationTable extends Component {
             if (this.state.popover && this.state.popover.rowIndex === rowIndex && this.state.popover.cellDataKey === cellDataKey) {
                 popover = (
                     <Popover
+                        hasArrow={false}
                         tetherOptions={{
                             targetAttachment: "middle center",
                             attachment: "middle center"

@@ -32,6 +32,14 @@ export default ComposedComponent => class extends Component {
         this.close();
     }
 
+    getTriggerTarget() {
+        if (this.props.getTriggerTarget) {
+            return this.props.getTriggerTarget();
+        } else {
+            return this.refs.trigger;
+        }
+    }
+
     render() {
         return (
             <a ref="trigger" href="#" onClick={() => this.toggle()} className={cx("no-decoration", this.props.triggerClasses)}>
@@ -40,7 +48,7 @@ export default ComposedComponent => class extends Component {
                     {...this.props}
                     isOpen={this.state.isOpen}
                     onClose={this.onClose.bind(this)}
-                    getTriggerTarget={() => this.refs.trigger}
+                    getTriggerTarget={() => this.getTriggerTarget()}
                 />
             </a>
         );

@@ -159,18 +159,17 @@ export default React.createClass({
                 </span>
             )
 
-            var tetherOptions = {
-                attachment: 'middle left',
-                targetAttachment: 'middle right',
-                targetOffset: '0 6px'
-            };
-
             return (
                 <div className="relative">
                     <span className="GuiBuilder-section-label Query-label">Color</span>
                     <PopoverWithTrigger ref="colorPopover"
                                         hasArrow={false}
-                                        tetherOptions={tetherOptions}
+                                        tetherOptions={{
+                                            attachment: 'middle left',
+                                            targetAttachment: 'middle right',
+                                            targetOffset: '0 0',
+                                            constraints: [{ to: 'window', attachment: 'together', pin: ['left', 'right']}]
+                                        }}
                                         triggerElement={triggerElement}
                                         triggerClasses="flex align-center">
                         <ol className="p1">

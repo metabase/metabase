@@ -129,28 +129,28 @@ export default class GuiQueryEditor extends Component {
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Sort');
     }
 
-    renderAdd(text, onClick) {
+    renderAdd(text, onClick, targetRefName) {
         let className = "text-grey-2 text-bold flex align-center text-grey-4-hover cursor-pointer no-decoration transition-color";
         if (onClick) {
             return (
                 <a className={className} onClick={onClick}>
-                    {this.renderAddIcon()}
+                    {this.renderAddIcon(targetRefName)}
                     { text && <span className="ml1">{text}</span> }
                 </a>
             );
         } else {
             return (
                 <span className={className}>
-                    {this.renderAddIcon()}
+                    {this.renderAddIcon(targetRefName)}
                     { text && <span className="ml1">{text}</span> }
                 </span>
             );
         }
     }
 
-    renderAddIcon() {
+    renderAddIcon(targetRefName) {
         return (
-            <IconBorder borderRadius="3px">
+            <IconBorder borderRadius="3px" ref={targetRefName}>
                 <Icon name="add" width="14px" height="14px" />
             </IconBorder>
         )
@@ -186,14 +186,14 @@ export default class GuiQueryEditor extends Component {
             // TODO: proper check for isFilterComplete(filter)
             if (Query.canAddFilter(this.props.query.query)) {
                 if (filterList) {
-                    addFilterButton = this.renderAdd();
+                    addFilterButton = this.renderAdd(null, null, "addFilterTarget");
                 } else {
-                    addFilterButton = this.renderAdd("Add filters to narrow your answer");
+                    addFilterButton = this.renderAdd("Add filters to narrow your answer", null, "addFilterTarget");
                 }
             }
         } else {
             enabled = false;
-            addFilterButton = this.renderAdd("Add filters to narrow your answer");
+            addFilterButton = this.renderAdd("Add filters to narrow your answer", null, "addFilterTarget");
         }
 
         return (
@@ -209,7 +209,9 @@ export default class GuiQueryEditor extends Component {
                                         targetOffset: '4px 14px'
                                     }}
                                     triggerElement={addFilterButton}
-                                    triggerClasses="flex align-center">
+                                    triggerClasses="flex align-center"
+                                    getTriggerTarget={() => this.refs.addFilterTarget}
+                >
                     <FilterPopover
                         isNew={true}
                         tableMetadata={this.props.tableMetadata}
