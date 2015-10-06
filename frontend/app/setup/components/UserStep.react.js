@@ -5,6 +5,7 @@ import cx from "classnames";
 import FormField from "metabase/components/form/FormField.react";
 import FormLabel from "metabase/components/form/FormLabel.react";
 import FormMessage from "metabase/components/form/FormMessage.react";
+import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
 
@@ -54,6 +55,8 @@ export default class UserStep extends Component {
                 passwordError: error.data.errors.password,
                 validPassword: false
             });
+
+            MetabaseAnalytics.trackEvent('Setup', 'Error', 'password validation');
         }
     }
 
@@ -99,6 +102,8 @@ export default class UserStep extends Component {
                 'site_name': React.findDOMNode(this.refs.siteName).value
             }
         }));
+
+        MetabaseAnalytics.trackEvent('Setup', 'User Details Step');
     }
 
     render() {

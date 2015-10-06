@@ -37,9 +37,13 @@
     m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
     })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
 
-    // start off with tracking disabled (the angular app will re-enable this once we know the app runtime settings)
-    window['ga-disable-UA-60817802-1'] = true;
+    // if we are not doing tracking then go ahead and disable GA now so we never even track the initial pageview
+    const tracking = window.MetabaseBootstrap.anon_tracking_enabled;
+    const ga_code = window.MetabaseBootstrap.ga_code;
+    if (!tracking) {
+        window['ga-disable-'+ga_code] = true;
+    }
 
-    ga('create', 'UA-60817802-1', 'auto');
+    ga('create', ga_code, 'auto');
     </script>
 </html>
