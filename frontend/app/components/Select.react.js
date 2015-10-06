@@ -10,7 +10,8 @@ export default React.createClass({
         placeholder: React.PropTypes.string,
         onChange: React.PropTypes.func,
         optionNameFn: React.PropTypes.func,
-        optionValueFn: React.PropTypes.func
+        optionValueFn: React.PropTypes.func,
+        showScrollbars: React.PropTypes.bool
     },
 
     getDefaultProps: function() {
@@ -62,7 +63,10 @@ export default React.createClass({
                                 className={this.props.className}
                                 triggerElement={triggerElement}
                                 triggerClasses={"AdminSelect " + (this.props.className || "")}>
-                <ColumnarSelector columns={columns}/>
+                <ColumnarSelector
+                    columns={columns}
+                    showScrollbars={this.props.showScrollbars}
+                />
             </PopoverWithTrigger>
         );
     }
