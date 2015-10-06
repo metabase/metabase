@@ -88,6 +88,10 @@
   border-radius: 4px;
 }
 
+.CardSettings-colorBlock:last-child {
+    margin-right: 0;
+}
+
 .Card--scalar {
     padding: 1em;
 }

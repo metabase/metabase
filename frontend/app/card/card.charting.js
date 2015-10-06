@@ -360,10 +360,12 @@ function applyChartYAxis(chart, card, coldefs, data, minPixelsPerTick) {
 
 function applyChartColors(dcjsChart, card) {
     // Set the color for the bar/line
-    var settings = card.visualization_settings,
-        chartColor = (card.display === 'bar') ? settings.bar.color : settings.line.lineColor,
-        colorList = (card.display === 'bar') ? settings.bar.colors : settings.line.colors;
-    return dcjsChart.ordinalColors([chartColor].concat(colorList));
+    let settings = card.visualization_settings;
+    let chartColor = (card.display === 'bar') ? settings.bar.color : settings.line.lineColor;
+    let colorList = (card.display === 'bar') ? settings.bar.colors : settings.line.colors;
+    // dedup colors list to ensure stacked charts don't have the same color
+    let uniqueColors = _.uniq([chartColor].concat(colorList));
+    return dcjsChart.ordinalColors(uniqueColors);
 }
 
 function applyChartTooltips(dcjsChart, card, cols) {
@@ -797,9 +799,6 @@ export var CardRenderer = {
                     value: row[1]
                 };
             }),
-            keys = _.map(data, function(d) {
-                return d.key;
-            }),
             sumTotalValue = _.reduce(data, function(acc, d) {
                 return acc + d.value;
             }, 0);
@@ -818,13 +817,8 @@ export var CardRenderer = {
                         .dimension(dimension)
                         .group(group)
                         .colors(settings.pie.colors)
-                        .colorCalculator(function(d) {
-                            var index = _.indexOf(keys, d.key);
-                            return settings.pie.colors[index % settings.pie.colors.length];
-                        })
-                        .label(function(row) {
-                            return row.key == null ? '[unset]' : row.key;
-                        })
+                        .colorCalculator((d, i) => settings.pie.colors[((i * 5) + Math.floor(i / 5)) % settings.pie.colors.length])
+                        .label(row => row.key == null ? '[unset]' : row.key)
                         .title(function(d) {
                             // ghetto rounding to 1 decimal digit since Math.round() doesn't let
                             // you specify a precision and always rounds to int
