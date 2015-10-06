@@ -24,14 +24,14 @@ export default class RecentViews extends Component {
 
     renderIllustration(item) {
         if (item.model === 'card' && 'display' in item.model_object) {
-            const icon = '/app/components/icons/assets/illustration_visualization_'+item.model_object.display+'.png';
+            const icon = 'illustration-'+item.model_object.display;
             return (
-                <img className="float-left" style={{height: "24px"}} src={icon} />
+                <Icon name={icon} width={22} height={22} />
             );
 
         } else if(item.model === 'dashboard') {
             return (
-                <img className="float-left" style={{height: "24px"}} src="/app/components/icons/assets/illustration_visualization_dashboard.png" />
+                <Icon name={'illustration-dashboard'} width={22} height={22} />
             );
 
         } else {
