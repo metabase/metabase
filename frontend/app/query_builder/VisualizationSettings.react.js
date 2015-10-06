@@ -122,7 +122,7 @@ export default React.createClass({
             <div className="relative">
                 <span className="GuiBuilder-section-label Query-label">Visualization</span>
                 <PopoverWithTrigger ref="displayPopover"
-                                    className="PopoverBody PopoverBody--withArrow ChartType-popover"
+                                    className="ChartType-popover"
                                     tetherOptions={tetherOptions}
                                     triggerElement={triggerElement}
                                     triggerClasses="flex align-center">
@@ -169,7 +169,7 @@ export default React.createClass({
                 <div className="relative">
                     <span className="GuiBuilder-section-label Query-label">Color</span>
                     <PopoverWithTrigger ref="colorPopover"
-                                        className="PopoverBody"
+                                        hasArrow={false}
                                         tetherOptions={tetherOptions}
                                         triggerElement={triggerElement}
                                         triggerClasses="flex align-center">

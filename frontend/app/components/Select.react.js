@@ -66,7 +66,7 @@ export default React.createClass({
 
         return (
             <PopoverWithTrigger ref="popover"
-                                className={"PopoverBody PopoverBody--withArrow " + (this.props.className || "")}
+                                className={this.props.className}
                                 tetherOptions={tetherOptions}
                                 triggerElement={triggerElement}
                                 triggerClasses={"AdminSelect " + (this.props.className || "")}>

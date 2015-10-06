@@ -53,7 +53,6 @@ export default React.createClass({
             return (
                 <PopoverWithTrigger
                     ref="databasePopover"
-                    className="PopoverBody PopoverBody--withArrow"
                     tetherOptions={tetherOptions}
                     triggerElement={triggerElement}
                 >

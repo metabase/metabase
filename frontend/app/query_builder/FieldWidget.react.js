@@ -40,7 +40,7 @@ export default class FieldWidget extends Component {
             return (
                 <Popover
                     ref="popover"
-                    className="PopoverBody PopoverBody--withArrow FieldPopover"
+                    className="FieldPopover"
                     tetherOptions={tetherOptions}
                     onClose={this.toggle}
                 >

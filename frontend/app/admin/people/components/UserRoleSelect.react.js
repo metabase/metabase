@@ -54,7 +54,7 @@ export default class UserRoleSelect extends Component {
 
         return (
             <PopoverWithTrigger ref="popover"
-                                className={"PopoverBody PopoverBody--withArrow UserRolePopover block"}
+                                className="UserRolePopover block"
                                 tetherOptions={tetherOptions}
                                 triggerElement={triggerElement}
                                 triggerClasses={cx("AdminSelectBorderless", "py1", {"text-purple": user.is_superuser, "text-brand": !user.is_superuser})}>

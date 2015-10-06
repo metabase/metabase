@@ -113,7 +113,7 @@ export default class FilterWidget extends Component {
             return (
                 <Popover
                     ref="filterPopover"
-                    className="PopoverBody PopoverBody--withArrow FilterPopover"
+                    className="FilterPopover"
                     isInitiallyOpen={this.state.field === null}
                     tetherOptions={tetherOptions}
                     onClose={this.close}

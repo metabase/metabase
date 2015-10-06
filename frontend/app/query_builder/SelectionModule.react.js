@@ -198,7 +198,7 @@ export default React.createClass({
             return (
                 <Popover
                     tetherOptions={tetherOptions}
-                    className={"SelectionModule PopoverBody PopoverBody--withArrow " + this.props.className}
+                    className={"SelectionModule " + this.props.className}
                     onClose={this.onClose}
                 >
                     <div className={itemListClasses}>

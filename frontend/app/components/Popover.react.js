@@ -114,6 +114,7 @@ Popover.propTypes = {
 Popover.defaultProps = {
     isOpen: true,
     hasArrow: true,
+    isHorizontal: false,
     attachmentsX: ["center", "left", "right"],
     attachmentsY: ["top", "bottom"]
 };

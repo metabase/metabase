@@ -101,7 +101,6 @@ export default class DataSelector extends Component {
                 <span className="GuiBuilder-section-label Query-label">{this.props.name}</span>
                 <PopoverWithTrigger
                     ref="popover"
-                    className="PopoverBody PopoverBody--withArrow"
                     isInitiallyOpen={this.props.isInitiallyOpen}
                     triggerElement={triggerElement}
                     triggerClasses="flex align-center"

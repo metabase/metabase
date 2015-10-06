@@ -203,7 +203,6 @@ export default class GuiQueryEditor extends Component {
                 </div>
                 <div className="mx2">
                 <PopoverWithTrigger ref="filterPopover"
-                                    className="PopoverBody PopoverBody--withArrow"
                                     tetherOptions={{
                                         attachment: 'top center',
                                         targetAttachment: 'bottom left',
@@ -437,8 +436,7 @@ export default class GuiQueryEditor extends Component {
         return (
             <div className="GuiBuilder-section GuiBuilder-sort-limit flex align-center" ref="sortLimitSection">
 
-                <PopoverWithTrigger className="PopoverBody PopoverBody--withArrow"
-                                    tetherOptions={tetherOptions}
+                <PopoverWithTrigger tetherOptions={tetherOptions}
                                     triggerElement={triggerElement}
                                     triggerClasses="flex align-center">
                     <div className="px3 py1">

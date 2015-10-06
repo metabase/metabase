@@ -46,7 +46,7 @@ export default class UserActionsSelect extends Component {
 
         return (
             <PopoverWithTrigger ref="popover"
-                                className={"PopoverBody PopoverBody--withArrow block"}
+                                className="block"
                                 tetherOptions={tetherOptions}
                                 triggerElement={<span className="text-grey-1"><Icon name={'ellipsis'}></Icon></span>}>
                 <ul className="UserActionsSelect">
