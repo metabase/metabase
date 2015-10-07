@@ -32,16 +32,10 @@ export default class FieldWidget extends Component {
 
     renderPopover() {
         if (this.state.isOpen) {
-            var tetherOptions = {
-                attachment: 'top center',
-                targetAttachment: 'bottom center',
-                targetOffset: '15px 25px'
-            };
             return (
                 <Popover
                     ref="popover"
-                    className="PopoverBody PopoverBody--withArrow FieldPopover"
-                    tetherOptions={tetherOptions}
+                    className="FieldPopover"
                     onClose={this.toggle}
                 >
                     <FieldList

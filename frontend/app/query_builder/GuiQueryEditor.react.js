@@ -129,19 +129,28 @@ export default class GuiQueryEditor extends Component {
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Sort');
     }
 
-    renderAdd(text, onClick) {
-        let classes = "text-grey-2 text-grey-4-hover cursor-pointer text-bold no-decoration flex align-center transition-color";
-        return (
-            <a className={classes} onClick={onClick}>
-                {this.renderAddIcon()}
-                { text ? (<span className="ml1">{text}</span>) : (null) }
-            </a>
-        )
+    renderAdd(text, onClick, targetRefName) {
+        let className = "text-grey-2 text-bold flex align-center text-grey-4-hover cursor-pointer no-decoration transition-color";
+        if (onClick) {
+            return (
+                <a className={className} onClick={onClick}>
+                    {this.renderAddIcon(targetRefName)}
+                    { text && <span className="ml1">{text}</span> }
+                </a>
+            );
+        } else {
+            return (
+                <span className={className}>
+                    {this.renderAddIcon(targetRefName)}
+                    { text && <span className="ml1">{text}</span> }
+                </span>
+            );
+        }
     }
 
-    renderAddIcon() {
+    renderAddIcon(targetRefName) {
         return (
-            <IconBorder borderRadius="3px">
+            <IconBorder borderRadius="3px" ref={targetRefName}>
                 <Icon name="add" width="14px" height="14px" />
             </IconBorder>
         )
@@ -177,14 +186,14 @@ export default class GuiQueryEditor extends Component {
             // TODO: proper check for isFilterComplete(filter)
             if (Query.canAddFilter(this.props.query.query)) {
                 if (filterList) {
-                    addFilterButton = this.renderAdd();
+                    addFilterButton = this.renderAdd(null, null, "addFilterTarget");
                 } else {
-                    addFilterButton = this.renderAdd("Add filters to narrow your answer");
+                    addFilterButton = this.renderAdd("Add filters to narrow your answer", null, "addFilterTarget");
                 }
             }
         } else {
             enabled = false;
-            addFilterButton = this.renderAdd("Add filters to narrow your answer");
+            addFilterButton = this.renderAdd("Add filters to narrow your answer", null, "addFilterTarget");
         }
 
         return (
@@ -194,14 +203,10 @@ export default class GuiQueryEditor extends Component {
                 </div>
                 <div className="mx2">
                 <PopoverWithTrigger ref="filterPopover"
-                                    className="PopoverBody PopoverBody--withArrow"
-                                    tetherOptions={{
-                                        attachment: 'top center',
-                                        targetAttachment: 'bottom left',
-                                        targetOffset: '4px 14px'
-                                    }}
                                     triggerElement={addFilterButton}
-                                    triggerClasses="flex align-center">
+                                    triggerClasses="flex align-center"
+                                    getTriggerTarget={() => this.refs.addFilterTarget}
+                >
                     <FilterPopover
                         isNew={true}
                         tableMetadata={this.props.tableMetadata}
@@ -409,12 +414,6 @@ export default class GuiQueryEditor extends Component {
     }
 
     renderSortLimitSection() {
-        var tetherOptions = {
-            attachment: 'top right',
-            targetAttachment: 'bottom center',
-            targetOffset: '5px 20px'
-        };
-
         var triggerElement = (<span className="EllipsisButton no-decoration text-grey-1 px1">…</span>);
 
         // TODO: use this logic
@@ -428,9 +427,7 @@ export default class GuiQueryEditor extends Component {
         return (
             <div className="GuiBuilder-section GuiBuilder-sort-limit flex align-center" ref="sortLimitSection">
 
-                <PopoverWithTrigger className="PopoverBody PopoverBody--withArrow"
-                                    tetherOptions={tetherOptions}
-                                    triggerElement={triggerElement}
+                <PopoverWithTrigger triggerElement={triggerElement}
                                     triggerClasses="flex align-center">
                     <div className="px3 py1">
                         {this.renderSort()}
