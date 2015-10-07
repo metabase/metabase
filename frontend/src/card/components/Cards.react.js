@@ -49,7 +49,7 @@ export default class Cards extends Component {
                                 <a className="link mb2" href={'/card/'+item.id+'?clone'}>{item.name}</a>
                                 <div className="text-grey-3">{item.description || "No description yet"}</div>
                             </div>
-                            <div className="flex-align-right flex-full text-right text-grey-3">
+                            <div className="flex-align-right flex-no-shrink text-right text-grey-3">
                                 <div>Saved by <span className="text-dark">{item.creator.common_name}</span></div>
                                 <div>Created {item.created_at.fromNow()}</div>
                             </div>

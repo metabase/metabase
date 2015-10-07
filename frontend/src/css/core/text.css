@@ -70,17 +70,9 @@
 }
 
 /* text weight */
-.text-light {
-    font-weight: 100;
-}
-
-.text-normal {
-  font-weight: 400;
-}
-
-.text-bold {
-  font-weight: 700;
-}
+.text-light  { font-weight: 300; }
+.text-normal { font-weight: 400; }
+.text-bold   { font-weight: 700; }
 
 /* text style */
 

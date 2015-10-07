@@ -12,6 +12,10 @@
     flex: 0.5;
 }
 
+.flex-no-shrink {
+    flex-shrink: 0;
+}
+
 .align-center {
     align-items: center;
 }
