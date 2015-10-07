@@ -1,4 +1,6 @@
+import Icon from "metabase/components/Icon.react";
 import RadioSelect from 'metabase/components/RadioSelect.react';
+
 
 export default class SortableItemList extends React.Component {
     constructor(props) {
@@ -39,7 +41,7 @@ export default class SortableItemList extends React.Component {
                             <a className="no-decoration flex p2" href="#" onClick={() => this.onClickItem(item)}>
                                 <div className="flex align-center flex-full mr2">
                                     {this.props.showIcons ?
-                                        <div><img className="mr2" style={{height: "48px"}}  src={"/app/components/icons/assets/" + item.icon + ".png"} /></div>
+                                        <div className="mr2"><Icon name={'illustration-'+item.display} width={48} height={48} /></div>
                                     : null}
                                     <div className="text-brand-hover">
                                         <h3 className="mb1">{item.name}</h3>

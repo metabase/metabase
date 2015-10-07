@@ -79,7 +79,6 @@ export const fetchCards = createThunkAction(FETCH_CARDS, function(filterMode, fi
         for (var c of cards) {
             c.created_at = moment(c.created_at);
             c.updated_at = moment(c.updated_at);
-            c.icon = c.display ? 'illustration_visualization_' + c.display : null;
         }
         return cards;
     };

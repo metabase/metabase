@@ -42,7 +42,7 @@ export default class Cards extends Component {
                 {items.map(item =>
                     <li key={item.id} className="flex pt2">
                         <div className="pb2 mr2">
-                            <img style={{height: "36px"}} src={"/app/components/icons/assets/" + item.icon + ".png"} />
+                            <Icon name={'illustration-'+item.display} width={36} height={36} />
                         </div>
                         <div className="flex align-center flex-full border-bottom pb2">
                             <div className="text-brand-hover">
