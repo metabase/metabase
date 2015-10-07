@@ -77,21 +77,18 @@ export default class EditUserForm extends Component {
             <form onSubmit={this.formSubmitted.bind(this)} noValidate>
                 <div className="px4 pb2">
                     <FormField fieldName="first_name" formError={formError}>
-                        <FormLabel title="First name" fieldName="first_name" formError={formError}></FormLabel>
+                        <FormLabel title="First name" fieldName="first_name" formError={formError} offset={false}></FormLabel>
                         <input ref="firstName" className="Form-input full" name="name" defaultValue={(user) ? user.first_name : null} placeholder="Johnny" onChange={this.onChange.bind(this)} />
-
                     </FormField>
 
                     <FormField fieldName="last_name" formError={formError}>
-                        <FormLabel title="Last name" fieldName="last_name" formError={formError}></FormLabel>
+                        <FormLabel title="Last name" fieldName="last_name" formError={formError} offset={false}></FormLabel>
                         <input ref="lastName" className="Form-input full" name="name" defaultValue={(user) ? user.last_name : null} placeholder="Appleseed" required onChange={this.onChange.bind(this)} />
-
                     </FormField>
 
                     <FormField fieldName="email" formError={formError}>
-                        <FormLabel title="Email address" fieldName="email" formError={formError}></FormLabel>
+                        <FormLabel title="Email address" fieldName="email" formError={formError} offset={false}></FormLabel>
                         <input ref="email" className="Form-input full" name="email" defaultValue={(user) ? user.email : null} placeholder="youlooknicetoday@email.com" required onChange={this.onChange.bind(this)} />
-
                     </FormField>
                 </div>
 

@@ -75,14 +75,13 @@
 (defn- -init-create-setup-token
   "Create and set a new setup token, and open the setup URL on the user's system."
   []
-  (let [setup-token (setup/token-create)
+  (let [setup-token (setup/token-create)                    ; we need this here to create the initial token
         hostname    (or (config/config-str :mb-jetty-host) "localhost")
         port        (config/config-int :mb-jetty-port)
         setup-url   (str "http://"
                          (or hostname "localhost")
                          (when-not (= 80 port) (str ":" port))
-                         "/setup/init/"
-                         setup-token)]
+                         "/setup/")]
     (log/info (color/green "Please use the following url to setup your Metabase installation:\n\n"
                            setup-url
                            "\n\n"))))
