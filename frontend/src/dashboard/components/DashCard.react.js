@@ -1,3 +1,5 @@
+/*global $clamp*/
+
 import React, { Component, PropTypes } from "react";
 
 import ScalarCard from "./cards/ScalarCard.react";
@@ -60,15 +62,24 @@ export default class DashCard extends Component {
         );
     }
 
+    componentDidUpdate() {
+        let titleElement = React.findDOMNode(this.refs.title);
+        // have to restore the text in case we previously clamped it :-/
+        titleElement.textContent = this.props.dashcard.card.name;
+        $clamp(titleElement, { clamp: 2 });
+    }
+
     render() {
         let { card } = this.props.dashcard;
         let recent = this.props.dashcard.isAdded;
         return (
             <div className={"Card bordered rounded flex flex-column " + cx({ "Card--recent": recent })}>
                 <div className="Card-heading my1 px2">
-                    <h3 className="text-normal my1">
-                        <a className="Card-title link" href={"/card/"+card.id+"?clone"}>{card.name}</a>
-                    </h3>
+                    <a className="Card-title link" href={"/card/"+card.id+"?clone"}>
+                        <div ref="title" className="h3 text-normal my1">
+                            {card.name}
+                        </div>
+                    </a>
                 </div>
                 {this.renderCard()}
             </div>
