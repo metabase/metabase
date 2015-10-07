@@ -15,6 +15,7 @@ export default React.createClass({
     propTypes: {
         field: React.PropTypes.oneOfType([React.PropTypes.number, React.PropTypes.array]),
         fieldOptions: React.PropTypes.object.isRequired,
+        tableMetadata: React.PropTypes.object.isRequired,
         onClick: React.PropTypes.func,
         removeField: React.PropTypes.func
     },
@@ -27,7 +28,7 @@ export default React.createClass({
 
     render: function() {
         let targetTitle, fkTitle, fkIcon, bucketingTitle;
-        let { field, fieldOptions } = this.props;
+        let { field, fieldOptions, tableMetadata } = this.props;
 
         let bucketing = parseFieldBucketing(field);
         field = parseFieldTarget(field);
@@ -50,7 +51,8 @@ export default React.createClass({
             targetTitle = (<span>{fieldDef.display_name}</span>);
         }
 
-        if (fieldDef && isDate(fieldDef)) {
+        // Mongo doesn't support non-default time bucketing so don't show it
+        if (fieldDef && isDate(fieldDef) && tableMetadata.db.engine !== "mongo") {
             bucketingTitle = ": " + formatBucketing(bucketing);
         }
 

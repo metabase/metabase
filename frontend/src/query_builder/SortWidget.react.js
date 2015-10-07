@@ -7,7 +7,7 @@ export default React.createClass({
     propTypes: {
         sort: React.PropTypes.array.isRequired,
         fieldOptions: React.PropTypes.object.isRequired,
-        tableName: React.PropTypes.string,
+        tableMetadata: React.PropTypes.object.isRequired,
         updateSort: React.PropTypes.func.isRequired,
         removeSort: React.PropTypes.func.isRequired
     },
@@ -45,7 +45,7 @@ export default React.createClass({
             <div className="flex align-center">
                 <FieldWidget
                     className="Filter-section Filter-section-sort-field SelectionModule"
-                    tableName={this.props.tableName}
+                    tableMetadata={this.props.tableMetadata}
                     field={this.state.field}
                     fieldOptions={this.props.fieldOptions}
                     setField={this.setField}

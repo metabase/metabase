@@ -209,7 +209,7 @@ export default class GuiQueryEditor extends Component {
                 >
                     <FilterPopover
                         isNew={true}
-                        tableMetadata={this.props.tableMetadata}
+                        tableMetadata={this.props.tableMetadata || {}}
                         onCommitFilter={this.addFilter}
                         onClose={() => this.refs.filterPopover.close()}
                     />
@@ -280,7 +280,7 @@ export default class GuiQueryEditor extends Component {
                         placeholder='field'
                         field={breakout}
                         fieldOptions={fieldOptions}
-                        tableName={this.props.tableMetadata.display_name}
+                        tableMetadata={this.props.tableMetadata}
                         isInitiallyOpen={breakoutListOpen}
                         setField={this.updateDimension.bind(null, index)}
                         removeField={this.removeDimension.bind(null, index)}
@@ -332,7 +332,7 @@ export default class GuiQueryEditor extends Component {
                 return (
                     <SortWidget
                         key={index}
-                        tableName={this.props.tableMetadata.display_name}
+                        tableMetadata={this.props.tableMetadata}
                         sort={order_by}
                         fieldOptions={sortFieldOptions}
                         removeSort={this.removeSort.bind(null, index)}

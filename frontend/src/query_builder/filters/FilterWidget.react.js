@@ -64,6 +64,7 @@ export default class FilterWidget extends Component {
         return (
             <FieldName
                 className="Filter-section Filter-section-field"
+                tableMetadata={this.props.tableMetadata}
                 field={this.state.field}
                 fieldOptions={Query.getFieldOptions(this.props.tableMetadata.fields, true)}
                 onClick={this.open}
