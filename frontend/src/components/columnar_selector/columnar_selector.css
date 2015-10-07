@@ -3,14 +3,12 @@
     display: flex;
     background-color: #FCFCFC;
     font-weight: 700;
-
-    max-height: 600px;
 }
 
 .ColumnarSelector-column {
     min-width: 180px;
     min-height: 300px;
-    max-height: 450px;
+    max-height: 340px;
     overflow-y: scroll;
     flex: 1;
 }

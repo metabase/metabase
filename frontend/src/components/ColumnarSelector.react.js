@@ -5,7 +5,8 @@ import cx from "classnames";
 export default React.createClass({
     displayName: "ColumnarSelector",
     propTypes: {
-        columns: React.PropTypes.array.isRequired
+        columns: React.PropTypes.array.isRequired,
+        showScrollbars: React.PropTypes.bool
     },
 
     render: function() {
@@ -55,7 +56,7 @@ export default React.createClass({
             }
 
             return (
-                <div key={columnIndex} className="ColumnarSelector-column">
+                <div key={columnIndex} className={cx("ColumnarSelector-column", { "scroll-show": this.props.showScrollbars })}>
                     {sectionElements}
                 </div>
             );

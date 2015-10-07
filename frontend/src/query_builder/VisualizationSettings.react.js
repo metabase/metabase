@@ -83,12 +83,6 @@ export default React.createClass({
     },
 
     renderChartTypePicker: function() {
-        var tetherOptions = {
-            attachment: 'top left',
-            targetAttachment: 'bottom left',
-            targetOffset: '5px 25px'
-        };
-
         var iconName = this.visualizationTypeNames[this.props.card.display].iconName;
         var triggerElement = (
             <span className="px2 py1 text-bold cursor-pointer text-default flex align-center">
@@ -122,8 +116,7 @@ export default React.createClass({
             <div className="relative">
                 <span className="GuiBuilder-section-label Query-label">Visualization</span>
                 <PopoverWithTrigger ref="displayPopover"
-                                    className="PopoverBody PopoverBody--withArrow ChartType-popover"
-                                    tetherOptions={tetherOptions}
+                                    className="ChartType-popover"
                                     triggerElement={triggerElement}
                                     triggerClasses="flex align-center">
                     <ul className="pt1 pb1">
@@ -159,18 +152,17 @@ export default React.createClass({
                 </span>
             )
 
-            var tetherOptions = {
-                attachment: 'middle left',
-                targetAttachment: 'middle right',
-                targetOffset: '0 6px'
-            };
-
             return (
                 <div className="relative">
                     <span className="GuiBuilder-section-label Query-label">Color</span>
                     <PopoverWithTrigger ref="colorPopover"
-                                        className="PopoverBody"
-                                        tetherOptions={tetherOptions}
+                                        hasArrow={false}
+                                        tetherOptions={{
+                                            attachment: 'middle left',
+                                            targetAttachment: 'middle right',
+                                            targetOffset: '0 0',
+                                            constraints: [{ to: 'window', attachment: 'together', pin: ['left', 'right']}]
+                                        }}
                                         triggerElement={triggerElement}
                                         triggerClasses="flex align-center">
                         <ol className="p1">

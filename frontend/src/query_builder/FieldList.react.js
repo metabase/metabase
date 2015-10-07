@@ -80,13 +80,14 @@ export default class FieldList extends Component {
                 </a>
                 { this.props.enableTimeGrouping && isDate(item.field) ?
                     <PopoverWithTrigger
-                        className={"PopoverBody " + this.props.className}
+                        className={this.props.className}
+                        hasArrow={false}
                         triggerElement={this.renderTimeGroupingTrigger(field)}
                         tetherOptions={{
                             attachment: 'top left',
                             targetAttachment: 'top right',
-                            targetOffset: '0 0'
-                            // constraints: [{ to: 'window', attachment: 'together', pin: ['top', 'bottom']}]
+                            targetOffset: '0 0',
+                            constraints: [{ to: 'window', attachment: 'together', pin: ['left', 'right']}]
                         }}
                     >
                         <TimeGroupingPopover

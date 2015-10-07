@@ -3,10 +3,13 @@ import React, { Component, PropTypes } from "react";
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper.react";
 import Tether from "tether";
 
+import cx from "classnames";
+
 export default class Popover extends Component {
     constructor(props) {
         super(props);
-        this.state = {};
+
+        this.handleClickOutside = this.handleClickOutside.bind(this);
     }
 
     componentWillMount() {
@@ -43,24 +46,51 @@ export default class Popover extends Component {
 
     _popoverComponent() {
         return (
-            <OnClickOutsideWrapper handleClickOutside={this.handleClickOutside.bind(this)}>
-                <div className={this.props.className}>
+            <OnClickOutsideWrapper handleClickOutside={this.handleClickOutside}>
+                <div className={cx("PopoverBody", { "PopoverBody--withArrow": this.props.hasArrow }, this.props.className)}>
                     {this.props.children}
                 </div>
             </OnClickOutsideWrapper>
         );
     }
 
-    _tetherOptions() {
-        // sensible defaults for most popovers
-        return {
-            attachment: 'bottom right',
-            targetAttachment: 'top right',
-            targetOffset: '10px 0',
-            optimizations: {
-                moveElement: false // always moves to <body> anyway!
+    _setTetherOptions(tetherOptions, o) {
+        if (o) {
+            tetherOptions = {
+                ...tetherOptions,
+                attachment: `${o.attachmentY} ${o.attachmentX}`,
+                targetAttachment: `${o.targetAttachmentY} ${o.targetAttachmentX}`,
+                targetOffset: `${o.offsetY}px ${o.offsetX}px`
             }
-        };
+        }
+        if (this._tether) {
+            this._tether.setOptions(tetherOptions);
+        } else {
+            this._tether = new Tether(tetherOptions);
+        }
+    }
+
+    _getBestAttachmentOptions(tetherOptions, options, attachments, offscreenProps, getAttachmentOptions) {
+        let best = { ...options };
+        let bestOffScreen = -Infinity;
+        // try each attachment until one is entirely on screen, or pick the least bad one
+        for (let attachment of attachments) {
+            // compute the options for this attachment position then set it
+            let options = getAttachmentOptions(best, attachment);
+            this._setTetherOptions(tetherOptions, options);
+            // test to see how much of the popover is off-screen
+            let elementRect = Tether.Utils.getBounds(tetherOptions.element);
+            let offScreen = offscreenProps.map(prop => Math.min(elementRect[prop], 0)).reduce((a, b) => a + b);
+            // if none then we're done, otherwise check to see if it's the best option so far
+            if (offScreen === 0) {
+                best = options;
+                break;
+            } else if (offScreen > bestOffScreen) {
+                best = options;
+                bestOffScreen = offScreen;
+            }
+        }
+        return best;
     }
 
     _renderPopover() {
@@ -72,16 +102,56 @@ export default class Popover extends Component {
                 </div>
             , this._popoverElement);
 
-            var tetherOptions = this.props.tetherOptions || this._tetherOptions();
+            var tetherOptions = {};
 
-            // NOTE: these must be set here because they relate to OUR component and can't be passed in
             tetherOptions.element = this._popoverElement;
-            tetherOptions.target = React.findDOMNode(this).parentNode;
 
-            if (this._tether !== undefined && this._tether !== null) {
-                this._tether.setOptions(tetherOptions);
+            if (!tetherOptions.target && this.props.getTriggerTarget) {
+                tetherOptions.target = React.findDOMNode(this.props.getTriggerTarget());
+            }
+            if (!tetherOptions.target) {
+                tetherOptions.target = React.findDOMNode(this).parentNode;
+            }
+
+            if (this.props.tetherOptions) {
+                this._setTetherOptions({
+                    ...tetherOptions,
+                    ...this.props.tetherOptions
+                });
             } else {
-                this._tether = new Tether(tetherOptions);
+                let best = {
+                    attachmentX: "center",
+                    attachmentY: "top",
+                    targetAttachmentX: "center",
+                    targetAttachmentY: "bottom",
+                    offsetX: 0,
+                    offsetY: 0
+                };
+
+                // horizontal
+                best = this._getBestAttachmentOptions(
+                    tetherOptions, best, ["center", "left", "right"], ["left", "right"],
+                    (best, attachmentX) => ({
+                        ...best,
+                        attachmentX: attachmentX,
+                        targetAttachmentX: "center",
+                        offsetX: ({ "center": 0, "left": -24, "right": 24 })[attachmentX]
+                    })
+                );
+
+                // vertical
+                best = this._getBestAttachmentOptions(
+                    tetherOptions, best, ["top", "bottom"], ["top", "bottom"],
+                    (best, attachmentY) => ({
+                        ...best,
+                        attachmentY: attachmentY,
+                        targetAttachmentY: (attachmentY === "top" ? "bottom" : "top"),
+                        offsetY: ({ "top": 5, "bottom": -5 })[attachmentY]
+                    })
+                );
+
+                // finally set the best options
+                this._setTetherOptions(tetherOptions, best);
             }
         } else {
             // if the popover isn't open then actively unmount our popover
@@ -90,15 +160,18 @@ export default class Popover extends Component {
     }
 
     render() {
-        return <span />;
+        return <span className="hide" />;
     }
 }
 
 Popover.propTypes = {
-    isOpen: PropTypes.bool
+    isOpen: PropTypes.bool,
+    hasArrow: PropTypes.bool,
+    getTriggerTarget: PropTypes.func,
+    tetherOptions: PropTypes.object
 };
 
 Popover.defaultProps = {
-    className: "Popover",
-    isOpen: true
+    isOpen: true,
+    hasArrow: true
 };

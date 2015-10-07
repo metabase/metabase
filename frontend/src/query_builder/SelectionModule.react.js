@@ -178,12 +178,6 @@ export default React.createClass({
 
     renderPopover: function(selection) {
         if(this.state.open) {
-            var tetherOptions = {
-                attachment: 'top center',
-                targetAttachment: 'bottom center',
-                targetOffset: '14px 0'
-            };
-
             var itemListClasses = cx({
                 'SelectionItems': true,
                 'SelectionItems--open': this.state.open,
@@ -197,8 +191,7 @@ export default React.createClass({
 
             return (
                 <Popover
-                    tetherOptions={tetherOptions}
-                    className={"SelectionModule PopoverBody PopoverBody--withArrow " + this.props.className}
+                    className={"SelectionModule " + this.props.className}
                     onClose={this.onClose}
                 >
                     <div className={itemListClasses}>

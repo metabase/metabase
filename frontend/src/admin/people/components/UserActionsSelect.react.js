@@ -37,17 +37,9 @@ export default class UserActionsSelect extends Component {
     render() {
         let { user } = this.props;
 
-        const tetherOptions = {
-            attachment: 'top right',
-            targetAttachment: 'bottom right',
-            targetOffset: '5px 0',
-            constraints: [{ to: 'window', attachment: 'together', pin: ['top', 'bottom']}]
-        };
-
         return (
             <PopoverWithTrigger ref="popover"
-                                className={"PopoverBody PopoverBody--withArrow block"}
-                                tetherOptions={tetherOptions}
+                                className="block"
                                 triggerElement={<span className="text-grey-1"><Icon name={'ellipsis'}></Icon></span>}>
                 <ul className="UserActionsSelect">
                     <li className="py1 px2 bg-brand-hover text-white-hover cursor-pointer" onClick={this.onEditDetails.bind(this)}>Edit Details</li>
