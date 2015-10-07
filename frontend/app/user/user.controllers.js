@@ -1,3 +1,5 @@
+import MetabaseSettings from "metabase/lib/settings";
+
 var UserControllers = angular.module('metabase.user.controllers', ['metabase.forms']);
 
 UserControllers.controller('EditCurrentUser', ['$scope', function($scope) {
@@ -34,6 +36,8 @@ UserControllers.controller('AccountSettingsController', ['$scope', 'User',
 
 UserControllers.controller('PasswordUpdateController', ['$scope', 'User',
     function($scope, User) {
+
+        $scope.passwordComplexity = MetabaseSettings.passwordComplexity(true);
 
         $scope.save = function(passwordDetails) {
             $scope.$broadcast("form:reset");
