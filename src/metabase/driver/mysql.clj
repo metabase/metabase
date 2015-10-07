@@ -8,8 +8,8 @@
                        [utils :as utils])
             (metabase.driver [generic-sql :as generic-sql, :refer [GenericSQLIDriverMixin GenericSQLISyncDriverTableFKsMixin
                                                                    GenericSQLISyncDriverFieldAvgLengthMixin GenericSQLISyncDriverFieldPercentUrlsMixin]]
-                             [interface :refer [IDriver ISyncDriverTableFKs ISyncDriverFieldAvgLength ISyncDriverFieldPercentUrls
-                                                ISyncDriverSpecificSyncField driver-specific-sync-field!]])
+                             [interface :as i, :refer [IDriver ISyncDriverTableFKs ISyncDriverFieldAvgLength ISyncDriverFieldPercentUrls
+                                                       ISyncDriverSpecificSyncField driver-specific-sync-field!]])
             (metabase.driver.generic-sql [interface :refer [ISqlDriverDatabaseSpecific]]
                                          [util :refer [funcs]])))
 
@@ -132,6 +132,23 @@
                              :year    "DATE_ADD(NOW(), INTERVAL %d YEAR)")
                            amount)))
 
+(defn- humanize-connection-error-message [_ message]
+  (condp re-matches message
+        #"^Communications link failure\s+The last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.$"
+        (i/connection-error-messages :cannot-connect-check-host-and-port)
+
+        #"^Unknown database .*$"
+        (i/connection-error-messages :database-name-incorrect)
+
+        #"Access denied for user.*$"
+        (i/connection-error-messages :username-or-password-incorrect)
+
+        #"Must specify port after ':' in connection string"
+        (i/connection-error-messages :invalid-hostname)
+
+        #".*" ; default
+        message))
+
 (defrecord MySQLDriver [])
 
 (extend MySQLDriver
@@ -141,7 +158,8 @@
                                :date                                date
                                :date-interval                       date-interval
                                :timezone->set-timezone-sql          timezone->set-timezone-sql}
-  IDriver                     GenericSQLIDriverMixin
+  IDriver                     (assoc GenericSQLIDriverMixin
+                                     :humanize-connection-error-message humanize-connection-error-message)
   ISyncDriverTableFKs         GenericSQLISyncDriverTableFKsMixin
   ISyncDriverFieldAvgLength   GenericSQLISyncDriverFieldAvgLengthMixin
   ISyncDriverFieldPercentUrls GenericSQLISyncDriverFieldPercentUrlsMixin)
