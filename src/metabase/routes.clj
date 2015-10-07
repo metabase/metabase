@@ -12,7 +12,9 @@
              [routes :as api]]
             [metabase.core.initialization-status :as init-status]
             [metabase.util.embed :as embed]
-            [ring.util.response :as resp]
+            [ring.util
+             [io :as ring-io]
+             [response :as resp]]
             [stencil.core :as stencil]))
 
 (defn- load-file-at-path [path]
@@ -47,6 +49,26 @@
        (resp/redirect (format "/api/embed/card/%s/query/%s" token export-format)))
   (GET "*" [] embed))
 
+(defn- some-very-long-handler [_]
+  (Thread/sleep 3000)
+  {:success true})
+
+(defn- streaming-response [handler]
+  (fn [request]
+    ;; TODO - handle exceptions  & have some sort of maximum timeout for these requests
+    (let [response (future (handler request))
+          f        (fn [^java.io.PipedOutputStream ostream]
+                     (if (realized? response)
+                       (json/generate-stream @response (io/writer ostream))
+                       (do
+                         (println "Response not ready, writing one byte & sleeping 500ms...")
+                         (.write ostream (byte \ ))
+                         (.flush ostream)
+                         (Thread/sleep 500)
+                         (recur ostream))))]
+      (-> (resp/response (ring-io/piped-input-stream f))
+          (resp/content-type "application/json")))))
+
 ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
 (defroutes ^{:doc "Top-level ring routes for Metabase."} routes
   ;; ^/$ -> index.html
@@ -71,5 +93,7 @@
   (context "/public" [] public-routes)
   ;; ^/emebed/ -> Embed frontend and download routes
   (context "/embed" [] embed-routes)
+  (context "/stream-test" []
+    (streaming-response some-very-long-handler))
   ;; Anything else (e.g. /user/edit_current) should serve up index.html; React app will handle the rest
   (GET "*" [] index))
