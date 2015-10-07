@@ -11,14 +11,17 @@
             [metabase.config :as config]
             [metabase.db.internal :as i]
             [metabase.models.interface :as models]
-            [metabase.util :as u])
+            [metabase.util :as u]
+            [ring.util.codec :as codec]
+            [clojure.walk :as walk])
   (:import java.io.StringWriter
            java.sql.Connection
            liquibase.Liquibase
            (liquibase.database DatabaseFactory Database)
            liquibase.database.jvm.JdbcConnection
            liquibase.exception.DatabaseException
-           liquibase.resource.ClassLoaderResourceAccessor))
+           liquibase.resource.ClassLoaderResourceAccessor
+           org.postgresql.ssl.NonValidatingFactory))
 
 ;; ## DB FILE, JDBC/KORMA DEFINITONS
 
@@ -41,18 +44,27 @@
 (def ^:private db-connection-details
   "Connection details that can be used when pretending the Metabase DB is itself a `Database`
    (e.g., to use the Generic SQL driver functions on the Metabase DB itself)."
-  (delay (case (config/config-kw :mb-db-type)
-           :h2       {:db @db-file}
-           :postgres {:host     (config/config-str :mb-db-host)
-                      :port     (config/config-int :mb-db-port)
-                      :dbname   (config/config-str :mb-db-dbname)
-                      :user     (config/config-str :mb-db-user)
-                      :password (config/config-str :mb-db-pass)})))
+  (delay (or (some->> (config/config-str :mb-db-connection-uri)
+                      (re-matches #"^([^:/@]+)://([^:/@]+)(?::([^:@]+))?@([^:@]+)(?::(\d+))?/([^/?]+)(?:\?(.*))?$")
+                      rest
+                      (#(merge
+                        (zipmap [:type :user :password :host :port :dbname] %)
+                        (some->> (last %) codec/form-decode walk/keywordize-keys)))
+                      (#(update-in % [:type] keyword)))
+             (case (config/config-kw :mb-db-type)
+               :h2       {:type     :h2
+                          :db       @db-file}
+               :postgres {:type     :postgres
+                          :host     (config/config-str :mb-db-host)
+                          :port     (config/config-int :mb-db-port)
+                          :dbname   (config/config-str :mb-db-dbname)
+                          :user     (config/config-str :mb-db-user)
+                          :password (config/config-str :mb-db-pass)}))))
 
 (def ^:private jdbc-connection-details
   "Connection details for Korma / JDBC."
   (delay (let [details @db-connection-details]
-           (case (config/config-kw :mb-db-type)
+           (case (:type details)
              :h2       (kdb/h2 (assoc details :naming {:keys   s/lower-case
                                                        :fields s/upper-case}))
              :postgres (kdb/postgres (assoc details :db (:dbname details)))))))
@@ -125,7 +137,7 @@
 
   ;; Test DB connection and throw exception if we have any troubles connecting
   (log/info "Verifying Database Connection ...")
-  (assert (db-can-connect? {:engine  (config/config-kw :mb-db-type)
+  (assert (db-can-connect? {:engine  (:type @db-connection-details)
                             :details @db-connection-details})
     "Unable to connect to Metabase DB.")
   (log/info "Verify Database Connection ... CHECK")
