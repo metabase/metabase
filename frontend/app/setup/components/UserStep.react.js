@@ -123,7 +123,7 @@ export default class UserStep extends Component {
                         <FormField className="Grid" fieldName="first_name" formError={formError}>
                             <div>
                                 <FormLabel title="First name" fieldName="first_name" formError={formError}></FormLabel>
-                                <input ref="firstName" className="Form-input Form-offset full" name="name" defaultValue={(userDetails) ? userDetails.first_name : ""} placeholder="Johnny" onChange={this.onChange.bind(this)} />
+                                <input ref="firstName" className="Form-input Form-offset full" name="name" defaultValue={(userDetails) ? userDetails.first_name : ""} placeholder="Johnny" autoFocus={true} onChange={this.onChange.bind(this)} />
                                 <span className="Form-charm"></span>
                             </div>
                             <div>
