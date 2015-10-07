@@ -18,6 +18,7 @@
                               (catch-api-exceptions 0)
                               (check 1)
                               (checkp 1)
+                              (cond-let 0)
                               (conda 0)
                               (context 2)
                               (create-database-definition 1)
