@@ -75,7 +75,7 @@ export default class Setup extends Component {
                                 <section className="SetupStep rounded SetupStep--active flex flex-column layout-centered p4">
                                     <h1 style={{fontSize: "xx-large"}} className="text-normal pt2">You're all set up!</h1>
                                     <div className="pt4 pb2">
-                                        <a className="Button Button--primary" href="/" onClick={this.completeSetup.bind(this)}>Take me to Metabase</a>
+                                        <a className="Button Button--primary" href="/?new" onClick={this.completeSetup.bind(this)}>Take me to Metabase</a>
                                     </div>
                                 </section>
                             : null }
