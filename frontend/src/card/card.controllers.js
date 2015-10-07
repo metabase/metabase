@@ -469,9 +469,10 @@ CardControllers.controller('CardDetail', [
                     card.display = "table";
 
                 } else if (dataset_query.type === "query" &&
-                        dataset_query.query.aggregation &&
-                        dataset_query.query.aggregation.length > 0 &&
-                        dataset_query.query.aggregation[0] === "rows") {
+                            dataset_query.query.aggregation &&
+                            dataset_query.query.aggregation.length > 0 &&
+                            dataset_query.query.aggregation[0] === "rows" &&
+                            card.display !== "pin_map") {
                     // if our query aggregation is "rows" then ALWAYS set the display to "table"
                     card.display = "table";
                 }
