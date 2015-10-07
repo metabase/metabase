@@ -9,7 +9,7 @@ import {
     NUMBER,
     BOOL,
     LOCATION
-} from '../../../app/lib/schema_metadata';
+} from 'metabase/lib/schema_metadata';
 
 /* i'm a pretend latitude field */
 const specialField = {
