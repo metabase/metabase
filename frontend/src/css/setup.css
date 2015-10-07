@@ -4,22 +4,6 @@
     --setup-border-color: #D7D7D7;
 }
 
-.WelcomeMessage {
-    margin-top: 4em;
-    margin-bottom: 4em;
-}
-
-.WelcomeMessage-title {
-    font-weight: 100;
-    font-size: 2.286rem;
-    line-height: 2.786rem;
-}
-
-.WelcomeMessage-subTitle {
-    font-size: 1.2rem;
-    line-height: 1.4rem;
-}
-
 .SetupSteps {
     margin-top: 4.000rem;
 }
