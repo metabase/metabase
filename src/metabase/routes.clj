@@ -18,24 +18,32 @@
       (resp/header "Last-Modified" "{now} GMT")))
 
 (defn- some-very-long-handler [_]
-  (Thread/sleep 3000)
+  (Thread/sleep 30000)
   {:success true})
+
+(def ^:private ^:const streaming-response-keep-alive-interval-ms
+  "Interval between sending whitespace bytes to keep Heroku from terminating
+   requests like queries that take a long time to complete."
+  (* 20 1000)) ; every 20 ms
 
 (defn- streaming-response [handler]
   (fn [request]
     ;; TODO - handle exceptions  & have some sort of maximum timeout for these requests
-    (let [response (future (handler request))
-          f        (fn [^java.io.PipedOutputStream ostream]
-                     (if (realized? response)
-                       (json/generate-stream @response (io/writer ostream))
-                       (do
-                         (println "Response not ready, writing one byte & sleeping 500ms...")
-                         (.write ostream (byte \ ))
-                         (.flush ostream)
-                         (Thread/sleep 500)
-                         (recur ostream))))]
-      (-> (resp/response (ring-io/piped-input-stream f))
-          (resp/content-type "application/json")))))
+    (-> (fn [^java.io.PipedOutputStream ostream]
+          (let [response       (future (handler request))
+                write-response (future (json/generate-stream @response (io/writer ostream))
+                                       (println "Done! closing ostream...")
+                                       (.close ostream))]
+            (loop []
+              (Thread/sleep streaming-response-keep-alive-interval-ms)
+              (when-not (realized? response)
+                (println "Response not ready, writing one byte & sleeping...")
+                (.write ostream (byte \ ))
+                (.flush ostream)
+                (recur)))))
+        ring-io/piped-input-stream
+        resp/response
+        (resp/content-type "application/json"))))
 
 ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
 (defroutes routes
