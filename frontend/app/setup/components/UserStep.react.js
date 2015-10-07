@@ -120,7 +120,7 @@ export default class UserStep extends Component {
                 <section className="SetupStep SetupStep--active rounded full relative">
                     <StepTitle title={stepText} number={stepNumber} />
                     <form name="userForm" onSubmit={this.formSubmitted.bind(this)} noValidate className="mt2">
-                        <FormField className="Grid" fieldName="first_name" formError={formError}>
+                        <FormField className="Grid mb3" fieldName="first_name" formError={formError}>
                             <div>
                                 <FormLabel title="First name" fieldName="first_name" formError={formError}></FormLabel>
                                 <input ref="firstName" className="Form-input Form-offset full" name="name" defaultValue={(userDetails) ? userDetails.first_name : ""} placeholder="Johnny" autoFocus={true} onChange={this.onChange.bind(this)} />
