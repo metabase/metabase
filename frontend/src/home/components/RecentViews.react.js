@@ -24,9 +24,8 @@ export default class RecentViews extends Component {
 
     renderIllustration(item) {
         if (item.model === 'card' && 'display' in item.model_object) {
-            const icon = (item.model_object.display === 'line') ? 'illustration-area' : 'illustration-'+item.model_object.display;
             return (
-                <Icon name={icon} width={22} height={22} />
+                <Icon name={'illustration-'+item.model_object.display} width={22} height={22} />
             );
 
         } else if(item.model === 'dashboard') {
