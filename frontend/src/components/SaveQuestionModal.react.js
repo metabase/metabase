@@ -31,7 +31,7 @@ export default React.createClass({
         event.preventDefault();
 
         // make sure that user put in a card name before we close out the form
-        var name = this.refs.name.getDOMNode().value.trim();
+        var name = React.findDOMNode(this.refs.name).value.trim();
         if (!name || name === "") {
             this.setState({
                 errors: {
@@ -47,8 +47,8 @@ export default React.createClass({
         }
 
         var card = this.props.card;
-        card.name = this.refs.name.getDOMNode().value.trim();
-        card.description = this.refs.description.getDOMNode().value.trim();
+        card.name = React.findDOMNode(this.refs.name).value.trim();
+        card.description = React.findDOMNode(this.refs.description).value.trim();
         card.public_perms = 2; // public read/write
 
         this.props.saveFn(card).then((success) => {

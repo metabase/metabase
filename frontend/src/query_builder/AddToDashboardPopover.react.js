@@ -91,8 +91,8 @@ export default React.createClass({
     createNewDash: function(event) {
         event.preventDefault();
 
-        var name = this.refs.name.getDOMNode().value.trim();
-        var description = this.refs.description.getDOMNode().value.trim();
+        var name = React.findDOMNode(this.refs.name).value.trim();
+        var description = React.findDOMNode(this.refs.description).value.trim();
         var perms = parseInt(this.refs.public_perms.state.value);
 
         // populate a new Dash object
@@ -168,7 +168,7 @@ export default React.createClass({
 
         var name = null;
         if (this.refs.name) {
-            name = this.refs.name.getDOMNode().value.trim();
+            name = React.findDOMNode(this.refs.name).value.trim();
         }
 
         var formReady = (name !== null && name !== "");

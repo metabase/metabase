@@ -7,7 +7,7 @@ export default React.createClass({
         onFilter: PropTypes.func.isRequired
     },
     handleInputChange: function () {
-        this.props.onFilter(this.refs.filterTextInput.getDOMNode().value);
+        this.props.onFilter(React.findDOMNode(this.refs.filterTextInput).value);
     },
     render: function () {
         return (
