@@ -1,3 +1,13 @@
+import React from "react";
+
+import DataReference from '../query_builder/DataReference.jsx';
+import GuiQueryEditor from '../query_builder/GuiQueryEditor.jsx';
+import NativeQueryEditor from '../query_builder/NativeQueryEditor.jsx';
+import QueryHeader from '../query_builder/QueryHeader.jsx';
+import QueryVisualization from '../query_builder/QueryVisualization.jsx';
+
+import SavedQuestionsApp from './containers/SavedQuestionsApp.jsx';
+
 import { createStore, applyMiddleware, combineReducers, compose } from 'redux';
 import promiseMiddleware from 'redux-promise';
 import thunkMidleware from "redux-thunk";
@@ -7,16 +17,9 @@ import MetabaseAnalytics from '../lib/analytics';
 import DataGrid from "metabase/lib/data_grid";
 import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
 
-import DataReference from '../query_builder/DataReference.react';
-import GuiQueryEditor from '../query_builder/GuiQueryEditor.react';
-import NativeQueryEditor from '../query_builder/NativeQueryEditor.react';
-import QueryHeader from '../query_builder/QueryHeader.react';
-import QueryVisualization from '../query_builder/QueryVisualization.react';
-
 import Query from "metabase/lib/query";
 import { serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from './card.util';
 
-import SavedQuestionsApp from './containers/SavedQuestionsApp.react';
 import * as reducers from './reducers';
 
 const finalCreateStore = compose(
@@ -469,9 +472,10 @@ CardControllers.controller('CardDetail', [
                     card.display = "table";
 
                 } else if (dataset_query.type === "query" &&
-                        dataset_query.query.aggregation &&
-                        dataset_query.query.aggregation.length > 0 &&
-                        dataset_query.query.aggregation[0] === "rows") {
+                            dataset_query.query.aggregation &&
+                            dataset_query.query.aggregation.length > 0 &&
+                            dataset_query.query.aggregation[0] === "rows" &&
+                            card.display !== "pin_map") {
                     // if our query aggregation is "rows" then ALWAYS set the display to "table"
                     card.display = "table";
                 }

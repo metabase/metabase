@@ -2,7 +2,7 @@ import { createStore, applyMiddleware, combineReducers, compose } from 'redux';
 import promiseMiddleware from 'redux-promise';
 import thunkMidleware from "redux-thunk";
 
-import AdminPeopleApp from './containers/AdminPeopleApp.react';
+import AdminPeopleApp from './containers/AdminPeopleApp.jsx';
 import * as reducers from './reducers';
 
 

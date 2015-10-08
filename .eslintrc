@@ -36,8 +36,7 @@
         "jsx": true
     },
     "globals": {
-        "angular": false,
-        "React": false
+        "angular": false
     },
     "env": {
         "browser": true

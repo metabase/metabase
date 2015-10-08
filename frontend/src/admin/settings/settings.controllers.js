@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import SettingsEditor from './components/SettingsEditor.react';
+import SettingsEditor from './components/SettingsEditor.jsx';
 
 import Humanize from "humanize";
 

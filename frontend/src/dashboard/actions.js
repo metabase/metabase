@@ -88,7 +88,6 @@ export const fetchCards = createThunkAction(FETCH_CARDS, function(filterMode = "
         let cards = await Card.list({ filterMode });
         for (var c of cards) {
             c.updated_at = moment(c.updated_at);
-            c.icon = c.display ? 'illustration_visualization_' + c.display : null;
         }
         return normalize(cards, arrayOf(card));
     };
