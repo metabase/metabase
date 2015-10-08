@@ -1,5 +1,6 @@
 (ns metabase.driver
   (:require clojure.java.classpath
+            [clojure.string :as s]
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.db :refer [ins sel upd]]
@@ -108,13 +109,15 @@
   {:pre [(keyword? engine)
          (contains? (set (keys available-drivers)) engine)
          (map? details-map)]}
-  (try
-    (i/can-connect-with-details? (engine->driver engine) details-map)
-    (catch Throwable e
-      (log/error "Failed to connect to database:" (.getMessage e))
-      (when rethrow-exceptions
-        (throw e))
-      false)))
+  (let [driver (engine->driver engine)]
+    (try
+      (i/can-connect-with-details? driver details-map)
+      (catch Throwable e
+        (log/error "Failed to connect to database:" (.getMessage e))
+        (when rethrow-exceptions
+          (let [message (i/humanize-connection-error-message driver (.getMessage e))]
+            (throw (Exception. message))))
+        false))))
 
 (def ^{:arglists '([database])} sync-database!
   "Sync a `Database`, its `Tables`, and `Fields`."
