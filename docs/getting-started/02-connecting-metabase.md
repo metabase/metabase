@@ -15,11 +15,12 @@ At this point you’ll need to gather some information about the database you wa
 
 If you’re ready to connect, here’s what you’ll need:
 
-    * The **hostname** of the server where your database lives
-    * The **port** the database server uses
-    * The **database name**
-    * The **username** you use for the database
-    * The **password** you use for the database
+* The **hostname** of the server where your database lives
+* The **port** the database server uses
+* The **database name**
+* The **username** you use for the database
+* The **password** you use for the database
+
 If you’re using Heroku, here are [instructions on how to get this information](../frequently-asked-questions/questions#how-do-i-look-up-connection-information-for-databases-on-heroku). If you’re an Amazon RDS kind of person, you can follow [these instructions](../frequently-asked-questions/questions#how-do-i-look-up-connection-information-for-databases-on-amazons-rds-service). 
 
 If you don't have this information handy, the person responsible for administering the database should have it. 
