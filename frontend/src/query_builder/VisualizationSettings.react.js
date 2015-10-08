@@ -7,57 +7,60 @@ import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 
 import cx from "classnames";
 
-export default React.createClass({
-    displayName: 'VisualizationSettings',
-    propTypes: {
+const VISUALIZATION_TYPE_NAMES = {
+    'scalar':  { displayName: 'Number',      iconName: 'number' },
+    'table':   { displayName: 'Table',       iconName: 'table' },
+    'line':    { displayName: 'Line',        iconName: 'line' },
+    'bar':     { displayName: 'Bar',         iconName: 'bar' },
+    'pie':     { displayName: 'Pie',         iconName: 'pie' },
+    'area':    { displayName: 'Area',        iconName: 'area' },
+    'state':   { displayName: 'State map',   iconName: 'statemap' },
+    'country': { displayName: 'Country map', iconName: 'countrymap' },
+    'pin_map': { displayName: 'Pin map',     iconName: 'pinmap' }
+};
+
+export default class VisualizationSettings extends React.Component {
+    constructor(props, context) {
+        super(props, context);
+        this.setChartColor = this.setChartColor.bind(this);
+        this.setDisplay = this.setDisplay.bind(this);
+    }
+
+    static propTypes = {
         visualizationSettingsApi: PropTypes.object.isRequired,
         card: PropTypes.object.isRequired,
         result: PropTypes.object,
         setDisplayFn: PropTypes.func.isRequired,
         setChartColorFn: PropTypes.func.isRequired
-    },
+    };
 
-    visualizationTypeNames: {
-        'scalar':  { displayName: 'Number',      iconName: 'number' },
-        'table':   { displayName: 'Table',       iconName: 'table' },
-        'line':    { displayName: 'Line',        iconName: 'line' },
-        'bar':     { displayName: 'Bar',         iconName: 'bar' },
-        'pie':     { displayName: 'Pie',         iconName: 'pie' },
-        'area':    { displayName: 'Area',        iconName: 'area' },
-        'state':   { displayName: 'State map',   iconName: 'statemap' },
-        'country': { displayName: 'Country map', iconName: 'countrymap' },
-        'pin_map': { displayName: 'Pin map',     iconName: 'pinmap' }
-    },
+    static defaultProps = {
+        visualizationTypes: [
+            'scalar',
+            'table',
+            'line',
+            'bar',
+            'pie',
+            'area',
+            'state',
+            'country',
+            'pin_map'
+        ]
+    };
 
-    getDefaultProps: function() {
-        return {
-            visualizationTypes: [
-                'scalar',
-                'table',
-                'line',
-                'bar',
-                'pie',
-                'area',
-                'state',
-                'country',
-                'pin_map'
-            ]
-        };
-    },
-
-    setDisplay: function(type) {
+    setDisplay(type) {
         // notify our parent about our change
         this.props.setDisplayFn(type);
         this.refs.displayPopover.toggle();
-    },
+    }
 
-    setChartColor: function(color) {
+    setChartColor(color) {
         // tell parent about our new color
         this.props.setChartColorFn(color);
         this.refs.colorPopover.toggle();
-    },
+    }
 
-    isSensibleChartDisplay: function(display) {
+    isSensibleChartDisplay(display) {
         var data = (this.props.result) ? this.props.result.data : null;
         switch (display) {
             case "table":
@@ -82,14 +85,14 @@ export default React.createClass({
                 // general check for charts is that they require 2 columns
                 return (data && data.cols && data.cols.length > 1);
         }
-    },
+    }
 
-    renderChartTypePicker: function() {
-        var iconName = this.visualizationTypeNames[this.props.card.display].iconName;
+    renderChartTypePicker() {
+        var iconName = VISUALIZATION_TYPE_NAMES[this.props.card.display].iconName;
         var triggerElement = (
             <span className="px2 py1 text-bold cursor-pointer text-default flex align-center">
                 <Icon name={iconName} width="24px" height="24px"/>
-                {this.visualizationTypeNames[this.props.card.display].displayName}
+                {VISUALIZATION_TYPE_NAMES[this.props.card.display].displayName}
                 <Icon className="ml1" name="chevrondown" width="8px" height="8px"/>
             </span>
         )
@@ -105,8 +108,8 @@ export default React.createClass({
                 'ChartType--selected': type === this.props.card.display,
                 'ChartType--notSensible': !this.isSensibleChartDisplay(type),
             });
-            var displayName = this.visualizationTypeNames[type].displayName;
-            var iconName = this.visualizationTypeNames[type].iconName;
+            var displayName = VISUALIZATION_TYPE_NAMES[type].displayName;
+            var iconName = VISUALIZATION_TYPE_NAMES[type].iconName;
             return (
                 <li className={classes} key={index} onClick={this.setDisplay.bind(null, type)}>
                     <Icon name={iconName} width="24px" height="24px"/>
@@ -127,9 +130,9 @@ export default React.createClass({
                 </PopoverWithTrigger>
             </div>
         );
-    },
+    }
 
-    renderChartColorPicker: function() {
+    renderChartColorPicker() {
         if (this.props.card.display === "line" || this.props.card.display === "area" || this.props.card.display === "bar") {
             var colors = this.props.visualizationSettingsApi.getDefaultColorHarmony();
             var colorItems = [];
@@ -177,9 +180,9 @@ export default React.createClass({
         } else {
             return false;
         }
-    },
+    }
 
-    render: function() {
+    render() {
         if (this.props.result && this.props.result.error === undefined) {
             return (
                 <div className="VisualizationSettings flex align-center">
@@ -191,4 +194,4 @@ export default React.createClass({
             return false;
         }
     }
-});
+}
