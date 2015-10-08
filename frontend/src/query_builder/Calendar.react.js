@@ -14,12 +14,18 @@ export default class Calendar extends Component {
             current: moment(props.initial || undefined),
             currentMode: MODES[0]
         };
+
         this.previous = this.previous.bind(this);
         this.next = this.next.bind(this);
         this.cycleMode = this.cycleMode.bind(this);
-
         this.onClickDay = this.onClickDay.bind(this);
     }
+
+    static propTypes = {
+        selected: PropTypes.object,
+        selectedEnd: PropTypes.object,
+        onChange: PropTypes.func.isRequired
+    };
 
     onClickDay(date, e) {
         let { selected, selectedEnd } = this.props;
@@ -118,13 +124,12 @@ export default class Calendar extends Component {
     }
 }
 
-Calendar.propTypes = {
-    selected: PropTypes.object,
-    selectedEnd: PropTypes.object,
-    onChange: PropTypes.func.isRequired
-};
-
 class Week extends Component {
+    static propTypes = {
+        selected: PropTypes.object,
+        selectedEnd: PropTypes.object,
+        onClickDay: PropTypes.func.isRequired
+    }
 
     _dayIsSelected(day) {
         return
@@ -166,10 +171,4 @@ class Week extends Component {
             </div>
         );
     }
-}
-
-Week.propTypes = {
-    selected: PropTypes.object,
-    selectedEnd: PropTypes.object,
-    onClickDay: PropTypes.func.isRequired
 }

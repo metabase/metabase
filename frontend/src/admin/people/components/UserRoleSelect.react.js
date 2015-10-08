@@ -8,6 +8,14 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 
 
 export default class UserRoleSelect extends Component {
+    static propTypes = {
+        user: PropTypes.object.isRequired,
+        onChangeFn: PropTypes.func.isRequired
+    };
+
+    static defaultProps = {
+        isInitiallyOpen: false
+    };
 
     toggle () {
         this.refs.popover.toggle();
@@ -55,12 +63,3 @@ export default class UserRoleSelect extends Component {
         );
     }
 }
-
-UserRoleSelect.defaultProps = {
-    isInitiallyOpen: false
-};
-
-UserRoleSelect.propTypes = {
-    user: PropTypes.object.isRequired,
-    onChangeFn: PropTypes.func.isRequired
-};

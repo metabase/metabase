@@ -1,6 +1,15 @@
 import React, { Component, PropTypes } from "react";
 
 export default class LogoIcon extends Component {
+    static defaultProps = {
+        height: 32,
+        width: 32
+    };
+
+    static propTypes = {
+        width: PropTypes.number,
+        height: PropTypes.number
+    };
 
     render() {
         let { height, width } = this.props;
@@ -11,14 +20,4 @@ export default class LogoIcon extends Component {
             </svg>
         );
     }
-}
-
-LogoIcon.defaultProps = {
-    height: 32,
-    width: 32
-}
-
-LogoIcon.propTypes = {
-	width: PropTypes.number,
-    height: PropTypes.number
 }

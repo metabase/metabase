@@ -2,18 +2,23 @@ import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.react";
 
-import { fetchDatabases, setCardsFilter } from "../actions";
 import AccordianItem from "./AccordianItem.react";
 import TableListing from "./TableListing.react";
 
+import { fetchDatabases, setCardsFilter } from "../actions";
 
 export default class CardFilters extends Component {
-
     constructor(props, context) {
         super(props, context);
 
         this.state = { error : null };
     }
+
+    static propTypes = {
+        dispatch: PropTypes.func.isRequired,
+        cardsFilter: PropTypes.object.isRequired,
+        databases: PropTypes.array.isRequired
+    };
 
     async componentDidMount() {
         try {
@@ -55,10 +60,4 @@ export default class CardFilters extends Component {
             </div>
         );
     }
-}
-
-CardFilters.propTypes = {
-    dispatch: PropTypes.func.isRequired,
-    cardsFilter: PropTypes.object.isRequired,
-    databases: PropTypes.array.isRequired
 }

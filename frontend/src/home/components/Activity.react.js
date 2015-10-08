@@ -18,6 +18,12 @@ export default class Activity extends Component {
         this.colorClasses = ['bg-brand', 'bg-purple', 'bg-error', 'bg-green', 'bg-gold', 'bg-grey-2'];
     }
 
+    static propTypes = {
+        dispatch: PropTypes.func.isRequired,
+        user: PropTypes.object.isRequired,
+        activity: PropTypes.array.isRequired
+    }
+
     async componentDidMount() {
         try {
             await this.props.dispatch(fetchActivity());
@@ -199,10 +205,4 @@ export default class Activity extends Component {
             </LoadingAndErrorWrapper>
         );
     }
-}
-
-Activity.propTypes = {
-    dispatch: PropTypes.func.isRequired,
-    user: PropTypes.object.isRequired,
-    activity: PropTypes.array.isRequired
 }

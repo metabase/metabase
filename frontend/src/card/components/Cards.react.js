@@ -6,12 +6,18 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.r
 
 import { fetchCards } from "../actions";
 
-
 export default class Cards extends Component {
 
     constructor(props, context) {
         super(props, context);
         this.state = { error: null };
+    }
+
+    static propTypes = {
+        dispatch: PropTypes.func.isRequired,
+        databaseMetadata: PropTypes.object.isRequired,
+        cards: PropTypes.array.isRequired,
+        cardsFilter: PropTypes.object.isRequired
     }
 
     async componentDidMount() {
@@ -100,11 +106,4 @@ export default class Cards extends Component {
             </LoadingAndErrorWrapper>
         );
     }
-}
-
-Cards.propTypes = {
-    dispatch: PropTypes.func.isRequired,
-    databaseMetadata: PropTypes.object.isRequired,
-    cards: PropTypes.array.isRequired,
-    cardsFilter: PropTypes.object.isRequired
 }

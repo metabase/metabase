@@ -7,6 +7,14 @@ import { capitalize } from "metabase/lib/formatting";
 import cx from "classnames";
 
 export default class SelectPicker extends Component {
+    static propTypes = {
+        options: PropTypes.object.isRequired,
+        values: PropTypes.array.isRequired,
+        onValuesChange: PropTypes.func.isRequired,
+        placeholder: PropTypes.string,
+        multi: PropTypes.bool
+    };
+
     selectValue(key, selected) {
         let values;
         if (this.props.multi) {
@@ -79,11 +87,3 @@ export default class SelectPicker extends Component {
         );
     }
 }
-
-SelectPicker.propTypes = {
-    options: PropTypes.object.isRequired,
-    values: PropTypes.array.isRequired,
-    onValuesChange: PropTypes.func.isRequired,
-    placeholder: PropTypes.string,
-    multi: PropTypes.bool
-};

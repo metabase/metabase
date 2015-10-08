@@ -21,6 +21,11 @@ export default class ProfileLink extends Component {
         _.bindAll(this, "toggleDropdown", "closeDropdown", "openModal", "closeModal");
     }
 
+    static propTypes = {
+        user: PropTypes.object.isRequired,
+        context: PropTypes.string.isRequired,
+    };
+
     toggleDropdown() {
         this.setState({ dropdownOpen: !this.state.dropdownOpen });
     }
@@ -138,8 +143,3 @@ export default class ProfileLink extends Component {
         );
     }
 };
-
-ProfileLink.propTypes = {
-    user: PropTypes.object.isRequired,
-    context: PropTypes.string.isRequired,
-}

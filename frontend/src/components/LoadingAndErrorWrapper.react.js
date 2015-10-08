@@ -3,6 +3,12 @@ import React, { Component, PropTypes } from "react";
 import LoadingSpinner from "metabase/components/LoadingSpinner.react";
 
 export default class LoadingAndErrorWrapper extends Component {
+    static propTypes = {
+        className: PropTypes.any,
+        error: PropTypes.any,
+        loading: PropTypes.any
+    };
+
     getErrorMessage() {
         return (
             this.props.error.data ||
@@ -44,9 +50,3 @@ export default class LoadingAndErrorWrapper extends Component {
         );
     }
 }
-
-LoadingAndErrorWrapper.propTypes = {
-    className: PropTypes.any,
-    error: PropTypes.any,
-    loading: PropTypes.any
-};

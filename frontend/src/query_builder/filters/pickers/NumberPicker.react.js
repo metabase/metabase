@@ -11,6 +11,18 @@ export default class NumberPicker extends Component {
         }
     }
 
+    static propTypes = {
+        values: PropTypes.array.isRequired,
+        onValuesChange: PropTypes.func.isRequired,
+        placeholder: PropTypes.string,
+        validations: PropTypes.array,
+        multi: PropTypes.bool
+    };
+
+    static defaultProps = {
+        placeholder: "Enter desired number"
+    };
+
     _validate(values) {
         return values.map(v => v === undefined || !isNaN(v));
     }
@@ -35,15 +47,3 @@ export default class NumberPicker extends Component {
         );
     }
 }
-
-NumberPicker.propTypes = {
-    values: PropTypes.array.isRequired,
-    onValuesChange: PropTypes.func.isRequired,
-    placeholder: PropTypes.string,
-    validations: PropTypes.array,
-    multi: PropTypes.bool
-};
-
-NumberPicker.defaultProps = {
-    placeholder: "Enter desired number"
-};

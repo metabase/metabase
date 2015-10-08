@@ -23,6 +23,14 @@ export default class FieldList extends Component {
         super(props, context);
     }
 
+    static propTypes = {
+        field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
+        fieldOptions: PropTypes.object.isRequired,
+        tableName: PropTypes.string,
+        onFieldChange: PropTypes.func.isRequired,
+        enableTimeGrouping: PropTypes.bool
+    };
+
     componentWillMount() {
         this.componentWillReceiveProps(this.props);
     }
@@ -139,11 +147,3 @@ export default class FieldList extends Component {
         )
     }
 }
-
-FieldList.propTypes = {
-    field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
-    fieldOptions: PropTypes.object.isRequired,
-    tableName: PropTypes.string,
-    onFieldChange: PropTypes.func.isRequired,
-    enableTimeGrouping: PropTypes.bool
-};

@@ -12,6 +12,18 @@ export default class Popover extends Component {
         this.handleClickOutside = this.handleClickOutside.bind(this);
     }
 
+    static propTypes = {
+        isOpen: PropTypes.bool,
+        hasArrow: PropTypes.bool,
+        getTriggerTarget: PropTypes.func,
+        tetherOptions: PropTypes.object
+    };
+
+    static defaultProps = {
+        isOpen: true,
+        hasArrow: true
+    };
+
     componentWillMount() {
         this._popoverElement = document.createElement('span');
         this._popoverElement.className = 'PopoverContainer';
@@ -163,15 +175,3 @@ export default class Popover extends Component {
         return <span className="hide" />;
     }
 }
-
-Popover.propTypes = {
-    isOpen: PropTypes.bool,
-    hasArrow: PropTypes.bool,
-    getTriggerTarget: PropTypes.func,
-    tetherOptions: PropTypes.object
-};
-
-Popover.defaultProps = {
-    isOpen: true,
-    hasArrow: true
-};

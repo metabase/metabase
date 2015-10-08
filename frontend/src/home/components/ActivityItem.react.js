@@ -4,6 +4,12 @@ import IconBorder from 'metabase/components/IconBorder.react';
 import UserAvatar from 'metabase/components/UserAvatar.react';
 
 export default class ActivityItem extends Component {
+    static propTypes = {
+        item: PropTypes.object.isRequired,
+        description: PropTypes.object.isRequired,
+        userColors: PropTypes.string
+    };
+
     render() {
         const { item, description, userColors } = this.props;
 
@@ -39,10 +45,4 @@ export default class ActivityItem extends Component {
             </div>
         )
     }
-}
-
-ActivityItem.propTypes = {
-    item: PropTypes.object.isRequired,
-    description: PropTypes.object.isRequired,
-    userColors: PropTypes.string
 }

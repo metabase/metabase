@@ -11,6 +11,12 @@ export default class SortableItemList extends Component {
         };
     }
 
+    static propTypes = {
+        items: PropTypes.array.isRequired,
+        clickItemFn: PropTypes.func,
+        showIcons: PropTypes.bool
+    };
+
     onClickItem(item) {
         if (this.props.onClickItemFn) {
             this.props.onClickItemFn(item);
@@ -61,9 +67,3 @@ export default class SortableItemList extends Component {
         );
     }
 }
-
-SortableItemList.propTypes = {
-    items: PropTypes.array.isRequired,
-    clickItemFn: PropTypes.func,
-    showIcons: PropTypes.bool
-};

@@ -13,6 +13,13 @@ export default class Dashboard extends Component {
         this.state = { error: null };
     }
 
+    static propTypes = {
+        dispatch: PropTypes.func.isRequired,
+        onChangeLocation: PropTypes.func.isRequired,
+        onDashboardDeleted: PropTypes.func.isRequired,
+        visualizationSettingsApi: PropTypes.object.isRequired
+    };
+
     async componentDidMount() {
         try {
             await this.props.dispatch(fetchDashboard(this.props.selectedDashboard));
@@ -52,10 +59,3 @@ export default class Dashboard extends Component {
         );
     }
 }
-
-Dashboard.propTypes = {
-    dispatch: PropTypes.func.isRequired,
-    onChangeLocation: PropTypes.func.isRequired,
-    onDashboardDeleted: PropTypes.func.isRequired,
-    visualizationSettingsApi: PropTypes.object.isRequired
-};

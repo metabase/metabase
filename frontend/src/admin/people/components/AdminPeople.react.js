@@ -42,6 +42,11 @@ export default class AdminPeople extends Component {
         this.state = { error: null };
     }
 
+    static propTypes = {
+        dispatch: PropTypes.func.isRequired,
+        users: PropTypes.array
+    };
+
     async componentDidMount() {
         try {
             await this.props.dispatch(fetchUsers());
@@ -390,8 +395,3 @@ export default class AdminPeople extends Component {
         );
     }
 }
-
-AdminPeople.propTypes = {
-    dispatch: PropTypes.func.isRequired,
-    users: PropTypes.array
-};

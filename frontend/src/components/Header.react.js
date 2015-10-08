@@ -3,6 +3,13 @@ import React, { Component, PropTypes } from "react";
 import Input from "metabase/components/Input.react";
 
 export default class Header extends Component {
+    static defaultProps = {
+        headerButtons: [],
+        editingTitle: "",
+        editingSubtitle: "",
+        editingButtons: [],
+        headerClassName: "py1 lg-py2 xl-py3 wrapper"
+    };
 
     setItemAttribute(attribute, event) {
         this.props.setItemAttributeFn(attribute, event.target.value);
@@ -85,11 +92,3 @@ export default class Header extends Component {
         );
     }
 }
-
-Header.defaultProps = {
-    headerButtons: [],
-    editingTitle: "",
-    editingSubtitle: "",
-    editingButtons: [],
-    headerClassName: "py1 lg-py2 xl-py3 wrapper"
-};

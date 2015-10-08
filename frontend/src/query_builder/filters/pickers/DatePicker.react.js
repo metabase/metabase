@@ -13,6 +13,12 @@ export default class DatePicker extends Component {
         };
     }
 
+    static propTypes = {
+        filter: PropTypes.array.isRequired,
+        onFilterChange: PropTypes.func.isRequired,
+        onOperatorChange: PropTypes.func.isRequired
+    };
+
     _detectPane(props) {
         if (props.filter[0] !== "TIME_INTERVAL" && typeof props.filter[2] === "string") {
             return "specific";
@@ -49,9 +55,3 @@ export default class DatePicker extends Component {
         )
     }
 }
-
-DatePicker.propTypes = {
-    filter: PropTypes.array.isRequired,
-    onFilterChange: PropTypes.func.isRequired,
-    onOperatorChange: PropTypes.func.isRequired
-};

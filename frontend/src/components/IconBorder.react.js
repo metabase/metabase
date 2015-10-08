@@ -16,6 +16,23 @@ export default class IconBorder extends Component {
         super(props, context);
         this.state = {};
     }
+
+    static propTypes = {
+        borderWidth: PropTypes.string,
+        borderStyle: PropTypes.string,
+        borderColor: PropTypes.string,
+        borderRadius: PropTypes.string,
+        style: PropTypes.object,
+    };
+
+    static defaultProps = {
+        borderWidth: '1px',
+        borderStyle: 'solid',
+        borderColor: 'currentcolor',
+        borderRadius: '99px',
+        style: {},
+    };
+
     componentDidMount() {
         this.setState({
             childWidth: findDOMNode(this.refs.child).offsetWidth
@@ -52,19 +69,3 @@ export default class IconBorder extends Component {
         );
     }
 }
-
-IconBorder.propTypes = {
-    borderWidth: PropTypes.string,
-    borderStyle: PropTypes.string,
-    borderColor: PropTypes.string,
-    borderRadius: PropTypes.string,
-    style: PropTypes.object,
-};
-
-IconBorder.defaultProps = {
-    borderWidth: '1px',
-    borderStyle: 'solid',
-    borderColor: 'currentcolor',
-    borderRadius: '99px',
-    style: {},
-};

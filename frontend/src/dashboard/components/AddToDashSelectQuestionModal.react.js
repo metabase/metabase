@@ -12,6 +12,13 @@ export default class AddToDashSelectQuestionModal extends Component {
         this.state = { error: null };
     }
 
+    static propTypes = {
+        dispatch: PropTypes.func.isRequired,
+        dashboard: PropTypes.object.isRequired,
+        cards: PropTypes.array,
+        onClose: PropTypes.func.isRequired
+    };
+
     async componentDidMount() {
         try {
             await this.props.dispatch(fetchCards());
@@ -49,10 +56,3 @@ export default class AddToDashSelectQuestionModal extends Component {
         );
     }
 }
-
-AddToDashSelectQuestionModal.propTypes = {
-    dispatch: PropTypes.func.isRequired,
-    dashboard: PropTypes.object.isRequired,
-    cards: PropTypes.array,
-    onClose: PropTypes.func.isRequired
-};

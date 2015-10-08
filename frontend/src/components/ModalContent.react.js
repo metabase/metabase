@@ -3,6 +3,15 @@ import React, { Component, PropTypes } from "react";
 import Icon from "metabase/components/Icon.react";
 
 export default class ModalContent extends Component {
+    static propTypes = {
+        title: PropTypes.string.isRequired,
+        closeFn: PropTypes.func.isRequired
+    };
+
+    static defaultProps = {
+        className: "Modal-content NewForm"
+    };
+
     render() {
         return (
             <div className={this.props.className}>
@@ -19,12 +28,3 @@ export default class ModalContent extends Component {
         );
     }
 }
-
-ModalContent.defaultProps = {
-    className: "Modal-content NewForm"
-};
-
-ModalContent.propTypes = {
-    title: PropTypes.string.isRequired,
-    closeFn: PropTypes.func.isRequired
-};

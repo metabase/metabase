@@ -30,6 +30,11 @@ export default class RelativeDatePicker extends Component {
         _.bindAll(this, "isSelectedShortcut", "onSetShortcut");
     }
 
+    static propTypes = {
+        filter: PropTypes.array.isRequired,
+        onFilterChange: PropTypes.func.isRequired
+    };
+
     isSelectedShortcut(shortcut) {
         let { filter } = this.props;
         return (
@@ -93,8 +98,3 @@ export default class RelativeDatePicker extends Component {
         );
     }
 }
-
-RelativeDatePicker.propTypes = {
-    filter: PropTypes.array.isRequired,
-    onFilterChange: PropTypes.func.isRequired
-};

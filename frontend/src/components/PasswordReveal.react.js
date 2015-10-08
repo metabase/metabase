@@ -25,6 +25,10 @@ export default class PasswordReveal extends Component {
         }
     }
 
+    static propTypes = {
+        password: PropTypes.string.isRequired
+    };
+
     onToggleVisibility() {
         this.setState({
             visible: !this.state.visible
@@ -55,8 +59,4 @@ export default class PasswordReveal extends Component {
             </div>
         );
     }
-}
-
-PasswordReveal.propTypes = {
-    password: PropTypes.string.isRequired
 }

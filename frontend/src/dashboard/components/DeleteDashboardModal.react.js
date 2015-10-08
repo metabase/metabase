@@ -10,6 +10,12 @@ export default class DeleteDashboardModal extends Component {
         };
     }
 
+    static propTypes = {
+        dashboard: PropTypes.object.isRequired,
+        onClose: PropTypes.func,
+        onDelete: PropTypes.func
+    };
+
     async deleteDashboard() {
         try {
             this.props.onDelete(this.props.dashboard);
@@ -53,9 +59,3 @@ export default class DeleteDashboardModal extends Component {
         );
     }
 }
-
-DeleteDashboardModal.propTypes = {
-    dashboard: PropTypes.object.isRequired,
-    onClose: PropTypes.func,
-    onDelete: PropTypes.func
-};

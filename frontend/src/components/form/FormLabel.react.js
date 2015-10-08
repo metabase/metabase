@@ -3,6 +3,15 @@ import cx from "classnames";
 
 
 export default class FormLabel extends Component {
+    static propTypes = {
+        fieldName: PropTypes.string.isRequired,
+        formError: PropTypes.object,
+        message: PropTypes.string,
+    };
+
+    static defaultProps = {
+        offset: true
+    };
 
     render() {
         let { fieldName, formError, message, offset, title } = this.props;
@@ -16,13 +25,3 @@ export default class FormLabel extends Component {
         );
     }
 }
-
-FormLabel.defaultProps = {
-    offset: true
-};
-
-FormLabel.propTypes = {
-    fieldName: PropTypes.string.isRequired,
-    formError: PropTypes.object,
-    message: PropTypes.string,
-};

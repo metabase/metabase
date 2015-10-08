@@ -4,6 +4,18 @@ import Icon from "metabase/components/Icon.react";
 import cx from "classnames";
 
 export default class TextPicker extends Component {
+    static propTypes = {
+        values: PropTypes.array.isRequired,
+        onValuesChange: PropTypes.func.isRequired,
+        placeholder: PropTypes.string,
+        validations: PropTypes.array,
+        multi: PropTypes.bool
+    };
+
+    static defaultProps = {
+        validations: [],
+        placeholder: "Enter desired text"
+    }
 
     addValue() {
         let values = this.props.values.slice();
@@ -57,17 +69,4 @@ export default class TextPicker extends Component {
             </div>
         );
     }
-}
-
-TextPicker.propTypes = {
-    values: PropTypes.array.isRequired,
-    onValuesChange: PropTypes.func.isRequired,
-    placeholder: PropTypes.string,
-    validations: PropTypes.array,
-    multi: PropTypes.bool
-};
-
-TextPicker.defaultProps = {
-    validations: [],
-    placeholder: "Enter desired text"
 }

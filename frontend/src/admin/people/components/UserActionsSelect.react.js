@@ -13,6 +13,10 @@ import { resendInvite, showModal } from "../actions";
 
 export default class UserActionsSelect extends Component {
 
+    static propTypes = {
+        user: PropTypes.object.isRequired
+    };
+
     onEditDetails() {
         this.props.dispatch(showModal({type: MODAL_EDIT_DETAILS, details: {user: this.props.user}}));
         this.refs.popover.toggle();
@@ -56,7 +60,3 @@ export default class UserActionsSelect extends Component {
         );
     }
 }
-
-UserActionsSelect.propTypes = {
-    user: PropTypes.object.isRequired
-};

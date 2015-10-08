@@ -8,6 +8,15 @@ export default class Modal extends Component {
         this.state = {};
     }
 
+    static propTypes = {
+        isOpen: PropTypes.bool
+    };
+
+    static defaultProps = {
+        className: "Modal",
+        isOpen: true
+    };
+
     componentWillMount() {
         this._modalElement = document.createElement('span');
         this._modalElement.className = 'ModalContainer';
@@ -64,12 +73,3 @@ export default class Modal extends Component {
         return <span />;
     }
 }
-
-Modal.propTypes = {
-    isOpen: PropTypes.bool
-};
-
-Modal.defaultProps = {
-    className: "Modal",
-    isOpen: true
-};

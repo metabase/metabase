@@ -6,8 +6,8 @@ import cx from "classnames";
 
 export default class ColumnarSelector extends Component {
     static propTypes = {
-        columns: React.PropTypes.array.isRequired,
-        showScrollbars: React.PropTypes.bool
+        columns: PropTypes.array.isRequired,
+        showScrollbars: PropTypes.bool
     };
 
     render() {

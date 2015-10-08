@@ -6,10 +6,14 @@ import Icon from "metabase/components/Icon.react";
 import LogoIcon from "metabase/components/LogoIcon.react";
 import ProfileLink from "metabase/components/ProfileLink.react";
 
-
 // TODO - this relies on props.location, which is angular's $location service
 
 export default class Navbar extends Component {
+    static propTypes = {
+        context: PropTypes.string.isRequired,
+        location: PropTypes.string.isRequired,
+        user: PropTypes.object
+    };
 
     constructor(props, context) {
         super(props, context);
@@ -136,9 +140,3 @@ export default class Navbar extends Component {
         }
     }
 }
-
-Navbar.propTypes = {
-    context: PropTypes.string.isRequired,
-    location: PropTypes.string.isRequired,
-    user: PropTypes.object
-};

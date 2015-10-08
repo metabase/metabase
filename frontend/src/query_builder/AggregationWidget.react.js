@@ -16,6 +16,12 @@ export default class AggregationWidget extends Component {
         _.bindAll(this, "setAggregation", "setAggregationTarget");
     }
 
+    static propTypes = {
+        aggregation: PropTypes.array.isRequired,
+        tableMetadata: PropTypes.object.isRequired,
+        updateAggregation: PropTypes.func.isRequired
+    };
+
     componentWillMount() {
         this.componentWillReceiveProps(this.props);
     }
@@ -117,9 +123,3 @@ export default class AggregationWidget extends Component {
         );
     }
 }
-
-AggregationWidget.propTypes = {
-    aggregation: PropTypes.array.isRequired,
-    tableMetadata: PropTypes.object.isRequired,
-    updateAggregation: PropTypes.func.isRequired
-};

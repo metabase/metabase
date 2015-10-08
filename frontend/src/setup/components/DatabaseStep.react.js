@@ -12,10 +12,14 @@ import { setDatabaseDetails, validateDatabase } from "../actions";
 
 
 export default class DatabaseStep extends Component {
-
     constructor(props, context) {
         super(props, context);
         this.state = { 'engine': "", 'formError': null };
+    }
+
+    static propTypes = {
+        dispatch: PropTypes.func.isRequired,
+        stepNumber: PropTypes.number.isRequired
     }
 
     chooseDatabaseEngine() {
@@ -128,9 +132,4 @@ export default class DatabaseStep extends Component {
             );
         }
     }
-}
-
-DatabaseStep.propTypes = {
-    dispatch: PropTypes.func.isRequired,
-    stepNumber: PropTypes.number.isRequired
 }

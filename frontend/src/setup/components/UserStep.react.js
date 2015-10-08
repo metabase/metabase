@@ -15,10 +15,14 @@ import { setUserDetails, validatePassword } from "../actions";
 
 
 export default class UserStep extends Component {
-
     constructor(props, context) {
         super(props, context);
         this.state = { formError: null, passwordError: null, valid: false, validPassword: false }
+    }
+
+    static propTypes = {
+        dispatch: PropTypes.func.isRequired,
+        stepNumber: PropTypes.number.isRequired
     }
 
     validateForm() {
@@ -169,9 +173,4 @@ export default class UserStep extends Component {
             );
         }
     }
-}
-
-UserStep.propTypes = {
-    dispatch: PropTypes.func.isRequired,
-    stepNumber: PropTypes.number.isRequired
 }

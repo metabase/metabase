@@ -12,6 +12,15 @@ export default class AccordianList extends Component {
         };
     }
 
+    static propTypes = {
+        sections: PropTypes.array.isRequired,
+        onChange: PropTypes.func,
+        sectionIsSelected: PropTypes.func,
+        itemIsSelected: PropTypes.func,
+        renderItem: PropTypes.func,
+        renderSectionIcon: PropTypes.func
+    };
+
     toggleSection(sectionIndex) {
         let openSection = this.getOpenSection();
         if (openSection === sectionIndex) {
@@ -117,12 +126,3 @@ export default class AccordianList extends Component {
         );
     }
 }
-
-AccordianList.propTypes = {
-    sections: PropTypes.array.isRequired,
-    onChange: PropTypes.func,
-    sectionIsSelected: PropTypes.func,
-    itemIsSelected: PropTypes.func,
-    renderItem: PropTypes.func,
-    renderSectionIcon: PropTypes.func
-};

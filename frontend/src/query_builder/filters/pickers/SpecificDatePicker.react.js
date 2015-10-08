@@ -14,6 +14,12 @@ export default class SpecificDatePicker extends Component {
         _.bindAll(this, "onChange");
     }
 
+    static propTypes = {
+        filter: PropTypes.array.isRequired,
+        onFilterChange: PropTypes.func.isRequired,
+        onOperatorChange: PropTypes.func.isRequired
+    };
+
     toggleOperator(operator) {
         if (this.props.filter[0] === operator) {
             this.props.onOperatorChange("=");
@@ -65,9 +71,3 @@ export default class SpecificDatePicker extends Component {
         )
     }
 }
-
-SpecificDatePicker.propTypes = {
-    filter: PropTypes.array.isRequired,
-    onFilterChange: PropTypes.func.isRequired,
-    onOperatorChange: PropTypes.func.isRequired
-};

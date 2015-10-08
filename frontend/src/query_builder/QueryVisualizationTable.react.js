@@ -30,6 +30,19 @@ export default class QueryVisualizationTable extends Component {
         this.isColumnResizing = false;
     }
 
+    static propTypes = {
+        data: PropTypes.object,
+        sort: PropTypes.array,
+        setSortFn: PropTypes.func,
+        isCellClickableFn: PropTypes.func,
+        cellClickedFn: PropTypes.func
+    };
+
+    static defaultProps = {
+        maxRows: 2000,
+        minColumnWidth: 75
+    };
+
     componentWillMount() {
         this.componentWillReceiveProps(this.props);
     }
@@ -286,16 +299,3 @@ export default class QueryVisualizationTable extends Component {
         );
     }
 }
-
-QueryVisualizationTable.propTypes = {
-    data: PropTypes.object,
-    sort: PropTypes.array,
-    setSortFn: PropTypes.func,
-    isCellClickableFn: PropTypes.func,
-    cellClickedFn: PropTypes.func
-};
-
-QueryVisualizationTable.defaultProps = {
-    maxRows: 2000,
-    minColumnWidth: 75
-};

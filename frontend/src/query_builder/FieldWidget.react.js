@@ -19,6 +19,18 @@ export default class FieldWidget extends Component {
         _.bindAll(this, "toggle", "setField");
     }
 
+    static propTypes = {
+        field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
+        fieldOptions: PropTypes.object.isRequired,
+        setField: PropTypes.func.isRequired,
+        removeField: PropTypes.func,
+        isInitiallyOpen: PropTypes.bool
+    };
+
+    static defaultProps = {
+        color: "brand"
+    };
+
     setField(value) {
         this.props.setField(value);
         if (Query.isValidField(value)) {
@@ -66,15 +78,3 @@ export default class FieldWidget extends Component {
         );
     }
 }
-
-FieldWidget.propTypes = {
-    field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
-    fieldOptions: PropTypes.object.isRequired,
-    setField: PropTypes.func.isRequired,
-    removeField: PropTypes.func,
-    isInitiallyOpen: PropTypes.bool
-};
-
-FieldWidget.defaultProps = {
-    color: "brand"
-};

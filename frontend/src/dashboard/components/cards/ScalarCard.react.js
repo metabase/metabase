@@ -3,6 +3,14 @@ import React, { Component, PropTypes } from "react";
 import { formatScalar } from "metabase/lib/formatting";
 
 export default class ScalarCard extends Component {
+    static propTypes = {
+        data: PropTypes.object.isRequired
+    };
+
+    static defaultProps = {
+        className: ""
+    };
+
     render() {
         return (
             <div className={"Card--scalar " + this.props.className}>
@@ -11,11 +19,3 @@ export default class ScalarCard extends Component {
         );
     }
 }
-
-ScalarCard.defaultProps = {
-    className: ""
-};
-
-ScalarCard.propTypes = {
-    data: PropTypes.object.isRequired
-};

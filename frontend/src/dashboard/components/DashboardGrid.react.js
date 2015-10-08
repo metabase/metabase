@@ -25,6 +25,14 @@ export default class DashboardGrid extends Component {
         this.calculateSizing = this.calculateSizing.bind(this);
     }
 
+    static propTypes = {
+        dispatch: PropTypes.func.isRequired,
+        isEditing: PropTypes.bool.isRequired,
+        dashboard: PropTypes.object.isRequired,
+        visualizationSettingsApi: PropTypes.object.isRequired,
+        onChangeLocation: PropTypes.func.isRequired
+    };
+
     componentWillReceiveProps(nextProps) {
         this.setState({
             layouts: this.getLayouts(nextProps)
@@ -179,11 +187,3 @@ export default class DashboardGrid extends Component {
         );
     }
 }
-
-DashboardGrid.propTypes = {
-    dispatch: PropTypes.func.isRequired,
-    isEditing: PropTypes.bool.isRequired,
-    dashboard: PropTypes.object.isRequired,
-    visualizationSettingsApi: PropTypes.object.isRequired,
-    onChangeLocation: PropTypes.func.isRequired
-};

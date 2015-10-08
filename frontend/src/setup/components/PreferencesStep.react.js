@@ -11,6 +11,11 @@ import { setAllowTracking, submitSetup } from "../actions";
 
 export default class PreferencesStep extends Component {
 
+    static propTypes = {
+        dispatch: PropTypes.func.isRequired,
+        stepNumber: PropTypes.number.isRequired
+    }
+
     toggleTracking() {
         let { allowTracking } = this.props;
 
@@ -74,9 +79,4 @@ export default class PreferencesStep extends Component {
             );
         }
     }
-}
-
-PreferencesStep.propTypes = {
-    dispatch: PropTypes.func.isRequired,
-    stepNumber: PropTypes.number.isRequired
 }

@@ -1,12 +1,15 @@
 import React, { Component, PropTypes } from "react";
 
-
 export default class NewUserOnboardingModal extends Component {
-
     constructor(props, context) {
         super(props, context);
 
         this.state = {step: 1};
+    }
+
+    static propTypes = {
+        closeFn: PropTypes.func.isRequired,
+        user: PropTypes.object.isRequired
     }
 
     stepTwo() {
@@ -58,9 +61,4 @@ export default class NewUserOnboardingModal extends Component {
             </div>
         );
     }
-}
-
-NewUserOnboardingModal.propTypes = {
-    closeFn: PropTypes.func.isRequired,
-    user: PropTypes.object.isRequired
 }

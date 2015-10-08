@@ -17,6 +17,9 @@ const PREFERENCES_STEP_NUMBER = 3;
 
 
 export default class Setup extends Component {
+    static propTypes = {
+        dispatch: PropTypes.func.isRequired
+    }
 
     completeWelcome() {
         this.props.dispatch(setActiveStep(USER_STEP_NUMBER));
@@ -88,8 +91,4 @@ export default class Setup extends Component {
             );
         }
     }
-}
-
-Setup.propTypes = {
-    dispatch: PropTypes.func.isRequired
 }

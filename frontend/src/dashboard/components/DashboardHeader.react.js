@@ -21,6 +21,12 @@ import {
 import cx from "classnames";
 
 export default class DashboardHeader extends Component {
+    static propTypes = {
+        dispatch: PropTypes.func.isRequired,
+        isEditing: PropTypes.bool.isRequired,
+        dashboard: PropTypes.object.isRequired,
+        revisions: PropTypes.object.isRequired
+    };
 
     onEdit() {
         this.props.dispatch(setEditingDashboard(true))
@@ -185,10 +191,3 @@ export default class DashboardHeader extends Component {
         );
     }
 }
-
-DashboardHeader.propTypes = {
-    dispatch: PropTypes.func.isRequired,
-    isEditing: PropTypes.bool.isRequired,
-    dashboard: PropTypes.object.isRequired,
-    revisions: PropTypes.object.isRequired
-};

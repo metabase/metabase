@@ -5,6 +5,11 @@ import { setActiveStep } from "../actions";
 
 
 export default class SetupCollapsedStep extends Component {
+    static propTypes = {
+        stepNumber: PropTypes.number.isRequired,
+        stepText: PropTypes.string.isRequired,
+        isCompleted: PropTypes.bool.isRequired
+    }
 
     gotoStep() {
         if (this.props.isCompleted) {
@@ -36,10 +41,4 @@ export default class SetupCollapsedStep extends Component {
             </section>
         );
     }
-}
-
-SetupCollapsedStep.propTypes = {
-    stepNumber: PropTypes.number.isRequired,
-    stepText: PropTypes.string.isRequired,
-    isCompleted: PropTypes.bool.isRequired
 }

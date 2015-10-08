@@ -1,6 +1,13 @@
 import React, { Component, PropTypes } from "react";
 
-class LoadingSpinner extends Component {
+export default class LoadingSpinner extends Component {
+    static defaultProps = {
+        width: '32px',
+        height: '32px',
+        fill: 'currentcolor',
+        spinnerClass: 'Loading-indicator',
+    };
+
     render() {
         var props = this.props;
         var animate = '<animateTransform attributeName="transform" type="rotate" from="0 16 16" to="360 16 16" dur="0.8s" repeatCount="indefinite" />';
@@ -14,14 +21,3 @@ class LoadingSpinner extends Component {
         );
     }
 }
-
-LoadingSpinner.defaultProps = {
-    width: '32px',
-    height: '32px',
-    fill: 'currentcolor',
-    spinnerClass: 'Loading-indicator',
-};
-
-LoadingSpinner.displayName = 'LoadingSpinner';
-
-export default LoadingSpinner;

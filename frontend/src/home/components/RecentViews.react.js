@@ -5,13 +5,16 @@ import Urls from "metabase/lib/urls";
 
 import { fetchRecentViews } from "../actions";
 
-
 export default class RecentViews extends Component {
-
     constructor(props, context) {
         super(props, context);
 
         this.state = { error : null };
+    }
+
+    static propTypes = {
+        dispatch: PropTypes.func.isRequired,
+        recentViews: PropTypes.array.isRequired
     }
 
     async componentDidMount() {
@@ -67,9 +70,4 @@ export default class RecentViews extends Component {
             </div>
         );
     }
-}
-
-RecentViews.propTypes = {
-    dispatch: PropTypes.func.isRequired,
-    recentViews: PropTypes.array.isRequired
 }

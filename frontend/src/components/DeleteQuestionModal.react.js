@@ -12,6 +12,12 @@ export default class DeleteQuestionModal extends Component {
         };
     }
 
+    static propTypes = {
+        card: PropTypes.object.isRequired,
+        deleteCardFn: PropTypes.func.isRequired,
+        closeFn: PropTypes.func
+    };
+
     async deleteCard() {
         try {
             await this.props.deleteCardFn(this.props.card);
@@ -58,9 +64,3 @@ export default class DeleteQuestionModal extends Component {
         );
     }
 }
-
-DeleteQuestionModal.propTypes = {
-    card: PropTypes.object.isRequired,
-    deleteCardFn: PropTypes.func.isRequired,
-    closeFn: PropTypes.func
-};

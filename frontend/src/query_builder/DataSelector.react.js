@@ -15,6 +15,22 @@ export default class DataSelector extends Component {
         _.bindAll(this, "onChange", "itemIsSelected", "sectionIsSelected");
     }
 
+    static propTypes = {
+        query: PropTypes.object.isRequired,
+        databases: PropTypes.array.isRequired,
+        setDatabaseFn: PropTypes.func.isRequired,
+        setSourceTableFn: PropTypes.func,
+        isInitiallyOpen: PropTypes.bool,
+        name: PropTypes.string
+    };
+
+    static defaultProps = {
+        name: "Data",
+        className: "",
+        isInitiallyOpen: false,
+        includeTables: false
+    };
+
     onChange(item) {
         if (item.database != null) {
             this.props.setDatabaseFn(item.database.id);
@@ -117,19 +133,3 @@ export default class DataSelector extends Component {
         );
     }
 }
-
-DataSelector.propTypes = {
-    query: PropTypes.object.isRequired,
-    databases: PropTypes.array.isRequired,
-    setDatabaseFn: PropTypes.func.isRequired,
-    setSourceTableFn: PropTypes.func,
-    isInitiallyOpen: PropTypes.bool,
-    name: PropTypes.string
-};
-
-DataSelector.defaultProps = {
-    name: "Data",
-    className: "",
-    isInitiallyOpen: false,
-    includeTables: false
-};

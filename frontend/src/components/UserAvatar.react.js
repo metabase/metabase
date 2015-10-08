@@ -13,6 +13,16 @@ export default class UserAvatar extends Component {
             height: '2rem',
         }
     }
+
+    static propTypes = {
+        background: PropTypes.string,
+        user: PropTypes.object.isRequired
+    };
+
+    static defaultProps = {
+        background: 'bg-brand'
+    };
+
     userInitials() {
         const { first_name, last_name } = this.props.user;
 
@@ -44,13 +54,4 @@ export default class UserAvatar extends Component {
             </div>
         )
     }
-}
-
-UserAvatar.defaultProps = {
-    background: 'bg-brand'
-}
-
-UserAvatar.propTypes = {
-    background: PropTypes.string,
-    user: PropTypes.object.isRequired
 }

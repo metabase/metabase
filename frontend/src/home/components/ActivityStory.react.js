@@ -1,7 +1,6 @@
 import React, { Component, PropTypes } from 'react';
 
 export default class ActivityStory extends Component {
-
     constructor(props, context) {
         super(props, context);
 
@@ -9,6 +8,10 @@ export default class ActivityStory extends Component {
             borderWidth: '2px',
             borderColor: '#DFE8EA',
         }
+    }
+
+    static propTypes = {
+        story: PropTypes.object.isRequired
     }
 
     render() {
@@ -30,8 +33,4 @@ export default class ActivityStory extends Component {
             </div>
         )
     }
-}
-
-ActivityStory.propTypes = {
-    story: PropTypes.object.isRequired
 }

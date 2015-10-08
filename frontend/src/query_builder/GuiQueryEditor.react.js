@@ -34,6 +34,17 @@ export default class GuiQueryEditor extends Component {
         );
     }
 
+    static propTypes = {
+        databases: PropTypes.array.isRequired,
+        query: PropTypes.object.isRequired,
+        tableMetadata: PropTypes.object, // can't be required, sometimes null
+        isShowingDataReference: PropTypes.bool.isRequired,
+        setQueryFn: PropTypes.func.isRequired,
+        setDatabaseFn: PropTypes.func.isRequired,
+        setSourceTableFn: PropTypes.func.isRequired,
+        toggleExpandCollapseFn: PropTypes.func.isRequired
+    };
+
     setQuery(dataset_query) {
         this.props.setQueryFn(dataset_query);
     }
@@ -476,14 +487,3 @@ export default class GuiQueryEditor extends Component {
         );
     }
 }
-
-GuiQueryEditor.propTypes = {
-    databases: PropTypes.array.isRequired,
-    query: PropTypes.object.isRequired,
-    tableMetadata: PropTypes.object, // can't be required, sometimes null
-    isShowingDataReference: PropTypes.bool.isRequired,
-    setQueryFn: PropTypes.func.isRequired,
-    setDatabaseFn: PropTypes.func.isRequired,
-    setSourceTableFn: PropTypes.func.isRequired,
-    toggleExpandCollapseFn: PropTypes.func.isRequired
-};

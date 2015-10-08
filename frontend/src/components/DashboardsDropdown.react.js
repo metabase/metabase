@@ -1,14 +1,14 @@
 import React, { Component, PropTypes } from 'react';
-import _ from "underscore";
-import cx from "classnames";
+
 import OnClickOut from 'react-onclickout';
 
 import CreateDashboardModal from "metabase/components/CreateDashboardModal.react";
 import Modal from "metabase/components/Modal.react";
 
+import _ from "underscore";
+import cx from "classnames";
 
 export default class DashboardsDropdown extends Component {
-
     constructor(props, context) {
         super(props, context);
 
@@ -28,6 +28,11 @@ export default class DashboardsDropdown extends Component {
 
         _.bindAll(this, "toggleDropdown", "closeDropdown", "toggleModal", "closeModal");
     }
+
+    propTypes = {
+        createDashboardFn: PropTypes.func.isRequired,
+        dashboards: PropTypes.array.isRequired
+    };
 
     onCreateDashboard(newDashboard) {
         let { createDashboardFn } = this.props;
@@ -127,8 +132,3 @@ export default class DashboardsDropdown extends Component {
         );
     }
 }
-
-DashboardsDropdown.propTypes = {
-    createDashboardFn: PropTypes.func.isRequired,
-    dashboards: PropTypes.array.isRequired
-};

@@ -11,6 +11,13 @@ export default class RemoveFromDashboardModal extends Component {
         this.state = { deleteCard: false };
     }
 
+    static propTypes = {
+        dispatch: PropTypes.func.isRequired,
+        dashcard: PropTypes.object.isRequired,
+        dashboard: PropTypes.object.isRequired,
+        onClose: PropTypes.func.isRequired
+    };
+
     onRemove() {
         this.props.dispatch(removeCardFromDashboard({
             dashId: this.props.dashboard.id,
@@ -67,10 +74,3 @@ export default class RemoveFromDashboardModal extends Component {
         );
     }
 }
-
-RemoveFromDashboardModal.propTypes = {
-    dispatch: PropTypes.func.isRequired,
-    dashcard: PropTypes.object.isRequired,
-    dashboard: PropTypes.object.isRequired,
-    onClose: PropTypes.func.isRequired
-};

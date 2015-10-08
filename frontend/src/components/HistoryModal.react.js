@@ -23,6 +23,16 @@ export default class HistoryModal extends Component {
         this.state = { error: null };
     }
 
+    static propTypes = {
+        revisions: PropTypes.array,
+        entityType: PropTypes.string.isRequired,
+        entityId: PropTypes.number.isRequired,
+        onFetchRevisions: PropTypes.func.isRequired,
+        onRevertToRevision: PropTypes.func.isRequired,
+        onClose: PropTypes.func.isRequired,
+        onReverted: PropTypes.func.isRequired
+    };
+
     async componentDidMount() {
         let { entityType, entityId } = this.props;
 
@@ -96,13 +106,3 @@ export default class HistoryModal extends Component {
         );
     }
 }
-
-HistoryModal.propTypes = {
-    revisions: PropTypes.array,
-    entityType: PropTypes.string.isRequired,
-    entityId: PropTypes.number.isRequired,
-    onFetchRevisions: PropTypes.func.isRequired,
-    onRevertToRevision: PropTypes.func.isRequired,
-    onClose: PropTypes.func.isRequired,
-    onReverted: PropTypes.func.isRequired
-};

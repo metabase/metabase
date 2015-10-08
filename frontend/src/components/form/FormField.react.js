@@ -1,8 +1,11 @@
 import React, { Component, PropTypes } from "react";
+
 import cx from "classnames";
 
-
 export default class FormField extends Component {
+    static propTypes = {
+        fieldName: PropTypes.string.isRequired
+    };
 
     render() {
         let { children, className, fieldName, formError, error } = this.props;
@@ -17,8 +20,4 @@ export default class FormField extends Component {
             </div>
         );
     }
-}
-
-FormField.propTypes = {
-    fieldName: PropTypes.string.isRequired
 }

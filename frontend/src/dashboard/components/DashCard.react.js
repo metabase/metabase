@@ -18,6 +18,12 @@ export default class DashCard extends Component {
         this.state = { error: null };
     }
 
+    static propTypes = {
+        dispatch: PropTypes.func.isRequired,
+        dashcard: PropTypes.object.isRequired,
+        visualizationSettingsApi: PropTypes.object.isRequired
+    };
+
     async componentDidMount() {
         // HACK: way to scroll to a newly added card
         if (this.props.dashcard.justAdded) {
@@ -86,9 +92,3 @@ export default class DashCard extends Component {
         );
     }
 }
-
-DashCard.propTypes = {
-    dispatch: PropTypes.func.isRequired,
-    dashcard: PropTypes.object.isRequired,
-    visualizationSettingsApi: PropTypes.object.isRequired
-};

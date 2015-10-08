@@ -25,6 +25,15 @@ export default class DatabaseDetailsForm extends Component {
         this.state = { valid: false }
     }
 
+    static propTypes = {
+        details: PropTypes.object,
+        engine: PropTypes.string.isRequired,
+        formError: PropTypes.object,
+        hiddenFields: PropTypes.array,
+        submitButtonText: PropTypes.string.isRequired,
+        submitFn: PropTypes.func.isRequired
+    };
+
     validateForm() {
         let { engine } = this.props;
         let { valid } = this.state;
@@ -155,13 +164,4 @@ export default class DatabaseDetailsForm extends Component {
             </form>
         );
     }
-}
-
-DatabaseDetailsForm.propTypes = {
-    details: PropTypes.object,
-    engine: PropTypes.string.isRequired,
-    formError: PropTypes.object,
-    hiddenFields: PropTypes.array,
-    submitButtonText: PropTypes.string.isRequired,
-    submitFn: PropTypes.func.isRequired
 }

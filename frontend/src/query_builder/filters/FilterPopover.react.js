@@ -28,6 +28,13 @@ export default class FilterPopover extends Component {
         _.bindAll(this, "setField", "clearField", "setOperator", "setValues", "setFilter", "commitFilter");
     }
 
+    static propTypes = {
+        isNew: PropTypes.bool,
+        filter: PropTypes.array,
+        onCommitFilter: PropTypes.func.isRequired,
+        onClose: PropTypes.func.isRequired
+    };
+
     commitFilter() {
         this.props.onCommitFilter(this.state.filter);
         this.props.onClose();
@@ -234,13 +241,3 @@ export default class FilterPopover extends Component {
         }
     }
 }
-
-FilterPopover.propTypes = {
-    isNew: PropTypes.bool,
-    filter: PropTypes.array,
-    onCommitFilter: PropTypes.func.isRequired,
-    onClose: PropTypes.func.isRequired
-};
-
-FilterPopover.defaultProps = {
-};

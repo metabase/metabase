@@ -3,6 +3,13 @@ import React, { Component, PropTypes } from "react";
 import Icon from "metabase/components/Icon.react";
 
 export default class AccordianItem extends Component {
+    static propTypes = {
+        onClickFn: PropTypes.func.isRequired,
+        itemId: PropTypes.number.isRequired,
+        isOpen: PropTypes.bool.isRequired,
+        title: PropTypes.string.isRequired,
+        children: PropTypes.element.isRequired
+    }
 
     render() {
         let { children, onClickFn, isOpen, itemId, title } = this.props;
@@ -29,12 +36,4 @@ export default class AccordianItem extends Component {
             </div>
         );
     }
-}
-
-AccordianItem.propTypes = {
-    onClickFn: PropTypes.func.isRequired,
-    itemId: PropTypes.number.isRequired,
-    isOpen: PropTypes.bool.isRequired,
-    title: PropTypes.string.isRequired,
-    children: PropTypes.element.isRequired
 }

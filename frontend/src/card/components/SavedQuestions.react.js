@@ -5,6 +5,9 @@ import CardFilters from "./CardFilters.react";
 
 
 export default class SavedQuestions extends Component {
+    static propTypes = {
+        dispatch: PropTypes.func.isRequired
+    };
 
     render() {
         return (
@@ -24,7 +27,3 @@ export default class SavedQuestions extends Component {
         );
     }
 }
-
-SavedQuestions.propTypes = {
-    dispatch: PropTypes.func.isRequired
-};

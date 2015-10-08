@@ -2,6 +2,14 @@ import React, { Component, PropTypes } from "react";
 
 export default class TableCard extends Component {
 
+    static propTypes = {
+        data: PropTypes.object.isRequired
+    };
+
+    static defaultProps = {
+        className: ""
+    };
+
     /* returns custom title for column set by user, or native label if
      * user did not specify a title
      *
@@ -44,11 +52,3 @@ export default class TableCard extends Component {
         );
     }
 }
-
-TableCard.defaultProps = {
-    className: ""
-};
-
-TableCard.propTypes = {
-    data: PropTypes.object.isRequired
-};

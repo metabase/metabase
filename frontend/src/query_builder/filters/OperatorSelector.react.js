@@ -12,6 +12,12 @@ export default class OperatorSelector extends Component {
         };
     }
 
+    static propTypes = {
+        filter: PropTypes.array.isRequired,
+        field: PropTypes.object.isRequired,
+        onOperatorChange: PropTypes.func.isRequired
+    };
+
     render() {
         let { field, filter } = this.props;
         let { expanded } = this.state;
@@ -47,9 +53,3 @@ export default class OperatorSelector extends Component {
         );
     }
 }
-
-OperatorSelector.propTypes = {
-    filter: PropTypes.array.isRequired,
-    field: PropTypes.object.isRequired,
-    onOperatorChange: PropTypes.func.isRequired
-};

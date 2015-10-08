@@ -2,6 +2,11 @@ import React, { Component, PropTypes } from 'react'
 import Icon from "metabase/components/Icon.react";
 
 export default class StepTitle extends Component {
+    static propTypes = {
+        number: PropTypes.number.isRequired,
+        title: PropTypes.string.isRequired
+    };
+
     render() {
         const { number, title } = this.props;
         return (
@@ -15,8 +20,3 @@ export default class StepTitle extends Component {
         );
     }
 }
-
-StepTitle.propTypes = {
-    number: PropTypes.number.isRequired,
-    title: PropTypes.string.isRequired
-};

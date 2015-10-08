@@ -14,6 +14,12 @@ export default class EditUserForm extends Component {
         this.state = { formError: null, valid: false }
     }
 
+    static propTypes = {
+        buttonText: PropTypes.string,
+        submitFn: PropTypes.func.isRequired,
+        user: PropTypes.object
+    };
+
     validateForm() {
         let { valid } = this.state;
         let isValid = true;
@@ -101,10 +107,4 @@ export default class EditUserForm extends Component {
             </form>
         );
     }
-}
-
-EditUserForm.propTypes = {
-    buttonText: PropTypes.string,
-    submitFn: PropTypes.func.isRequired,
-    user: PropTypes.object
 }

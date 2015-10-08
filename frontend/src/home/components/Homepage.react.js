@@ -8,9 +8,7 @@ import RecentViews from "./RecentViews.react";
 import Smile from './Smile.react';
 import NewUserOnboardingModal from './NewUserOnboardingModal.react';
 
-
 export default class Homepage extends Component {
-
     constructor(props, context) {
         super(props, context);
 
@@ -25,6 +23,13 @@ export default class Homepage extends Component {
             }
         };
     }
+
+    static propTypes = {
+        dispatch: PropTypes.func.isRequired,
+        onChangeLocation: PropTypes.func.isRequired,
+        showOnboarding: PropTypes.bool.isRequired,
+        user: PropTypes.object.isRequired
+    };
 
     completeOnboarding() {
         this.setState({
@@ -70,10 +75,3 @@ export default class Homepage extends Component {
         );
     }
 }
-
-Homepage.propTypes = {
-    dispatch: PropTypes.func.isRequired,
-    onChangeLocation: PropTypes.func.isRequired,
-    showOnboarding: PropTypes.bool.isRequired,
-    user: PropTypes.object.isRequired
-};

@@ -5,13 +5,17 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.r
 
 import { setCardsFilter } from "../actions";
 
-
 export default class TableListing extends Component {
-
     constructor(props, context) {
         super(props, context);
         this.state = { error: null };
     }
+
+    static propTypes = {
+        dispatch: PropTypes.func.isRequired,
+        cardsFilter: PropTypes.object.isRequired,
+        databaseMetadata: PropTypes.object.isRequired
+    };
 
     tableClicked(id) {
         if (this.props.cardsFilter.table !== id) {
@@ -50,10 +54,4 @@ export default class TableListing extends Component {
             </LoadingAndErrorWrapper>
         );
     }
-}
-
-TableListing.propTypes = {
-    dispatch: PropTypes.func.isRequired,
-    cardsFilter: PropTypes.object.isRequired,
-    databaseMetadata: PropTypes.object.isRequired
 }

@@ -2,6 +2,11 @@ import React, { Component, PropTypes } from 'react';
 import Icon from 'metabase/components/Icon.react';
 
 export default class CheckBox extends Component {
+    static propTypes = {
+        checked: PropTypes.bool,
+        onChange: PropTypes.func
+    };
+
     onClick() {
         if (this.props.onChange) {
             // TODO: use a proper event object?
@@ -27,8 +32,3 @@ export default class CheckBox extends Component {
         )
     }
 }
-
-CheckBox.propTypes = {
-    checked: PropTypes.bool,
-    onChange: PropTypes.func
-};

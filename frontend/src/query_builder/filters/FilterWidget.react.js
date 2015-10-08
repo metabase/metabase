@@ -23,6 +23,14 @@ export default class FilterWidget extends Component {
         _.bindAll(this, "open", "close", "removeFilter");
     }
 
+    static propTypes = {
+        filter: PropTypes.array.isRequired,
+        tableMetadata: PropTypes.object.isRequired,
+        index: PropTypes.number.isRequired,
+        updateFilter: PropTypes.func.isRequired,
+        removeFilter: PropTypes.func.isRequired
+    };
+
     componentWillMount() {
         this.componentWillReceiveProps(this.props);
     }
@@ -142,11 +150,3 @@ export default class FilterWidget extends Component {
         );
     }
 }
-
-FilterWidget.propTypes = {
-    filter: PropTypes.array.isRequired,
-    tableMetadata: PropTypes.object.isRequired,
-    index: PropTypes.number.isRequired,
-    updateFilter: PropTypes.func.isRequired,
-    removeFilter: PropTypes.func.isRequired
-};
