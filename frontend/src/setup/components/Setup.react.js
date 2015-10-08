@@ -59,12 +59,12 @@ export default class Setup extends Component {
             );
         } else {
             return (
-                <div className="flex flex-column flex-full">
+                <div>
                     <nav className="SetupNav text-brand py2 flex layout-centered">
                         <LogoIcon width={41} height={51}></LogoIcon>
                     </nav>
 
-                    <div className="wrapper wrapper--small flex flex-column layout-centered">
+                    <div className="wrapper wrapper--small">
                         <div className="SetupSteps full">
 
                             <UserStep {...this.props} stepNumber={USER_STEP_NUMBER} />
@@ -79,9 +79,10 @@ export default class Setup extends Component {
                                     </div>
                                 </section>
                             : null }
+                            <div className="text-centered">
+                                {this.renderFooter()}
+                            </div>
                         </div>
-
-                        {this.renderFooter()}
                     </div>
                 </div>
             );
