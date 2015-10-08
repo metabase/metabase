@@ -28,7 +28,8 @@ export default class FieldList extends Component {
         fieldOptions: PropTypes.object.isRequired,
         tableName: PropTypes.string,
         onFieldChange: PropTypes.func.isRequired,
-        enableTimeGrouping: PropTypes.bool
+        enableTimeGrouping: PropTypes.bool,
+        tableMetadata: PropTypes.object.isRequired
     };
 
     componentWillMount() {
@@ -36,7 +37,8 @@ export default class FieldList extends Component {
     }
 
     componentWillReceiveProps(newProps) {
-        let { tableName, field, fieldOptions } = newProps;
+        let { tableMetadata, field, fieldOptions } = newProps;
+        let tableName = tableMetadata.display_name;
 
         let mainSection = {
             name: singularize(tableName),
@@ -77,7 +79,12 @@ export default class FieldList extends Component {
     }
 
     renderItem(item) {
-        let { field } = this.props;
+        let { field, tableMetadata, enableTimeGrouping } = this.props;
+
+        if (tableMetadata.db.engine === "mongo") {
+            enableTimeGrouping = false
+        }
+
         return (
             <div className="flex-full flex">
                 <a className="flex-full flex align-center px2 py1 cursor-pointer"
@@ -86,7 +93,7 @@ export default class FieldList extends Component {
                     { this.renderTypeIcon(item.field) }
                     <h4 className="List-item-title ml2">{item.field.display_name}</h4>
                 </a>
-                { this.props.enableTimeGrouping && isDate(item.field) ?
+                { enableTimeGrouping && isDate(item.field) ?
                     <PopoverWithTrigger
                         className={this.props.className}
                         hasArrow={false}

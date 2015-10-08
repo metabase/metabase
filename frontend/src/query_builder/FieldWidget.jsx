@@ -24,7 +24,8 @@ export default class FieldWidget extends Component {
         fieldOptions: PropTypes.object.isRequired,
         setField: PropTypes.func.isRequired,
         removeField: PropTypes.func,
-        isInitiallyOpen: PropTypes.bool
+        isInitiallyOpen: PropTypes.bool,
+        tableMetadata: PropTypes.object.isRequired
     };
 
     static defaultProps = {
@@ -52,7 +53,7 @@ export default class FieldWidget extends Component {
                 >
                     <FieldList
                         className={"text-" + this.props.color}
-                        tableName={this.props.tableName}
+                        tableMetadata={this.props.tableMetadata}
                         field={this.props.field}
                         fieldOptions={this.props.fieldOptions}
                         onFieldChange={this.setField}
@@ -68,6 +69,7 @@ export default class FieldWidget extends Component {
             <div className="flex align-center">
                 <FieldName
                     className={this.props.className}
+                    tableMetadata={this.props.tableMetadata}
                     field={this.props.field}
                     fieldOptions={this.props.fieldOptions}
                     removeField={this.props.removeField}
