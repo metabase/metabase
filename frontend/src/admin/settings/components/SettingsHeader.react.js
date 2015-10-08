@@ -1,9 +1,9 @@
+import React, { Component, PropTypes } from "react";
+
 import SaveStatus from "metabase/components/SaveStatus.react";
 
-export default React.createClass({
-    displayName: "SettingsHeader",
-
-    render: function() {
+export default class SettingsHeader extends Component {
+    render() {
         return (
             <div className="MetadataEditor-header flex align-center relative">
                 <div className="MetadataEditor-headerSection h2 text-grey-4">
@@ -14,5 +14,5 @@ export default React.createClass({
                 </div>
             </div>
         );
-    },
-});
+    }
+}

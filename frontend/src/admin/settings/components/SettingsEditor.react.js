@@ -1,37 +1,42 @@
-import _ from "underscore";
+import React, { Component, PropTypes } from "react";
 
 import SettingsHeader from "./SettingsHeader.react";
 import SettingsSetting from "./SettingsSetting.react";
 
+import _ from "underscore";
 import cx from 'classnames';
 
-export default React.createClass({
-    displayName: "SettingsEditor",
-    propTypes: {
-        initialSection: React.string,
-        sections: React.PropTypes.object.isRequired,
-        updateSetting: React.PropTypes.func.isRequired
-    },
+export default class SettingsEditor extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.handleChangeEvent = this.handleChangeEvent.bind(this);
+        this.selectSection = this.selectSection.bind(this);
+        this.updateSetting = this.updateSetting.bind(this);
 
-    getInitialState: function() {
-        return {
-            currentSection: Object.keys(this.props.sections)[0]
+        this.state = {
+            currentSection: Object.keys(props.sections)[0]
         };
-    },
+    }
 
-    componentWillMount: function() {
+    static propTypes = {
+        initialSection: React.string,
+        sections: PropTypes.object.isRequired,
+        updateSetting: PropTypes.func.isRequired
+    };
+
+    componentWillMount() {
         if (this.props.initialSection) {
             this.setState({
                 currentSection: this.props.initialSection
             });
         }
-    },
+    }
 
-    selectSection: function(section) {
+    selectSection(section) {
         this.setState({ currentSection: section });
-    },
+    }
 
-    updateSetting: function(setting, value) {
+    updateSetting(setting, value) {
         this.refs.header.refs.status.setSaving();
         setting.value = value;
         this.props.updateSetting(setting).then(() => {
@@ -39,13 +44,13 @@ export default React.createClass({
         }, (error) => {
             this.refs.header.refs.status.setSaveError(error.data);
         });
-    },
+    }
 
-    handleChangeEvent: function(setting, event) {
+    handleChangeEvent(setting, event) {
         this.updateSetting(setting, event.target.value);
-    },
+    }
 
-    renderSettingsPane: function() {
+    renderSettingsPane() {
         var section = this.props.sections[this.state.currentSection];
         var settings = section.map((setting, index) => {
             return <SettingsSetting key={setting.key} setting={setting} updateSetting={this.updateSetting} handleChangeEvent={this.handleChangeEvent} autoFocus={index === 0}/>
@@ -55,9 +60,9 @@ export default React.createClass({
                 <ul>{settings}</ul>
             </div>
         );
-    },
+    }
 
-    renderSettingsSections: function() {
+    renderSettingsSections() {
         var sections = _.map(this.props.sections, (section, sectionName, sectionIndex) => {
             var classes = cx("AdminList-item", "flex", "align-center", "no-decoration", {
                 "selected": this.state.currentSection === sectionName
@@ -77,9 +82,9 @@ export default React.createClass({
                 </ul>
             </div>
         );
-    },
+    }
 
-    render: function() {
+    render() {
         return (
             <div className="MetadataEditor flex flex-column flex-full p4">
                 <SettingsHeader ref="header" />
@@ -90,4 +95,4 @@ export default React.createClass({
             </div>
         );
     }
-});
+}

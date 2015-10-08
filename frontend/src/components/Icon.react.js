@@ -1,6 +1,8 @@
+import React, { Component, PropTypes } from "react";
+
 import { loadIcon } from 'metabase/icon_paths';
 
-export default class Icon extends React.Component {
+export default class Icon extends Component {
     render() {
         var icon = loadIcon(this.props.name);
         if (icon.svg) {

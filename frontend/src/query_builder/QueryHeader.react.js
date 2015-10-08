@@ -1,3 +1,5 @@
+import React, { Component, PropTypes } from "react";
+
 import ActionButton from 'metabase/components/ActionButton.react';
 import AddToDashSelectDashModal from 'metabase/components/AddToDashSelectDashModal.react';
 import DeleteQuestionModal from 'metabase/components/DeleteQuestionModal.react';
@@ -18,19 +20,19 @@ import cx from "classnames";
 export default React.createClass({
     displayName: 'QueryHeader',
     propTypes: {
-        card: React.PropTypes.object.isRequired,
-        tableMetadata: React.PropTypes.object, // can't be required, sometimes null
-        cardApi: React.PropTypes.func.isRequired,
-        dashboardApi: React.PropTypes.func.isRequired,
-        revisionApi: React.PropTypes.func.isRequired,
-        notifyCardChangedFn: React.PropTypes.func.isRequired,
-        notifyCardAddedToDashFn: React.PropTypes.func.isRequired,
-        reloadCardFn: React.PropTypes.func.isRequired,
-        setQueryModeFn: React.PropTypes.func.isRequired,
-        isShowingDataReference: React.PropTypes.bool.isRequired,
-        toggleDataReferenceFn: React.PropTypes.func.isRequired,
-        cardIsNewFn: React.PropTypes.func.isRequired,
-        cardIsDirtyFn: React.PropTypes.func.isRequired
+        card: PropTypes.object.isRequired,
+        tableMetadata: PropTypes.object, // can't be required, sometimes null
+        cardApi: PropTypes.func.isRequired,
+        dashboardApi: PropTypes.func.isRequired,
+        revisionApi: PropTypes.func.isRequired,
+        notifyCardChangedFn: PropTypes.func.isRequired,
+        notifyCardAddedToDashFn: PropTypes.func.isRequired,
+        reloadCardFn: PropTypes.func.isRequired,
+        setQueryModeFn: PropTypes.func.isRequired,
+        isShowingDataReference: PropTypes.bool.isRequired,
+        toggleDataReferenceFn: PropTypes.func.isRequired,
+        cardIsNewFn: PropTypes.func.isRequired,
+        cardIsDirtyFn: PropTypes.func.isRequired
     },
 
     getInitialState: function() {

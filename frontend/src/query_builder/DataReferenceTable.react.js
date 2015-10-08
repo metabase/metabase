@@ -1,42 +1,47 @@
+import React, { Component, PropTypes } from "react";
+
 import DataReferenceQueryButton from './DataReferenceQueryButton.react';
 
 import inflection from 'inflection';
 import cx from "classnames";
 
-export default React.createClass({
-    displayName: 'DataReferenceTable',
-    propTypes: {
-        query: React.PropTypes.object.isRequired,
-        loadTableFn: React.PropTypes.func.isRequired,
-        closeFn: React.PropTypes.func.isRequired,
-        runQueryFn: React.PropTypes.func.isRequired,
-        setQueryFn: React.PropTypes.func.isRequired,
-        setDatabaseFn: React.PropTypes.func.isRequired,
-        setSourceTableFn: React.PropTypes.func.isRequired
-    },
+export default class DataReferenceTable extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.setQueryAllRows = this.setQueryAllRows.bind(this);
+        this.showPane = this.showPane.bind(this);
 
-    getInitialState: function() {
-        return {
+        this.state = {
             table: undefined,
             tableForeignKeys: undefined,
             pane: "fields"
         };
-    },
+    }
 
-    componentWillMount: function() {
+    static propTypes = {
+        query: PropTypes.object.isRequired,
+        loadTableFn: PropTypes.func.isRequired,
+        closeFn: PropTypes.func.isRequired,
+        runQueryFn: PropTypes.func.isRequired,
+        setQueryFn: PropTypes.func.isRequired,
+        setDatabaseFn: PropTypes.func.isRequired,
+        setSourceTableFn: PropTypes.func.isRequired
+    };
+
+    componentWillMount() {
         this.props.loadTableFn(this.props.table.id).then((result) => {
             this.setState({
                 table: result.metadata,
                 tableForeignKeys: result.foreignKeys
             });
         });
-    },
+    }
 
-    showPane: function(name) {
+    showPane(name) {
         this.setState({ pane: name });
-    },
+    }
 
-    setQueryAllRows: function() {
+    setQueryAllRows() {
         var query;
         query = this.props.setDatabaseFn(this.state.table.db_id);
         query = this.props.setSourceTableFn(this.state.table.id);
@@ -45,9 +50,9 @@ export default React.createClass({
         query.query.filter = [];
         this.props.setQueryFn(query);
         this.props.runQueryFn();
-    },
+    }
 
-    render: function(page) {
+    render(page) {
         var table = this.state.table;
         if (table) {
             var queryButton;
@@ -113,4 +118,4 @@ export default React.createClass({
             return null;
         }
     }
-})
+}

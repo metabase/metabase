@@ -1,41 +1,48 @@
+import React, { Component, PropTypes } from "react";
+
 import Icon from "metabase/components/Icon.react";
 import FieldWidget from './FieldWidget.react';
 import SelectionModule from './SelectionModule.react';
 
-export default React.createClass({
-    displayName: 'SortWidget',
-    propTypes: {
-        sort: React.PropTypes.array.isRequired,
-        fieldOptions: React.PropTypes.object.isRequired,
-        tableName: React.PropTypes.string,
-        updateSort: React.PropTypes.func.isRequired,
-        removeSort: React.PropTypes.func.isRequired
-    },
+export default class SortWidget extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.setDirection = this.setDirection.bind(this);
+        this.setField = this.setField.bind(this);
+    }
 
-    componentWillMount: function() {
+    static propTypes = {
+        sort: PropTypes.array.isRequired,
+        fieldOptions: PropTypes.object.isRequired,
+        tableName: PropTypes.string,
+        updateSort: PropTypes.func.isRequired,
+        removeSort: PropTypes.func.isRequired
+    };
+
+    componentWillMount() {
         this.componentWillReceiveProps(this.props);
-    },
+    }
 
-    componentWillReceiveProps: function(newProps) {
+    componentWillReceiveProps(newProps) {
         this.setState({
             field: newProps.sort[0],           // id of the field
             direction: newProps.sort[1]        // sort direction
         });
-    },
+    }
 
-    setField: function(value) {
+    setField(value) {
         if (this.state.field !== value) {
             this.props.updateSort([value, this.state.direction]);
         }
-    },
+    }
 
-    setDirection: function(value) {
+    setDirection(value) {
         if (this.state.direction !== value) {
             this.props.updateSort([this.state.field, value]);
         }
-    },
+    }
 
-    render: function() {
+    render() {
         var directionOptions = [
             {key: "ascending", val: "ascending"},
             {key: "descending", val: "descending"},
@@ -69,4 +76,4 @@ export default React.createClass({
             </div>
         );
     }
-});
+}

@@ -1,17 +1,23 @@
+import React, { Component, PropTypes } from "react";
+
 import cx from "classnames";
 
-export default React.createClass({
-    displayName: 'QueryModeToggle',
-    propTypes: {
-        currentQueryMode: React.PropTypes.string.isRequired,
-        setQueryModeFn: React.PropTypes.func.isRequired
-    },
+export default class QueryModeToggle extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.setMode = this.setMode.bind(this);
+    }
 
-    setMode: function(mode) {
+    static propTypes = {
+        currentQueryMode: PropTypes.string.isRequired,
+        setQueryModeFn: PropTypes.func.isRequired
+    };
+
+    setMode(mode) {
         this.props.setQueryModeFn(mode);
-    },
+    }
 
-    render: function() {
+    render() {
         // determine the type to switch to based on the type
         var targetType = (this.props.currentQueryMode === "query") ? "native" : "query";
 
@@ -32,4 +38,4 @@ export default React.createClass({
             </div>
         );
     }
-});
+}

@@ -1,10 +1,12 @@
+import React, { Component, PropTypes } from "react";
+
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.react";
 import ModalContent from "metabase/components/ModalContent.react";
 import SortableItemList from "metabase/components/SortableItemList.react";
 
 import { fetchCards, setEditingDashboard, addCardToDashboard } from "../actions";
 
-export default class AddToDashSelectQuestionModal extends React.Component {
+export default class AddToDashSelectQuestionModal extends Component {
     constructor(props) {
         super(props);
         this.state = { error: null };
@@ -49,8 +51,8 @@ export default class AddToDashSelectQuestionModal extends React.Component {
 }
 
 AddToDashSelectQuestionModal.propTypes = {
-    dispatch: React.PropTypes.func.isRequired,
-    dashboard: React.PropTypes.object.isRequired,
-    cards: React.PropTypes.array,
-    onClose: React.PropTypes.func.isRequired
+    dispatch: PropTypes.func.isRequired,
+    dashboard: PropTypes.object.isRequired,
+    cards: PropTypes.array,
+    onClose: PropTypes.func.isRequired
 };

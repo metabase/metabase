@@ -119,12 +119,12 @@ export default class DataSelector extends Component {
 }
 
 DataSelector.propTypes = {
-    query: React.PropTypes.object.isRequired,
-    databases: React.PropTypes.array.isRequired,
-    setDatabaseFn: React.PropTypes.func.isRequired,
-    setSourceTableFn: React.PropTypes.func,
-    isInitiallyOpen: React.PropTypes.bool,
-    name: React.PropTypes.string
+    query: PropTypes.object.isRequired,
+    databases: PropTypes.array.isRequired,
+    setDatabaseFn: PropTypes.func.isRequired,
+    setSourceTableFn: PropTypes.func,
+    isInitiallyOpen: PropTypes.bool,
+    name: PropTypes.string
 };
 
 DataSelector.defaultProps = {

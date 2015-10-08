@@ -1,33 +1,33 @@
+import React, { Component, PropTypes } from "react";
+
 import SaveStatus from "metabase/components/SaveStatus.react";
 import Toggle from "metabase/components/Toggle.react";
-
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 import ColumnarSelector from "metabase/components/ColumnarSelector.react";
 import Icon from "metabase/components/Icon.react";
 
-export default React.createClass({
-    displayName: "MetadataHeader",
-    propTypes: {
-        databaseId: React.PropTypes.number,
-        databases: React.PropTypes.array.isRequired,
-        selectDatabase: React.PropTypes.func.isRequired,
-        isShowingSchema: React.PropTypes.bool.isRequired,
-        toggleShowSchema: React.PropTypes.func.isRequired,
-    },
+export default class MetadataHeader extends Component {
+    static propTypes = {
+        databaseId: PropTypes.number,
+        databases: PropTypes.array.isRequired,
+        selectDatabase: PropTypes.func.isRequired,
+        isShowingSchema: PropTypes.bool.isRequired,
+        toggleShowSchema: PropTypes.func.isRequired,
+    };
 
-    setSaving: function() {
+    setSaving() {
         this.refs.status.setSaving.apply(this, arguments);
-    },
+    }
 
-    setSaved: function() {
+    setSaved() {
         this.refs.status.setSaved.apply(this, arguments);
-    },
+    }
 
-    setSaveError: function() {
+    setSaveError() {
         this.refs.status.setSaveError.apply(this, arguments);
-    },
+    }
 
-    renderDbSelector: function() {
+    renderDbSelector() {
         var database = this.props.databases.filter((db) => db.id === this.props.databaseId)[0];
         if (database) {
             var columns = [{
@@ -54,9 +54,9 @@ export default React.createClass({
                 </PopoverWithTrigger>
             );
         }
-    },
+    }
 
-    render: function() {
+    render() {
         return (
             <div className="MetadataEditor-header flex align-center">
                 <div className="MetadataEditor-headerSection h2">
@@ -70,4 +70,4 @@ export default React.createClass({
             </div>
         );
     }
-});
+}

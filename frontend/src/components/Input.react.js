@@ -1,41 +1,43 @@
-export default React.createClass({
-    displayName: "Input",
-    propTypes: {
-        type: React.PropTypes.string,
-        value: React.PropTypes.string,
-        placeholder: React.PropTypes.string,
-        onChange: React.PropTypes.func,
-        onBlurChange: React.PropTypes.func
-    },
+import React, { Component, PropTypes } from "react";
 
-    getDefaultProps: function() {
-        return {
-            type: "text"
-        };
-    },
+export default class Input extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.onBlur = this.onBlur.bind(this);
+        this.onChange = this.onChange.bind(this);
+        this.state = { value: props.value };
+    }
 
-    getInitialState: function() {
-        return { value: this.props.value };
-    },
+    static propTypes = {
+        type: PropTypes.string,
+        value: PropTypes.string,
+        placeholder: PropTypes.string,
+        onChange: PropTypes.func,
+        onBlurChange: PropTypes.func
+    };
 
-    componentWillReceiveProps: function(newProps) {
+    static defaultProps = {
+        type: "text"
+    };
+
+    componentWillReceiveProps(newProps) {
         this.setState({ value: newProps.value });
-    },
+    }
 
-    onChange: function(event) {
+    onChange(event) {
         this.setState({ value:  event.target.value });
         if (this.props.onChange) {
             this.props.onChange(event);
         }
-    },
+    }
 
-    onBlur: function(event) {
+    onBlur(event) {
         if (this.props.onBlurChange && (this.props.value || "") !== event.target.value) {
             this.props.onBlurChange(event);
         }
-    },
+    }
 
-    render: function() {
+    render() {
         return <input {...this.props} value={this.state.value} onBlur={this.onBlur} onChange={this.onChange} />
     }
-});
+}

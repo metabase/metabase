@@ -1,3 +1,5 @@
+import React, { Component, PropTypes } from "react";
+
 import DataReferenceQueryButton from './DataReferenceQueryButton.react';
 import Icon from "metabase/components/Icon.react";
 import Query from "metabase/lib/query";
@@ -5,34 +7,40 @@ import inflection from 'inflection';
 
 import cx from "classnames";
 
-export default React.createClass({
-    displayName: 'DataReferenceField',
-    propTypes: {
-        loadTableFn: React.PropTypes.func.isRequired,
-        runQueryFn: React.PropTypes.func.isRequired,
-        setQueryFn: React.PropTypes.func.isRequired,
-        setDatabaseFn: React.PropTypes.func.isRequired,
-        setSourceTableFn: React.PropTypes.func.isRequired,
-        setDisplayFn: React.PropTypes.func.isRequired
-    },
+export default class DataReferenceField extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.filterBy = this.filterBy.bind(this);
+        this.groupBy = this.groupBy.bind(this);
+        this.setQueryCountGroupedBy = this.setQueryCountGroupedBy.bind(this);
+        this.setQueryDistinct = this.setQueryDistinct.bind(this);
+        this.setQuerySum = this.setQuerySum.bind(this);
 
-    getInitialState: function() {
-        return {
+        this.state = {
             table: undefined,
             tableForeignKeys: undefined
         };
-    },
+    }
 
-    componentWillMount: function() {
+    static propTypes = {
+        loadTableFn: PropTypes.func.isRequired,
+        runQueryFn: PropTypes.func.isRequired,
+        setQueryFn: PropTypes.func.isRequired,
+        setDatabaseFn: PropTypes.func.isRequired,
+        setSourceTableFn: PropTypes.func.isRequired,
+        setDisplayFn: PropTypes.func.isRequired
+    };
+
+    componentWillMount() {
         this.props.loadTableFn(this.props.field.table_id).then((result) => {
             this.setState({
                 table: result.metadata,
                 tableForeignKeys: result.foreignKeys
             });
         });
-    },
+    }
 
-    filterBy: function() {
+    filterBy() {
         var query = this.setDatabaseAndTable();
         // Add an aggregation so both aggregation and filter popovers aren't visible
         if (!Query.hasValidAggregation(query.query)) {
@@ -41,9 +49,9 @@ export default React.createClass({
         Query.addFilter(query.query);
         Query.updateFilter(query.query, Query.getFilters(query.query).length - 1, [null, this.props.field.id, null]);
         this.setQuery(query, false);
-    },
+    }
 
-    groupBy: function() {
+    groupBy() {
         var query = this.setDatabaseAndTable();
         if (!Query.hasValidAggregation(query.query)) {
             Query.updateAggregation(query.query, ["rows"]);
@@ -51,48 +59,48 @@ export default React.createClass({
         Query.addDimension(query.query);
         Query.updateDimension(query.query, this.props.field.id, query.query.breakout.length - 1);
         this.setQuery(query);
-    },
+    }
 
-    setQuerySum: function() {
+    setQuerySum() {
         var query = this.setDatabaseAndTable();
         query.query.aggregation = ["sum", this.props.field.id];
         query.query.breakout = [];
         query.query.filter = [];
         this.setQuery(query);
-    },
+    }
 
-    setQueryDistinct: function() {
+    setQueryDistinct() {
         var query = this.setDatabaseAndTable();
         query.query.aggregation = ["rows"];
         query.query.breakout = [this.props.field.id];
         query.query.filter = [];
         this.setQuery(query);
-    },
+    }
 
-    setQueryCountGroupedBy: function(chartType) {
+    setQueryCountGroupedBy(chartType) {
         var query = this.setDatabaseAndTable();
         query.query.aggregation = ["count"];
         query.query.breakout = [this.props.field.id];
         query.query.filter = [];
         this.setQuery(query);
         this.props.setDisplayFn(chartType);
-    },
+    }
 
-    setDatabaseAndTable: function() {
+    setDatabaseAndTable() {
         var query;
         query = this.props.setDatabaseFn(this.state.table.db_id);
         query = this.props.setSourceTableFn(this.state.table.id);
         return query;
-    },
+    }
 
-    setQuery: function(query, run = true) {
+    setQuery(query, run = true) {
         this.props.setQueryFn(query);
         if (run) {
             this.props.runQueryFn();
         }
-    },
+    }
 
-    render: function() {
+    render() {
         var fieldName = this.props.field.display_name;
         var tableName = this.state.table ? this.state.table.display_name : "";
 
@@ -149,5 +157,5 @@ export default React.createClass({
                 <ul>{usefulQuestions}</ul>
             </div>
         );
-    },
-})
+    }
+}

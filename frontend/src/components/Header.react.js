@@ -1,6 +1,8 @@
+import React, { Component, PropTypes } from "react";
+
 import Input from "metabase/components/Input.react";
 
-export default class Header extends React.Component {
+export default class Header extends Component {
 
     setItemAttribute(attribute, event) {
         this.props.setItemAttributeFn(attribute, event.target.value);

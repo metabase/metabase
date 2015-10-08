@@ -1,38 +1,43 @@
 /*global ace*/
 
+import React, { Component, PropTypes } from "react";
+
 import DataSelector from './DataSelector.react';
 import Icon from "metabase/components/Icon.react";
 
-export default React.createClass({
-    displayName: 'NativeQueryEditor',
-    propTypes: {
-        databases: React.PropTypes.array.isRequired,
-        query: React.PropTypes.object.isRequired,
-        setQueryFn: React.PropTypes.func.isRequired,
-        setDatabaseFn: React.PropTypes.func.isRequired,
-        autocompleteResultsFn: React.PropTypes.func.isRequired
-    },
+export default class NativeQueryEditor extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.onChange = this.onChange.bind(this);
+        this.toggleEditor = this.toggleEditor.bind(this);
 
-    getInitialState: function() {
-        return {
+        this.state = {
             showEditor: false
         };
-    },
+    }
 
-    componentWillMount: function() {
+    static propTypes = {
+        databases: PropTypes.array.isRequired,
+        query: PropTypes.object.isRequired,
+        setQueryFn: PropTypes.func.isRequired,
+        setDatabaseFn: PropTypes.func.isRequired,
+        autocompleteResultsFn: PropTypes.func.isRequired
+    };
+
+    componentWillMount() {
         // if the sql is empty then start with the editor showing, otherwise our default is to start out collapsed
         if (!this.props.query.native.query) {
             this.setState({
                 showEditor: true
             });
         }
-    },
+    }
 
-    componentDidMount: function() {
+    componentDidMount() {
         this.loadAceEditor();
-    },
+    }
 
-    loadAceEditor: function() {
+    loadAceEditor() {
         var editor = ace.edit("id_sql");
 
         // TODO: theme?
@@ -93,25 +98,25 @@ export default React.createClass({
                 });
             }
         });
-    },
+    }
 
-    setQuery: function(dataset_query) {
+    setQuery(dataset_query) {
         this.props.setQueryFn(dataset_query);
-    },
+    }
 
-    onChange: function(event) {
+    onChange(event) {
         if (this.state.editor) {
             var query = this.props.query;
             query.native.query = this.state.editor.getValue();
             this.setQuery(query);
         }
-    },
+    }
 
-    toggleEditor: function() {
+    toggleEditor() {
         this.setState({ showEditor: !this.state.showEditor })
-    },
+    }
 
-    render: function() {
+    render() {
         // we only render a db selector if there are actually multiple to choose from
         var dbSelector;
         if(this.state.showEditor && this.props.databases && this.props.databases.length > 1) {
@@ -155,4 +160,4 @@ export default React.createClass({
             </div>
         );
     }
-});
+}

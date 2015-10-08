@@ -1,46 +1,54 @@
+import React, { Component, PropTypes } from "react";
+
 import Input from "metabase/components/Input.react";
 import MetadataField from "./MetadataField.react";
 import ProgressBar from "metabase/components/ProgressBar.react";
 
 import cx from "classnames";
 
-export default React.createClass({
-    displayName: "MetadataTable",
-    propTypes: {
-        table: React.PropTypes.object,
-        idfields: React.PropTypes.array.isRequired,
-        updateTable: React.PropTypes.func.isRequired,
-        updateField: React.PropTypes.func.isRequired,
-        updateFieldSpecialType: React.PropTypes.func.isRequired,
-        updateFieldTarget: React.PropTypes.func.isRequired
-    },
+export default class MetadataTable extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.onDescriptionChange = this.onDescriptionChange.bind(this);
+        this.onNameChange = this.onNameChange.bind(this);
+        this.updateProperty = this.updateProperty.bind(this);
+    }
 
-    isHidden: function() {
+    static propTypes = {
+        table: PropTypes.object,
+        idfields: PropTypes.array.isRequired,
+        updateTable: PropTypes.func.isRequired,
+        updateField: PropTypes.func.isRequired,
+        updateFieldSpecialType: PropTypes.func.isRequired,
+        updateFieldTarget: PropTypes.func.isRequired
+    };
+
+    isHidden() {
         return !!this.props.table.visibility_type;
-    },
+    }
 
-    updateProperty: function(name, value) {
+    updateProperty(name, value) {
         this.props.table[name] = value;
         this.setState({ saving: true });
         this.props.updateTable(this.props.table);
-    },
+    }
 
-    onNameChange: function(event) {
+    onNameChange(event) {
         this.updateProperty("display_name", event.target.value);
-    },
+    }
 
-    onDescriptionChange: function(event) {
+    onDescriptionChange(event) {
         this.updateProperty("description", event.target.value);
-    },
+    }
 
-    renderVisibilityType: function(text, type, any) {
+    renderVisibilityType(text, type, any) {
         var classes = cx("mx1", "text-bold", "text-brand-hover", "cursor-pointer", "text-default", {
             "text-brand": this.props.table.visibility_type === type || (any && this.props.table.visibility_type)
         });
         return <span className={classes} onClick={this.updateProperty.bind(null, "visibility_type", type)}>{text}</span>;
-    },
+    }
 
-    renderVisibilityWidget: function() {
+    renderVisibilityWidget() {
         var subTypes;
         if (this.props.table.visibility_type) {
             subTypes = (
@@ -58,9 +66,9 @@ export default React.createClass({
                 {subTypes}
             </span>
         );
-    },
+    }
 
-    render: function() {
+    render() {
         var table = this.props.table;
         if (!table) {
             return false;
@@ -109,4 +117,4 @@ export default React.createClass({
             </div>
         );
     }
-});
+}

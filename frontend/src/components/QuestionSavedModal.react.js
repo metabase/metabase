@@ -1,13 +1,14 @@
+import React, { Component, PropTypes } from "react";
+
 import ModalContent from "metabase/components/ModalContent.react";
 
-export default React.createClass({
-    displayName: "QuestionSavedModal",
-    propTypes: {
-        addToDashboardFn: React.PropTypes.func.isRequired,
-        closeFn: React.PropTypes.func.isRequired
-    },
+export default class QuestionSavedModal extends Component {
+    static propTypes = {
+        addToDashboardFn: PropTypes.func.isRequired,
+        closeFn: PropTypes.func.isRequired
+    };
 
-    render: function() {
+    render() {
         return (
             <ModalContent
                 title="Saved! What now?"
@@ -19,12 +20,14 @@ export default React.createClass({
                             <a className="no-decoration flex align-center border-bottom py1 pb2" href="/">
                                 <img className="" style={{height: "32px"}} src="/app/components/icons/assets/illustration_home.png" />
                                 <span className="h3 ml2 text-bold text-brand-hover">Go home</span>
-                            </a> </li>
+                            </a>
+</li>
                         <li>
                             <a className="no-decoration flex align-center border-bottom py1 pb2" href="#" onClick={this.props.addToDashboardFn}>
                                 <img className="" style={{height: "32px"}} src="/app/components/icons/assets/illustration_dashboard.png" />
                                 <span className="h3 ml2 text-bold text-brand-hover">Add to a dashboard</span>
-                            </a> </li>
+                            </a>
+</li>
                         <li>
                             <a className="no-decoration flex align-center pt1" href="/q">
                                 <img className="" style={{height: "32px"}} src="/app/components/icons/assets/illustration_question.png" />
@@ -36,4 +39,4 @@ export default React.createClass({
             </ModalContent>
         );
     }
-});
+}

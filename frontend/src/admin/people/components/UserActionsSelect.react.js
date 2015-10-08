@@ -58,5 +58,5 @@ export default class UserActionsSelect extends Component {
 }
 
 UserActionsSelect.propTypes = {
-    user: React.PropTypes.object.isRequired
+    user: PropTypes.object.isRequired
 };

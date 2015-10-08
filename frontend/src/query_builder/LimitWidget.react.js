@@ -1,35 +1,39 @@
+import React, { Component, PropTypes } from "react";
+
 import Icon from "metabase/components/Icon.react";
 import SelectionModule from './SelectionModule.react';
 
-export default React.createClass({
-    displayName: 'LimitWidget',
-    propTypes: {
-        limit: React.PropTypes.number,
-        updateLimit: React.PropTypes.func.isRequired,
-        removeLimit: React.PropTypes.func.isRequired
-    },
+export default class LimitWidget extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.setLimit = this.setLimit.bind(this);
+    }
 
-    getDefaultProps: function() {
-        return {
-            options: [
-                {key: "All rows", val: null},
-                {key: "1 row", val: 1},
-                {key: "10 rows", val: 10},
-                {key: "25 rows", val: 25},
-                {key: "50 rows", val: 50},
-                {key: "100 rows", val: 100},
-                {key: "1000 rows", val: 1000}
-            ]
-        };
-    },
+    static propTypes = {
+        limit: PropTypes.number,
+        updateLimit: PropTypes.func.isRequired,
+        removeLimit: PropTypes.func.isRequired
+    };
 
-    setLimit: function(value) {
+    static defaultProps = {
+        options: [
+            {key: "All rows", val: null},
+            {key: "1 row", val: 1},
+            {key: "10 rows", val: 10},
+            {key: "25 rows", val: 25},
+            {key: "50 rows", val: 50},
+            {key: "100 rows", val: 100},
+            {key: "1000 rows", val: 1000}
+        ]
+    };
+
+    setLimit(value) {
         if (this.props.limit !== value) {
             this.props.updateLimit(value);
         }
-    },
+    }
 
-    render: function() {
+    render() {
         return (
             <div className="Query-filter">
                 <div className='Filter-section'>
@@ -50,4 +54,4 @@ export default React.createClass({
             </div>
         );
     }
-});
+}

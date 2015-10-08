@@ -1,60 +1,68 @@
+import React, { Component, PropTypes } from "react";
+
 import MetadataHeader from './MetadataHeader.react';
 import MetadataTableList from './MetadataTableList.react';
 import MetadataTable from './MetadataTable.react';
 import MetadataSchema from './MetadataSchema.react';
 
-export default React.createClass({
-    displayName: "MetadataEditor",
-    propTypes: {
-        databaseId: React.PropTypes.number,
-        databases: React.PropTypes.array.isRequired,
-        selectDatabase: React.PropTypes.func.isRequired,
-        tableId: React.PropTypes.number,
-        tables: React.PropTypes.object.isRequired,
-        selectTable: React.PropTypes.func.isRequired,
-        idfields: React.PropTypes.array.isRequired,
-        updateTable: React.PropTypes.func.isRequired,
-        updateField: React.PropTypes.func.isRequired,
-        updateFieldSpecialType: React.PropTypes.func.isRequired,
-        updateFieldTarget: React.PropTypes.func.isRequired
-    },
+export default class MetadataEditor extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.toggleShowSchema = this.toggleShowSchema.bind(this);
+        this.updateField = this.updateField.bind(this);
+        this.updateFieldSpecialType = this.updateFieldSpecialType.bind(this);
+        this.updateFieldTarget = this.updateFieldTarget.bind(this);
+        this.updateTable = this.updateTable.bind(this);
 
-    getInitialState: function() {
-        return {
+        this.state = {
             isShowingSchema: false
-        }
-    },
+        };
+    }
 
-    toggleShowSchema: function() {
+    static propTypes = {
+        databaseId: PropTypes.number,
+        databases: PropTypes.array.isRequired,
+        selectDatabase: PropTypes.func.isRequired,
+        tableId: PropTypes.number,
+        tables: PropTypes.object.isRequired,
+        selectTable: PropTypes.func.isRequired,
+        idfields: PropTypes.array.isRequired,
+        updateTable: PropTypes.func.isRequired,
+        updateField: PropTypes.func.isRequired,
+        updateFieldSpecialType: PropTypes.func.isRequired,
+        updateFieldTarget: PropTypes.func.isRequired
+    };
+
+    toggleShowSchema() {
         this.setState({ isShowingSchema: !this.state.isShowingSchema });
-    },
+    }
 
-    handleSaveResult: function(promise) {
+    handleSaveResult(promise) {
         this.refs.header.setSaving();
         promise.then(() => {
             this.refs.header.setSaved();
         }, (error) => {
             this.refs.header.setSaveError(error.data);
         });
-    },
+    }
 
-    updateTable: function(table) {
+    updateTable(table) {
         this.handleSaveResult(this.props.updateTable(table));
-    },
+    }
 
-    updateField: function(field) {
+    updateField(field) {
         this.handleSaveResult(this.props.updateField(field));
-    },
+    }
 
-    updateFieldSpecialType: function(field) {
+    updateFieldSpecialType(field) {
         this.handleSaveResult(this.props.updateFieldSpecialType(field));
-    },
+    }
 
-    updateFieldTarget: function(field) {
+    updateFieldTarget(field) {
         this.handleSaveResult(this.props.updateFieldTarget(field));
-    },
+    }
 
-    render: function() {
+    render() {
         var table = this.props.tables[this.props.tableId];
         var content;
         if (table) {
@@ -100,4 +108,4 @@ export default React.createClass({
             </div>
         );
     }
-});
+}

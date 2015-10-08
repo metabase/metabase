@@ -1,29 +1,33 @@
+import React, { Component, PropTypes } from "react";
+
 import Icon from "metabase/components/Icon.react";
 
 import cx from "classnames";
 
-export default React.createClass({
-    displayName: 'CardFavoriteButton',
-    propTypes: {
-        cardApi: React.PropTypes.func.isRequired,
-        cardId: React.PropTypes.number.isRequired
-    },
+export default class CardFavoriteButton extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.toggleFavorite = this.toggleFavorite.bind(this);
 
-    getInitialState: function() {
-        return {
+        this.state = {
             favorite: false
         };
-    },
+    }
 
-    componentDidMount: function() {
+    static propTypes = {
+        cardApi: PropTypes.func.isRequired,
+        cardId: PropTypes.number.isRequired
+    };
+
+    componentDidMount() {
         this.loadFavoriteStatus();
-    },
+    }
 
-    componentWillReceiveProps: function(newProps) {
+    componentWillReceiveProps(newProps) {
         this.loadFavoriteStatus();
-    },
+    }
 
-    loadFavoriteStatus: function() {
+    loadFavoriteStatus() {
         var component = this;
 
         // initialize the current favorite status
@@ -41,9 +45,9 @@ export default React.createClass({
         }, function(error) {
             console.log(error);
         });
-    },
+    }
 
-    toggleFavorite: function() {
+    toggleFavorite() {
 
         var component = this;
         if (this.state.favorite) {
@@ -69,9 +73,9 @@ export default React.createClass({
                 console.log(error);
             });
         }
-    },
+    }
 
-    render: function() {
+    render() {
         var iconClasses = cx({
             'mx1': true,
             'transition-color': true,
@@ -86,4 +90,4 @@ export default React.createClass({
             </a>
         );
     }
-});
+}

@@ -1,14 +1,16 @@
+import React, { Component, PropTypes } from "react";
+
 import cx from "classnames";
 
-export default React.createClass({
-    displayName: 'FormField',
-    propTypes: {
-        fieldName: React.PropTypes.string.isRequired,
-        displayName: React.PropTypes.string.isRequired,
-        showCharm: React.PropTypes.bool,
-        errors: React.PropTypes.object
-    },
-    extractFieldError: function() {
+export default class FormField extends Component {
+    static propTypes = {
+        fieldName: PropTypes.string.isRequired,
+        displayName: PropTypes.string.isRequired,
+        showCharm: PropTypes.bool,
+        errors: PropTypes.object
+    };
+
+    extractFieldError() {
         if (this.props.errors &&
             this.props.errors.data.errors &&
             this.props.fieldName in this.props.errors.data.errors) {
@@ -16,8 +18,9 @@ export default React.createClass({
         } else {
             return null;
         }
-    },
-    render: function() {
+    }
+
+    render() {
         var fieldError = this.extractFieldError();
 
         var fieldClasses = cx({
@@ -51,4 +54,4 @@ export default React.createClass({
             </div>
         );
     }
-});
+}

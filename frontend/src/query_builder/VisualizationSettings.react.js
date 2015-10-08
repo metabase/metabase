@@ -1,3 +1,5 @@
+import React, { Component, PropTypes } from "react";
+
 import Icon from "metabase/components/Icon.react";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 
@@ -8,11 +10,11 @@ import cx from "classnames";
 export default React.createClass({
     displayName: 'VisualizationSettings',
     propTypes: {
-        visualizationSettingsApi: React.PropTypes.object.isRequired,
-        card: React.PropTypes.object.isRequired,
-        result: React.PropTypes.object,
-        setDisplayFn: React.PropTypes.func.isRequired,
-        setChartColorFn: React.PropTypes.func.isRequired
+        visualizationSettingsApi: PropTypes.object.isRequired,
+        card: PropTypes.object.isRequired,
+        result: PropTypes.object,
+        setDisplayFn: PropTypes.func.isRequired,
+        setChartColorFn: PropTypes.func.isRequired
     },
 
     visualizationTypeNames: {

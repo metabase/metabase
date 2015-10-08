@@ -1,26 +1,31 @@
+import React, { Component, PropTypes } from "react";
+
 import CreateDashboardModal from 'metabase/components/CreateDashboardModal.react';
 import ModalContent from "metabase/components/ModalContent.react";
 import SortableItemList from 'metabase/components/SortableItemList.react';
 
 import moment from 'moment';
 
-export default React.createClass({
-    displayName: "AddToDashSelectDashModal",
-    propTypes: {
-        card: React.PropTypes.object.isRequired,
-        dashboardApi: React.PropTypes.func.isRequired,
-        closeFn: React.PropTypes.func.isRequired,
-        notifyCardAddedToDashFn: React.PropTypes.func.isRequired
-    },
-
-    getInitialState: function() {
+export default class AddToDashSelectDashModal extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.addToDashboard = this.addToDashboard.bind(this);
+        this.createDashboard = this.createDashboard.bind(this);
         this.loadDashboardList();
-        return {
+
+        this.state = {
             dashboards: null
         };
-    },
+    }
 
-    loadDashboardList: async function() {
+    static propTypes = {
+        card: PropTypes.object.isRequired,
+        dashboardApi: PropTypes.func.isRequired,
+        closeFn: PropTypes.func.isRequired,
+        notifyCardAddedToDashFn: PropTypes.func.isRequired
+    };
+
+    async loadDashboardList() {
         var dashboards = await this.props.dashboardApi.list({
             'filterMode': 'mine'
         }).$promise;
@@ -28,23 +33,23 @@ export default React.createClass({
             dashboard.updated_at = moment(dashboard.updated_at);
         }
         this.setState({ dashboards });
-    },
+    }
 
-    addToDashboard: async function(dashboard) {
+    async addToDashboard(dashboard) {
         var dashCard = await this.props.dashboardApi.addcard({
             'dashId': dashboard.id,
             'cardId': this.props.card.id
         }).$promise;
         this.props.notifyCardAddedToDashFn(dashCard);
-    },
+    }
 
-    createDashboard: async function(newDashboard) {
+    async createDashboard(newDashboard) {
         let dashboard = await this.props.dashboardApi.create(newDashboard).$promise;
         // this.props.notifyDashboardCreatedFn(dashboard);
         this.addToDashboard(dashboard);
-    },
+    }
 
-    render: function() {
+    render() {
         if (!this.state.dashboards) {
             return null;
         } else if (this.state.dashboards.length === 0) {
@@ -63,4 +68,4 @@ export default React.createClass({
             );
         }
     }
-});
+}

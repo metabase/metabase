@@ -1,9 +1,11 @@
+import React, { Component, PropTypes } from "react";
+
 import ModalContent from "metabase/components/ModalContent.react";
 import Toggle from 'metabase/components/Toggle.react';
 
 import { removeCardFromDashboard } from '../actions';
 
-export default class RemoveFromDashboardModal extends React.Component {
+export default class RemoveFromDashboardModal extends Component {
     constructor() {
         super();
         this.state = { deleteCard: false };
@@ -67,8 +69,8 @@ export default class RemoveFromDashboardModal extends React.Component {
 }
 
 RemoveFromDashboardModal.propTypes = {
-    dispatch: React.PropTypes.func.isRequired,
-    dashcard: React.PropTypes.object.isRequired,
-    dashboard: React.PropTypes.object.isRequired,
-    onClose: React.PropTypes.func.isRequired
+    dispatch: PropTypes.func.isRequired,
+    dashcard: PropTypes.object.isRequired,
+    dashboard: PropTypes.object.isRequired,
+    onClose: PropTypes.func.isRequired
 };

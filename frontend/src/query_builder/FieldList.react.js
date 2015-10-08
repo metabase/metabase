@@ -141,7 +141,7 @@ export default class FieldList extends Component {
 }
 
 FieldList.propTypes = {
-    field: PropTypes.oneOfType([React.PropTypes.number, React.PropTypes.array]),
+    field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
     fieldOptions: PropTypes.object.isRequired,
     tableName: PropTypes.string,
     onFieldChange: PropTypes.func.isRequired,

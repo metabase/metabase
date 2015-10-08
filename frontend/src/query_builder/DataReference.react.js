@@ -1,52 +1,59 @@
+import React, { Component, PropTypes } from "react";
+
 import DataReferenceMain from './DataReferenceMain.react';
 import DataReferenceTable from './DataReferenceTable.react';
 import DataReferenceField from './DataReferenceField.react';
 import Icon from "metabase/components/Icon.react";
 
-export default React.createClass({
-    displayName: 'DataReference',
-    propTypes: {
-        Metabase: React.PropTypes.func.isRequired,
-        query: React.PropTypes.object.isRequired,
-        closeFn: React.PropTypes.func.isRequired,
-        runQueryFn: React.PropTypes.func.isRequired,
-        setQueryFn: React.PropTypes.func.isRequired,
-        setDatabaseFn: React.PropTypes.func.isRequired,
-        setSourceTableFn: React.PropTypes.func.isRequired,
-        setDisplayFn: React.PropTypes.func.isRequired
-    },
+export default class DataReference extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.back = this.back.bind(this);
+        this.close = this.close.bind(this);
+        this.showField = this.showField.bind(this);
+        this.showTable = this.showTable.bind(this);
 
-    getInitialState: function() {
-        return {
+        this.state = {
             stack: [],
             tables: {},
             fields: {}
         };
-    },
+    }
 
-    close: function() {
+    static propTypes = {
+        Metabase: PropTypes.func.isRequired,
+        query: PropTypes.object.isRequired,
+        closeFn: PropTypes.func.isRequired,
+        runQueryFn: PropTypes.func.isRequired,
+        setQueryFn: PropTypes.func.isRequired,
+        setDatabaseFn: PropTypes.func.isRequired,
+        setSourceTableFn: PropTypes.func.isRequired,
+        setDisplayFn: PropTypes.func.isRequired
+    };
+
+    close() {
         this.props.closeFn();
-    },
+    }
 
-    back: function() {
+    back() {
         this.setState({
             stack: this.state.stack.slice(0, -1)
         });
-    },
+    }
 
-    showField: function(field) {
+    showField(field) {
         this.setState({
             stack: this.state.stack.concat({ type: "field", field: field })
         });
-    },
+    }
 
-    showTable: function(table) {
+    showTable(table) {
         this.setState({
             stack: this.state.stack.concat({ type: "table", table: table })
         });
-    },
+    }
 
-    render: function() {
+    render() {
         var content;
         if (this.state.stack.length === 0) {
             content = <DataReferenceMain {...this.props} showTable={this.showTable} />
@@ -87,4 +94,4 @@ export default React.createClass({
             </div>
         );
     }
-});
+}

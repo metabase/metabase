@@ -1,56 +1,58 @@
-import _ from "underscore";
+import React, { Component, PropTypes } from "react";
 
 import Popover from "metabase/components/Popover.react";
-
 import Icon from "metabase/components/Icon.react";
 import SearchBar from './SearchBar.react';
 
+import _ from "underscore";
 import cx from "classnames";
 
-export default React.createClass({
-    displayName:'SelectionModule',
-    propTypes: {
-        action: React.PropTypes.func.isRequired,
-        display: React.PropTypes.string.isRequired,
-        descriptionKey: React.PropTypes.string,
-        expandFilter: React.PropTypes.func,
-        expandTitle: React.PropTypes.string,
-        isInitiallyOpen: React.PropTypes.bool,
-        items: React.PropTypes.array,
-        remove: React.PropTypes.func,
-        selectedKey: React.PropTypes.string,
-        selectedValue: React.PropTypes.node,
-        parentIndex: React.PropTypes.number,
-        placeholder: React.PropTypes.string
-    },
-
-    getDefaultProps: function() {
-        return {
-            className: ""
-        };
-    },
-
-    getInitialState: function () {
+export default class SelectionModule extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this._expand = this._expand.bind(this);
+        this._select = this._select.bind(this);
+        this._toggleOpen = this._toggleOpen.bind(this);
+        this.onClose = this.onClose.bind(this);
         // a selection module can be told to be open on initialization but otherwise is closed
-        var isInitiallyOpen = this.props.isInitiallyOpen || false;
+        var isInitiallyOpen = props.isInitiallyOpen || false;
 
-        return {
+        this.state = {
             open: isInitiallyOpen,
             expanded: false,
             searchThreshold: 20,
             searchEnabled: false,
             filterTerm: null
         };
-    },
+    }
 
-    onClose: function() {
+    static propTypes = {
+        action: PropTypes.func.isRequired,
+        display: PropTypes.string.isRequired,
+        descriptionKey: PropTypes.string,
+        expandFilter: PropTypes.func,
+        expandTitle: PropTypes.string,
+        isInitiallyOpen: PropTypes.bool,
+        items: PropTypes.array,
+        remove: PropTypes.func,
+        selectedKey: PropTypes.string,
+        selectedValue: PropTypes.node,
+        parentIndex: PropTypes.number,
+        placeholder: PropTypes.string
+    };
+
+    static defaultProps = {
+        className: ""
+    };
+
+    onClose() {
         this.setState({
             open: false,
             expanded: false
         });
-    },
+    }
 
-    _enableSearch: function() {
+    _enableSearch() {
         /*
         not showing search for now
         if(this.props.items.length > this.state.searchThreshold) {
@@ -60,22 +62,22 @@ export default React.createClass({
         }
         */
         return false;
-    },
+    }
 
-    _toggleOpen: function() {
+    _toggleOpen() {
         this.setState({
             open: !this.state.open,
             expanded: !this.state.open ? this.state.expanded : false
         });
-    },
+    }
 
-    _expand: function() {
+    _expand() {
         this.setState({
             expanded: true
         });
-    },
+    }
 
-    _isExpanded: function() {
+    _isExpanded() {
         if (this.state.expanded || !this.props.expandFilter) {
             return true;
         }
@@ -87,9 +89,9 @@ export default React.createClass({
             }
         }
         return false;
-    },
+    }
 
-    _displayCustom: function(values) {
+    _displayCustom(values) {
         var custom = [];
         this.props.children.forEach(function (element) {
             var newElement = element;
@@ -97,9 +99,9 @@ export default React.createClass({
             custom.push(element);
         });
         return custom;
-    },
+    }
 
-    _listItems: function(selection) {
+    _listItems(selection) {
         if (this.props.items) {
             var sourceItems = this.props.items;
 
@@ -153,9 +155,9 @@ export default React.createClass({
         } else {
             return "Sorry. Something went wrong.";
         }
-    },
+    }
 
-    _select: function(item) {
+    _select(item) {
         var index = this.props.index;
         // send back the item with the specified action
         if (this.props.action) {
@@ -170,13 +172,13 @@ export default React.createClass({
             }
         }
         this._toggleOpen();
-    },
+    }
 
-    _itemIsSelected: function(item) {
+    _itemIsSelected(item) {
         return item && _.isEqual(item[this.props.selectedKey], this.props.selectedValue);
-    },
+    }
 
-    renderPopover: function(selection) {
+    renderPopover(selection) {
         if(this.state.open) {
             var itemListClasses = cx({
                 'SelectionItems': true,
@@ -203,9 +205,9 @@ export default React.createClass({
                 </Popover>
             );
         }
-    },
+    }
 
-    render: function() {
+    render() {
         var selection;
         this.props.items.forEach(function (item) {
             if (this._itemIsSelected(item)) {
@@ -243,4 +245,4 @@ export default React.createClass({
             </div>
         );
     }
-});
+}

@@ -1,3 +1,5 @@
+import React, { Component, PropTypes } from "react";
+
 import Input from "metabase/components/Input.react";
 import Select from "metabase/components/Select.react";
 
@@ -5,17 +7,27 @@ import MetabaseCore from "metabase/lib/core";
 
 import _  from "underscore";
 
-export default React.createClass({
-    displayName: "MetadataField",
-    propTypes: {
-        field: React.PropTypes.object,
-        idfields: React.PropTypes.array.isRequired,
-        updateField: React.PropTypes.func.isRequired,
-        updateFieldSpecialType: React.PropTypes.func.isRequired,
-        updateFieldTarget: React.PropTypes.func.isRequired
-    },
+export default class MetadataField extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.isVisibilityType = this.isVisibilityType.bind(this);
+        this.onDescriptionChange = this.onDescriptionChange.bind(this);
+        this.onNameChange = this.onNameChange.bind(this);
+        this.onSpecialTypeChange = this.onSpecialTypeChange.bind(this);
+        this.onTargetChange = this.onTargetChange.bind(this);
+        this.onTypeChange = this.onTypeChange.bind(this);
+        this.onVisibilityChange = this.onVisibilityChange.bind(this);
+    }
 
-    isVisibilityType: function(visibility) {
+    static propTypes = {
+        field: PropTypes.object,
+        idfields: PropTypes.array.isRequired,
+        updateField: PropTypes.func.isRequired,
+        updateFieldSpecialType: PropTypes.func.isRequired,
+        updateFieldTarget: PropTypes.func.isRequired
+    };
+
+    isVisibilityType(visibility) {
         switch(visibility.id) {
             case "do_not_include": return (this.props.field.field_type === "sensitive");
             case "everywhere": return (this.props.field.field_type !== "sensitive" && this.props.field.preview_display === true);
@@ -23,22 +35,22 @@ export default React.createClass({
         }
 
         return false;
-    },
+    }
 
-    updateProperty: function(name, value) {
+    updateProperty(name, value) {
         this.props.field[name] = value;
         this.props.updateField(this.props.field);
-    },
+    }
 
-    onNameChange: function(event) {
+    onNameChange(event) {
         this.updateProperty("display_name", event.target.value);
-    },
+    }
 
-    onDescriptionChange: function(event) {
+    onDescriptionChange(event) {
         this.updateProperty("description", event.target.value);
-    },
+    }
 
-    onVisibilityChange: function(visibility) {
+    onVisibilityChange(visibility) {
         switch(visibility.id) {
             case "do_not_include":
                 this.updateProperty("field_type", "sensitive");
@@ -56,23 +68,23 @@ export default React.createClass({
                 this.updateProperty("preview_display", false);
                 return;
         }
-    },
+    }
 
-    onTypeChange: function(type) {
+    onTypeChange(type) {
         this.updateProperty("field_type", type.id);
-    },
+    }
 
-    onSpecialTypeChange: function(special_type) {
+    onSpecialTypeChange(special_type) {
         this.props.field.special_type = special_type.id;
         this.props.updateFieldSpecialType(this.props.field);
-    },
+    }
 
-    onTargetChange: function(target_field) {
+    onTargetChange(target_field) {
         this.props.field.target_id = target_field.id;
         this.props.updateFieldTarget(this.props.field);
-    },
+    }
 
-    render: function() {
+    render() {
         var targetSelect;
         if (this.props.field.special_type === "fk") {
             targetSelect = (
@@ -131,4 +143,4 @@ export default React.createClass({
             </li>
         )
     }
-})
+}

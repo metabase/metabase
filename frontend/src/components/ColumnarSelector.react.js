@@ -1,15 +1,16 @@
+import React, { Component, PropTypes } from "react";
+
 import Icon from "metabase/components/Icon.react";
 
 import cx from "classnames";
 
-export default React.createClass({
-    displayName: "ColumnarSelector",
-    propTypes: {
+export default class ColumnarSelector extends Component {
+    static propTypes = {
         columns: React.PropTypes.array.isRequired,
         showScrollbars: React.PropTypes.bool
-    },
+    };
 
-    render: function() {
+    render() {
         var columns = this.props.columns.map((column, columnIndex) => {
             var sectionElements;
             if (column) {
@@ -66,4 +67,4 @@ export default React.createClass({
             <div className="ColumnarSelector">{columns}</div>
         );
     }
-});
+}

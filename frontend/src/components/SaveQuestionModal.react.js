@@ -1,3 +1,5 @@
+import React, { Component, PropTypes } from "react";
+
 import FormField from "metabase/components/FormField.react";
 import ModalContent from "metabase/components/ModalContent.react";
 
@@ -8,10 +10,10 @@ import cx from "classnames";
 export default React.createClass({
     displayName: "SaveQuestionModal",
     propTypes: {
-        card: React.PropTypes.object.isRequired,
-        tableMetadata: React.PropTypes.object, // can't be required, sometimes null
-        saveFn: React.PropTypes.func.isRequired,
-        closeFn: React.PropTypes.func.isRequired
+        card: PropTypes.object.isRequired,
+        tableMetadata: PropTypes.object, // can't be required, sometimes null
+        saveFn: PropTypes.func.isRequired,
+        closeFn: PropTypes.func.isRequired
     },
 
     getInitialState: function() {

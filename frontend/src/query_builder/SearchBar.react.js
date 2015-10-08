@@ -1,8 +1,10 @@
+import React, { Component, PropTypes } from "react";
+
 export default React.createClass({
     displayName: 'SearchBar',
     propTypes: {
-        filter: React.PropTypes.string.isRequired,
-        onFilter: React.PropTypes.func.isRequired
+        filter: PropTypes.string.isRequired,
+        onFilter: PropTypes.func.isRequired
     },
     handleInputChange: function () {
         this.props.onFilter(this.refs.filterTextInput.getDOMNode().value);

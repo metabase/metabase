@@ -1,3 +1,5 @@
+import React, { Component, PropTypes } from "react";
+
 import Icon from "metabase/components/Icon.react";
 import LoadingSpinner from 'metabase/components/LoadingSpinner.react';
 import QueryVisualizationTable from './QueryVisualizationTable.react';
@@ -10,67 +12,67 @@ import Query from "metabase/lib/query";
 
 import cx from "classnames";
 
-export default React.createClass({
-    displayName: 'QueryVisualization',
-    propTypes: {
-        visualizationSettingsApi: React.PropTypes.object.isRequired,
-        card: React.PropTypes.object.isRequired,
-        result: React.PropTypes.object,
-        downloadLink: React.PropTypes.string,
-        setDisplayFn: React.PropTypes.func.isRequired,
-        setChartColorFn: React.PropTypes.func.isRequired,
-        setSortFn: React.PropTypes.func.isRequired,
-        cellIsClickableFn: React.PropTypes.func,
-        cellClickedFn: React.PropTypes.func,
-        isRunning: React.PropTypes.bool.isRequired,
-        runQueryFn: React.PropTypes.func.isRequired
-    },
+export default class QueryVisualization extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.runQuery = this.runQuery.bind(this);
 
-    getDefaultProps: function() {
-        return {
-            // NOTE: this should be more dynamic from the backend, it's set based on the query lang
-            maxTableRows: 2000
+        this.state = {
+            origQuery: JSON.stringify(props.card.dataset_query)
         };
-    },
+    }
 
-    getInitialState: function() {
-        return {
-            origQuery: JSON.stringify(this.props.card.dataset_query)
-        };
-    },
+    static propTypes = {
+        visualizationSettingsApi: PropTypes.object.isRequired,
+        card: PropTypes.object.isRequired,
+        result: PropTypes.object,
+        downloadLink: PropTypes.string,
+        setDisplayFn: PropTypes.func.isRequired,
+        setChartColorFn: PropTypes.func.isRequired,
+        setSortFn: PropTypes.func.isRequired,
+        cellIsClickableFn: PropTypes.func,
+        cellClickedFn: PropTypes.func,
+        isRunning: PropTypes.bool.isRequired,
+        runQueryFn: PropTypes.func.isRequired
+    };
 
-    componentWillReceiveProps: function(nextProps) {
+    static defaultProps = {
+        // NOTE: this should be more dynamic from the backend, it's set based on the query lang
+        maxTableRows: 2000
+    };
+
+    componentWillReceiveProps(nextProps) {
         // whenever we are told that we are running a query lets update our understanding of the "current" query
         if (nextProps.isRunning) {
             this.setState({
                 origQuery: JSON.stringify(nextProps.card.dataset_query)
             });
         }
-    },
+    }
 
-    queryIsDirty: function() {
+    queryIsDirty() {
         // a query is considered dirty if ANY part of it has been changed
         return (JSON.stringify(this.props.card.dataset_query) !== this.state.origQuery);
-    },
+    }
 
-    isChartDisplay: function(display) {
+    isChartDisplay(display) {
         return (display !== "table" && display !== "scalar");
-    },
+    }
 
-    runQuery: function() {
+    runQuery() {
         this.props.runQueryFn();
-    },
+    }
 
-    canRun: function() {
+    canRun() {
         var query = this.props.card.dataset_query;
         if (query.query) {
             return Query.canRun(query.query);
         } else {
             return (query.database != undefined && query.native.query !== "");
         }
-    },
+    }
 
-    renderHeader: function() {
+    renderHeader() {
         var visualizationSettings = false;
         if (!this.props.isObjectDetail) {
             visualizationSettings = (<VisualizationSettings {...this.props}/>);
@@ -93,9 +95,9 @@ export default React.createClass({
                 </div>
             </div>
         );
-    },
+    }
 
-    hasTooManyRows: function () {
+    hasTooManyRows() {
         const dataset_query = this.props.card.dataset_query,
               rows = this.props.result.data.rows;
 
@@ -108,9 +110,9 @@ export default React.createClass({
         } else {
             return false;
         }
-    },
+    }
 
-    renderCount: function() {
+    renderCount() {
         if (this.props.result && !this.props.isObjectDetail && this.props.card.display === "table") {
             return (
                 <div>
@@ -120,9 +122,9 @@ export default React.createClass({
                 </div>
             );
         }
-    },
+    }
 
-    renderDownloadButton: function() {
+    renderDownloadButton() {
         // NOTE: we expect our component provider set this to something falsey if download not available
         if (this.props.downloadLink) {
             if (window.OSX) {
@@ -142,9 +144,9 @@ export default React.createClass({
                 );
             }
         }
-    },
+    }
 
-    render: function() {
+    render() {
         var loading,
             viz;
 
@@ -302,4 +304,4 @@ export default React.createClass({
             </div>
         );
     }
-});
+}

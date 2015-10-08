@@ -1,3 +1,5 @@
+import React, { Component, PropTypes } from "react";
+
 import ExpandableString from './ExpandableString.react';
 import Icon from 'metabase/components/Icon.react';
 import IconBorder from 'metabase/components/IconBorder.react';
@@ -6,13 +8,18 @@ import { singularize, inflect } from 'inflection';
 
 import cx from "classnames";
 
-export default React.createClass({
-    displayName: 'QueryVisualizationObjectDetailTable',
-    propTypes: {
-        data: React.PropTypes.object
-    },
+export default class QueryVisualizationObjectDetailTable extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.cellClicked = this.cellClicked.bind(this);
+        this.clickedForeignKey = this.clickedForeignKey.bind(this);
+    }
 
-    getIdValue: function() {
+    static propTypes = {
+        data: PropTypes.object
+    };
+
+    getIdValue() {
         if (!this.props.data) return null;
 
         for (var i=0; i < this.props.data.cols.length; i++) {
@@ -21,18 +28,18 @@ export default React.createClass({
                 return this.props.data.rows[0][i];
             }
         }
-    },
+    }
 
-    rowGetter: function(rowIndex) {
+    rowGetter(rowIndex) {
         // Remember that we are pivoting the data, so for row 5 we want to return an array with [coldef, value]
         return [this.props.data.cols[rowIndex], this.props.data.rows[0][rowIndex]];
-    },
+    }
 
-    cellClicked: function(rowIndex, columnIndex) {
+    cellClicked(rowIndex, columnIndex) {
         this.props.cellClickedFn(rowIndex, columnIndex);
-    },
+    }
 
-    cellRenderer: function(cellData, cellDataKey, rowData, rowIndex, columnData, width) {
+    cellRenderer(cellData, cellDataKey, rowData, rowIndex, columnData, width) {
         // TODO: should we be casting all values toString()?
         // Check out the expected format of each row above in the rowGetter() function
         var row = this.rowGetter(rowIndex),
@@ -63,13 +70,13 @@ export default React.createClass({
                 return (<div key={key}>{cellValue}</div>);
             }
         }
-    },
+    }
 
-    clickedForeignKey: function(fk) {
+    clickedForeignKey(fk) {
         this.props.followForeignKeyFn(fk);
-    },
+    }
 
-    renderDetailsTable: function() {
+    renderDetailsTable() {
         var rows = [];
         for (var i=0; i < this.props.data.cols.length; i++) {
             var row = this.rowGetter(i),
@@ -85,9 +92,9 @@ export default React.createClass({
         }
 
         return rows;
-    },
+    }
 
-    renderRelationships: function() {
+    renderRelationships() {
         if (!this.props.tableForeignKeys) return false;
 
         if (this.props.tableForeignKeys.length < 1) {
@@ -167,9 +174,9 @@ export default React.createClass({
                 {relationships}
             </ul>
         );
-    },
+    }
 
-    render: function() {
+    render() {
         if(!this.props.data) {
             return false;
         }
@@ -203,4 +210,4 @@ export default React.createClass({
             </div>
         );
     }
-});
+}

@@ -35,7 +35,7 @@ if (hasArg("-w") || hasArg("--watch")) {
 var NODE_ENV = process.env["NODE_ENV"] || (hasArg("-d") || (hasArg("--debug")) ? "development": "production");
 console.log("webpack env:", NODE_ENV)
 
-var BABEL_FEATURES = ['es7.asyncFunctions', 'es7.decorators'];
+var BABEL_FEATURES = ['es7.asyncFunctions', 'es7.decorators', 'es7.classProperties'];
 
 var cssMaps = { vars: {}, media: {}, selector: {} };
 CSS_SRC.map(webpackPostcssTools.makeVarMap).forEach(function(map) {

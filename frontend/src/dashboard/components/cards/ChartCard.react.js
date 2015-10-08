@@ -1,6 +1,8 @@
+import React, { Component, PropTypes } from "react";
+
 import QueryVisualizationChart from "metabase/query_builder/QueryVisualizationChart.react.js";
 
-export default class ChartCard extends React.Component {
+export default class ChartCard extends Component {
     render() {
         return (
             <QueryVisualizationChart
@@ -17,7 +19,7 @@ ChartCard.defaultProps = {
 };
 
 ChartCard.propTypes = {
-    card: React.PropTypes.object.isRequired,
-    data: React.PropTypes.object.isRequired,
-    visualizationSettingsApi: React.PropTypes.object.isRequired
+    card: PropTypes.object.isRequired,
+    data: PropTypes.object.isRequired,
+    visualizationSettingsApi: PropTypes.object.isRequired
 };

@@ -1,4 +1,4 @@
-import _ from "underscore";
+import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.react";
 
@@ -8,24 +8,22 @@ import { isDate } from "metabase/lib/schema_metadata";
 
 import { stripId } from "metabase/lib/formatting";
 
+import _ from "underscore";
 import cx from "classnames";
 
-export default React.createClass({
-    displayName: "FieldName",
-    propTypes: {
-        field: React.PropTypes.oneOfType([React.PropTypes.number, React.PropTypes.array]),
-        fieldOptions: React.PropTypes.object.isRequired,
-        onClick: React.PropTypes.func,
-        removeField: React.PropTypes.func
-    },
+export default class FieldName extends Component {
+    static propTypes = {
+        field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
+        fieldOptions: PropTypes.object.isRequired,
+        onClick: PropTypes.func,
+        removeField: PropTypes.func
+    };
 
-    getDefaultProps: function() {
-        return {
-            className: ""
-        };
-    },
+    static defaultProps = {
+        className: ""
+    };
 
-    render: function() {
+    render() {
         let targetTitle, fkTitle, fkIcon, bucketingTitle;
         let { field, fieldOptions } = this.props;
 
@@ -82,5 +80,5 @@ export default React.createClass({
                 {removeButton}
             </div>
         );
-    },
-});
+    }
+}

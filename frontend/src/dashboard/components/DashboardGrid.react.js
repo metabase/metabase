@@ -1,4 +1,4 @@
-import _ from "underscore";
+import React, { Component, PropTypes } from "react";
 
 import { Responsive as ResponsiveReactGridLayout } from "react-grid-layout";
 
@@ -9,9 +9,10 @@ import RemoveFromDashboardModal from "./RemoveFromDashboardModal.react";
 
 import { setDashCardAttributes } from "../actions";
 
+import _ from "underscore";
 import cx from "classnames";
 
-export default class DashboardGrid extends React.Component {
+export default class DashboardGrid extends Component {
 
     constructor(props) {
         super(props);
@@ -180,9 +181,9 @@ export default class DashboardGrid extends React.Component {
 }
 
 DashboardGrid.propTypes = {
-    dispatch: React.PropTypes.func.isRequired,
-    isEditing: React.PropTypes.bool.isRequired,
-    dashboard: React.PropTypes.object.isRequired,
-    visualizationSettingsApi: React.PropTypes.object.isRequired,
-    onChangeLocation: React.PropTypes.func.isRequired
+    dispatch: PropTypes.func.isRequired,
+    isEditing: PropTypes.bool.isRequired,
+    dashboard: PropTypes.object.isRequired,
+    visualizationSettingsApi: PropTypes.object.isRequired,
+    onChangeLocation: PropTypes.func.isRequired
 };

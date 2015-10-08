@@ -1,23 +1,26 @@
+import React, { Component, PropTypes } from "react";
+
 import { isQueryable } from "metabase/lib/table";
 
 import inflection from 'inflection';
 import cx from "classnames";
 
-export default React.createClass({
-    displayName: 'DataReferenceMain',
-    propTypes: {
-        Metabase: React.PropTypes.func.isRequired,
-        closeFn: React.PropTypes.func.isRequired
-    },
+export default class DataReferenceMain extends Component {
+    constructor(props, context) {
+        super(props, context);
 
-    getInitialState: function() {
-        return {
+        this.state = {
             databases: {},
             tables: {}
         };
-    },
+    }
 
-    render: function() {
+    static propTypes = {
+        Metabase: PropTypes.func.isRequired,
+        closeFn: PropTypes.func.isRequired
+    };
+
+    render() {
         var databases;
         if (this.props.databases) {
             databases = this.props.databases.map((database) => {
@@ -62,11 +65,12 @@ export default React.createClass({
         return (
             <div>
                 <h1>Data Reference</h1>
-                <p>Learn more about your data structure to  ask more useful questions.</p>
+                <p>Learn more about your data structure to
+ ask more useful questions.</p>
                 <ul>
                     {databases}
                 </ul>
             </div>
         );
-    },
-})
+    }
+}

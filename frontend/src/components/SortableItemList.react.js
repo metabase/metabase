@@ -1,8 +1,9 @@
+import React, { Component, PropTypes } from "react";
+
 import Icon from "metabase/components/Icon.react";
 import RadioSelect from 'metabase/components/RadioSelect.react';
 
-
-export default class SortableItemList extends React.Component {
+export default class SortableItemList extends Component {
     constructor(props) {
         super(props);
         this.state = {
@@ -62,7 +63,7 @@ export default class SortableItemList extends React.Component {
 }
 
 SortableItemList.propTypes = {
-    items: React.PropTypes.array.isRequired,
-    clickItemFn: React.PropTypes.func,
-    showIcons: React.PropTypes.bool
+    items: PropTypes.array.isRequired,
+    clickItemFn: PropTypes.func,
+    showIcons: PropTypes.bool
 };

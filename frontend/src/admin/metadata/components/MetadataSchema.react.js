@@ -1,10 +1,11 @@
-export default React.createClass({
-    displayName: "MetadataSchema",
-    propTypes: {
-        table: React.PropTypes.object
-    },
+import React, { Component, PropTypes } from "react";
 
-    render: function() {
+export default class MetadataSchema extends Component {
+    static propTypes = {
+        table: PropTypes.object
+    };
+
+    render() {
         var table = this.props.table;
         if (!table) {
             return false;
@@ -43,4 +44,4 @@ export default React.createClass({
             </div>
         );
     }
-});
+}

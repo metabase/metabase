@@ -1,21 +1,21 @@
-import _ from "underscore";
+import React, { Component, PropTypes } from "react";
 
 import Input from "metabase/components/Input.react";
 import Select from "metabase/components/Select.react";
 import Toggle from "metabase/components/Toggle.react";
 
+import _ from "underscore";
 import cx from "classnames";
 
-export default React.createClass({
-    displayName: "SettingsSetting",
-    propTypes: {
-        setting: React.PropTypes.object.isRequired,
-        updateSetting: React.PropTypes.func.isRequired,
-        handleChangeEvent: React.PropTypes.func.isRequired,
-        autoFocus: React.PropTypes.bool
-    },
+export default class SettingsSetting extends Component {
+    static propTypes = {
+        setting: PropTypes.object.isRequired,
+        updateSetting: PropTypes.func.isRequired,
+        handleChangeEvent: PropTypes.func.isRequired,
+        autoFocus: PropTypes.bool
+    };
 
-    renderStringInput: function(setting, type="text") {
+    renderStringInput(setting, type="text") {
         var className = type === "password" ? "SettingsPassword" : "SettingsInput";
         return (
             <Input
@@ -27,9 +27,9 @@ export default React.createClass({
                 autoFocus={this.props.autoFocus}
             />
         );
-    },
+    }
 
-    renderRadioInput: function(setting) {
+    renderRadioInput(setting) {
         var options = _.map(setting.options, (name, value) => {
             var classes = cx("h3", "text-bold", "text-brand-hover", "no-decoration",  { "text-brand": setting.value === value });
             return (
@@ -39,9 +39,9 @@ export default React.createClass({
             );
         });
         return <ul className="flex text-grey-4">{options}</ul>
-    },
+    }
 
-    renderSelectInput: function(setting) {
+    renderSelectInput(setting) {
         return (
             <Select
                 className="full-width"
@@ -53,9 +53,9 @@ export default React.createClass({
                 optionValueFn={option => option}
             />
         );
-    },
+    }
 
-    renderToggleInput: function(setting) {
+    renderToggleInput(setting) {
         var on = (setting.value == null ? setting.default : setting.value) === "true";
         return (
             <div className="flex align-center pt1">
@@ -63,9 +63,9 @@ export default React.createClass({
                 <span className="text-bold mx1">{on ? "Enabled" : "Disabled"}</span>
             </div>
         );
-    },
+    }
 
-    render: function() {
+    render() {
         var setting = this.props.setting;
         var control;
         switch (setting.type) {
@@ -86,5 +86,4 @@ export default React.createClass({
             </li>
         );
     }
-
-});
+}

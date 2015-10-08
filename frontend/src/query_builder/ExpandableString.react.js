@@ -1,35 +1,35 @@
+import React, { Component, PropTypes } from "react";
+
 import Humanize from 'humanize';
 
+export default class ExpandableString extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.toggleExpansion = this.toggleExpansion.bind(this);
 
-export default React.createClass({
-    displayName: 'ExpandableString',
-
-    getDefaultProps: function () {
-        return {
-            length: 140,
+        this.state = {
             expanded: false
         };
-    },
+    }
 
-    getInitialState: function() {
-        return {
-            expanded: false
-        };
-    },
+    static defaultProps = {
+        length: 140,
+        expanded: false
+    };
 
-    componentWillReceiveProps: function(newProps) {
+    componentWillReceiveProps(newProps) {
         this.setState({
             expanded: newProps.expanded
         });
-    },
+    }
 
-    toggleExpansion: function() {
+    toggleExpansion() {
         this.setState({
             expanded: !this.state.expanded
         });
-    },
+    }
 
-    render: function () {
+    render() {
         if (!this.props.str) return false;
 
         var truncated = Humanize.truncate(this.props.str || "", 140);
@@ -42,4 +42,4 @@ export default React.createClass({
             return (<span>{this.props.str}</span>);
         }
     }
-});
+}

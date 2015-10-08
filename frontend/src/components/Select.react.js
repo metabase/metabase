@@ -1,33 +1,32 @@
+import React, { Component, PropTypes } from "react";
+
 import ColumnarSelector from "metabase/components/ColumnarSelector.react";
 import Icon from "metabase/components/Icon.react";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.react";
 
-export default React.createClass({
-    displayName: "Select",
-    propTypes: {
-        value: React.PropTypes.any,
-        options: React.PropTypes.array.isRequired,
-        placeholder: React.PropTypes.string,
-        onChange: React.PropTypes.func,
-        optionNameFn: React.PropTypes.func,
-        optionValueFn: React.PropTypes.func,
-        showScrollbars: React.PropTypes.bool
-    },
+export default class Select extends Component {
+    static propTypes = {
+        value: PropTypes.any,
+        options: PropTypes.array.isRequired,
+        placeholder: PropTypes.string,
+        onChange: PropTypes.func,
+        optionNameFn: PropTypes.func,
+        optionValueFn: PropTypes.func,
+        showScrollbars: PropTypes.bool
+    };
 
-    getDefaultProps: function() {
-        return {
-            isInitiallyOpen: false,
-            placeholder: "",
-            optionNameFn: (option) => option.name,
-            optionValueFn: (option) => option
-        };
-    },
+    static defaultProps = {
+        isInitiallyOpen: false,
+        placeholder: "",
+        optionNameFn: (option) => option.name,
+        optionValueFn: (option) => option
+    };
 
-    toggle: function() {
+    toggle() {
         this.refs.popover.toggle();
-    },
+    }
 
-    render: function() {
+    render() {
         var selectedName = this.props.value ? this.props.optionNameFn(this.props.value) : this.props.placeholder;
 
         var triggerElement = (
@@ -70,5 +69,4 @@ export default React.createClass({
             </PopoverWithTrigger>
         );
     }
-
-});
+}

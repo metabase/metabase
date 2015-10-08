@@ -1,8 +1,10 @@
+import React, { Component, PropTypes } from "react";
+
 import ModalContent from "metabase/components/ModalContent.react";
 
 import inflection from "inflection";
 
-export default class DeleteQuestionModal extends React.Component {
+export default class DeleteQuestionModal extends Component {
     constructor() {
         super();
         this.state = {
@@ -58,7 +60,7 @@ export default class DeleteQuestionModal extends React.Component {
 }
 
 DeleteQuestionModal.propTypes = {
-    card: React.PropTypes.object.isRequired,
-    deleteCardFn: React.PropTypes.func.isRequired,
-    closeFn: React.PropTypes.func
+    card: PropTypes.object.isRequired,
+    deleteCardFn: PropTypes.func.isRequired,
+    closeFn: PropTypes.func
 };

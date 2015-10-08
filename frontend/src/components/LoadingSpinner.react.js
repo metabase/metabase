@@ -1,16 +1,7 @@
-/* just a spinner, sitting here, spinning endlessly */
+import React, { Component, PropTypes } from "react";
 
-var LoadingSpinner = React.createClass({
-    displayName: 'LoadingSpinner',
-    getDefaultProps: function () {
-        return {
-            width: '32px',
-            height: '32px',
-            fill: 'currentcolor',
-            spinnerClass: 'Loading-indicator',
-        }
-    },
-    render: function () {
+class LoadingSpinner extends Component {
+    render() {
         var props = this.props;
         var animate = '<animateTransform attributeName="transform" type="rotate" from="0 16 16" to="360 16 16" dur="0.8s" repeatCount="indefinite" />';
         return (
@@ -22,6 +13,15 @@ var LoadingSpinner = React.createClass({
             </div>
         );
     }
-});
+}
+
+LoadingSpinner.defaultProps = {
+    width: '32px',
+    height: '32px',
+    fill: 'currentcolor',
+    spinnerClass: 'Loading-indicator',
+};
+
+LoadingSpinner.displayName = 'LoadingSpinner';
 
 export default LoadingSpinner;

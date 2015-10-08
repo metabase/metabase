@@ -1,25 +1,24 @@
+import React, { Component, PropTypes } from "react";
+
 import cx from "classnames";
 
-export default React.createClass({
-    displayName: "RadioButtons",
-    propTypes: {
-        value: React.PropTypes.any,
-        options: React.PropTypes.array.isRequired,
-        onChange: React.PropTypes.func,
-        optionNameFn: React.PropTypes.func,
-        optionValueFn: React.PropTypes.func,
-        optionKeyFn: React.PropTypes.func
-    },
+export default class RadioButtons extends Component {
+    static propTypes = {
+        value: PropTypes.any,
+        options: PropTypes.array.isRequired,
+        onChange: PropTypes.func,
+        optionNameFn: PropTypes.func,
+        optionValueFn: PropTypes.func,
+        optionKeyFn: PropTypes.func
+    };
 
-    getDefaultProps: function() {
-        return {
-            optionNameFn: (option) => option,
-            optionValueFn: (option) => option,
-            optionKeyFn: (option) => option
-        };
-    },
+    static defaultProps = {
+        optionNameFn: (option) => option,
+        optionValueFn: (option) => option,
+        optionKeyFn: (option) => option
+    };
 
-    render: function() {
+    render() {
         var options = this.props.options.map((option) => {
             var name = this.props.optionNameFn(option);
             var value = this.props.optionNameFn(option);
@@ -33,4 +32,4 @@ export default React.createClass({
         });
         return <ul className="flex text-grey-4">{options}</ul>
     }
-});
+}

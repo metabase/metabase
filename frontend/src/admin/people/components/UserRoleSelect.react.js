@@ -61,6 +61,6 @@ UserRoleSelect.defaultProps = {
 };
 
 UserRoleSelect.propTypes = {
-    user: React.PropTypes.object.isRequired,
-    onChangeFn: React.PropTypes.func.isRequired
+    user: PropTypes.object.isRequired,
+    onChangeFn: PropTypes.func.isRequired
 };

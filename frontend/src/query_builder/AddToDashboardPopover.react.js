@@ -1,17 +1,18 @@
-import _ from "underscore";
+import React, { Component, PropTypes } from "react";
 
 import OnClickOutside from 'react-onclickoutside';
 
 import FormField from "metabase/components/FormField.react";
 import Icon from "metabase/components/Icon.react";
 
+import _ from "underscore";
 import cx from "classnames";
 
 export default React.createClass({
     displayName: 'AddToDashboardPopover',
     propTypes: {
-        card: React.PropTypes.object.isRequired,
-        dashboardApi: React.PropTypes.func.isRequired
+        card: PropTypes.object.isRequired,
+        dashboardApi: PropTypes.func.isRequired
     },
     mixins: [OnClickOutside],
 

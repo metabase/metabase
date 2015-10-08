@@ -1,4 +1,6 @@
-export default class TableCard extends React.Component {
+import React, { Component, PropTypes } from "react";
+
+export default class TableCard extends Component {
 
     /* returns custom title for column set by user, or native label if
      * user did not specify a title
@@ -48,5 +50,5 @@ TableCard.defaultProps = {
 };
 
 TableCard.propTypes = {
-    data: React.PropTypes.object.isRequired
+    data: PropTypes.object.isRequired
 };

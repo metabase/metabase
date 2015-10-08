@@ -1,20 +1,19 @@
-export default React.createClass({
-    displayName: "ProgressBar",
-    propTypes: {
-        percentage: React.PropTypes.number.isRequired
-    },
+import React, { Component, PropTypes } from "react";
 
-    getDefaultProps: function() {
-        return {
-            className: "ProgressBar"
-        };
-    },
+export default class ProgressBar extends Component {
+    static propTypes = {
+        percentage: PropTypes.number.isRequired
+    };
 
-    render: function() {
+    static defaultProps = {
+        className: "ProgressBar"
+    };
+
+    render() {
         return (
             <div className={this.props.className}>
                 <div className="ProgressBar-progress" style={{"width": (this.props.percentage * 100) + "%"}}></div>
             </div>
         );
     }
-});
+}

@@ -1,14 +1,15 @@
+import React, { Component, PropTypes } from "react";
+
 import Icon from "metabase/components/Icon.react";
 
-export default React.createClass({
-    displayName: 'DataReferenceQueryButton',
-    propTypes: {
-        icon: React.PropTypes.string.isRequired,
-        text: React.PropTypes.string.isRequired,
-        onClick: React.PropTypes.func
-    },
+export default class DataReferenceQueryButton extends Component {
+    static propTypes = {
+        icon: PropTypes.string.isRequired,
+        text: PropTypes.string.isRequired,
+        onClick: PropTypes.func
+    };
 
-    render: function(page) {
+    render(page) {
         return (
             <div className={this.props.className}>
                 <a className="DataRefererenceQueryButton flex align-center no-decoration py1" href="#" onClick={this.props.onClick} >
@@ -21,4 +22,4 @@ export default React.createClass({
             </div>
         );
     }
-});
+}

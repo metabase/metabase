@@ -1,34 +1,37 @@
-import _ from "underscore";
+import React, { Component, PropTypes } from "react";
 
 import ProgressBar from "metabase/components/ProgressBar.react";
 import Icon from "metabase/components/Icon.react";
 
+import _ from "underscore";
 import cx from 'classnames';
 import Humanize from 'humanize';
 
-export default React.createClass({
-    displayName: "MetadataTableList",
-    propTypes: {
-        tableId: React.PropTypes.number,
-        tables: React.PropTypes.object.isRequired,
-        selectTable: React.PropTypes.func.isRequired
-    },
+export default class MetadataTableList extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.updateSearchText = this.updateSearchText.bind(this);
 
-    getInitialState: function() {
-        return {
+        this.state = {
             searchText: null,
             searchRegex: null
         };
-    },
+    }
 
-    updateSearchText: function(event) {
+    static propTypes = {
+        tableId: PropTypes.number,
+        tables: PropTypes.object.isRequired,
+        selectTable: PropTypes.func.isRequired
+    };
+
+    updateSearchText(event) {
         this.setState({
             searchText: event.target.value,
             searchRegex: event.target.value ? new RegExp(RegExp.escape(event.target.value), "i") : null
         });
-    },
+    }
 
-    render: function() {
+    render() {
         var queryableTablesHeader, hiddenTablesHeader;
         var queryableTables = [];
         var hiddenTables = [];
@@ -89,4 +92,4 @@ export default React.createClass({
             </div>
         );
     }
-});
+}

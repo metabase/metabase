@@ -1,19 +1,25 @@
+import React, { Component, PropTypes } from "react";
+
 import cx from "classnames";
 
-export default React.createClass({
-    displayName: "Toggle",
-    propTypes: {
-        value: React.PropTypes.bool.isRequired,
-        onChange: React.PropTypes.func
-    },
+export default class Toggle extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.onClick = this.onClick.bind(this);
+    }
 
-    onClick: function() {
+    static propTypes = {
+        value: PropTypes.bool.isRequired,
+        onChange: PropTypes.func
+    };
+
+    onClick() {
         if (this.props.onChange) {
             this.props.onChange(!this.props.value);
         }
-    },
+    }
 
-    render: function() {
+    render() {
         return (
             <a
                 href="#"
@@ -23,4 +29,4 @@ export default React.createClass({
             />
         );
     }
-});
+}

@@ -57,7 +57,7 @@ export default class TimeGroupingPopover extends Component {
 }
 
 TimeGroupingPopover.propTypes = {
-    field: PropTypes.oneOfType([React.PropTypes.number, React.PropTypes.array]),
-    value: PropTypes.oneOfType([React.PropTypes.number, React.PropTypes.array]),
+    field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
+    value: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
     onFieldChange: PropTypes.func.isRequired
 };

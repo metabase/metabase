@@ -1,3 +1,5 @@
+import React, { Component, PropTypes } from "react";
+
 import Icon from "metabase/components/Icon.react";
 
 import cx from "classnames";
@@ -5,7 +7,7 @@ import cx from "classnames";
 export default React.createClass({
     displayName: 'ActionButton',
     propTypes: {
-        actionFn: React.PropTypes.func.isRequired
+        actionFn: PropTypes.func.isRequired
     },
 
     getDefaultProps: function() {

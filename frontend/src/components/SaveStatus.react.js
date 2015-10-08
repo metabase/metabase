@@ -1,33 +1,35 @@
+import React, { Component, PropTypes } from "react";
+
 import Icon from "metabase/components/Icon.react";
 import LoadingSpinner from "metabase/components/LoadingSpinner.react";
 
-export default React.createClass({
-    displayName: "SaveStatus",
+export default class SaveStatus extends Component {
+    constructor(props, context) {
+        super(props, context);
 
-    getInitialState: function() {
-        return {
+        this.state = {
             saving: false,
             recentlySavedTimeout: null,
             error: null
-        }
-    },
+        };
+    }
 
-    setSaving: function() {
+    setSaving() {
         clearTimeout(this.state.recentlySavedTimeout);
         this.setState({ saving: true, recentlySavedTimeout: null, error: null });
-    },
+    }
 
-    setSaved: function() {
+    setSaved() {
         clearTimeout(this.state.recentlySavedTimeout);
         var recentlySavedTimeout = setTimeout(() => this.setState({ recentlySavedTimeout: null }), 5000);
         this.setState({ saving: false, recentlySavedTimeout: recentlySavedTimeout, error: null });
-    },
+    }
 
-    setSaveError: function(error) {
+    setSaveError(error) {
         this.setState({ saving: false, recentlySavedTimeout: null, error: error });
-    },
+    }
 
-    render: function() {
+    render() {
         if (this.state.saving) {
             return (<div className="SaveStatus mx2 px2 border-right"><LoadingSpinner width="24" height="24" /></div>);
         } else if (this.state.error) {
@@ -43,4 +45,4 @@ export default React.createClass({
             return <span />;
         }
     }
-});
+}

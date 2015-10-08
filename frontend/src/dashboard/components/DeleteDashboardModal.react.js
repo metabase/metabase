@@ -1,6 +1,8 @@
+import React, { Component, PropTypes } from "react";
+
 import ModalContent from "metabase/components/ModalContent.react";
 
-export default class DeleteDashboardModal extends React.Component {
+export default class DeleteDashboardModal extends Component {
     constructor() {
         super();
         this.state = {
@@ -53,7 +55,7 @@ export default class DeleteDashboardModal extends React.Component {
 }
 
 DeleteDashboardModal.propTypes = {
-    dashboard: React.PropTypes.object.isRequired,
-    onClose: React.PropTypes.func,
-    onDelete: React.PropTypes.func
+    dashboard: PropTypes.object.isRequired,
+    onClose: PropTypes.func,
+    onDelete: PropTypes.func
 };

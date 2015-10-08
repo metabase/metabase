@@ -1,24 +1,27 @@
+import React, { Component, PropTypes } from "react";
+
 import { CardRenderer } from '../card/card.charting';
 
 import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 
-export default React.createClass({
-    displayName: 'QueryVisualizationChart',
-    propTypes: {
-        visualizationSettingsApi: React.PropTypes.object.isRequired,
-        card: React.PropTypes.object.isRequired,
-        data: React.PropTypes.object
-    },
+export default class QueryVisualizationChart extends Component {
+    constructor(props, context) {
+        super(props, context);
 
-    getInitialState: function() {
-        return {
+        this.state = {
             chartId: Math.floor((Math.random() * 698754) + 1),
             width: 0,
             height: 0,
         };
-    },
+    }
 
-    shouldComponentUpdate: function(nextProps, nextState) {
+    static propTypes = {
+        visualizationSettingsApi: PropTypes.object.isRequired,
+        card: PropTypes.object.isRequired,
+        data: PropTypes.object
+    };
+
+    shouldComponentUpdate(nextProps, nextState) {
         this.calculateSizing(nextState);
         // a chart only needs re-rendering when the result itself changes OR the chart type is different
         // NOTE: we are purposely doing an identity comparison here with props.result and NOT a value comparison
@@ -32,25 +35,26 @@ export default React.createClass({
         } else {
             return true;
         }
-    },
-    componentDidMount: function() {
+    }
+
+    componentDidMount() {
         this.calculateSizing(this.state);
         this.renderChart();
-    },
+    }
 
-    componentDidUpdate: function() {
+    componentDidUpdate() {
         this.renderChart();
-    },
+    }
 
-    calculateSizing: function(prevState) {
+    calculateSizing(prevState) {
         var width = CardRenderer.getAvailableCanvasWidth(this.state.chartId);
         var height = CardRenderer.getAvailableCanvasHeight(this.state.chartId);
         if (width !== prevState.width || height !== prevState.height) {
             this.setState({ width, height });
         }
-    },
+    }
 
-    renderChart: function () {
+    renderChart() {
         if (this.props.data) {
             // validate the shape of the data against our chosen display and if we don't have appropriate data
             // then lets inform the user that this isn't going to work so they can do something better
@@ -123,9 +127,9 @@ export default React.createClass({
                 });
             }
         }
-    },
+    }
 
-    render: function() {
+    render() {
         // rendering a chart of some type
         var titleId = 'card-title--'+this.state.chartId;
         var innerId = 'card-inner--'+this.state.chartId;
@@ -152,4 +156,4 @@ export default React.createClass({
             </div>
         );
     }
-});
+}

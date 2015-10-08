@@ -1,32 +1,38 @@
+import React, { Component, PropTypes } from "react";
+
 import FormField from "metabase/components/FormField.react";
 import ModalContent from "metabase/components/ModalContent.react";
 
 import cx from "classnames";
 
-export default React.createClass({
-    displayName: "CreateDashboardModal",
-    propTypes: {
-        createDashboardFn: React.PropTypes.func.isRequired,
-        closeFn: React.PropTypes.func
-    },
+export default class CreateDashboardModal extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.createNewDash = this.createNewDash.bind(this);
+        this.setDescription = this.setDescription.bind(this);
+        this.setName = this.setName.bind(this);
 
-    getInitialState: function () {
-        return {
+        this.state = {
             name: null,
             description: null,
             errors: null
         };
-    },
+    }
 
-    setName: function(event) {
+    static propTypes = {
+        createDashboardFn: PropTypes.func.isRequired,
+        closeFn: PropTypes.func
+    };
+
+    setName(event) {
         this.setState({ name: event.target.value });
-    },
+    }
 
-    setDescription: function(event) {
+    setDescription(event) {
         this.setState({ description: event.target.value });
-    },
+    }
 
-    createNewDash: function(event) {
+    createNewDash(event) {
         event.preventDefault();
 
         var name = this.state.name && this.state.name.trim();
@@ -46,9 +52,9 @@ export default React.createClass({
                 errors: error
             });
         });
-    },
+    }
 
-    render: function() {
+    render() {
         var formError;
         if (this.state.errors) {
             var errorMessage = "Server error encountered";
@@ -110,4 +116,4 @@ export default React.createClass({
             </ModalContent>
         );
     }
-});
+}
