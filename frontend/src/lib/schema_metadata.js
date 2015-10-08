@@ -1,94 +1,101 @@
 import _ from "underscore";
 
-// create a standardized set of strings to return
-export const TIME = 'TIME';
-export const NUMBER = 'NUMBER';
-export const STRING = 'STRING';
-export const BOOL = 'BOOL';
-export const LOCATION = 'LOCATION';
-export const UNKNOWN = 'UNKNOWN';
+// primary field types used for picking operators, etc
+export const NUMBER = "NUMBER";
+export const STRING = "STRING";
+export const BOOLEAN = "BOOLEAN";
+export const DATE_TIME = "DATE_TIME";
+export const LOCATION = "LOCATION";
+export const COORDINATE = "COORDINATE";
 
-const DateBaseTypes = ['DateTimeField', 'DateField'];
-const NumberBaseTypes = ['IntegerField', 'DecimalField', 'FloatField', 'BigIntegerField'];
-const BooleanTypes = ["BooleanField"];
+// other types used for various purporses
+export const ENTITY = "ENTITY";
+export const SUMMABLE = "SUMMABLE";
+export const CATEGORY = "CATEGORY";
+export const DIMENSION = "DIMENSION";
 
-const SummableBaseTypes = ['IntegerField', 'DecimalField', 'FloatField', 'BigIntegerField'];
-const CategoryBaseTypes = ["BooleanField"];
+export const UNKNOWN = "UNKNOWN";
 
-const DateSpecialTypes = ['timestamp_milliseconds', 'timestamp_seconds'];
-const CategorySpecialTypes = ["category", "zip_code", "city", "state", "country"];
+// define various type hierarchies
+// NOTE: be sure not to create cycles using the "other" types
+const TYPES = {
+    [DATE_TIME]: {
+        base: ["DateTimeField", "DateField", "TimeField"],
+        special: ["timestamp_milliseconds", "timestamp_seconds"]
+    },
+    [NUMBER]: {
+        base: ["IntegerField", "DecimalField", "FloatField", "BigIntegerField"],
+        special: ["number"]
+    },
+    [STRING]: {
+        base: ["CharField", "TextField"],
+        special: ["name"]
+    },
+    [BOOLEAN]: {
+        base: ["BooleanField"]
+    },
+    [COORDINATE]: {
+        special: ["latitude", "longitude"]
+    },
+    [LOCATION]: {
+        special: ["city", "country", "state", "zip_code"]
+    },
 
-function isInTypes(type, typeCollection) {
-    return _.contains(typeCollection, type);
+    [ENTITY]: {
+        special: ["fk", "id", "name"]
+    },
+
+    [SUMMABLE]: {
+        include: [NUMBER]
+    },
+    [CATEGORY]: {
+        base: ["BooleanField"],
+        special: ["category"],
+        include: [LOCATION]
+    },
+    [DIMENSION]: {
+        field: ["dimension"],
+        include: [DATE_TIME, CATEGORY, ENTITY]
+    }
+};
+
+export function isFieldType(type, field) {
+    let def = TYPES[type];
+    // check to see if it belongs to any of the field types:
+    for (let prop of ["field", "base", "special"]) {
+        if (def[prop] && _.contains(def[prop], field[prop+"_type"])) {
+            return true;
+        }
+    }
+    // recursively check to see if it's another field th:
+    if (def.include) {
+        for (let includeType of def.include) {
+            if (isFieldType(includeType, field)) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
-export function isDate(field) {
-    return isInTypes(field.base_type, DateBaseTypes) || isInTypes(field.special_type, DateSpecialTypes);
-}
-
-export function isNumeric(field) {
-    return isInTypes(field.base_type, NumberBaseTypes);
-}
-
-export function isBoolean(field) {
-    return isInTypes(field.base_type, BooleanTypes);
-}
-
-export function isSummable(field) {
-    return isInTypes(field.base_type, SummableBaseTypes);
-}
-
-export function isCategory(field) {
-    return isInTypes(field.base_type, CategoryBaseTypes) || isInTypes(field.special_type, CategorySpecialTypes);
-}
-
-export function isDimension(field) {
-    return isDate(field) || isCategory(field) || isInTypes(field.field_type, ['dimension']) || isInTypes(field.special_type, ['fk', 'id', 'name']);
-}
-
-// will return a string with possible values of 'date', 'number', 'bool', 'string'
-// if the type cannot be parsed, then return undefined
-export function getUmbrellaType(field) {
-    return parseSpecialType(field.special_type) || parseBaseType(field.base_type);
-}
-
-export function parseBaseType(type) {
-    switch(type) {
-        case 'DateField':
-        case 'DateTimeField':
-        case 'TimeField':
-            return TIME;
-        case 'BigIntegerField':
-        case 'IntegerField':
-        case 'FloatField':
-        case 'DecimalField':
-            return NUMBER;
-        case 'CharField':
-        case 'TextField':
-            return STRING;
-        case 'BooleanField':
-            return BOOL;
+export function getFieldType(field) {
+    // try more specific types first, then more generic types
+    for (let type of [DATE_TIME, LOCATION, COORDINATE, NUMBER, STRING, BOOLEAN]) {
+        if (isFieldType(type, field)) {
+            return type;
+        }
     }
 }
 
-export function parseSpecialType(type) {
-    switch(type) {
-        case 'timestamp_milliseconds':
-        case 'timestamp_seconds':
-            return TIME;
-        case 'city':
-        case 'country':
-        case 'latitude':
-        case 'longitude':
-        case 'state':
-        case 'zipcode':
-            return LOCATION;
-        case 'name':
-            return STRING;
-        case 'number':
-            return NUMBER;
-    }
-}
+export const isDate = isFieldType.bind(null, DATE_TIME);
+export const isNumeric = isFieldType.bind(null, NUMBER);
+export const isBoolean = isFieldType.bind(null, BOOLEAN);
+export const isSummable = isFieldType.bind(null, SUMMABLE);
+export const isCategory = isFieldType.bind(null, CATEGORY);
+export const isDimension = isFieldType.bind(null, DIMENSION);
+
+
+// operator argument constructors:
 
 function freeformArgument(field, table) {
     return {
@@ -242,7 +249,7 @@ const OPERATORS_BY_TYPE_ORDERED = {
         { name: "IS_NULL", verboseName: "Is empty", advanced: true },
         { name: "NOT_NULL",verboseName: "Not empty", advanced: true }
     ],
-    [TIME]: [
+    [DATE_TIME]: [
         { name: "=",       verboseName: "Is" },
         { name: "<",       verboseName: "Before" },
         { name: ">",       verboseName: "After" },
@@ -251,9 +258,15 @@ const OPERATORS_BY_TYPE_ORDERED = {
     [LOCATION]: [
         { name: "=",       verboseName: "Is" },
         { name: "!=",      verboseName: "Is not" },
+        { name: "IS_NULL", verboseName: "Is empty", advanced: true },
+        { name: "NOT_NULL",verboseName: "Not empty", advanced: true }
+    ],
+    [COORDINATE]: [
+        { name: "=",       verboseName: "Is" },
+        { name: "!=",      verboseName: "Is not" },
         { name: "INSIDE",  verboseName: "Inside" }
     ],
-    [BOOL]: [
+    [BOOLEAN]: [
         { name: "=",       verboseName: "Is", multi: false, defaults: [true] },
         { name: "IS_NULL", verboseName: "Is empty" },
         { name: "NOT_NULL",verboseName: "Not empty" }
@@ -279,7 +292,7 @@ const MORE_VERBOSE_NAMES = {
 }
 
 function getOperators(field, table) {
-    let type = getUmbrellaType(field) || UNKNOWN;
+    let type = getFieldType(field) || UNKNOWN;
     return OPERATORS_BY_TYPE_ORDERED[type].map(operatorForType => {
         let operator = OPERATORS[operatorForType.name];
         let verboseNameLower = operatorForType.verboseName.toLowerCase();

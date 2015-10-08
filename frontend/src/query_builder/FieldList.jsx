@@ -5,15 +5,16 @@ import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import TimeGroupingPopover from "./TimeGroupingPopover.jsx";
 
-import { isDate, getUmbrellaType, TIME, NUMBER, STRING, LOCATION } from 'metabase/lib/schema_metadata';
+import { isDate, getFieldType, DATE_TIME, NUMBER, STRING, LOCATION, COORDINATE } from 'metabase/lib/schema_metadata';
 import { parseFieldBucketing, parseFieldTarget } from "metabase/lib/query_time";
 import { stripId, singularize } from "metabase/lib/formatting";
 
 import _ from "underscore";
 
 const ICON_MAPPING = {
-    [TIME]:  'calendar',
+    [DATE_TIME]:  'calendar',
     [LOCATION]: 'location',
+    [COORDINATE]: 'location',
     [STRING]: 'string',
     [NUMBER]: 'int'
 };
@@ -117,7 +118,7 @@ export default class FieldList extends Component {
     }
 
     renderTypeIcon(field) {
-        let type = getUmbrellaType(field);
+        let type = getFieldType(field);
         let name = ICON_MAPPING[type] || 'unknown';
         return <Icon name={name} width={18} height={18} />;
     }
