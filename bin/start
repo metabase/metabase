@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+[ "$PORT" ] && export MB_JETTY_PORT="$PORT"
+
+# Translate various Heroku environment variables to Metabase equivalents
+
+[ "$DATABASE_URL" ] && export MB_DB_CONNECTION_URI="$DATABASE_URL"
+
+if [ "$MAILGUN_SMTP_LOGIN" ]; then
+    export MB_EMAIL_SMTP_HOST="$MAILGUN_SMTP_PASSWORD"
+    export MB_EMAIL_SMTP_PORT="$MAILGUN_SMTP_PORT"
+    export MB_EMAIL_SMTP_USERNAME="$MAILGUN_SMTP_LOGIN"
+    export MB_EMAIL_SMTP_PASSWORD="$MAILGUN_SMTP_PASSWORD"
+fi
+
+exec java $JAVA_OPTS -jar ./target/uberjar/metabase-standalone.jar
