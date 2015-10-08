@@ -1,4 +1,4 @@
-import Navbar from 'metabase/components/Navbar.react';
+import Navbar from 'metabase/components/Navbar.jsx';
 
 
 // Global Controllers

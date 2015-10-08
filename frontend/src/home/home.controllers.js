@@ -2,7 +2,7 @@ import { createStore, applyMiddleware, combineReducers, compose } from 'redux';
 import promiseMiddleware from 'redux-promise';
 import thunkMidleware from "redux-thunk";
 
-import HomepageApp from './containers/HomepageApp.react';
+import HomepageApp from './containers/HomepageApp.jsx';
 import * as reducers from './reducers';
 
 const finalCreateStore = compose(

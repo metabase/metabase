@@ -2,7 +2,7 @@ import { createStore, applyMiddleware, combineReducers, compose } from 'redux';
 import promiseMiddleware from 'redux-promise';
 import thunkMidleware from "redux-thunk";
 
-import SetupApp from 'metabase/setup/containers/SetupApp.react';
+import SetupApp from 'metabase/setup/containers/SetupApp.jsx';
 import * as reducers from 'metabase/setup/reducers';
 
 const finalCreateStore = compose(

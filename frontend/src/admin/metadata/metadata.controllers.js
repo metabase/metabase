@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import MetadataEditor from './components/MetadataEditor.react';
+import MetadataEditor from './components/MetadataEditor.jsx';
 
 angular
 .module('metabase.admin.metadata.controllers', [
