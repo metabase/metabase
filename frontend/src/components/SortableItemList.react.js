@@ -19,7 +19,7 @@ export default class SortableItemList extends React.Component {
     render() {
         var items;
         if (this.state.sort === "Last Modified") {
-            items = this.props.items.slice().sort((a, b) => a.updated_at < b.updated_at);
+            items = this.props.items.slice().sort((a, b) => b.updated_at - a.updated_at);
         } else if (this.state.sort === "Alphabetical Order") {
             items = this.props.items.slice().sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
         }
