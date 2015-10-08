@@ -31,8 +31,7 @@ AuthControllers.controller('Login', ['$scope', '$location', '$timeout', 'AuthUti
 
                 // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
                 $timeout(function() {
-                    // we expect the homepage to handle the routing details about where the user should be going
-                    $location.path('/');
+                    AppState.redirectAfterLogin();
                 }, 300);
             }, function (error) {
                 $scope.$broadcast("form:api-error", error);

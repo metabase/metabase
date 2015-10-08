@@ -22,7 +22,8 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
             model: {
                 setupToken: null,
                 currentUser: null,
-                appContext: 'none'
+                appContext: 'none',
+                requestedUrl: null
             },
 
             init: function() {
@@ -157,8 +158,9 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
                     service.clearState();
 
                     if ($location.path().indexOf('/auth/') !== 0 && $location.path().indexOf('/setup/') !== 0) {
-                        // if the user is asking for a url outside of /auth/* then send them to login page
-                        // otherwise we will let the user continue on to their requested page
+                        // if the user is asking for a url outside of /auth/* then record the url then send them
+                        // to login page, otherwise we will let the user continue on to their requested page
+                        service.model.requestedUrl = $location.path();
                         $location.path('/auth/login');
                     }
 
@@ -172,6 +174,15 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
                         return;
                     }
 
+                }
+            },
+
+            redirectAfterLogin: function() {
+                if (service.model.requestedUrl) {
+                    $location.path(service.model.requestedUrl);
+                    delete service.model.requestedUrl;
+                } else {
+                    $location.path('/');
                 }
             }
         };
