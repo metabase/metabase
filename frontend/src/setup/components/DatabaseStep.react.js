@@ -13,8 +13,8 @@ import { setDatabaseDetails, validateDatabase } from "../actions";
 
 export default class DatabaseStep extends Component {
 
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
         this.state = { 'engine': "", 'formError': null };
     }
 

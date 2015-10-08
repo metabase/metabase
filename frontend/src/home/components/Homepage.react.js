@@ -11,8 +11,8 @@ import NewUserOnboardingModal from './NewUserOnboardingModal.react';
 
 export default class Homepage extends Component {
 
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
 
         this.state = {
             greeting: Greeting.simpleGreeting(),

@@ -20,8 +20,8 @@ function isEmpty(str) {
  */
 export default class DatabaseDetailsForm extends Component {
 
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
         this.state = { valid: false }
     }
 

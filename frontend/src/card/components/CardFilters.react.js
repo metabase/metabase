@@ -9,8 +9,8 @@ import TableListing from "./TableListing.react";
 
 export default class CardFilters extends Component {
 
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
 
         this.state = { error : null };
     }

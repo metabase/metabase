@@ -14,8 +14,8 @@ import cx from "classnames";
 
 export default class DashboardGrid extends Component {
 
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
         this.state = {
             layouts: this.getLayouts(props),
             removeModalDashCard: null,

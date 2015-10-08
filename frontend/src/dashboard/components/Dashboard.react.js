@@ -8,8 +8,8 @@ import { fetchDashboard } from "../actions";
 
 export default class Dashboard extends Component {
 
-    constructor() {
-        super();
+    constructor(props, context) {
+        super(props, context);
         this.state = { error: null };
     }
 

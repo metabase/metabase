@@ -11,8 +11,8 @@ import ProfileLink from "metabase/components/ProfileLink.react";
 
 export default class Navbar extends Component {
 
-    constructor() {
-        super();
+    constructor(props, context) {
+        super(props, context);
 
         this.styles = {
             navButton: {

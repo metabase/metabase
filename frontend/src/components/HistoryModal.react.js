@@ -18,8 +18,8 @@ function formatDate(date) {
 }
 
 export default class HistoryModal extends Component {
-    constructor() {
-        super();
+    constructor(props, context) {
+        super(props, context);
         this.state = { error: null };
     }
 

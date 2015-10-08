@@ -8,8 +8,8 @@ import { fetchRecentViews } from "../actions";
 
 export default class RecentViews extends Component {
 
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
 
         this.state = { error : null };
     }

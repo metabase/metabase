@@ -13,8 +13,8 @@ import LogoIcon from './LogoIcon.react';
 
 export default class ProfileLink extends Component {
 
-    constructor() {
-        super();
+    constructor(props, context) {
+        super(props, context);
 
         this.state = { dropdownOpen: false, aboutModalOpen: false };
 

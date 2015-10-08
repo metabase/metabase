@@ -3,8 +3,8 @@ import React, { Component, PropTypes } from "react";
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper.react";
 
 export default class Modal extends Component {
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
         this.state = {};
     }
 

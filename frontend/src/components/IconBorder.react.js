@@ -12,8 +12,8 @@ usage:
 */
 
 export default class IconBorder extends Component {
-    constructor() {
-        super();
+    constructor(props, context) {
+        super(props, context);
         this.state = {};
     }
     componentDidMount() {

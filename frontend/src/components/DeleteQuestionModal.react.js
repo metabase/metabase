@@ -5,8 +5,8 @@ import ModalContent from "metabase/components/ModalContent.react";
 import inflection from "inflection";
 
 export default class DeleteQuestionModal extends Component {
-    constructor() {
-        super();
+    constructor(props, context) {
+        super(props, context);
         this.state = {
             error: null
         };

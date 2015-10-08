@@ -6,8 +6,8 @@ import Tether from "tether";
 import cx from "classnames";
 
 export default class Popover extends Component {
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
 
         this.handleClickOutside = this.handleClickOutside.bind(this);
     }

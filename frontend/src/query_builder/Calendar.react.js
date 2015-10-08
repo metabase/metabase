@@ -7,8 +7,8 @@ import Icon from 'metabase/components/Icon.react';
 const MODES = ['month', 'year', 'decade'];
 
 export default class Calendar extends Component {
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
 
         this.state = {
             current: moment(props.initial || undefined),

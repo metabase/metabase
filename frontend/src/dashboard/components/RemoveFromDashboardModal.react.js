@@ -6,8 +6,8 @@ import Toggle from 'metabase/components/Toggle.react';
 import { removeCardFromDashboard } from '../actions';
 
 export default class RemoveFromDashboardModal extends Component {
-    constructor() {
-        super();
+    constructor(props, context) {
+        super(props, context);
         this.state = { deleteCard: false };
     }
 

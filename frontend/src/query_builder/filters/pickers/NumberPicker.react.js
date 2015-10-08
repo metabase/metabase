@@ -3,8 +3,8 @@ import React, { Component, PropTypes } from "react";
 import TextPicker from "./TextPicker.react.js";
 
 export default class NumberPicker extends Component {
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
         this.state = {
             values: props.values,
             validations: this._validate(props.values)

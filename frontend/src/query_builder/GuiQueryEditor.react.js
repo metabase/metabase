@@ -17,8 +17,8 @@ import cx from "classnames";
 import _ from "underscore";
 
 export default class GuiQueryEditor extends Component {
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
 
         this.state = {
             expanded: true

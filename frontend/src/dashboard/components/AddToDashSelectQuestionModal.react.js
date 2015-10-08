@@ -7,8 +7,8 @@ import SortableItemList from "metabase/components/SortableItemList.react";
 import { fetchCards, setEditingDashboard, addCardToDashboard } from "../actions";
 
 export default class AddToDashSelectQuestionModal extends Component {
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
         this.state = { error: null };
     }
 

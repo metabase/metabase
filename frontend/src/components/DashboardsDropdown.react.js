@@ -9,8 +9,8 @@ import Modal from "metabase/components/Modal.react";
 
 export default class DashboardsDropdown extends Component {
 
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
 
         this.state = {
             dropdownOpen: false,

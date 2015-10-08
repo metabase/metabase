@@ -13,8 +13,8 @@ import cx from "classnames";
 import _ from "underscore";
 
 export default class FilterWidget extends Component {
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
 
         this.state = {
             isOpen: this.props.filter[0] == undefined

@@ -8,8 +8,8 @@ import { setCardsFilter } from "../actions";
 
 export default class TableListing extends Component {
 
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
         this.state = { error: null };
     }
 

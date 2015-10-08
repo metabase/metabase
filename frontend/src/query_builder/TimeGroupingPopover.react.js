@@ -25,8 +25,8 @@ const BUCKETINGS = [
 ];
 
 export default class TimeGroupingPopover extends Component {
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
         this.state = {};
     }
 

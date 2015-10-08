@@ -9,8 +9,8 @@ import { isQueryable } from 'metabase/lib/table';
 import _ from "underscore";
 
 export default class DataSelector extends Component {
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
 
         _.bindAll(this, "onChange", "itemIsSelected", "sectionIsSelected");
     }

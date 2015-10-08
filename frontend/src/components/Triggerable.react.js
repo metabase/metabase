@@ -5,8 +5,8 @@ import cx from "classnames";
 // higher order component that takes a component which takes props "isOpen" and optionally "onClose"
 // and returns a component that renders a <a> element "trigger", and tracks whether that component is open or not
 export default ComposedComponent => class extends Component {
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
         this.state = {
             isOpen: props.isInitiallyOpen || false
         }

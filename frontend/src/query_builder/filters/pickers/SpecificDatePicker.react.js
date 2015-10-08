@@ -8,8 +8,8 @@ import cx from "classnames";
 import moment from "moment";
 
 export default class SpecificDatePicker extends Component {
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
 
         _.bindAll(this, "onChange");
     }

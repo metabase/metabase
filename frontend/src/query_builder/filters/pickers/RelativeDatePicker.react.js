@@ -24,8 +24,8 @@ const RELATIVE_SHORTCUTS = {
 };
 
 export default class RelativeDatePicker extends Component {
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
 
         _.bindAll(this, "isSelectedShortcut", "onSetShortcut");
     }

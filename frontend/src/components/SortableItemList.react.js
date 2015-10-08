@@ -4,8 +4,8 @@ import Icon from "metabase/components/Icon.react";
 import RadioSelect from 'metabase/components/RadioSelect.react';
 
 export default class SortableItemList extends Component {
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
         this.state = {
             sort: props.initialSort || "Last Modified"
         };

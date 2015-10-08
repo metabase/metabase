@@ -5,8 +5,8 @@ import Icon from "metabase/components/Icon.react";
 import cx from "classnames";
 
 export default class AccordianList extends Component {
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
         this.state = {
             openSection: undefined
         };

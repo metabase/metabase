@@ -6,8 +6,8 @@ import RelativeDatePicker from "./RelativeDatePicker.react";
 import cx from "classnames";
 
 export default class DatePicker extends Component {
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
         this.state = {
             pane: this._detectPane(props)
         };

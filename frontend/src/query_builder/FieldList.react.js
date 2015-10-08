@@ -19,8 +19,8 @@ const ICON_MAPPING = {
 };
 
 export default class FieldList extends Component {
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
     }
 
     componentWillMount() {

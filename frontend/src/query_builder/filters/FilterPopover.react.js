@@ -18,8 +18,8 @@ import cx from "classnames";
 import _ from "underscore";
 
 export default class FilterPopover extends Component {
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
 
         this.state = {
             filter: (props.isNew ? [] : props.filter)

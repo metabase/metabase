@@ -12,8 +12,8 @@ import _ from "underscore";
 import cx from "classnames";
 
 export default class QueryVisualizationTable extends Component {
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
 
         this.state = {
             width: 0,

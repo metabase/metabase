@@ -9,8 +9,8 @@ import { fetchCards } from "../actions";
 
 export default class Cards extends Component {
 
-    constructor() {
-        super();
+    constructor(props, context) {
+        super(props, context);
         this.state = { error: null };
     }
 

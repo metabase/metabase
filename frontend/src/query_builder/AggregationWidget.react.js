@@ -8,8 +8,8 @@ import Query from "metabase/lib/query";
 import _ from "underscore";
 
 export default class AggregationWidget extends Component {
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
 
         this.state = {};
 

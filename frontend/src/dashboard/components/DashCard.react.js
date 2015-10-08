@@ -13,8 +13,8 @@ import { fetchDashCardData, markNewCardSeen } from "../actions";
 import cx from "classnames";
 
 export default class DashCard extends Component {
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
         this.state = { error: null };
     }
 

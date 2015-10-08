@@ -9,11 +9,10 @@ import { fetchActivity } from '../actions';
 
 import Urls from 'metabase/lib/urls';
 
-
 export default class Activity extends Component {
 
-    constructor() {
-        super();
+    constructor(props, context) {
+        super(props, context);
         this.state = { error: null, userColors: {} };
 
         this.colorClasses = ['bg-brand', 'bg-purple', 'bg-error', 'bg-green', 'bg-gold', 'bg-grey-2'];

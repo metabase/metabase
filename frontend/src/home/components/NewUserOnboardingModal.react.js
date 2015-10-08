@@ -3,8 +3,8 @@ import React, { Component, PropTypes } from "react";
 
 export default class NewUserOnboardingModal extends Component {
 
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
 
         this.state = {step: 1};
     }

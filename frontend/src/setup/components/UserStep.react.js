@@ -16,8 +16,8 @@ import { setUserDetails, validatePassword } from "../actions";
 
 export default class UserStep extends Component {
 
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
         this.state = { formError: null, passwordError: null, valid: false, validPassword: false }
     }
 
