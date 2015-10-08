@@ -3,25 +3,24 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             (clojure [set :as set]
-                     [string :as s])
+                     [string :as s]
+                     [walk :as walk])
             [environ.core :refer [env]]
             (korma [core :as k]
                    [db :as kdb])
             [medley.core :as m]
+            [ring.util.codec :as codec]
             [metabase.config :as config]
             [metabase.db.internal :as i]
             [metabase.models.interface :as models]
-            [metabase.util :as u]
-            [ring.util.codec :as codec]
-            [clojure.walk :as walk])
+            [metabase.util :as u])
   (:import java.io.StringWriter
            java.sql.Connection
            liquibase.Liquibase
            (liquibase.database DatabaseFactory Database)
            liquibase.database.jvm.JdbcConnection
            liquibase.exception.DatabaseException
-           liquibase.resource.ClassLoaderResourceAccessor
-           org.postgresql.ssl.NonValidatingFactory))
+           liquibase.resource.ClassLoaderResourceAccessor))
 
 ;; ## DB FILE, JDBC/KORMA DEFINITONS
 
@@ -41,16 +40,25 @@
                                   ;; if we don't have an absolute path then make sure we start from "user.dir"
                                   [(System/getProperty "user.dir") "/" db-file-name options]))))))
 
+(defn parse-connection-string
+  "Parse a DB connection URI like `postgres://cam@localhost.com:5432/cams_cool_db?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory` and return a broken-out map."
+  [uri]
+  (when-let [[_ protocol user pass host port db query] (re-matches #"^([^:/@]+)://([^:/@]+)(?::([^:@]+))?@([^:@]+)(?::(\d+))?/([^/?]+)(?:\?(.*))?$" uri)]
+    (merge {:type     (keyword protocol)
+            :user     user
+            :password pass
+            :host     host
+            :port     port
+            :dbname   db}
+           (some-> query
+                   codec/form-decode
+                   walk/keywordize-keys))))
+
 (def ^:private db-connection-details
   "Connection details that can be used when pretending the Metabase DB is itself a `Database`
    (e.g., to use the Generic SQL driver functions on the Metabase DB itself)."
-  (delay (or (some->> (config/config-str :mb-db-connection-uri)
-                      (re-matches #"^([^:/@]+)://([^:/@]+)(?::([^:@]+))?@([^:@]+)(?::(\d+))?/([^/?]+)(?:\?(.*))?$")
-                      rest
-                      (#(merge
-                        (zipmap [:type :user :password :host :port :dbname] %)
-                        (some->> (last %) codec/form-decode walk/keywordize-keys)))
-                      (#(update-in % [:type] keyword)))
+  (delay (or (when-let [uri (config/config-str :mb-db-connection-uri)]
+               (parse-connection-string uri))
              (case (config/config-kw :mb-db-type)
                :h2       {:type     :h2
                           :db       @db-file}
