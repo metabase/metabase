@@ -6,18 +6,18 @@
 Metabase is a program that runs on the Java virtual machine (or JVM). There are two ways to run it, depending on which platform you use. 
 
 
-### Using the Mac OS X App
+### Trying Metabase out with the Mac OS X App
 
-If you're using OS X, we offer a native application which you can find in the Mac App Store or [download directly](www.metabase.com/download/osx/latest). It comes bundled with everything you need to get started, so it’s a great way to just try Metabase out. Once you've downloaded the app, move it to your applications folder and click on it to run. Once you see the loading screen, you can move on to the next step: [connecting Metabase to your database](02-connecting-metabase.md)
+If you're using OS X, we have a Mac app that you can find in the Mac App Store or [download directly](www.metabase.com/download/osx/latest). It comes bundled with everything you need to get started, so it’s a great way to just try Metabase out. Once you've downloaded the app, move it to your Applications folder and open it up. Once you see the loading screen, you can move on to the next step: [connecting Metabase to your database](02-connecting-metabase.md).
 
-### Running the JAR Directly 
+### Running the JAR directly 
 
 If you're fairly technical or planning on immediately setting up Metabase on a shared server, you can [download the latest JAR distribution](www.metabase.com/download/jar/latest). To run this JAR, you'll need to have Java installed on your machine.
 
 
 **On Linux:**
 
-Your distribution might ship with Java pre-installed — you lucky dog, you. Try `java -version` to see if Java is set up. If not, you can install Java in a number of ways depending on your distribution.
+Your Linux distribution might ship with Java pre-installed — you lucky dog, you. Try `java -version` to see if Java is set up. If not, you can install Java in a number of ways depending on your distribution.
 
 On Ubuntu, or any other distribution with the Debian package manager, 
 	
@@ -35,7 +35,7 @@ The Metabase server creates temporary files when it runs, and so you'll probably
 
     java -jar metabase.jar
 
-After taking a few seconds to start up, you should have the Metabase server running on port 3000 of your computer. Go to http://localhost:3000](http://localhost:3000) in a browser and you should see the screen below. 
+After taking a few seconds to start up, you should have the Metabase server running on port 3000 of your computer. Go to [http://localhost:3000](http://localhost:3000) in a browser and you should see the screen below. 
 
 ![welcomescreen](images/WelcomeScreen.png)
 
