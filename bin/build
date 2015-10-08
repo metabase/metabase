@@ -1,10 +1,10 @@
-#! /bin/bash
+#!/usr/bin/env bash
 
 # Generate the resources/version.properties file
 version() {
     # Skip on CircleCI since this is interactive
     if [ ! $CI ]; then
-        VERSION_INFO=$(./version)
+        VERSION_INFO=$(./bin/version)
         IFS=', ' read -a info <<< ${VERSION_INFO}
 
         echo "Tagging uberjar with version '$VERSION_INFO'..."

@@ -77,7 +77,7 @@
 ;; Metabase version is of the format `GIT-TAG (GIT-SHORT-HASH GIT-BRANCH)`
 
 (defn- version-info-from-shell-script []
-  (let [[tag hash branch date] (-> (shell/sh "./version") :out s/trim (s/split #" "))]
+  (let [[tag hash branch date] (-> (shell/sh "./bin/version") :out s/trim (s/split #" "))]
     {:tag    tag
      :hash   hash
      :branch branch
@@ -92,7 +92,7 @@
 
 (defn mb-version-info
   "Return information about the current version of Metabase.
-   This comes from `resources/version.properties` for prod builds and is fetched from `git` via the `./version` script for dev.
+   This comes from `resources/version.properties` for prod builds and is fetched from `git` via the `./bin/version` script for dev.
 
      (mb-version) -> {:tag: \"v0.11.1\", :hash: \"afdf863\", :branch: \"about_metabase\", :date: \"2015-10-05\"}"
   []

@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 
-[ "$PORT" ] && export MB_JETTY_PORT="$PORT"
+set -e
 
 # Translate various Heroku environment variables to Metabase equivalents
 
-[ "$DATABASE_URL" ] && export MB_DB_CONNECTION_URI="$DATABASE_URL"
+if [ "$PORT" ]; then
+    export MB_JETTY_PORT="$PORT"
+fi
+
+if [ "$DATABASE_URL" ]; then
+    export MB_DB_CONNECTION_URI="$DATABASE_URL"
+fi
 
 if [ "$MAILGUN_SMTP_LOGIN" ]; then
     export MB_EMAIL_SMTP_HOST="$MAILGUN_SMTP_PASSWORD"
