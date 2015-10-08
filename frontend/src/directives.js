@@ -3,7 +3,7 @@ import React from "react";
 import { Provider } from 'react-redux';
 import { DevTools, DebugPanel } from 'redux-devtools/lib/react';
 
-import ProfileLink from './components/ProfileLink.react'
+import ProfileLink from './components/ProfileLink.jsx'
 
 /* Directives */
 var MetabaseDirectives = angular.module('metabase.directives', []);

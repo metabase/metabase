@@ -65,8 +65,8 @@ var config = module.exports = {
     module: {
         loaders: [
             // JavaScript
-            { test: /\.js$/, exclude: /node_modules/, loader: 'babel', query: { cacheDirectory: '.babel_cache', optional: BABEL_FEATURES }},
-            { test: /\.js$/, exclude: /node_modules|\.spec\.js/, loader: 'eslint' },
+            { test: /\.(js|jsx)$/, exclude: /node_modules/, loader: 'babel', query: { cacheDirectory: '.babel_cache', optional: BABEL_FEATURES }},
+            { test: /\.(js|jsx)$/, exclude: /node_modules|\.spec\.js/, loader: 'eslint' },
             // CSS
             { test: /\.css$/, loader: ExtractTextPlugin.extract('style', 'css?-restructuring&compatibility!cssnext') }
             // { test: /\.css$/, loader: 'style!css!cssnext' }
@@ -159,7 +159,7 @@ if (NODE_ENV === "hot") {
     config.output.publicPath = "http://localhost:8080" + config.output.publicPath;
 
     config.module.loaders.unshift(
-        { test: /\.react.js$/, exclude: /node_modules/, loaders: ['react-hot', 'babel?'+BABEL_FEATURES.map(function(f) { return 'optional[]='+f; }).join('&')] }
+        { test: /\.jsx$/, exclude: /node_modules/, loaders: ['react-hot', 'babel?'+BABEL_FEATURES.map(function(f) { return 'optional[]='+f; }).join('&')] }
     );
 
     config.module.loaders[config.module.loaders.length - 1].loader = 'style!css?-restructuring&compatibility!cssnext';

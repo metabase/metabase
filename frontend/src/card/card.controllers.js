@@ -1,12 +1,12 @@
 import React from "react";
 
-import DataReference from '../query_builder/DataReference.react';
-import GuiQueryEditor from '../query_builder/GuiQueryEditor.react';
-import NativeQueryEditor from '../query_builder/NativeQueryEditor.react';
-import QueryHeader from '../query_builder/QueryHeader.react';
-import QueryVisualization from '../query_builder/QueryVisualization.react';
+import DataReference from '../query_builder/DataReference.jsx';
+import GuiQueryEditor from '../query_builder/GuiQueryEditor.jsx';
+import NativeQueryEditor from '../query_builder/NativeQueryEditor.jsx';
+import QueryHeader from '../query_builder/QueryHeader.jsx';
+import QueryVisualization from '../query_builder/QueryVisualization.jsx';
 
-import SavedQuestionsApp from './containers/SavedQuestionsApp.react';
+import SavedQuestionsApp from './containers/SavedQuestionsApp.jsx';
 
 import { createStore, applyMiddleware, combineReducers, compose } from 'redux';
 import promiseMiddleware from 'redux-promise';
