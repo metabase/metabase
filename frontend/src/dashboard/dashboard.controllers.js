@@ -2,7 +2,7 @@ import { createStore, applyMiddleware, combineReducers, compose } from 'redux';
 import promiseMiddleware from 'redux-promise';
 import thunkMidleware from "redux-thunk";
 
-import DashboardApp from './containers/DashboardApp.react';
+import DashboardApp from './containers/DashboardApp.jsx';
 import * as reducers from './reducers';
 
 // import { devTools, persistState } from 'redux-devtools';
