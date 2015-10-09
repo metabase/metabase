@@ -106,7 +106,7 @@ export default class DatabaseStep extends Component {
                     <StepTitle title={stepText} number={stepNumber} />
                     <div className="mb4">
                         <div style={{maxWidth: 600}} className="Form-field Form-offset">
-                            You’ll need some info about your database, like the username and password.  If you don’t have that right now, Metabase also comes with an Sample dataset you can get started with.
+                            You’ll need some info about your database, like the username and password.  If you don’t have that right now, Metabase also comes with a sample dataset you can get started with.
                         </div>
 
                         <FormField fieldName="engine">

@@ -16,7 +16,8 @@ export default class SortWidget extends Component {
         fieldOptions: PropTypes.object.isRequired,
         tableName: PropTypes.string,
         updateSort: PropTypes.func.isRequired,
-        removeSort: PropTypes.func.isRequired
+        removeSort: PropTypes.func.isRequired,
+        tableMetadata: PropTypes.object.isRequired
     };
 
     componentWillMount() {
@@ -52,7 +53,7 @@ export default class SortWidget extends Component {
             <div className="flex align-center">
                 <FieldWidget
                     className="Filter-section Filter-section-sort-field SelectionModule"
-                    tableName={this.props.tableName}
+                    tableMetadata={this.props.tableMetadata}
                     field={this.state.field}
                     fieldOptions={this.props.fieldOptions}
                     setField={this.setField}

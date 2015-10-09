@@ -16,7 +16,8 @@ export default class FieldName extends Component {
         field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
         fieldOptions: PropTypes.object.isRequired,
         onClick: PropTypes.func,
-        removeField: PropTypes.func
+        removeField: PropTypes.func,
+        tableMetadata: PropTypes.object.isRequired
     };
 
     static defaultProps = {
@@ -25,7 +26,7 @@ export default class FieldName extends Component {
 
     render() {
         let targetTitle, fkTitle, fkIcon, bucketingTitle;
-        let { field, fieldOptions } = this.props;
+        let { field, fieldOptions, tableMetadata } = this.props;
 
         let bucketing = parseFieldBucketing(field);
         field = parseFieldTarget(field);
@@ -48,7 +49,8 @@ export default class FieldName extends Component {
             targetTitle = (<span>{fieldDef.display_name}</span>);
         }
 
-        if (fieldDef && isDate(fieldDef)) {
+        // Mongo doesn't support non-default time bucketing so don't show it
+        if (fieldDef && isDate(fieldDef) && tableMetadata.db.engine !== "mongo") {
             bucketingTitle = ": " + formatBucketing(bucketing);
         }
 

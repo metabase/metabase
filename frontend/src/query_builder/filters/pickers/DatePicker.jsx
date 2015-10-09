@@ -16,7 +16,8 @@ export default class DatePicker extends Component {
     static propTypes = {
         filter: PropTypes.array.isRequired,
         onFilterChange: PropTypes.func.isRequired,
-        onOperatorChange: PropTypes.func.isRequired
+        onOperatorChange: PropTypes.func.isRequired,
+        tableMetadata: PropTypes.object.isRequired
     };
 
     _detectPane(props) {
@@ -33,6 +34,17 @@ export default class DatePicker extends Component {
     }
 
     render() {
+        // MongoDB does not currently support relative date filters
+        if (this.props.tableMetadata.db.engine === "mongo") {
+            return (
+                <SpecificDatePicker
+                    filter={this.props.filter}
+                    onFilterChange={this.props.onFilterChange}
+                    onOperatorChange={this.props.onOperatorChange}
+                />
+            );
+        }
+
         return (
             <div>
                 <div className="p1 border-bottom">

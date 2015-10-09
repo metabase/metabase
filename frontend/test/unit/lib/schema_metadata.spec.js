@@ -1,64 +1,47 @@
 /*eslint-env jasmine */
 
 import {
-    parseBaseType,
-    parseSpecialType,
-    getUmbrellaType,
-    TIME,
+    getFieldType,
+    DATE_TIME,
     STRING,
     NUMBER,
-    BOOL,
-    LOCATION
+    BOOLEAN,
+    LOCATION,
+    COORDINATE
 } from 'metabase/lib/schema_metadata';
 
-/* i'm a pretend latitude field */
-const specialField = {
-    base_type: 'FloatField',
-    special_type: 'latitude'
-}
-
 describe('schema_metadata', () => {
-
-    describe('parseBaseType', () => {
+    describe('getFieldType', () => {
         it('should know a date', () => {
-            expect(parseBaseType('DateField')).toEqual(TIME)
-            expect(parseBaseType('DateTimeField')).toEqual(TIME)
-            expect(parseBaseType('TimeField')).toEqual(TIME)
+            expect(getFieldType({ base_type: 'DateField' })).toEqual(DATE_TIME)
+            expect(getFieldType({ base_type: 'DateTimeField' })).toEqual(DATE_TIME)
+            expect(getFieldType({ base_type: 'TimeField' })).toEqual(DATE_TIME)
+            expect(getFieldType({ special_type: 'timestamp_seconds' })).toEqual(DATE_TIME)
+            expect(getFieldType({ special_type: 'timestamp_milliseconds' })).toEqual(DATE_TIME)
         });
         it('should know a number', () => {
-            expect(parseBaseType('BigIntegerField')).toEqual(NUMBER)
-            expect(parseBaseType('IntegerField')).toEqual(NUMBER)
-            expect(parseBaseType('FloatField')).toEqual(NUMBER)
-            expect(parseBaseType('DecimalField')).toEqual(NUMBER)
+            expect(getFieldType({ base_type: 'BigIntegerField' })).toEqual(NUMBER)
+            expect(getFieldType({ base_type: 'IntegerField' })).toEqual(NUMBER)
+            expect(getFieldType({ base_type: 'FloatField' })).toEqual(NUMBER)
+            expect(getFieldType({ base_type: 'DecimalField' })).toEqual(NUMBER)
         });
         it('should know a string', () => {
-            expect(parseBaseType('CharField')).toEqual(STRING)
-            expect(parseBaseType('TextField')).toEqual(STRING)
+            expect(getFieldType({ base_type: 'CharField' })).toEqual(STRING)
+            expect(getFieldType({ base_type: 'TextField' })).toEqual(STRING)
         });
         it('should know a bool', () => {
-            expect(parseBaseType('BooleanField')).toEqual(BOOL)
-        });
-        it('should know what it doesn\'t know', () => {
-            expect(parseBaseType('DERP DERP DERP')).toEqual(undefined)
-        });
-    });
-
-    describe('parseSpecialType', () => {
-        it('should know a date', () => {
-            expect(parseSpecialType('timestamp_seconds')).toEqual(TIME)
-            expect(parseSpecialType('timestamp_milliseconds')).toEqual(TIME)
+            expect(getFieldType({ base_type: 'BooleanField' })).toEqual(BOOLEAN)
         });
         it('should know a location', () => {
-            expect(parseSpecialType('city')).toEqual(LOCATION)
-            expect(parseSpecialType('country')).toEqual(LOCATION)
-            expect(parseSpecialType('latitude')).toEqual(LOCATION)
-            expect(parseSpecialType('longitude')).toEqual(LOCATION)
+            expect(getFieldType({ special_type: 'city' })).toEqual(LOCATION)
+            expect(getFieldType({ special_type: 'country' })).toEqual(LOCATION)
         });
-    });
-
-    describe('getUmbrellaType', () => {
-        it('should parse a special type if both types are present', () => {
-            expect(getUmbrellaType(specialField)).toEqual(LOCATION)
+        it('should know a coordinate', () => {
+            expect(getFieldType({ special_type: 'latitude' })).toEqual(COORDINATE)
+            expect(getFieldType({ special_type: 'longitude' })).toEqual(COORDINATE)
+        });
+        it('should know what it doesn\'t know', () => {
+            expect(getFieldType({ base_type: 'DERP DERP DERP' })).toEqual(undefined)
         });
     });
 });

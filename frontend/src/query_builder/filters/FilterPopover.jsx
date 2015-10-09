@@ -32,7 +32,8 @@ export default class FilterPopover extends Component {
         isNew: PropTypes.bool,
         filter: PropTypes.array,
         onCommitFilter: PropTypes.func.isRequired,
-        onClose: PropTypes.func.isRequired
+        onClose: PropTypes.func.isRequired,
+        tableMetadata: PropTypes.object.isRequired
     };
 
     commitFilter() {
@@ -195,7 +196,7 @@ export default class FilterPopover extends Component {
                     <FieldList
                         field={this.state.filter[1]}
                         fieldOptions={Query.getFieldOptions(this.props.tableMetadata.fields, true)}
-                        tableName={this.props.tableMetadata.display_name}
+                        tableMetadata={this.props.tableMetadata}
                         onFieldChange={this.setField}
                         className="text-purple"
                     />
@@ -220,6 +221,7 @@ export default class FilterPopover extends Component {
                             filter={filter}
                             onFilterChange={this.setFilter}
                             onOperatorChange={this.setOperator}
+                            tableMetadata={this.props.tableMetadata}
                         />
                     :
                         <div>
@@ -241,3 +243,11 @@ export default class FilterPopover extends Component {
         }
     }
 }
+
+FilterPopover.propTypes = {
+    tableMetadata: PropTypes.object.isRequired,
+    isNew: PropTypes.bool,
+    filter: PropTypes.array,
+    onCommitFilter: PropTypes.func.isRequired,
+    onClose: PropTypes.func.isRequired
+};
