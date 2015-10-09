@@ -94,7 +94,7 @@ export default class AggregationWidget extends Component {
                     <FieldWidget
                         color="green"
                         className="View-section-aggregation-target SelectionModule p1"
-                        tableName={this.props.tableMetadata.display_name}
+                        tableMetadata={this.props.tableMetadata}
                         field={this.props.aggregation[1]}
                         fieldOptions={this.state.aggregationFieldOptions}
                         setField={this.setAggregationTarget}
