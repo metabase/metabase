@@ -270,7 +270,7 @@ const MORE_VERBOSE_NAMES = {
     "equal": "is equal to",
     "not equal": "is not equal to",
     "before": "is before",
-    "after": "is afer",
+    "after": "is after",
     "not empty": "is not empty",
     "less than": "is less than",
     "greater than": "is greater than",
