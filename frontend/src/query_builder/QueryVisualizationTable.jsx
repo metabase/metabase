@@ -82,9 +82,11 @@ export default class QueryVisualizationTable extends Component {
         if (!this.state.contentWidths) {
             let tableElement = React.findDOMNode(this.refs.table);
             let contentWidths = [];
-            for (let rowElement of tableElement.querySelectorAll(".fixedDataTableRowLayout_rowWrapper")) {
-                for (let [index, cellDataElement] of Object.entries(rowElement.querySelectorAll(".public_fixedDataTableCell_cellContent"))) {
-                    contentWidths[index] = Math.max(contentWidths[index] || 0, cellDataElement.offsetWidth);
+            let rowElements = tableElement.querySelectorAll(".fixedDataTableRowLayout_rowWrapper");
+            for (var rowIndex = 0; rowIndex < rowElements.length; rowIndex++) {
+                let cellElements = rowElements[rowIndex].querySelectorAll(".public_fixedDataTableCell_cellContent");
+                for (var cellIndex = 0; cellIndex < cellElements.length; cellIndex++) {
+                    contentWidths[cellIndex] = Math.max(contentWidths[cellIndex] || 0, cellElements[cellIndex].offsetWidth);
                 }
             }
             this.setState({ contentWidths }, () => this.calculateColumnWidths(this.state.data.cols));
