@@ -23,17 +23,6 @@ This guide covers how to contribute back to Metabase. It includes setting up a d
 #### [API Reference](uberdoc.html)
 This is a comprehensive reference for all server functions in our codebase.
 
-## Advanced Topics 
-
-#### [Metadata Guide](metadata-guide.md)
-This guide goes into depth about the semantic model of your underlying data that Metabase builds and uses. 
-
-#### [Data Warehousing Guide](data-warehousing.md)
-This guide covers the care and feeding of a data warehouse. It includes advice on how to set them up, which databases to use and how to think about scaling.
-
-#### [ETL Guide](etl-guide.md)
-This guide covers changing the format of the data in your underlying database or data warehouse through views, enrichment and pre-computation to simplify the data an end user interacts with.
-
 
 ## Reference
 
