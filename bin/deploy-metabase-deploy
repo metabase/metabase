@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+
+set -eu
+set -o pipefail
+
+SRC_DIR="$PWD"
+DEPLOY_DIR="$PWD/.metabase_deploy"
+
+if [ "$#" -gt 0 ]; then
+  DEPLOY_TAG="$1"
+else
+  DEPLOY_TAG="$(./bin/version | tr ' ' '_')"
+fi
+
+DEPLOY_REPO="git@github.com:metabase/metabase-deploy.git"
+DEPLOY_REPO_SLUG="$(echo "$DEPLOY_REPO" | grep -Eo "[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+")"
+DEPLOY_TREE="$DEPLOY_REPO_SLUG/tree/$DEPLOY_TAG"
+
+# build the app
+./bin/build
+
+# clone the metabase-deploy repo
+git clone "$DEPLOY_REPO" "$DEPLOY_DIR"
+
+# copy required files over
+FILES="Procfile app.json bin/start target/uberjar/metabase-standalone.jar"
+for FILE in $FILES; do
+  mkdir -p "$DEPLOY_DIR/$(dirname $FILE)"
+  cp "$FILE" "$DEPLOY_DIR/$FILE"
+done
+
+# change to the deploy directory
+cd "$DEPLOY_DIR"
+
+# modify app.json to use null-buildpack since we're using a pre-compiled jar
+node <<EOF
+var fs = require("fs");
+var app = JSON.parse(fs.readFileSync("app.json"));
+app.buildpacks = [{ "url": "http://github.com/ryandotsmith/null-buildpack.git" }];
+delete app.env.NPM_CONFIG_LOGLEVEL;
+fs.writeFileSync("app.json", JSON.stringify(app, null, 2));
+EOF
+
+# generate a README
+cat > README.md <<EOF
+[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/$DEPLOY_TREE)
+EOF
+
+# add, commit, tag, and push
+git add .
+git commit -m "Deploy $DEPLOY_TAG"
+git tag "$DEPLOY_TAG"
+git push --tags "$DEPLOY_REPO" master
+
+# change back
+cd "$SRC_DIR"
+
+# pretend like this never happened
+rm -rf "$DEPLOY_DIR"
