@@ -25,7 +25,7 @@ build_uberjar() {
     $(which locale) | $(which sort) || true
 
     echo "building uberjar"
-    ${PROJECT_ROOT}/build-uberjar
+    ${PROJECT_ROOT}/bin/build
 }
 
 upload_release_artifacts() {
