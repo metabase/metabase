@@ -17,8 +17,8 @@
             [metabase.driver.generic-sql :as generic-sql]
             (metabase.driver.generic-sql [interface :refer [ISqlDriverDatabaseSpecific]]
                                          [util :refer [with-jdbc-metadata]]))
-  ; This is necessary for when NonValidatingFactory is passed in the sslfactory connection string argument,
-  ; e.x. when connecting to a Heroku Postgres database from outside of Heroku.
+  ;; This is necessary for when NonValidatingFactory is passed in the sslfactory connection string argument,
+  ;; e.x. when connecting to a Heroku Postgres database from outside of Heroku.
   (:import org.postgresql.ssl.NonValidatingFactory))
 
 (def ^:private ^:const column->base-type
