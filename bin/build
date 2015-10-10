@@ -24,11 +24,11 @@ sub frontend {
 }
 
 sub sample_dataset {
-    (system('lein', 'generate-sample-dataset') or die $!) unless -f 'resources/sample-dataset.db.mv.db';
+    (system('lein', 'generate-sample-dataset') == 0 or die $!) unless -f 'resources/sample-dataset.db.mv.db';
 }
 
 sub uberjar {
-    system 'lein', 'uberjar' or die $!;
+    system('lein', 'uberjar') == 0 or die $!;
 }
 
 @ARGV = ('version', 'frontend', 'sample_dataset', 'uberjar') unless @ARGV;
