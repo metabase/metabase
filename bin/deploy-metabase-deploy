@@ -6,24 +6,32 @@ set -o pipefail
 SRC_DIR="$PWD"
 DEPLOY_DIR="$PWD/.metabase_deploy"
 
-if [ "$#" -gt 0 ]; then
-  DEPLOY_TAG="$1"
-else
-  DEPLOY_TAG="$(./bin/version | tr ' ' '_')"
+if [ "$#" -lt 2 ]; then
+  echo "USAGE: deploy-metabase-deploy metabase.jar VERSION_TAG [GIT REMOTE]"
+  exit 1
 fi
 
-DEPLOY_REPO="git@github.com:metabase/metabase-deploy.git"
+METABASE_JAR="$1"
+DEPLOY_TAG="$2"
+
+if [ "$#" -gt 2 ]; then
+  DEPLOY_REPO="$3"
+else
+  DEPLOY_REPO="git@github.com:metabase/metabase-deploy.git"
+fi
+
 DEPLOY_REPO_SLUG="$(echo "$DEPLOY_REPO" | grep -Eo "[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+")"
 DEPLOY_TREE="$DEPLOY_REPO_SLUG/tree/$DEPLOY_TAG"
-
-# build the app
-./bin/build
 
 # clone the metabase-deploy repo
 git clone "$DEPLOY_REPO" "$DEPLOY_DIR"
 
-# copy required files over
-FILES="Procfile app.json bin/start target/uberjar/metabase-standalone.jar"
+# copy the jar
+mkdir -p "$DEPLOY_DIR/target/uberjar"
+cp "$METABASE_JAR" "$DEPLOY_DIR/target/uberjar/metabase-standalone.jar"
+
+# copy the other required files
+FILES="Procfile app.json bin/start"
 for FILE in $FILES; do
   mkdir -p "$DEPLOY_DIR/$(dirname $FILE)"
   cp "$FILE" "$DEPLOY_DIR/$FILE"
