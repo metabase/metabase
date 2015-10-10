@@ -1,57 +1,35 @@
-#!/usr/bin/env bash
+#! /usr/bin/perl
 
-# Generate the resources/version.properties file
-version() {
-    # Skip on CircleCI since this is interactive
-    if [ ! $CI ]; then
-        VERSION_INFO=$(./bin/version)
-        IFS=', ' read -a info <<< ${VERSION_INFO}
+use strict;
+use warnings;
 
-        echo "Tagging uberjar with version '$VERSION_INFO'..."
+use Env qw($CI);
 
-        # Ok, now generate the appropriate version.properties file.
-        echo "tag=${info[0]}" > resources/version.properties
-        echo "hash=${info[1]}" >> resources/version.properties
-        echo "branch=${info[2]}" >> resources/version.properties
-        echo "date=${info[3]}" >> resources/version.properties
-    fi
+sub version {
+    return if $CI;
+
+    my ($tag, $hash, $branch, $date) = split ' ', (`./bin/version` or die $!);
+
+    open my $file, '>resources/version.properties' or die $!;
+    print $file ("tag=$tag\n" .
+                 "hash=$hash\n" .
+                 "branch=$branch\n" .
+                 "date=$date\n");
+    close $file;
 }
 
-frontend() {
-    echo "Running 'npm install' to download javascript dependencies..." &&
-    npm install &&
-
-    echo "Running 'webpack -p' to assemble and minify frontend assets..." &&
-    ./node_modules/webpack/bin/webpack.js -p
+sub frontend {
+    system('npm', 'install') == 0 or die $!;
+    system('./node_modules/webpack/bin/webpack.js', '-p') == 0 or die $!;
 }
 
-sample-dataset() {
-    if [ -f resources/sample-dataset.db.mv.db ]; then
-        echo "Sample Dataset already generated."
-    else
-        echo "Running 'lein generate-sample-dataset' to generate the sample dataset..."
-        lein generate-sample-dataset
-    fi
+sub sample_dataset {
+    (system('lein', 'generate-sample-dataset') or die $!) unless -f 'resources/sample-dataset.db.mv.db';
 }
 
-uberjar() {
-    echo "Running 'lein uberjar'..."
-    lein uberjar
+sub uberjar {
+    system 'lein', 'uberjar' or die $!;
 }
 
-all() {
-    version && frontend && sample-dataset && uberjar
-}
-
-# Default to running all but let someone specify one or more sub-tasks to run instead if desired
-# e.g.
-# ./bin/build                  # do everything
-# ./bin/build version          # just update version.properties
-# ./bin/build version uberjar  # just update version.properties and build uberjar
-if [ "$1" ]; then
-    for cmd in "$@"; do
-        $cmd
-    done
-else
-    all
-fi
+@ARGV = ('version', 'frontend', 'sample_dataset', 'uberjar') unless @ARGV;
+map { eval $_ } @ARGV;
