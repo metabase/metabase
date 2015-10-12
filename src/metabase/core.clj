@@ -71,6 +71,13 @@
 
 ;;; ## ---------------------------------------- LIFECYCLE ----------------------------------------
 
+(def ^:private metabase-initialized
+  (atom false))
+
+(defn initialized?
+  "Metabase is initialized and ready to be served"
+  []
+  @metabase-initialized)
 
 (defn- -init-create-setup-token
   "Create and set a new setup token, and open the setup URL on the user's system."
@@ -128,6 +135,7 @@
       (sample-data/update-sample-dataset-if-needed!)))
 
   (log/info "Metabase Initialization COMPLETE")
+  (reset! metabase-initialized true)
   true)
 
 
@@ -168,10 +176,12 @@
 (defn- start-normally []
   (log/info "Starting Metabase in STANDALONE mode")
   (try
+    ;; launch embedded webserver async
+    (start-jetty)
     ;; run our initialization process
     (init)
-    ;; launch embedded webserver
-    (start-jetty)
+    ;; Ok, now block forever while Jetty does its thing
+    (.join ^org.eclipse.jetty.server.Server @jetty-instance)
     (catch Exception e
       (.printStackTrace e)
       (log/error "Metabase Initialization FAILED: " (.getMessage e)))))
