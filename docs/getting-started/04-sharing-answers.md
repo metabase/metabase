@@ -1,10 +1,10 @@
-##Step 4: Sharing answers with others
+## Step 4: Sharing answers with others
 
 ### Sharing answers directly
 
 Once you have asked a question, the URL links directly to your answer. If you copy this URL, you can share it directly with anyone via email, IM or any other means.
 
-![shareableurl](images/ShareableURL.png)
+![shareableurl](./images/ShareableURL.png)
 
 ### Saving questions
 

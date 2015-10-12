@@ -1,4 +1,4 @@
-#Getting started with Metabase
+# Getting started with Metabase
 Metabase lets you ask questions about your data, drill into specific records, and dashboards to help keep you organized.  
 
 **This guide will teach you:**
@@ -12,4 +12,4 @@ Metabase lets you ask questions about your data, drill into specific records, an
 > [How to share the answers to your questions](04-sharing-answers.md)
 
 
-Let's [getting started](01-installing-metabase.md)
+Let's [get started](01-installing-metabase.md)

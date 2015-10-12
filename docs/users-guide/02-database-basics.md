@@ -6,10 +6,10 @@ Fundamentally, databases are *collections of tables*. Tables contain one or more
 
 Here's an example of a table:
 
-| Name| Age |
-| ---- | --- |
-| John | 25 |
-| Jenny | 31 |
+| Name  | Age |
+| ----- | --- |
+| John  | 25  |
+| Jenny | 31  |
 
 Here, the columns are `Name` and `Age`. The first row contains two cells, one with `John` and one with `25`, corresponding to the Name and Age columns, respectively.
 
@@ -32,10 +32,10 @@ Columns are also sometimes interchangeably referred to as *fields*. Each field h
 **Example**
 
 *Reservations Table*
-| Reservation ID | Name | Age |  
-| -------------- | --- | --- |
-| 11 | John | 25 |
-| 12 | Jenny | 31 |
+| Reservation ID  | Name  | Age   |  
+| --------------: | ----- | ----: |
+| 11              | John  | 25    |
+| 12              | Jenny | 31    |
 
 In the above table, the `Reservation ID` field is the ID (primary key). The `Name` field is a string type and the `Age` field is a numerical type (specifically an Integer).   
 

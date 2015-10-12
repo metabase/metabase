@@ -29,7 +29,7 @@ You can add a newly saved question to a dashboard directly from the window that 
 
 Once you add a question to your dashboard, it’ll look something like this:
 
-![First Dashboard](FirstDashboard.png)
+![First Dashboard](images/FirstDashboard.png)
 
 ### Arranging cards
 Each question on a dashboard is in its own card that you can move around or resize as you see fit; just click the edit icon that looks like a pencil in the top-right of the dashboard screen.  

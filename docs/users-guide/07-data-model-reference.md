@@ -3,7 +3,7 @@
 ---
 Sometimes, as you’re looking at all the various tables and data in your database, you’ll probably have questions about what all the data means. That’s where the *data model reference* comes in handy. You can get to the data model reference from the question builder screen by clicking on the **Book** icon in the top right corner of the screen.
 
-![bookicon](images/Bookicon.png)
+![bookicon](./images/Bookicon.png)
 
 After clicking the icon, the **Data Reference** sidebar will open. It lists all the databases you have access to and the tables inside them. 
  
