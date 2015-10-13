@@ -16,6 +16,16 @@
    to scan millions of values at any rate."
   10000)
 
+(def ^:const connection-error-messages
+  "Generic error messages that drivers should return in their implementation of `humanize-connection-error-message`."
+  {:cannot-connect-check-host-and-port "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct."
+   :database-name-incorrect            "Looks like the database name is incorrect."
+   :invalid-hostname                   "It looks like your host is invalid. Please double-check it and try again."
+   :password-incorrect                 "Looks like your password is incorrect."
+   :password-required                  "Looks like you forgot to enter your password."
+   :username-incorrect                 "Looks like your username is incorrect."
+   :username-or-password-incorrect     "Looks like the username or password is incorrect."})
+
 ;; ## IDriver Protocol
 
 (defprotocol IDriver
@@ -33,9 +43,13 @@
        (can-connect? driver (sel :one Database :id 1))")
   (can-connect-with-details? [this details-map]
     "Check whether we can connect to a database and performa a simple query.
-     Returns true if we can, otherwise returns false or throws an Exception.
+     Returns true if we can, otherwise returns `false` or throws an `Exception`.
 
        (can-connect-with-details? driver {:engine :postgres, :dbname \"book\", ...})")
+
+  (humanize-connection-error-message ^String [this ^String message]
+    "Return a humanized (user-facing) version of an connection error message string.
+     Generic error messages are provided in the constant `connection-error-messages`; return one of these whenever possible.")
 
   ;; Syncing
   (sync-in-context [this database do-sync-fn]

@@ -20,10 +20,10 @@ function hasArg(arg) {
 var SRC_PATH = __dirname + '/frontend';
 var BUILD_PATH = __dirname + '/resources/frontend_client';
 
-// All JS files in frontend/app
-var JS_SRC = glob.sync(SRC_PATH + '/app/**/*.js');
-// All CSS files in frontend/app
-var CSS_SRC = glob.sync(SRC_PATH + '/app/**/*.css');
+// All JS files in frontend/src
+var JS_SRC = glob.sync(SRC_PATH + '/src/**/*.js');
+// All CSS files in frontend/src
+var CSS_SRC = glob.sync(SRC_PATH + '/src/**/*.css');
 
 // Need to scan the CSS files for variable and custom media used across files
 // NOTE: this requires "webpack -w" (watch mode) to be restarted when variables change :(
@@ -35,7 +35,7 @@ if (hasArg("-w") || hasArg("--watch")) {
 var NODE_ENV = process.env["NODE_ENV"] || (hasArg("-d") || (hasArg("--debug")) ? "development": "production");
 console.log("webpack env:", NODE_ENV)
 
-var BABEL_FEATURES = ['es7.asyncFunctions', 'es7.decorators'];
+var BABEL_FEATURES = ['es7.asyncFunctions', 'es7.decorators', 'es7.classProperties'];
 
 var cssMaps = { vars: {}, media: {}, selector: {} };
 CSS_SRC.map(webpackPostcssTools.makeVarMap).forEach(function(map) {
@@ -65,8 +65,8 @@ var config = module.exports = {
     module: {
         loaders: [
             // JavaScript
-            { test: /\.js$/, exclude: /node_modules/, loader: 'babel', query: { cacheDirectory: '.babel_cache', optional: BABEL_FEATURES }},
-            { test: /\.js$/, exclude: /node_modules|\.spec\.js/, loader: 'eslint' },
+            { test: /\.(js|jsx)$/, exclude: /node_modules/, loader: 'babel', query: { cacheDirectory: '.babel_cache', optional: BABEL_FEATURES }},
+            { test: /\.(js|jsx)$/, exclude: /node_modules|\.spec\.js/, loader: 'eslint' },
             // CSS
             { test: /\.css$/, loader: ExtractTextPlugin.extract('style', 'css?-restructuring&compatibility!cssnext') }
             // { test: /\.css$/, loader: 'style!css!cssnext' }
@@ -79,7 +79,7 @@ var config = module.exports = {
     resolve: {
         // modulesDirectories: [],
         alias: {
-            'metabase':             SRC_PATH + '/app',
+            'metabase':             SRC_PATH + '/src',
 
             // angular
             'angular':              __dirname + '/node_modules/angular/angular.min.js',
@@ -159,7 +159,7 @@ if (NODE_ENV === "hot") {
     config.output.publicPath = "http://localhost:8080" + config.output.publicPath;
 
     config.module.loaders.unshift(
-        { test: /\.react.js$/, exclude: /node_modules/, loaders: ['react-hot', 'babel?'+BABEL_FEATURES.map(function(f) { return 'optional[]='+f; }).join('&')] }
+        { test: /\.jsx$/, exclude: /node_modules/, loaders: ['react-hot', 'babel?'+BABEL_FEATURES.map(function(f) { return 'optional[]='+f; }).join('&')] }
     );
 
     config.module.loaders[config.module.loaders.length - 1].loader = 'style!css?-restructuring&compatibility!cssnext';

@@ -12,11 +12,14 @@
             [metabase.driver :as driver]
             (metabase.driver [generic-sql :as generic-sql, :refer [GenericSQLIDriverMixin GenericSQLISyncDriverTableFKsMixin
                                                                    GenericSQLISyncDriverFieldAvgLengthMixin GenericSQLISyncDriverFieldPercentUrlsMixin]]
-                             [interface :refer [IDriver ISyncDriverTableFKs ISyncDriverFieldAvgLength ISyncDriverFieldPercentUrls
-                                                ISyncDriverSpecificSyncField]])
+                             [interface :as i, :refer [IDriver ISyncDriverTableFKs ISyncDriverFieldAvgLength ISyncDriverFieldPercentUrls
+                                                       ISyncDriverSpecificSyncField]])
             [metabase.driver.generic-sql :as generic-sql]
             (metabase.driver.generic-sql [interface :refer [ISqlDriverDatabaseSpecific]]
-                                         [util :refer [with-jdbc-metadata]])))
+                                         [util :refer [with-jdbc-metadata]]))
+  ;; This is necessary for when NonValidatingFactory is passed in the sslfactory connection string argument,
+  ;; e.x. when connecting to a Heroku Postgres database from outside of Heroku.
+  (:import org.postgresql.ssl.NonValidatingFactory))
 
 (def ^:private ^:const column->base-type
   "Map of Postgres column types -> Field base types.
@@ -153,6 +156,30 @@
                              :year    "(NOW() + INTERVAL '%d year')")
                            amount)))
 
+(defn- humanize-connection-error-message [_ message]
+  (condp re-matches message
+    #"^FATAL: database \".*\" does not exist$"
+    (i/connection-error-messages :database-name-incorrect)
+
+    #"^No suitable driver found for.*$"
+    (i/connection-error-messages :invalid-hostname)
+
+    #"^Connection refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.$"
+    (i/connection-error-messages :cannot-connect-check-host-and-port)
+
+    #"^FATAL: role \".*\" does not exist$"
+    (i/connection-error-messages :username-incorrect)
+
+    #"^FATAL: password authentication failed for user.*$"
+    (i/connection-error-messages :password-incorrect)
+
+    #"^FATAL: .*$" ; all other FATAL messages: strip off the 'FATAL' part, capitalize, and add a period
+    (let [[_ message] (re-matches #"^FATAL: (.*$)" message)]
+      (str (s/capitalize message) \.))
+
+    #".*" ; default
+    message))
+
 (defrecord PostgresDriver [])
 
 (extend PostgresDriver
@@ -163,7 +190,8 @@
                                 :date-interval                       date-interval
                                 :timezone->set-timezone-sql          timezone->set-timezone-sql}
   ISyncDriverSpecificSyncField {:driver-specific-sync-field!         driver-specific-sync-field!}
-  IDriver                      GenericSQLIDriverMixin
+  IDriver                      (assoc GenericSQLIDriverMixin
+                                      :humanize-connection-error-message humanize-connection-error-message)
   ISyncDriverTableFKs          GenericSQLISyncDriverTableFKsMixin
   ISyncDriverFieldAvgLength    GenericSQLISyncDriverFieldAvgLengthMixin
   ISyncDriverFieldPercentUrls  GenericSQLISyncDriverFieldPercentUrlsMixin)

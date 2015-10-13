@@ -18,6 +18,9 @@ import 'ace/ext-language_tools';
 import 'ace/mode-sql';
 import 'ace/snippets/sql';
 
-// react:
-import React from 'react/addons';
+// clamp
+import './vendor/clamp';
+
+// react (unfortunately still required for 'react-onclickoutside')
+import React from 'react';
 window.React = React;
