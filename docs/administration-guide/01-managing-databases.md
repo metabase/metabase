@@ -46,8 +46,12 @@ To delete a database from Metabase, click on **Remove this database** from the d
 
 ![databaseconnection](images/DatabaseConnection.png)
 
-Hovering over the database row in the list of databases connected to your account and clicking the red **Delete** button will also delete a database.  
+You can also delete a database from the database list: hover over the row with the database you want to remove and click the **Delete** button that appears.  
 
 ![deletedatabasebutton](images/DatabaseDeleteButton.png)
 
-**Caution: Deleting a database is irreversible!  All saved questions and dashboard cards based on the database will be deleted too.**
+**Caution: Deleting a database is irreversible!  All saved questions and dashboard cards based on the database will be deleted as well!**
+
+---
+## Next: enabling features that send email
+Metabase can send emails for certain features, like email invites, but first you need to [set up an email account](02-setting-up-email.md).

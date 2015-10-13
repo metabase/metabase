@@ -2,12 +2,11 @@
 
 ## Common Problems
 
-### Startup fails due to Migrations being locked
-
+### Startup fails due to migrations being locked
 Sometimes Metabase will fail to startup due to a lingering lock. 
 
-Solution:
-Run  `java -cp metabase-master-2015-08-06-3da1178.jar org.h2.tools.Server -webPort 3000` in the commandline
+#### Solution:
+Run  `java -cp metabase-master-2015-08-06-3da1178.jar org.h2.tools.Server -webPort 3000` in the command line.
 
 open the web console (it prints a url)
 

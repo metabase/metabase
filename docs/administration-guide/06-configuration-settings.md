@@ -1,13 +1,21 @@
 
-##Settings
+## Settings
+Here are a few other miscellaneous settings you can configure from the home page of the **Admin Panel**.
+
+### Site Name
+How you’d like to refer to this instance of Metabase.
+
+### Site URL
+The base URL of this Metabase instance. The base URL is used in emails to allow users to click through to their specific instance. Make sure to include http:// or https:// to make sure it’s reachable. 
+
+### Report Timezone
+The **report timezone** sets the default time zone for displaying times. The timezone is used when breaking out data by dates.  
+
+*Setting the default timezone will not change the timezone of any data in your database*. If the underlying times in your database aren't assigned to a timezone, Metabase will use the report timezone as the default timezone.  
+
+### Anonymous Tracking
+This option turns determines whether or not you allow anonymous data about your usage of Metabase to be sent back to us to help us improve the product. *Your database’s data is never tracked or sent*.
+
 ---
-###Base URL
-The **base URL** is used in emails to allow users to click to their specific instance.  Include the protocol (http vs https) to make sure it is reachable. 
-
-###Connection Timezone
-The **connection timezone** sets the default time zone for displaying times.  The timezone is used when doing date breakouts.  
-
-Setting the default timezone will not change the timezone of any data in your database.  If the underlying times in your database aren't assigned to a timezone, Metabase will use the connection timezone as the default timezone.  
-
-###Name used for the Instance
-If you want to name an instance, you can do so under settings.  Many teams use the name of their company, but the choice is yours!
+## Next: solving common problems
+Got a problem? The answer might be in our [list of common problems](07-common-problems.md).
