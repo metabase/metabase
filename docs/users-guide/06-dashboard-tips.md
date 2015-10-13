@@ -1,9 +1,14 @@
 
-##Tips on Creating Helpful Dashboards
-To make a dashboard that is actually helpful, decide what you want the dashboard to tell you about your data.  What questions will give you insight into what you want to know?  
+## Tips on Creating Helpful Dashboards
+To make a really helpful dashboard, you need to first decide what you want the dashboard to tell you about your data. What questions will give you insight into what you want to know? It helps to think of a topic or theme for your dashboard — something like “customer satisfaction,” or “second quarter sales goals,” for example.
 
-Once you know what questions you want to know the answer to, make a question card for each question and save them.  Then save the cards to the dashboard.  Once you have the cards you want, structure the cards so that users can easily consume the information.  Place the most important cards near the top of the dashboard or make them bigger than the other cards.  Doing so, will naturally draw users' attention to the cards.
+Once you’ve decided what kinds of questions your dashboard is going to answer, create and save your individual questions from the question builder and save them. Next you can add your saved questions to your dashboard and arrange them in a way that makes it easy to scan and understand.
 
-If you have more than 10 cards on a dashboard, consider breaking the dashboard into two separate ones.  You don't want to overwhelm users with too much information and each dashboard should revolve around one theme.  Remember you can make as many dashboards as you want - there's no limit!
+Some tips:
+* Place the most important saved question cards near the top of the dashboard, or make them bigger than the other cards. That’ll help draw people’s attention to what matters most.
+* If you have more than 10 cards on a dashboard, think about breaking the dashboard into two separate ones. You don't want to overwhelm people with too much information, and each dashboard should revolve around one theme or topic. Remember — you can make as many dashboards as you want, so you don’t have to cram everything into just one.
 
-Sometimes you will need help understanding what data is available to you and what it means. Metabase provides a way for your administrators and data experts to build a [Data Model Reference](07-data-model-reference.md)
+---
+
+## Next: data model references
+Sometimes you’ll need help understanding what data is available to you and what it means. Metabase provides a way for your administrators and data experts to build a [data model reference](07-data-model-reference.md) to help you make sense of your database.

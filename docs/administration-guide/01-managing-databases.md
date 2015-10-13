@@ -1,55 +1,48 @@
 
-##Managing Databases
----
-Once you have a Metabase account (made during the Installation process), you'll want to connect databases.  To see a list of all databases connected in your account, click **Admin Panel** from the dropdown menu in the upper right hand corner of the screen to access the admin menu bar.  
+## Managing Databases
+If you already connected your database during the installation, you’ve probably a covered a lot of this info. But if you need to add another database or manage the settings of the one you already have connected, just click the circle with your initials in the top right of Metabase and select the **Admin Panel**.
 
 ![profiledropdown](images/ProfileDropdown.png)
 
-Next, select **Databases** from the admin menu bar to view all databases.  
+Cool, now you’re in the admin panel. Next, select **Databases** from the menu bar at the top of the screen to see your databases.
 
-##Adding a Database Connection
+### Adding a Database Connection
 
-To add a database to your Metabase account, click **Add database**.  Metabase currently supports the following types of databases: 
+Now you’ll see a list of your databases. To connect another database to Metabase, click **Add database**. Metabase currently supports the following types of databases: 
 
-* Amazon RDS
 * H2
-* MONGODB
+* MongoDB
 * MySQL
 * Postgres
 
-To add each type of database, you'll need its connection information.  The [Installation Guide](installation-guide.md) explains where to find your database's connection information.  
+To add a database, you'll need its connection information.  The [Installation Guide](installation-guide.md) explains where to find your database's connection information.  
 
-##SSL
+### Secure Socket Layer (SSL)
 
-Metabase automatically tries to connect to databases with and without SSL.  If it is possible to connect to your database with a SSL connection, Metabase make that the default setting for your database.  You can always change this setting later if you prefer to connect without this layer of security.  
+Metabase automatically tries to connect to databases with and without SSL. If it is possible to connect to your database with a SSL connection, Metabase make that the default setting for your database. You can always change this setting later if you prefer to connect without this layer of security, but we highly recommend keeping SSL turned on to keep your data secure.
 
-###Database Analysis
+### Database Analysis
 
-When connecting your database to Metabase, it tries to decipher the field types in your table based on each field's name.  Metabase also takes a sample of each table to look for URL's, json, encoded strings, etc. If a field is classified wrong, you can always manually edit it. 
+When Metabase connects to your database, it tries to decipher the field types in your tables based on each field's name. Metabase also takes a sample of each table to look for URL's, json, encoded strings, etc. If a field is classified wrong, you can always manually edit it from the **Metadata** tab in the Admin Panel.
 
-###Metadata Syncing
+### Metadata Syncing
 
-Metabase automatically syncs its copy of your database with the original database source every night.  
+Metabase automatically syncs its copy of your database with the original database source every night, but if you'd like to sync your database manually at any time:
 
-If you'd like to sync your database manually at any time:
+1. Go to the Admin Panel.
 
-1. Click on **Account Settings** from the dropdown menu. 
-
-![profiledropdown](images/ProfileDropdown.png)
-
-2. Select **Databases** from the admin menu bar at the top of the screen.  
+2. Select **Databases** from the navigation menu.  
 ![adminbar](images/AdminBar.png)
-2. Click on the Database you would like to sync. 
-![databaselist](images/DatabaseList.png) 
-3. Click **Connection Details** in the upper right hand corner of the screen. 
-![admindatabaseview](images/AdminDatabaseView.png)
-4. Select **Sync** to manually sync your database.  
+
+3. Click on the database you would like to sync. 
+![databaselist](images/DatabaseList.png)
+ 
+4. Click on the **Sync** button on the right of the screen.
 ![databaseconnection](images/DatabaseConnection.png)
 
+### Deleting Databases
 
-###Deleting Databases
-
-To delete a database from Metabase, Click **Remove this Database** under "Connection Details".  
+To delete a database from Metabase, click on **Remove this database** from the database detail screen.
 
 ![databaseconnection](images/DatabaseConnection.png)
 

@@ -1,4 +1,4 @@
-##Step 4: Sharing answers with others
+## Step 4: Sharing answers with others
 
 ### Saving questions
 
@@ -8,7 +8,7 @@ To do this, click on the **SAVE** button in the top-right of the screen.
 
 ![savebutton](images/SaveButton.png)
 
-Metabase will take a stab at giving your question a meaningful name, but you can (and should) use your own naming scheme that helps you and others find your questions later on, after amnesia has sunk in. 
+Metabase will take a stab at giving your question a meaningful name, but you can (and should) use your own naming scheme that helps you and others find your questions later on, after amnesia has sunk in.
 
 ![Save Question Dialog](images/SaveQuestionDialog.png)
 
@@ -36,7 +36,9 @@ If you’re feeling up to it, you can click the edit button in the top-right of 
 
 One other thing: once you’ve asked a question or saved a dashboard, the URL in your browser will link directly to that question or dashboard. That means you can copy and paste that URL into an email or chat and let other people see what you’ve found. This will only work if you installed Metabase on a shared server, and will require creating Metabase accounts for the people you want to share with.
 
+![shareableurl](./images/ShareableURL.png)
+
 ## That’s it!
 You’ve done really well. You now have a dashboard with your question that you can share! At this point you know enough to be dangerous. If you haven’t already, this would be a good time to [connect your own database](../users-guide/02-connecting-metabase.md) to Metabase and start asking some real questions!
 
-Want to learn more? Is your thirst for knowledge insatiable? Check out our [User Guide](../users-guide/start.md). 
+Want to learn more? Is your thirst for knowledge insatiable? Check out our [User Guide](../users-guide/start.md).
