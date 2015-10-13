@@ -113,12 +113,13 @@ export default class QueryVisualization extends Component {
     }
 
     renderCount() {
-        if (this.props.result && !this.props.isObjectDetail && this.props.card.display === "table") {
+        let { result, isObjectDetail, card } = this.props;
+        if (result &&  result.data && !isObjectDetail && card.display === "table") {
             return (
                 <div>
                     { this.hasTooManyRows() ? ("Showing max of ") : ("Showing ")}
-                    <b>{this.props.result.row_count}</b>
-                    { (this.props.result.data.rows.length !== 1) ? (" rows") : (" row")}.
+                    <b>{result.row_count}</b>
+                    { (result.data.rows.length !== 1) ? (" rows") : (" row")}.
                 </div>
             );
         }
@@ -166,8 +167,23 @@ export default class QueryVisualization extends Component {
                 </div>
             );
         } else {
-            if (this.props.result.error) {
+            let error = this.props.result.error;
+            if (error) {
+                let message;
+                // transform HTTP errors to plain text error messages, and always show them
+                if (typeof error.status === "number") {
+                    if (error.status === 503) {
+                        error = "I'm sorry, the server timed out while asking your question.";
+                    } else {
+                        error = "I'm sorry, an error occured: " + error.statusText;
+                    }
+                    message = error;
+                }
+                // always show errors for native queries
                 if (this.props.card.dataset_query && this.props.card.dataset_query.type === 'native') {
+                    message = error;
+                }
+                if (message) {
                     viz = (
                         <div className="QueryError flex full align-center text-error">
                             <div className="QueryError-iconWrapper">
@@ -175,7 +191,7 @@ export default class QueryVisualization extends Component {
                                     <path d="M4 8 L8 4 L16 12 L24 4 L28 8 L20 16 L28 24 L24 28 L16 20 L8 28 L4 24 L12 16 z "></path>
                                 </svg>
                             </div>
-                            <span className="QueryError-message">{this.props.result.error}</span>
+                            <span className="QueryError-message">{message}</span>
                         </div>
                     );
 

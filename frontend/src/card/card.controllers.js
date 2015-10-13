@@ -484,10 +484,7 @@ CardControllers.controller('CardDetail', [
 
             }, function (error) {
                 isRunning = false;
-                // TODO: we should update the api so that we get better error messaging from the api on query fails
-                queryResult = {
-                    error: "Oh snap!  Something went wrong running your query :sad:"
-                };
+                queryResult = { error: error };
 
                 renderAll();
             });
