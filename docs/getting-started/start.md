@@ -1,5 +1,5 @@
 # Getting started with Metabase
-Metabase lets you ask questions about your data, drill into specific records, and dashboards to help keep you organized.  
+Metabase lets you easily ask questions about your data, drill into specific records, and create dashboards to help keep you organized. We hope you love it.  
 
 **This guide will teach you:**
 
@@ -9,7 +9,7 @@ Metabase lets you ask questions about your data, drill into specific records, an
 
 > [How to ask your first questions](03-asking-questions.md)
 
-> [How to share the answers to your questions](04-sharing-answers.md)
+> [How to share the answers you find!](04-sharing-answers.md)
 
 
-Let's [get started](01-installing-metabase.md)
+Let's [get started!](01-installing-metabase.md)

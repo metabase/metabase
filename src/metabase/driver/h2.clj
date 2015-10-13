@@ -6,7 +6,7 @@
             [metabase.driver :as driver]
             (metabase.driver [generic-sql :as generic-sql, :refer [GenericSQLIDriverMixin GenericSQLISyncDriverTableFKsMixin
                                                                    GenericSQLISyncDriverFieldAvgLengthMixin GenericSQLISyncDriverFieldPercentUrlsMixin]]
-                             [interface :refer [IDriver ISyncDriverTableFKs ISyncDriverFieldAvgLength ISyncDriverFieldPercentUrls]])
+                             [interface :as i, :refer [IDriver ISyncDriverTableFKs ISyncDriverFieldAvgLength ISyncDriverFieldPercentUrls]])
             (metabase.driver.generic-sql [interface :refer [ISqlDriverDatabaseSpecific]]
                                          [util :refer [funcs]])
             [metabase.models.database :refer [Database]]))
@@ -186,6 +186,20 @@
                              :year    "DATEADD('YEAR',   %d,       NOW())")
                            amount)))
 
+(defn- humanize-connection-error-message [_ message]
+  (condp re-matches message
+    #"^A file path that is implicitly relative to the current working directory is not allowed in the database URL .*$"
+    (i/connection-error-messages :cannot-connect-check-host-and-port)
+
+    #"^Database .* not found .*$"
+    (i/connection-error-messages :cannot-connect-check-host-and-port)
+
+    #"^Wrong user name or password .*$"
+    (i/connection-error-messages :username-or-password-incorrect)
+
+    #".*" ; default
+    message))
+
 
 (defrecord H2Driver [])
 
@@ -196,7 +210,9 @@
                                :date-interval                       date-interval
                                :unix-timestamp->timestamp           unix-timestamp->timestamp}
   ;; Override the generic SQL implementation of wrap-process-query-middleware so we can block unsafe native queries (see above)
-  IDriver                     (assoc GenericSQLIDriverMixin :wrap-process-query-middleware wrap-process-query-middleware)
+  IDriver                     (assoc GenericSQLIDriverMixin
+                                     :humanize-connection-error-message humanize-connection-error-message
+                                     :wrap-process-query-middleware     wrap-process-query-middleware)
   ISyncDriverTableFKs         GenericSQLISyncDriverTableFKsMixin
   ISyncDriverFieldAvgLength   GenericSQLISyncDriverFieldAvgLengthMixin
   ISyncDriverFieldPercentUrls GenericSQLISyncDriverFieldPercentUrlsMixin)

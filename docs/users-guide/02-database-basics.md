@@ -32,8 +32,9 @@ Columns are also sometimes interchangeably referred to as *fields*. Each field h
 **Example**
 
 *Reservations Table*
+
 | Reservation ID  | Name  | Age   |  
-| --------------: | ----- | ----: |
+| --------------  | ----- | ----  |
 | 11              | John  | 25    |
 | 12              | Jenny | 31    |
 

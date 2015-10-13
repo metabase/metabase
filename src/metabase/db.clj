@@ -3,11 +3,13 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             (clojure [set :as set]
-                     [string :as s])
+                     [string :as s]
+                     [walk :as walk])
             [environ.core :refer [env]]
             (korma [core :as k]
                    [db :as kdb])
             [medley.core :as m]
+            [ring.util.codec :as codec]
             [metabase.config :as config]
             [metabase.db.internal :as i]
             [metabase.models.interface :as models]
@@ -38,21 +40,39 @@
                                   ;; if we don't have an absolute path then make sure we start from "user.dir"
                                   [(System/getProperty "user.dir") "/" db-file-name options]))))))
 
+(defn parse-connection-string
+  "Parse a DB connection URI like `postgres://cam@localhost.com:5432/cams_cool_db?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory` and return a broken-out map."
+  [uri]
+  (when-let [[_ protocol user pass host port db query] (re-matches #"^([^:/@]+)://(?:([^:/@]+)(?::([^:@]+))?@)?([^:@]+)(?::(\d+))?/([^/?]+)(?:\?(.*))?$" uri)]
+    (merge {:type     (keyword protocol)
+            :user     user
+            :password pass
+            :host     host
+            :port     port
+            :dbname   db}
+           (some-> query
+                   codec/form-decode
+                   walk/keywordize-keys))))
+
 (def ^:private db-connection-details
   "Connection details that can be used when pretending the Metabase DB is itself a `Database`
    (e.g., to use the Generic SQL driver functions on the Metabase DB itself)."
-  (delay (case (config/config-kw :mb-db-type)
-           :h2       {:db @db-file}
-           :postgres {:host     (config/config-str :mb-db-host)
-                      :port     (config/config-int :mb-db-port)
-                      :dbname   (config/config-str :mb-db-dbname)
-                      :user     (config/config-str :mb-db-user)
-                      :password (config/config-str :mb-db-pass)})))
+  (delay (or (when-let [uri (config/config-str :mb-db-connection-uri)]
+               (parse-connection-string uri))
+             (case (config/config-kw :mb-db-type)
+               :h2       {:type     :h2
+                          :db       @db-file}
+               :postgres {:type     :postgres
+                          :host     (config/config-str :mb-db-host)
+                          :port     (config/config-int :mb-db-port)
+                          :dbname   (config/config-str :mb-db-dbname)
+                          :user     (config/config-str :mb-db-user)
+                          :password (config/config-str :mb-db-pass)}))))
 
 (def ^:private jdbc-connection-details
   "Connection details for Korma / JDBC."
   (delay (let [details @db-connection-details]
-           (case (config/config-kw :mb-db-type)
+           (case (:type details)
              :h2       (kdb/h2 (assoc details :naming {:keys   s/lower-case
                                                        :fields s/upper-case}))
              :postgres (kdb/postgres (assoc details :db (:dbname details)))))))
@@ -125,7 +145,7 @@
 
   ;; Test DB connection and throw exception if we have any troubles connecting
   (log/info "Verifying Database Connection ...")
-  (assert (db-can-connect? {:engine  (config/config-kw :mb-db-type)
+  (assert (db-can-connect? {:engine  (:type @db-connection-details)
                             :details @db-connection-details})
     "Unable to connect to Metabase DB.")
   (log/info "Verify Database Connection ... CHECK")

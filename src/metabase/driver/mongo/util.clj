@@ -46,6 +46,10 @@
                                         (:dbname (:details database)) (:details database) ; entire Database obj
                                         (:dbname database)            database            ; connection details map only
                                         :else                         (throw (Exception. (str "with-mongo-connection failed: bad connection details:" (:details database)))))
+        user             (when (seq user) ; ignore empty :user and :pass strings
+                           user)
+        pass             (when (seq pass)
+                           pass)
         server-address   (mg/server-address host port)
         credentials      (when user
                            (mcred/create user dbname pass))
