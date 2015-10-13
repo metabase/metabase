@@ -35,6 +35,9 @@ export function formatCell(value, column) {
         } else {
             return formatNumber(value);
         }
+    } else if (typeof value === "object") {
+        // no extra whitespace for table cells
+        return JSON.stringify(value);
     } else {
         return String(value);
     }
