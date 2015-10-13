@@ -6,8 +6,7 @@ import cx from "classnames";
 
 export default class ColumnarSelector extends Component {
     static propTypes = {
-        columns: PropTypes.array.isRequired,
-        showScrollbars: PropTypes.bool
+        columns: PropTypes.array.isRequired
     };
 
     render() {
@@ -57,7 +56,7 @@ export default class ColumnarSelector extends Component {
             }
 
             return (
-                <div key={columnIndex} className={cx("ColumnarSelector-column", { "scroll-show": this.props.showScrollbars })}>
+                <div key={columnIndex} className="ColumnarSelector-column scroll-y scroll-show">
                     {sectionElements}
                 </div>
             );

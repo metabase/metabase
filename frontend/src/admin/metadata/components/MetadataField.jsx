@@ -130,7 +130,6 @@ export default class MetadataField extends Component {
                                     value={_.find(MetabaseCore.field_special_types, (type) => type.id === this.props.field.special_type)}
                                     options={MetabaseCore.field_special_types}
                                     onChange={this.onSpecialTypeChange}
-                                    showScrollbars={true}
                                 />
                                 {targetSelect}
                             </div>
