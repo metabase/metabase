@@ -50,7 +50,7 @@
 }
 
 .Modal-content.Modal-content--small .Modal-body {
-    min-height: unset; /* using unset here to get around overly restrictive min-height settings */
+    min-height: inherit; /* using inherit here to get around overly restrictive min-height settings */
 }
 
 .Modal-body .Form-inputs {
