@@ -9,7 +9,7 @@ Select **People** from the menu bar at the top of the screen to see a list of al
 ![Admin menu](images/AdminBar.png)
 
 ### Adding a new user
-To add a new user account, click **Add person** in the upper right corner. You’ll be prompted to enter their name and email address. 
+To add a new user account, click **Add person** in the upper right corner. You’ll be prompted to enter their name and email address.
 
 If you’ve already [configured Metabase to use email](02-setting-up-email.md), Metabase will send the new user an invite email. Otherwise, it’ll give you a temporary password that you’ll have to send to the person you’re inviting by hand.
 
@@ -30,5 +30,5 @@ Right now, the only role a user can have is either User or Admin. The only diffe
 To change a user’s role, just click on it to open a dropdown and make your selection.
 
 ---
-## Next: backing up application data
-Things happen, so why not learn [how to back up Metabase’s application data](05-application-data.md)?
+## Next: configuring Metabase
+There are a few other settings you configure in Metabase. [Learn how](06-configuration-settings.md).

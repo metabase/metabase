@@ -6,7 +6,7 @@ Here are a few other miscellaneous settings you can configure from the home page
 How you’d like to refer to this instance of Metabase.
 
 ### Site URL
-The base URL of this Metabase instance. The base URL is used in emails to allow users to click through to their specific instance. Make sure to include http:// or https:// to make sure it’s reachable. 
+The base URL of this Metabase instance. The base URL is used in emails to allow users to click through to their specific instance. Make sure to include http:// or https:// to make sure it’s reachable.
 
 ### Report Timezone
 The **report timezone** sets the default time zone for displaying times. The timezone is used when breaking out data by dates.  
@@ -15,7 +15,3 @@ The **report timezone** sets the default time zone for displaying times. The tim
 
 ### Anonymous Tracking
 This option turns determines whether or not you allow anonymous data about your usage of Metabase to be sent back to us to help us improve the product. *Your database’s data is never tracked or sent*.
-
----
-## Next: solving common problems
-Got a problem? The answer might be in our [list of common problems](07-common-problems.md).
