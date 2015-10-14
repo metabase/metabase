@@ -1,5 +1,6 @@
 import d3 from "d3";
 import inflection from "inflection";
+import moment from "moment";
 
 var precisionNumberFormatter = d3.format(".2r");
 var fixedNumberFormatter = d3.format(",.f");
@@ -24,9 +25,34 @@ export function formatScalar(scalar) {
     }
 }
 
+export function formatWithUnit(value, unit) {
+    switch (unit) {
+        case "hour": // 2015-01-01 12am
+            return moment(value).format("YYYY-MM-DD ha");
+        case "day": // 2015-01-01
+            return moment(value).format("YYYY-MM-DD");
+        // case "week":
+        case "month": // 2015-01
+            return moment(value).format("YYYY-MM");
+        case "year": // 2015
+            return String(value);
+        case "quarter": // 2015 Q1
+            return moment(value).format("YYYY [Q]Q");
+        case "day-of-week": // Sunday
+            return moment().day(value - 1).format("dddd");
+        case "week-of-year": // 1 2 ... 52 53
+            return String(value);
+        case "month-of-year": // January
+            return moment().month(value - 1).format("MMMM");
+    }
+    return String(value);
+}
+
 export function formatCell(value, column) {
     if (value == undefined) {
         return null
+    } else if (column && column.unit != null) {
+        return formatWithUnit(value, column.unit)
     } else if (typeof value === "string") {
         return value;
     } else if (typeof value === "number") {
