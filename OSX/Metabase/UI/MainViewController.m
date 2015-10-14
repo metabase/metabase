@@ -7,17 +7,16 @@
 //
 
 @import JavaScriptCore;
-@import QuartzCore;
 @import WebKit;
 
 #import "INAppStoreWindow.h"
 
+#import "LoadingView.h"
 #import "MainViewController.h"
 #import "SettingsManager.h"
 #import "TaskHealthChecker.h"
 
 @interface MainViewController ()
-@property (weak) IBOutlet NSImageView *loadingView;
 @property (weak) IBOutlet WebView *webView;
 @property (strong) IBOutlet NSView *titleBarView;
 
@@ -25,6 +24,8 @@
 @property (weak) IBOutlet NSButtonCell *forwardButtonCell;
 @property (weak) IBOutlet NSButtonCell *refreshButtonCell;
 @property (weak) IBOutlet NSButtonCell *linkButtonCell;
+
+@property (weak) LoadingView *loadingView;
 
 @property (strong, readonly) NSString *baseURL;
 
@@ -37,24 +38,35 @@
 #pragma mark - Lifecycle
 
 - (void)awakeFromNib {
-	INAppStoreWindow *window = (INAppStoreWindow *)self.view.window;
-	window.titleBarHeight = self.titleBarView.bounds.size.height;
+	// configure window / title bar
+	{
+		INAppStoreWindow *window = (INAppStoreWindow *)self.view.window;
+		window.titleBarHeight = self.titleBarView.bounds.size.height;
+		
+		self.view.wantsLayer = YES;
+		self.view.layer.backgroundColor = [NSColor whiteColor].CGColor;
+		
+		self.titleBarView.frame = window.titleBarView.bounds;
+		self.titleBarView.autoresizingMask = NSViewWidthSizable|NSViewHeightSizable;
+		[window.titleBarView addSubview:self.titleBarView];
+	}
 	
-	self.view.wantsLayer = YES;
-	self.view.layer.backgroundColor = [NSColor whiteColor].CGColor;
-	
-	self.titleBarView.frame = window.titleBarView.bounds;
-	self.titleBarView.autoresizingMask = NSViewWidthSizable|NSViewHeightSizable;
-	[window.titleBarView addSubview:self.titleBarView];
-	
-	self.loadingView.wantsLayer = YES;
-	self.loadingView.layer.masksToBounds = NO;
+	// programatically add loading view to container
+	{
+		LoadingView *loadingView = [[LoadingView alloc] init];
+		[self.view addSubview:loadingView];
+		
+		[self.view addConstraints:@[[NSLayoutConstraint constraintWithItem:loadingView attribute:NSLayoutAttributeWidth   relatedBy:NSLayoutRelationEqual toItem:nil       attribute:NSLayoutAttributeNotAnAttribute multiplier:1.0f constant:200.0f],
+									[NSLayoutConstraint constraintWithItem:loadingView attribute:NSLayoutAttributeHeight  relatedBy:NSLayoutRelationEqual toItem:nil       attribute:NSLayoutAttributeNotAnAttribute multiplier:1.0f constant:200.0f],
+									[NSLayoutConstraint constraintWithItem:loadingView attribute:NSLayoutAttributeCenterX relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeCenterX        multiplier:1.0f constant:0],
+									[NSLayoutConstraint constraintWithItem:loadingView attribute:NSLayoutAttributeCenterY relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeCenterY        multiplier:1.0f constant:0]]];
+		
+		self.loadingView = loadingView;
+	}
 	
 	self.webView.wantsLayer = YES;
-	
-	self.loadingView.animator.alphaValue = 0.0f;
 	self.webView.animator.alphaValue = 0.0f;
-	
+
 	dispatch_async(dispatch_get_main_queue(), ^{
 		self.loading = YES;
 	});
@@ -153,41 +165,18 @@
 }
 
 - (void)setLoading:(BOOL)loading {
-	if (_loading == loading) return;
 	_loading = loading;
-	
+
 	if (loading) {
-		[self.loadingView.layer removeAllAnimations];
+		self.webView.animator.alphaValue = 0;
+		self.loadingView.animator.alphaValue = 1;
+	} else {
+		self.webView.animator.alphaValue = 1;
+		self.loadingView.animator.alphaValue = 0;
 		
 		self.backButtonCell.enabled = self.forwardButtonCell.enabled = self.linkButtonCell.enabled = NO;
-		
-		self.webView.animator.alphaValue = 0.2f;
-		self.loadingView.animator.alphaValue = 1.0f;
-		
-		static const CGFloat LoadingViewScaleDuration	= 2.5f;
-		static const CGFloat LoadingViewScaleMin		= 0.65f;
-		static const CGFloat LoadingViewScaleMax		= 1.0f;
-		
-		const CATransform3D min = CATransform3DTranslate(CATransform3DMakeScale(LoadingViewScaleMin, LoadingViewScaleMin, 1.0f), self.loadingView.bounds.size.width / 4.0f, self.loadingView.bounds.size.height / 4.0f, 0);
-		const CATransform3D max = CATransform3DMakeScale(LoadingViewScaleMax, LoadingViewScaleMax, 1.0f);
-		
-		CAKeyframeAnimation *scale	= [CAKeyframeAnimation animationWithKeyPath:@"transform"];
-		scale.timingFunction		= [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-		scale.values				= @[[NSValue valueWithCATransform3D:min],
-										[NSValue valueWithCATransform3D:max],
-										[NSValue valueWithCATransform3D:min]];
-		scale.duration				= LoadingViewScaleDuration;
-		scale.repeatCount			= HUGE_VALF;
-		
-		[self.loadingView.layer addAnimation:scale forKey:@"transform"];
-	} else {
-		self.webView.animator.alphaValue = 1.0f;
-		self.loadingView.animator.alphaValue = 0.0f;
-		
-		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0f * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-			[self.loadingView.layer removeAllAnimations];
-		});
 	}
+	self.loadingView.animate = loading;
 }
 
 
