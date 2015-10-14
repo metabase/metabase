@@ -4,11 +4,13 @@ Metabase provides an official Docker image via Dockerhub that can be used for de
 
 ### Launching Metabase on a new container
 
-Here's a quick one-liner to get you off the ground quickly:
+Here's a quick one-liner to get you off the ground:
 
     docker run -d -p 3000:3000 --name metabase metabase/metabase:v0.12.0
 
-This will launch a Metabase server on port 3000 by default.  Since Docker containers have their own ports and we just map them to the system ports as needed it's easy to move Metabase onto a different port if you wish:
+This will launch a Metabase server on port 3000 by default.  You can use `docker logs -f metabase` to follow the rest of the initialization progress.  Once the Metabase startup completes you can access the app at [localhost:3000](http://localhost:3000)
+
+Since Docker containers have their own ports and we just map them to the system ports as needed it's easy to move Metabase onto a different system port if you wish.  For example running Metabase on port 12345:
 
     docker run -d -p 12345:3000 --name metabase metabase/metabase:v0.12.0
 
@@ -21,12 +23,12 @@ To persist your data outside of the container and make it available for use betw
 
     docker run -d -p 3000:3000 -v /tmp:/tmp -e "MB_DB_FILE=/tmp/metabase.db" --name metabase metabase/metabase:v0.12.0
 
-Now when you launch your container we are telling metabase to use the database file at `/tmp/metabase.db` instead of its default location and we are mounting that folder from our local filesystem into the container.
+Now when you launch your container we are telling Metabase to use the database file at `/tmp/metabase.db` instead of its default location and we are mounting that folder from our local filesystem into the container.
 
 
 ### Using Postgres as the Metabase application database
 
-If you are ready to completely move off the H2 embedded database for running Metabase and prefer to use Postgres we've got that covered.
+If you are ready to completely move off the H2 embedded database for running Metabase and prefer to use Postgres we've got that covered too.
 
 In this scenario all you need to do is make sure you launch Metabase with the correct environment variables containing your Postgres database connection details and you're all set.  For example:
 
