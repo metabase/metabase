@@ -43,7 +43,7 @@ Next we need to tell Metabase what we want to see. Under the View dropdown, we�
 
 Okay, cool — we’re ready to ask our question, so let’s click the **Run query** button!
 
-So it looks like there were 12,284 orders, each with a subtotal greater than $40. (By the way, you’ll definitely get a different answer than us, because the data in the sample dataset is randomized.) Another way of saying this is that there were 12,284 *records* in the table that met the parameters we set. 
+So it looks like there were 12,284 orders, each with a subtotal greater than $40. Ka-ching! Another way of saying this is that there were 12,284 *records* in the table that met the parameters we set. 
 ![Count Answer](images/CountAnswer.png)
 
 ### Tweaking our question
