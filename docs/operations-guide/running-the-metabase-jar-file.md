@@ -28,11 +28,18 @@ Now that you have a working JDK, you can now run the jar from a terminal with:
 
 It's that simple.  This will start the Metabase application using all of the default settings.  You should see some log entries starting to run in your terminal window showing you the application progress as it starts up.  Once Metabase is fully started you'll see a confirmation such as:
 
-    Metabase successfully started
+    2015-10-14 22:17:50,960 [INFO ] metabase.core :: Metabase Initialization COMPLETE
+    2015-10-14 22:17:51,004 [INFO ] metabase.core :: Launching Embedded Jetty Webserver with config:
+    {:port 3000, :host "localhost"}
+    2015-10-14 22:17:51,024 [INFO ] org.eclipse.jetty.server.Server :: jetty-9.2.z-SNAPSHOT
+    2015-10-14 22:17:51,049 [INFO ] org.eclipse.jetty.server.ServerConnector :: Started ServerConnector@30aba609{HTTP/1.1}{localhost:3000}
+    2015-10-14 22:17:51,050 [INFO ] org.eclipse.jetty.server.Server :: Started @35910ms
 
 At this point your ready to go!  You can access your new Metabase server on port 3000, most likely at [localhost:3000](http://localhost:3000)
 
 Note that in the default configuration Metabase will use a local H2 database for storing all its own application data.  This is meant for simple evaluations or personal installations, but if you are running Metabase for a team we recommend you upgrade to a more robust SQL server such as Postgres.  Continue reading for details on how to do that.
+
+Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](/docs/setting-up-metabase.md).
 
 
 ### The Metabase Application Database
@@ -49,6 +56,7 @@ You can see these database files from the terminal:
 You should see the following files:
 
     metabase.db.h2.db
+    metabase.db.trace.db
 
 If for any reason you want to use an H2 database file in a separate location from where you launch Metabase you can do so using an environment variable.  For example:
 

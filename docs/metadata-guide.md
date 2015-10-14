@@ -1,65 +1,59 @@
+## Metadata Guide
+### This guide will teach you:
+* What kinds of metadata Metabase stores and uses
+* How Metabase analyzes your database
+* How to improve the data model by adding your own knowledge to the auto-generated model
 
-> **This guide will teach you:**
-> What kinds of metadata Metabase stored and uses
-> How Metabase scans your database
-> How to improve the data model by adding your own knowledge to the auto-generated model
-
-# Overview
+### Overview
 
 Metabase allows you to optionally annotate the data in your database or data warehouse. These annotations provide Metabase with an understanding of what the data actually means, and allows it to more intelligently process and display it for you. We currently allow you to annotate tables and columns. 
 
-All of these settings are editable via the metadata editing page within the Admin Panel.
+All of these settings are editable via the **Metadata** page within the **Admin Panel**.
 
-# Types of Metadata
+### Tables
 
-## Tables
+Tables can either be set to **Queryable** or **Hidden**. Queryable tables can be selected from the question builder, and all of the data in the table can be displayed (unless certain fields are excluded — more on that below).
 
-### Table type
+Hidden tables can’t be selected from the query builder, and their data can’t be accessed. 
 
-A table can be marked as one of the below types. 
+You can also change the name and description of your tables here. Note that the underlying database won’t be affected — this will only change the name of the table while you’re viewing it within Metabase. 
 
-* Business Entity Table
-* Rollup or Metrics Table
-* System Table
-* Intermediate Table
+If you ever want to see the underlying original schema for a given table, just click the **Show original schema** toggle in the top-right of the screen.
 
-Typically, only Business Entities and Metrics Tables are displayed in list, and will be colored differently to allow you to quickly find the table of interest.
+### Fields
 
-## Fields
+A field is a representation of either a column (when using a SQL based database, like PostgreSQL) or a field in a document (when using a document- or JSON-based database like MongoDB). 
 
-A field is a representation of either a Column (when using a SQL based database, like PostgreSQL) or a field in a document (when using a document or JSON-based database like MongoDB). 
+There are several pieces of metadata you can edit per field: name, description, visibility, type, and details:
 
-### Name
+#### Name
 
-Clicking on the name of the field allows you to change how the field name is displayed. For example, if your ORM produces table names like “auth.user", you can replace this with “User” to make it more readable.
+Clicking on the name of the field allows you to change how the field name is displayed. For example, if your ORM produces table names like “auth.user", you can replace this with “User” to make it more readable. Again, this only changes how the field is displayed in Metabase.
 
-### Description
+#### Description
 
 This is a human-readable description of what the field is and how it is meant to be used. Any caveats about interpretation can go here as well.
 
-### Visibility
+#### Visibility
 
-Fields are always displayed in “long form” spots like the detail pages for a specific row. By default, any column with an average length of longer than 50 characters is clipped. If you wish to toggle this, click on the checkbox next to a field name.
+If you have really long data in certain fields, like descriptions or biographies, you can set the visibility to display the field **Only in Detail Views** when looking at a single record. By default, any column with an average length of longer than 50 characters is assigned this setting.
 
-### Position
+Similarly, if you have sensitive or irrelevant fields, you can set them to **Do Not Include**, preventing the field from being accessed by Metabase.
 
-A field has a default position, which is used whenever a row is displayed. Some views allow you to rearrange the order of column. Cases where you might want to use this are if you have a clear primary identifier for a table that for whatever reason is not the first column, or to move variable length columns to the end to make it easier to scan a table. 
+#### Types
 
-### Database Representation
+A field can get assigned one of four basic types:
 
-This refers to how the basic representation of the field in the database. It is not editable, as it represents how things are stored. It is useful to see if, for example, “1” refers to a number or a string in the underlying database.
-
-### Basic Types
-
-* Metric — A metric is a number that you expect to plot, sum, take averages of, etc. Basically anything that would end up being plotted on the Y-Axis of a graph.
-* Dimension — This is any field that you expect to use as an X-Axis of a graph or as part of a pivot table. 
+* Metric — a metric is a number that you expect to plot, sum, take averages of, etc. You could think of it as anything that would end up being plotted on the y-axis of a graph.
+* Dimension — This is any field that you expect to use as an x-axis of a graph or as part of a pivot table. Anything that you could group your results by could be called a dimension, such as dates.
 * Information — This is any other information that is not expected to be used in any kind of aggregate metrics but contains other information. Examples include descriptions, names, emails.
+* Sensitive Information — Use this setting for fields that you don’t want to show up anywhere in Metabase. This does the same thing as changing the visibility to Do Not Include, and in fact if you set a field’s visibility to Do Not Include, it’ll automatically get assigned the type Sensitive Information.
 
-### Semantic Types
+#### Details
 
-A field’s semantic type is used to determine how to display it as well as providing information to users of the data about the underlying meaning. For example, by marking fields in a table as Latitude and Longitude, you allow the table to be used to power pin and heat maps. Similarly, marking a field as a URL allows users to click on it and go to that URL.
+A field’s detailed type is used to determine how to display it as well as providing information to users of the data about the underlying meaning. For example, by marking fields in a table as Latitude and Longitude, you allow the table to be used to create pin and heat maps. Similarly, marking a field as a URL allows users to click on it and go to that URL.
 
-Semantic types include:
+Common detailed types include:
 
 * Avatar Image URL
 * Category
@@ -77,3 +71,8 @@ Semantic types include:
 * State
 * URL
 * Zip Code
+
+This is also where you set mark special fields in a table:
+* Entity Key — the field in this table that uniquely identifies each row. Could be a product ID, serial number, etc.
+* Entity Name — different from the entity key, this is the field whose heading represents what each row in the table *is*. For example, in a Users table, the User column might be the entity name.
+* Foreign Key — this is a field in this table that uniquely identifies a *row* in another table. In other words, this is a field that, almost always, points to the primary key of another table. For example, in a Products table, you might have a Customer ID field that points to a Customers table, where Customer ID is the primary key.
