@@ -152,7 +152,7 @@ export default class Activity extends Component {
                 description.subject = "Metabase is up and running.";
                 break;
             case "user-joined":
-                description.subject = "joined the party!";
+                description.subject = "joined!";
                 break;
         };
 

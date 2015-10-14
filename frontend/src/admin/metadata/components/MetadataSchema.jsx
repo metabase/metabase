@@ -37,7 +37,7 @@ export default class MetadataSchema extends Component {
                         <div className="flex-half px1">Data Type</div>
                         <div className="flex-half px1">Additional Info</div>
                     </div>
-                    <ol className="border-top border-bottom scroll-y">
+                    <ol className="border-top border-bottom">
                         {fields}
                     </ol>
                 </div>

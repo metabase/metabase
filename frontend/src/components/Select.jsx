@@ -11,8 +11,7 @@ export default class Select extends Component {
         placeholder: PropTypes.string,
         onChange: PropTypes.func,
         optionNameFn: PropTypes.func,
-        optionValueFn: PropTypes.func,
-        showScrollbars: PropTypes.bool
+        optionValueFn: PropTypes.func
     };
 
     static defaultProps = {
@@ -64,7 +63,6 @@ export default class Select extends Component {
                                 triggerClasses={"AdminSelect " + (this.props.className || "")}>
                 <ColumnarSelector
                     columns={columns}
-                    showScrollbars={this.props.showScrollbars}
                 />
             </PopoverWithTrigger>
         );

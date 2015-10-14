@@ -1,21 +1,33 @@
-# Install Metabase
+# Running Metabase on AWS Elastic Beanstalk
 
-* TODO: upload expa ssl certificate to IAM and grab the urn
-* Create a new **Application** called *Metabase*
-* Inside the *Metabase* **Application**
-	* Create a new **Application Version** for _metabase-*_ (each new deployed release of Metabase will represent a new version here)
-	* Create a new **Environment** for *expa-metabase-reserve*
-		* Follow the detailed instructions on **Creating a New Environment**
-	* Save the **Environment Configuration**
-		* NOTE: only do this after the Environment is fully configured and working as desired
-		* Navigate to the desired **Environment** in the AWS console
-		* Click on the dropdown for Actions in the upper right corner and select Save Configuration
-			* Give the configuration a name (e.g. Expa-Metabase-2015May15)
-			* Click the Save button
-	* Launch each remaining **Environment** using your saved configuration
-		* Follow the detailed instructions on **Creating an Environment from a Saved Configuration**
+### Create a New Application
 
-# Creating a New Environment (RDS + ELB/Https)
+Elastic Beanstalk is organized into Applications and Environments, so to get started we must create a new Application.  This step is easy, so let's just jump in.
+
+Navigate to the AWS Console for Elastic Beanstalk and click on the `Create Application` button.
+
+Use the application name `Metabase` and continue.
+
+Next, create a new Application Version which is what contains the necessary instructions for Elastic Beanstalk to deploy and run the application.  If you haven't done so already you can download a ready made Elastic Beanstalk application from our downloads site:
+
+Remember that each application version will represent a new deployment of the application, so its best to give accurate labels here.
+
+
+### Upload a Server Certificate (optional)
+
+This is only relevant if you plan to use HTTPS (recommended) for your Metabase instance on AWS.  There is no requirement to do this, but we are sticklers for security and believe you should always be careful with your data.
+
+Sadly there is no option to do this via the AWS Console, so this step must be performed using the [AWS CLI client](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html)
+
+    aws iam upload-server-certificate \
+		--server-certificate-name <your-cert-name> \
+		--certificate-body file:///path/to/certificate.crt \
+		--private-key file:///path/to/private-key.pem
+
+This will create a new certificate inside your AWS environment which can be reused for a variety of things.  Remember the name you chose for your certificate because we'll use that later in the setup process when we enable SSL.
+
+
+### Creating a New Environment (RDS + ELB/Https)
 
 * Prerequisites
 	* Create an Application
@@ -94,13 +106,7 @@
 			* NOTE: your Environment will begin updating with your new change.  you will have to wait for this to complete before making additional updates
 			* IMPORTANT: once this change is made you will no longer be able to access your Metabase instance at the *.elasticbeanstalk.com url provided by Amazon because it will result in a certificate mismatch.  To  continue accessing your secure Metabase instance you must **Setup DNS CNAME**
 
-# Upload a Server Certificate
-	
-* NOTE: There is no option to do this via the AWS Console, so this step must be performed using the AWS CLI
-	* http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html
-* aws iam upload-server-certificate --server-certificate-name metabase-dev --certificate-body file://dev.metabase.com.crt --private-key file://dev.metabase.com.pem
-
-# Setup DNS CNAME (using AWS)
+### Setup DNS CNAME (using AWS)
 * Open up the AWS **Route 53** console by navigating to **Services > Networking > Route 53** in the AWS Console header
 * Click on **Hosted Zones** then click on the domain name you want to use for Metabase
 * Click on the blue button **Create Record Set** (a new panel will open up on the right side of the page)
@@ -110,7 +116,7 @@
 	* Leave all other settings in their default values and click the **Create** button at the bottom of the page
 	* NOTE: after the record is created you must wait for your change to propagate on the internet.  this can take 5-10 minutes, sometimes longer.
 
-# Deploying New Versions
+### Deploying New Versions
 
 * Go to Elastic Beanstalk, select the **Metabase** application
 * Click on **Application Versions** on the left nav
