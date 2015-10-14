@@ -22,11 +22,11 @@ If you are using Docker containers and prefer to manage your Metabase installati
 
 ### Cloud Platforms
 
-#### [Running on AWS Elastic Beanstalk](installing-on-elastic-beanstalk.md)
+#### [Running on AWS Elastic Beanstalk](running-metabase-on-elastic-beanstalk.md)
 Step-by-step instructions on how to deploy Metabase on Elastic Beanstalk using RDS.  This is the most common way to run Metabase in production.
 
 #### [Running on Heroku](running-metabase-on-heroku.md)
-Currently in beta.  We've run Metabase on Heroku and it works just fine, but it's not hardened for production use just yet.
+Currently in beta.  We've run Metabase on Heroku and it works just fine, but it's not hardened for production use just yet.  If you're up for it then give it a shot and let us know how we can make it better!
 
 
 # <a name="troubleshooting-metabase"></a>Troubleshooting Common Problems
