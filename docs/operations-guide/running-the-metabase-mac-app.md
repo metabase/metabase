@@ -4,18 +4,18 @@ The Mac Application is the easiest way to setup Metabase locally on Mac OS X for
 
 ### Installing the Mac Application
 
-Start off by downloading the [Metabase Mac Application binary](http://www.metabase.com/start/mac.html) if you haven't done so already.  Once the download is complete go ahead and double click the file to open the installer.  You should see something like this:
+Start off by downloading the [Metabase Mac Application](http://www.metabase.com/start/mac.html) if you haven't done so already.  Once the download is complete go ahead and double click the file to open the installer.  You should see something like this:
 
 ![macinstaller](images/MacInstaller.png)
 
-Next simply click and drag the Metabase icon over to the Applications Folder icon.  That will install Metabase into your main Applications folder.
+Next simply click and drag the Metabase.app icon over to the `Applications` Folder icon on the left.  That will install Metabase into your main Applications folder.
 
 
 ### Launching Metabase
 
-To launch Metabase open the Mac Finder application and click on Applications on the left.  Then scroll down your applications list until you see Metabase.app and double click on it.
+To launch Metabase open the Mac Finder application and click on Applications on the left.  Then scroll down your applications list until you see Metabase.app and double click it.
 
-The Metabase application should now have opened and you should see the loading screen in the application window.
+The Metabase application should now have opened and you should see the loading screen in the application window with a spinner going.
 
 ![macloading](images/MacLoading.png)
 
