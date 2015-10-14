@@ -8,8 +8,8 @@ This is the core guide for how users can ask questions and share answers using M
 
 ## For Administrators
 
-#### [Installation Guide](installation-guide/start.md)
-This guide contains more detailed information about how to install Metabase for production use. It covers topics like SSL termination, deploying via Docker Containers vs Jars, as well as the tradeoffs involved.  
+#### [Operations Guide](operations-guide/start.md)
+This guide contains more detailed information about how to install Metabase for production use. It covers topics like SSL termination, deploying via Docker Containers vs Jars, as well as the tradeoffs involved.
 
 #### [Administration Guide](administration-guide/start.md)
 This guide is targetted towards power users and those who will be setting up and maintaining a Metabase installation. You'll learn how to set the instance up, common settings, how to manage user accounts and how to add databases. You'll also learn how to troubleshoot common problems with both Metabase as well as underlying databases or data warehouses it uses.
@@ -27,4 +27,4 @@ This is a comprehensive reference for all server functions in our codebase.
 ## Reference
 
 #### [Anonymous Information Collection Reference](information-collection.md)
-This describes the anonymous usage information we collect (if you opt-in) as well as why we collect it and the ways we use it. 
+This describes the anonymous usage information we collect (if you opt-in) as well as why we collect it and the ways we use it.
