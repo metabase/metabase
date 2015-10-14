@@ -255,6 +255,12 @@
   background-image: url('/app/img/no_understand.svg');
 }
 
+.QueryError-message {
+  /* IE flexbox align-items:center bug workaround */
+  /* https://github.com/philipwalton/flexbugs#2-column-flex-items-set-to-align-itemscenter-overflow-their-container */
+  max-width: 100%;
+}
+
 .QueryError-messageText {
   line-height: 1.4;
 }
