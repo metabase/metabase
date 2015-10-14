@@ -180,8 +180,7 @@ export default class SelectionModule extends Component {
 
     renderPopover(selection) {
         if(this.state.open) {
-            var itemListClasses = cx({
-                'SelectionItems': true,
+            var itemListClasses = cx("SelectionItems", {
                 'SelectionItems--open': this.state.open,
                 'SelectionItems--expanded': this.state.expanded
             });
@@ -198,7 +197,7 @@ export default class SelectionModule extends Component {
                 >
                     <div className={itemListClasses}>
                         {searchBar}
-                        <ul className="SelectionList">
+                        <ul className="SelectionList scroll-show scroll-y">
                             {this._listItems(selection)}
                         </ul>
                     </div>

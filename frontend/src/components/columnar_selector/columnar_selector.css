@@ -9,7 +9,6 @@
     min-width: 180px;
     min-height: 300px;
     max-height: 340px;
-    overflow-y: scroll;
     flex: 1;
 }
 

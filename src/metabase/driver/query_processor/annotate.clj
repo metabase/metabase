@@ -47,17 +47,26 @@
 (defn- flatten-collect-fields [form]
   (let [fields (transient [])]
     (clojure.walk/prewalk (fn [f]
-                            (if-not (= (type f) metabase.driver.query_processor.interface.Field) f
-                                    (do
-                                      (conj! fields f)
-                                      ;; HACK !!!
-                                      ;; Nested Mongo fields come back inside of their parent when you specify them in the fields clause
-                                      ;; e.g. (Q fields venue...name) will return rows like {:venue {:name "Kyle's Low-Carb Grill"}}
-                                      ;; Until we fix this the right way we'll just include the parent Field in the :query-fields list so the pattern
-                                      ;; matching works correctly.
-                                      ;; (This hack was part of the old annotation code too, it just sticks out better because it's no longer hidden amongst the others)
-                                      (when (:parent f)
-                                        (conj! fields (:parent f))))))
+                            (cond
+                              (= (type f) metabase.driver.query_processor.interface.Field)
+                              (do
+                                (conj! fields f)
+                                ;; HACK !!!
+                                ;; Nested Mongo fields come back inside of their parent when you specify them in the fields clause
+                                ;; e.g. (Q fields venue...name) will return rows like {:venue {:name "Kyle's Low-Carb Grill"}}
+                                ;; Until we fix this the right way we'll just include the parent Field in the :query-fields list so the pattern
+                                ;; matching works correctly.
+                                ;; (This hack was part of the old annotation code too, it just sticks out better because it's no longer hidden amongst the others)
+                                (when (:parent f)
+                                  (conj! fields (:parent f))))
+
+                              ;; For a DateTimeField we'll flatten it back into regular Field but include the :unit info for the frontend
+                              ;; Recurse so this fn will handle the resulting Field normally
+                              (= (type f) metabase.driver.query_processor.interface.DateTimeField)
+                              (recur (assoc (:field f)
+                                            :unit (:unit f)))
+
+                              :else f))
                           form)
     (->> (persistent! fields)
          distinct
