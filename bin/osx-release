@@ -5,13 +5,14 @@ use warnings;
 
 use Cwd 'getcwd';
 use File::Copy 'copy';
-use File::Copy::Recursive 'rcopy'; # CPAN
+use File::Copy::Recursive 'rcopy';   # CPAN
 use File::Path 'remove_tree';
 use File::stat 'stat';
 use JSON 'encode_json', 'from_json'; # CPAN
 use Readonly;                        # CPAN
-use String::Util 'trim';           # CPAN
-use WWW::Curl::Simple;             # CPAN
+use String::Util 'trim';             # CPAN
+use Text::Caml;                      # CPAN
+use WWW::Curl::Simple;               # CPAN
 
 use Metabase::Util;
 
@@ -149,24 +150,14 @@ sub generate_appcast {
     my $aws_bucket  = config('awsBucket')  or return;
     my $signature   = generate_signature() or return;
 
-    Readonly my $appcast_template => get_file_or_die('bin/templates/appcast.xml.template');
-    Readonly my $filesize         => stat(get_file_or_die($zipfile))->size;
-    Readonly my $version          => version();
-
-    open(my $in,  '<', $appcast_template) or die "Unable to read $appcast_template: $!";
     open(my $out, '>', $appcast) or die "Unable to write to $appcast: $!";
-
-    print "SIGNATURE: '$signature'\n";
-
-    while ( <$in> ) {
-        s/{{VERSION}}/$version/;
-        s/{{SIGNATURE}}/$signature/;
-        s/{{LENGTH}}/$filesize/;
-        s/{{S3_REGION}}/$aws_region/;
-        s/{{S3_BUCKET}}/$aws_bucket/;
-        print $out $_;
-    }
-
+    print $out Text::Caml->new->render_file(get_file_or_die('bin/templates/appcast.xml.template'), {
+        VERSION   => version(),
+        SIGNATURE => $signature,
+        LENGTH    => stat(get_file_or_die($zipfile))->size,
+        S3_REGION => $aws_region,
+        S3_BUCKET => $aws_bucket
+    });
     close $out;
 }
 
