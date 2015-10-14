@@ -34,6 +34,8 @@ At this point your ready to go!  You can access your new Metabase server on port
 
 Note that in the default configuration Metabase will use a local H2 database for storing all its own application data.  This is meant for simple evaluations or personal installations, but if you are running Metabase for a team we recommend you upgrade to a more robust SQL server such as Postgres.  Continue reading for details on how to do that.
 
+Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](/docs/setting-up-metabase.md).
+
 
 ### The Metabase Application Database
 

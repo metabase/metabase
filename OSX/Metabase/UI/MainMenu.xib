@@ -24,7 +24,6 @@
                 <outlet property="backButtonCell" destination="lEo-fP-VyB" id="Liq-b8-nP9"/>
                 <outlet property="forwardButtonCell" destination="uF3-qn-F0a" id="eR7-ml-w4X"/>
                 <outlet property="linkButtonCell" destination="D9P-hg-lf8" id="G2L-cA-69g"/>
-                <outlet property="loadingView" destination="rgN-Vh-1hF" id="NCM-3X-yhL"/>
                 <outlet property="refreshButtonCell" destination="SSf-hM-lhY" id="xJE-83-OZr"/>
                 <outlet property="titleBarView" destination="Pem-Bq-pDs" id="nGc-wz-YES"/>
                 <outlet property="view" destination="EiT-Mj-1SZ" id="hOv-v9-VQo"/>
@@ -163,18 +162,18 @@
                 </menuItem>
             </items>
         </menu>
-        <window title="Metabase" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" animationBehavior="default" id="QvC-M9-y7g" customClass="INAppStoreWindow">
+        <window title="Metabase" allowsToolTipsWhenApplicationIsInactive="NO" releasedWhenClosed="NO" animationBehavior="default" id="QvC-M9-y7g" customClass="INAppStoreWindow">
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
-            <rect key="contentRect" x="335" y="390" width="1200" height="900"/>
+            <rect key="contentRect" x="335" y="390" width="1473" height="901"/>
             <rect key="screenRect" x="0.0" y="0.0" width="2560" height="1418"/>
             <value key="minSize" type="size" width="1000" height="800"/>
             <view key="contentView" canDrawConcurrently="YES" id="EiT-Mj-1SZ">
-                <rect key="frame" x="0.0" y="0.0" width="1200" height="900"/>
+                <rect key="frame" x="0.0" y="0.0" width="1473" height="901"/>
                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                 <subviews>
                     <webView canDrawConcurrently="YES" translatesAutoresizingMaskIntoConstraints="NO" id="mhE-X5-FF6">
-                        <rect key="frame" x="0.0" y="0.0" width="1200" height="900"/>
+                        <rect key="frame" x="0.0" y="0.0" width="1473" height="901"/>
                         <autoresizingMask key="autoresizingMask"/>
                         <webPreferences key="preferences" defaultFontSize="12" defaultFixedFontSize="12" plugInsEnabled="NO" javaEnabled="NO">
                             <nil key="identifier"/>
@@ -184,22 +183,11 @@
                             <outlet property="resourceLoadDelegate" destination="8au-ff-PAw" id="Rnd-KA-IRb"/>
                         </connections>
                     </webView>
-                    <imageView canDrawConcurrently="YES" horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="rgN-Vh-1hF">
-                        <rect key="frame" x="472" y="322" width="256" height="256"/>
-                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                        <constraints>
-                            <constraint firstAttribute="height" constant="256" id="Wi3-zz-jaD"/>
-                            <constraint firstAttribute="width" constant="256" id="zOt-ub-YPO"/>
-                        </constraints>
-                        <imageCell key="cell" refusesFirstResponder="YES" alignment="left" animates="YES" imageScaling="proportionallyDown" image="Logo_1024" id="wFY-0Y-m5p"/>
-                    </imageView>
                 </subviews>
                 <constraints>
                     <constraint firstItem="mhE-X5-FF6" firstAttribute="top" secondItem="EiT-Mj-1SZ" secondAttribute="top" id="AbJ-I7-UJl"/>
                     <constraint firstItem="mhE-X5-FF6" firstAttribute="leading" secondItem="EiT-Mj-1SZ" secondAttribute="leading" id="JBU-I1-v0p"/>
                     <constraint firstAttribute="bottom" secondItem="mhE-X5-FF6" secondAttribute="bottom" id="OA1-e5-N7X"/>
-                    <constraint firstAttribute="centerY" secondItem="rgN-Vh-1hF" secondAttribute="centerY" id="fMi-CB-Ih4"/>
-                    <constraint firstAttribute="centerX" secondItem="rgN-Vh-1hF" secondAttribute="centerX" id="v6L-mJ-Sh5"/>
                     <constraint firstAttribute="trailing" secondItem="mhE-X5-FF6" secondAttribute="trailing" id="z4U-O6-LWv"/>
                 </constraints>
             </view>
@@ -302,7 +290,6 @@
         </customView>
     </objects>
     <resources>
-        <image name="Logo_1024" width="1024" height="1024"/>
         <image name="back_icon" width="10" height="15"/>
         <image name="forward_icon" width="10" height="15"/>
         <image name="link_icon" width="16" height="15"/>

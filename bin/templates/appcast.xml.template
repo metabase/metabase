@@ -5,7 +5,7 @@
       Metabase Changelog
     </title>
     <link>
-      https://{{S3_REGION}}.amazonaws.com/{{S3_BUCKET}}/appcast.xml
+      https://s3-{{S3_REGION}}.amazonaws.com/{{S3_BUCKET}}/appcast.xml
     </link>
     <language>
       en
@@ -15,9 +15,9 @@
         Version {{VERSION}}
       </title>
       <sparkle:releaseNotesLink>
-        https://{{S3_REGION}}.amazonaws.com/{{S3_BUCKET}}/release-notes.html
+        https://s3-{{S3_REGION}}.amazonaws.com/{{S3_BUCKET}}/release-notes.html
       </sparkle:releaseNotesLink>
-      <enclosure url="https://{{S3_REGION}}.amazonaws.com/{{S3_BUCKET}}/Metabase.zip"
+      <enclosure url="https://s3-{{S3_REGION}}.amazonaws.com/{{S3_BUCKET}}/Metabase.zip"
                  sparkle:version="{{VERSION}}"
                  length="{{LENGTH}}"
                  type="application/octet-stream"

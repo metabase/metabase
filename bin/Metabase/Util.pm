@@ -18,13 +18,13 @@ our @EXPORT = qw(config
                  artifact);
 
 my $config_file = getcwd() . '/bin/config.json';
-die "Missing config file: $config_file\n" .
-    "Please copy $config_file.template, and edit it as needed before proceeding.\n"
-    unless (-e $config_file);
-my $config = from_json(`cat $config_file`);
+warn "Missing config file: $config_file\n" .
+     "Please copy $config_file.template, and edit it as needed.\n"
+     unless (-e $config_file);
+my $config = from_json(`cat $config_file`) if -e $config_file;
 
 sub config {
-    return $config->{ $_[0] };
+    return $config ? $config->{ $_[0] } : '';
 }
 
 sub announce {
