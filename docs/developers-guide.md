@@ -1,9 +1,9 @@
 
-> **This guide will teach you:**  
-> How to compile your own copy of Metabase  
-> How to set up a development environment  
-> How to run the Metabase Server  
-> How to contribute back to the Metabase project  
+> **This guide will teach you:**
+> How to compile your own copy of Metabase
+> How to set up a development environment
+> How to run the Metabase Server
+> How to contribute back to the Metabase project
 
 
 [![Circle CI](https://circleci.com/gh/metabase/metabase-init.svg?style=svg&circle-token=3ccf0aa841028af027f2ac9e8df17ce603e90ef9)](https://circleci.com/gh/metabase/metabase-init)
@@ -24,6 +24,10 @@ The entire Metabase application is compiled and assembled into a single .jar fil
     ./bin/build
 
 After running the build script simply look in `target/uberjar` for the output .jar file and you are ready to go.
+
+## Building the OS X App
+
+See [this guide](developers-guide-osx.md).
 
 
 # Development Environment
@@ -120,7 +124,7 @@ Run unit tests with
 
 or a specific test with
 
-    lein test metabase.api.session-test  
+    lein test metabase.api.session-test
 
 By default, the tests only run against the `h2` dataset (built-in test database). You can specify which datasets/drivers to run tests against with the env var `MB_TEST_DATASETS`:
 
