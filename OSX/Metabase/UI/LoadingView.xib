@@ -14,19 +14,11 @@
                 <imageView canDrawConcurrently="YES" horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="cZb-9N-gBv" userLabel="outerImageView">
                     <rect key="frame" x="6" y="6" width="188" height="188"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                    <constraints>
-                        <constraint firstAttribute="width" constant="188" id="rhk-Jv-lfh"/>
-                        <constraint firstAttribute="height" constant="188" id="zc5-5V-71M"/>
-                    </constraints>
                     <imageCell key="cell" refusesFirstResponder="YES" alignment="left" animates="YES" image="Loading_View_Outer" id="gdw-zk-O24"/>
                 </imageView>
                 <imageView canDrawConcurrently="YES" horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="Ppb-yU-gW5" userLabel="innerImageView">
-                    <rect key="frame" x="40" y="40" width="121" height="121"/>
+                    <rect key="frame" x="42" y="42" width="116" height="116"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                    <constraints>
-                        <constraint firstAttribute="height" constant="121" id="pAT-Hi-rz9"/>
-                        <constraint firstAttribute="width" constant="121" id="zrZ-xr-I0a"/>
-                    </constraints>
                     <imageCell key="cell" refusesFirstResponder="YES" alignment="left" animates="YES" image="Loading_View_Inner" id="umY-yg-KA6"/>
                 </imageView>
             </subviews>
@@ -42,7 +34,7 @@
         </customView>
     </objects>
     <resources>
-        <image name="Loading_View_Inner" width="121" height="121"/>
+        <image name="Loading_View_Inner" width="116" height="116"/>
         <image name="Loading_View_Outer" width="188" height="188"/>
     </resources>
 </document>
