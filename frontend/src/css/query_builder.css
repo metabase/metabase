@@ -73,7 +73,8 @@
 
 .Query-filters {
     display: flex;
-    overflow-x: scroll;
+    overflow-x: auto;
+    overflow-y: hidden;
     max-width: 400px;
     white-space: nowrap;
     height: 55px;
@@ -121,11 +122,11 @@
 
 .SelectionList {
     padding-top: 5px;
+    overflow-y: auto;
+    max-height: 340px;
 }
 
 .SelectionItems {
-    overflow-y: scroll;
-    max-height: 340px;
     max-width: 320px;
 }
 
