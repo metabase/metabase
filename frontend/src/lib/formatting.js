@@ -1,6 +1,7 @@
 import d3 from "d3";
 import inflection from "inflection";
 import moment from "moment";
+import React from "react";
 
 var precisionNumberFormatter = d3.format(".2r");
 var fixedNumberFormatter = d3.format(",.f");
@@ -25,32 +26,44 @@ export function formatScalar(scalar) {
     }
 }
 
+function formatMajorMinor(major, minor, majorWidth = 3) {
+    return (
+        <span>
+            <span style={{minWidth: majorWidth + "em"}} className="inline-block text-right text-bold">{major}</span>
+            {" - "}
+            <span>{minor}</span>
+        </span>
+    );
+}
+
 export function formatWithUnit(value, unit) {
+    let m = moment(value);
     switch (unit) {
-        case "hour": // 2015-01-01 12am
-            return moment(value).format("YYYY-MM-DD h A");
-        case "day": // 2015-01-01
-            return moment(value).format("YYYY-MM-DD");
-        // case "week":
-        case "month": // 2015-01
-            return moment(value).format("YYYY-MM");
+        case "hour": // 12 AM - January 1, 2015
+            return formatMajorMinor(m.format("h A"), m.format("MMMM D, YYYY"));
+        case "day": // January 1, 2015
+            return m.format("MMMM D, YYYY");
+        case "week": // 1st - 2015
+            return formatMajorMinor(m.format("wo"), m.format("YYYY"));
+        case "month": // January 2015
+            return <div><span className="text-bold">{m.format("MMMM")}</span> {m.format("YYYY")}</div>;
         case "year": // 2015
             return String(value);
-        case "quarter": // 2015 Q1
-            return moment(value).format("YYYY [Q]Q");
-        case "hour-of-day": // 12 am
+        case "quarter": // Q1 - 2015
+            return formatMajorMinor(m.format("[Q]Q"), m.format("YYYY"), 0);
+        case "hour-of-day": // 12 AM
             return moment().hour(value).format("h A");
         case "day-of-week": // Sunday
             return moment().day(value - 1).format("dddd");
-        case "week-of-year": // 1 2 ... 52 53
-            return String(value);
+        case "week-of-year": // 1st
+            return moment().week(value).format("wo");
         case "month-of-year": // January
             return moment().month(value - 1).format("MMMM");
     }
     return String(value);
 }
 
-export function formatCell(value, column) {
+export function formatValue(value, column) {
     if (value == undefined) {
         return null
     } else if (column && column.unit != null) {
@@ -69,6 +82,12 @@ export function formatCell(value, column) {
     } else {
         return String(value);
     }
+}
+
+export function formatValueString(value, column) {
+    var e = document.createElement("div");
+    React.render(<div>{formatValue(value, column)}</div>, e);
+    return e.textContent;
 }
 
 export function singularize(...args) {

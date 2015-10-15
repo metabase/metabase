@@ -6,7 +6,7 @@ import Popover from "metabase/components/Popover.jsx";
 
 import MetabaseAnalytics from '../lib/analytics';
 import DataGrid from "metabase/lib/data_grid";
-import { formatCell } from "metabase/lib/formatting";
+import { formatValue, capitalize } from "metabase/lib/formatting";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -164,7 +164,7 @@ export default class QueryVisualizationTable extends Component {
     }
 
     cellRenderer(cellData, cellDataKey, rowData, rowIndex, columnData, width) {
-        cellData = cellData != null ? formatCell(cellData, this.props.data.cols[cellDataKey]) : null;
+        cellData = cellData != null ? formatValue(cellData, this.props.data.cols[cellDataKey]) : null;
 
         var key = 'cl'+rowIndex+'_'+cellDataKey;
         if (this.props.cellIsClickableFn(rowIndex, cellDataKey)) {
@@ -216,11 +216,15 @@ export default class QueryVisualizationTable extends Component {
             colVal = (column && column.display_name && column.display_name.toString()) ||
                      (column && column.name && column.name.toString());
 
+        if (column.unit) {
+            colVal += ": " + capitalize(column.unit.replace(/-/g, " "))
+        }
+
         if (!colVal && this.props.pivot && columnIndex !== 0) {
             colVal = "Unset";
         }
 
-        var headerClasses = cx('MB-DataTable-header align-center', {
+        var headerClasses = cx('MB-DataTable-header cellData align-center', {
             'MB-DataTable-header--sorted': (this.props.sort && (this.props.sort[0][0] === column.id)),
         });
 
