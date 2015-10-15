@@ -28,7 +28,7 @@ export function formatScalar(scalar) {
 export function formatWithUnit(value, unit) {
     switch (unit) {
         case "hour": // 2015-01-01 12am
-            return moment(value).format("YYYY-MM-DD ha");
+            return moment(value).format("YYYY-MM-DD h A");
         case "day": // 2015-01-01
             return moment(value).format("YYYY-MM-DD");
         // case "week":
@@ -38,6 +38,8 @@ export function formatWithUnit(value, unit) {
             return String(value);
         case "quarter": // 2015 Q1
             return moment(value).format("YYYY [Q]Q");
+        case "hour-of-day": // 12 am
+            return moment().hour(value).format("h A");
         case "day-of-week": // Sunday
             return moment().day(value - 1).format("dddd");
         case "week-of-year": // 1 2 ... 52 53
