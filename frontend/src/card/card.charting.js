@@ -199,7 +199,7 @@ function applyChartTimeseriesXAxis(chart, card, coldefs, data) {
 
     // set the axis label
     if (x.labels_enabled) {
-        chart.xAxisLabel((x.title_text || null) || coldefs[0].name);
+        chart.xAxisLabel((x.title_text || null) || coldefs[0].display_name);
         chart.renderVerticalGridLines(x.gridLine_enabled);
 
         if (coldefs[0] && coldefs[0].unit) {
@@ -314,7 +314,7 @@ function applyChartOrdinalXAxis(chart, card, coldefs, data, minPixelsPerTick) {
         xAxis = chart.xAxis();
 
     if (x.labels_enabled) {
-        chart.xAxisLabel((x.title_text || null) || coldefs[0].name);
+        chart.xAxisLabel((x.title_text || null) || coldefs[0].display_name);
         chart.renderVerticalGridLines(x.gridLine_enabled);
         xAxis.ticks(data.length);
         adjustTicksIfNeeded(xAxis, chart.width(), minPixelsPerTick);
@@ -352,7 +352,7 @@ function applyChartYAxis(chart, card, coldefs, data, minPixelsPerTick) {
         yAxis = chart.yAxis();
 
     if (y.labels_enabled) {
-        chart.yAxisLabel((y.title_text || null) || coldefs[1].name);
+        chart.yAxisLabel((y.title_text || null) || coldefs[1].display_name);
         chart.renderHorizontalGridLines(true);
 
         if (y.min || y.max) {
