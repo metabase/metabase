@@ -37,7 +37,7 @@ Sometimes Metabase will fail to complete its startup due to a database lock that
 
 When this happens, go to a terminal where Metabase is installed and run:
 
-    java -jar metabase-standalone.jar migrate release-locks
+    java -jar metabase.jar migrate release-locks
 
 in the command line to manually clear the locks.  Then restart your Metabase instance.
 
