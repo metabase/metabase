@@ -42,7 +42,7 @@ When your environment type settings look like the above then go ahead and click 
 
 ### Application Version
 
-The application version describes the exact binary you wish to deploy to your Elastic Beanstalk application.  Metabaes provides a pre-built AWS Elastic Beanstalk application version which can be linked to directly.  Simply enter the following url in the `S3 URL` textbox:
+The application version describes the exact binary you wish to deploy to your Elastic Beanstalk application.  Metabase provides a pre-built AWS Elastic Beanstalk application version which can be linked to directly.  Simply enter the following url in the `S3 URL` textbox:
 
 https://s3.amazonaws.com/downloads.metabase.com/v0.12.0/aws-elastic-beanstalk.zip
 
@@ -70,7 +70,7 @@ Click `Next` to continue.
 
 To run Metabase in a cloud environment of any kind we highly recommend using an independent database server with high availability such as Amazon RDS.  So for standard deployments we will choose to create an RDS instance with our Elastic Beanstalk application.
 
-NOTE: it's possible to skip this step if you wish, however this will force Metabase to use a local H2 database file on your application server and there will be no way to backup and maintain that database, so when your instance is restarted for any reason you'll use all your Metabase data.  If you are just doing a quick trial of Metabase that may be okay, but otherwise we recommend against this.
+NOTE: it's possible to skip this step if you wish, however this will force Metabase to use a local H2 database file on your application server and there will be no way to backup and maintain that database, so when your instance is restarted for any reason you'll lose all your Metabase data.  If you are just doing a quick trial of Metabase that may be okay, but otherwise we recommend against this.
 
 ##### Using Metabase in a VPC
 
@@ -88,7 +88,7 @@ Once you've made your choices click `Next` and lets move on
 There are quite a few choices available here so we'll go through each of them individually.
 
 * `Instance type` is for picking the size of AWS instance you want to run.  Any size is fine but we recommend `t2.small` for most uses.
-	* NOTE: the default setting is often `t1.micro` which is an old instance class.  we recommend at least changing this to `t2.micro`
+	* Remember that you cannot choose a t2.* instance type if you did not check the box to run in a VPC.
 * `EC2 key pair` is only needed if you want to ssh into your instance directly.  We recommend leaving this out.
 * Enter an `Email address` to get notifications about your deployments and changes to your application.  This is a very simple way to keep some tabs on your Metabase environment, so we recommend putting a valid email in here.
 * The `Application health check URL` is how Elastic Beanstalk knows when the application is ready to run, you must set this to `/api/health`
@@ -113,7 +113,7 @@ Here you'll make the appropriate choices to configure your RDS database to work 
 * `Snapshot` should be left as None.
 * `DB engine` must be set to `postgres`.  Currently this is the only RDS database type that Metabase supports.
 * `DB engine version` can simply be left on the default, which should be the latest version.
-* For `Instance class` you can choose any size, we recommend `db.t2.small` or bigger for production installs.
+* For `Instance class` you can choose any size, we recommend `db.t2.small` or bigger for production installs.  Metabase is pretty efficient so there is no need to make this a big instance.
 * You can safely leave `Allocated storage` to the default size.
 * Pick a `Username` and `Password` for your database.  This is just for reference if you need to connect to your db directly for some reason, but generally this should not be necessary.  These settings will be automatically made available to your Metabase instance, so you will not need to put them in anywhere manually.
 * You can safely leave the `Retention setting` as `Create snapshot`

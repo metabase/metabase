@@ -9,7 +9,7 @@ Before doing anything you should make sure you have a [Heroku](http://www.heroku
 
 If you've got a Heroku account then all there is to do is follow this one-click deployment button
 
-[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/metabase/metabase-deploy/tree/v0.0.0.7)
+[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/metabase/metabase-deploy)
 
 This will launch a Heroku deployment using a github repository that Metabase maintains.  
 

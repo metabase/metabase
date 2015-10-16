@@ -2,9 +2,14 @@
 
 To run the Metabase jar file you need to have Java installed on your system.  Currently Metabase requires Java 6 or higher and will work on either the OpenJDK or Oracle JDK.  Note that the Metabase team prefers to stick with open source solutions where possible, so we use the OpenJDK for our Metabase instances.
 
+### Download Metabase
+
+If you haven't done so already the first thing you need to do is [Download Metabase](http://www.metabase.com/start/jar.html).  Simply save the .jar file to a folder on your system where you wish to run Metabase.
+
+
 ### Verify Java is installed
 
-Before you can do anything you must verify that you have Java installed.  To check that you have a working java runtime, go to a terminal and type:
+Before you can launch the application you must verify that you have Java installed.  To check that you have a working java runtime, go to a terminal and type:
 
     java -version
 
@@ -14,7 +19,7 @@ You should see output such as:
     Java (TM) SE Runtime Environment (build 1.6.0_65-b14-466.1-11M4716)
     Java HotSpot (TM) 64-Bit Server VM (build 20.65-b04-466.1, mixed mode)
 
-If you did not see the output above and instead saw either an error or your Java version is less than 1.6, then you need to install the Java JDK.
+If you did not see the output above and instead saw either an error or your Java version is less than 1.6, then you need to install the Java Runtime.
 
 [OpenJDK Downloads](http://openjdk.java.net/install/)  
 [Oracle's Java Downloads](http://www.oracle.com/technetwork/java/javase/downloads/index.html)
@@ -22,7 +27,7 @@ If you did not see the output above and instead saw either an error or your Java
 
 ### Launching Metabase
 
-Now that you have a working JDK, you can now run the jar from a terminal with:
+Now that you have a working Java Runtime, you can now run the jar from a terminal with:
 
     java -jar metabase-standalone.jar
 
@@ -37,7 +42,7 @@ It's that simple.  This will start the Metabase application using all of the def
 
 At this point your ready to go!  You can access your new Metabase server on port 3000, most likely at [localhost:3000](http://localhost:3000)
 
-Note that in the default configuration Metabase will use a local H2 database for storing all its own application data.  This is meant for simple evaluations or personal installations, but if you are running Metabase for a team we recommend you upgrade to a more robust SQL server such as Postgres.  Continue reading for details on how to do that.
+Note that in the default configuration Metabase will use a local H2 database for storing all its own application data.  This is meant for simple evaluations or personal use, so if you want to run Metabase for a team we recommend you upgrade to a more robust SQL server such as Postgres.  See below for details on how to do that.
 
 Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](/docs/setting-up-metabase.md).
 

@@ -48,8 +48,5 @@ in the command line to manually clear the locks.  Then restart your Metabase ins
 
 Regardless of how you deploy Metabase, it is *strongly* recommended that you use HTTPS for all traffic. If you are using Elastic Beanstalk or AWS, we recommend you use ELB and terminate the HTTPS connection there. Otherwise, you can use nginx as a reverse proxy and terminate there.
 
-#### [Manually running Database Migrations](manually-running-metabase-migrations.md)
-If you prefer to have full control over the executing of database schema changes then you'll want to read about Metabase's database migrations and how to run them manually.
-
 #### [Backing up your Metabase](backing-up-the-metabase-database.md)
 Better safe than sorry we always say.  Simple instructions to help with backing up a Metabase instance.
