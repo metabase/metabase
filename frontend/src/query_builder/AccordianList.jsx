@@ -62,15 +62,16 @@ export default class AccordianList extends Component {
         }
     }
 
-    renderItem(item) {
+    renderItem(item, itemIndex) {
         if (this.props.renderItem) {
-            return this.props.renderItem(item);
+            return this.props.renderItem(item, itemIndex);
         } else {
             return (
                 <div className="flex-full flex">
-                    <a className="flex-full flex align-center px2 py1 cursor-pointer"
+                    <a className="flex-full flex align-center px1 py1 cursor-pointer"
                          onClick={this.onChange.bind(this, item)}
                     >
+                        { this.renderItemIcon(item, itemIndex) }
                         <h4 className="List-item-title ml2">{item.name}</h4>
                     </a>
                 </div>
@@ -78,9 +79,17 @@ export default class AccordianList extends Component {
         }
     }
 
+    renderItemIcon(item, itemIndex) {
+        if (this.props.renderItemIcon) {
+            return this.props.renderItemIcon(item, itemIndex);
+        } else {
+            return null;
+        }
+    }
+
     renderSectionIcon(section, sectionIndex) {
         if (this.props.renderSectionIcon) {
-            return this.props.renderSectionIcon(section, sectionIndex);
+            return <span className="mr2">{this.props.renderSectionIcon(section, sectionIndex)}</span>;
         } else {
             return null;
         }
@@ -93,13 +102,13 @@ export default class AccordianList extends Component {
         return (
             <div className={this.props.className} style={{width: '300px'}}>
                 {sections.map((section, sectionIndex) =>
-                    <section key={sectionIndex}>
+                    <section key={sectionIndex} className={cx("List-section", { "List-section--open": openSection === sectionIndex })}>
                         { section.name != null ?
                             <div className="p1 border-bottom">
                                 { sections.length > 1 ?
-                                    <div className="List-section-header px2 py1 cursor-pointer full flex align-center" onClick={() => this.toggleSection(sectionIndex)}>
-                                        { this.renderSectionIcon(section, sectionIndex) }
-                                        <h4>{section.name}</h4>
+                                    <div className="List-section-header px1 py1 cursor-pointer full flex align-center" onClick={() => this.toggleSection(sectionIndex)}>
+                                        <span className="List-section-icon">{ this.renderSectionIcon(section, sectionIndex) }</span>
+                                        <h4 className="List-section-title">{section.name}</h4>
                                         <span className="flex-align-right">
                                             <Icon name={openSection === sectionIndex ? "chevronup" : "chevrondown"} width={12} height={12} />
                                         </span>
