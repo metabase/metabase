@@ -9,13 +9,11 @@ This guide is for advanced users and those who will be setting up and maintainin
 #### [Operations Guide](operations-guide/start.md)
 This guide contains more detailed information about how to install Metabase for production use. It covers topics like SSL termination, deploying via Docker Containers vs. Jars, as well as the tradeoffs involved.
 
+
 ## For Developers
 
 #### [Developers Guide](developers-guide.md)
 This guide covers how to contribute back to the Metabase open source project. It includes setting up a development environment, running tests, and the contribution and product process Metabase follows.
-
-#### [API Reference](uberdoc.html)
-This is a comprehensive reference for all server functions in our codebase.
 
 
 ## Reference
