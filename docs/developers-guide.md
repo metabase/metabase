@@ -6,8 +6,6 @@
 > How to contribute back to the Metabase project
 
 
-[![Circle CI](https://circleci.com/gh/metabase/metabase-init.svg?style=svg&circle-token=3ccf0aa841028af027f2ac9e8df17ce603e90ef9)](https://circleci.com/gh/metabase/metabase-init)
-
 # Install Prerequisites
 
 These are the set of tools which are required in order to complete any build of the Metabase code.  Follow the links to download and install them on your own before continuing.
@@ -191,7 +189,7 @@ Will give you a list of out-of-date dependencies.
 
 Once's this repo is made public, this Clojars badge will work and show the status as well:
 
-[![Dependencies Status](http://jarkeeper.com/metabase/metabase-init/status.png)](http://jarkeeper.com/metabase/metabase-init)
+[![Dependencies Status](http://jarkeeper.com/metabase/metabase-init/status.png)](http://jarkeeper.com/metabase/metabase)
 
 
 ## Documentation
