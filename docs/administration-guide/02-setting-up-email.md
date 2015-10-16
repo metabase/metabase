@@ -41,4 +41,4 @@ You should see this form:
 
 ---
 ## Next: editing your metadata
-Taking just a few minutes to edit and add info to your database’s metadata can greatly enhance your experience with Metabase. Let’s learn [how to edit your metadata](03-data-model.md).
+Taking just a few minutes to edit and add info to your database’s metadata can greatly enhance your experience with Metabase. Let’s learn [how to edit your metadata](03-metadata-editing.md).
