@@ -1,19 +1,214 @@
 # Running Metabase on AWS Elastic Beanstalk
 
-### Create a New Application
-
-Elastic Beanstalk is organized into Applications and Environments, so to get started we must create a new Application.  This step is easy, so let's just jump in.
-
-Navigate to the AWS Console for Elastic Beanstalk and click on the `Create Application` button.
-
-Use the application name `Metabase` and continue.
-
-Next, create a new Application Version which is what contains the necessary instructions for Elastic Beanstalk to deploy and run the application.  If you haven't done so already you can download a ready made Elastic Beanstalk application from our downloads site:
-
-Remember that each application version will represent a new deployment of the application, so its best to give accurate labels here.
+The Metabase team runs a number of production installations on AWS using Elastic Beanstalk and currently recommend it as the preferred choice for production deployments.  Below is a detailed guide to installing Metabase on Elastic Beanstalk.
 
 
-### Upload a Server Certificate (optional)
+### Quick Launch
+
+Metabase provides an Elastic Beanstalk pre-configured launch url to help new installations getting started.  If you are starting fresh we recommend you follow this link to begin creating the Elastic Beanstalk deployment with a few choices pre-filled.
+
+[Launch Metabase on Elastic Beanstalk](https://console.aws.amazon.com/elasticbeanstalk/home?region=us-east-1#/newApplication?applicationName=Metabase&tierName=WebServer&solutionStackName=Docker&sourceBundleUrl=https%3A%2F%2Fs3.amazonaws.com%2Fdownloads.metabase.com%2Fv0.12.0%2Fmetabase-aws-eb.zip&instanceType=t2.small&withRds=true&rdsDBEngine=postgres&rdsDBAllocatedStorage=10&rdsDBInstanceClass=db.t2.small&rdsMultiAZDatabase=false&rdsDBDeletionPolicy=Snapshot)
+
+The rest of this guide will follow each phase of the Elastic Beanstalk setup step-by-step.
+
+
+### New Application
+
+Elastic Beanstalk is organized into Applications and Environments, so to get started we must create a new Application.  Enter the application name `Metabase` and continue by clicking `Next`.
+
+![ebappinfo](images/EBAppInfo.png)
+
+
+### New Environment
+
+Elastic Beanstalk provides 2 choices for environments within an Application, we want to pick `Create web server` by clicking the button on the right.
+
+![ebnewenv](images/EBNewEnv.png)
+
+
+### Environment Type
+
+For the environment settings we want to make the following selections:
+
+ * Predefined configuration: `Generic > Docker`
+ * Environment type: `Load balancing, auto scaling`
+
+![ebenvtype](images/EBEnvType.png)
+
+This will run our Metabase application using  [Docker](https://www.docker.com) under the hood.  This will use the official Metabase Docker image which is [published on Dockerhub](https://hub.docker.com/r/metabase/metabase/)
+
+When your environment type settings look like the above then go ahead and click `Next`
+
+
+### Application Version
+
+The application version describes the exact binary you wish to deploy to your Elastic Beanstalk application.  Metabase provides a pre-built AWS Elastic Beanstalk application version which can be linked to directly.  Simply enter the following url in the `S3 URL` textbox:
+
+https://s3.amazonaws.com/downloads.metabase.com/v0.12.0/aws-elastic-beanstalk.zip
+
+Leave all the settings under Deployment Limits on their defaults.  These settings won't impact Metabase.
+
+![ebappversion](images/EBAppVersion.png)
+
+
+### Environment Information
+
+Here you are given a chance to pick a name and url that you want to use for running Metabase instance.  Feel free to get creative, just remember that the URL for your Metabase instance must be unique across all AWS Elastic Beanstalk deployments, so you'll have to pick something nobody else is already using.
+
+We often recommend something like `mycompanyname-metabase`
+
+![ebenvinfo](images/EBEnvInfo.png)
+
+And of course if you don't care about the URL you can simply leave it to whatever Amazon inputs by default.
+
+Click `Next` to continue.
+
+
+### Additional Resources
+
+##### Using RDS with metabase
+
+To run Metabase in a cloud environment of any kind we highly recommend using an independent database server with high availability such as Amazon RDS.  So for standard deployments we will choose to create an RDS instance with our Elastic Beanstalk application.
+
+NOTE: it's possible to skip this step if you wish, however this will force Metabase to use a local H2 database file on your application server and there will be no way to backup and maintain that database, so when your instance is restarted for any reason you'll lose all your Metabase data.  If you are just doing a quick trial of Metabase that may be okay, but otherwise we recommend against this.
+
+##### Using Metabase in a VPC
+
+Newer AWS accounts are encouraging the use of VPC for deployments and in general we thing it's simplest to follow that best practice.
+
+If you prefer not to use a VPC that is fine, however one thing to note is that some EC2 instance types (t2.* in specific) are not available outside of a VPC, so if you choose to not use a VPC then make sure and pick appropriate instance types.
+
+![ebaddresources](images/EBAddResources.png)
+
+Once you've made your choices click `Next` and lets move on
+
+
+### Configuration Details
+
+There are quite a few choices available here so we'll go through each of them individually.
+
+* `Instance type` is for picking the size of AWS instance you want to run.  Any size is fine but we recommend `t2.small` for most uses.
+	* Remember that you cannot choose a t2.* instance type if you did not check the box to run in a VPC.
+* `EC2 key pair` is only needed if you want to ssh into your instance directly.  We recommend leaving this out.
+* Enter an `Email address` to get notifications about your deployments and changes to your application.  This is a very simple way to keep some tabs on your Metabase environment, so we recommend putting a valid email in here.
+* The `Application health check URL` is how Elastic Beanstalk knows when the application is ready to run, you must set this to `/api/health`
+* The remainder of the options can all be safely left to their default values
+
+![ebconfigdetails](images/EBConfigDetails.png)
+
+Once everything looks good then click `Next`
+
+
+### Environment Tags
+
+You can safely skip this page and simply click `Next`
+
+
+### RDS Configuration
+
+If you clicked the checkbox to create an RDS instance you will come to this section, otherwise you can move on.
+
+Here you'll make the appropriate choices to configure your RDS database to work with Metabase.  Again, we cover each choice one-by-one:
+
+* `Snapshot` should be left as None.
+* `DB engine` must be set to `postgres`.  Currently this is the only RDS database type that Metabase supports.
+* `DB engine version` can simply be left on the default, which should be the latest version.
+* For `Instance class` you can choose any size, we recommend `db.t2.small` or bigger for production installs.  Metabase is pretty efficient so there is no need to make this a big instance.
+* You can safely leave `Allocated storage` to the default size.
+* Pick a `Username` and `Password` for your database.  This is just for reference if you need to connect to your db directly for some reason, but generally this should not be necessary.  These settings will be automatically made available to your Metabase instance, so you will not need to put them in anywhere manually.
+* You can safely leave the `Retention setting` as `Create snapshot`
+* Under `Availability` we recommend the default value of `Single Availability Zone` for most circumstances.
+
+![ebrdsconfig](images/EBRDSConfig.png)
+
+That should be it, you can click `Next` to continue.
+
+
+### VPC Configuration (optional)
+
+If you are launching your Metabase inside of a VPC you'll now need to check a few boxes to enable your application to work inside your VPC subnets.
+
+Unless you have a custom VPC setup that you know how to configure it's easiest to just check all the boxes and allow your infrastructure to exist on all subnets.
+
+![ebvpcconfig](images/EBVPCConfig.png)
+
+Once you've finished your VPC config click `Next`
+
+
+### Permissions
+
+If this is your first time creating an application for Elastic Beanstalk then you will be prompted to create a new IAM role for your launched application.  We recommend simply leaving these choices to their defaults.
+
+![ebpermissions](images/EBPermissions.png)
+
+When you click `Next` a new tab will open in your browser and you will be prompted to create a new IAM role for use with Elastic Beanstalk.  Again, just accept the defaults and click `Allow` at the bottom of the page.
+
+![ebiamrole](images/EBIAMRole.png)
+
+
+### Review Information
+
+The final screen just gives you a full summary of the choices you made along the way so you can double check things.  Always cood to take a look at this and make sure you didn't miss anything.
+
+When you're ready click the `Launch` button at the bottom of the page and then you're off!
+
+![ebreview](images/EBReview.png)
+
+
+### Wait for your Environment to start
+
+This can take a little while depending on Amazon.  It’s not strange to see this take 20-30 minutes, so feel free to do something else and come back to check on it.  The time taken here is to provision each part of the environment.
+
+When all is well you should see something like this:
+
+![ebcomplete](images/EBComplete.png)
+
+To see your new Metabase instance simply click on the link in parentheses next to your environment name.  In this example it's `metabase-env-tttt.elasticbeanstalk.com`
+
+Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](/docs/setting-up-metabase.md).
+
+
+# Deploying New Versions of Metabase
+
+Upgrading to the next version of Metabase is a very simple process where you will grab the latest published Elastic Beanstalk deployment file from Metabase and upload it to your `Application Versions` listing.  From there it's a couple clicks and you're upgraded.
+
+Here's each step:
+
+1. Go to Elastic Beanstalk and select your `Metabase` application
+* Click on `Application Versions` on the left nav (you can also choose `Application Versions` from the dropdown at the top of the page)
+* Download the latest Metabase Elastic Beanstalk deployment file
+  * https://s3.amazonaws.com/downloads.metabase.com/v0.12.0/aws-elastic-beanstalk.zip
+* Upload a new Application Version
+	* Click the `Upload` button on the upper right side of the listing
+		* Give the new version a name, ideally including the Metabase version number (e.g. v0.13.0)
+		* Select `Choose File` and navigate to the file you just downloaded
+		* Click the `Upload` button to upload the file
+	* After the upload completes make sure you see your new version in the Application Versions listing
+* Deploy the new Version
+	* Click the checkbox next to the version you wish to deploy
+	* Click the `Deploy` button in the upper right side of the page
+		* Select the Environment you wish to deploy the version to using the dropdown list
+		* Click the `Deploy` button to begin the deployment
+	* Wait until all deployment activities are completed, then verify the deployment by accessing the Metabase application url
+
+Once a new version is deployed you can safely delete the old Application Version if desired.  we recommend keeping at least one previous version available for a while in case you desire to revert for any reason.
+
+
+# Retaining Metabase Logs
+
+If you want to retain the Metabase application logs you can do so by publishing then to an S3 bucket of your choice.  Here's how:
+
+1. On you Metabase Elastic Beanstalk environment, click on the `Configuration` link in the navigation bar on the left side.  You will be taken to a page with a number of boxes containing different configuration options for your environment.
+* Click on the box labeled `Software Configuration` under the heading `Web Tier`
+* Scroll down and then check the box labeled `Enable log file rotation to Amazon S3`
+* Click `Save` in the bottom right corner
+
+After you click save your Environment will begin updating with your new change.  you will have to wait a minute for this to complete and then you're good to go.  Elastic Beanstalk will now periodically publish the application log files to S3 for you and you can download them and analyze them at your leisure.
+
+
+# Running Metabase over HTTPS
+
+### Upload a Server Certificate
 
 This is only relevant if you plan to use HTTPS (recommended) for your Metabase instance on AWS.  There is no requirement to do this, but we are sticklers for security and believe you should always be careful with your data.
 
@@ -26,86 +221,6 @@ Sadly there is no option to do this via the AWS Console, so this step must be pe
 
 This will create a new certificate inside your AWS environment which can be reused for a variety of things.  Remember the name you chose for your certificate because we'll use that later in the setup process when we enable SSL.
 
-
-### Creating a New Environment (RDS + ELB/Https)
-
-* Prerequisites
-	* Create an Application
-	* Create an Application Version
-	* Upload SSL Certificate (only if you are doing https support)
-* New Environment
-	* Select Web Server Environment by clicking the button **Create web server**
-	* Permissions Popup
-		* Select the option for **Create an IAM role and instance profile** (default)
-		* Click **Next**
-* Environment Type
-	* Select **Generic > Docker** under Predefined configuration:
-		* NOTE: you do NOT want to select multi-container Docker
-	* Select **Load balancing, auto scaling** for the Environment type: (default)
-	* Click **Next**
-* Application Version
-	* Select the version you wish to deploy under **Existing application version**
-		* NOTE: if you don’t see any options listed here then you have not uploaded any Metabase versions yet, so stop and do that now.
-	* Leave all the settings under Deployment Limits on their defaults
-* Environment Information
-	* Pick a sensible name to refer to your environment (e.g. <your company>-metabase)
-	* The Environment URL will be the final url you will use to access your instance, so pick that accordingly.  Most of the time this should be the same name of your environment.
-	* Click **Next**
-* Additional Resources
-	* Check the box for **Create an RDS DB Instance with this environment**
-	* You can leave the box unchecked for Create this environment inside a VPC
-* Configuration Details
-	* Choose the **Instance type** you wish to use.  Any size is fine but we recommend *t2.micro* for trials and *t2.small* or bigger for production deployments.
-		* NOTE: the default setting is often t1.micro which is an old instance class.  we recommend at least changing this to *t2.micro*
-	* Leave the **EC2 key pair** unselected
-	* Enter an **Email address** to get notifications about your deployment.  This is a very simple way to keep some tabs on your Metabase environment, so we recommend putting a valid email in here.
-	* For **Application health check URL**: enter … /api/health
-		* this is a url within the Metabase application specifically designed for reporting health status to services like AWS
-	* The remainder of the options can all be left to their default values
-	* At the bottom of the page click **Next**
-* Environment Tags
-	* No need to enter anything on this page.  Simply click **Next**
-* RDS Configuration
-	* Leave the **Snapshot**: as *None*
-	* For **DB engine**: select *postgres*
-	* Under **Instance class**: you can choose any size, we recommend *db.t2.micro* for trial installs and *db.t2.small* or bigger for production installs.
-		* NOTE: the default setting is often *db.t1.micro* which is an old instance class.  we recommend at least changing this to *db.t2.micro*
-	* You can safely leave **Allocated storage**: at the default setting of *5GB*
-	* Pick a **Username**: and **Password**: for you database.  This is just for reference if you need to connect to your db directly for some reason, but generally this should not be necessary.  These settings will be automatically made available to your Metabase instance, so you will not need to put them in anywhere manually.
-	* You can safely leave the **Retention setting**: as *Create snapshot*
-	* Under **Availability**: we recommend the default value of *Single Availability Zone* for most circumstances.
-	* Click **Next**
-* Review Information
-	* Give everything a quick double check and then hit **Launch** to start up your Environment
-		* NOTE: if you are doing https support we will handle that in the next step.  when launch from the AWS Console this is no option to specify https settings when you first launch your Environment
-* Wait for your Environment to start
-	* This can take a little while depending on Amazon.  It’s not strange to see this take 20-30 minutes, so feel free to do something else and come back.
-* Environment Configuration Updates
-	* Make sure you are starting on the Dashboard page of your running environment
-	* Click on **Configuration** link in the navigation bar on the left side.  You will be taken to a page with a number of boxes containing different configuration information.
-	* Retain Logs (optional: if you don’t care about retaining application logs you can safely skip this step)
-		* Click on the box labeled **Software Configuration** under the heading Web Tier
-		* Check the box **Enable log file rotation to Amazon S3**
-		* Click **Save** in the bottom right corner
-		* NOTE: your Environment will begin updating with your new change.  you will have to wait for this to complete before making additional updates
-	* Limit Scaling
-		* Click on the box labeled **Scaling** under the heading Web Tier
-		* Set the value for **Maximum instance count**: to *1* (the default is *4*)
-		* All other settings can remain unchanged
-		* Click **Save** in the bottom right corner
-		* NOTE: your Environment will begin updating with your new change.  you will have to wait for this to complete before making additional updates
-	* Https Support (optional: if you are just doing a trial or don’t have an ssl certificate you can skip this)
-		* Prerequisites
-			* Before trying to enable Https support you must **Upload a Server Certificate** to your AWS account
-		* Click on the box labeled **Load Balancing** under the heading **Network Tier**
-		* Set the value of **Listener port**: to *OFF*
-		* Set the value of **Secure listener port**: to *443*
-		* In the dropdown for **SSL certificate ID**: choose the certificate that you would like to use for this Environment
-			* NOTE: the certificate MUST match the domain you plan to use for your Metabase install
-		* Scroll to the bottom of the page and click **Save** in the lower right
-			* NOTE: your Environment will begin updating with your new change.  you will have to wait for this to complete before making additional updates
-			* IMPORTANT: once this change is made you will no longer be able to access your Metabase instance at the *.elasticbeanstalk.com url provided by Amazon because it will result in a certificate mismatch.  To  continue accessing your secure Metabase instance you must **Setup DNS CNAME**
-
 ### Setup DNS CNAME (using AWS)
 * Open up the AWS **Route 53** console by navigating to **Services > Networking > Route 53** in the AWS Console header
 * Click on **Hosted Zones** then click on the domain name you want to use for Metabase
@@ -116,21 +231,16 @@ This will create a new certificate inside your AWS environment which can be reus
 	* Leave all other settings in their default values and click the **Create** button at the bottom of the page
 	* NOTE: after the record is created you must wait for your change to propagate on the internet.  this can take 5-10 minutes, sometimes longer.
 
-### Deploying New Versions
+### Modify Metabase to enforce HTTPS
 
-* Go to Elastic Beanstalk, select the **Metabase** application
-* Click on **Application Versions** on the left nav
-* Upload a new Version
-	* Click the **Upload** button on the upper right side of the listing
-		* Give the new version a name, ideally including the Metabase version number (e.g. Metabase-0.6.1)
-		* Select Choose File and navigate to the location of the Metabase aws-eb-*.zip bundle you want to upload
-			* NOTE: the AWS console requires uploading here, but via api you simply specify an S3 location
-		* Click the **Upload** button to upload the file
-	* After the upload completes make sure you see your new version in the Application Versions listing
-* Deploy a Version
-	* Click the checkbox next to the version you wish to deploy
-	* Click the **Deploy** button in the upper right side of the listing
-		* Select the Environment you wish to deploy the version to using the dropdown list
-		* Click the **Deploy** button to begin the deployment
-	* Wait until all deployment activities are completed, then verify the deployment by accessing the application url
-* NOTE: once a new version is deployed you can safely delete the old Application Version if desired.  we recommend keeping at least one previous version available for a while in case you desire to revert for any reason.
+* Https Support (optional: if you are just doing a trial or don’t have an ssl certificate you can skip this)
+  * Prerequisites
+    * Before trying to enable Https support you must **Upload a Server Certificate** to your AWS account
+  * Click on the box labeled **Load Balancing** under the heading **Network Tier**
+  * Set the value of **Listener port**: to *OFF*
+  * Set the value of **Secure listener port**: to *443*
+  * In the dropdown for **SSL certificate ID**: choose the certificate that you would like to use for this Environment
+    * NOTE: the certificate MUST match the domain you plan to use for your Metabase install
+  * Scroll to the bottom of the page and click **Save** in the lower right
+    * NOTE: your Environment will begin updating with your new change.  you will have to wait for this to complete before making additional updates
+    * IMPORTANT: once this change is made you will no longer be able to access your Metabase instance at the *.elasticbeanstalk.com url provided by Amazon because it will result in a certificate mismatch.  To  continue accessing your secure Metabase instance you must **Setup DNS CNAME**

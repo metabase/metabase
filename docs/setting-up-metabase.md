@@ -1,6 +1,6 @@
 # Setting up Metabase
 
-This guide will help you set up Metabase once you’ve gotten it installed. If you haven’t installed Metabase yet, you can [get Metabase here](http://www.metabase.com/download.html).
+This guide will help you set up Metabase once you’ve gotten it installed. If you haven’t installed Metabase yet, you can [get Metabase here](http://www.metabase.com/start/).
 
 Start Metabase up for the first time and you’ll see this screen:
 ![Welcome Screen](images/WelcomeScreen.png)
@@ -25,10 +25,10 @@ If you’re ready to connect, here’s what you’ll need:
 * The **username** you use for the database
 * The **password** you use for the database
 
-If you’re using Heroku, here are [instructions on how to get this information](../frequently-asked-questions/questions#how-do-i-look-up-connection-information-for-databases-on-heroku). If you’re an Amazon RDS kind of person, you can follow [these instructions](../frequently-asked-questions/questions#how-do-i-look-up-connection-information-for-databases-on-amazons-rds-service). 
+If you’re using Heroku, here are [instructions on how to get this information](../frequently-asked-questions/questions#how-do-i-look-up-connection-information-for-databases-on-heroku). If you’re an Amazon RDS kind of person, you can follow [these instructions](../frequently-asked-questions/questions#how-do-i-look-up-connection-information-for-databases-on-amazons-rds-service).
 
-If you don't have this information handy, the person responsible for administering the database should have it. 
-  
+If you don't have this information handy, the person responsible for administering the database should have it.
+
 ## Connect to your database
 Now that you have your database info you can connect to your database. Sweet, sweet data at last. Just go ahead and put your info into this form and click **Next**.
 

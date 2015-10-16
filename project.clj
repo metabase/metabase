@@ -1,7 +1,7 @@
 ;; -*- comment-column: 70; -*-
 ;; full set of options are here .. https://github.com/technomancy/leiningen/blob/master/sample.project.clj
 
-(defproject metabase "metabase-0.1.0-SNAPSHOT"
+(defproject metabase "metabase-SNAPSHOT"
   :description "Metabase Community Edition"
   :url "http://metabase.com/"
   :min-lein-version "2.5.0"
@@ -56,7 +56,7 @@
   :manifest {"Liquibase-Package" "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"}
   :target-path "target/%s"
   :javac-options ["-target" "1.6" "-source" "1.6"]
-  :uberjar-name "metabase-standalone.jar"
+  :uberjar-name "metabase.jar"
   :ring {:handler metabase.core/app
          :init metabase.core/init
          :destroy metabase.core/destroy}

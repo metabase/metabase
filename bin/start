@@ -19,4 +19,4 @@ if [ "$MAILGUN_SMTP_LOGIN" ]; then
     export MB_EMAIL_SMTP_PASSWORD="$MAILGUN_SMTP_PASSWORD"
 fi
 
-exec java $JAVA_OPTS -jar ./target/uberjar/metabase-standalone.jar
+exec java $JAVA_OPTS -jar ./target/uberjar/metabase.jar
