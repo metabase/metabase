@@ -204,8 +204,6 @@ Start up an instant cheatsheet for the project + dependencies by running
 
 #### Marginalia
 
-Available at http://metabase.github.io/metabase-init/.
-
 You can generate and view documentation with
 
     lein marg
