@@ -12,7 +12,7 @@ RUN apt-get update && \
 
 # include our local build in the image
 # TODO: eventually we could probably set this up to download the jar file dynamically
-COPY ./metabase-standalone.jar /app/
+COPY ./metabase.jar /app/
 COPY ./run_metabase.sh /app/
 RUN chmod 755 /app/run_metabase.sh
 

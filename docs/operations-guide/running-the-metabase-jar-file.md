@@ -29,7 +29,7 @@ If you did not see the output above and instead saw either an error or your Java
 
 Now that you have a working Java Runtime, you can now run the jar from a terminal with:
 
-    java -jar metabase-standalone.jar
+    java -jar metabase.jar
 
 It's that simple.  This will start the Metabase application using all of the default settings.  You should see some log entries starting to run in your terminal window showing you the application progress as it starts up.  Once Metabase is fully started you'll see a confirmation such as:
 
@@ -67,7 +67,7 @@ If for any reason you want to use an H2 database file in a separate location fro
 
     export MB_DB_TYPE=h2
     export MB_DB_FILE=/the/path/to/my/h2.db
-    java -jar metabase-standalone.jar
+    java -jar metabase.jar
 
 #### [Postgres](http://www.postgresql.org/)
 For production installations of Metabase we recommend that users replace the H2 database with Postgres.  This offers a greater degree of performance and reliability when Metabase is running with many users.
@@ -80,7 +80,7 @@ You can change the application database to use Postgres using a few simple envir
     export MB_DB_USER=<username>
     export MB_DB_PASS=<password>
     export MB_DB_HOST=localhost
-    java -jar metabase-standalone.jar
+    java -jar metabase.jar
 
 This will tell Metabase to look for its application database using the supplied Postgres connection information.
 
