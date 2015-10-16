@@ -1091,7 +1091,7 @@
           limit 10
           return rows)))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-all-datasets
   [[#inst "2015-06-01T10:31" 1]
    [#inst "2015-06-01T16:06" 1]
    [#inst "2015-06-01T17:23" 1]
@@ -1104,7 +1104,7 @@
    [#inst "2015-06-02T11:11" 1]]
   (sad-toucan-incidents-with-bucketing :default))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-all-datasets
   [[#inst "2015-06-01T10:31" 1]
    [#inst "2015-06-01T16:06" 1]
    [#inst "2015-06-01T17:23" 1]
@@ -1117,7 +1117,7 @@
    [#inst "2015-06-02T11:11" 1]]
   (sad-toucan-incidents-with-bucketing :minute))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-all-datasets
   [[0 5]
    [1 4]
    [2 2]
@@ -1130,7 +1130,7 @@
    [9 1]]
   (sad-toucan-incidents-with-bucketing :minute-of-hour))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-all-datasets
   [[#inst "2015-06-01T10" 1]
    [#inst "2015-06-01T16" 1]
    [#inst "2015-06-01T17" 1]
@@ -1143,7 +1143,7 @@
    [#inst "2015-06-02T13" 1]]
   (sad-toucan-incidents-with-bucketing :hour))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-all-datasets
   [[0 8]
    [1 9]
    [2 7]
@@ -1156,7 +1156,7 @@
    [9 7]]
   (sad-toucan-incidents-with-bucketing :hour-of-day))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-all-datasets
   [[#inst "2015-06-01T07" 8]
    [#inst "2015-06-02T07" 9]
    [#inst "2015-06-03T07" 9]
@@ -1179,7 +1179,7 @@
    [7 22]]
   (sad-toucan-incidents-with-bucketing :day-of-week))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-all-datasets
   [[1 8]
    [2 9]
    [3 9]
@@ -1192,7 +1192,7 @@
    [10 10]]
   (sad-toucan-incidents-with-bucketing :day-of-month))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-all-datasets
   [[152 8]
    [153 9]
    [154 9]
@@ -1205,7 +1205,7 @@
    [161 10]]
   (sad-toucan-incidents-with-bucketing :day-of-year))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-all-datasets
   [[#inst "2015-05-31T07" 49]
    [#inst "2015-06-07T07" 47]
    [#inst "2015-06-14T07" 39]
@@ -1213,7 +1213,7 @@
    [#inst "2015-06-28T07" 7]]
   (sad-toucan-incidents-with-bucketing :week))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-all-datasets
   [[23 49]
    [24 47]
    [25 39]
@@ -1221,11 +1221,11 @@
    [27 7]]
   (sad-toucan-incidents-with-bucketing :week-of-year))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-all-datasets
   [[#inst "2015-06-01T07" 200]]
   (sad-toucan-incidents-with-bucketing :month))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-all-datasets
   [[6 200]]
   (sad-toucan-incidents-with-bucketing :month-of-year))
 
@@ -1237,7 +1237,7 @@
   [[2 200]]
   (sad-toucan-incidents-with-bucketing :quarter-of-year))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-all-datasets
   [[2015 200]]
   (sad-toucan-incidents-with-bucketing :year))
 
@@ -1260,22 +1260,22 @@
        filter = ["datetime_field" (id :checkins :timestamp) "as" (name field-grouping)] (apply vector "relative_datetime" relative-datetime-args)
        return first-row first)))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql} 4 (count-of-grouping checkins:4-per-minute :minute "current"))
-(datasets/expect-with-datasets #{:h2 :postgres :mysql} 4 (count-of-grouping checkins:4-per-minute :minute -1 "minute"))
-(datasets/expect-with-datasets #{:h2 :postgres :mysql} 4 (count-of-grouping checkins:4-per-minute :minute  1 "minute"))
+(datasets/expect-with-all-datasets 4 (count-of-grouping checkins:4-per-minute :minute "current"))
+(datasets/expect-with-all-datasets 4 (count-of-grouping checkins:4-per-minute :minute -1 "minute"))
+(datasets/expect-with-all-datasets 4 (count-of-grouping checkins:4-per-minute :minute  1 "minute"))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql} 4 (count-of-grouping checkins:4-per-hour :hour "current"))
-(datasets/expect-with-datasets #{:h2 :postgres :mysql} 4 (count-of-grouping checkins:4-per-hour :hour -1 "hour"))
-(datasets/expect-with-datasets #{:h2 :postgres :mysql} 4 (count-of-grouping checkins:4-per-hour :hour  1 "hour"))
+(datasets/expect-with-all-datasets 4 (count-of-grouping checkins:4-per-hour :hour "current"))
+(datasets/expect-with-all-datasets 4 (count-of-grouping checkins:4-per-hour :hour -1 "hour"))
+(datasets/expect-with-all-datasets 4 (count-of-grouping checkins:4-per-hour :hour  1 "hour"))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql} 1 (count-of-grouping checkins:1-per-day :day "current"))
-(datasets/expect-with-datasets #{:h2 :postgres :mysql} 1 (count-of-grouping checkins:1-per-day :day -1 "day"))
-(datasets/expect-with-datasets #{:h2 :postgres :mysql} 1 (count-of-grouping checkins:1-per-day :day  1 "day"))
+(datasets/expect-with-all-datasets 1 (count-of-grouping checkins:1-per-day :day "current"))
+(datasets/expect-with-all-datasets 1 (count-of-grouping checkins:1-per-day :day -1 "day"))
+(datasets/expect-with-all-datasets 1 (count-of-grouping checkins:1-per-day :day  1 "day"))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql} 7 (count-of-grouping checkins:1-per-day :week "current"))
+(datasets/expect-with-all-datasets 7 (count-of-grouping checkins:1-per-day :week "current"))
 
 ;; SYNTACTIC SUGAR
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-all-datasets
   1
   (with-temp-db [_ checkins:1-per-day]
     (-> (driver/process-query
@@ -1286,7 +1286,7 @@
                      :filter       ["TIME_INTERVAL" (id :checkins :timestamp) "current" "day"]}})
         :data :rows first first)))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-all-datasets
   7
   (with-temp-db [_ checkins:1-per-day]
     (-> (driver/process-query
