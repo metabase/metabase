@@ -44,7 +44,7 @@ When your environment type settings look like the above then go ahead and click 
 
 The application version describes the exact binary you wish to deploy to your Elastic Beanstalk application.  Metabase provides a pre-built AWS Elastic Beanstalk application version which can be linked to directly.  Simply enter the following url in the `S3 URL` textbox:
 
-https://s3.amazonaws.com/downloads.metabase.com/v0.12.0/aws-elastic-beanstalk.zip
+https://s3.amazonaws.com/downloads.metabase.com/v0.12.0/metabase-aws-eb.zip
 
 Leave all the settings under Deployment Limits on their defaults.  These settings won't impact Metabase.
 
