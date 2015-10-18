@@ -7,7 +7,7 @@ The Metabase team runs a number of production installations on AWS using Elastic
 
 Metabase provides an Elastic Beanstalk pre-configured launch url to help new installations getting started.  If you are starting fresh we recommend you follow this link to begin creating the Elastic Beanstalk deployment with a few choices pre-filled.
 
-[Launch Metabase on Elastic Beanstalk](https://console.aws.amazon.com/elasticbeanstalk/home?region=us-east-1#/newApplication?applicationName=Metabase&tierName=WebServer&solutionStackName=Docker&sourceBundleUrl=https%3A%2F%2Fs3.amazonaws.com%2Fdownloads.metabase.com%2Fv0.12.0%2Fmetabase-aws-eb.zip&instanceType=t2.small&withRds=true&rdsDBEngine=postgres&rdsDBAllocatedStorage=10&rdsDBInstanceClass=db.t2.small&rdsMultiAZDatabase=false&rdsDBDeletionPolicy=Snapshot)
+[Launch Metabase on Elastic Beanstalk](http://downloads.metabase.com/v0.12.0/launch-aws-eb.html)
 
 The rest of this guide will follow each phase of the Elastic Beanstalk setup step-by-step.
 
