@@ -67,7 +67,6 @@
                                :unused-ret-vals]}                     ; gives too many false positives for functions with side-effects like conj!
   :profiles {:dev {:dependencies [[org.clojure/tools.nrepl "0.2.11"]  ; REPL <3
                                   [expectations "2.1.3"]              ; unit tests
-                                  [marginalia "0.8.0"]                ; for documentation
                                   [ring/ring-mock "0.3.0"]]
                    :plugins [[cider/cider-nrepl "0.10.0-SNAPSHOT"]    ; Interactive development w/ cider NREPL in Emacs
                              [jonase/eastwood "0.2.1"]                ; Linting
@@ -76,7 +75,7 @@
                              [lein-environ "1.0.0"]                   ; Specify env-vars in project.clj
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'
                              [lein-instant-cheatsheet "2.1.4"]        ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
-                             [lein-marginalia "0.8.0"]                ; generate documentation with 'lein marg'
+                             [michaelblume/lein-marginalia "0.9.0"]   ; generate documentation with 'lein marg'
                              [refactor-nrepl "2.0.0-SNAPSHOT"]]       ; support for advanced refactoring in Emacs/LightTable
                    :global-vars {*warn-on-reflection* true}           ; Emit warnings on all reflection calls
                    :env {:mb-run-mode "dev"}
