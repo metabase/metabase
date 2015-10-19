@@ -47,7 +47,7 @@ Now, open a browser and go to `http://localhost:3000` , and you will be asked a 
 
 Once you have added this connection, you will be taken into the app and you'll be ready to ask your first question.
 
-For a more detailed walkthrough, check out our [Getting Started](docs/getting-started/start.md) guide.
+For a more detailed walkthrough, check out our [Getting Started](docs/getting-started.md) guide.
 
 
 # Contributing
