@@ -126,7 +126,7 @@ export default class ProfileLink extends Component {
                                 </p>
                             </div>
                             <div style={{borderWidth: "2px"}} className="p2 h5 text-centered text-grey-3 border-top">
-                                <span className="block"><span className="text-bold">Metabase</span> is a registered Trademark of Metabase, Inc</span>
+                                <span className="block"><span className="text-bold">Metabase</span> is a Trademark of Metabase, Inc</span>
                                 <span>and is built with care in San Francisco, CA</span>
                             </div>
                         </Modal>
