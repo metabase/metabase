@@ -15,7 +15,7 @@ Go ahead and log in to Metabase and the first thing you'll see is the activity f
 
 But, enough about that — let’s get to asking questions. For the next few examples, we'll be using the **Sample Dataset** that comes with Metabase.
 
-Go ahead and click **New Question** at the top of the screen. Now we’re on the new question page. The bar that you see going across the page is what you’ll use to ask your questions. The “Select a table” dropdown should already be open, showing you a list of your database(s) and the tables within them. 
+Go ahead and click **New Question** at the top of the screen. Now we’re on the new question page. The bar that you see going across the page is what you’ll use to ask your questions. The “Select a table” dropdown should already be open, showing you a list of your database(s) and the tables within them.
 
 ![Query Builder](images/QueryBuilder.png)
 
@@ -43,7 +43,7 @@ Next we need to tell Metabase what we want to see. Under the View dropdown, we�
 
 Okay, cool — we’re ready to ask our question, so let’s click the **Run query** button!
 
-So it looks like there were 12,284 orders, each with a subtotal greater than $40. Ka-ching! Another way of saying this is that there were 12,284 *records* in the table that met the parameters we set. 
+So it looks like there were 12,284 orders, each with a subtotal greater than $40. Ka-ching! Another way of saying this is that there were 12,284 *records* in the table that met the parameters we set.
 ![Count Answer](images/CountAnswer.png)
 
 ### Tweaking our question
@@ -119,6 +119,6 @@ One other thing: once you’ve asked a question or saved a dashboard, the URL in
 ---
 
 ## That’s it!
-You’ve done really well. You now have a dashboard with your question that you can share! At this point you know enough to be dangerous. 
+You’ve done really well. You now have a dashboard with your question that you can share! At this point you know enough to be dangerous.
 
-Want to learn more? Is your thirst for knowledge insatiable? Check out our [Users Guide](../users-guide/start.md) for more in-depth explanations of the ins and outs of Metabase.
+Want to learn more? Is your thirst for knowledge insatiable? Check out our [Users Guide](users-guide/start.md) for more in-depth explanations of the ins and outs of Metabase.
