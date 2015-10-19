@@ -179,7 +179,7 @@ export default class QueryVisualization extends Component {
                     if (result.duration > 15*1000) {
                         viz = (
                             <div className="QueryError flex full align-center">
-                                <div className="QueryError-image QueryError-image--serverError"></div>
+                                <div className="QueryError-image QueryError-image--timeout"></div>
                                 <div className="QueryError-message text-centered">
                                     <h1 className="text-bold">Your question took too long</h1>
                                     <p className="QueryError-messageText">We didn't get an answer back from your database in time, so we had to stop. You can try again in a minute, or if the problem persists, you can email an admin to let them know.</p>
@@ -190,7 +190,7 @@ export default class QueryVisualization extends Component {
                     } else {
                         viz = (
                             <div className="QueryError flex full align-center">
-                                <div className="QueryError-image QueryError-image--timeout"></div>
+                                <div className="QueryError-image QueryError-image--serverError"></div>
                                 <div className="QueryError-message text-centered">
                                     <h1 className="text-bold">We're experiencing server issues</h1>
                                     <p className="QueryError-messageText">Try refreshing the page after waiting a minute or two. If the problem persists we'd recommend you contact an admin.</p>

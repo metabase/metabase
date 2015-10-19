@@ -256,8 +256,8 @@
 
 .QueryError-image--serverError {
   width: 120px;
-  height: 120px;
-  background-image: url('/app/img/stopwatch.svg');
+  height: 148px;
+  background-image: url('/app/img/blown_up.svg');
 }
 
 .QueryError-image--timeout {
