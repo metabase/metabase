@@ -8,6 +8,7 @@ import QueryVisualizationObjectDetailTable from './QueryVisualizationObjectDetai
 import RunButton from './RunButton.jsx';
 import VisualizationSettings from './VisualizationSettings.jsx';
 
+import MetabaseSettings from "metabase/lib/settings";
 import Query from "metabase/lib/query";
 
 import cx from "classnames";
@@ -167,23 +168,39 @@ export default class QueryVisualization extends Component {
                 </div>
             );
         } else {
-            let error = this.props.result.error;
+            let { result } = this.props;
+            let error = result.error;
             if (error) {
                 let message;
-                // transform HTTP errors to plain text error messages, and always show them
                 if (typeof error.status === "number") {
-                    if (error.status === 503) {
-                        error = "I'm sorry, the server timed out while asking your question.";
+                    let adminEmail = MetabaseSettings.adminEmail();
+                    // Assume if the request took more than 15 seconds it was due to a timeout
+                    // Some platforms like Heroku return a 503 for numerous types of errors so we can't use the status code to distinguish between timeouts and other failures.
+                    if (result.duration > 15*1000) {
+                        viz = (
+                            <div className="QueryError flex full align-center">
+                                <div className="QueryError-image QueryError-image--serverError"></div>
+                                <div className="QueryError-message text-centered">
+                                    <h1 className="text-bold">Your question took too long</h1>
+                                    <p className="QueryError-messageText">We didn't get an answer back from your database in time, so we had to stop. You can try again in a minute, or if the problem persists, you can email an admin to let them know.</p>
+                                    {adminEmail && <span className="QueryError-adminEmail"><a className="no-decoration" href={"mailto:"+adminEmail}>{adminEmail}</a></span>}
+                                </div>
+                            </div>
+                        );
                     } else {
-                        error = "I'm sorry, an error occured: " + error.statusText;
+                        viz = (
+                            <div className="QueryError flex full align-center">
+                                <div className="QueryError-image QueryError-image--timeout"></div>
+                                <div className="QueryError-message text-centered">
+                                    <h1 className="text-bold">We're experiencing server issues</h1>
+                                    <p className="QueryError-messageText">Try refreshing the page after waiting a minute or two. If the problem persists we'd recommend you contact an admin.</p>
+                                    {adminEmail && <span className="QueryError-adminEmail"><a className="no-decoration" href={"mailto:"+adminEmail}>{adminEmail}</a></span>}
+                                </div>
+                            </div>
+                        );
                     }
-                    message = error;
-                }
-                // always show errors for native queries
-                if (this.props.card.dataset_query && this.props.card.dataset_query.type === 'native') {
-                    message = error;
-                }
-                if (message) {
+                } else if (this.props.card.dataset_query && this.props.card.dataset_query.type === 'native') {
+                    // always show errors for native queries
                     viz = (
                         <div className="QueryError flex full align-center text-error">
                             <div className="QueryError-iconWrapper">
@@ -194,7 +211,6 @@ export default class QueryVisualization extends Component {
                             <span className="QueryError-message">{message}</span>
                         </div>
                     );
-
                 } else {
                     viz = (
                         <div className="QueryError flex full align-center">

@@ -409,6 +409,7 @@ CardControllers.controller('CardDetail', [
 
             renderAll();
 
+            let startTime = new Date();
             // make our api call
             Metabase.dataset(dataset_query, function (result) {
                 queryResult = result;
@@ -484,7 +485,7 @@ CardControllers.controller('CardDetail', [
 
             }, function (error) {
                 isRunning = false;
-                queryResult = { error: error };
+                queryResult = { error: error, duration: new Date() - startTime };
 
                 renderAll();
             });
