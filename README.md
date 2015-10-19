@@ -67,6 +67,6 @@ Metabase also allows you to hit our Query API directly from Javascript to integr
 
 Unless otherwise noted, all Metabase Report Server source files are made available under the terms of the GNU Affero General Public License (AGPL).
 
-See individual files for details.
+See [LICENSE.txt](https://github.com/metabase/metabase/blob/master/LICENSE.txt) for details.
 
-Copyright © 2015 Metabase, Inc
+Unless otherwise noted, all files © 2015 Metabase, Inc.
