@@ -23,7 +23,7 @@ var Greeting = {
 	sayHello: function(personalization) {
         if(personalization) {
             var g = Greeting.simpleGreeting();
-            if (g == 'How\'s it going,'){
+            if (g === 'How\'s it going,'){
                 return g + ' ' + personalization + '?';    
             } else {
                 return g + ' ' + personalization;
