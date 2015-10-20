@@ -4,7 +4,7 @@ var AdminDatabases = angular.module('metabaseadmin.databases', [
 
 AdminDatabases.config(['$routeProvider', function ($routeProvider) {
     $routeProvider.when('/admin/databases', {
-        templateUrl: '/app/admin/databases/partials/database_list.html',
+        template: '<div class="flex flex-column flex-full" mb-react-component="DatabaseList"></div>',
         controller: 'DatabaseList'
     });
     $routeProvider.when('/admin/databases/create', {

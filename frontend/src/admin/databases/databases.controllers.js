@@ -1,9 +1,13 @@
+
+import DatabaseList from "./components/DatabaseList.jsx";
+
 import _ from "underscore";
 
 var DatabasesControllers = angular.module('metabaseadmin.databases.controllers', ['metabase.metabase.services']);
 
 DatabasesControllers.controller('DatabaseList', ['$scope', 'Metabase', 'MetabaseCore', function($scope, Metabase, MetabaseCore) {
 
+    $scope.DatabaseList = DatabaseList;
     $scope.ENGINES = MetabaseCore.ENGINES;
 
     $scope.databases = [];
