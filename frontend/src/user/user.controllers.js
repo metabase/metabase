@@ -29,34 +29,3 @@ UserControllers.controller('EditCurrentUser', ['$scope', '$location', '$route', 
         $scope.store = finalCreateStore(reducer, {});
     }
 ]);
-
-
-// UserControllers.controller('PasswordUpdateController', ['$scope', 'User',
-//     function($scope, User) {
-
-//         $scope.passwordComplexity = MetabaseSettings.passwordComplexity(true);
-
-//         $scope.save = function(passwordDetails) {
-//             $scope.$broadcast("form:reset");
-
-//             // check that confirm password matches new password
-//             if (passwordDetails.password !== passwordDetails.password2) {
-//                 $scope.$broadcast("form:api-error", {'data': {'errors': {'password2': "Passwords do not match"}}});
-//                 return;
-//             }
-
-//             User.update_password({
-//                 'id': $scope.user.id,
-//                 'password': passwordDetails.password,
-//                 'old_password': passwordDetails.old_password
-//             }, function (result) {
-//                 $scope.$broadcast("form:api-success", "Password updated successfully!");
-
-//             }, function (error) {
-//                 $scope.$broadcast("form:api-error", error);
-//             });
-//         };
-
-//         $scope.passwordDetails = {};
-//     }
-// ]);
