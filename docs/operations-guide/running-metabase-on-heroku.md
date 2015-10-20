@@ -20,4 +20,4 @@ This will launch a Heroku deployment using a github repository that Metabase mai
  * Heroku’s 30 second timeouts on all web requests can cause a few issues if you happen to have longer running database queries.  Most people don’t run into this but be aware that it’s possible.
  * If you don’t access the application for a while Heroku will sleep your Metabase environment.  This won’t harm anything, but it can seem like the application is slow to respond when actually it’s just Heroku waking up the environment.
 
-Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](/docs/setting-up-metabase.md).
+Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../setting-up-metabase.md).
