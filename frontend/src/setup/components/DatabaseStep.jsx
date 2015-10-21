@@ -46,18 +46,16 @@ export default class DatabaseStep extends Component {
 
         } catch (error) {
             let formError = error;
-            if (details.details.ssl === true) {
-                details.details.ssl = false;
+            details.details.ssl = false;
 
-                try {
-                    // validate the details before we move forward
-                    await this.props.dispatch(validateDatabase(details));
+            try {
+                // ssl connection failed, lets try non-ssl
+                await this.props.dispatch(validateDatabase(details));
 
-                    formError = null;
+                formError = null;
 
-                } catch (error2) {
-                    formError = error2;
-                }
+            } catch (error2) {
+                formError = error2;
             }
 
             if (formError) {
