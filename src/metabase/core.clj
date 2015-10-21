@@ -71,13 +71,18 @@
 
 ;;; ## ---------------------------------------- LIFECYCLE ----------------------------------------
 
-(def ^:private metabase-initialized
-  (atom false))
+(def ^:private metabase-initialization-progress
+  (atom 0))
 
 (defn initialized?
   "Metabase is initialized and ready to be served"
   []
-  @metabase-initialized)
+  (= @metabase-initialization-progress 1.0))
+
+(defn initialization-progress
+  "Metabase is initialized and ready to be served"
+  []
+  @metabase-initialization-progress)
 
 (defn- -init-create-setup-token
   "Create and set a new setup token, and open the setup URL on the user's system."
@@ -104,11 +109,15 @@
   "General application initialization function which should be run once at application startup."
   []
   (log/info (format "Starting Metabase version %s..." (config/mb-version-string)))
+  (reset! metabase-initialization-progress 0.1)
+
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
   (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable destroy))
+  (reset! metabase-initialization-progress 0.3)
 
   ;; startup database.  validates connection & runs any necessary migrations
   (db/setup-db :auto-migrate (config/config-bool :mb-db-automigrate))
+  (reset! metabase-initialization-progress 0.5)
 
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database
@@ -116,9 +125,11 @@
 
     ;; Bootstrap the event system
     (events/initialize-events!)
+    (reset! metabase-initialization-progress 0.7)
 
     ;; Now start the task runner
     (task/start-scheduler!)
+    (reset! metabase-initialization-progress 0.8)
 
     (when new-install
       (log/info "Looks like this is a new installation ... preparing setup wizard")
@@ -126,6 +137,7 @@
       (-init-create-setup-token)
       ;; publish install event
       (events/publish-event :install {}))
+    (reset! metabase-initialization-progress 0.9)
 
     ;; deal with our sample dataset as needed
     (if new-install
@@ -135,7 +147,7 @@
       (sample-data/update-sample-dataset-if-needed!)))
 
   (log/info "Metabase Initialization COMPLETE")
-  (reset! metabase-initialized true)
+  (reset! metabase-initialization-progress 1.0)
   true)
 
 
