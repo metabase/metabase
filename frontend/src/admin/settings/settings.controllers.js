@@ -8,6 +8,7 @@ var SettingsAdminControllers = angular.module('metabaseadmin.settings.controller
 
 // from common.clj
 var TIMEZONES = [
+    "",
     "GMT",
     "UTC",
     "US/Alaska",
