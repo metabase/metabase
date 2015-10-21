@@ -1,7 +1,6 @@
 /*global google*/
 
 import _ from "underscore";
-import $ from 'jquery';
 import crossfilter from 'crossfilter';
 import d3 from 'd3';
 import dc from 'dc';
@@ -15,7 +14,6 @@ tip(d3);
 // ---------------------------------------- TODO - Maybe. Lots of these things never worked in the first place. ----------------------------------------
 // IMPORTANT
 // - 'titles' (tooltips)
-// - finish removing jQuery
 // - tweak padding for labels
 //
 // LESS IMPORTANT
@@ -770,7 +768,7 @@ export var CardRenderer = {
             if (width !== null) {
                 el.style.width = width + "px";
             }
-            $(el).trigger('cardrenderer-card-resized');
+            el.dispatchEvent(new Event("cardrenderer-card-resized"));
         }
 
         // dynamically resize the chart if applicable
@@ -1164,7 +1162,7 @@ export var CardRenderer = {
         //listen for resize event (internal to CardRenderer)
         //to let google maps api know about the resize
         //(see https://developers.google.com/maps/documentation/javascript/reference)
-        $('#' + id).on('cardrenderer-card-resized', function() {
+        document.getElementById(id).addEventListener('cardrenderer-card-resized', function() {
             google.maps.event.trigger(map, 'resize');
         });
     },
