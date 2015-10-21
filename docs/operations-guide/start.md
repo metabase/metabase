@@ -22,11 +22,11 @@ If you are using Docker containers and prefer to manage your Metabase installati
 
 ### Cloud Platforms
 
-#### [Running on AWS Elastic Beanstalk](installing-on-elastic-beanstalk.md)
+#### [Running on AWS Elastic Beanstalk](running-metabase-on-elastic-beanstalk.md)
 Step-by-step instructions on how to deploy Metabase on Elastic Beanstalk using RDS.  This is the most common way to run Metabase in production.
 
 #### [Running on Heroku](running-metabase-on-heroku.md)
-Currently in beta.  We've run Metabase on Heroku and it works just fine, but it's not hardened for production use just yet.
+Currently in beta.  We've run Metabase on Heroku and it works just fine, but it's not hardened for production use just yet.  If you're up for it then give it a shot and let us know how we can make it better!
 
 
 # <a name="troubleshooting-metabase"></a>Troubleshooting Common Problems
@@ -35,8 +35,11 @@ Currently in beta.  We've run Metabase on Heroku and it works just fine, but it'
 
 Sometimes Metabase will fail to complete its startup due to a database lock that was not cleared properly.
 
-Solution:
-Go to a terminal and run `java -jar metabase-standalone.jar migrations release-locks` in the command line to manually clear the locks.  Then restart your Metabase instance.
+When this happens, go to a terminal where Metabase is installed and run:
+
+    java -jar metabase.jar migrate release-locks
+
+in the command line to manually clear the locks.  Then restart your Metabase instance.
 
 
 # <a name="customizing-metabase"></a>Custom Options
@@ -44,9 +47,6 @@ Go to a terminal and run `java -jar metabase-standalone.jar migrations release-l
 #### HTTPS Support
 
 Regardless of how you deploy Metabase, it is *strongly* recommended that you use HTTPS for all traffic. If you are using Elastic Beanstalk or AWS, we recommend you use ELB and terminate the HTTPS connection there. Otherwise, you can use nginx as a reverse proxy and terminate there.
-
-#### [Manually running Database Migrations](manually-running-metabase-migrations.md)
-If you prefer to have full control over the executing of database schema changes then you'll want to read about Metabase's database migrations and how to run them manually.
 
 #### [Backing up your Metabase](backing-up-the-metabase-database.md)
 Better safe than sorry we always say.  Simple instructions to help with backing up a Metabase instance.
