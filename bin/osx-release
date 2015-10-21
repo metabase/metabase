@@ -187,7 +187,7 @@ sub create_dmg_from_source_dir {
            '-fs', 'HFS+',
            '-fsargs', '-c c=64,a=16,e=16',
            '-format', 'UDRW',
-           '-size', '144MB',          # it looks like this can be whatever size we want; compression slims it down
+           '-size', '256MB',          # it looks like this can be whatever size we want; compression slims it down
            $dmg_filename) == 0 or die $!;
 }
 
