@@ -34,7 +34,7 @@ If you plan to work on the Metabase code and make changes then you'll need to un
 
 ### Overview
 
-The Metabase application has two basic compnents:
+The Metabase application has two basic components:
 
 1. a backend written in Clojure which contains a REST API as well as all the relevant code for talking to databases and processing queries.
 2. a frontend written as a Javascript single-page application which provides the web UI.
@@ -211,7 +211,7 @@ You can update the GitHub pages documentation using
 
     make dox
 
-You should be on the `master` branch without any uncommited local changes before doing so. Also, make sure you've fetched the branch `gh-pages` and can push it back to `origin`.
+You should be on the `master` branch without any uncommitted local changes before doing so. Also, make sure you've fetched the branch `gh-pages` and can push it back to `origin`.
 
 
 
