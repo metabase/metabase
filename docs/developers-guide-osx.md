@@ -9,7 +9,7 @@ You'll need to run the following commands before building the app:
 git submodule update --init
 
 # Install Perl modules used by ./setup and ./release
-sudo cpan install File::Copy::Recursive JSON Readonly String::Util Text::Caml WWW::Curl::Simple
+sudo cpan install --force File::Copy::Recursive JSON Readonly String::Util Text::Caml WWW::Curl::Simple
 
 # Copy JRE and uberjar
 ./bin/osx-setup
