@@ -52,7 +52,7 @@
   [handler]
   (fn [{:keys [metabase-session-id] :as request}]
     ;; TODO - what kind of validations can we do on the sessionid to make sure it's safe to handle?  str?  alphanumeric?
-    (handler (or (when metabase-session-id
+    (handler (or (when (and metabase-session-id ((resolve 'metabase.core/initialized?)))
                    (when-let [session (first (k/select Session
                                                        ;; NOTE: we join with the User table and ensure user.is_active = true
                                                        (k/with User (k/where {:is_active true}))
