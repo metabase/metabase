@@ -80,9 +80,14 @@
   (= @metabase-initialization-progress 1.0))
 
 (defn initialization-progress
-  "Metabase is initialized and ready to be served"
+  "Get the current progress of the Metabase initialize"
   []
   @metabase-initialization-progress)
+
+(defn initialization-complete!
+  "Complete the Metabase initialization by setting its progress to 100%"
+  []
+  (reset! metabase-initialization-progress 1.0))
 
 (defn- -init-create-setup-token
   "Create and set a new setup token, and open the setup URL on the user's system."
@@ -147,7 +152,7 @@
       (sample-data/update-sample-dataset-if-needed!)))
 
   (log/info "Metabase Initialization COMPLETE")
-  (reset! metabase-initialization-progress 1.0)
+  (initialization-complete!)
   true)
 
 
