@@ -171,7 +171,6 @@ export default class QueryVisualization extends Component {
             let { result } = this.props;
             let error = result.error;
             if (error) {
-                let message;
                 if (typeof error.status === "number") {
                     let adminEmail = MetabaseSettings.adminEmail();
                     // Assume if the request took more than 15 seconds it was due to a timeout
