@@ -88,7 +88,7 @@ export default class FieldList extends Component {
 
         return (
             <div className="flex-full flex">
-                <a className="flex-full flex align-center px2 py1 cursor-pointer"
+                <a className="flex-full flex align-center px1 py1 cursor-pointer"
                      onClick={this.props.onFieldChange.bind(null, item.value)}
                 >
                     { this.renderTypeIcon(item.field) }
@@ -134,11 +134,7 @@ export default class FieldList extends Component {
 
     renderSectionIcon(section, sectionIndex) {
         if (sectionIndex > 0) {
-            return (
-                <span className="mr2">
-                    <Icon name="connections" width={18} height={18} />
-                </span>
-            );
+            return <Icon name="connections" width={18} height={18} />
         }
     }
 

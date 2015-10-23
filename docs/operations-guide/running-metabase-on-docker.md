@@ -6,13 +6,13 @@ Metabase provides an official Docker image via Dockerhub that can be used for de
 
 Here's a quick one-liner to get you off the ground:
 
-    docker run -d -p 3000:3000 --name metabase metabase/metabase:v0.12.0
+    docker run -d -p 3000:3000 --name metabase metabase/metabase
 
 This will launch a Metabase server on port 3000 by default.  You can use `docker logs -f metabase` to follow the rest of the initialization progress.  Once the Metabase startup completes you can access the app at [localhost:3000](http://localhost:3000)
 
 Since Docker containers have their own ports and we just map them to the system ports as needed it's easy to move Metabase onto a different system port if you wish.  For example running Metabase on port 12345:
 
-    docker run -d -p 12345:3000 --name metabase metabase/metabase:v0.12.0
+    docker run -d -p 12345:3000 --name metabase metabase/metabase
 
 
 ### Mounting a mapped file storage volume
@@ -21,7 +21,7 @@ In its default configuration Metabase uses the local filesystem to run an H2 emb
 
 To persist your data outside of the container and make it available for use between container launches we can mount a local file path inside our container.
 
-    docker run -d -p 3000:3000 -v /tmp:/tmp -e "MB_DB_FILE=/tmp/metabase.db" --name metabase metabase/metabase:v0.12.0
+    docker run -d -p 3000:3000 -v /tmp:/tmp -e "MB_DB_FILE=/tmp/metabase.db" --name metabase metabase/metabase
 
 Now when you launch your container we are telling Metabase to use the database file at `/tmp/metabase.db` instead of its default location and we are mounting that folder from our local filesystem into the container.
 
@@ -39,8 +39,8 @@ In this scenario all you need to do is make sure you launch Metabase with the co
       -e "MB_DB_USER=<username>" \
       -e "MB_DB_PASS=<password>" \
       -e "MB_DB_HOST=my-database-host" \
-      --name metabase metabase/metabase:v0.12.0
+      --name metabase metabase/metabase
 
 Keep in mind that Metabase will be connecting from within your docker container, so make sure that either you're using a fully qualified hostname or that you've set a proper entry in your container's /etc/hosts file.
 
-Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](/docs/setting-up-metabase.md).
+Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../setting-up-metabase.md).

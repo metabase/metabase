@@ -37,7 +37,7 @@ Sometimes Metabase will fail to complete its startup due to a database lock that
 
 When this happens, go to a terminal where Metabase is installed and run:
 
-    java -jar metabase-standalone.jar migrate release-locks
+    java -jar metabase.jar migrate release-locks
 
 in the command line to manually clear the locks.  Then restart your Metabase instance.
 
@@ -47,9 +47,6 @@ in the command line to manually clear the locks.  Then restart your Metabase ins
 #### HTTPS Support
 
 Regardless of how you deploy Metabase, it is *strongly* recommended that you use HTTPS for all traffic. If you are using Elastic Beanstalk or AWS, we recommend you use ELB and terminate the HTTPS connection there. Otherwise, you can use nginx as a reverse proxy and terminate there.
-
-#### [Manually running Database Migrations](manually-running-metabase-migrations.md)
-If you prefer to have full control over the executing of database schema changes then you'll want to read about Metabase's database migrations and how to run them manually.
 
 #### [Backing up your Metabase](backing-up-the-metabase-database.md)
 Better safe than sorry we always say.  Simple instructions to help with backing up a Metabase instance.

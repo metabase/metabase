@@ -23,4 +23,4 @@ Give the application a moment to finish initializing and then you should see the
 
 ![macwelcome](images/MacWelcome.png)
 
-Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](/docs/setting-up-metabase.md).
+Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../setting-up-metabase.md).

@@ -2,9 +2,14 @@
 
 To run the Metabase jar file you need to have Java installed on your system.  Currently Metabase requires Java 6 or higher and will work on either the OpenJDK or Oracle JDK.  Note that the Metabase team prefers to stick with open source solutions where possible, so we use the OpenJDK for our Metabase instances.
 
+### Download Metabase
+
+If you haven't done so already the first thing you need to do is [Download Metabase](http://www.metabase.com/start/jar.html).  Simply save the .jar file to a folder on your system where you wish to run Metabase.
+
+
 ### Verify Java is installed
 
-Before you can do anything you must verify that you have Java installed.  To check that you have a working java runtime, go to a terminal and type:
+Before you can launch the application you must verify that you have Java installed.  To check that you have a working java runtime, go to a terminal and type:
 
     java -version
 
@@ -14,7 +19,7 @@ You should see output such as:
     Java (TM) SE Runtime Environment (build 1.6.0_65-b14-466.1-11M4716)
     Java HotSpot (TM) 64-Bit Server VM (build 20.65-b04-466.1, mixed mode)
 
-If you did not see the output above and instead saw either an error or your Java version is less than 1.6, then you need to install the Java JDK.
+If you did not see the output above and instead saw either an error or your Java version is less than 1.6, then you need to install the Java Runtime.
 
 [OpenJDK Downloads](http://openjdk.java.net/install/)  
 [Oracle's Java Downloads](http://www.oracle.com/technetwork/java/javase/downloads/index.html)
@@ -22,9 +27,9 @@ If you did not see the output above and instead saw either an error or your Java
 
 ### Launching Metabase
 
-Now that you have a working JDK, you can now run the jar from a terminal with:
+Now that you have a working Java Runtime, you can now run the jar from a terminal with:
 
-    java -jar metabase-standalone.jar
+    java -jar metabase.jar
 
 It's that simple.  This will start the Metabase application using all of the default settings.  You should see some log entries starting to run in your terminal window showing you the application progress as it starts up.  Once Metabase is fully started you'll see a confirmation such as:
 
@@ -37,9 +42,11 @@ It's that simple.  This will start the Metabase application using all of the def
 
 At this point your ready to go!  You can access your new Metabase server on port 3000, most likely at [localhost:3000](http://localhost:3000)
 
-Note that in the default configuration Metabase will use a local H2 database for storing all its own application data.  This is meant for simple evaluations or personal installations, but if you are running Metabase for a team we recommend you upgrade to a more robust SQL server such as Postgres.  Continue reading for details on how to do that.
+You can use another port than 3000 by setting the `MB_JETTY_PORT` environment variable before running the jar
 
-Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](/docs/setting-up-metabase.md).
+Note that in the default configuration Metabase will use a local H2 database for storing all its own application data.  This is meant for simple evaluations or personal use, so if you want to run Metabase for a team we recommend you upgrade to a more robust SQL server such as Postgres.  See below for details on how to do that.
+
+Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../setting-up-metabase.md).
 
 
 ### The Metabase Application Database
@@ -62,7 +69,7 @@ If for any reason you want to use an H2 database file in a separate location fro
 
     export MB_DB_TYPE=h2
     export MB_DB_FILE=/the/path/to/my/h2.db
-    java -jar metabase-standalone.jar
+    java -jar metabase.jar
 
 #### [Postgres](http://www.postgresql.org/)
 For production installations of Metabase we recommend that users replace the H2 database with Postgres.  This offers a greater degree of performance and reliability when Metabase is running with many users.
@@ -75,7 +82,7 @@ You can change the application database to use Postgres using a few simple envir
     export MB_DB_USER=<username>
     export MB_DB_PASS=<password>
     export MB_DB_HOST=localhost
-    java -jar metabase-standalone.jar
+    java -jar metabase.jar
 
 This will tell Metabase to look for its application database using the supplied Postgres connection information.
 

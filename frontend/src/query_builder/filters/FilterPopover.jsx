@@ -145,7 +145,7 @@ export default class FilterPopover extends Component {
 
     renderPicker(filter, field) {
         let operator = field.operators_lookup[filter[0]];
-        return operator.fields.map((operatorField, index) => {
+        return operator && operator.fields.map((operatorField, index) => {
             let values, onValuesChange;
             let placeholder = operator.placeholders && operator.placeholders[index] || undefined;
             if (operator.multi) {
