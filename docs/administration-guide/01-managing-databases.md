@@ -8,18 +8,44 @@ Cool, now you’re in the admin panel. Next, select **Databases** from the menu 
 
 ### Adding a Database Connection
 
-Now you’ll see a list of your databases. To connect another database to Metabase, click **Add database**. Metabase currently supports the following types of databases: 
+Now you’ll see a list of your databases. To connect another database to Metabase, click **Add database**. Metabase currently supports the following types of databases:
 
 * H2
 * MongoDB
 * MySQL
 * Postgres
 
-To add a database, you'll need its connection information.  The [Installation Guide](installation-guide.md) explains where to find your database's connection information.  
+To add a database, you'll need its connection information.
+
+#### <a name="heroku-databases"></a>Getting connection information for Databases on Heroku:
+
+1. Go to [https://postgres.heroku.com/databases](https://postgres.heroku.com/databases).
+2. Click on the database you want to connect to Metabase.
+3. Write down the following information based on your database:
+    * Hostname
+    * Port
+    * Username
+    * Database Name
+    * Password
+
+#### <a name="rds-databases"></a>Getting connection information for Databases on Amazon's RDS:
+
+1. Go to your AWS Management Console.
+    * Need help finding that?  Visit [https://**My_AWS_Account_ID**.signin.aws.amazon.com/console](https://**My_AWS_Account_ID**.signin.aws.amazon.com/console).  Be sure to insert your own AWS Account ID, though!
+2.  Under "Database" services, click "RDS".
+3.  Then click "Instances".
+4.  Select the database you want to connect to Metabase.
+5.  Write down the following information based on your database:
+    * Hostname - This is listed as the "Endpoint" parameter
+    * Port - Find the port parameter under "Security and Network"
+    * Username - Find this under "Configuration Details"
+    * Database Name - Find this under "Configuration Details"
+    * Password - Ask your database administrator for the password.
+
 
 ### Secure Socket Layer (SSL)
 
-Metabase automatically tries to connect to databases with and without SSL. If it is possible to connect to your database with a SSL connection, Metabase make that the default setting for your database. You can always change this setting later if you prefer to connect without this layer of security, but we highly recommend keeping SSL turned on to keep your data secure.
+Metabase automatically tries to connect to databases with and without SSL. If it is possible to connect to your database with a SSL connection, Metabase will make that the default setting for your database. You can always change this setting later if you prefer to connect without this layer of security, but we highly recommend keeping SSL turned on to keep your data secure.
 
 ### Database Analysis
 
@@ -31,12 +57,12 @@ Metabase automatically syncs its copy of your database with the original databas
 
 1. Go to the Admin Panel.
 
-2. Select **Databases** from the navigation menu.  
+2. Select **Databases** from the navigation menu.
 ![adminbar](images/AdminBar.png)
 
-3. Click on the database you would like to sync. 
+3. Click on the database you would like to sync.
 ![databaselist](images/DatabaseList.png)
- 
+
 4. Click on the **Sync** button on the right of the screen.
 ![databaseconnection](images/DatabaseConnection.png)
 
@@ -46,8 +72,12 @@ To delete a database from Metabase, click on **Remove this database** from the d
 
 ![databaseconnection](images/DatabaseConnection.png)
 
-Hovering over the database row in the list of databases connected to your account and clicking the red **Delete** button will also delete a database.  
+You can also delete a database from the database list: hover over the row with the database you want to remove and click the **Delete** button that appears.
 
 ![deletedatabasebutton](images/DatabaseDeleteButton.png)
 
-**Caution: Deleting a database is irreversible!  All saved questions and dashboard cards based on the database will be deleted too.**
+**Caution: Deleting a database is irreversible!  All saved questions and dashboard cards based on the database will be deleted as well!**
+
+---
+## Next: enabling features that send email
+Metabase can send emails for certain features, like email invites, but first you need to [set up an email account](02-setting-up-email.md).

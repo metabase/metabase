@@ -72,7 +72,7 @@ var config = module.exports = {
             // { test: /\.css$/, loader: 'style!css!cssnext' }
         ],
         noParse: [
-            /node_modules\/(angular|ng-|ace|react-onclickoutside|moment|underscore|jquery|d3)/ // doesn't include 'crossfilter', 'dc', and 'tether' due to use of 'require'
+            /node_modules\/(angular|ng-|ace|react-onclickoutside|moment|underscore|d3)/ // doesn't include 'crossfilter', 'dc', and 'tether' due to use of 'require'
         ]
     },
 
@@ -103,7 +103,6 @@ var config = module.exports = {
             'moment':               __dirname + '/node_modules/moment/min/moment.min.js',
             'tether':               __dirname + '/node_modules/tether/dist/js/tether.min.js',
             'underscore':           __dirname + '/node_modules/underscore/underscore-min.js',
-            'jquery':               __dirname + '/node_modules/jquery/dist/jquery.min.js',
             'd3':                   __dirname + '/node_modules/d3/d3.min.js',
             'crossfilter':          __dirname + '/node_modules/crossfilter/index.js',
             'dc':                   __dirname + '/node_modules/dc/dc.min.js',

@@ -21,5 +21,5 @@ In addition to looking at a table's fields, you can also look at its connections
 
 ---
 ## That’s it!
-If you still have questions, or want to share Metabase tips and tricks, head over to our [discussion board](). See you there!
+If you still have questions, or want to share Metabase tips and tricks, head over to our [discussion board](http://discourse.metabase.com/). See you there!
 

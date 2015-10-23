@@ -28,8 +28,8 @@
   height: 100vh;
 }
 
-.scroll-y { overflow-y: scroll; }
-.scroll-x { overflow-x: scroll; }
+.scroll-y { overflow-y: auto; }
+.scroll-x { overflow-x: auto; }
 
 /* display utilities */
 .block        { display: block; }

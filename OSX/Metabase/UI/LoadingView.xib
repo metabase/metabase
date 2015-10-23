@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="5053" systemVersion="13A603" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES">
+    <dependencies>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="5053"/>
+    </dependencies>
+    <objects>
+        <customObject id="-2" userLabel="File's Owner"/>
+        <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
+        <customObject id="-3" userLabel="Application"/>
+        <customView translatesAutoresizingMaskIntoConstraints="NO" id="c22-O7-iKe" customClass="LoadingView">
+            <rect key="frame" x="0.0" y="0.0" width="200" height="200"/>
+            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+            <subviews>
+                <imageView canDrawConcurrently="YES" horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="cZb-9N-gBv" userLabel="outerImageView">
+                    <rect key="frame" x="6" y="6" width="188" height="188"/>
+                    <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                    <imageCell key="cell" refusesFirstResponder="YES" alignment="left" animates="YES" image="Loading_View_Outer" id="gdw-zk-O24"/>
+                </imageView>
+                <imageView canDrawConcurrently="YES" horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="Ppb-yU-gW5" userLabel="innerImageView">
+                    <rect key="frame" x="42" y="42" width="116" height="116"/>
+                    <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                    <imageCell key="cell" refusesFirstResponder="YES" alignment="left" animates="YES" image="Loading_View_Inner" id="umY-yg-KA6"/>
+                </imageView>
+            </subviews>
+            <constraints>
+                <constraint firstAttribute="centerY" secondItem="Ppb-yU-gW5" secondAttribute="centerY" id="DZe-EF-QxD"/>
+                <constraint firstAttribute="centerX" secondItem="Ppb-yU-gW5" secondAttribute="centerX" id="Xtt-Ah-8QM"/>
+                <constraint firstAttribute="centerY" secondItem="cZb-9N-gBv" secondAttribute="centerY" id="YLx-iu-oop"/>
+                <constraint firstAttribute="centerX" secondItem="cZb-9N-gBv" secondAttribute="centerX" id="aJ4-b5-5M8"/>
+            </constraints>
+            <connections>
+                <outlet property="outerImageView" destination="cZb-9N-gBv" id="K4s-1M-P8D"/>
+            </connections>
+        </customView>
+    </objects>
+    <resources>
+        <image name="Loading_View_Inner" width="116" height="116"/>
+        <image name="Loading_View_Outer" width="188" height="188"/>
+    </resources>
+</document>

@@ -1,0 +1,3 @@
+[submodule "OSX/Vendor/INAppStoreWindow"]
+	path = OSX/Vendor/INAppStoreWindow
+	url = git@github.com:indragiek/INAppStoreWindow.git
