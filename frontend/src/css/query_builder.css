@@ -255,6 +255,18 @@
   background-image: url('/app/img/no_understand.svg');
 }
 
+.QueryError-image--serverError {
+  width: 120px;
+  height: 148px;
+  background-image: url('/app/img/blown_up.svg');
+}
+
+.QueryError-image--timeout {
+  width: 120px;
+  height: 120px;
+  background-image: url('/app/img/stopwatch.svg');
+}
+
 .QueryError-message {
   /* IE flexbox align-items:center bug workaround */
   /* https://github.com/philipwalton/flexbugs#2-column-flex-items-set-to-align-itemscenter-overflow-their-container */
@@ -265,6 +277,29 @@
   line-height: 1.4;
 }
 
+.QueryError-adminEmail {
+  position: relative;
+  display: inline-block;
+  border-radius: var(--default-border-radius);
+  border: 1px solid rgb(197, 197, 197);
+  margin-top: var(--margin-2);
+  padding: var(--padding-1) var(--padding-4) var(--padding-1) var(--padding-4);
+}
+
+.QueryError-adminEmail:before {
+  content: "Admin Email";
+  font-size: 10px;
+  text-align: center;
+  text-transform: uppercase;
+  background-color: white;
+  padding-left: var(--padding-1);
+  padding-right: var(--padding-1);
+
+  position: absolute;
+  top: -0.75em;
+  left: 50%;
+  margin-left: -41px; /* ugh */
+}
 
 /* GUI BUILDER */
 
