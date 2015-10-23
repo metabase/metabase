@@ -46,7 +46,7 @@ export default class DashCard extends Component {
         if (error) {
             let message;
             if (error.data) {
-                message = error.data.message
+                message = error.data.message;
             } else if (error.status === 503) {
                 message = "I'm sorry, the server timed out while asking your question."
             } else if (typeof error === "string") {
