@@ -62,7 +62,6 @@ Metabase also allows you to hit our Query API directly from Javascript to integr
 * Export subsets of your users to third party marketing automation software
 * Provide a specialized customer lookup application for the people in your company
 
-
 # License
 
 Unless otherwise noted, all Metabase source files are made available under the terms of the GNU Affero General Public License (AGPL).
