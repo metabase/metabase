@@ -2,18 +2,20 @@
 
 # Overview
 
+
 Metabase is an easy way to generate charts and dashboards, ask simple ad hoc queries without using SQL, and see detailed information about rows in your Database. You can set it up in under 5 minutes, and then give yourself and others a place to ask simple questions and understand the data your application is generating. It is not tied to any specific framework and can be used out of the box with minimal configuration.
 
 With a bit of tagging and annotation of what the tables and fields in your database mean, it can be used to provide a rich, humanized version analytics server and administration interface.
 
 For more information check out [www.metabase.com](http://www.metabase.com)
 
-
 # Security Disclosure
 
 Security is very important to us. If discover any issue regarding security, please disclose the information responsibly by sending an email to security@metabase.com and not by creating a github issue.
 
+
 # Installation
+
 
 You can run Metabase in two primary ways, as a docker container or as a jar.
 
