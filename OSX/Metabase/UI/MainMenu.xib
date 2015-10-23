@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="5053" systemVersion="13A603" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES">
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="8191" systemVersion="14F27" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES">
     <dependencies>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="5053"/>
-        <plugIn identifier="com.apple.WebKitIBPlugin" version="5053"/>
+        <deployment identifier="macosx"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="8191"/>
+        <plugIn identifier="com.apple.WebKitIBPlugin" version="8191"/>
     </dependencies>
     <objects>
         <customObject id="-2" userLabel="File's Owner" customClass="NSApplication">
@@ -11,7 +12,7 @@
             </connections>
         </customObject>
         <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
-        <customObject id="-3" userLabel="Application"/>
+        <customObject id="-3" userLabel="Application" customClass="NSObject"/>
         <customObject id="SvH-Fm-ua3" customClass="SUUpdater"/>
         <customObject id="Voe-Tx-rLC" customClass="AppDelegate">
             <connections>
@@ -162,11 +163,11 @@
                 </menuItem>
             </items>
         </menu>
-        <window title="Metabase" allowsToolTipsWhenApplicationIsInactive="NO" releasedWhenClosed="NO" animationBehavior="default" id="QvC-M9-y7g" customClass="INAppStoreWindow">
+        <window allowsToolTipsWhenApplicationIsInactive="NO" releasedWhenClosed="NO" animationBehavior="default" id="QvC-M9-y7g" customClass="INAppStoreWindow">
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
             <rect key="contentRect" x="335" y="390" width="1473" height="901"/>
-            <rect key="screenRect" x="0.0" y="0.0" width="2560" height="1418"/>
+            <rect key="screenRect" x="0.0" y="0.0" width="2560" height="1417"/>
             <value key="minSize" type="size" width="1000" height="800"/>
             <view key="contentView" canDrawConcurrently="YES" id="EiT-Mj-1SZ">
                 <rect key="frame" x="0.0" y="0.0" width="1473" height="901"/>
@@ -174,7 +175,6 @@
                 <subviews>
                     <webView canDrawConcurrently="YES" translatesAutoresizingMaskIntoConstraints="NO" id="mhE-X5-FF6">
                         <rect key="frame" x="0.0" y="0.0" width="1473" height="901"/>
-                        <autoresizingMask key="autoresizingMask"/>
                         <webPreferences key="preferences" defaultFontSize="12" defaultFixedFontSize="12" plugInsEnabled="NO" javaEnabled="NO">
                             <nil key="identifier"/>
                         </webPreferences>
@@ -191,6 +191,9 @@
                     <constraint firstAttribute="trailing" secondItem="mhE-X5-FF6" secondAttribute="trailing" id="z4U-O6-LWv"/>
                 </constraints>
             </view>
+            <userDefinedRuntimeAttributes>
+                <userDefinedRuntimeAttribute type="boolean" keyPath="showsTitle" value="NO"/>
+            </userDefinedRuntimeAttributes>
         </window>
         <customView id="Pem-Bq-pDs" userLabel="titleBarView">
             <rect key="frame" x="0.0" y="0.0" width="651" height="32"/>
@@ -198,11 +201,9 @@
             <subviews>
                 <customView translatesAutoresizingMaskIntoConstraints="NO" id="V9v-oH-CLo">
                     <rect key="frame" x="64" y="0.0" width="523" height="32"/>
-                    <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <subviews>
                         <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="BVV-jo-b9C">
-                            <rect key="frame" x="229" y="8" width="64" height="17"/>
-                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                            <rect key="frame" x="229" y="8" width="65" height="17"/>
                             <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" enabled="NO" sendsActionOnEndEditing="YES" title="Metabase" id="Vvp-PZ-SY5">
                                 <font key="font" metaFont="system"/>
                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
@@ -211,7 +212,6 @@
                         </textField>
                         <button translatesAutoresizingMaskIntoConstraints="NO" id="dZP-Ul-oSB">
                             <rect key="frame" x="0.0" y="0.0" width="24" height="32"/>
-                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                             <constraints>
                                 <constraint firstAttribute="width" constant="24" id="6zn-IR-p7a"/>
                             </constraints>
@@ -225,7 +225,6 @@
                         </button>
                         <button translatesAutoresizingMaskIntoConstraints="NO" id="5Bt-VB-Dba">
                             <rect key="frame" x="24" y="0.0" width="24" height="32"/>
-                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                             <constraints>
                                 <constraint firstAttribute="width" constant="24" id="cZI-NR-ghh"/>
                             </constraints>
@@ -239,7 +238,6 @@
                         </button>
                         <button translatesAutoresizingMaskIntoConstraints="NO" id="HAI-2S-GZQ">
                             <rect key="frame" x="48" y="0.0" width="24" height="32"/>
-                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                             <constraints>
                                 <constraint firstAttribute="width" constant="24" id="Bk3-9A-EeN"/>
                             </constraints>
@@ -265,7 +263,6 @@
                 </customView>
                 <button translatesAutoresizingMaskIntoConstraints="NO" id="XfF-w9-qlO">
                     <rect key="frame" x="627" y="0.0" width="24" height="32"/>
-                    <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                     <constraints>
                         <constraint firstAttribute="width" constant="24" id="O1n-dk-WFr"/>
                     </constraints>
