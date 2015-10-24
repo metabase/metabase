@@ -48,8 +48,8 @@ export default class Setup extends Component {
                     <div className="wrapper wrapper--trim text-centered">
                         <LogoIcon className="text-brand mb4" width={89} height={118}></LogoIcon>
                         <div className="relative z2 text-centered ml-auto mr-auto" style={{maxWidth: 550}}>
-                            <h1 style={{fontSize: '2.2rem'}} className="text-brand">Welcome to Metabase</h1>
-                            <p className="text-body">Looks like everything is working. Now let’s get to know you, connect to your data, and start finding you some answers!</p>
+                            <h1 style={{fontSize: '2.2rem'}} className="text-brand">Bem-vindo ao Metabase</h1>
+                            <p className="text-body">Parece que tudo está funcionando. Agora vamos começar a conhecê-lo, se conectar a seus dados e começar a encontrar algumas respostas!</p>
                             <button className="Button Button--primary mt4" onClick={() => (this.completeWelcome())}>Let's get started</button>
                         </div>
                         <div className="absolute z1 bottom left right">
