@@ -9,12 +9,18 @@
             [metabase.models.setting :as setting]))
 
 (defn- index [_]
-  (-> (io/resource "frontend_client/index.html")
-      slurp
-      (stencil/render-string {:bootstrap_json (json/generate-string (setting/public-settings))})
-      resp/response
-      (resp/content-type "text/html")
-      (resp/header "Last-Modified" "{now} GMT")))
+  (if ((resolve 'metabase.core/initialized?))
+    (-> (io/resource "frontend_client/index.html")
+        slurp
+        (stencil/render-string {:bootstrap_json (json/generate-string (setting/public-settings))})
+        resp/response
+        (resp/content-type "text/html")
+        (resp/header "Last-Modified" "{now} GMT"))
+    (-> (io/resource "frontend_client/init.html")
+        slurp
+        resp/response
+        (resp/content-type "text/html")
+        (resp/header "Last-Modified" "{now} GMT"))))
 
 ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
 (defroutes routes

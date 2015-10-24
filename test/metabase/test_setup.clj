@@ -82,7 +82,8 @@
   (let [setup-db (future (time (do (log/info "Setting up test DB and running migrations...")
                                    (db/setup-db :auto-migrate true)
                                    (load-test-datasets)
-                                   (metabase.models.setting/set :site-name "Metabase Test"))))]
+                                   (metabase.models.setting/set :site-name "Metabase Test")
+                                   (core/initialization-complete!))))]
     (core/start-jetty)
     @setup-db))
 
