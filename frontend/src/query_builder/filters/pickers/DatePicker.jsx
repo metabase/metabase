@@ -47,10 +47,10 @@ export default class DatePicker extends Component {
         }
 
         var operators = [
-            { name: "relative", verboseName: "Relative date" },
-            { name: "specific", verboseName: "Specific date" },
-            { name: "IS_NULL", verboseName: "Is Empty", advanced: true },
-            { name: "NOT_NULL", verboseName: "Not Empty", advanced: true }
+            { name: "relative", verboseName: "Data relativa" },
+            { name: "specific", verboseName: "Data específica" },
+            { name: "IS_NULL", verboseName: "É vazia", advanced: true },
+            { name: "NOT_NULL", verboseName: "Não é fazia", advanced: true }
         ];
 
         return (

@@ -47,7 +47,7 @@ export default class OperatorSelector extends Component {
                 { !expanded && expandedOperators.length > 0 ?
                     <div className="text-grey-3 cursor-pointer" onClick={() => this.setState({ expanded: true })}>
                         <Icon className="px1" name="chevrondown" width="14" height="14" />
-                        More Options
+                        Mais opções
                     </div>
                 : null }
             </div>

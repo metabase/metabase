@@ -372,7 +372,7 @@ export default class GuiQueryEditor extends Component {
 
     renderLimit() {
         var limitOptions = [undefined, 1, 10, 25, 100, 1000].map((count) => {
-            var name = count || "None";
+            var name = count || "Nenhum";
             var classes = cx({
                 "Button": true,
                 "Button--active":  count == this.props.query.query.limit
@@ -443,7 +443,7 @@ export default class GuiQueryEditor extends Component {
                     <div className="px3 py1">
                         {this.renderSort()}
                         <div className="py1">
-                            <div className="Query-label mb1">Limit:</div>
+                            <div className="Query-label mb1">Limite:</div>
                             {this.renderLimit()}
                         </div>
                     </div>

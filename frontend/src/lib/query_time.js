@@ -76,13 +76,13 @@ export function generateTimeIntervalDescription(n, unit) {
         switch (n) {
             case "current":
             case 0:
-                return "Today";
+                return "Hoje";
             case "next":
             case 1:
-                return "Tomorrow";
+                return "Amanhã";
             case "last":
             case -1:
-                return "Yesterday";
+                return "Ontem";
         }
     }
     unit = inflection.capitalize(unit);
@@ -119,9 +119,9 @@ export function generateTimeValueDescription(value, bucketing) {
         } else {
             // FIXME: what to do if the bucketing and unit don't match?
             if (n === 0) {
-                return "Now";
+                return "Agora";
             } else {
-                return Math.abs(n) + " " + inflection.inflect(unit, Math.abs(n)) + (n < 0 ? " ago" : " from now");
+                return Math.abs(n) + " " + inflection.inflect(unit, Math.abs(n)) + (n < 0 ? " atrás" : " de ");
             }
         }
     } else {

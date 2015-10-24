@@ -49,7 +49,7 @@ export default class Header extends Component {
             } else {
                 titleAndDescription = (
                     <div className="flex align-center">
-                        <h1 className="Entity-title my1">{"Novo " + this.props.objectType}</h1>
+                        <h1 className="Entity-title my1">{"Nova " + this.props.objectType}</h1>
                     </div>
                 );
             }

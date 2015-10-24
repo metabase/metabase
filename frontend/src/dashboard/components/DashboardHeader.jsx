@@ -85,20 +85,20 @@ export default class DashboardHeader extends Component {
             <ActionButton
                 actionFn={() => this.onSave()}
                 className="Button Button--small Button--primary text-uppercase"
-                normalText="Save"
-                activeText="Saving…"
-                failedText="Save failed"
-                successText="Saved"
+                normalText="Salvar"
+                activeText="Salvando…"
+                failedText="Erro ao salvar"
+                successText="Salvo"
             />
         );
         editingButtons.push(
-            <a className="Button Button--small text-uppercase" href="#" onClick={() => this.onCancel()}>Cancel</a>
+            <a className="Button Button--small text-uppercase" href="#" onClick={() => this.onCancel()}>Cancelar</a>
         );
         editingButtons.push(
             <ModalWithTrigger
                 ref="deleteDashboardModal"
                 triggerClasses="Button Button--small text-uppercase"
-                triggerElement="Delete"
+                triggerElement="Excluir"
             >
                 <DeleteDashboardModal
                     dispatch={this.props.dispatch}
@@ -155,7 +155,7 @@ export default class DashboardHeader extends Component {
             <ModalWithTrigger
                 ref="addQuestionModal"
                 triggerElement={
-                    <a title="Add a question to this dashboard">
+                    <a title="Adicione uma pergunta a este painel">
                         <Icon className={cx("text-brand-hover", { "Icon--pulse": isEmpty })} name="add" width="16px" height="16px" />
                     </a>
                 }
@@ -178,12 +178,12 @@ export default class DashboardHeader extends Component {
         return (
             <Header
                 headerClassName="Dash-wrapper wrapper"
-                objectType="dashboard"
+                objectType="painel"
                 item={dashboard}
                 isEditing={this.props.isEditing}
                 isEditingInfo={this.props.isEditing}
                 headerButtons={this.getHeaderButtons()}
-                editingTitle="You are editing a dashboard"
+                editingTitle="Você está editando um painel"
                 editingButtons={this.getEditingButtons()}
                 setItemAttributeFn={this.onAttributeChange.bind(this)}
             >

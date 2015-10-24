@@ -131,7 +131,7 @@ export default React.createClass({
                 <ModalWithTrigger
                     ref="saveModal"
                     triggerClasses="h4 px1 text-grey-4 text-brand-hover text-uppercase"
-                    triggerElement="Save"
+                    triggerElement="Salvar"
                 >
                     <SaveQuestionModal
                         card={this.props.card}
@@ -179,7 +179,7 @@ export default React.createClass({
             'text-brand-hover': !this.state.isShowingDataReference
         });
         var dataReferenceButton = (
-            <a href="#" className={dataReferenceButtonClasses} title="Get help on what data means">
+            <a href="#" className={dataReferenceButtonClasses} title="Obtenha ajuda no que os dados dizem">
                 <Icon name='reference' width="16px" height="16px" onClick={this.toggleDataReference}></Icon>
             </a>
         );
@@ -193,20 +193,20 @@ export default React.createClass({
             <ActionButton
                 actionFn={() => this.onSave()}
                 className="Button Button--small Button--primary text-uppercase"
-                normalText="Save"
-                activeText="Saving…"
-                failedText="Save failed"
-                successText="Saved"
+                normalText="Salvar"
+                activeText="Salvando…"
+                failedText="Erro ao salvar"
+                successText="Salvo"
             />
         );
         editingButtons.push(
-            <a className="Button Button--small text-uppercase" href="#" onClick={() => this.onCancel()}>Cancel</a>
+            <a className="Button Button--small text-uppercase" href="#" onClick={() => this.onCancel()}>Cancelar</a>
         );
         editingButtons.push(
             <ModalWithTrigger
                 ref="deleteModal"
                 triggerClasses="Button Button--small text-uppercase"
-                triggerElement="Delete"
+                triggerElement="Excluir"
             >
                 <DeleteQuestionModal
                     card={this.props.card}
@@ -222,20 +222,20 @@ export default React.createClass({
         var subtitleText;
         if (this.props.card) {
             if (this.props.card.dashboard_count > 0) {
-                subtitleText = "Changes will be reflected in " + this.props.card.dashboard_count + " " + inflection.inflect("dashboard", this.props.card.dashboard_count) + " and can be reverted.";
+                subtitleText = "Alterações poderão refletir em " + this.props.card.dashboard_count + " " + inflection.inflect("painel", this.props.card.dashboard_count) + " e poderão ser revertidas.";
             } else {
-                subtitleText = "Changes can be reverted."
+                subtitleText = "Alterações podem ser revertidas."
             }
         }
 
         return (
             <Header
-                objectType="question"
+                objectType="pergunta"
                 item={this.props.card}
                 isEditing={!this.props.cardIsNewFn()}
                 isEditingInfo={!this.props.cardIsNewFn()}
                 headerButtons={this.getHeaderButtons()}
-                editingTitle="You are editing a saved question"
+                editingTitle="Você está editando uma pergunta salva"
                 editingSubtitle={subtitleText}
                 editingButtons={this.getEditingButtons()}
                 setItemAttributeFn={this.setCardAttribute}

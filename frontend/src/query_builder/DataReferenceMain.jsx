@@ -64,9 +64,9 @@ export default class DataReferenceMain extends Component {
 
         return (
             <div>
-                <h1>Data Reference</h1>
-                <p>Learn more about your data structure to
- ask more useful questions.</p>
+                <h1>Referência dos dados</h1>
+                <p>Saiba mais sobre sua estrutura de
+                dados para fazer perguntas mais úteis.</p>
                 <ul>
                     {databases}
                 </ul>

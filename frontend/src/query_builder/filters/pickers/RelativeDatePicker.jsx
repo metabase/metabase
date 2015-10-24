@@ -4,22 +4,22 @@ import cx from "classnames";
 import _ from "underscore";
 
 const SHORTCUTS = [
-    { name: "Today",        operator: ["=", "<", ">"], values: [["relative_datetime", "current"]]},
-    { name: "Yesterday",    operator: ["=", "<", ">"], values: [["relative_datetime", -1, "day"]]},
-    { name: "Past 7 days",  operator: "TIME_INTERVAL", values: [-7, "day"]},
-    { name: "Past 30 days", operator: "TIME_INTERVAL", values: [-30, "day"]}
+    { name: "Hoje",        operator: ["=", "<", ">"], values: [["relative_datetime", "current"]]},
+    { name: "Ontem",    operator: ["=", "<", ">"], values: [["relative_datetime", -1, "day"]]},
+    { name: "Passados 7 dias",  operator: "TIME_INTERVAL", values: [-7, "day"]},
+    { name: "Passados 30 dias", operator: "TIME_INTERVAL", values: [-30, "day"]}
 ];
 
 const RELATIVE_SHORTCUTS = {
-    "Last": [
-        { name: "Week",  operator: "TIME_INTERVAL", values: ["last", "week"]},
-        { name: "Month", operator: "TIME_INTERVAL", values: ["last", "month"]},
-        { name: "Year",  operator: "TIME_INTERVAL", values: ["last", "year"]}
+    "Última(o)": [
+        { name: "Semana",  operator: "TIME_INTERVAL", values: ["last", "week"]},
+        { name: "Mês", operator: "TIME_INTERVAL", values: ["last", "month"]},
+        { name: "Ano",  operator: "TIME_INTERVAL", values: ["last", "year"]}
     ],
-    "This": [
-        { name: "Week",  operator: "TIME_INTERVAL", values: ["current", "week"]},
-        { name: "Month", operator: "TIME_INTERVAL", values: ["current", "month"]},
-        { name: "Year",  operator: "TIME_INTERVAL", values: ["current", "year"]}
+    "Esta(e)": [
+        { name: "Semana",  operator: "TIME_INTERVAL", values: ["current", "week"]},
+        { name: "Mês", operator: "TIME_INTERVAL", values: ["current", "month"]},
+        { name: "Ano",  operator: "TIME_INTERVAL", values: ["current", "year"]}
     ]
 };
 

@@ -233,8 +233,8 @@ const OPERATORS = {
 // ordered list of operators and metadata per type
 const OPERATORS_BY_TYPE_ORDERED = {
     [NUMBER]: [
-        { name: "=",       verboseName: "Igual" },
-        { name: "!=",      verboseName: "Diferente" },
+        { name: "=",       verboseName: "Igual a" },
+        { name: "!=",      verboseName: "Diferente de" },
         { name: ">",       verboseName: "Maior que" },
         { name: "<",       verboseName: "Menor que" },
         { name: "BETWEEN", verboseName: "Entre" },
