@@ -80,36 +80,36 @@ export default class CreateDashboardModal extends Component {
 
         var createButton = (
             <button className={buttonClasses} disabled={!formReady}>
-                Create
+                Criar
             </button>
         );
 
         return (
             <ModalContent
-                title="Create Dashboard"
+                title="Criar Painel"
                 closeFn={this.props.closeFn}
             >
                 <form className="Modal-form" onSubmit={this.createNewDash}>
                     <div className="Form-inputs">
                         <FormField
-                            displayName="Name"
+                            displayName="Nome"
                             fieldName="name"
                             errors={this.state.errors}>
                             <input className="Form-input
-                            full" name="name" placeholder="What is the name of your dashboard?" value={this.state.name} onChange={this.setName} autofocus />
+                            full" name="name" placeholder="Qual é o nome do seu painel?" value={this.state.name} onChange={this.setName} autofocus />
                         </FormField>
 
                         <FormField
-                            displayName="Description"
+                            displayName="Descrição"
                             fieldName="description"
                             errors={this.state.errors}>
-                            <input className="Form-input full" name="description" placeholder="It's optional but oh, so helpful"  value={this.state.description} onChange={this.setDescription} />
+                            <input className="Form-input full" name="description" placeholder="É opcional, mas, útil"  value={this.state.description} onChange={this.setDescription} />
                         </FormField>
                     </div>
 
                     <div className="Form-actions">
                         {createButton}
-                        <span className="px1">or</span><a href="#" className="no-decoration text-brand text-bold" onClick={this.props.closeFn}>Cancel</a>
+                        <span className="px1">ou</span><a href="#" className="no-decoration text-brand text-bold" onClick={this.props.closeFn}>Cancelar</a>
                         {formError}
                     </div>
                 </form>

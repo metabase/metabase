@@ -53,14 +53,14 @@ export default class Cards extends Component {
                         <div className="flex align-center flex-full border-bottom pb2">
                             <div className="text-brand-hover">
                                 <a className="link mb2" href={'/card/'+item.id+'?clone'}>{item.name}</a>
-                                <div className="text-grey-3">{item.description || "No description yet"}</div>
+                                <div className="text-grey-3">{item.description || "Sem descrição ainda"}</div>
                             </div>
                             <div className="flex-align-right flex-no-shrink text-right text-grey-3">
-                                <div>Saved by <span className="text-dark">{item.creator.common_name}</span></div>
-                                <div>Created {item.created_at.fromNow()}</div>
+                                <div>Salvo por <span className="text-dark">{item.creator.common_name}</span></div>
+                                <div>Criado a {item.created_at.fromNow()}</div>
                             </div>
                             <div className="flex-align-right text-right text-grey-3 ml2">
-                                <a href={'/card/'+item.id} className="flex-align-right flex text-grey-1 text-grey-3-hover" title="Edit this question">
+                                <a href={'/card/'+item.id} className="flex-align-right flex text-grey-1 text-grey-3-hover" title="Editar esta pergunta">
                                     <IconBorder>
                                         <Icon name='pencil' width={16} height={16}></Icon>
                                     </IconBorder>
@@ -86,15 +86,15 @@ export default class Cards extends Component {
                             <span className="QuestionCircle">?</span>
                             <div className="text-normal mt3 mb1 h2 text-bold">
                                 { cardsFilter.database && cardsFilter.table ?
-                                    "No questions have been saved against "+this.tableName(cardsFilter.table)+" yet."
+                                    "Nenhuma pergunta foi salva para "+this.tableName(cardsFilter.table)+" ainda."
                                 : null}
 
                                 { cardsFilter.database && !cardsFilter.table ?
-                                    "No questions have been saved against "+databaseMetadata.name+" yet."
+                                    "Nenhuma pergunta foi salva para "+databaseMetadata.name+" ainda."
                                 : null}
 
                                 { !cardsFilter.database && !cardsFilter.table ?
-                                    "You don't have any saved questions yet."
+                                    "Você não tem perguntas salvas ainda."
                                 : null}
                             </div>
                         </div>

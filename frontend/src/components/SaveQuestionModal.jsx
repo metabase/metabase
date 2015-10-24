@@ -94,31 +94,31 @@ export default React.createClass({
 
         return (
             <ModalContent
-                title="Save Question"
+                title="Salvar pergunta"
                 closeFn={this.props.closeFn}
             >
                 <form className="flex flex-column flex-full" onSubmit={this.save}>
                     <div className="Form-inputs">
                         <FormField
-                            displayName="Name"
+                            displayName="Nome"
                             fieldName="name"
                             errors={this.state.errors}>
-                            <input ref="name" className="Form-input full" name="name" placeholder="What is the name of your card?" defaultValue={name} autofocus/>
+                            <input ref="name" className="Form-input full" name="name" placeholder="Qual é o nome da sua placa?" defaultValue={name} autofocus/>
                         </FormField>
 
                         <FormField
-                            displayName="Description (optional)"
+                            displayName="Descrição (opcional)"
                             fieldName="description"
                             errors={this.state.errors}>
-                            <textarea ref="description" className="Form-input full" name="description" placeholder="It's optional but oh, so helpful" defaultValue={this.props.card.description} />
+                            <textarea ref="description" className="Form-input full" name="description" placeholder="É opcional, mas, muito útil" defaultValue={this.props.card.description} />
                         </FormField>
                     </div>
 
                     <div className="Form-actions">
                         <button className={buttonClasses}>
-                            Save
+                            Salvar
                         </button>
-                        <span className="px1">or</span><a href="#" className="no-decoration text-brand text-bold" onClick={this.props.closeFn}>Cancel</a>
+                        <span className="px1">ou</span><a href="#" className="no-decoration text-brand text-bold" onClick={this.props.closeFn}>Cancelar</a>
                         {formError}
                     </div>
                 </form>

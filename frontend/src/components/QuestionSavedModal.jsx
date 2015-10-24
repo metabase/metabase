@@ -11,7 +11,7 @@ export default class QuestionSavedModal extends Component {
     render() {
         return (
             <ModalContent
-                title="Saved! What now?"
+                title="Salvo! E agora?"
                 closeFn={this.props.closeFn}
             >
                 <div className="Form-inputs mb4">
@@ -19,19 +19,19 @@ export default class QuestionSavedModal extends Component {
                         <li>
                             <a className="no-decoration flex align-center border-bottom py1 pb2" href="/">
                                 <img className="" style={{height: "32px"}} src="/app/components/icons/assets/illustration_home.png" />
-                                <span className="h3 ml2 text-bold text-brand-hover">Go home</span>
+                                <span className="h3 ml2 text-bold text-brand-hover">Voltar ao início</span>
                             </a>
 </li>
                         <li>
                             <a className="no-decoration flex align-center border-bottom py1 pb2" href="#" onClick={this.props.addToDashboardFn}>
                                 <img className="" style={{height: "32px"}} src="/app/components/icons/assets/illustration_dashboard.png" />
-                                <span className="h3 ml2 text-bold text-brand-hover">Add to a dashboard</span>
+                                <span className="h3 ml2 text-bold text-brand-hover">Adicionar a um painel</span>
                             </a>
 </li>
                         <li>
                             <a className="no-decoration flex align-center pt1" href="/q">
                                 <img className="" style={{height: "32px"}} src="/app/components/icons/assets/illustration_question.png" />
-                                <span className="h3 ml2 text-bold text-brand-hover">Just keep asking questions</span>
+                                <span className="h3 ml2 text-bold text-brand-hover">Continuar fazendo perguntas</span>
                             </a>
                         </li>
                     </ul>

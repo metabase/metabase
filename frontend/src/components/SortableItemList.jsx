@@ -52,12 +52,12 @@ export default class SortableItemList extends Component {
                                     : null}
                                     <div className="text-brand-hover">
                                         <h3 className="mb1">{item.name}</h3>
-                                        <h4 className="text-grey-3">{item.description || "No description yet"}</h4>
+                                        <h4 className="text-grey-3">{item.description || "Sem descrição ainda"}</h4>
                                     </div>
                                 </div>
                                 <div className="flex-align-right text-right text-grey-3">
                                     <div className="mb1">Saved by {item.creator.common_name}</div>
-                                    <div>Modified {item.updated_at.fromNow()}</div>
+                                    <div>Modificado {item.updated_at.fromNow()}</div>
                                 </div>
                             </a>
                         </li>

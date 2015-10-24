@@ -129,17 +129,17 @@ export default class NativeQueryEditor extends Component {
                 />
             );
         } else {
-            dbSelector = <span className="p2 text-grey-4">This question is written in SQL.</span>;
+            dbSelector = <span className="p2 text-grey-4">Esta pergunta é escrita em SQL.</span>;
         }
 
         var editorClasses, toggleEditorText, toggleEditorIcon;
         if (this.state.showEditor) {
             editorClasses = "";
-            toggleEditorText = "Hide Editor";
+            toggleEditorText = "Esconder editor";
             toggleEditorIcon = "contract";
         } else {
             editorClasses = "hide";
-            toggleEditorText = "Open Editor";
+            toggleEditorText = "Mostrar editor";
             toggleEditorIcon = "expand";
         }
 

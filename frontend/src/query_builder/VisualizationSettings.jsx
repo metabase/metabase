@@ -8,15 +8,15 @@ import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 import cx from "classnames";
 
 const VISUALIZATION_TYPE_NAMES = {
-    'scalar':  { displayName: 'Number',      iconName: 'number' },
-    'table':   { displayName: 'Table',       iconName: 'table' },
-    'line':    { displayName: 'Line',        iconName: 'line' },
-    'bar':     { displayName: 'Bar',         iconName: 'bar' },
-    'pie':     { displayName: 'Pie',         iconName: 'pie' },
-    'area':    { displayName: 'Area',        iconName: 'area' },
-    'state':   { displayName: 'State map',   iconName: 'statemap' },
-    'country': { displayName: 'Country map', iconName: 'countrymap' },
-    'pin_map': { displayName: 'Pin map',     iconName: 'pinmap' }
+    'scalar':  { displayName: 'Número',      iconName: 'number' },
+    'table':   { displayName: 'Tabela',       iconName: 'table' },
+    'line':    { displayName: 'Linha',        iconName: 'line' },
+    'bar':     { displayName: 'Barra',         iconName: 'bar' },
+    'pie':     { displayName: 'Pizza',         iconName: 'pie' },
+    'area':    { displayName: 'Área',        iconName: 'area' },
+    'state':   { displayName: 'Mapa regional',   iconName: 'statemap' },
+    'country': { displayName: 'Mapa nacional', iconName: 'countrymap' },
+    'pin_map': { displayName: 'Mapa de pontos',     iconName: 'pinmap' }
 };
 
 export default class VisualizationSettings extends React.Component {
@@ -119,7 +119,7 @@ export default class VisualizationSettings extends React.Component {
         });
         return (
             <div className="relative">
-                <span className="GuiBuilder-section-label Query-label">Visualization</span>
+                <span className="GuiBuilder-section-label Query-label">Visualização</span>
                 <PopoverWithTrigger ref="displayPopover"
                                     className="ChartType-popover"
                                     triggerElement={triggerElement}
@@ -152,7 +152,7 @@ export default class VisualizationSettings extends React.Component {
             var triggerElement = (
                 <span className="px2 py1 text-bold cursor-pointer text-default flex align-center">
                     <div className="ColorWell rounded bordered" style={{backgroundColor:currentColor}}></div>
-                    Color
+                    Cor
                     <Icon className="ml1" name="chevrondown" width="8px" height="8px"/>
                 </span>
             )
