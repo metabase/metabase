@@ -6,7 +6,7 @@ import d3 from 'd3';
 import dc from 'dc';
 import moment from 'moment';
 
-import { formatNumber } from "metabase/lib/formatting";
+import { formatNumber, formatValueString } from "metabase/lib/formatting";
 
 import tip from 'd3-tip';
 tip(d3);
@@ -197,21 +197,26 @@ function applyChartTimeseriesXAxis(chart, card, coldefs, data) {
 
     // set the axis label
     if (x.labels_enabled) {
-        chart.xAxisLabel((x.title_text || null) || coldefs[0].name);
+        chart.xAxisLabel((x.title_text || null) || coldefs[0].display_name);
         chart.renderVerticalGridLines(x.gridLine_enabled);
-        xAxis.tickFormat(d3.time.format.multi([
-            [".%L",    (d) => d.getMilliseconds()],
-            [":%S",    (d) => d.getSeconds()],
-            ["%I:%M",  (d) => d.getMinutes()],
-            ["%I %p",  (d) => d.getHours()],
-            ["%a %d",  (d) => d.getDay() && d.getDate() != 1],
-            ["%b %d",  (d) => d.getDate() != 1],
-            ["%B", (d) => d.getMonth()], // default "%B"
-            ["%Y", () => true] // default "%Y"
-        ]));
+
+        if (coldefs[0] && coldefs[0].unit) {
+            xAxis.tickFormat(d => formatValueString(d, coldefs[0]));
+        } else {
+            xAxis.tickFormat(d3.time.format.multi([
+                [".%L",    (d) => d.getMilliseconds()],
+                [":%S",    (d) => d.getSeconds()],
+                ["%I:%M",  (d) => d.getMinutes()],
+                ["%I %p",  (d) => d.getHours()],
+                ["%a %d",  (d) => d.getDay() && d.getDate() != 1],
+                ["%b %d",  (d) => d.getDate() != 1],
+                ["%B", (d) => d.getMonth()], // default "%B"
+                ["%Y", () => true] // default "%Y"
+            ]));
+        }
 
         // Compute a sane interval to display based on the data granularity, domain, and chart width
-        var interval = computeTimeseriesTicksInterval(data, chart.width(), MIN_PIXELS_PER_TICK.x);
+        var interval = computeTimeseriesTicksInterval(data, coldefs[0], chart.width(), MIN_PIXELS_PER_TICK.x);
         xAxis.ticks(d3.time[interval.interval], interval.count);
     } else {
         xAxis.ticks(0);
@@ -245,6 +250,16 @@ const TIMESERIES_INTERVALS = [
     { interval: "year",   count: 1,  testFn: (d) => d.getUTCMonth()        }  // 1 year
 ];
 
+const TIMESERIES_INTERVAL_INDEX_BY_UNIT = {
+    "minute": 1,
+    "hour": 9,
+    "day": 13,
+    "week": 15,
+    "month": 16,
+    "quarter": 17,
+    "year": 18,
+};
+
 function computeTimeseriesDataInvervalIndex(data) {
     // Keep track of the value seen for each level of granularity,
     // if any don't match then we know the data is *at least* that granular.
@@ -265,16 +280,19 @@ function computeTimeseriesDataInvervalIndex(data) {
     return index - 1;
 }
 
-function computeTimeseriesTicksInterval(data, chartWidth, minPixelsPerTick) {
+function computeTimeseriesTicksInterval(data, col, chartWidth, minPixelsPerTick) {
     // If the interval that matches the data granularity results in too many ticks reduce the granularity until it doesn't.
     // TODO: compute this directly instead of iteratively
-    var maxTickCount = Math.round(chartWidth / minPixelsPerTick);
-    var domain = getMinMax(data, 0);
-    var index = computeTimeseriesDataInvervalIndex(data);
+    let maxTickCount = Math.round(chartWidth / minPixelsPerTick);
+    let domain = getMinMax(data, 0);
+    let index = col && col.unit ? TIMESERIES_INTERVAL_INDEX_BY_UNIT[col.unit] : null;
+    if (typeof index !== "number") {
+        index = computeTimeseriesDataInvervalIndex(data);
+    }
     while (index < TIMESERIES_INTERVALS.length - 1) {
-        var interval = TIMESERIES_INTERVALS[index];
-        var intervalMs = moment(0).add(interval.count, interval.interval).valueOf();
-        var tickCount = (domain[1] - domain[0]) / intervalMs;
+        let interval = TIMESERIES_INTERVALS[index];
+        let intervalMs = moment(0).add(interval.count, interval.interval).valueOf();
+        let tickCount = (domain[1] - domain[0]) / intervalMs;
         if (tickCount <= maxTickCount) {
             break;
         }
@@ -294,7 +312,7 @@ function applyChartOrdinalXAxis(chart, card, coldefs, data, minPixelsPerTick) {
         xAxis = chart.xAxis();
 
     if (x.labels_enabled) {
-        chart.xAxisLabel((x.title_text || null) || coldefs[0].name);
+        chart.xAxisLabel((x.title_text || null) || coldefs[0].display_name);
         chart.renderVerticalGridLines(x.gridLine_enabled);
         xAxis.ticks(data.length);
         adjustTicksIfNeeded(xAxis, chart.width(), minPixelsPerTick);
@@ -313,7 +331,7 @@ function applyChartOrdinalXAxis(chart, card, coldefs, data, minPixelsPerTick) {
 
             xAxis.tickValues(visibleKeys);
         }
-        xAxis.tickFormat((d) => d == null ? '[unset]' : d);
+        xAxis.tickFormat(d => formatValueString(d, coldefs[0]));
     } else {
         xAxis.ticks(0);
         xAxis.tickFormat('');
@@ -332,7 +350,7 @@ function applyChartYAxis(chart, card, coldefs, data, minPixelsPerTick) {
         yAxis = chart.yAxis();
 
     if (y.labels_enabled) {
-        chart.yAxisLabel((y.title_text || null) || coldefs[1].name);
+        chart.yAxisLabel((y.title_text || null) || coldefs[1].display_name);
         chart.renderHorizontalGridLines(true);
 
         if (y.min || y.max) {
@@ -382,7 +400,7 @@ function applyChartTooltips(dcjsChart, card, cols) {
                     // TODO: this is not the ideal way to calculate the percentage, but it works for now
                     values += " (" + formatNumber((d.endAngle - d.startAngle) / Math.PI * 50) + '%)'
                 }
-                return '<div><span class="ChartTooltip-name">' + d.data.key + '</span></div>' +
+                return '<div><span class="ChartTooltip-name">' + formatValueString(d.data.key, cols[0]) + '</span></div>' +
                     '<div><span class="ChartTooltip-value">' + values + '</span></div>';
             });
 
@@ -816,7 +834,7 @@ export var CardRenderer = {
                         .group(group)
                         .colors(settings.pie.colors)
                         .colorCalculator((d, i) => settings.pie.colors[((i * 5) + Math.floor(i / 5)) % settings.pie.colors.length])
-                        .label(row => row.key == null ? '[unset]' : row.key)
+                        .label(row => formatValueString(row.key, result.cols[0]))
                         .title(function(d) {
                             // ghetto rounding to 1 decimal digit since Math.round() doesn't let
                             // you specify a precision and always rounds to int

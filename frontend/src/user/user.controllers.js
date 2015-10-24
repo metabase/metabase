@@ -1,65 +1,31 @@
-import MetabaseSettings from "metabase/lib/settings";
+import { createStore, applyMiddleware, combineReducers, compose } from 'redux';
+import promiseMiddleware from 'redux-promise';
+import thunkMidleware from "redux-thunk";
 
-var UserControllers = angular.module('metabase.user.controllers', ['metabase.forms']);
-
-UserControllers.controller('EditCurrentUser', ['$scope', function($scope) {
-    $scope.tab_focus = 'details';
-
-    $scope.setTabFocus = function (tab) {
-        $scope.tab_focus = tab;
-    };
-}]);
+import UserSettingsApp from './containers/UserSettingsApp.jsx';
+import * as reducers from './reducers';
 
 
-UserControllers.controller('AccountSettingsController', ['$scope', 'User',
-    function($scope, User) {
+const finalCreateStore = compose(
+  applyMiddleware(
+      thunkMidleware,
+      promiseMiddleware
+  ),
+  createStore
+);
 
-        $scope.save = function(updateUser) {
-            $scope.$broadcast("form:reset");
+const reducer = combineReducers(reducers);
 
-            User.update(updateUser, function (result) {
-                $scope.$broadcast("form:api-success", "Account updated successfully!");
 
-                // it's possible the user changed their name, so refresh our current user model
-                $scope.refreshCurrentUser();
+var UserControllers = angular.module('metabase.user.controllers', []);
 
-            }, function (error) {
-                $scope.$broadcast("form:api-error", error);
-            });
+UserControllers.controller('EditCurrentUser', ['$scope', '$location', '$route', '$routeParams',
+    function($scope, $location, $route, $routeParams) {
+
+        $scope.Component = UserSettingsApp;
+        $scope.props = {
+            user: angular.copy($scope.user)
         };
-
-        // always use the currently logged in user
-        $scope.editUser = angular.copy($scope.user);
-    }
-]);
-
-
-UserControllers.controller('PasswordUpdateController', ['$scope', 'User',
-    function($scope, User) {
-
-        $scope.passwordComplexity = MetabaseSettings.passwordComplexity(true);
-
-        $scope.save = function(passwordDetails) {
-            $scope.$broadcast("form:reset");
-
-            // check that confirm password matches new password
-            if (passwordDetails.password !== passwordDetails.password2) {
-                $scope.$broadcast("form:api-error", {'data': {'errors': {'password2': "Passwords do not match"}}});
-                return;
-            }
-
-            User.update_password({
-                'id': $scope.user.id,
-                'password': passwordDetails.password,
-                'old_password': passwordDetails.old_password
-            }, function (result) {
-                $scope.$broadcast("form:api-success", "Password updated successfully!");
-
-            }, function (error) {
-                $scope.$broadcast("form:api-error", error);
-            });
-        };
-
-        $scope.passwordDetails = {};
+        $scope.store = finalCreateStore(reducer, {});
     }
 ]);

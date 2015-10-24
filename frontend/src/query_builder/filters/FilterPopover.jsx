@@ -226,8 +226,8 @@ export default class FilterPopover extends Component {
                     :
                         <div>
                             <OperatorSelector
-                                filter={filter}
-                                field={field}
+                                operator={filter[0]}
+                                operators={field.valid_operators}
                                 onOperatorChange={this.setOperator}
                             />
                             { this.renderPicker(filter, field) }
