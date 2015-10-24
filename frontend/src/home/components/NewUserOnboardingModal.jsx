@@ -29,32 +29,32 @@ export default class NewUserOnboardingModal extends Component {
                 { step === 1 ?
                     <div className="bordered rounded shadowed">
                         <div className="pl4 pr4 pt4 pb1 border-bottom">
-                            <h2>{user.first_name}, welcome to Metabase!</h2>
-                            <h2>Analytics you can use by yourself.</h2>
+                            <h2>{user.first_name}, bem-vindo ao Metabase!</h2>
+                            <h2>Análises podem ser feitas por você mesmo</h2>
 
-                            <p>Metabase lets you find answers to your questions from data your company already has.</p>
+                            <p>Metabase permite encontrar respostas para as suas perguntas a partir de dados que sua empresa já possui.</p>
 
-                            <p>It’s easy to use, because it’s designed so you don’t need any analytics knowledge to get started.</p>
+                            <p>É fácil de usar, porque ele é projetado para que você não precisa de nenhum conhecimento de análise para começar.</p>
                         </div>
                         <div className="px4 py2 text-grey-2 flex align-center">
-                            STEP 1 of 2
-                            <button className="Button Button--primary flex-align-right" onClick={() => (this.stepTwo())}>Continue</button>
+                            PASSO 1 de 2
+                            <button className="Button Button--primary flex-align-right" onClick={() => (this.stepTwo())}>Continuar</button>
                         </div>
                     </div>
                 :
                     <div className="bordered rounded shadowed">
                         <div className="pl4 pr4 pt4 pb1 border-bottom">
-                            <h2>Just 3 things worth knowing</h2>
+                            <h2>Apenas 3 coisas que valem a pena conhecer</h2>
 
-                            <p className="clearfix pt1"><img className="float-left mr2" width="40" height="40" src="/app/home/partials/onboarding_illustration_tables.png" />All of your data is organized in Tables. Think of them in terms of Excel spreadsheets with columns and rows.</p>
+                            <p className="clearfix pt1"><img className="float-left mr2" width="40" height="40" src="/app/home/partials/onboarding_illustration_tables.png" />Todos os seus dados são organizados em tabelas. Pense neles em termos de planilhas do Excel com colunas e linhas.</p>
 
-                            <p className="clearfix"><img className="float-left mr2" width="40" height="40" src="/app/home/partials/onboarding_illustration_questions.png" />To get answers, you Ask Questions by picking a table and a few other parameters. You can visualize the answer in many ways, including cool charts.</p>
+                            <p className="clearfix"><img className="float-left mr2" width="40" height="40" src="/app/home/partials/onboarding_illustration_questions.png" />Para obter respostas, você faz perguntas escolhendo tabelas e alguns outros parâmetros. Você pode visualizar a resposta de muitas maneiras, incluindo gráficos legais.</p>
 
-                            <p className="clearfix"><img className="float-left mr2" width="40" height="40" src="/app/home/partials/onboarding_illustration_dashboards.png" />You (and anyone on your team) can save answers in Dashboards, so you can check them often. It's a great way to quickly see a snapshot of your business.</p>
+                            <p className="clearfix"><img className="float-left mr2" width="40" height="40" src="/app/home/partials/onboarding_illustration_dashboards.png" />Você (e qualquer um em sua equipe) pode salvar respostas em painéis, para que você possa vê-las muitas vezes. É uma ótima maneira de ver informações instantâneas de seu negócio.</p>
                         </div>
                         <div className="px4 py2 text-grey-2 flex align-center">
-                            STEP 2 of 2
-                            <a className="Button Button--primary flex-align-right" href="/" onClick={() => (this.closeModal())}>Continue</a>
+                            PASSO 2 de 2
+                            <a className="Button Button--primary flex-align-right" href="/" onClick={() => (this.closeModal())}>Continuar</a>
                         </div>
                     </div>
                 }

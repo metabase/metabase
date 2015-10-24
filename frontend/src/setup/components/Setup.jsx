@@ -34,7 +34,7 @@ export default class Setup extends Component {
         const { tag } = MetabaseSettings.get('version');
         return (
             <div className="SetupHelp bordered border-dashed p2 rounded mb4" >
-                If you feel stuck, <a className="link" href={"http://www.metabase.com/docs/"+tag+"/setting-up-metabase"} target="_blank">our getting started guide</a> is just a click away.
+                Se você está com dúvidas, acesse <a className="link" href={"http://www.metabase.com/docs/"+tag+"/setting-up-metabase"} target="_blank">nosso Guia de introdução</a> com apenas um clique.
             </div>
         );
     }
@@ -50,7 +50,7 @@ export default class Setup extends Component {
                         <div className="relative z2 text-centered ml-auto mr-auto" style={{maxWidth: 550}}>
                             <h1 style={{fontSize: '2.2rem'}} className="text-brand">Bem-vindo ao Metabase</h1>
                             <p className="text-body">Parece que tudo está funcionando. Agora vamos começar a conhecê-lo, se conectar a seus dados e começar a encontrar algumas respostas!</p>
-                            <button className="Button Button--primary mt4" onClick={() => (this.completeWelcome())}>Let's get started</button>
+                            <button className="Button Button--primary mt4" onClick={() => (this.completeWelcome())}>Vamos começar</button>
                         </div>
                         <div className="absolute z1 bottom left right">
                             <div className="inline-block">
@@ -76,9 +76,9 @@ export default class Setup extends Component {
 
                             { setupComplete ?
                                 <section className="SetupStep rounded SetupStep--active flex flex-column layout-centered p4">
-                                    <h1 style={{fontSize: "xx-large"}} className="text-normal pt2">You're all set up!</h1>
+                                    <h1 style={{fontSize: "xx-large"}} className="text-normal pt2">Tudo pronto!</h1>
                                     <div className="pt4 pb2">
-                                        <a className="Button Button--primary" href="/?new" onClick={this.completeSetup.bind(this)}>Take me to Metabase</a>
+                                        <a className="Button Button--primary" href="/?new" onClick={this.completeSetup.bind(this)}>Acessar o Metabase</a>
                                     </div>
                                 </section>
                             : null }

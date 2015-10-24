@@ -95,7 +95,7 @@ export default class DatabaseStep extends Component {
         let { engine } = this.state,
             engines = _.keys(MetabaseCore.ENGINES).sort();
 
-        let options = [(<option value="">Select the type of Database you use</option>)];
+        let options = [(<option value="">Selecione o tipo do banco de dados que você utiliza</option>)];
         engines.forEach(function(opt) {
             options.push((<option key={opt} value={opt}>{MetabaseCore.ENGINES[opt].name}</option>))
         });
@@ -113,9 +113,9 @@ export default class DatabaseStep extends Component {
         let { activeStep, databaseDetails, dispatch, stepNumber } = this.props;
         let { engine, formError } = this.state;
 
-        let stepText = 'Add your data';
+        let stepText = 'Informe seus dados';
         if (activeStep > stepNumber) {
-            stepText = (databaseDetails === null) ? "I'll add my own data later" : 'Connecting to '+databaseDetails.name;
+            stepText = (databaseDetails === null) ? "Vou adicionar meus próprios dados mais tarde" : 'Conectado a '+databaseDetails.name;
         }
 
         if (activeStep !== stepNumber) {
@@ -126,7 +126,7 @@ export default class DatabaseStep extends Component {
                     <StepTitle title={stepText} number={stepNumber} />
                     <div className="mb4">
                         <div style={{maxWidth: 600}} className="Form-field Form-offset">
-                            You’ll need some info about your database, like the username and password.  If you don’t have that right now, Metabase also comes with a sample dataset you can get started with.
+                        Você vai precisar de algumas informações sobre seu banco de dados, como o nome de usuário e senha. Se você não tem isso agora, Metabase também vem com um conjunto de dados de exemplo que você pode começar a usar.
                         </div>
 
                         <FormField fieldName="engine">
@@ -140,12 +140,12 @@ export default class DatabaseStep extends Component {
                                 formError={formError}
                                 hiddenFields={['ssl']}
                                 submitFn={this.detailsCaptured.bind(this)}
-                                submitButtonText={'Next'}>
+                                submitButtonText={'Próximo'}>
                             </DatabaseDetailsForm>
                         : null }
 
                         <div className="Form-field Form-offset">
-                            <a className="link" href="#" onClick={this.skipDatabase.bind(this)}>I'll add my data later</a>
+                            <a className="link" href="#" onClick={this.skipDatabase.bind(this)}>Vou adicionar meus dados mais tarde</a>
                         </div>
                     </div>
                 </section>

@@ -138,8 +138,8 @@ export default class DatabaseDetailsForm extends Component {
         return (
             <form onSubmit={this.formSubmitted.bind(this)} noValidate>
                 <FormField fieldName="name">
-                    <FormLabel title="Name" fieldName="name"></FormLabel>
-                    <input className="Form-input Form-offset full" ref="name" name="name" defaultValue={existingName} placeholder="How would you like to refer to this database?" required autofocus />
+                    <FormLabel title="Nome" fieldName="name"></FormLabel>
+                    <input className="Form-input Form-offset full" ref="name" name="name" defaultValue={existingName} placeholder="Como você gostaria de se referir a esse banco de dados?" required autofocus />
                     <span className="Form-charm"></span>
                 </FormField>
 

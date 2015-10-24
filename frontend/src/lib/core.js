@@ -6,20 +6,20 @@ import _ from "underscore";
 
     this.user_roles = [{
         'id': 'user',
-        'name': 'User',
-        'description': 'Can do everything except access the Admin Panel.'
+        'name': 'Usuário',
+        'description': 'Pode fazer tudo, exceto acessar o Painel de Administração.'
     }, {
         'id': 'admin',
-        'name': 'Admin',
-        'description': "Can access the Admin Panel to add or remove users and modify database settings."
+        'name': 'Administrador',
+        'description': "Pode acessar o painel de administração para adicionar ou remover usuários e modificar as configurações de banco de dados."
     }];
 
     this.perms = [{
         'id': 0,
-        'name': 'Private'
+        'name': 'Particular'
     }, {
         'id': 1,
-        'name': 'Public (others can read)'
+        'name': 'Público (outros podem ler)'
     }];
 
     this.permName = function(permId) {
@@ -31,34 +31,34 @@ import _ from "underscore";
 
     this.charts = [{
         'id': 'scalar',
-        'name': 'Scalar'
+        'name': 'Escalar'
     }, {
         'id': 'table',
-        'name': 'Table'
+        'name': 'Tabela'
     }, {
         'id': 'pie',
-        'name': 'Pie Chart'
+        'name': 'Gráfico de pizza'
     }, {
         'id': 'bar',
-        'name': 'Bar Chart'
+        'name': 'Gráfico de barras'
     }, {
         'id': 'line',
-        'name': 'Line Chart'
+        'name': 'Gráfico de linhas'
     }, {
         'id': 'area',
-        'name': 'Area Chart'
+        'name': 'Gráfico de área'
     }, {
         'id': 'timeseries',
-        'name': 'Time Series'
+        'name': 'Série temporal'
     }, {
         'id': 'pin_map',
-        'name': 'Pin Map'
+        'name': 'Mapa de vetor'
     }, {
         'id': 'country',
-        'name': 'World Heatmap'
+        'name': 'Mapa de calor mundial'
     }, {
         'id': 'state',
-        'name': 'State Heatmap'
+        'name': 'Mapa de calor regional'
     }];
 
     this.chartName = function(chartId) {
@@ -72,19 +72,19 @@ import _ from "underscore";
 
     this.table_entity_types = [{
         'id': null,
-        'name': 'None'
+        'name': 'Nenhum'
     }, {
         'id': 'person',
-        'name': 'Person'
+        'name': 'Pessoa'
     }, {
         'id': 'event',
-        'name': 'Event'
+        'name': 'Evento'
     }, {
         'id': 'photo',
-        'name': 'Photo'
+        'name': 'Foto'
     }, {
         'id': 'place',
-        'name': 'Place'
+        'name': 'Lugar'
     }, {
         'id': 'evt-cohort',
         'name': 'Cohorts-compatible Event'
@@ -101,119 +101,119 @@ import _ from "underscore";
 
     this.field_special_types = [{
         'id': 'id',
-        'name': 'Entity Key',
-        'section': 'Overall Row',
+        'name': 'Chave primária',
+        'section': 'Registros gerais',
         'description': 'The primary key for this table.'
     }, {
         'id': 'name',
-        'name': 'Entity Name',
-        'section': 'Overall Row',
-        'description': 'The "name" of each record. Usually a column called "name", "title", etc.'
+        'name': 'Nome',
+        'section': 'Registros gerais',
+        'description': 'O "nome" de cada registro. Geralmente uma coluna chamada "nome", "titulo", etc.'
     }, {
         'id': 'fk',
-        'name': 'Foreign Key',
-        'section': 'Overall Row',
-        'description': 'Points to another table to make a connection.'
+        'name': 'Chave estrangeira',
+        'section': 'Registros gerais',
+        'description': 'Ponto para outra tabela criar uma relação'
     }, {
         'id': 'avatar',
-        'name': 'Avatar Image URL',
-        'section': 'Common'
+        'name': 'URL da imagem de Avatar',
+        'section': 'Geral'
     }, {
         'id': 'category',
-        'name': 'Category',
-        'section': 'Common'
+        'name': 'Categoria',
+        'section': 'Geral'
     }, {
         'id': 'city',
-        'name': 'City',
-        'section': 'Common'
+        'name': 'Cidade',
+        'section': 'Geral'
     }, {
         'id': 'country',
-        'name': 'Country',
-        'section': 'Common'
+        'name': 'País',
+        'section': 'Geral'
     }, {
         'id': 'desc',
-        'name': 'Description',
-        'section': 'Common'
+        'name': 'Descrição',
+        'section': 'Geral'
     }, {
         'id': 'image',
-        'name': 'Image URL',
-        'section': 'Common'
+        'name': 'URL da imagem',
+        'section': 'Geral'
     }, {
         'id': 'json',
-        'name': 'Field containing JSON',
-        'section': 'Common'
+        'name': 'Arquivo JSON',
+        'section': 'Geral'
     }, {
         'id': 'latitude',
         'name': 'Latitude',
-        'section': 'Common'
+        'section': 'Geral'
     }, {
         'id': 'longitude',
         'name': 'Longitude',
-        'section': 'Common'
+        'section': 'Geral'
     }, {
         'id': 'number',
-        'name': 'Number',
-        'section': 'Common'
+        'name': 'Número',
+        'section': 'Geral'
     }, {
         'id': 'state',
-        'name': 'State',
-        'section': 'Common'
+        'name': 'Estado',
+        'section': 'Geral'
     }, {
         id: 'timestamp_seconds',
-        name: 'UNIX Timestamp (Seconds)',
-        'section': 'Common'
+        name: 'UNIX Timestamp (segundos)',
+        'section': 'Geral'
     }, {
         id: 'timestamp_milliseconds',
-        name: 'UNIX Timestamp (Milliseconds)',
-        'section': 'Common'
+        name: 'UNIX Timestamp (milissegundos)',
+        'section': 'Geral'
     }, {
         'id': 'url',
         'name': 'URL',
-        'section': 'Common'
+        'section': 'Geral'
     }, {
         'id': 'zip_code',
-        'name': 'Zip Code',
-        'section': 'Common'
+        'name': 'CEP',
+        'section': 'Geral'
     }];
 
     this.field_field_types = [{
         'id': 'info',
-        'name': 'Information',
-        'description': 'Non-numerical value that is not meant to be used.'
+        'name': 'Informação',
+        'description': 'Valor não numérico, que não se destina a ser utilizado.'
     }, {
         'id': 'metric',
-        'name': 'Metric',
-        'description': 'A number that can be added, graphed, etc.'
+        'name': 'Métrica',
+        'description': 'Um número que pode ser adicionado, graficamente, etc.'
     }, {
         'id': 'dimension',
-        'name': 'Dimension',
-        'description': 'A high or low-cardinality numerical string value that is meant to be used as a grouping.'
+        'name': 'Dimensão',
+        'description': 'Um valor de cadeia numérica de elevada ou baixa cardinalidade que se destina a ser usado como um agrupamento.'
     }, {
         'id': 'sensitive',
-        'name': 'Sensitive Information',
-        'description': 'A field that should never be shown anywhere.'
+        'name': 'Informação sensível',
+        'description': 'Um campo que nunca deve ser mostrado em qualquer lugar.'
     }];
 
     this.field_visibility_types = [{
         'id': 'everywhere',
-        'name': 'Everywhere',
-        'description': 'The default setting.  This field will be displayed normally in tables and charts.'
+        'name': 'Padrão',
+        'description': 'A configuração padrão. Este campo será exibido normalmente em tabelas e gráficos.'
     }, {
         'id': 'detail_views',
-        'name': 'Only in Detail Views',
-        'description': "This field will only be displayed when viewing the details of a single record. Use this for information that's lengthy or that isn't useful in a table or chart."
+        'name': 'Apenas visões detalhadas',
+        'description': "Este campo só será exibido ao visualizar os detalhes de um único registro. Utilize esta informação para que seja longa ou que não é útil em uma tabela ou gráfico."
     }, {
         'id': 'do_not_include',
-        'name': 'Do Not Include',
-        'description': 'Metabase will never retrieve this field. Use this for sensitive or irrelevant information.'
+        'name': 'Não incluir',
+        'description': 'Metabase nunca vai recuperar esse campo. Utilize este para obter informações sensíveis ou irrelevante.'
     }];
 
     this.boolean_types = [{
         'id': true,
-        'name': 'Yes'
+        'name': 'Sim'
     }, {
         'id': false,
-        'name': 'No'
+        'name': 'Não'
     }, ];
 
     this.fieldSpecialType = function(typeId) {
@@ -231,12 +231,12 @@ import _ from "underscore";
 
     this.getTitleForBuiltin = function(viewtype, field1Name, field2Name) {
         var builtinToTitleMap = {
-            'state': 'State Heatmap',
-            'country': 'Country Heatmap',
-            'pin_map': 'Pin Map',
-            'heatmap': 'Heatmap',
+            'state': 'Mapa de calor regional',
+            'country': 'Mapa de calor nacional',
+            'pin_map': 'Mapa de pontos',
+            'heatmap': 'Mapa de calor',
             'cohorts': 'Cohorts',
-            'latlong_heatmap': 'Lat/Lon Heatmap'
+            'latlong_heatmap': 'Mapa de calor (lat/long)'
         };
 
         var title = builtinToTitleMap[viewtype];
@@ -292,45 +292,45 @@ import _ from "underscore";
         postgres: {
             name: 'PostgreSQL',
             fields: [{
-                displayName: "Host",
+                displayName: "Endereço",
                 fieldName: "host",
                 type: "text",
                 placeholder: "localhost",
                 placeholderIsDefault: true
             }, {
-                displayName: "Port",
+                displayName: "Porta",
                 fieldName: "port",
                 type: "text",
                 transform: parseInt,
                 placeholder: "5432",
                 placeholderIsDefault: true
             }, {
-                displayName: "Database name",
+                displayName: "Nome da base",
                 fieldName: "dbname",
                 type: "text",
-                placeholder: "birds_of_the_world",
+                placeholder: "passaros_do_planeta",
                 required: true
             }, {
-                displayName: "Database username",
+                displayName: "Usuário do banco",
                 fieldName: "user",
                 type: "text",
-                placeholder: "What username do you use to login to the database?",
+                placeholder: "postgres",
                 required: true
             }, {
-                displayName: "Database password",
+                displayName: "Senha do banco",
                 fieldName: "password",
                 type: "password",
                 placeholder: "*******"
             }, {
-                displayName: "Use a secure connection (SSL)?",
+                displayName: "Utiliza conexão segura (SSL)?",
                 fieldName: "ssl",
                 type: "select",
                 choices: [{
-                    name: 'Yes',
+                    name: 'Sim',
                     value: true,
                     selectionAccent: 'active'
                 }, {
-                    name: 'No',
+                    name: 'Não',
                     value: false,
                     selectionAccent: 'danger'
                 }]
@@ -339,32 +339,32 @@ import _ from "underscore";
         mysql: {
             name: 'MySQL',
             fields: [{
-                displayName: "Host",
+                displayName: "Endereço",
                 fieldName: "host",
                 type: "text",
                 placeholder: "localhost",
                 placeholderIsDefault: true
             }, {
-                displayName: "Port",
+                displayName: "Porta",
                 fieldName: "port",
                 type: "text",
                 transform: parseInt,
                 placeholder: "3306",
                 placeholderIsDefault: true
             }, {
-                displayName: "Database name",
+                displayName: "Nome da base",
                 fieldName: "dbname",
                 type: "text",
-                placeholder: "birds_of_the_world",
+                placeholder: "passaros_do_planeta",
                 required: true
             }, {
-                displayName: "Database username",
+                displayName: "Usuário do banco",
                 fieldName: "user",
                 type: "text",
-                placeholder: "What username do you use to login to the database?",
+                placeholder: "Qual o usuário que você usa para acessar o banco de dados?",
                 required: true
             }, {
-                displayName: "Database password",
+                displayName: "Senha do banco",
                 fieldName: "password",
                 type: "password",
                 placeholder: "*******"
@@ -373,7 +373,7 @@ import _ from "underscore";
         h2: {
             name: 'H2',
             fields: [{
-                displayName: "Connection String",
+                displayName: "String de conexão",
                 fieldName: "db",
                 type: "text",
                 placeholder: "file:/Users/camsaul/bird_sightings/toucans;AUTO_SERVER=TRUE"
@@ -382,31 +382,31 @@ import _ from "underscore";
         mongo: {
             name: 'MongoDB',
             fields: [{
-                displayName: "Host",
+                displayName: "Endereço",
                 fieldName: "host",
                 type: "text",
                 placeholder: "localhost",
                 placeholderIsDefault: true
             }, {
-                displayName: "Port",
+                displayName: "Porta",
                 fieldName: "port",
                 type: "text",
                 transform: parseInt,
                 placeholder: "27017",
                 placeholderIsDefault: true
             }, {
-                displayName: "Database name",
+                displayName: "Nome do banco",
                 fieldName: "dbname",
                 type: "text",
-                placeholder: "carrierPigeonDeliveries",
+                placeholder: "entregasPomboCorreio",
                 required: true
             }, {
-                displayName: "Database username",
+                displayName: "Usuário do banco",
                 fieldName: "user",
                 type: "text",
-                placeholder: "What username do you use to login to the database?"
+                placeholder: "Qual o nome de usuário que você usa para acessar o banco de dados?"
             }, {
-                displayName: "Database password",
+                displayName: "Senha do banco",
                 fieldName: "pass",
                 type: "password",
                 placeholder: "******"
@@ -417,7 +417,7 @@ import _ from "underscore";
     // Prepare database details before being sent to the API.
     // This includes applying 'transform' functions and adding default values where applicable.
     this.prepareDatabaseDetails = function(details) {
-        if (!details.engine) throw "Missing key 'engine' in database request details; please add this as API expects it in the request body.";
+        if (!details.engine) throw "Falta a chave 'motor' em detalhes da solicitação de banco de dados; por favor, adicione isto como a API espera no corpo da solicitação.";
 
         // iterate over each field definition
         this.ENGINES[details.engine].fields.forEach(function(field) {

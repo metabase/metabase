@@ -79,14 +79,14 @@ export default class UserStep extends Component {
 
         // validate email address
         if (!MetabaseUtils.validEmail(React.findDOMNode(this.refs.email).value)) {
-            formErrors.data.errors.email = "Not a valid formatted email address";
+            formErrors.data.errors.email = "Não é um endereço de e-mail válido";
         }
 
         // TODO - validate password complexity
 
         // validate password match
         if (React.findDOMNode(this.refs.password).value !== React.findDOMNode(this.refs.passwordConfirm).value) {
-            formErrors.data.errors.password_confirm = "Passwords do not match";
+            formErrors.data.errors.password_confirm = "As senhas não coincidem";
         }
 
         if (_.keys(formErrors.data.errors).length > 0) {
@@ -115,7 +115,7 @@ export default class UserStep extends Component {
         let { formError, passwordError, valid } = this.state;
 
         const passwordComplexityDesc = MetabaseSettings.passwordComplexity();
-        const stepText = (activeStep <= stepNumber) ? 'What should we call you?' : 'Hi, ' + userDetails.first_name + '. nice to meet you!';
+        const stepText = (activeStep <= stepNumber) ? 'Como devemos chamá-lo?' : 'Olá, ' + userDetails.first_name + '. prazer em conhecê-lo!';
 
         if (activeStep !== stepNumber) {
             return (<CollapsedStep dispatch={dispatch} stepNumber={stepNumber} stepText={stepText} isCompleted={activeStep > stepNumber}></CollapsedStep>)
@@ -126,45 +126,45 @@ export default class UserStep extends Component {
                     <form name="userForm" onSubmit={this.formSubmitted.bind(this)} noValidate className="mt2">
                         <FormField className="Grid mb3" fieldName="first_name" formError={formError}>
                             <div>
-                                <FormLabel title="First name" fieldName="first_name" formError={formError}></FormLabel>
-                                <input ref="firstName" className="Form-input Form-offset full" name="name" defaultValue={(userDetails) ? userDetails.first_name : ""} placeholder="Johnny" autoFocus={true} onChange={this.onChange.bind(this)} />
+                                <FormLabel title="Primeiro nome" fieldName="first_name" formError={formError}></FormLabel>
+                                <input ref="firstName" className="Form-input Form-offset full" name="name" defaultValue={(userDetails) ? userDetails.first_name : ""} placeholder="Joãozinho" autoFocus={true} onChange={this.onChange.bind(this)} />
                                 <span className="Form-charm"></span>
                             </div>
                             <div>
-                                <FormLabel title="Last name" fieldName="last_name" formError={formError}></FormLabel>
-                                <input ref="lastName" className="Form-input Form-offset" name="name" defaultValue={(userDetails) ? userDetails.last_name : ""} placeholder="Appleseed" required onChange={this.onChange.bind(this)} />
+                                <FormLabel title="Sobrenome" fieldName="last_name" formError={formError}></FormLabel>
+                                <input ref="lastName" className="Form-input Form-offset" name="name" defaultValue={(userDetails) ? userDetails.last_name : ""} placeholder="da Silva" required onChange={this.onChange.bind(this)} />
                                 <span className="Form-charm"></span>
                             </div>
                         </FormField>
 
                         <FormField fieldName="email" formError={formError}>
-                            <FormLabel title="Email address" fieldName="email" formError={formError}></FormLabel>
-                            <input ref="email" className="Form-input Form-offset full" name="email" defaultValue={(userDetails) ? userDetails.email : ""} placeholder="youlooknicetoday@email.com" required onChange={this.onChange.bind(this)} />
+                            <FormLabel title="E-mail" fieldName="email" formError={formError}></FormLabel>
+                            <input ref="email" className="Form-input Form-offset full" name="email" defaultValue={(userDetails) ? userDetails.email : ""} placeholder="joaozinho@email.com" required onChange={this.onChange.bind(this)} />
                             <span className="Form-charm"></span>
                         </FormField>
 
                         <FormField fieldName="password" formError={formError} error={(passwordError !== null)}>
-                            <FormLabel title="Create a password" fieldName="password" formError={formError} message={passwordError}></FormLabel>
+                            <FormLabel title="Crie uma senha" fieldName="password" formError={formError} message={passwordError}></FormLabel>
                             <span style={{fontWeight: "normal"}} className="Form-label Form-offset">{passwordComplexityDesc}</span>
                             <input ref="password" className="Form-input Form-offset full" name="password" type="password" defaultValue={(userDetails) ? userDetails.password : ""} placeholder="Shhh..." required onChange={this.onChange.bind(this)} onBlur={this.onPasswordBlur.bind(this)}/>
                             <span className="Form-charm"></span>
                         </FormField>
 
                         <FormField fieldName="password_confirm" formError={formError}>
-                            <FormLabel title="Confirm password" fieldName="password_confirm" formError={formError}></FormLabel>
-                            <input ref="passwordConfirm" className="Form-input Form-offset full" name="passwordConfirm" type="password" defaultValue={(userDetails) ? userDetails.password : ""} placeholder="Shhh... but one more time so we get it right" required onChange={this.onChange.bind(this)} />
+                            <FormLabel title="Confirme a senha" fieldName="password_confirm" formError={formError}></FormLabel>
+                            <input ref="passwordConfirm" className="Form-input Form-offset full" name="passwordConfirm" type="password" defaultValue={(userDetails) ? userDetails.password : ""} placeholder="Shhh... só para termos certeza que está correta" required onChange={this.onChange.bind(this)} />
                             <span className="Form-charm"></span>
                         </FormField>
 
                         <FormField fieldName="site_name" formError={formError}>
-                            <FormLabel title="Your company or team name" fieldName="site_name" formError={formError}></FormLabel>
-                            <input ref="siteName" className="Form-input Form-offset full" name="site_name" type="text" defaultValue={(userDetails) ? userDetails.site_name : ""} placeholder="Department of awesome" required onChange={this.onChange.bind(this)} />
+                            <FormLabel title="Sua empresa ou nome da equipe" fieldName="site_name" formError={formError}></FormLabel>
+                            <input ref="siteName" className="Form-input Form-offset full" name="site_name" type="text" defaultValue={(userDetails) ? userDetails.site_name : ""} placeholder="Departamento impressionante" required onChange={this.onChange.bind(this)} />
                             <span className="Form-charm"></span>
                         </FormField>
 
                         <div className="Form-actions">
                             <button className={cx("Button", {"Button--primary": valid})} disabled={!valid}>
-                                Next
+                                Próximo
                             </button>
                             <FormMessage></FormMessage>
                         </div>
