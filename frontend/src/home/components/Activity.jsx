@@ -68,7 +68,7 @@ export default class Activity extends Component {
 
     userName(user, currentUser) {
         if (user && user.id === currentUser.id) {
-            return "You";
+            return "Você";
         } else if (user) {
             return user.first_name;
         } else {
@@ -81,7 +81,7 @@ export default class Activity extends Component {
         // this is a base to start with
         const description = {
             userName: this.userName(item.user, user),
-            subject: "did some super awesome stuff thats hard to describe",
+            subject: "fez algumas coisas súper incríveis que é difícil descrever",
             subjectRefLink: null,
             subjectRefName: null,
             body: null,
@@ -92,12 +92,12 @@ export default class Activity extends Component {
         function handleSubject(item) {
             if(item.table) {
                 return {
-                    subject: "saved a question about",
+                    subject: "salvou uma pergunta sobre",
                     subjectRefName: item.table.display_name,
                 }
             } else {
                 return {
-                    subject: "saved a question",
+                    subject: "salvou uma pergunta",
                     subjectRefName: null
                 }
             }
@@ -113,27 +113,27 @@ export default class Activity extends Component {
                 description.bodyLink = (item.model_exists) ? Urls.modelToUrl(item.model, item.model_id) : null;
                 break;
             case "card-delete":
-                description.subject = "deleted a question";
+                description.subject = "removeu uma pergunta";
                 description.body = item.details.name;
                 break;
             case "dashboard-create":
-                description.subject = "created a dashboard";
+                description.subject = "criou um painel";
                 description.body = item.details.name;
                 description.bodyLink = (item.model_exists) ? Urls.modelToUrl(item.model, item.model_id) : null;
                 break;
             case "dashboard-delete":
-                description.subject = "deleted a dashboard";
+                description.subject = "exclui um painel";
                 description.body = item.details.name;
                 break;
             case "dashboard-add-cards":
-                description.subject = "added a question to the dashboard -";
+                description.subject = "adicionou uma pergunta ao painel -";
                 description.subjectRefLink = (item.model_exists) ? Urls.dashboard(item.model_id) : null;
                 description.subjectRefName = item.details.name;
                 description.body = item.details.dashcards[0].name;
                 description.bodyLink = Urls.card(item.details.dashcards[0].card_id);
                 break;
             case "dashboard-remove-cards":
-                description.subject = "removed a question from the dashboard -";
+                description.subject = "removeu uma pergunta do painel -";
                 description.subjectRefLink = (item.model_exists) ? Urls.dashboard(item.model_id) : null;
                 description.subjectRefName = item.details.name;
                 description.body = item.details.dashcards[0].name;
@@ -143,16 +143,16 @@ export default class Activity extends Component {
                 // NOTE: this is a relic from the very early days of the activity feed when we accidentally didn't
                 //       capture the name/description/engine of a Database properly in the details and so it was
                 //       possible for a database to be deleted and we'd lose any way of knowing what it's name was :(
-                const oldName = (item.database && 'name' in item.database) ? item.database.name : "Unknown";
-                description.subject = "received the latest data from";
+                const oldName = (item.database && 'name' in item.database) ? item.database.name : "Desconhecido";
+                description.subject = "recebeu os dados mais recentes de";
                 description.subjectRefName = (item.details.name) ? item.details.name : oldName;
                 break;
             case "install":
-                description.userName = "Hello World!";
-                description.subject = "Metabase is up and running.";
+                description.userName = "Olá Mundo!";
+                description.subject = "Metabase está instalado e funcionando.";
                 break;
             case "user-joined":
-                description.subject = "joined!";
+                description.subject = "Entrou!";
                 break;
         };
 
@@ -182,8 +182,8 @@ export default class Activity extends Component {
                         { activity.length === 0 ?
                             <div className="flex flex-column layout-centered mt4">
                                 <span className="QuestionCircle">!</span>
-                                <div className="text-normal mt3 mb1">Hmmm, looks like nothing has happened yet.</div>
-                                <div className="text-normal text-grey-2">Save a question and get this baby going!</div>
+                                <div className="text-normal mt3 mb1">Hmmm, parece que nada aconteceu ainda.</div>
+                                <div className="text-normal text-grey-2">Salve um pergunta, pega esse neném e Vai!</div>
                             </div>
                         :
                             <ul className="pb4 relative">

@@ -48,7 +48,7 @@ export default class RecentViews extends Component {
             <div className="p2">
                 <div className="text-dark-grey clearfix pt2 pb2">
                     <Icon className="float-left" name={'clock'} width={18} height={18}></Icon>
-                    <span className="pl1 Sidebar-header">Recently Viewed</span>
+                    <span className="pl1 Sidebar-header">Visto recentemente</span>
                 </div>
                 <div className="rounded bg-white" style={{border: '1px solid #E5E5E5'}}>
                     {recentViews.length > 0 ?
@@ -63,7 +63,7 @@ export default class RecentViews extends Component {
                     :
                         <div className="flex flex-column layout-centered text-normal text-grey-2">
                             <span className="QuestionCircle mt4">!</span>
-                            <p className="p3 text-centered text-grey-4" style={{ "maxWidth": "100%" }}>You haven't looked at any Dashboards or Questions recently?</p>
+                            <p className="p3 text-centered text-grey-4" style={{ "maxWidth": "100%" }}>Você não procurou por nenhum Painel ou Pergunta recentemente?</p>
                         </div>
                     }
                 </div>

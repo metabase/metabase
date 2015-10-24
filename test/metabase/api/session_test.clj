@@ -26,7 +26,7 @@
 
 ;; Test for inactive user (user shouldn't be able to login if :is_active = false)
 ;; Return same error as incorrect password to avoid leaking existence of user
-(expect {:errors {:password "did not match stored password"}}
+(expect {:errors {:password "A senha não coincide com a senha armazenada."}}
   (client :post 400 "session" (user->credentials :trashbird)))
 
 ;; Test for password checking

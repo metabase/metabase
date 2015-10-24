@@ -97,10 +97,10 @@ export default class DashboardsDropdown extends Component {
                                 { dashboards.length === 0 ?
                                     <div className="NavDropdown-content-layer text-white text-centered">
                                         <div className="p2"><div style={this.styles.dashIcon} className="ml-auto mr-auto"></div></div>
-                                        <div className="px2 py1 text-bold">You don’t have any dashboards yet.</div>
-                                        <div className="px2 pb2">Dashboards group visualizations for frequent questions in a single handy place.</div>
+                                        <div className="px2 py1 text-bold">Você não possui nenhum painel ainda</div>
+                                        <div className="px2 pb2">Painéis agrupam visualizações para perguntas frequentes em um local de fácil acesso</div>
                                         <div className="border-top border-light">
-                                            <a className="Dropdown-item block text-white no-decoration" href="#" onClick={this.toggleModal}>Create your first dashboard</a>
+                                            <a className="Dropdown-item block text-white no-decoration" href="#" onClick={this.toggleModal}>Crie seu primeiro painel</a>
                                         </div>
                                     </div>
                                 :
@@ -120,7 +120,7 @@ export default class DashboardsDropdown extends Component {
                                             </li>
                                         )}
                                         <li className="block border-top border-light">
-                                            <a className="Dropdown-item block text-white no-decoration" href="#" onClick={this.toggleModal}>Create a new dashboard</a>
+                                            <a className="Dropdown-item block text-white no-decoration" href="#" onClick={this.toggleModal}>Criar novo painel</a>
                                         </li>
                                     </ul>
                                 }

@@ -43,8 +43,8 @@
     ;; Don't leak whether the account doesn't exist or the password was incorrect
     (when-not (and user
                    (pass/verify-password password (:password_salt user) (:password user)))
-      (throw (ex-info "Password did not match stored password." {:status-code 400
-                                                                 :errors      {:password "did not match stored password"}})))
+      (throw (ex-info "A senha não coincide com a senha armazenada.." {:status-code 400
+                                                                 :errors      {:password "não confere com a senha armazenada"}})))
     (let [session-id (create-session (:id user))]
       (events/publish-event :user-login {:user_id (:id user) :session_id session-id})
       {:id session-id})))

@@ -134,8 +134,8 @@ function equivalentArgument(field, table) {
         return {
             type: "select",
             values: [
-                { key: true, name: "True" },
-                { key: false, name: "False" }
+                { key: true, name: "Verdadeiro" },
+                { key: false, name: "Falso" }
             ]
         };
     }
@@ -214,7 +214,7 @@ const OPERATORS = {
     },
     "INSIDE": {
         validArgumentsFilters: [longitudeFieldSelectArgument, numberArgument, numberArgument, numberArgument, numberArgument],
-        placeholders: ["Select longitude field", "Enter upper latitude", "Enter left longitude", "Enter lower latitude", "Enter right latitude"]
+        placeholders: ["Selecione o campo de longitude", "Digite a latitude superior", "Digite a longitude esquerda", "Digite a latitude inferior", "Digite a latitude direita"]
     },
     "BETWEEN": {
         validArgumentsFilters: [comparableArgument, comparableArgument]
@@ -233,64 +233,64 @@ const OPERATORS = {
 // ordered list of operators and metadata per type
 const OPERATORS_BY_TYPE_ORDERED = {
     [NUMBER]: [
-        { name: "=",       verboseName: "Equal" },
-        { name: "!=",      verboseName: "Not equal" },
-        { name: ">",       verboseName: "Greater than" },
-        { name: "<",       verboseName: "Less than" },
-        { name: "BETWEEN", verboseName: "Between" },
-        { name: ">=",      verboseName: "Greater than or equal to", advanced: true },
-        { name: "<=",      verboseName: "Less than or equal to", advanced: true },
-        { name: "IS_NULL", verboseName: "Is empty", advanced: true },
-        { name: "NOT_NULL",verboseName: "Not empty", advanced: true }
+        { name: "=",       verboseName: "Igual" },
+        { name: "!=",      verboseName: "Diferente" },
+        { name: ">",       verboseName: "Maior que" },
+        { name: "<",       verboseName: "Menor que" },
+        { name: "BETWEEN", verboseName: "Entre" },
+        { name: ">=",      verboseName: "Maio ou igual a", advanced: true },
+        { name: "<=",      verboseName: "Menor ou igual a", advanced: true },
+        { name: "IS_NULL", verboseName: "É vazio", advanced: true },
+        { name: "NOT_NULL",verboseName: "Não é vazio", advanced: true }
     ],
     [STRING]: [
-        { name: "=",       verboseName: "Is" },
-        { name: "!=",      verboseName: "Is not" },
-        { name: "IS_NULL", verboseName: "Is empty", advanced: true },
-        { name: "NOT_NULL",verboseName: "Not empty", advanced: true }
+        { name: "=",       verboseName: "É" },
+        { name: "!=",      verboseName: "Não é" },
+        { name: "IS_NULL", verboseName: "É vazio", advanced: true },
+        { name: "NOT_NULL",verboseName: "Não é vazio", advanced: true }
     ],
     [DATE_TIME]: [
-        { name: "=",       verboseName: "Is" },
-        { name: "<",       verboseName: "Before" },
-        { name: ">",       verboseName: "After" },
-        { name: "BETWEEN", verboseName: "Between" },
-        { name: "IS_NULL", verboseName: "Is empty", advanced: true },
-        { name: "NOT_NULL",verboseName: "Not empty", advanced: true }
+        { name: "=",       verboseName: "É" },
+        { name: "<",       verboseName: "Antes" },
+        { name: ">",       verboseName: "Depois" },
+        { name: "BETWEEN", verboseName: "Entre" },
+        { name: "IS_NULL", verboseName: "É vazio", advanced: true },
+        { name: "NOT_NULL",verboseName: "Não é vazio", advanced: true }
     ],
     [LOCATION]: [
-        { name: "=",       verboseName: "Is" },
-        { name: "!=",      verboseName: "Is not" },
-        { name: "IS_NULL", verboseName: "Is empty", advanced: true },
-        { name: "NOT_NULL",verboseName: "Not empty", advanced: true }
+        { name: "=",       verboseName: "É" },
+        { name: "!=",      verboseName: "Não é" },
+        { name: "IS_NULL", verboseName: "É vazio", advanced: true },
+        { name: "NOT_NULL",verboseName: "Não é vazio", advanced: true }
     ],
     [COORDINATE]: [
-        { name: "=",       verboseName: "Is" },
-        { name: "!=",      verboseName: "Is not" },
-        { name: "INSIDE",  verboseName: "Inside" }
+        { name: "=",       verboseName: "É" },
+        { name: "!=",      verboseName: "Não é" },
+        { name: "INSIDE",  verboseName: "Dentro" }
     ],
     [BOOLEAN]: [
-        { name: "=",       verboseName: "Is", multi: false, defaults: [true] },
-        { name: "IS_NULL", verboseName: "Is empty" },
-        { name: "NOT_NULL",verboseName: "Not empty" }
+        { name: "=",       verboseName: "É", multi: false, defaults: [true] },
+        { name: "IS_NULL", verboseName: "É vazio" },
+        { name: "NOT_NULL",verboseName: "Não é vazio" }
     ],
     [UNKNOWN]: [
-        { name: "=",       verboseName: "Is" },
-        { name: "!=",      verboseName: "Is not" },
-        { name: "IS_NULL", verboseName: "Is empty", advanced: true },
-        { name: "NOT_NULL",verboseName: "Not empty", advanced: true }
+        { name: "=",       verboseName: "É" },
+        { name: "!=",      verboseName: "Não é" },
+        { name: "IS_NULL", verboseName: "É vazio", advanced: true },
+        { name: "NOT_NULL",verboseName: "Não é vazio", advanced: true }
     ]
 };
 
 const MORE_VERBOSE_NAMES = {
-    "equal": "is equal to",
-    "not equal": "is not equal to",
-    "before": "is before",
-    "after": "is after",
-    "not empty": "is not empty",
-    "less than": "is less than",
-    "greater than": "is greater than",
-    "less than or equal to": "is less than or equal to",
-    "greater than or equal to": "is greater than or equal to",
+    "equal": "é igual a",
+    "not equal": "não é igual a",
+    "before": "é antes",
+    "after": "é depois",
+    "not empty": "não é vazio",
+    "less than": "é menor do que",
+    "greater than": "é melhor que",
+    "less than or equal to": "é inferior ou igual a",
+    "greater than or equal to": "é maior do que ou igual a",
 }
 
 function getOperators(field, table) {
@@ -321,51 +321,51 @@ function dimensionFields(fields) {
 }
 
 var Aggregators = [{
-    "name": "Raw data",
+    "name": "Dados não tratados",
     "short": "rows",
-    "description": "Just a table with the rows in the answer, no additional operations.",
+    "description": "Apenas uma tabela com as linhas da resposta, não há operações adicionais.",
     "advanced": false,
     "validFieldsFilters": []
 }, {
-    "name": "Count",
+    "name": "Contar",
     "short": "count",
-    "description": "Total number of rows in the answer.",
+    "description": "Número total de linhas na resposta.",
     "advanced": false,
     "validFieldsFilters": []
 }, {
-    "name": "Sum",
+    "name": "Soma",
     "short": "sum",
-    "description": "Sum of all the values of a column.",
+    "description": "Soma de todos os valores de uma coluna.",
     "advanced": false,
     "validFieldsFilters": [summableFields]
 }, {
-    "name": "Average",
+    "name": "Média",
     "short": "avg",
-    "description": "Average of all the values of a column",
+    "description": "Média de todos os valores de uma coluna",
     "advanced": false,
     "validFieldsFilters": [summableFields]
 }, {
-    "name": "Number of distinct values",
+    "name": "Número de valores distintos",
     "short": "distinct",
-    "description":  "Number of unique values of a column among all the rows in the answer.",
+    "description":  "Número de valores exclusivos de uma coluna, em todas as linhas da resposta.",
     "advanced": true,
     "validFieldsFilters": [allFields]
 }, {
-    "name": "Cumulative sum",
+    "name": "Soma acumulativa",
     "short": "cum_sum",
-    "description": "Additive sum of all the values of a column.\ne.x. total revenue over time.",
+    "description": "Soma aditiva de todos os valores de uma coluna. \ne.x. receita total ao longo do tempo.",
     "advanced": true,
     "validFieldsFilters": [summableFields]
 }, {
-    "name": "Standard deviation",
+    "name": "Desvio padrão",
     "short": "stddev",
-    "description": "Number which expresses how much the values of a colum vary among all rows in the answer.",
+    "description": "Número que expressa o quanto os valores de uma coluna variam entre todas as linhas da resposta.",
     "advanced": true,
     "validFieldsFilters": [summableFields]
 }];
 
 var BreakoutAggregator = {
-    "name": "Break out by dimension",
+    "name": "Quebre por dimensão",
     "short": "breakout",
     "validFieldsFilters": [dimensionFields]
 };

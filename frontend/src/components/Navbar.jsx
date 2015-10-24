@@ -47,28 +47,28 @@ export default class Navbar extends Component {
                 <div className="wrapper flex align-center">
                     <div className="NavTitle flex align-center">
                         <Icon name={'gear'} className="AdminGear" width={22} height={22}></Icon>
-                        <span className="NavItem-text ml1 hide sm-show">Site Administration</span>
+                        <span className="NavItem-text ml1 hide sm-show">Administração do site</span>
                     </div>
 
                     <ul className="sm-ml4 flex flex-full">
                         <li>
                             <a className={cx(classes, {"is--selected": this.isActive("/admin/settings")})}  href="/admin/settings/">
-                                Settings
+                                Configuração
                             </a>
                         </li>
                         <li>
                             <a className={cx(classes, {"is--selected": this.isActive("/admin/people")})} href="/admin/people/">
-                                People
+                                Pessoas
                             </a>
                         </li>
                         <li>
                             <a className={cx(classes, {"is--selected": this.isActive("/admin/metadata")})} href="/admin/metadata/">
-                                Metadata
+                                Metadados
                             </a>
                         </li>
                         <li>
                             <a className={cx(classes, {"is--selected": this.isActive("/admin/databases")})} href="/admin/databases/">
-                                Databases
+                                Bancos de dados
                             </a>
                         </li>
                     </ul>
@@ -113,10 +113,10 @@ export default class Navbar extends Component {
                         </DashboardsDropdown>
                     </li>
                     <li className="pl1">
-                        <a style={this.styles.navButton} className="NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2 transition-background" href="/card/">Saved Questions</a>
+                        <a style={this.styles.navButton} className="NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2 transition-background" href="/card/">Perguntas salvas</a>
                     </li>
                     <li className="pl3">
-                        <a style={this.styles.newQuestion} className="NavNewQuestion rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration transition-all" href="/q">New <span className="hide sm-show">Question</span></a>
+                        <a style={this.styles.newQuestion} className="NavNewQuestion rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration transition-all" href="/q">Nova <span className="hide sm-show">Pergunta</span></a>
                     </li>
                     <li className="flex-align-right transition-background">
                         <div className="inline-block text-white"><ProfileLink {...this.props}></ProfileLink></div>

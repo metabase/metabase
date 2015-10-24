@@ -199,12 +199,12 @@ export default class GuiQueryEditor extends Component {
                 if (filterList) {
                     addFilterButton = this.renderAdd(null, null, "addFilterTarget");
                 } else {
-                    addFilterButton = this.renderAdd("Add filters to narrow your answer", null, "addFilterTarget");
+                    addFilterButton = this.renderAdd("Adicionar filtros para reduzir sua resposta", null, "addFilterTarget");
                 }
             }
         } else {
             enabled = false;
-            addFilterButton = this.renderAdd("Add filters to narrow your answer", null, "addFilterTarget");
+            addFilterButton = this.renderAdd("Adicionar filtros para reduzir sua resposta", null, "addFilterTarget");
         }
 
         return (
@@ -244,7 +244,7 @@ export default class GuiQueryEditor extends Component {
             // TODO: move this into AggregationWidget?
             return (
                 <div className="Query-section Query-section-aggregation disabled">
-                    <a className="QueryOption p1 flex align-center">Raw data</a>
+                    <a className="QueryOption p1 flex align-center">Dados não tratados</a>
                 </div>
             );
         }
@@ -302,7 +302,7 @@ export default class GuiQueryEditor extends Component {
             var remainingFieldOptions = Query.getFieldOptions(this.props.tableMetadata.fields, true, this.props.tableMetadata.breakout_options.validFieldsFilter, usedFields);
             if (remainingFieldOptions.count > 0) {
                 if (this.props.query.query.breakout.length === 0) {
-                    addBreakoutButton = this.renderAdd("Add a grouping", this.addDimension);
+                    addBreakoutButton = this.renderAdd("Adicionar um agrupamento", this.addDimension);
                 } else if (this.props.query.query.breakout.length === 1 &&
                                 this.props.query.query.breakout[0] !== null) {
                     addBreakoutButton = this.renderAdd(null, this.addDimension);
@@ -310,7 +310,7 @@ export default class GuiQueryEditor extends Component {
             }
         } else {
             enabled = false;
-            addBreakoutButton = this.renderAdd("Add a grouping", this.addDimension);
+            addBreakoutButton = this.renderAdd("Adicionar um agrupamento", this.addDimension);
         }
 
         var querySectionClasses = cx({
@@ -357,7 +357,7 @@ export default class GuiQueryEditor extends Component {
         if (sortList.length > 0) {
             content = sortList;
         } else if (sortFieldOptions && sortFieldOptions.count > 0) {
-            content = this.renderAdd("Pick a field to sort by", this.addSort);
+            content = this.renderAdd("Escolha um campo para ordenar por", this.addSort);
         }
 
         if (content) {
@@ -408,7 +408,7 @@ export default class GuiQueryEditor extends Component {
     renderFilterSection() {
         return (
             <div className="GuiBuilder-section GuiBuilder-filtered-by flex align-center" ref="filterSection">
-                <span className="GuiBuilder-section-label Query-label">Filtered by</span>
+                <span className="GuiBuilder-section-label Query-label">Filtrado por</span>
                 {this.renderFilters()}
             </div>
         );
@@ -417,7 +417,7 @@ export default class GuiQueryEditor extends Component {
     renderViewSection() {
         return (
             <div className="GuiBuilder-section GuiBuilder-view flex align-center px1" ref="viewSection">
-                <span className="GuiBuilder-section-label Query-label">View</span>
+                <span className="GuiBuilder-section-label Query-label">Ver</span>
                 {this.renderAggregation()}
                 {this.renderBreakouts()}
             </div>

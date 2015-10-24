@@ -1,15 +1,14 @@
 const greetingPrefixes = [
-    'Hey there,',
-    'How\'s it going,',
-    'Howdy,',
-    'Greetings,',
-    'Good to see you,',
+    'Olá,',
+    'Como está indo,',
+    'Saudações,',
+    'Bom te ver,',
 ];
 
 const subheadPrefixes = [
-    'What do you want to know?',
-    'What\'s on your mind?',
-    'What do you want to find out?',
+    'O que você quer saber?',
+    'O que está em sua mente?',
+    'No que você está pensando?',
 ];
 
 
@@ -24,11 +23,11 @@ var Greeting = {
         if(personalization) {
             var g = Greeting.simpleGreeting();
             if (g === 'How\'s it going,'){
-                return g + ' ' + personalization + '?';    
+                return g + ' ' + personalization + '?';
             } else {
                 return g + ' ' + personalization;
             }
-            
+
         } else {
         	return Greeting.simpleGreeting();
         }

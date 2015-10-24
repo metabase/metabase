@@ -118,9 +118,9 @@ export default class QueryVisualization extends Component {
         if (result &&  result.data && !isObjectDetail && card.display === "table") {
             return (
                 <div>
-                    { this.hasTooManyRows() ? ("Showing max of ") : ("Showing ")}
+                    { this.hasTooManyRows() ? ("Mostrando máximo de ") : ("Mostrando ")}
                     <b>{result.row_count}</b>
-                    { (result.data.rows.length !== 1) ? (" rows") : (" row")}.
+                    { (result.data.rows.length !== 1) ? (" registros") : (" registro")}.
                 </div>
             );
         }
@@ -132,7 +132,7 @@ export default class QueryVisualization extends Component {
             if (window.OSX) {
                 const downloadLink = this.props.downloadLink;
                 return (
-                    <a classname="mx1" href="#" title="Download this data" onClick={function() {
+                    <a classname="mx1" href="#" title="Baixar estes dados" onClick={function() {
                         window.OSX.saveCSV(downloadLink);
                     }}>
                         <Icon name='download' width="16px" height="16px" />
@@ -140,7 +140,7 @@ export default class QueryVisualization extends Component {
                 );
             } else {
                 return (
-                    <a className="mx1" href={this.props.downloadLink} title="Download this data" target="_blank">
+                    <a className="mx1" href={this.props.downloadLink} title="Baixar estes dados" target="_blank">
                         <Icon name='download' width="16px" height="16px" />
                     </a>
                 );
@@ -156,7 +156,7 @@ export default class QueryVisualization extends Component {
             loading = (
                 <div className="Loading absolute top left bottom right flex flex-column layout-centered text-brand">
                     <LoadingSpinner />
-                    <h2 className="Loading-message text-brand text-uppercase mt3">Doing science...</h2>
+                    <h2 className="Loading-message text-brand text-uppercase mt3">Fazendo ciência...</h2>
                 </div>
             );
         }
@@ -164,7 +164,7 @@ export default class QueryVisualization extends Component {
         if (!this.props.result) {
             viz = (
                 <div className="flex full layout-centered text-grey-1">
-                    <h1>If you're stuck, you can always just pick a table and hit "Run Query" to get started.</h1>
+                    <h1>Se você está trancado, você sempre pode escolher uma tabela e clicar em "Executar consulta" para começar.</h1>
                 </div>
             );
         } else {
@@ -180,8 +180,8 @@ export default class QueryVisualization extends Component {
                             <div className="QueryError flex full align-center">
                                 <div className="QueryError-image QueryError-image--timeout"></div>
                                 <div className="QueryError-message text-centered">
-                                    <h1 className="text-bold">Your question took too long</h1>
-                                    <p className="QueryError-messageText">We didn't get an answer back from your database in time, so we had to stop. You can try again in a minute, or if the problem persists, you can email an admin to let them know.</p>
+                                    <h1 className="text-bold">Sua pergunta levou muito tempo</h1>
+                                    <p className="QueryError-messageText">Nós não conseguimos uma resposta de volta do seu banco de dados a tempo, então tivemos que parar. Você pode tentar novamente em um minuto, ou se o problema persistir, você pode enviar um e-mail ao administrador para que eles fiquem sabendo.</p>
                                     {adminEmail && <span className="QueryError-adminEmail"><a className="no-decoration" href={"mailto:"+adminEmail}>{adminEmail}</a></span>}
                                 </div>
                             </div>
@@ -191,8 +191,8 @@ export default class QueryVisualization extends Component {
                             <div className="QueryError flex full align-center">
                                 <div className="QueryError-image QueryError-image--serverError"></div>
                                 <div className="QueryError-message text-centered">
-                                    <h1 className="text-bold">We're experiencing server issues</h1>
-                                    <p className="QueryError-messageText">Try refreshing the page after waiting a minute or two. If the problem persists we'd recommend you contact an admin.</p>
+                                    <h1 className="text-bold">Estamos enfrentando problemas no servidor</h1>
+                                    <p className="QueryError-messageText">Tente atualizar a página depois de esperar um minuto ou dois. Se o problema persistir nós recomendamos que você entre em contato com um administrador.</p>
                                     {adminEmail && <span className="QueryError-adminEmail"><a className="no-decoration" href={"mailto:"+adminEmail}>{adminEmail}</a></span>}
                                 </div>
                             </div>
@@ -215,10 +215,10 @@ export default class QueryVisualization extends Component {
                         <div className="QueryError flex full align-center">
                             <div className="QueryError-image QueryError-image--queryError"></div>
                             <div className="QueryError-message text-centered">
-                                <h1 className="text-bold">We couldn't understand your question.</h1>
-                                <p className="QueryError-messageText">Your question might contain an invalid parameter or some other error.</p>
+                                <h1 className="text-bold">Nós não conseguimos entender sua pergunta.</h1>
+                                <p className="QueryError-messageText">Sua pergunta pode conter um parâmetro inválido ou algum outro erro.</p>
                                 <button className="Button" onClick={() => window.history.back() }>
-                                    Back to last run
+                                    Voltar para a última execução
                                 </button>
                             </div>
                         </div>
@@ -244,10 +244,10 @@ export default class QueryVisualization extends Component {
                         <div className="QueryError flex full align-center">
                             <div className="QueryError-image QueryError-image--noRows"></div>
                             <div className="QueryError-message text-centered">
-                                <h1 className="text-bold">No results!</h1>
-                                <p className="QueryError-messageText">This may be the answer you’re looking for. If not, chances are your filters are too specific. Try removing or changing your filters to see more data.</p>
+                                <h1 className="text-bold">Sem resultados!</h1>
+                                <p className="QueryError-messageText">Esta pode ser a resposta que você está procurando! Se não, as chances são seus filtros serem demasiados ou específicos. Tente remover ou alterar os filtros para ver mais dados.</p>
                                 <button className="Button" onClick={() => window.history.back() }>
-                                    Back to last run
+                                Voltar para a última execução
                                 </button>
                             </div>
                         </div>
