@@ -659,3 +659,52 @@ specific requirements.
 if any, to sign a "copyright disclaimer" for the program, if necessary.
 For more information on this, and how to apply and follow the GNU AGPL, see
 <http://www.gnu.org/licenses/>.
+
+Additional permission under GNU GPL version 3 section 7
+
+If you modify this Program, or any covered work, by linking or combining it with any of the below libraries (or a modified version of that library), containing parts covered by the terms of any of the below libraries, the licensors of this Program grant you additional permission to convey the resulting work. 
+
+cider/cider-nrepl
+clojure-complete
+clojurewerkz/quartzite
+clojurewerkz/support
+clout
+colorize
+com.cemerick/friend 
+compojure 
+environ 
+hiccup 
+junit
+korma
+medley
+org.clojure/clojure
+org.clojure/clojurescript
+org.clojure/core.async
+org.clojure/core.cache
+org.clojure/core.incubator
+org.clojure/core.logic
+org.clojure/core.match
+org.clojure/core.memoize
+org.clojure/data.csv
+org.clojure/data.json
+org.clojure/data.priority-map
+org.clojure/java.classpath
+org.clojure/java.jdbc
+org.clojure/math.numeric-tower
+org.clojure/tools.analyzer
+org.clojure/tools.analyzer.jvm
+org.clojure/tools.logging 
+org.clojure/tools.macro 
+org.clojure/tools.namespace 
+org.clojure/tools.nrepl
+org.clojure/tools.reader 
+org.tcrawley/dynapath 
+quoin 
+refactor-nrepl 
+robert/hooke 
+scout 
+slingshot 
+stencil 
+swiss-arrows 
+tigris 
+instaparse
