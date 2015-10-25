@@ -21,7 +21,7 @@ You can run Metabase in two primary ways, as a docker container or as a jar.
 
 To run Metabase via Docker, just type
 
-	docker run -d -p 3000:3000 —name metabase metabase/metabase
+	docker run -d -p 3000:3000 --name metabase metabase/metabase
 
 
 ## JVM Jar
