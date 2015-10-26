@@ -7,11 +7,6 @@ export default class FormMessage extends Component {
     render() {
         let { className, formError, formSuccess, message } = this.props;
 
-        const classes = cx('px2', className, {
-            'text-success': formSuccess !== undefined,
-            'text-error': formError !== undefined
-        });
-
         if (!message) {
             if (formError && formError.data.message) {
                 message = formError.data.message;
@@ -23,12 +18,14 @@ export default class FormMessage extends Component {
             }
         }
 
-        if (message) {
-            return (
-                <span className={classes}>{message}</span>
-            );
-        } else {
-            return null;
-        }
+        const classes = cx('Form-message', 'px2', className, {
+            'Form-message--visible': !!message,
+            'text-success': formSuccess !== undefined,
+            'text-error': formError !== undefined
+        });
+        
+        return (
+            <span className={classes}>{message}</span>
+        );
     }
 }

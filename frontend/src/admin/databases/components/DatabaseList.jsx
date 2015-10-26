@@ -1,5 +1,8 @@
 import React, { Component, PropTypes } from "react";
 
+import DeleteDatabaseModal from "./DeleteDatabaseModal.jsx";
+
+import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 
 import cx from "classnames";
@@ -45,7 +48,17 @@ export default class DatabaseList extends Component {
                                             {ENGINES[database.engine].name}
                                         </td>
                                         <td className="Table-actions">
-                                            <button className="Button Button--danger" onClick={() => confirm("Are you sure?") && this.props.delete(database.id)}>Delete</button>
+                                            <ModalWithTrigger
+                                                ref="deleteDatabaseModal"
+                                                triggerClasses="Button Button--danger"
+                                                triggerElement="Delete"
+                                            >
+                                                <DeleteDatabaseModal
+                                                    database={database}
+                                                    onClose={() => this.refs.deleteDatabaseModal.toggle()}
+                                                    onDelete={() => this.props.delete(database.id)}
+                                                />
+                                            </ModalWithTrigger>
                                         </td>
                                     </tr>
                                 )

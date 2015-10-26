@@ -1,5 +1,6 @@
 
 import DatabaseList from "./components/DatabaseList.jsx";
+import DatabaseEdit from "./components/DatabaseEdit.jsx";
 
 import _ from "underscore";
 
@@ -59,12 +60,18 @@ DatabasesControllers.controller('DatabaseList', ['$scope', 'Metabase', 'Metabase
 DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$location', 'Metabase', 'MetabaseCore',
     function($scope, $routeParams, $location, Metabase, MetabaseCore) {
 
+        $scope.DatabaseEdit = DatabaseEdit;
+
         $scope.ENGINES = MetabaseCore.ENGINES;
 
         // if we're adding a new database then hide the SSL field; we'll determine it automatically <3
         $scope.hiddenFields = {
             ssl: true
         };
+
+        $scope.selectEngine = function(engine) {
+            $scope.details.engine = $scope.database.engine = engine;
+        }
 
         // update an existing Database
         var update = function(database, details) {
@@ -183,7 +190,7 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             // prepare an empty database for creation
             $scope.database = {
                 name: '',
-                engine: null,
+                engine: Object.keys(MetabaseCore.ENGINES)[0],
                 details: {},
                 created: false
             };

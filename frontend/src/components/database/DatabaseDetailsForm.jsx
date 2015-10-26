@@ -1,6 +1,5 @@
 import React, { Component, PropTypes } from "react";
 import cx from "classnames";
-import _ from "underscore";
 
 import MetabaseCore from "metabase/lib/core";
 import FormField from "metabase/components/form/FormField.jsx";
@@ -59,6 +58,14 @@ export default class DatabaseDetailsForm extends Component {
         }
     }
 
+    componentDidMount() {
+        this.validateForm();
+    }
+
+    componentDidUpdate() {
+        this.validateForm();
+    }
+
     onChange(fieldName) {
         this.validateForm();
     }
@@ -106,12 +113,10 @@ export default class DatabaseDetailsForm extends Component {
                 return (
                     <div className="Form-input Form-offset full Button-group">
                         {field.choices.map(choice =>
-                            <button className="Button"
-                                    ng-className="details[field.fieldName] === choice.value ? {active: 'Button--active',
-                                              danger: 'Button--danger'}[choice.selectionAccent] : null"
-                                    ng-click="details[field.fieldName] = choice.value">
+                            <div className={cx("Button", details[field.fieldName] == choice.value ? "Button--" + choice.selectionAccent : null)}
+                                    onClick={(e) => { details[field.fieldName] = choice.value; this.onChange(field.fieldName, e)}}>
                                 {choice.name}
-                            </button>
+                            </div>
                         )}
                     </div>
                 );
@@ -132,19 +137,19 @@ export default class DatabaseDetailsForm extends Component {
         let { details, engine, formError, hiddenFields, submitButtonText } = this.props;
         let { valid } = this.state;
 
-        hiddenFields = hiddenFields || [];
+        hiddenFields = hiddenFields || {};
         let existingName = (details && 'name' in details) ? details.name : "";
 
         return (
             <form onSubmit={this.formSubmitted.bind(this)} noValidate>
                 <FormField fieldName="name">
                     <FormLabel title="Name" fieldName="name"></FormLabel>
-                    <input className="Form-input Form-offset full" ref="name" name="name" defaultValue={existingName} placeholder="How would you like to refer to this database?" required autofocus />
+                    <input className="Form-input Form-offset full" ref="name" name="name" defaultValue={existingName} placeholder="How would you like to refer to this database?" required autofocus  onChange={this.onChange.bind(this, "name")}  />
                     <span className="Form-charm"></span>
                 </FormField>
 
                 <div className="FormInputGroup">
-                    { MetabaseCore.ENGINES[engine].fields.filter(field => !_.contains(hiddenFields, field.fieldName)).map(field =>
+                    { MetabaseCore.ENGINES[engine].fields.filter(field => !hiddenFields[field.fieldName]).map(field =>
                         <FormField fieldName={field.fieldName}>
                             <FormLabel title={field.displayName} fieldName={field.fieldName}></FormLabel>
 

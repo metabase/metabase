@@ -50,6 +50,16 @@
     transition: color .3s linear;
 }
 
+.Form-message {
+    opacity: 0;
+    transition: none;
+}
+
+.Form-message.Form-message--visible {
+    opacity: 1;
+    transition: opacity 500ms linear;
+}
+
 /* form-input font sizes */
 .Form-input { font-size: var(--form-input-size); }
 

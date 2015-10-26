@@ -8,11 +8,11 @@ AdminDatabases.config(['$routeProvider', function ($routeProvider) {
         controller: 'DatabaseList'
     });
     $routeProvider.when('/admin/databases/create', {
-        templateUrl: '/app/admin/databases/partials/database_edit.html',
+        template: '<div class="flex flex-column flex-full" mb-react-component="DatabaseEdit"></div>',
         controller: 'DatabaseEdit'
     });
     $routeProvider.when('/admin/databases/:databaseId', {
-        templateUrl: '/app/admin/databases/partials/database_edit.html',
+        template: '<div class="flex flex-column flex-full" mb-react-component="DatabaseEdit"></div>',
         controller: 'DatabaseEdit'
     });
 }]);
