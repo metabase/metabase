@@ -85,3 +85,8 @@ databaseChangeLog:
             replace:
               replace: WITHOUT
               with: WITH
+        - modifySql:
+            dbms: mysql
+            replace:
+              replace: details VARCHAR
+              with: details TEXT
