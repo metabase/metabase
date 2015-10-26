@@ -410,6 +410,19 @@ import _ from "underscore";
                 fieldName: "pass",
                 type: "password",
                 placeholder: "******"
+            }, {
+                displayName: "Use a secure connection (SSL)?",
+                fieldName: "use-ssl",                          // For some reason a lot of our Mongo DBs appear to be saved with the detail :ssl true
+                type: "select",                                // even though that param had been ignored up until this point in time.
+                choices: [{                                    // To avoid breaking everybody's Mongo connections when we enable Mongo SSL support,
+                    name: 'Yes',                               // we'll use the key 'use-ssl' instead.
+                    value: true,
+                    selectionAccent: 'active'
+                }, {
+                    name: 'No',
+                    value: false,
+                    selectionAccent: 'danger'
+                }]
             }]
         }
     };
