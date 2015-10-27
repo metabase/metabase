@@ -55,7 +55,7 @@ export default class DeleteDatabaseModal extends Component {
                     <p>
                         Are you sure you want to delete this database? All saved questions that rely on this database will be lost. <strong>This cannot be undone</strong>. If you're sure, please type <strong>DELETE</strong> in this box:
                     </p>
-                    <input className="Form-input" type="text" onChange={(e) => this.setState({ confirmValue: e.target.value })}/>
+                    <input className="Form-input" type="text" onChange={(e) => this.setState({ confirmValue: e.target.value })} autoFocus />
                 </div>
 
                 <div className="Form-actions">

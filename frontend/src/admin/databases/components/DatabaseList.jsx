@@ -10,7 +10,7 @@ import cx from "classnames";
 export default class DatabaseList extends Component {
     constructor(props) {
         super(props);
-        this.state = {};
+        this.state = { createdDatabaseId: props.createdDatabaseId };
     }
 
     static propTypes = {

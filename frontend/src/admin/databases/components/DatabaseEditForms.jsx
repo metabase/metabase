@@ -9,6 +9,7 @@ export default class DatabaseEditForms extends Component {
     constructor(props) {
         super(props);
         this.state = {
+            formSuccess: null,
             formError: null
         };
     }
@@ -17,9 +18,11 @@ export default class DatabaseEditForms extends Component {
     static defaultProps = {};
 
     async detailsCaptured(database) {
-        this.setState({ formError: null })
+        this.setState({ formError: null, formSuccess: null })
         try {
-            await this.props.save(database, database.details);
+            let x = await this.props.save({ ...database, id: this.props.database.id }, database.details);
+            // this object format is what FormMessage expects:
+            this.setState({ formSuccess: { data: { message: "Successfully saved!" }}});
         } catch (error) {
             this.setState({ formError: error })
         }
@@ -27,7 +30,8 @@ export default class DatabaseEditForms extends Component {
 
     render() {
         let { database, details, hiddenFields, ENGINES } = this.props;
-        let { formError } = this.state;
+        let { formError, formSuccess } = this.state;
+
         let errors = {};
         return (
             <LoadingAndErrorWrapper loading={!database} error={null}>
@@ -50,6 +54,7 @@ export default class DatabaseEditForms extends Component {
                                 details={{ ...details, name: database.name }}
                                 engine={database.engine}
                                 formError={formError}
+                                formSuccess={formSuccess}
                                 hiddenFields={hiddenFields}
                                 submitFn={this.detailsCaptured.bind(this)}
                                 submitButtonText={'Save'}>

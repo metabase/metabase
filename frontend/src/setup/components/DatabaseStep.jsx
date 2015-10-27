@@ -118,7 +118,7 @@ export default class DatabaseStep extends Component {
                                 details={(databaseDetails && 'details' in databaseDetails) ? databaseDetails.details : null}
                                 engine={engine}
                                 formError={formError}
-                                hiddenFields={['ssl']}
+                                hiddenFields={{ ssl: true }}
                                 submitFn={this.detailsCaptured.bind(this)}
                                 submitButtonText={'Next'}>
                             </DatabaseDetailsForm>
