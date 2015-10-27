@@ -6,21 +6,26 @@ import DatabaseDetailsForm from "metabase/components/database/DatabaseDetailsFor
 import cx from "classnames";
 
 export default class DatabaseEditForms extends Component {
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
         this.state = {
             formSuccess: null,
             formError: null
         };
     }
 
-    static propTypes = {};
+    static propTypes = {
+        database: PropTypes.object,
+        details: PropTypes.object,
+        hiddenFields: PropTypes.object,
+        save: PropTypes.func.isRequired
+    };
     static defaultProps = {};
 
     async detailsCaptured(database) {
         this.setState({ formError: null, formSuccess: null })
         try {
-            let x = await this.props.save({ ...database, id: this.props.database.id }, database.details);
+            await this.props.save({ ...database, id: this.props.database.id }, database.details);
             // this object format is what FormMessage expects:
             this.setState({ formSuccess: { data: { message: "Successfully saved!" }}});
         } catch (error) {

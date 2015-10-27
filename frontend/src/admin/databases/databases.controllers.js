@@ -6,13 +6,14 @@ import _ from "underscore";
 
 var DatabasesControllers = angular.module('metabaseadmin.databases.controllers', ['metabase.metabase.services']);
 
-DatabasesControllers.controller('DatabaseList', ['$scope', 'Metabase', 'MetabaseCore', function($scope, Metabase, MetabaseCore) {
+DatabasesControllers.controller('DatabaseList', ['$scope', '$routeParams', 'Metabase', 'MetabaseCore', function($scope, $routeParams, Metabase, MetabaseCore) {
 
     $scope.DatabaseList = DatabaseList;
     $scope.ENGINES = MetabaseCore.ENGINES;
 
     $scope.databases = [];
     $scope.hasSampleDataset = false;
+    $scope.created = $routeParams['created'];
 
     function hasSampleDataset(databases) {
         for (let i=0; i < databases.length; i++) {
@@ -59,7 +60,6 @@ DatabasesControllers.controller('DatabaseList', ['$scope', 'Metabase', 'Metabase
 
 DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$location', 'Metabase', 'MetabaseCore',
     function($scope, $routeParams, $location, Metabase, MetabaseCore) {
-
         $scope.DatabaseEdit = DatabaseEdit;
 
         $scope.ENGINES = MetabaseCore.ENGINES;
@@ -87,26 +87,20 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
         };
 
         // create a new Database
-        var create = function(database, details, redirectToDetail) {
+        var create = function(database, details) {
             $scope.$broadcast("form:reset");
             database.details = details;
             return Metabase.db_create(database).$promise.then(function(new_database) {
-                if (redirectToDetail) {
-                    $location.path('/admin/databases/' + new_database.id);
-                }
                 $scope.$broadcast("form:api-success", "Successfully created!");
                 $scope.$emit("database:created", new_database);
+                $location.url('/admin/databases?created');
             }, function(error) {
                 $scope.$broadcast("form:api-error", error);
                 throw error;
             });
         };
 
-        var save = function(database, details, redirectToDetail) {
-            if (redirectToDetail === undefined) {
-                redirectToDetail = true;
-            }
-
+        var save = function(database, details) {
             // validate_connection needs engine so add it to request body
             details.engine = database.engine;
 
@@ -129,7 +123,7 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
                     return Metabase.validate_connection(details).$promise;
                 }).then(function() {
                     console.log('Successfully connected to database with SSL = ' + details.ssl + '.');
-                    return create(database, details, redirectToDetail);
+                    return create(database, details);
                 }).catch(function(error) {
                     $scope.$broadcast("form:api-error", error);
                     throw error;
@@ -138,14 +132,6 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
         };
 
         $scope.save = save;
-
-        $scope.saveAndRedirect = function() {
-            return save($scope.database, $scope.details, true);
-        };
-
-        $scope.saveNoRedirect = function() {
-            return save($scope.database, $scope.details, false);
-        };
 
         $scope.sync = function() {
             var call = Metabase.db_sync_metadata({
@@ -164,6 +150,10 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
                 console.log('error deleting database', error);
             });
         };
+
+        $scope.redirectToDatabases = function() {
+            $scope.$apply(() => $location.path('/admin/databases/'));
+        }
 
         // load our form input data
         Metabase.db_form_input(function(form_input) {

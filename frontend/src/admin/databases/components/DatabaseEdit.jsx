@@ -7,16 +7,14 @@ import ActionButton from "metabase/components/ActionButton.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 
-// import cx from "classnames";
-
 export default class DatabaseEdit extends Component {
-    constructor(props) {
-        super(props);
-        this.state = {};
-    }
-
-    static propTypes = {};
-    static defaultProps = {};
+    static propTypes = {
+        database: PropTypes.object,
+        details: PropTypes.object,
+        sync: PropTypes.func.isRequired,
+        delete: PropTypes.func.isRequired,
+        save: PropTypes.func.isRequired
+    };
 
     render() {
         let { database } = this.props;

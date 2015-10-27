@@ -1,5 +1,6 @@
 import React, { Component, PropTypes } from "react";
 
+import CreatedDatabaseModal from "./CreatedDatabaseModal.jsx";
 import DeleteDatabaseModal from "./DeleteDatabaseModal.jsx";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
@@ -8,11 +9,6 @@ import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 import cx from "classnames";
 
 export default class DatabaseList extends Component {
-    constructor(props) {
-        super(props);
-        this.state = { createdDatabaseId: props.createdDatabaseId };
-    }
-
     static propTypes = {
         databases: PropTypes.array,
         hasSampleDataset: PropTypes.bool,
@@ -20,7 +16,7 @@ export default class DatabaseList extends Component {
     };
 
     render() {
-        let { databases, hasSampleDataset, ENGINES } = this.props;
+        let { databases, hasSampleDataset, created, ENGINES } = this.props;
 
         return (
             <div className="wrapper">
@@ -40,7 +36,7 @@ export default class DatabaseList extends Component {
                         <tbody>
                             { databases ?
                                 databases.map(database =>
-                                    <tr>
+                                    <tr key={database.id}>
                                         <td>
                                             <a className="text-bold link" href={"/admin/databases/"+database.id}>{database.name}</a>
                                         </td>
@@ -80,6 +76,15 @@ export default class DatabaseList extends Component {
                         </div>
                     : null }
                 </section>
+                <ModalWithTrigger
+                    ref="createdDatabaseModal"
+                    isInitiallyOpen={created}
+                >
+                    <CreatedDatabaseModal
+                        onDone={() => this.refs.createdDatabaseModal.toggle() }
+                        onClose={() => this.refs.createdDatabaseModal.toggle() }
+                    />
+                </ModalWithTrigger>
             </div>
         );
     }
