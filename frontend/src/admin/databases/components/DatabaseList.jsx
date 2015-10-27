@@ -20,7 +20,7 @@ export default class DatabaseList extends Component {
 
         return (
             <div className="wrapper">
-                <section className="PageHeader clearfix">
+                <section className="PageHeader px2 clearfix">
                     <a className="Button Button--primary float-right" href="/admin/databases/create">Add database</a>
                     <h2 className="PageTitle">Databases</h2>
                 </section>
