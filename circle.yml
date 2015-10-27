@@ -28,4 +28,4 @@ deployment:
   master:
     branch: master
     commands:
-      - curl -H "Content-Type: application/json" -X POST -d '{"docker_tag":"latest"}' $DEPLOY_WEBHOOK
+      - ./bin/deploy-webhook $DEPLOY_WEBHOOK
