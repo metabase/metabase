@@ -28,4 +28,4 @@ deployment:
   master:
     branch: master
     commands:
-      - ./deploy/deploy_aws.sh $STACK_ID $APP_ID
+      - curl -H "Content-Type: application/json" -X POST -d '{"docker_tag": "latest"}' $DEPLOY_WEBHOOK
