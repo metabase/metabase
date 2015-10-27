@@ -442,11 +442,19 @@ function getPieSliceCentroid(element, slice) {
     };
 }
 
+function getScrollOffset() {
+    let doc = document.documentElement;
+    let left = (window.pageXOffset || doc.scrollLeft) - (doc.clientLeft || 0);
+    let top = (window.pageYOffset || doc.scrollTop)  - (doc.clientTop || 0);
+    return { left, top }
+}
+
 function getTooltipOffset(tooltip) {
-    var tooltipRect = tooltip[0][0].getBoundingClientRect();
+    let tooltipRect = tooltip[0][0].getBoundingClientRect();
+    let scrollOffset = getScrollOffset();
     return {
-        x: -tooltipRect.width / 2,
-        y: -tooltipRect.height - 30
+        x: -tooltipRect.width / 2 + scrollOffset.left,
+        y: -tooltipRect.height - 30 + scrollOffset.top
     };
 }
 
