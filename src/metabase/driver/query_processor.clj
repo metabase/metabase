@@ -8,7 +8,6 @@
             [medley.core :as m]
             [swiss.arrows :refer [<<-]]
             [metabase.db :refer :all]
-            [metabase.driver.interface :as i]
             (metabase.driver.query-processor [annotate :as annotate]
                                              [expand :as expand]
                                              [interface :refer :all]
@@ -193,10 +192,10 @@
                                    (fn [f]
                                      (if-not (map? f) f
                                              (m/filter-vals identity (into {} f))))
-                                   ;; obscure DB details when logging. Just log the class of driver because we don't care about its properties
+                                   ;; obscure DB details when logging. Just log the name of driver because we don't care about its properties
                                    (-> query
                                        (assoc-in [:database :details] "😋 ") ; :yum:
-                                       (update :driver class)))))))
+                                       (update :driver :driver-name)))))))
     (qp query)))
 
 
@@ -241,8 +240,9 @@
       (qp query))))
 
 (defn- process-structured [{:keys [driver], :as query}]
-  (let [driver-process-query      (partial i/process-query driver)
-        driver-wrap-process-query (partial i/wrap-process-query-middleware driver)]
+  (let [driver-process-query      (:process-query driver)
+        driver-wrap-process-query (or (:process-query-in-context driver)
+                                      (fn [qp] qp))]
     ((<<- wrap-catch-exceptions
           pre-expand
           driver-wrap-process-query
@@ -257,8 +257,9 @@
           driver-process-query) query)))
 
 (defn- process-native [{:keys [driver], :as query}]
-  (let [driver-process-query      (partial i/process-query driver)
-        driver-wrap-process-query (partial i/wrap-process-query-middleware driver)]
+  (let [driver-process-query      (:process-query driver)
+        driver-wrap-process-query (or (:process-query-in-context driver)
+                                      (fn [qp] qp))]
     ((<<- wrap-catch-exceptions
           driver-wrap-process-query
           post-add-row-count-and-status

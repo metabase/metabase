@@ -2,10 +2,10 @@
   (:require clojure.java.classpath
             [clojure.string :as s]
             [clojure.tools.logging :as log]
+            [clojure.tools.namespace.find :as ns-find]
             [medley.core :as m]
             [metabase.db :refer [ins sel upd]]
-            (metabase.driver [interface :as i]
-                             [query-processor :as qp])
+            [metabase.driver.query-processor :as qp]
             (metabase.models [database :refer [Database]]
                              [query-execution :refer [QueryExecution]])
             [metabase.models.setting :refer [defsetting]]
@@ -13,30 +13,32 @@
 
 (declare -dataset-query query-fail query-complete save-query-execution)
 
-;; ## CONFIG
+;;; ## CONFIG
 
 (defsetting report-timezone "Connection timezone to use when executing queries. Defaults to system timezone.")
 
-
 ;; ## Constants
 
-(def ^:const available-drivers
-  "Available DB drivers."
-  {:h2       {:id   "h2"
-              :name "H2"}
-   :postgres {:id   "postgres"
-              :name "Postgres"}
-   :mongo    {:id   "mongo"
-              :name "MongoDB"}
-   :mysql    {:id   "mysql"
-              :name "MySQL"}})
+(def available-drivers
+  "Delay to a map of info about available drivers."
+  (delay (->> (for [namespace (->> (ns-find/find-namespaces (clojure.java.classpath/classpath))
+                                   (filter (fn [ns-symb]
+                                             (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb)))))]
+                (do (require namespace)
+                    (->> (ns-publics namespace)
+                         (map (fn [[symb varr]]
+                                (when (::driver (meta varr))
+                                  {(keyword symb) (select-keys @varr [:details-fields
+                                                                      :driver-name
+                                                                      :features])})))
+                         (into {}))))
+              (into {}))))
 
 (defn is-engine?
-  "Predicate function which validates if the given argument represents a valid driver identifier."
+  "Is ENGINE a valid driver name?"
   [engine]
-  (if (not (nil? engine))
-    (contains? (set (map name (keys available-drivers))) (name engine))
-    false))
+  (when engine
+    (contains? (set (keys @available-drivers)) (keyword engine))))
 
 (defn class->base-type
   "Return the `Field.base_type` that corresponds to a given class returned by the DB."
@@ -65,13 +67,11 @@
   "Return the driver instance that should be used for given ENGINE.
    This loads the corresponding driver if needed; it is expected that it resides in a var named
 
-     metabase.driver.<engine>/driver"
+     metabase.driver.<engine>/<engine>"
   [engine]
-  {:pre [(keyword? engine)
-         (contains? (set (keys available-drivers)) engine)]}
   (let [nmspc (symbol (format "metabase.driver.%s" (name engine)))]
     (require nmspc)
-    @(ns-resolve nmspc 'driver)))
+    @(ns-resolve nmspc (symbol (name engine)))))
 
 
 ;; Can the type of a DB change?
@@ -93,11 +93,12 @@
   "Check whether we can connect to DATABASE and perform a basic query (such as `SELECT 1`)."
   [database]
   {:pre [(map? database)]}
-  (try
-    (i/can-connect? (engine->driver (:engine database)) database)
-    (catch Throwable e
-      (log/error "Failed to connect to database:" (.getMessage e))
-      false)))
+  (let [driver (engine->driver (:engine database))]
+    (try
+      ((:can-connect? driver) (:details database))
+      (catch Throwable e
+        (log/error "Failed to connect to database:" (.getMessage e))
+        false))))
 
 (defn can-connect-with-details?
   "Check whether we can connect to a database with ENGINE and DETAILS-MAP and perform a basic query.
@@ -107,15 +108,17 @@
      (can-connect-with-details? :postgres {:host \"localhost\", :port 5432, ...})"
   [engine details-map & [rethrow-exceptions]]
   {:pre [(keyword? engine)
-         (contains? (set (keys available-drivers)) engine)
+         (is-engine? engine)
          (map? details-map)]}
-  (let [driver (engine->driver engine)]
+  (let [{:keys [can-connect? humanize-connection-error-message]} (engine->driver engine)]
     (try
-      (i/can-connect-with-details? driver details-map)
+      (can-connect? details-map)
       (catch Throwable e
         (log/error "Failed to connect to database:" (.getMessage e))
         (when rethrow-exceptions
-          (let [message (i/humanize-connection-error-message driver (.getMessage e))]
+          (let [^String message ((or humanize-connection-error-message
+                                     identity)
+                                 (.getMessage e))]
             (throw (Exception. message))))
         false))))
 

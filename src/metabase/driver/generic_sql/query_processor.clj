@@ -8,10 +8,8 @@
             [korma.sql.utils :as utils]
             [metabase.config :as config]
             [metabase.driver :as driver]
-            (metabase.driver [interface :refer [supports?]]
-                             [query-processor :as qp])
-            (metabase.driver.generic-sql [interface :as i]
-                                         [native :as native]
+            [metabase.driver.query-processor :as qp]
+            (metabase.driver.generic-sql [native :as native]
                                          [util :refer :all])
             [metabase.util :as u])
   (:import java.sql.Timestamp
@@ -42,9 +40,9 @@
                                                        (mapcat #(if (vector? %) % [%]))))
             set-timezone-sql  (when-let [timezone (driver/report-timezone)]
                                 (when (seq timezone)
-                                  (let [driver (:driver *query*)]
-                                    (when (supports? driver :set-timezone)
-                                      `(exec-raw ~(i/timezone->set-timezone-sql driver timezone))))))
+                                  (let [{:keys [features timezone->set-timezone-sql]} (:driver *query*)]
+                                    (when (contains? features :set-timezone)
+                                      `(exec-raw ~(timezone->set-timezone-sql timezone))))))
             korma-form        `(let [~'entity (korma-entity ~database ~source-table)]
                                  ~(if set-timezone-sql `(korma.db/with-db (:db ~'entity)
                                                           (korma.db/transaction
@@ -100,7 +98,7 @@
     ([this]
      (formatted this false))
     ([{:keys [table-name special-type field-name], :as field} include-as?]
-     (let [->timestamp (partial i/unix-timestamp->timestamp (:driver *query*))
+     (let [->timestamp (:unix-timestamp->timestamp (:driver *query*))
            field       (cond-> (keyword (str table-name \. field-name))
                          (= special-type :timestamp_seconds)      (->timestamp :seconds)
                          (= special-type :timestamp_milliseconds) (->timestamp :milliseconds))]
@@ -112,7 +110,7 @@
     ([this]
      (formatted this false))
     ([{unit :unit, {:keys [field-name base-type special-type], :as field} :field} include-as?]
-     (let [field (i/date (:driver *query*) unit (formatted field))]
+     (let [field ((:date (:driver *query*)) unit (formatted field))]
        (if include-as? [field (keyword field-name)]
            field))))
 
@@ -145,7 +143,7 @@
      (formatted this false))
     ([{value :value, {unit :unit} :field} _]
      ;; prevent Clojure from converting this to #inst literal, which is a util.date
-     (i/date (:driver *query*) unit `(Timestamp/valueOf ~(.toString value)))))
+     ((:date (:driver *query*)) unit `(Timestamp/valueOf ~(.toString value)))))
 
   RelativeDateTimeValue
   (formatted
@@ -153,9 +151,9 @@
      (formatted this false))
     ([{:keys [amount unit], {field-unit :unit} :field} _]
      (let [driver (:driver *query*)]
-       (i/date driver field-unit (if (zero? amount)
-                                   (sqlfn :NOW)
-                                   (i/date-interval driver unit amount)))))))
+       ((:date driver) field-unit (if (zero? amount)
+                                     (sqlfn :NOW)
+                                     ((:date-interval driver) unit amount)))))))
 
 
 (defmethod apply-form :aggregation [[_ {:keys [aggregation-type field]}]]

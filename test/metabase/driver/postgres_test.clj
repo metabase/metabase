@@ -1,24 +1,9 @@
 (ns metabase.driver.postgres-test
   (:require [expectations :refer :all]
-            [metabase.driver.generic-sql.interface :as i]
-            [metabase.driver.postgres :refer :all]
+            [metabase.driver.postgres :refer [postgres]]
             (metabase.test.data [datasets :refer [expect-with-dataset]]
                                 [interface :refer [def-database-definition]])
             [metabase.test.util.q :refer [Q]]))
-
-;; # Check that database->connection details still works whether we're dealing with new-style or legacy details
-;; ## new-style
-(expect {:db   "bird_sightings"
-         :ssl  false
-         :port 5432
-         :host "localhost"
-         :user "camsaul"}
-  (i/database->connection-details driver {:details {:ssl    false
-                                                    :host   "localhost"
-                                                    :port   5432
-                                                    :dbname "bird_sightings"
-                                                    :user   "camsaul"}}))
-
 
 ;; # Check that SSL params get added the connection details in the way we'd like
 ;; ## no SSL -- this should *not* include the key :ssl (regardless of its value) since that will cause the PG driver to use SSL anyway
@@ -28,11 +13,11 @@
      :subprotocol "postgresql"
      :subname     "//localhost:5432/bird_sightings"
      :make-pool?  true}
-  (i/connection-details->connection-spec driver {:ssl    false
-                                                 :host   "localhost"
-                                                 :port   5432
-                                                 :dbname "bird_sightings"
-                                                 :user   "camsaul"}))
+    ((:connection-details->spec postgres) {:ssl    false
+                                           :host   "localhost"
+                                           :port   5432
+                                           :dbname "bird_sightings"
+                                           :user   "camsaul"}))
 
 ;; ## ssl - check that expected params get added
 (expect
@@ -44,11 +29,11 @@
      :user        "camsaul"
      :sslfactory  "org.postgresql.ssl.NonValidatingFactory"
      :subname     "//localhost:5432/bird_sightings"}
-  (i/connection-details->connection-spec driver {:ssl    true
-                                                 :host   "localhost"
-                                                 :port   5432
-                                                 :dbname "bird_sightings"
-                                                 :user   "camsaul"}))
+    ((:connection-details->spec postgres) {:ssl    true
+                                           :host   "localhost"
+                                           :port   5432
+                                           :dbname "bird_sightings"
+                                           :user   "camsaul"}))
 ;;; # UUID Support
 (def-database-definition ^:private with-uuid
   ["users"
