@@ -41,6 +41,6 @@ In this scenario all you need to do is make sure you launch Metabase with the co
       -e "MB_DB_HOST=my-database-host" \
       --name metabase metabase/metabase
 
-Keep in mind that Metabase will be connecting from within your docker container, so make sure that either you're using a fully qualified hostname or that you've set a proper entry in your container's /etc/hosts file.
+Keep in mind that Metabase will be connecting from within your docker container, so make sure that either you're using a fully qualified hostname or that you've set a proper entry in your container's `/etc/hosts file`.
 
 Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../setting-up-metabase.md).

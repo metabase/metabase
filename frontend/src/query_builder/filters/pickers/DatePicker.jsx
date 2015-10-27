@@ -2,8 +2,7 @@ import React, { Component, PropTypes } from "react";
 
 import SpecificDatePicker from "./SpecificDatePicker.jsx";
 import RelativeDatePicker from "./RelativeDatePicker.jsx";
-
-import cx from "classnames";
+import OperatorSelector from "../OperatorSelector.jsx";
 
 export default class DatePicker extends Component {
     constructor(props, context) {
@@ -21,7 +20,9 @@ export default class DatePicker extends Component {
     };
 
     _detectPane(props) {
-        if (props.filter[0] !== "TIME_INTERVAL" && typeof props.filter[2] === "string") {
+        if (props.filter[0] === "IS_NULL" || props.filter[0] === "NOT_NULL") {
+            return props.filter[0]
+        } else if (props.filter[0] !== "TIME_INTERVAL" && typeof props.filter[2] === "string") {
             return "specific";
         } else {
             return "relative";
@@ -45,24 +46,37 @@ export default class DatePicker extends Component {
             );
         }
 
+        var operators = [
+            { name: "relative", verboseName: "Relative date" },
+            { name: "specific", verboseName: "Specific date" },
+            { name: "IS_NULL", verboseName: "Is Empty", advanced: true },
+            { name: "NOT_NULL", verboseName: "Not Empty", advanced: true }
+        ];
+
         return (
             <div>
-                <div className="p1 border-bottom">
-                    <button className={cx("Button Button--medium mr1", { "Button--purple": this.state.pane === "relative" })} onClick={this.selectPane.bind(this, "relative")}>Relative date</button>
-                    <button className={cx("Button Button--medium", { "Button--purple": this.state.pane === "specific" })} onClick={this.selectPane.bind(this, "specific")}>Specific date</button>
-                </div>
+                <OperatorSelector
+                    operator={this.state.pane}
+                    operators={operators}
+                    onOperatorChange={(operator) => {
+                        this.setState({ pane: operator });
+                        if (operator === "IS_NULL" || operator === "NOT_NULL") {
+                            this.props.onOperatorChange(operator);
+                        }
+                    }}
+                />
                 { this.state.pane === "relative" ?
                     <RelativeDatePicker
                         filter={this.props.filter}
                         onFilterChange={this.props.onFilterChange}
                     />
-                :
+                : this.state.pane === "specific" ?
                     <SpecificDatePicker
                         filter={this.props.filter}
                         onFilterChange={this.props.onFilterChange}
                         onOperatorChange={this.props.onOperatorChange}
                     />
-                }
+                : null }
             </div>
         )
     }

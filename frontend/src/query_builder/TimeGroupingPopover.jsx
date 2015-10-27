@@ -15,7 +15,7 @@ const BUCKETINGS = [
     "year",
     null,
     // "minute-of-hour",
-    // "hour-of-day",
+    "hour-of-day",
     "day-of-week",
     // "day-of-month",
     // "day-of-year",

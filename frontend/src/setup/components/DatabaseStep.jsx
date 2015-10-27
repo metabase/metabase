@@ -37,25 +37,45 @@ export default class DatabaseStep extends Component {
             'formError': null
         });
 
+        // make sure that we are trying ssl db connections to start with
+        details.details.ssl = true;
+
         try {
-            // validate them first
+            // validate the details before we move forward
             await this.props.dispatch(validateDatabase(details));
 
-            // now that they are good, store them
-            this.props.dispatch(setDatabaseDetails({
-                'nextStep': ++this.props.stepNumber,
-                'details': details
-            }));
-
-            MetabaseAnalytics.trackEvent('Setup', 'Database Step', this.state.engine);
-
         } catch (error) {
-            MetabaseAnalytics.trackEvent('Setup', 'Error', 'database validation: '+this.state.engine);
+            let formError = error;
+            details.details.ssl = false;
 
-            this.setState({
-                'formError': error
-            });
+            try {
+                // ssl connection failed, lets try non-ssl
+                await this.props.dispatch(validateDatabase(details));
+
+                formError = null;
+
+            } catch (error2) {
+                formError = error2;
+            }
+
+            if (formError) {
+                MetabaseAnalytics.trackEvent('Setup', 'Error', 'database validation: '+this.state.engine);
+
+                this.setState({
+                    'formError': formError
+                });
+
+                return;
+            }
         }
+
+        // now that they are good, store them
+        this.props.dispatch(setDatabaseDetails({
+            'nextStep': ++this.props.stepNumber,
+            'details': details
+        }));
+
+        MetabaseAnalytics.trackEvent('Setup', 'Database Step', this.state.engine);
     }
 
     skipDatabase() {

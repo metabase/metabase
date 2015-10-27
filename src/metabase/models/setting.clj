@@ -164,7 +164,8 @@
    :anon_tracking_enabled (let [tracking? (get :anon-tracking-enabled)]
                             (or (nil? tracking?) (= "true" tracking?)))
    :site_name             (get :site-name)
-   :email_configured      (not (s/blank? (get :email-smtp-host)))})
+   :email_configured      (not (s/blank? (get :email-smtp-host)))
+   :admin_email           (sel :one :field ['User :email] (k/where {:is_superuser true :is_active true}))})
 
 ;; # IMPLEMENTATION
 

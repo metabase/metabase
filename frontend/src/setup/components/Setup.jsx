@@ -34,7 +34,7 @@ export default class Setup extends Component {
         const { tag } = MetabaseSettings.get('version');
         return (
             <div className="SetupHelp bordered border-dashed p2 rounded mb4" >
-                If you feel stuck, <a className="link" href={"http://www.metabase.com/docs/"+tag+"/getting-started/start.html"} target="_blank">our getting started guide</a> is just a click away.
+                If you feel stuck, <a className="link" href={"http://www.metabase.com/docs/"+tag+"/setting-up-metabase"} target="_blank">our getting started guide</a> is just a click away.
             </div>
         );
     }

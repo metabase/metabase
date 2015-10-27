@@ -6474,11 +6474,6 @@
       "from": "https://registry.npmjs.org/jasmine-core/-/jasmine-core-2.3.4.tgz",
       "resolved": "https://registry.npmjs.org/jasmine-core/-/jasmine-core-2.3.4.tgz"
     },
-    "jquery": {
-      "version": "2.1.4",
-      "from": "https://registry.npmjs.org/jquery/-/jquery-2.1.4.tgz",
-      "resolved": "https://registry.npmjs.org/jquery/-/jquery-2.1.4.tgz"
-    },
     "karma": {
       "version": "0.13.10",
       "from": "https://registry.npmjs.org/karma/-/karma-0.13.10.tgz",
@@ -9103,125 +9098,6 @@
       "version": "2.10.6",
       "from": "https://registry.npmjs.org/moment/-/moment-2.10.6.tgz",
       "resolved": "https://registry.npmjs.org/moment/-/moment-2.10.6.tgz"
-    },
-    "ng-annotate-webpack-plugin": {
-      "version": "0.1.2",
-      "from": "https://registry.npmjs.org/ng-annotate-webpack-plugin/-/ng-annotate-webpack-plugin-0.1.2.tgz",
-      "resolved": "https://registry.npmjs.org/ng-annotate-webpack-plugin/-/ng-annotate-webpack-plugin-0.1.2.tgz",
-      "dependencies": {
-        "ng-annotate": {
-          "version": "0.9.11",
-          "from": "https://registry.npmjs.org/ng-annotate/-/ng-annotate-0.9.11.tgz",
-          "resolved": "https://registry.npmjs.org/ng-annotate/-/ng-annotate-0.9.11.tgz",
-          "dependencies": {
-            "alter": {
-              "version": "0.2.0",
-              "from": "https://registry.npmjs.org/alter/-/alter-0.2.0.tgz",
-              "resolved": "https://registry.npmjs.org/alter/-/alter-0.2.0.tgz"
-            },
-            "convert-source-map": {
-              "version": "0.4.1",
-              "from": "https://registry.npmjs.org/convert-source-map/-/convert-source-map-0.4.1.tgz",
-              "resolved": "https://registry.npmjs.org/convert-source-map/-/convert-source-map-0.4.1.tgz"
-            },
-            "esprima": {
-              "version": "1.2.5",
-              "from": "https://registry.npmjs.org/esprima/-/esprima-1.2.5.tgz",
-              "resolved": "https://registry.npmjs.org/esprima/-/esprima-1.2.5.tgz"
-            },
-            "optimist": {
-              "version": "0.6.1",
-              "from": "https://registry.npmjs.org/optimist/-/optimist-0.6.1.tgz",
-              "resolved": "https://registry.npmjs.org/optimist/-/optimist-0.6.1.tgz",
-              "dependencies": {
-                "wordwrap": {
-                  "version": "0.0.3",
-                  "from": "https://registry.npmjs.org/wordwrap/-/wordwrap-0.0.3.tgz",
-                  "resolved": "https://registry.npmjs.org/wordwrap/-/wordwrap-0.0.3.tgz"
-                },
-                "minimist": {
-                  "version": "0.0.10",
-                  "from": "https://registry.npmjs.org/minimist/-/minimist-0.0.10.tgz",
-                  "resolved": "https://registry.npmjs.org/minimist/-/minimist-0.0.10.tgz"
-                }
-              }
-            },
-            "ordered-ast-traverse": {
-              "version": "0.1.1",
-              "from": "https://registry.npmjs.org/ordered-ast-traverse/-/ordered-ast-traverse-0.1.1.tgz",
-              "resolved": "https://registry.npmjs.org/ordered-ast-traverse/-/ordered-ast-traverse-0.1.1.tgz",
-              "dependencies": {
-                "ordered-esprima-props": {
-                  "version": "1.0.0",
-                  "from": "https://registry.npmjs.org/ordered-esprima-props/-/ordered-esprima-props-1.0.0.tgz",
-                  "resolved": "https://registry.npmjs.org/ordered-esprima-props/-/ordered-esprima-props-1.0.0.tgz"
-                }
-              }
-            },
-            "simple-fmt": {
-              "version": "0.1.0",
-              "from": "https://registry.npmjs.org/simple-fmt/-/simple-fmt-0.1.0.tgz",
-              "resolved": "https://registry.npmjs.org/simple-fmt/-/simple-fmt-0.1.0.tgz"
-            },
-            "simple-is": {
-              "version": "0.2.0",
-              "from": "https://registry.npmjs.org/simple-is/-/simple-is-0.2.0.tgz",
-              "resolved": "https://registry.npmjs.org/simple-is/-/simple-is-0.2.0.tgz"
-            },
-            "source-map": {
-              "version": "0.1.43",
-              "from": "https://registry.npmjs.org/source-map/-/source-map-0.1.43.tgz",
-              "resolved": "https://registry.npmjs.org/source-map/-/source-map-0.1.43.tgz",
-              "dependencies": {
-                "amdefine": {
-                  "version": "1.0.0",
-                  "from": "https://registry.npmjs.org/amdefine/-/amdefine-1.0.0.tgz",
-                  "resolved": "https://registry.npmjs.org/amdefine/-/amdefine-1.0.0.tgz"
-                }
-              }
-            },
-            "stable": {
-              "version": "0.1.5",
-              "from": "https://registry.npmjs.org/stable/-/stable-0.1.5.tgz",
-              "resolved": "https://registry.npmjs.org/stable/-/stable-0.1.5.tgz"
-            },
-            "stringmap": {
-              "version": "0.2.2",
-              "from": "https://registry.npmjs.org/stringmap/-/stringmap-0.2.2.tgz",
-              "resolved": "https://registry.npmjs.org/stringmap/-/stringmap-0.2.2.tgz"
-            },
-            "stringset": {
-              "version": "0.2.1",
-              "from": "https://registry.npmjs.org/stringset/-/stringset-0.2.1.tgz",
-              "resolved": "https://registry.npmjs.org/stringset/-/stringset-0.2.1.tgz"
-            },
-            "tryor": {
-              "version": "0.1.2",
-              "from": "https://registry.npmjs.org/tryor/-/tryor-0.1.2.tgz",
-              "resolved": "https://registry.npmjs.org/tryor/-/tryor-0.1.2.tgz"
-            }
-          }
-        },
-        "webpack-core": {
-          "version": "0.4.8",
-          "from": "https://registry.npmjs.org/webpack-core/-/webpack-core-0.4.8.tgz",
-          "resolved": "https://registry.npmjs.org/webpack-core/-/webpack-core-0.4.8.tgz",
-          "dependencies": {
-            "source-map": {
-              "version": "0.1.43",
-              "from": "https://registry.npmjs.org/source-map/-/source-map-0.1.43.tgz",
-              "resolved": "https://registry.npmjs.org/source-map/-/source-map-0.1.43.tgz",
-              "dependencies": {
-                "amdefine": {
-                  "version": "1.0.0",
-                  "from": "https://registry.npmjs.org/amdefine/-/amdefine-1.0.0.tgz",
-                  "resolved": "https://registry.npmjs.org/amdefine/-/amdefine-1.0.0.tgz"
-                }
-              }
-            }
-          }
-        }
-      }
     },
     "node-libs-browser": {
       "version": "0.5.3",

@@ -42,6 +42,8 @@ It's that simple.  This will start the Metabase application using all of the def
 
 At this point your ready to go!  You can access your new Metabase server on port 3000, most likely at [localhost:3000](http://localhost:3000)
 
+You can use another port than 3000 by setting the `MB_JETTY_PORT` environment variable before running the jar
+
 Note that in the default configuration Metabase will use a local H2 database for storing all its own application data.  This is meant for simple evaluations or personal use, so if you want to run Metabase for a team we recommend you upgrade to a more robust SQL server such as Postgres.  See below for details on how to do that.
 
 Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../setting-up-metabase.md).
@@ -49,7 +51,7 @@ Now that you’ve installed Metabase, it’s time to [set it up and connect it t
 
 ### The Metabase Application Database
 
-The application database is where Metabase stores information about users, saved questions, dashboards, and any other data needed to run the application.  The default settings use an H2 database, but other options are available.
+The application database is where Metabase stores information about users, saved questions, dashboards, and any other data needed to run the application.  The default settings use an H2 database, but other also Postgres is available.
 
 #### [H2](http://www.h2database.com/) (default)
 To use the H2 database for your Metabase instance you don't need to do anything at all.  When the application is first launched it will attempt to create a new H2 database in the same filesystem location the application is launched from.

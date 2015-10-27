@@ -19,6 +19,7 @@ use constant UBERJAR_SRC => getcwd() . '/target/uberjar/metabase.jar';
 use constant UBERJAR_DEST => getcwd() . '/OSX/Resources/metabase.jar';
 
 use constant ENABLE_JAR_PACKING => 0;
+use constant ENABLE_JAR_OPTIONAL_FILE_STRIPPING => 0;
 
 sub remove_jre_optional_files {
     my @optional_files = ('bin/keytool',
@@ -70,7 +71,7 @@ sub pack_jre_jars {
 (rcopy(JRE_HOME, JRE_DEST) or die $!) unless -d JRE_DEST;
 
 # Remove optional files from JRE dest
-remove_jre_optional_files();
+remove_jre_optional_files() if ENABLE_JAR_OPTIONAL_FILE_STRIPPING;
 
 # Pack JARs in JRE if applicable
 pack_jar() if ENABLE_JAR_PACKING;

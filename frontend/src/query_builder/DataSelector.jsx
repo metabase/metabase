@@ -12,7 +12,7 @@ export default class DataSelector extends Component {
     constructor(props, context) {
         super(props, context);
 
-        _.bindAll(this, "onChange", "itemIsSelected", "sectionIsSelected");
+        _.bindAll(this, "onChange", "itemIsSelected", "sectionIsSelected", "renderSectionIcon", "renderItemIcon");
     }
 
     static propTypes = {
@@ -55,6 +55,14 @@ export default class DataSelector extends Component {
         } else {
             return item.database.id === this.getDatabaseId();
         }
+    }
+
+    renderSectionIcon() {
+        return <Icon name="database" width="18" height="18" />
+    }
+
+    renderItemIcon() {
+        return <Icon name="table2" width="18" height="18" />
     }
 
     getDatabaseId() {
@@ -127,6 +135,8 @@ export default class DataSelector extends Component {
                         onChange={this.onChange}
                         sectionIsSelected={this.sectionIsSelected}
                         itemIsSelected={this.itemIsSelected}
+                        renderSectionIcon={this.renderSectionIcon}
+                        renderItemIcon={this.renderItemIcon}
                     />
                 </PopoverWithTrigger>
             </div>

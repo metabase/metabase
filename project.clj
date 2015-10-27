@@ -19,7 +19,6 @@
                  [org.clojure/tools.logging "0.3.1"]                  ; logging framework
                  [org.clojure/tools.macro "0.1.5"]                    ; tools for writing macros
                  [org.clojure/tools.namespace "0.2.10"]
-                 [org.clojure/tools.reader "0.9.2"]                   ; Need to explictly specify this dep otherwise expectations doesn't seem to work right :'(
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
                  [cheshire "5.5.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
                  [clj-http-lite "0.3.0"]                              ; HTTP client; lightweight version of clj-http that uses HttpURLConnection instead of Apache
@@ -28,7 +27,7 @@
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
                  [com.cemerick/friend "0.2.1"]                        ; auth library
                  [com.draines/postal "1.11.4"]                        ; SMTP library
-                 [com.h2database/h2 "1.4.189"]                        ; embedded SQL database
+                 [com.h2database/h2 "1.4.190"]                        ; embedded SQL database
                  [com.mattbertolini/liquibase-slf4j "1.2.1"]          ; Java Migrations lib
                  [com.novemberain/monger "3.0.1"]                     ; MongoDB Driver
                  [compojure "1.4.0"]                                  ; HTTP Routing library built on Ring
@@ -41,7 +40,7 @@
                                com.sun.jdmk/jmxtools
                                com.sun.jmx/jmxri]]
                  [medley "0.7.0"]                                     ; lightweight lib of useful functions
-                 [mysql/mysql-connector-java "5.1.36"]                ; MySQL JDBC driver
+                 [mysql/mysql-connector-java "5.1.37"]                ; MySQL JDBC driver
                  [org.liquibase/liquibase-core "3.4.1"]               ; migration management (Java lib)
                  [org.slf4j/slf4j-log4j12 "1.7.12"]
                  [org.yaml/snakeyaml "1.16"]                          ; YAML parser (required by liquibase)
@@ -66,6 +65,7 @@
                                :suspicious-expression                 ; core.match macros generate some forms like (and expr) which is "suspicious"
                                :unused-ret-vals]}                     ; gives too many false positives for functions with side-effects like conj!
   :profiles {:dev {:dependencies [[org.clojure/tools.nrepl "0.2.11"]  ; REPL <3
+                                  [org.clojure/tools.reader "0.10.0"] ; Need to explictly specify this dep otherwise expectations doesn't seem to work right :'(
                                   [expectations "2.1.3"]              ; unit tests
                                   [ring/ring-mock "0.3.0"]]
                    :plugins [[cider/cider-nrepl "0.10.0-SNAPSHOT"]    ; Interactive development w/ cider NREPL in Emacs

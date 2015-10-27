@@ -253,7 +253,9 @@ const OPERATORS_BY_TYPE_ORDERED = {
         { name: "=",       verboseName: "Is" },
         { name: "<",       verboseName: "Before" },
         { name: ">",       verboseName: "After" },
-        { name: "BETWEEN", verboseName: "Between" }
+        { name: "BETWEEN", verboseName: "Between" },
+        { name: "IS_NULL", verboseName: "Is empty", advanced: true },
+        { name: "NOT_NULL",verboseName: "Not empty", advanced: true }
     ],
     [LOCATION]: [
         { name: "=",       verboseName: "Is" },

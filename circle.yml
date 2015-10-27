@@ -28,4 +28,4 @@ deployment:
   master:
     branch: master
     commands:
-      - ./deploy/deploy_aws.sh $STACK_ID $APP_ID
+      - ./bin/deploy-webhook $DEPLOY_WEBHOOK

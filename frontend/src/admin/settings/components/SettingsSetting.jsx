@@ -49,8 +49,8 @@ export default class SettingsSetting extends Component {
                 value={setting.value}
                 options={setting.options}
                 onChange={this.props.updateSetting.bind(null, setting)}
-                optionNameFn={option => option}
-                optionValueFn={option => option}
+                optionNameFn={option => typeof option === "object" ? option.name : option }
+                optionValueFn={option => typeof option === "object" ? option.value : option }
             />
         );
     }

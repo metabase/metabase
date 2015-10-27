@@ -35,7 +35,9 @@
   (context "/dataset"      [] (+auth dataset/routes))
   (context "/field"        [] (+auth field/routes))
   (context "/foreignkey"   [] (+auth fk/routes))
-  (GET     "/health"       [] {:status 200 :body {:status "ok"}})
+  (GET     "/health"       [] (if ((resolve 'metabase.core/initialized?))
+                                  {:status 200 :body {:status "ok"}}
+                                  {:status 503 :body {:status "initializing" :progress ((resolve 'metabase.core/initialization-progress))}}))
   (context "/notify"       [] (+apikey notify/routes))
   (context "/revision"     [] (+auth revision/routes))
   (context "/session"      [] session/routes)

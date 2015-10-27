@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Metabase</title>
+  </head>
+  <body>
+
+    <h3>Initializing Metabase, please wait...</h3>
+    <div>
+      <progress id="progress" max="100" value="0"></progress>
+    </div>
+
+    <script type="text/javascript">
+      function poll() {
+        var req = new XMLHttpRequest();
+        req.open("GET", "/api/health", true);
+        req.onreadystatechange = function() {
+          if (req.readyState === 4) {
+            if (req.status === 200) {
+              window.location.reload();
+            } else {
+              try {
+                var health = JSON.parse(req.responseText);
+                if (typeof health.progress === "number") {
+                  document.getElementById("progress").value = health.progress * 100;
+                }
+              } catch (e) {}
+              setTimeout(poll, 500);
+            }
+          }
+        }
+        req.send();
+      }
+      poll();
+    </script>
+  </body>
+</html>

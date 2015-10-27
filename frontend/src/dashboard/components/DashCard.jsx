@@ -44,7 +44,16 @@ export default class DashCard extends Component {
         let error = (dataset && dataset.error) || this.state.error;
 
         if (error) {
-            let message = (error.data && error.data.message) || error;
+            let message;
+            if (error.data) {
+                message = error.data.message;
+            } else if (error.status === 503) {
+                message = "I'm sorry, the server timed out while asking your question."
+            } else if (typeof error === "string") {
+                message = error;
+            } else {
+                message = "Oh snap!  Something went wrong loading this card :sad:";
+            }
             return (
                 <div className="p1 text-centered flex-full flex flex-column layout-centered">
                     <h2 className="text-normal text-grey-2">{message}</h2>

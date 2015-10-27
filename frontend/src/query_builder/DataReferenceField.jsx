@@ -6,6 +6,7 @@ import Query from "metabase/lib/query";
 import inflection from 'inflection';
 
 import cx from "classnames";
+import _ from "underscore";
 
 export default class DataReferenceField extends Component {
     constructor(props, context) {
@@ -101,18 +102,26 @@ export default class DataReferenceField extends Component {
     }
 
     render() {
-        var fieldName = this.props.field.display_name;
-        var tableName = this.state.table ? this.state.table.display_name : "";
+        let { field, query } = this.props;
+        let { table } = this.state;
 
-        var validForCurrentQuestion = !this.props.query.query || this.props.query.query.source_table == undefined || this.props.query.query.source_table === this.props.field.table_id;
+        let fieldName = field.display_name;
+        let tableName = table ? table.display_name : "";
 
-        var useForCurrentQuestion;
+        // TODO: allow for filters/grouping via foreign keys
+        let validForCurrentQuestion = !query.query || query.query.source_table == undefined || query.query.source_table === field.table_id;
+
+        let useForCurrentQuestion = [];
         if (validForCurrentQuestion) {
-            var validBreakout = this.state.table && this.state.table.breakout_options.validFieldsFilter(this.state.table.fields).filter((f) => {
-                return f.id === this.props.field.id;
-            }).length > 0;
-            var useForCurrentQuestionArray = [];
-            useForCurrentQuestionArray.push(
+            let validBreakout = false;
+            if (this.state.table) {
+                let usedFields = {};
+                query.query.breakout && query.query.breakout.forEach(f => usedFields[f] = true);
+                let breakoutOptions = Query.getFieldOptions(table.fields, true, table.breakout_options.validFieldsFilter, usedFields);
+                validBreakout = _.some(breakoutOptions.fields, f => f.id === field.id);
+            }
+
+            useForCurrentQuestion.push(
                 <li key="filter-by" className="mt1">
                     <a className="Button Button--white text-default text-brand-hover border-brand-hover no-decoration" href="#" onClick={this.filterBy}>
                         <Icon className="mr1" name="add" width="12px" height="12px"/> Filter by {name}
@@ -120,7 +129,7 @@ export default class DataReferenceField extends Component {
                 </li>
             );
             if (validBreakout) {
-                useForCurrentQuestionArray.push(
+                useForCurrentQuestion.push(
                     <li key="group-by" className="mt1">
                         <a className="Button Button--white text-default text-brand-hover border-brand-hover no-decoration" href="#" onClick={this.groupBy}>
                             <Icon className="mr2" name="add" width="12px" height="12px" /> Group by {name}
@@ -128,31 +137,30 @@ export default class DataReferenceField extends Component {
                     </li>
                 );
             }
-            useForCurrentQuestion = (
-                <div>
-                    <p className="text-bold">Use for current question</p>
-                    <ul className="my2">{useForCurrentQuestionArray}</ul>
-                </div>
-            );
         }
 
-        var usefulQuestions = [];
+        let usefulQuestions = [];
         if (this.props.field.special_type === "number") {
             usefulQuestions.push(<li className="border-row-divider" key="sum"><DataReferenceQueryButton icon="illustration-icon-scalar" text={"Sum of all values of " + fieldName} onClick={this.setQuerySum} /></li>);
         }
         usefulQuestions.push(<li className="border-row-divider" key="distinct-values"><DataReferenceQueryButton icon="illustration-icon-table" text={"All distinct values of " + fieldName} onClick={this.setQueryDistinct} /></li>);
-        var queryCountGroupedByText = "Number of " + inflection.pluralize(tableName) + " grouped by " + fieldName;
+        let queryCountGroupedByText = "Number of " + inflection.pluralize(tableName) + " grouped by " + fieldName;
         usefulQuestions.push(<li className="border-row-divider" key="count-bar"><DataReferenceQueryButton icon="illustration-icon-bars" text={queryCountGroupedByText} onClick={this.setQueryCountGroupedBy.bind(null, "bar")} /></li>);
         usefulQuestions.push(<li className="border-row-divider" key="count-pie"><DataReferenceQueryButton icon="illustration-icon-pie" text={queryCountGroupedByText} onClick={this.setQueryCountGroupedBy.bind(null, "pie")} /></li>);
 
-        var descriptionClasses = cx({ "text-grey-3": !this.props.field.description });
-        var description = (<p className={descriptionClasses}>{this.props.field.description || "No description set."}</p>);
+        let descriptionClasses = cx({ "text-grey-3": !this.props.field.description });
+        let description = (<p className={descriptionClasses}>{this.props.field.description || "No description set."}</p>);
 
         return (
             <div>
                 <h1>{fieldName}</h1>
                 {description}
-                {useForCurrentQuestion}
+                {useForCurrentQuestion.length > 0 ?
+                    <div>
+                        <p className="text-bold">Use for current question</p>
+                        <ul className="my2">{useForCurrentQuestion}</ul>
+                    </div>
+                : null }
                 <p className="text-bold">Potentially useful questions</p>
                 <ul>{usefulQuestions}</ul>
             </div>

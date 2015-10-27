@@ -409,6 +409,7 @@ CardControllers.controller('CardDetail', [
 
             renderAll();
 
+            let startTime = new Date();
             // make our api call
             Metabase.dataset(dataset_query, function (result) {
                 queryResult = result;
@@ -484,10 +485,7 @@ CardControllers.controller('CardDetail', [
 
             }, function (error) {
                 isRunning = false;
-                // TODO: we should update the api so that we get better error messaging from the api on query fails
-                queryResult = {
-                    error: "Oh snap!  Something went wrong running your query :sad:"
-                };
+                queryResult = { error: error, duration: new Date() - startTime };
 
                 renderAll();
             });

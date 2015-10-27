@@ -3,26 +3,27 @@ import React, { Component, PropTypes } from "react";
 import Icon from "metabase/components/Icon.jsx";
 
 import cx from "classnames";
+import _ from "underscore";
 
 export default class OperatorSelector extends Component {
     constructor(props, context) {
         super(props, context);
+        // if the initial operator is "advanced" expand the list
+        let operator = _.find(props.operators, o => o.name === props.operator);
         this.state = {
-            expanded: false
+            expanded: operator && operator.advanced
         };
     }
 
     static propTypes = {
-        filter: PropTypes.array.isRequired,
-        field: PropTypes.object.isRequired,
+        operator: PropTypes.string,
+        operators: PropTypes.array.isRequired,
         onOperatorChange: PropTypes.func.isRequired
     };
 
     render() {
-        let { field, filter } = this.props;
+        let { operator, operators } = this.props;
         let { expanded } = this.state;
-
-        let operators = field.valid_operators;
 
         let defaultOperators = operators.filter(o => !o.advanced);
         let expandedOperators = operators.filter(o => o.advanced);
@@ -34,13 +35,13 @@ export default class OperatorSelector extends Component {
 
         return (
             <div className="border-bottom p1">
-                { visibleOperators.map(operator =>
+                { visibleOperators.map(o =>
                     <button
-                        key={operator.name}
-                        className={cx("Button Button-normal Button--medium mr1 mb1", { "Button--purple": operator.name === filter[0] })}
-                        onClick={() => this.props.onOperatorChange(operator.name)}
+                        key={o.name}
+                        className={cx("Button Button-normal Button--medium mr1 mb1", { "Button--purple": o.name === operator })}
+                        onClick={() => this.props.onOperatorChange(o.name)}
                     >
-                        {operator.verboseName}
+                        {o.verboseName}
                     </button>
                 )}
                 { !expanded && expandedOperators.length > 0 ?
