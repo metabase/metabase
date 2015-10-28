@@ -114,9 +114,9 @@ export default class DashboardHeader extends Component {
     getHeaderButtons() {
         var buttonSections = [];
 
-        var { dashboard } = this.props;
+        var { dashboard, isEditing, isFullscreen } = this.props;
 
-        if (this.props.isEditing) {
+        if (isEditing) {
             buttonSections.push([
                 <ModalWithTrigger
                     ref="dashboardHistory"
@@ -136,38 +136,53 @@ export default class DashboardHeader extends Component {
             ]);
         }
 
-        if (dashboard && dashboard.can_write && !this.props.isEditing) {
+        if (!isFullscreen && !isEditing) {
+            let buttons = [];
+            buttonSections.push(buttons);
+
+            if (dashboard.can_write) {
+                buttons.push(
+                    <a title="Edit Dashboard Layout" className="text-brand-hover cursor-pointer" onClick={() => this.onEdit()}>
+                        <Icon name="pencil" width="16px" height="16px" />
+                    </a>
+                );
+            }
+        }
+
+        if (!isFullscreen) {
+            var isEmpty = dashboard.ordered_cards.length === 0;
             buttonSections.push([
-                <a title="Edit Dashboard Layout" className="text-brand-hover cursor-pointer" onClick={() => this.onEdit()}>
-                    <Icon name="pencil" width="16px" height="16px" />
-                </a>
+                <ModalWithTrigger
+                    ref="addQuestionModal"
+                    triggerElement={
+                        <a title="Add a question to this dashboard">
+                            <Icon className={cx("text-brand-hover", { "Icon--pulse": isEmpty })} name="add" width="16px" height="16px" />
+                        </a>
+                    }
+                >
+                    <AddToDashSelectQuestionModal
+                        dispatch={this.props.dispatch}
+                        dashboard={dashboard}
+                        cards={this.props.cards}
+                        onClose={() => this.refs.addQuestionModal.toggle()}
+                    />
+                </ModalWithTrigger>
             ]);
         }
 
-        // buttonSections.push([
-        //     <a title="Add Question to Dashboard" className="text-brand-hover" onClick={() => this.addQuestion()}>
-        //         <Icon name="add" width="16px" height="16px" />
-        //     </a>
-        // ]);
-
-        var isEmpty = dashboard.ordered_cards.length === 0;
-        buttonSections.push([
-            <ModalWithTrigger
-                ref="addQuestionModal"
-                triggerElement={
-                    <a title="Add a question to this dashboard">
-                        <Icon className={cx("text-brand-hover", { "Icon--pulse": isEmpty })} name="add" width="16px" height="16px" />
-                    </a>
-                }
-            >
-                <AddToDashSelectQuestionModal
-                    dispatch={this.props.dispatch}
-                    dashboard={dashboard}
-                    cards={this.props.cards}
-                    onClose={() => this.refs.addQuestionModal.toggle()}
-                />
-            </ModalWithTrigger>
-        ]);
+        if (isFullscreen) {
+            buttonSections.push([
+                <a title="Exit fullscreen" className="text-brand-hover cursor-pointer" onClick={() => this.props.onExitFullscreen()}>
+                    <Icon name="contract" width="16px" height="16px" />
+                </a>
+            ]);
+        } else if (!isEditing) {
+            buttonSections.push([
+                <a title="Fullscreen" className="text-brand-hover cursor-pointer pr1" onClick={() => this.props.onFullscreen()}>
+                    <Icon name="expand" width="16px" height="16px" />
+                </a>
+            ]);
+        }
 
         return buttonSections;
     }

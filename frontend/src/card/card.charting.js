@@ -617,7 +617,9 @@ function ChartRenderer(id, card, result, chartType) {
     this.chartFn = dc[this.chartType]; // e.g. dc['geoChoroplethChart]
     this.chart = this.chartFn('#' + chartElementIdForId(this.id))
         .width(this._getWidth())
-        .height(this._getHeight());
+        .height(this._getHeight())
+        // disable animations
+        .transitionDuration(0);
 
     // ENABLE LEGEND IF SPECIFIED IN VISUALIZATION SETTINGS
     // I'm sure it made sense to somebody at some point to make this setting live in two different places depending on the type of chart.

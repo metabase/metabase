@@ -4,13 +4,23 @@ import DashboardHeader from "../components/DashboardHeader.jsx";
 import DashboardGrid from "../components/DashboardGrid.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
-import { fetchDashboard } from "../actions";
+import { fetchDashboard, refreshDashboard } from "../actions";
+
+import _ from "underscore";
+import cx from "classnames";
 
 export default class Dashboard extends Component {
 
     constructor(props, context) {
         super(props, context);
-        this.state = { error: null };
+
+        this.state = {
+            error: null,
+            isFullscreen: false,
+            fullscreenTimer: null
+        };
+
+        _.bindAll(this, "onFullscreen", "onExitFullscreen", "onRefresh");
     }
 
     static propTypes = {
@@ -32,15 +42,64 @@ export default class Dashboard extends Component {
         }
     }
 
+    componentWillUnmount() {
+        this.stopAutoRefresh();
+    }
+
+    onRefresh() {
+        this.props.dispatch(refreshDashboard(this.props.selectedDashboard));
+    }
+
+    startAutoRefresh() {
+        this.stopAutoRefresh();
+        let timer = setInterval(this.onRefresh, 5*60*1000); // 5 minutes
+        this.setState({ fullscreenTimer: timer });
+    }
+
+    stopAutoRefresh() {
+        if (this.state.fullscreenTimer != null) {
+            clearInterval(this.state.fullscreenTimer);
+            this.setState({ fullscreenTimer: null });
+        }
+    }
+
+    onFullscreen() {
+        var elem = React.findDOMNode(this);//.getElementsByClassName("DashboardGrid")[0];
+        for (let prop of ["requestFullscreen", "webkitRequestFullscreen", "mozRequestFullScreen", "msRequestFullscreen"]) {
+            if (typeof elem[prop] === "function") {
+                elem[prop]();
+                this.startAutoRefresh();
+                this.setState({ isFullscreen: true });
+                break;
+            }
+        }
+    }
+
+    onExitFullscreen() {
+        for (let prop of ["exitFullscreen", "webkitExitFullscreen", "mozCancelFullScreen", "msExitFullscreen"]) {
+            if (typeof document[prop] === "function") {
+                document[prop]();
+                this.stopAutoRefresh();
+                this.setState({ isFullscreen: false });
+                break;
+            }
+        }
+    }
+
     render() {
         let { dashboard } = this.props;
         let { error } = this.state;
         return (
-            <LoadingAndErrorWrapper className="Dashboard flex flex-full" loading={!dashboard} error={error}>
+            <LoadingAndErrorWrapper className={cx("Dashboard flex flex-full", { "Dashboard--fullscreen": this.state.isFullscreen })} loading={!dashboard} error={error}>
             {() =>
                 <div className="full flex flex-column">
                     <header className="bg-white border-bottom">
-                        <DashboardHeader {...this.props} />
+                        <DashboardHeader
+                            {...this.props}
+                            isFullscreen={this.state.isFullscreen}
+                            onFullscreen={this.onFullscreen}
+                            onExitFullscreen={this.onExitFullscreen}
+                        />
                     </header>
                     <div className="Dash-wrapper wrapper flex layout-centered flex-full flex-column">
                         { dashboard.ordered_cards.length === 0 ?

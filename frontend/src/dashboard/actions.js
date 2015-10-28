@@ -62,6 +62,7 @@ export const SET_DASHCARD_ATTRIBUTES = 'SET_DASHCARD_ATTRIBUTES';
 export const SAVE_DASHCARD = 'SAVE_DASHCARD';
 
 export const FETCH_DASHCARD_DATASET = 'FETCH_DASHCARD_DATASET';
+export const REFRESH_DASHBOARD = 'REFRESH_DASHBOARD';
 export const FETCH_REVISIONS = 'FETCH_REVISIONS';
 export const REVERT_TO_REVISION = 'REVERT_TO_REVISION';
 
@@ -129,6 +130,14 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(id) {
     return async function(dispatch, getState) {
         let result = await Dashboard.get({ dashId: id });
         return normalize(result, { dashboard: dashboard });
+    };
+});
+
+export const refreshDashboard = createThunkAction(REFRESH_DASHBOARD, function(id) {
+    return async function(dispatch, getState) {
+        await dispatch(fetchDashboard(id));
+        let cards = getState().dashboards[id].ordered_cards;
+        await * cards.map(card => dispatch(fetchDashCardData(card)));
     };
 });
 
