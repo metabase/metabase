@@ -224,6 +224,11 @@ function applyChartTimeseriesXAxis(chart, card, coldefs, data) {
 
     // calculate the x-axis domain
     chart.x(d3.time.scale().domain(xDomain));
+
+    // prevents skinny time series bar charts by using xUnits that match the provided column unit, if possible
+    if (coldefs[0] && coldefs[0].unit && d3.time[coldefs[0].unit + "s"]) {
+        chart.xUnits(d3.time[coldefs[0].unit + "s"]);
+    }
 }
 
 // mostly matches https://github.com/mbostock/d3/wiki/Time-Scales
