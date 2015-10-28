@@ -43,19 +43,19 @@
 (defn class->base-type
   "Return the `Field.base_type` that corresponds to a given class returned by the DB."
   [klass]
-  (or ({Boolean                         :BooleanField
-        Double                          :FloatField
-        Float                           :FloatField
-        Integer                         :IntegerField
-        Long                            :IntegerField
-        String                          :TextField
-        java.math.BigDecimal            :DecimalField
-        java.math.BigInteger            :BigIntegerField
-        java.sql.Date                   :DateField
-        java.sql.Timestamp              :DateTimeField
-        java.util.Date                  :DateField
-        java.util.UUID                  :TextField
-        org.postgresql.util.PGobject    :UnknownField} klass)
+  (or ({Boolean                      :BooleanField
+        Double                       :FloatField
+        Float                        :FloatField
+        Integer                      :IntegerField
+        Long                         :IntegerField
+        String                       :TextField
+        java.math.BigDecimal         :DecimalField
+        java.math.BigInteger         :BigIntegerField
+        java.sql.Date                :DateField
+        java.sql.Timestamp           :DateTimeField
+        java.util.Date               :DateField
+        java.util.UUID               :TextField
+        org.postgresql.util.PGobject :UnknownField} klass)
       (cond
         (isa? klass clojure.lang.IPersistentMap) :DictionaryField)
       (do (log/warn (format "Don't know how to map class '%s' to a Field base_type, falling back to :UnknownField." klass))
@@ -110,9 +110,9 @@
   {:pre [(keyword? engine)
          (is-engine? engine)
          (map? details-map)]}
-  (let [{:keys [can-connect? humanize-connection-error-message]} (engine->driver engine)]
+  (let [{:keys [humanize-connection-error-message], :as driver} (engine->driver engine)]
     (try
-      (can-connect? details-map)
+      ((:can-connect? driver) details-map)
       (catch Throwable e
         (log/error "Failed to connect to database:" (.getMessage e))
         (when rethrow-exceptions

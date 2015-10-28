@@ -204,5 +204,6 @@
     :field-values-lazy-seq         field-values-lazy-seq
     :table-rows-seq                table-rows-seq
     :table-fks                     table-fks
-    :field-avg-length              (partial field-avg-length (:sql-string-length-fn driver))}
+    :field-avg-length              (partial field-avg-length (:sql-string-length-fn driver))
+    :field-percent-urls            field-percent-urls}
    driver))

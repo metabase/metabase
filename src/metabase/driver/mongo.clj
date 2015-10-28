@@ -123,32 +123,33 @@
                             driver/class->base-type))))))
 
 (defdriver mongo
-  {:driver-name                    "MongoDB"
-   :details-fields                 [{:name         "host"
-                                     :display-name "Host"
-                                     :default "localhost"}
-                                    {:name         "port"
-                                     :display-name "Port"
-                                     :type         :integer
-                                     :default      27017}
-                                    {:name         "dbname"
-                                     :display-name "Database name"
-                                     :placeholder  "carrierPigeonDeliveries"
-                                     :required     true}
-                                    {:name         "user"
-                                     :display-name "Database username"
-                                     :placeholder  "What username do you use to login to the database?"}
-                                    {:name         "pass"
-                                     :display-name "Database password"
-                                     :type         :password
-                                     :placeholder  "******"}]
-   :features                       #{:nested-fields}
-   :can-connect?                   can-connect?
-   :active-table-names             active-table-names
-   :field-values-lazy-seq          field-values-lazy-seq
-   :active-column-names->type      active-column-names->type
-   :table-pks                      (constantly #{"_id"})
-   :process-query                  process-query
-   :process-query-in-context       process-query-in-context
-   :sync-in-context                sync-in-context
-   :active-nested-field-name->type active-nested-field-name->type})
+  {:driver-name                       "MongoDB"
+   :details-fields                    [{:name         "host"
+                                        :display-name "Host"
+                                        :default "localhost"}
+                                       {:name         "port"
+                                        :display-name "Port"
+                                        :type         :integer
+                                        :default      27017}
+                                       {:name         "dbname"
+                                        :display-name "Database name"
+                                        :placeholder  "carrierPigeonDeliveries"
+                                        :required     true}
+                                       {:name         "user"
+                                        :display-name "Database username"
+                                        :placeholder  "What username do you use to login to the database?"}
+                                       {:name         "pass"
+                                        :display-name "Database password"
+                                        :type         :password
+                                        :placeholder  "******"}]
+   :features                          #{:nested-fields}
+   :can-connect?                      can-connect?
+   :active-table-names                active-table-names
+   :field-values-lazy-seq             field-values-lazy-seq
+   :active-column-names->type         active-column-names->type
+   :table-pks                         (constantly #{"_id"})
+   :process-query                     process-query
+   :process-query-in-context          process-query-in-context
+   :sync-in-context                   sync-in-context
+   :humanize-connection-error-message humanize-connection-error-message
+   :active-nested-field-name->type    active-nested-field-name->type})

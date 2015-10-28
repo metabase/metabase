@@ -147,7 +147,7 @@
   (-> {:driver-name                       "MySQL"
        :details-fields                    [{:name         "host"
                                             :display-name "Host"
-                                            :default "localhost"}
+                                            :default      "localhost"}
                                            {:name         "port"
                                             :display-name "Port"
                                             :type         :integer
