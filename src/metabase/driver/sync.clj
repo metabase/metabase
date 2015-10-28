@@ -38,7 +38,7 @@
 
 ;; ## sync-database! and sync-table!
 
-(defn -sync-database! [{:keys [active-table-names], :as driver} database]
+(defn- -sync-database! [{:keys [active-table-names], :as driver} database]
   (let [start-time (System/currentTimeMillis)
         tracking-hash (str (java.util.UUID/randomUUID))]
     (log/info (u/format-color 'magenta "Syncing %s database '%s'..." (name (:engine database)) (:name database)))
