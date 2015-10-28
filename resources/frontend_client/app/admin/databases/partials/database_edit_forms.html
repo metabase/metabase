@@ -3,7 +3,7 @@
     <div class="Form-field" mb-form-field="engine">
         <mb-form-label display-name="Database type" field-name="engine"></mb-form-label>
         <label class="Select Form-offset mt1">
-            <select class="Select" ng-model="database.engine" ng-options="type as properties.name for (type, properties) in ENGINES">
+            <select class="Select" ng-model="database.engine" ng-options="type as properties['driver-name'] for (type, properties) in form_input.engines">
                 <option value="" disabled selected>Select a database type</option>
             </select>
         </label>
@@ -21,26 +21,29 @@
         <!-- If the controller defines an object called $scope.hiddenFields we'll check it to see if we should hide any fields.
              e.g. $scope.hiddenFields = { ssl : true } will hide the SSL field.
              Otherwise we'll default to showing every field. This way we can hide 'advanced options' like SSL during the setup process -->
-        <div class="Form-field" ng-repeat="field in ENGINES[database.engine].fields" mb-form-field="{{field.fieldName}}" ng-if="!hiddenFields[field.fieldName]">
-            <mb-form-label display-name="{{field.displayName}}" field-name="{{field.fieldName}}"></mb-form-label>
+        <div class="Form-field" ng-repeat="field in form_input.engines[database.engine]['details-fields']" mb-form-field="{{field.name}}" ng-if="!hiddenFields[field.name]">
+            <mb-form-label display-name="{{field['display-name']}}" field-name="{{field.name}}"></mb-form-label>
 
-            <!-- Multiple-Choice Field -->
-            <div ng-if="field.type == 'select'" class="Form-input Form-offset full Button-group">
-                <button ng-repeat="choice in field.choices" class="Button"
-                        ng-class="details[field.fieldName] === choice.value ? {active: 'Button--active',
-                                  danger: 'Button--danger'}[choice.selectionAccent] : null"
-                        ng-click="details[field.fieldName] = choice.value">
-                    {{choice.name}}
+            <!-- Boolean Field -->
+            <div ng-if="field.type == 'boolean'" class="Form-input Form-offset full Button-group">
+                <button ng-class="details[field.name] === true ? 'Button--active' : null"
+                        ng-click="details[field.name] = true" class="Button">
+                    Yes
+                </button>
+                <button ng-class="details[field.name] === false ? 'Button--danger' : null"
+                        ng-click="details[field.name] = false" class="Button">
+                    No
                 </button>
             </div>
 
             <!-- Password Field -->
-            <input ng-if="field.type == 'password'" type="password" class="Form-input Form-offset full" name="{{field.fieldName}}" placeholder="{{field.placeholder}}"
-                   ng-model="details[field.fieldName]" ng-required="field.required" />
+            <input ng-if="field.type === 'password'" type="password" class="Form-input Form-offset full" name="{{field.name}}"
+                   placeholder="{{field.default || field.placeholder}}" ng-model="details[field.name]" ng-required="field.required" />
 
-            <!-- String Field (default) -->
-            <input ng-if="field.type == 'text'" class="Form-input Form-offset full" name="{{field.fieldName}}" placeholder="{{field.placeholder}}"
-                   ng-model="details[field.fieldName]" ng-required="field.required" />
+            <!-- Integer Field / String Field (default) -->
+            <input ng-if="!field.type || field.type === 'integer' || field.type === 'string'" class="Form-input Form-offset full" name="{{field.name}}"
+                   placeholder="{{field.default || field.placeholder}}" ng-model="details[field.name]" ng-required="field.required" />
+
             <span class="Form-charm"></span>
         </div>
     </div>

@@ -25,7 +25,7 @@
                         <a class="text-bold link" href="/admin/databases/{{database.id}}">{{database.name}}</a>
                     </td>
                     <td>
-                        {{ENGINES[database.engine].name}}
+                        {{form_input ? form_input.engines[database.engine]['driver-name'] : database.engine}}
                     </td>
                     <td class="Table-actions">
                         <!-- TODO: sync now button? -->
