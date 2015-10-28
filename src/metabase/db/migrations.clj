@@ -12,9 +12,10 @@
 ;;; # Migration Helpers
 
 (defn- migration-ran? [migration]
-  (boolean (seq (k/select "data_migrations"
-                          (k/where {:id (name migration)})
-                          (k/limit 1)))))
+  (-> (k/select :data_migrations
+                (k/aggregate (count :*) :count)
+                (k/where {:id (name migration)}))
+      first :count (> 0)))
 
 (defn- run-migration-if-needed
   "Run MIGRATION if needed. MIGRATION should be a symbol naming a fn that takes no arguments.
