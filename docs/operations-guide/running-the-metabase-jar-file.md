@@ -91,7 +91,7 @@ You can change the application database to use MySQL using a few simple environm
 
     export MB_DB_TYPE=mysql
     export MB_DB_DBNAME=metabase
-    export MB_DB_PORT=5432
+    export MB_DB_PORT=3306
     export MB_DB_USER=<username>
     export MB_DB_PASS=<password>
     export MB_DB_HOST=localhost
