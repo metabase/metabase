@@ -147,7 +147,8 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
 
             // for a new DB we want to infer SSL support. First try to connect w/ SSL. If that fails, disable SSL
             } else {
-                const dbSupportsSSL = _.contains(_.map($scope.form_input.engines[database.engine]['details-fields'], 'name'), 'ssl');
+                const dbSupportsSSL = _.contains(_.map($scope.form_input.engines[database.engine]['details-fields'], 'name'),
+                                                 'ssl');
 
                 function createDB() {
                     console.log('Successfully connected to database with SSL = ' + details.ssl + '.');
