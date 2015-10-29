@@ -16,7 +16,7 @@ You should see this form:
 **If you use Google Apps:**
 * In the **SMTP host** field, enter smtp.gmail.com
 * Fill in 465 for the **SMTP port** field
-* For the **SMTP Security** field, enter **TLS**
+* For the **SMTP Security** field, enter **SSL**
 * In the **SMTP username** field, enter your Google Apps email address (e.g. hello@yourdomain.com)
 * Enter your Google Apps password in the **SMTP password** field
 * Enter the email address you would like to be used as the sender of system notifications in the **From Address* field.
