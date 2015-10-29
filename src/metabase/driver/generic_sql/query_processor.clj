@@ -5,7 +5,6 @@
             [clojure.string :as s]
             [clojure.walk :as walk]
             [korma.core :refer :all, :exclude [update]]
-            [korma.sql.utils :as utils]
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.query-processor :as qp]

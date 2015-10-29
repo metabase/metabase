@@ -58,10 +58,8 @@
    :VARCHAR    :TextField
    :YEAR       :IntegerField})
 
-(defn- connection-details->spec [details]
-  (-> details
-      (set/rename-keys {:dbname :db})
-      kdb/mysql))
+(defn- connection-details->spec [details-map]
+  (kdb/mysql (set/rename-keys details-map {:dbname :db})))
 
 (defn- unix-timestamp->timestamp [field-or-value seconds-or-milliseconds]
   (utils/func (case seconds-or-milliseconds
