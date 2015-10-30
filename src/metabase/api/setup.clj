@@ -1,6 +1,7 @@
 (ns metabase.api.setup
   (:require [compojure.core :refer [defroutes POST]]
-            [metabase.api.common :refer :all]
+            (metabase.api [common :refer :all]
+                          [database :refer [annotation:DBEngine]])
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             [metabase.events :as events]
@@ -10,11 +11,6 @@
                              [user :refer [User set-user-password]])
             [metabase.setup :as setup]
             [metabase.util :as u]))
-
-(defannotation DBEngine
-  "Param must be a valid database engine type, e.g. `h2` or `postgres`."
-  [symb value :nillable]
-  (checkp-contains? (set (map name (keys driver/available-drivers))) symb value))
 
 (defannotation SetupToken
   "Check that param matches setup token or throw a 403."

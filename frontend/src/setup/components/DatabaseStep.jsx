@@ -4,7 +4,6 @@ import _ from "underscore";
 import DatabaseDetailsForm from "metabase/components/database/DatabaseDetailsForm.jsx";
 import FormField from "metabase/components/form/FormField.jsx";
 import MetabaseAnalytics from "metabase/lib/analytics";
-import MetabaseCore from "metabase/lib/core";
 
 import StepTitle from './StepTitle.jsx'
 import CollapsedStep from "./CollapsedStep.jsx";
@@ -19,6 +18,7 @@ export default class DatabaseStep extends Component {
 
     static propTypes = {
         dispatch: PropTypes.func.isRequired,
+        engines: PropTypes.object.isRequired,
         stepNumber: PropTypes.number.isRequired
     }
 
@@ -92,12 +92,13 @@ export default class DatabaseStep extends Component {
     }
 
     renderEngineSelect() {
+        let { engines } = this.props;
         let { engine } = this.state,
-            engines = _.keys(MetabaseCore.ENGINES).sort();
+        engineNames = _.keys(engines).sort();
 
         let options = [(<option value="">Select the type of Database you use</option>)];
-        engines.forEach(function(opt) {
-            options.push((<option key={opt} value={opt}>{MetabaseCore.ENGINES[opt].name}</option>))
+        engineNames.forEach(function(opt) {
+            options.push((<option key={opt} value={opt}>{engines[opt].name}</option>))
         });
 
         return (
@@ -110,7 +111,7 @@ export default class DatabaseStep extends Component {
     }
 
     render() {
-        let { activeStep, databaseDetails, dispatch, stepNumber } = this.props;
+        let { activeStep, databaseDetails, dispatch, engines, stepNumber } = this.props;
         let { engine, formError } = this.state;
 
         let stepText = 'Add your data';
@@ -134,19 +135,20 @@ export default class DatabaseStep extends Component {
                         </FormField>
 
                         { engine !== "" ?
-                            <DatabaseDetailsForm
-                                details={(databaseDetails && 'details' in databaseDetails) ? databaseDetails.details : null}
-                                engine={engine}
-                                formError={formError}
-                                hiddenFields={{ ssl: true }}
-                                submitFn={this.detailsCaptured.bind(this)}
-                                submitButtonText={'Next'}>
-                            </DatabaseDetailsForm>
-                        : null }
+                          <DatabaseDetailsForm
+                              details={(databaseDetails && 'details' in databaseDetails) ? databaseDetails.details : null}
+                              engine={engine}
+                              engines={engines}
+                              formError={formError}
+                              hiddenFields={{ ssl: true }}
+                              submitFn={this.detailsCaptured.bind(this)}
+                              submitButtonText={'Next'}>
+                          </DatabaseDetailsForm>
+                          : null }
 
-                        <div className="Form-field Form-offset">
-                            <a className="link" href="#" onClick={this.skipDatabase.bind(this)}>I'll add my data later</a>
-                        </div>
+                          <div className="Form-field Form-offset">
+                              <a className="link" href="#" onClick={this.skipDatabase.bind(this)}>I'll add my data later</a>
+                          </div>
                     </div>
                 </section>
             );

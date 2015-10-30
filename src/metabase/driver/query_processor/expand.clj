@@ -9,7 +9,6 @@
             [korma.core :as k]
             [swiss.arrows :refer [-<>]]
             [metabase.db :refer [sel]]
-            [metabase.driver.interface :as driver]
             [metabase.driver.query-processor.interface :refer :all]
             [metabase.util :as u])
   (:import (clojure.lang Keyword)))
@@ -24,15 +23,14 @@
 
 ;; ## -------------------- Expansion - Impl --------------------
 
-
-
 (def ^:private ^:dynamic *original-query-dict*
   "The entire original Query dict being expanded."
   nil)
 
 (defn- assert-driver-supports [^Keyword feature]
   {:pre [(:driver *original-query-dict*)]}
-  (driver/assert-driver-supports (:driver *original-query-dict*) feature))
+  (when-not (contains? (:features (:driver *original-query-dict*)) feature)
+    (throw (Exception. (format "%s is not supported by this driver." (name feature))))))
 
 (defn- non-empty-clause? [clause]
   (and clause

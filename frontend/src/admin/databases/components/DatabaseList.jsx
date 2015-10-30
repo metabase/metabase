@@ -12,11 +12,11 @@ export default class DatabaseList extends Component {
     static propTypes = {
         databases: PropTypes.array,
         hasSampleDataset: PropTypes.bool,
-        ENGINES: PropTypes.object
+        engines: PropTypes.object
     };
 
     render() {
-        let { databases, hasSampleDataset, created, ENGINES } = this.props;
+        let { databases, hasSampleDataset, created, engines } = this.props;
 
         return (
             <div className="wrapper">
@@ -41,7 +41,7 @@ export default class DatabaseList extends Component {
                                             <a className="text-bold link" href={"/admin/databases/"+database.id}>{database.name}</a>
                                         </td>
                                         <td>
-                                            {ENGINES[database.engine].name}
+                                            {engines && engines[database.engine] ? engines[database.engine]['driver-name'] : database.engine}
                                         </td>
                                         <td className="Table-actions">
                                             <ModalWithTrigger

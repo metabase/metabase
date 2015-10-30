@@ -12,9 +12,7 @@
                     [operators :refer :all]
                     [query :refer :all])
             [metabase.db :refer :all]
-            [metabase.driver :as driver]
-            (metabase.driver [interface :as i]
-                             [query-processor :as qp])
+            [metabase.driver.query-processor :as qp]
             [metabase.driver.query-processor.interface :refer [qualified-name-components]]
             [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
             [metabase.models.field :as field]
@@ -162,7 +160,7 @@
                                   (constantly true))
                  field-id     (or (:field-id field)             ; Field
                                   (:field-id (:field field)))]  ; DateTimeField
-             (->> (i/field-values-lazy-seq @(ns-resolve 'metabase.driver.mongo 'driver) (sel :one field/Field :id field-id)) ; resolve driver at runtime to avoid circular deps
+             (->> (@(resolve 'metabase.driver.mongo/field-values-lazy-seq) (sel :one field/Field :id field-id)) ; resolve driver at runtime to avoid circular deps
                   (filter identity)
                   (map hash)
                   (map #(conj! values %))

@@ -4,8 +4,7 @@
             [korma.core :as k]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
-            (metabase.driver [interface :as i]
-                             [mongo :as mongo])
+            [metabase.driver.mongo :refer [mongo]]
             [metabase.driver.mongo.test-data :refer :all]
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
@@ -51,7 +50,7 @@
   "Return an object that can be passed like a `Table` to driver sync functions."
   [table-name]
   {:pre [(keyword? table-name)]}
-  {:db mongo-test-db
+  {:db   mongo-test-db
    :name (name table-name)})
 
 (defn- field-name->fake-field
@@ -113,7 +112,7 @@
 ;; ### active-table-names
 (expect-when-testing-mongo
     #{"checkins" "categories" "users" "venues"}
-  (i/active-table-names mongo/driver @mongo-test-db))
+  ((:active-table-names mongo) @mongo-test-db))
 
 ;; ### table->column-names
 (expect-when-testing-mongo
@@ -154,14 +153,14 @@
      {"_id" :IntegerField, "name" :TextField, "longitude" :FloatField, "latitude" :FloatField, "price" :IntegerField, "category_id" :IntegerField}] ; venues
   (->> table-names
        (map table-name->fake-table)
-       (mapv (partial i/active-column-names->type mongo/driver))))
+       (mapv (:active-column-names->type mongo))))
 
 ;; ### table-pks
 (expect-when-testing-mongo
     [#{"_id"} #{"_id"} #{"_id"} #{"_id"}] ; _id for every table
   (->> table-names
        (map table-name->fake-table)
-       (mapv (partial i/table-pks mongo/driver))))
+       (mapv (:table-pks mongo))))
 
 
 ;; ## Big-picture tests for the way data should look post-sync
