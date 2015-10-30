@@ -125,7 +125,7 @@
   {:driver-name                       "MongoDB"
    :details-fields                    [{:name         "host"
                                         :display-name "Host"
-                                        :default "localhost"}
+                                        :default      "localhost"}
                                        {:name         "port"
                                         :display-name "Port"
                                         :type         :integer
@@ -140,7 +140,11 @@
                                        {:name         "pass"
                                         :display-name "Database password"
                                         :type         :password
-                                        :placeholder  "******"}]
+                                        :placeholder  "******"}
+                                       {:name         "ssl"
+                                        :display-name "Use a secure connection (SSL)?"
+                                        :type         :boolean
+                                        :default      false}]
    :features                          #{:nested-fields}
    :can-connect?                      can-connect?
    :active-table-names                active-table-names
