@@ -7,7 +7,7 @@
 ;; ## CONFIG
 
 (defsetting email-from-address "Email address used as the sender of system notifications." "notifications@metabase.com")
-(defsetting email-smtp-host "SMTP host." "smtp.mandrillapp.com")
+(defsetting email-smtp-host "SMTP host.")
 (defsetting email-smtp-username "SMTP username.")
 (defsetting email-smtp-password "SMTP password.")
 (defsetting email-smtp-port "SMTP port." "587")
@@ -39,10 +39,8 @@
          (string? message)]}
   (try
     ;; Check to make sure all valid settings are set!
-    (when-not (email-smtp-username)
-      (throw (Exception. "SMTP username is not set.")))
-    (when-not (email-smtp-password)
-      (throw (Exception. "SMTP password is not set.")))
+    (when-not (email-smtp-host)
+      (throw (Exception. "SMTP host is not set.")))
     ;; Now send the email
     (let [{error :error error-message :message} (*send-email-fn* (-> {:host (email-smtp-host)
                                                                       :user (email-smtp-username)
