@@ -6,19 +6,9 @@ import _ from "underscore";
 
 var DatabasesControllers = angular.module('metabaseadmin.databases.controllers', ['metabase.metabase.services']);
 
-DatabasesControllers.controller('DatabaseList', ['$scope', '$routeParams', 'Metabase', 'MetabaseCore', function($scope, $routeParams, Metabase, MetabaseCore) {
-
-
-    // // load the form input so we convert engine key (e.g. 'postgres') to the nice name (e.g. "PostgreSQL")
-    // // we'll just fall back to displaying engine key until then.
-    // Metabase.db_form_input(function(form_input) {
-    //     $scope.form_input = form_input;
-    // }, function(error) {
-    //     console.log('error getting database form_input', error);
-    // });
+DatabasesControllers.controller('DatabaseList', ['$scope', '$routeParams', 'Metabase', function($scope, $routeParams, Metabase) {
 
     $scope.DatabaseList = DatabaseList;
-    $scope.ENGINES = MetabaseCore.ENGINES;
 
     $scope.databases = [];
     $scope.hasSampleDataset = false;
@@ -59,6 +49,15 @@ DatabasesControllers.controller('DatabaseList', ['$scope', '$routeParams', 'Meta
         }
     };
 
+    // load engine info from form_input endpoint. We need this to convert DB engine keys (e.g. 'postgres') to display names (e.g. 'PostgreSQL')
+    Metabase.db_form_input(function(formInput){
+        $scope.engines = formInput.engines;
+        console.log('ENGINES: ', $scope.engines);
+    }, function(error) {
+        console.log('Error loading database form input: ', error);
+    });
+
+    // fetch DBs from the backend
     Metabase.db_list(function(databases) {
         $scope.databases = databases;
         $scope.hasSampleDataset = hasSampleDataset(databases);
@@ -67,52 +66,23 @@ DatabasesControllers.controller('DatabaseList', ['$scope', '$routeParams', 'Meta
     });
 }]);
 
-DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$location', 'Metabase', 'MetabaseCore',
-    function($scope, $routeParams, $location, Metabase, MetabaseCore) {
+DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$location', 'Metabase',
+    function($scope, $routeParams, $location, Metabase) {
         $scope.DatabaseEdit = DatabaseEdit;
-
-        // load our form input data
-        Metabase.db_form_input(function(form_input) {
-            $scope.form_input = form_input;
-        }, function(error) {
-            console.log('error getting database form_input', error);
-        });
 
         // if we're adding a new database then hide the SSL field; we'll determine it automatically <3
         $scope.hiddenFields = {
             ssl: true
         };
 
-        // function prepareDatabaseDetails(details) {
-        //     if (!details.engine) throw "Missing key 'engine' in database request details; please add this as API expects it in the request body.";
-
-        //     // iterate over each field definition
-        //     $scope.form_input.engines[details.engine]['details-fields'].forEach(function(field) {
-        //         // set default value if applicable
-        //         if (!details[field.name] && field.default) {
-        //             details[field.name] = field.default;
-        //         }
-
-        //         // apply transformation function if applicable
-        //         if (details[field.name] && field.type === 'integer') {
-        //             details[field.name] = parseInt(details[field.name]);
-        //         }
-        //     });
-
-        //     return details;
-        // }
-
-        // function validateConnection(details) {
-        //     return Metabase.validate_connection(prepareDatabaseDetails(details)).$promise;
-
         $scope.selectEngine = function(engine) {
             $scope.details.engine = $scope.database.engine = engine;
-        }
+        };
 
         // update an existing Database
         var update = function(database, details) {
             $scope.$broadcast("form:reset");
-            database.details = prepareDatabaseDetails(details);
+            database.details = details;
             return Metabase.db_update(database).$promise.then(function(updated_database) {
                 $scope.database = updated_database;
                 $scope.$broadcast("form:api-success", "Successfully saved!");
@@ -125,7 +95,7 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
         // create a new Database
         var create = function(database, details) {
             $scope.$broadcast("form:reset");
-            database.details = prepareDatabaseDetails(details);
+            database.details = details;
             return Metabase.db_create(database).$promise.then(function(new_database) {
                 $scope.$broadcast("form:api-success", "Successfully created!");
                 $scope.$emit("database:created", new_database);
@@ -145,25 +115,34 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
                 throw error;
             }
 
-
             // for an existing DB check that connection is valid before save
             if ($routeParams.databaseId) {
-                return validateConnection(details).catch(handleError).then(function() {
+                return Metabase.validate_connection(details).$promise.catch(handleError).then(function() {
                     return update(database, details);
                 });
 
             // for a new DB we want to infer SSL support. First try to connect w/ SSL. If that fails, disable SSL
             } else {
-                const dbSupportsSSL = _.contains(_.map($scope.form_input.engines[database.engine]['details-fields'], 'name'),
-                                                 'ssl');
+                const engineSupportsSSL = _.contains(_.map($scope.engines[database.engine]['details-fields'], 'name'),
+                                                     'ssl');
 
                 function createDB() {
                     console.log('Successfully connected to database with SSL = ' + details.ssl + '.');
                     return create(database, details);
-                }).catch(function(error) {
-                    $scope.$broadcast("form:api-error", error);
-                    throw error;
-                });
+                }
+
+                // if the engine supports SSL, try connecting with SSL first, and then without
+                if (engineSupportsSSL) {
+                    details.ssl = true;
+                    return Metabase.validate_connection(details).$promise.catch(function() {
+                        console.log('Unable to connect with SSL. Trying with SSL = false.');
+                        details.ssl = false;
+                        return Metabase.validate_connection(details).$promise;
+                    }).then(createDB).catch(handleError);
+                } else {
+                    delete details.ssl;
+                    return Metabase.validate_connection(details).$promise.catch(handleError).then(createDB);
+                }
             }
         };
 
@@ -189,7 +168,7 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
 
         $scope.redirectToDatabases = function() {
             $scope.$apply(() => $location.path('/admin/databases/'));
-        }
+        };
 
         // load our form input data
         Metabase.db_form_input(function(form_input) {
@@ -198,7 +177,7 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             console.log('error getting database form_input', error);
         });
 
-        if ($routeParams.databaseId) {
+        function loadExistingDB() {
             // load existing database for editing
             Metabase.db_get({
                 'dbId': $routeParams.databaseId
@@ -212,15 +191,27 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
                     $location.path('/admin/databases/');
                 }
             });
-        } else {
+        }
+
+        function prepareEmptyDB() {
             // prepare an empty database for creation
             $scope.database = {
                 name: '',
-                engine: Object.keys(MetabaseCore.ENGINES)[0],
+                engine: Object.keys($scope.engines)[0],
                 details: {},
                 created: false
             };
             $scope.details = {};
         }
+
+        // Ok, now load the engines from the form_input API endpoint
+        Metabase.db_form_input(function(formInput){
+            $scope.engines = formInput.engines;
+
+            if ($routeParams.databaseId) loadExistingDB();
+            else                         prepareEmptyDB();
+        }, function(error){
+            console.log('Error loading database form input: ', error);
+        });
     }
 ]);
