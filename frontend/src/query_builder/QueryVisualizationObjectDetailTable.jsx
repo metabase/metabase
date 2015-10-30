@@ -103,7 +103,9 @@ export default class QueryVisualizationObjectDetailTable extends Component {
         }
 
         var component = this;
-        var relationships = this.props.tableForeignKeys.map(function(fk) {
+        var relationships = this.props.tableForeignKeys.sort(function(a, b) {
+            return a.origin.table.display_name.localeCompare(b.origin.table.display_name);
+        }).map(function(fk) {
 
             var fkCount = (
                 <LoadingSpinner width="25px" height="25px" />
