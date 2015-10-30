@@ -134,7 +134,7 @@ export default class QueryVisualizationObjectDetailTable extends Component {
             var info = (
                 <div>
                     <h2>{fkCount}</h2>
-                    <h5 className="block">{relationName}</h5>
+                    <h5 className="block">{relationName} (via {fk.origin.display_name})</h5>
                  </div>
             );
             var fkReference;
