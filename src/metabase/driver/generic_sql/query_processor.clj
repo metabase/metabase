@@ -184,19 +184,35 @@
       (k/limit items)
       (k/offset (* items (dec page)))))
 
-
-;;
 (defn- log-korma-form
   [korma-form]
-  (when-not qp/*disable-qp-logging*
-    (log/debug
-     (u/format-color 'blue "\nSQL: 😈\n%s\n" (-> (k/as-sql korma-form)
-                                                (s/replace #"\sFROM" "\nFROM")           ; add newlines to the SQL to make it more readable
-                                                (s/replace #"\sLEFT JOIN" "\nLEFT JOIN")
-                                                (s/replace #"\sWHERE" "\nWHERE")
-                                                (s/replace #"\sGROUP BY" "\nGROUP BY")
-                                                (s/replace #"\sORDER BY" "\nORDER BY")
-                                                (s/replace #"\sLIMIT" "\nLIMIT"))))))
+  (when (config/config-bool :mb-db-logging)
+    (when-not qp/*disable-qp-logging*
+      (log/debug
+       (u/format-color 'blue "\nSQL: 😈\n%s\n" (-> (k/as-sql korma-form)
+                                                  (s/replace #"\sFROM" "\nFROM")           ; add newlines to the SQL to make it more readable
+                                                  (s/replace #"\sLEFT JOIN" "\nLEFT JOIN")
+                                                  (s/replace #"\sWHERE" "\nWHERE")
+                                                  (s/replace #"\sGROUP BY" "\nGROUP BY")
+                                                  (s/replace #"\sORDER BY" "\nORDER BY")
+                                                  (s/replace #"\sLIMIT" "\nLIMIT")))))))
+
+(def ^:const clause->handler
+  "A map of QL clauses to fns that handle them. Each function is called like
+
+       (fn [korma-query query])
+
+   and should return an appropriately modified KORMA-QUERY. SQL drivers contain a copy of this map keyed by `:qp-clause->handler`.
+   Most drivers can use the default implementations for all clauses, but some may need to override one or more (e.g. SQL Server needs to
+   override the behavior of `apply-limit`, since T-SQL uses `TOP` instead of `LIMIT`)."
+  {:aggregation apply-aggregation
+   :breakout    apply-breakout
+   :fields      apply-fields
+   :filter      apply-filter
+   :join-tables apply-join-tables
+   :limit       apply-limit
+   :order-by    apply-order-by
+   :page        apply-page})
 
 (defn process-structured
   "Convert QUERY into a korma `select` form, execute it, and annotate the results."
@@ -205,27 +221,23 @@
     (try
       (let [entity      (korma-entity database source-table)
             timezone    (driver/report-timezone)
-            korma-query (cond-> (k/select* entity)
-                          (:aggregation query) (apply-aggregation query)
-                          (:breakout    query) (apply-breakout    query)
-                          (:fields      query) (apply-fields      query)
-                          (:filter      query) (apply-filter      query)
-                          (:join-tables query) (apply-join-tables query)
-                          (:limit       query) (apply-limit       query)
-                          (:order-by    query) (apply-order-by    query)
-                          (:page        query) (apply-page        query))]
+            ;; Loop through all the :qp-clause->handler entries in the current driver. If the query contains a given clause, apply its handler fn.
+            korma-query (loop [korma-query (k/select* entity), [[clause f] & more] (seq (:qp-clause->handler driver))]
+                          (let [korma-query (if (clause query)
+                                              (f korma-query query)
+                                              korma-query)]
+                            (if (seq more)
+                              (recur korma-query more)
+                              korma-query)))]
 
-        ;; log query
-        (when (config/config-bool :mb-db-logging)
-          (log-korma-form korma-query))
+        (log-korma-form korma-query)
 
-        ;; execute query
         (kdb/with-db (:db entity)
           (if (and (seq timezone)
                    (contains? (:features driver) :set-timezone))
             (kdb/transaction
-              (k/exec-raw ((:timezone->set-timezone-sql driver) timezone))
-              (k/exec korma-query))
+             (k/exec-raw ((:timezone->set-timezone-sql driver) timezone))
+             (k/exec korma-query))
             (k/exec korma-query))))
 
       (catch java.sql.SQLException e
