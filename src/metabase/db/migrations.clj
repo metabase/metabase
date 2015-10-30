@@ -11,32 +11,33 @@
 
 ;;; # Migration Helpers
 
-(defn- migration-ran? [migration]
+(defn- migration-ran? [migration-name]
   (-> (k/select :data_migrations
                 (k/aggregate (count :*) :count)
-                (k/where {:id (name migration)}))
+                (k/where {:id (name migration-name)}))
       first :count (> 0)))
 
 (defn- run-migration-if-needed
-  "Run MIGRATION if needed. MIGRATION should be a symbol naming a fn that takes no arguments.
+  "Run migration defined by MIGRATION-VAR if needed.
 
-     (run-migration-if-needed 'set-card-database-and-table-ids)"
-  [migration]
-  (when-not (migration-ran? migration)
-    (log/info (format "Running data migration '%s'..." (name migration)))
-    (@(resolve migration))
-    (k/insert "data_migrations"
-              (k/values {:id        (name migration)
-                         :timestamp (u/new-sql-timestamp)}))
-    (log/info "[ok]")))
+     (run-migration-if-needed #'set-card-database-and-table-ids)"
+  [migration-var]
+  (let [migration-name (name (:name (meta migration-var)))]
+    (when-not (migration-ran? migration-name)
+      (log/info (format "Running data migration '%s'..." migration-name))
+      (@migration-var)
+      (k/insert "data_migrations"
+                (k/values {:id        migration-name
+                           :timestamp (u/new-sql-timestamp)}))
+      (log/info "[ok]"))))
 
 (def ^:private data-migrations (atom []))
 
 (defmacro ^:private defmigration
-  "Define a new data migration. This is just a simple wrapper around `defn-` that adds the function"
+  "Define a new data migration. This is just a simple wrapper around `defn-` that adds the resulting var to that `data-migrations` atom."
   [migration-name & body]
   `(do (defn- ~migration-name [] ~@body)
-       (swap! data-migrations conj '~migration-name)))
+       (swap! data-migrations conj #'~migration-name)))
 
 (defn run-all
   "Run all data migrations defined by `defmigration`."
