@@ -8,8 +8,8 @@
             [korma.core :as k]
             [medley.core :as m]
             [metabase.db :refer :all]
-            (metabase.driver [interface :refer [max-sync-lazy-seq-results]]
-                             [query-processor :as qp])
+            [metabase.driver :refer [max-sync-lazy-seq-results]]
+            [metabase.driver.query-processor :as qp]
             [metabase.driver.sync.queries :as queries]
             [metabase.events :as events]
             (metabase.models [common :as common]

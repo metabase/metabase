@@ -3,8 +3,8 @@
             [korma.db :as kdb]
             [korma.sql.utils :as utils]
             [metabase.db :as db]
-            (metabase.driver [generic-sql :refer [sql-driver]]
-                             [interface :as i, :refer [defdriver]])
+            [metabase.driver :as driver, :refer [defdriver]]
+            [metabase.driver.generic-sql :refer [sql-driver]]
             [metabase.driver.generic-sql.util :refer [funcs]]
             [metabase.models.database :refer [Database]]))
 
@@ -183,13 +183,13 @@
 (defn- humanize-connection-error-message [message]
   (condp re-matches message
     #"^A file path that is implicitly relative to the current working directory is not allowed in the database URL .*$"
-    (i/connection-error-messages :cannot-connect-check-host-and-port)
+    (driver/connection-error-messages :cannot-connect-check-host-and-port)
 
     #"^Database .* not found .*$"
-    (i/connection-error-messages :cannot-connect-check-host-and-port)
+    (driver/connection-error-messages :cannot-connect-check-host-and-port)
 
     #"^Wrong user name or password .*$"
-    (i/connection-error-messages :username-or-password-incorrect)
+    (driver/connection-error-messages :username-or-password-incorrect)
 
     #".*" ; default
     message))

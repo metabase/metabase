@@ -4,7 +4,6 @@
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             (metabase.driver [h2 :as h2]
-                             [interface :as i]
                              [sync :as sync])
             [metabase.driver.generic-sql.util :refer [korma-entity]]
             (metabase.models [field :refer [Field]]

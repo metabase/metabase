@@ -9,8 +9,8 @@
             [swiss.arrows :refer :all]
             [metabase.db :refer [upd]]
             [metabase.models.field :refer [Field]]
-            (metabase.driver [generic-sql :refer [sql-driver]]
-                             [interface :as i, :refer [defdriver]])
+            [metabase.driver :as driver, :refer [defdriver]]
+            [metabase.driver.generic-sql :refer [sql-driver]]
             [metabase.driver.generic-sql.util :refer [with-jdbc-metadata]])
   ;; This is necessary for when NonValidatingFactory is passed in the sslfactory connection string argument,
   ;; e.x. when connecting to a Heroku Postgres database from outside of Heroku.
@@ -148,19 +148,19 @@
 (defn- humanize-connection-error-message [message]
   (condp re-matches message
     #"^FATAL: database \".*\" does not exist$"
-    (i/connection-error-messages :database-name-incorrect)
+    (driver/connection-error-messages :database-name-incorrect)
 
     #"^No suitable driver found for.*$"
-    (i/connection-error-messages :invalid-hostname)
+    (driver/connection-error-messages :invalid-hostname)
 
     #"^Connection refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.$"
-    (i/connection-error-messages :cannot-connect-check-host-and-port)
+    (driver/connection-error-messages :cannot-connect-check-host-and-port)
 
     #"^FATAL: role \".*\" does not exist$"
-    (i/connection-error-messages :username-incorrect)
+    (driver/connection-error-messages :username-incorrect)
 
     #"^FATAL: password authentication failed for user.*$"
-    (i/connection-error-messages :password-incorrect)
+    (driver/connection-error-messages :password-incorrect)
 
     #"^FATAL: .*$" ; all other FATAL messages: strip off the 'FATAL' part, capitalize, and add a period
     (let [[_ message] (re-matches #"^FATAL: (.*$)" message)]

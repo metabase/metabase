@@ -3,9 +3,7 @@
             [clojure.tools.logging :as log]
             [korma.core :as k]
             [korma.sql.utils :as utils]
-            [metabase.driver :as driver]
-            (metabase.driver [interface :refer [max-sync-lazy-seq-results defdriver]]
-                             [sync :as driver-sync])
+            [metabase.driver :refer [max-sync-lazy-seq-results defdriver]]
             (metabase.driver.generic-sql [query-processor :as qp]
                                          [util :refer :all])
             [metabase.models.field :as field]
