@@ -12,11 +12,20 @@ export function serializeCardForUrl(card) {
         display: card.display,
         visualization_settings: card.visualization_settings
     };
-    return btoa(JSON.stringify(cardCopy));
+    return utf8_to_b64(JSON.stringify(cardCopy));
 }
 
 export function deserializeCardFromUrl(serialized) {
-    return JSON.parse(atob(serialized));
+    return JSON.parse(b64_to_utf8(serialized));
+}
+
+// escaping before base64 encoding is necessary for non-ASCII characters
+// https://developer.mozilla.org/en-US/docs/Web/API/WindowBase64/btoa
+function utf8_to_b64(str) {
+    return window.btoa(unescape(encodeURIComponent(str)));
+}
+function b64_to_utf8(str) {
+    return decodeURIComponent(escape(window.atob(str)));
 }
 
 export function urlForCardState(state, dirty) {

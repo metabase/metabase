@@ -25,7 +25,12 @@
 
 ;; ## GET /api/database/form_input
 (expect
-    {:engines driver/available-drivers
+    {:engines   (into {} (for [[driver info] @driver/available-drivers]
+                           {driver (-> info
+                                       (update :details-fields (partial map (fn [field]
+                                                                              (cond-> field
+                                                                                (:type field) (update :type name)))))
+                                       (update :features (partial map name)))}))
      :timezones ["GMT"
                  "UTC"
                  "US/Alaska"
@@ -36,7 +41,7 @@
                  "US/Mountain"
                  "US/Pacific"
                  "America/Costa_Rica"]}
-  ((user->client :crowberto) :get 200 "database/form_input"))
+    ((user->client :crowberto) :get 200 "database/form_input"))
 
 ;; # DB LIFECYCLE ENDPOINTS
 

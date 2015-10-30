@@ -6,9 +6,7 @@
                    db)
             [metabase.db :refer [sel]]
             [metabase.driver :as driver]
-            [metabase.driver.interface :refer [supports?]]
-            (metabase.driver.generic-sql [interface :as i]
-                                         [util :refer :all])
+            [metabase.driver.generic-sql.util :refer :all]
             [metabase.models.database :refer [Database]]))
 
 (defn- value->base-type
@@ -34,10 +32,10 @@
                                                 (when-let [timezone (or (-> query :native :timezone)
                                                                         (driver/report-timezone))]
                                                   (when (seq timezone)
-                                                    (let [driver (driver/engine->driver (:engine database))]
-                                                      (when (supports? driver :set-timezone)
+                                                    (let [{:keys [features timezone->set-timezone-sql]} (driver/engine->driver (:engine database))]
+                                                      (when (contains? features :set-timezone)
                                                         (log/debug "Setting timezone to:" timezone)
-                                                        (jdbc/db-do-prepared conn (i/timezone->set-timezone-sql driver timezone))))))
+                                                        (jdbc/db-do-prepared conn (timezone->set-timezone-sql timezone))))))
                                                 (jdbc/query conn sql :as-arrays? true))]
          ;; TODO - Why don't we just use annotate?
          {:rows    rows

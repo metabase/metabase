@@ -3,12 +3,9 @@
             [korma.db :as kdb]
             [korma.sql.utils :as utils]
             [metabase.db :as db]
-            [metabase.driver :as driver]
-            (metabase.driver [generic-sql :as generic-sql, :refer [GenericSQLIDriverMixin GenericSQLISyncDriverTableFKsMixin
-                                                                   GenericSQLISyncDriverFieldAvgLengthMixin GenericSQLISyncDriverFieldPercentUrlsMixin]]
-                             [interface :as i, :refer [IDriver ISyncDriverTableFKs ISyncDriverFieldAvgLength ISyncDriverFieldPercentUrls]])
-            (metabase.driver.generic-sql [interface :refer [ISqlDriverDatabaseSpecific]]
-                                         [util :refer [funcs]])
+            [metabase.driver :as driver, :refer [defdriver]]
+            [metabase.driver.generic-sql :refer [sql-driver]]
+            [metabase.driver.generic-sql.util :refer [funcs]]
             [metabase.models.database :refer [Database]]))
 
 (def ^:private ^:const column->base-type
@@ -104,20 +101,17 @@
     (file+options->connection-string file (merge options {"IFEXISTS"         "TRUE"
                                                           "ACCESS_MODE_DATA" "r"}))))
 
-(defn- connection-details->connection-spec [_ details]
+(defn- connection-details->spec [details]
   (kdb/h2 (if db/*allow-potentailly-unsafe-connections* details
               (update details :db connection-string-set-safe-options))))
 
-(defn- database->connection-details [_ {:keys [details]}]
-  details)
-
-(defn- unix-timestamp->timestamp [_ field-or-value seconds-or-milliseconds]
+(defn- unix-timestamp->timestamp [field-or-value seconds-or-milliseconds]
   (utils/func (format "TIMESTAMPADD('%s', %%s, TIMESTAMP '1970-01-01T00:00:00Z')" (case seconds-or-milliseconds
                                                                                     :seconds      "SECOND"
                                                                                     :milliseconds "MILLISECOND"))
               [field-or-value]))
 
-(defn- wrap-process-query-middleware [_ qp]
+(defn- process-query-in-context [qp]
   (fn [{query-type :type, :as query}]
     {:pre [query-type]}
     ;; For :native queries check to make sure the DB in question has a (non-default) NAME property specified in the connection string.
@@ -153,7 +147,7 @@
           ["YEAR(%s)" field-or-value]
           ["((QUARTER(%s) * 3) - 2)" field-or-value]]))
 
-(defn- date [_ unit field-or-value]
+(defn- date [unit field-or-value]
   (if (= unit :quarter)
     (trunc-to-quarter field-or-value)
     (utils/func (case unit
@@ -175,7 +169,7 @@
                 [field-or-value])))
 
 ;; TODO - maybe rename this relative-date ?
-(defn- date-interval [_ unit amount]
+(defn- date-interval [unit amount]
   (utils/generated (format (case unit
                              :minute  "DATEADD('MINUTE', %d,       NOW())"
                              :hour    "DATEADD('HOUR',   %d,       NOW())"
@@ -186,38 +180,31 @@
                              :year    "DATEADD('YEAR',   %d,       NOW())")
                            amount)))
 
-(defn- humanize-connection-error-message [_ message]
+(defn- humanize-connection-error-message [message]
   (condp re-matches message
     #"^A file path that is implicitly relative to the current working directory is not allowed in the database URL .*$"
-    (i/connection-error-messages :cannot-connect-check-host-and-port)
+    (driver/connection-error-messages :cannot-connect-check-host-and-port)
 
     #"^Database .* not found .*$"
-    (i/connection-error-messages :cannot-connect-check-host-and-port)
+    (driver/connection-error-messages :cannot-connect-check-host-and-port)
 
     #"^Wrong user name or password .*$"
-    (i/connection-error-messages :username-or-password-incorrect)
+    (driver/connection-error-messages :username-or-password-incorrect)
 
     #".*" ; default
     message))
 
-
-(defrecord H2Driver [])
-
-(extend H2Driver
-  ISqlDriverDatabaseSpecific  {:connection-details->connection-spec connection-details->connection-spec
-                               :database->connection-details        database->connection-details
-                               :date                                date
-                               :date-interval                       date-interval
-                               :unix-timestamp->timestamp           unix-timestamp->timestamp}
-  ;; Override the generic SQL implementation of wrap-process-query-middleware so we can block unsafe native queries (see above)
-  IDriver                     (assoc GenericSQLIDriverMixin
-                                     :humanize-connection-error-message humanize-connection-error-message
-                                     :wrap-process-query-middleware     wrap-process-query-middleware)
-  ISyncDriverTableFKs         GenericSQLISyncDriverTableFKsMixin
-  ISyncDriverFieldAvgLength   GenericSQLISyncDriverFieldAvgLengthMixin
-  ISyncDriverFieldPercentUrls GenericSQLISyncDriverFieldPercentUrlsMixin)
-
-(def ^:const driver
-  (map->H2Driver {:column->base-type    column->base-type
-                  :features             generic-sql/features
-                  :sql-string-length-fn :LENGTH}))
+(defdriver h2
+  (sql-driver {:driver-name                       "H2"
+               :details-fields                    [{:name         "db"
+                                                    :display-name "Connection String"
+                                                    :placeholder  "file:/Users/camsaul/bird_sightings/toucans;AUTO_SERVER=TRUE"
+                                                    :required     true}]
+               :column->base-type                 column->base-type
+               :sql-string-length-fn              :LENGTH
+               :connection-details->spec          connection-details->spec
+               :date                              date
+               :date-interval                     date-interval
+               :unix-timestamp->timestamp         unix-timestamp->timestamp
+               :humanize-connection-error-message humanize-connection-error-message
+               :process-query-in-context          process-query-in-context}))

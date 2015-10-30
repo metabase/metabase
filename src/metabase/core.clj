@@ -71,7 +71,7 @@
 
 ;;; ## ---------------------------------------- LIFECYCLE ----------------------------------------
 
-(def ^:private metabase-initialization-progress
+(defonce ^:private metabase-initialization-progress
   (atom 0))
 
 (defn initialized?

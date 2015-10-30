@@ -3,6 +3,8 @@ import React, { Component, PropTypes } from "react";
 import Icon from "metabase/components/Icon.jsx";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 
+import _ from "underscore";
+
 export default class SaveStatus extends Component {
     constructor(props, context) {
         super(props, context);
@@ -12,6 +14,8 @@ export default class SaveStatus extends Component {
             recentlySavedTimeout: null,
             error: null
         };
+
+        _.bindAll(this, "setSaving", "setSaved", "setSaveError");
     }
 
     setSaving() {

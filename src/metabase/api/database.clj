@@ -17,7 +17,7 @@
 (defannotation DBEngine
   "Param must be a valid database engine type, e.g. `h2` or `postgres`."
   [symb value :nillable]
-  (checkp-contains? (set (map name (keys driver/available-drivers))) symb value))
+  (checkp-contains? (set (map name (keys @driver/available-drivers))) symb value))
 
 (defendpoint GET "/"
   "Fetch all `Databases`."
@@ -46,7 +46,7 @@
   "Values of options for the create/edit `Database` UI."
   []
   {:timezones metabase.models.common/timezones
-   :engines driver/available-drivers})
+   :engines   @driver/available-drivers})
 
 ;; Stub function that will eventually validate a connection string
 (defendpoint POST "/validate"
