@@ -1,0 +1,9 @@
+# /etc/log_files.yml - Papertrail
+files:
+  - /var/log/nginx/access.log
+hostname:
+destination:
+  host:
+  port:
+  protocol: tls
+new_file_check_interval: "10" # Check every 10 seconds
