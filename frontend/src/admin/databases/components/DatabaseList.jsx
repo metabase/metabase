@@ -45,13 +45,13 @@ export default class DatabaseList extends Component {
                                         </td>
                                         <td className="Table-actions">
                                             <ModalWithTrigger
-                                                ref="deleteDatabaseModal"
+                                                ref={"deleteDatabaseModal_"+database.id}
                                                 triggerClasses="Button Button--danger"
                                                 triggerElement="Delete"
                                             >
                                                 <DeleteDatabaseModal
                                                     database={database}
-                                                    onClose={() => this.refs.deleteDatabaseModal.toggle()}
+                                                    onClose={() => this.refs["deleteDatabaseModal_"+database.id].close()}
                                                     onDelete={() => this.props.delete(database.id)}
                                                 />
                                             </ModalWithTrigger>
