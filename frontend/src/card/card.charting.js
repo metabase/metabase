@@ -384,14 +384,13 @@ function applyChartColors(dcjsChart, card) {
     return dcjsChart.ordinalColors(uniqueColors);
 }
 
-function applyChartTooltips(dcjsChart, card, cols) {
+function applyChartTooltips(dcjsChart, id, card, cols) {
     dcjsChart.on('renderlet', function(chart) {
         // Remove old tooltips which are sometimes not removed due to chart being rerendered while tip is visible
-        // We should only ever have one tooltip on screen, right?
-        Array.prototype.forEach.call(document.querySelectorAll('.ChartTooltip'), (t) => t.parentNode.removeChild(t));
+        Array.prototype.forEach.call(document.querySelectorAll('.ChartTooltip--'+id), (t) => t.parentNode.removeChild(t));
 
         var tip = d3.tip()
-            .attr('class', 'ChartTooltip')
+            .attr('class', 'ChartTooltip ChartTooltip--'+id)
             .direction('n')
             .offset([-10, 0])
             .html(function(d) {
@@ -409,7 +408,7 @@ function applyChartTooltips(dcjsChart, card, cols) {
             .on('mouseover.tip', function(slice) {
                 tip.show.apply(tip, arguments);
                 if (card.display === "pie") {
-                    var tooltip = d3.select('.ChartTooltip');
+                    var tooltip = d3.select('.ChartTooltip--'+id);
                     let tooltipOffset = getTooltipOffset(tooltip);
                     let sliceCentroid = getPieSliceCentroid(this, slice);
                     tooltip.style({
@@ -443,11 +442,19 @@ function getPieSliceCentroid(element, slice) {
     };
 }
 
+function getScrollOffset() {
+    let doc = document.documentElement;
+    let left = (window.pageXOffset || doc.scrollLeft) - (doc.clientLeft || 0);
+    let top = (window.pageYOffset || doc.scrollTop)  - (doc.clientTop || 0);
+    return { left, top }
+}
+
 function getTooltipOffset(tooltip) {
-    var tooltipRect = tooltip[0][0].getBoundingClientRect();
+    let tooltipRect = tooltip[0][0].getBoundingClientRect();
+    let scrollOffset = getScrollOffset();
     return {
-        x: -tooltipRect.width / 2,
-        y: -tooltipRect.height - 30
+        x: -tooltipRect.width / 2 + scrollOffset.left,
+        y: -tooltipRect.height - 30 + scrollOffset.top
     };
 }
 
@@ -845,7 +852,7 @@ export var CardRenderer = {
             // disables ability to select slices
             chart.filter = function() {};
 
-        applyChartTooltips(chart, card, result.cols);
+        applyChartTooltips(chart, id, card, result.cols);
 
         chart.render();
     },
@@ -908,7 +915,7 @@ export var CardRenderer = {
         // TODO: if we are multi-series this could be split axis
         applyChartYAxis(chart, card, result.cols, data, MIN_PIXELS_PER_TICK.y);
 
-        applyChartTooltips(chart, card, result.cols);
+        applyChartTooltips(chart, id, card, result.cols);
         applyChartColors(chart, card);
 
         // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
@@ -985,7 +992,7 @@ export var CardRenderer = {
         // TODO: if we are multi-series this could be split axis
         applyChartYAxis(chart, card, result.cols, data, MIN_PIXELS_PER_TICK.y);
 
-        applyChartTooltips(chart, card, result.cols);
+        applyChartTooltips(chart, id, card, result.cols);
         applyChartColors(chart, card);
 
         // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
