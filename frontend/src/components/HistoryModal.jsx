@@ -36,13 +36,6 @@ export default class HistoryModal extends Component {
     async componentDidMount() {
         let { entityType, entityId } = this.props;
 
-        // HACK: close if opened with null entityId to work around issue with modals mysteriously opening
-        // https://github.com/metabase/metabase-init/issues/917
-        if (entityId == null) {
-            this.props.onClose();
-            return;
-        }
-
         try {
             await this.props.onFetchRevisions({ entity: entityType, id: entityId });
         } catch (error) {

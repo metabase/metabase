@@ -22,7 +22,7 @@ export default class Header extends Component {
                     <span className="EditHeader-title">{this.props.editingTitle}</span>
                     <span className="EditHeader-subtitle mx1">{this.props.editingSubtitle}</span>
                     <span className="flex-align-right">
-                        {this.props.editingButtons.map((button, buttonIndex) => <span key={buttonIndex}>{button}</span>)}
+                        {this.props.editingButtons}
                     </span>
                 </div>
             );
@@ -65,11 +65,9 @@ export default class Header extends Component {
         }
 
         var headerButtons = this.props.headerButtons.map((section, sectionIndex) => {
-            return (
+            return section && section.length > 0 && (
                 <span key={sectionIndex} className="Header-buttonSection">
-                    {section.map((button, buttonIndex) => {
-                        return <span key={buttonIndex}>{button}</span>;
-                    })}
+                    {section}
                 </span>
             );
         });
