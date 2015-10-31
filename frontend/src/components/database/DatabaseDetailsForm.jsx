@@ -1,8 +1,6 @@
 import React, { Component, PropTypes } from "react";
 import cx from "classnames";
-import _ from "underscore";
 
-import MetabaseCore from "metabase/lib/core";
 import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
 import FormMessage from "metabase/components/form/FormMessage.jsx";
@@ -22,144 +20,148 @@ export default class DatabaseDetailsForm extends Component {
 
     constructor(props, context) {
         super(props, context);
-        this.state = { valid: false }
+        this.state = {
+            details: props.details || {},
+            valid: false
+        }
     }
 
     static propTypes = {
         details: PropTypes.object,
         engine: PropTypes.string.isRequired,
+        engines: PropTypes.object.isRequired,
         formError: PropTypes.object,
-        hiddenFields: PropTypes.array,
+        hiddenFields: PropTypes.object,
         submitButtonText: PropTypes.string.isRequired,
         submitFn: PropTypes.func.isRequired
     };
 
     validateForm() {
-        let { engine } = this.props;
-        let { valid } = this.state;
+        let { engine, engines } = this.props;
+        let { details } = this.state;
 
-        let isValid = true;
+        let valid = true;
 
         // name is required
-        if (isEmpty(React.findDOMNode(this.refs.name).value)) isValid = false;
+        if (!details.name) {
+            valid = false;
+        }
 
         // go over individual fields
-        for (var fieldIdx in MetabaseCore.ENGINES[engine].fields) {
-            let field = MetabaseCore.ENGINES[engine].fields[fieldIdx],
-                ref = React.findDOMNode(this.refs[field.fieldName]);
-            if (ref && field.required && isEmpty(ref.value)) {
-                isValid = false;
+        for (let field of engines[engine]['details-fields']) {
+            if (field.required && isEmpty(details[field.name])) {
+                valid = false;
+                break;
             }
         }
 
-        if(isValid !== valid) {
-            this.setState({
-                'valid': isValid
-            });
+        if (this.state.valid !== valid) {
+            this.setState({ valid });
         }
     }
 
-    onChange(fieldName) {
+    componentDidMount() {
         this.validateForm();
+    }
+
+    componentDidUpdate() {
+        this.validateForm();
+    }
+
+    onChange(fieldName, fieldValue) {
+        this.setState({ details: { ...this.state.details, [fieldName]: fieldValue }});
     }
 
     formSubmitted(e) {
         e.preventDefault();
 
-        let { engine, submitFn } = this.props;
+        let { engine, engines, submitFn } = this.props;
+        let { details } = this.state;
 
-        // collect data
-        let response = {
-            'name': React.findDOMNode(this.refs.name).value,
-            'engine': engine,
-            'details': {}
+        let request = {
+            engine: engine,
+            name: details.name,
+            details: {}
         };
 
-        for (var fieldIdx in MetabaseCore.ENGINES[engine].fields) {
-            let field = MetabaseCore.ENGINES[engine].fields[fieldIdx],
-                ref = React.findDOMNode(this.refs[field.fieldName]);
-            if (ref) {
-                let val = (ref.value && ref.value !== "") ? ref.value : null;
-                if (val === null && field.placeholderIsDefault) {
-                    val = field.placeholder;
-                }
+        for (let field of engines[engine]['details-fields']) {
+            let val = details[field.name] === "" ? null : details[field.name];
 
-                if (field.transform) {
-                    val = field.transform(val);
-                }
+            if (val && field.type === 'integer') val = parseInt(val);
+            if (val == null && field.default)    val = field.default;
 
-                response.details[field.fieldName] = val;
-            }
+            request.details[field.name] = val;
         }
 
-        // do callback
-        submitFn(response);
+        submitFn(request);
     }
 
-    renderFieldInput(field) {
-        let { details } = this.props;
-
-        let defaultValue = (details && field.fieldName in details) ? details[field.fieldName] : "";
+    renderFieldInput(field, fieldIndex) {
+        let { details } = this.state;
+        let value = details && details[field.name] || "";
 
         switch(field.type) {
-            case 'select':
+            case 'boolean':
                 return (
                     <div className="Form-input Form-offset full Button-group">
-                        {field.choices.map(choice =>
-                            <button className="Button"
-                                    ng-className="details[field.fieldName] === choice.value ? {active: 'Button--active',
-                                              danger: 'Button--danger'}[choice.selectionAccent] : null"
-                                    ng-click="details[field.fieldName] = choice.value">
-                                {choice.name}
-                            </button>
-                        )}
+                        <div className={cx('Button', details[field.name] === true ? 'Button--active' : null)} onClick={(e) => { this.onChange(field.name, true) }}>
+                            Yes
+                        </div>
+                        <div className={cx('Button', details[field.name] === false ? 'Button--danger' : null)} onClick={(e) => { this.onChange(field.name, false) }}>
+                            No
+                        </div>
                     </div>
                 );
-
-            case 'password':
+            default:
                 return (
-                    <input type="password" className="Form-input Form-offset full" ref={field.fieldName} name={field.fieldName} defaultValue={defaultValue} placeholder={field.placeholder} onChange={this.onChange.bind(this, field.fieldName)} />
-               );
-
-            case 'text':
-                return (
-                    <input className="Form-input Form-offset full" ref={field.fieldName} name={field.fieldName} defaultValue={defaultValue} placeholder={field.placeholder} onChange={this.onChange.bind(this, field.fieldName)} />
-               );
+                    <input
+                        type={field.type === 'password' ? 'password' : 'text'}
+                        className="Form-input Form-offset full"
+                        ref={field.name}
+                        name={field.name}
+                        value={value}
+                        placeholder={field.default || field.placeholder}
+                        onChange={(e) => this.onChange(field.name, e.target.value)}
+                        required={field.required}
+                        autoFocus={fieldIndex === 0}
+                    />
+                );
         }
     }
 
     render() {
-        let { details, engine, formError, hiddenFields, submitButtonText } = this.props;
+        let { engine, engines, formError, formSuccess, hiddenFields, submitButtonText } = this.props;
         let { valid } = this.state;
 
-        hiddenFields = hiddenFields || [];
-        let existingName = (details && 'name' in details) ? details.name : "";
+        let fields = [
+            {
+                name: 'name',
+                'display-name': 'Name',
+                placeholder: "How would you like to refer to this database?",
+                required: true
+            },
+            ...engines[engine]['details-fields']
+        ];
+
+        hiddenFields = hiddenFields || {};
 
         return (
             <form onSubmit={this.formSubmitted.bind(this)} noValidate>
-                <FormField fieldName="name">
-                    <FormLabel title="Name" fieldName="name"></FormLabel>
-                    <input className="Form-input Form-offset full" ref="name" name="name" defaultValue={existingName} placeholder="How would you like to refer to this database?" required autofocus />
-                    <span className="Form-charm"></span>
-                </FormField>
-
                 <div className="FormInputGroup">
-                    { MetabaseCore.ENGINES[engine].fields.filter(field => !_.contains(hiddenFields, field.fieldName)).map(field =>
-                        <FormField fieldName={field.fieldName}>
-                            <FormLabel title={field.displayName} fieldName={field.fieldName}></FormLabel>
-
-                            {this.renderFieldInput(field)}
-
+                    { fields.filter(field => !hiddenFields[field.name]).map((field, fieldIndex) =>
+                        <FormField key={field.name} fieldName={field.name}>
+                            <FormLabel title={field['display-name']} fieldName={field.name}></FormLabel>
+                            {this.renderFieldInput(field, fieldIndex)}
                             <span className="Form-charm"></span>
                         </FormField>
-                    )}
+                      )}
                 </div>
 
                 <div className="Form-actions">
                     <button className={cx("Button", {"Button--primary": valid})} disabled={!valid}>
                         {submitButtonText}
                     </button>
-                    <FormMessage formError={formError}></FormMessage>
+                    <FormMessage formError={formError} formSuccess={formSuccess}></FormMessage>
                 </div>
             </form>
         );

@@ -61,3 +61,8 @@ databaseChangeLog:
             replace:
               replace: WITHOUT
               with: WITH
+        - modifySql:
+            dbms: mysql
+            replace:
+              replace: object VARCHAR
+              with: object TEXT

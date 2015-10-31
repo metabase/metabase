@@ -11,8 +11,7 @@
                     [core :as mg]
                     [db :as mdb]
                     [query :as mq])
-            [metabase.driver :as driver]
-            [metabase.driver.interface :as i, :refer [defdriver]]
+            [metabase.driver :as driver, :refer [defdriver]]
             (metabase.driver.mongo [query-processor :as qp]
                                    [util :refer [*mongo-connection* with-mongo-connection values->base-type]])
             [metabase.util :as u]))
@@ -27,7 +26,7 @@
   [table]
   (with-mongo-connection [^com.mongodb.DB conn @(:db table)]
     (->> (mc/find-maps conn (:name table))
-         (take i/max-sync-lazy-seq-results)
+         (take driver/max-sync-lazy-seq-results)
          (map keys)
          (map set)
          (reduce set/union))))
@@ -53,13 +52,13 @@
 (defn- humanize-connection-error-message [message]
   (condp re-matches message
     #"^Timed out after \d+ ms while waiting for a server .*$"
-    (i/connection-error-messages :cannot-connect-check-host-and-port)
+    (driver/connection-error-messages :cannot-connect-check-host-and-port)
 
     #"^host and port should be specified in host:port format$"
-    (i/connection-error-messages :invalid-hostname)
+    (driver/connection-error-messages :invalid-hostname)
 
     #"^Password can not be null when the authentication mechanism is unspecified$"
-    (i/connection-error-messages :password-required)
+    (driver/connection-error-messages :password-required)
 
     #".*"                               ; default
     message))
@@ -109,7 +108,7 @@
   ;; Build a map of nested-field-key -> type -> count
   ;; TODO - using an atom isn't the *fastest* thing in the world (but is the easiest); consider alternate implementation
   (let [field->type->count (atom {})]
-    (doseq [val (take i/max-sync-lazy-seq-results (field-values-lazy-seq field))]
+    (doseq [val (take driver/max-sync-lazy-seq-results (field-values-lazy-seq field))]
       (when (map? val)
         (doseq [[k v] val]
           (swap! field->type->count update-in [k (type v)] #(if % (inc %) 1)))))
@@ -126,7 +125,7 @@
   {:driver-name                       "MongoDB"
    :details-fields                    [{:name         "host"
                                         :display-name "Host"
-                                        :default "localhost"}
+                                        :default      "localhost"}
                                        {:name         "port"
                                         :display-name "Port"
                                         :type         :integer
@@ -141,7 +140,11 @@
                                        {:name         "pass"
                                         :display-name "Database password"
                                         :type         :password
-                                        :placeholder  "******"}]
+                                        :placeholder  "******"}
+                                       {:name         "ssl"
+                                        :display-name "Use a secure connection (SSL)?"
+                                        :type         :boolean
+                                        :default      false}]
    :features                          #{:nested-fields}
    :can-connect?                      can-connect?
    :active-table-names                active-table-names

@@ -51,7 +51,7 @@ Now that you’ve installed Metabase, it’s time to [set it up and connect it t
 
 ### The Metabase Application Database
 
-The application database is where Metabase stores information about users, saved questions, dashboards, and any other data needed to run the application.  The default settings use an H2 database, but other also Postgres is available.
+The application database is where Metabase stores information about users, saved questions, dashboards, and any other data needed to run the application.  The default settings use an H2 database, but other also Postgres and MySQL are available.
 
 #### [H2](http://www.h2database.com/) (default)
 To use the H2 database for your Metabase instance you don't need to do anything at all.  When the application is first launched it will attempt to create a new H2 database in the same filesystem location the application is launched from.
@@ -85,6 +85,19 @@ You can change the application database to use Postgres using a few simple envir
     java -jar metabase.jar
 
 This will tell Metabase to look for its application database using the supplied Postgres connection information.
+
+#### [MySQL](http://www.mysql.com/)
+You can change the application database to use MySQL using a few simple environment variables. For example:
+
+    export MB_DB_TYPE=mysql
+    export MB_DB_DBNAME=metabase
+    export MB_DB_PORT=3306
+    export MB_DB_USER=<username>
+    export MB_DB_PASS=<password>
+    export MB_DB_HOST=localhost
+    java -jar metabase.jar
+
+This will tell Metabase to look for its application database using the supplied MySQL connection information.
 
 NOTE: you cannot change the application database while the application is running.  these values are read only once when the application starts up and will remain constant throughout the running of the application.
 

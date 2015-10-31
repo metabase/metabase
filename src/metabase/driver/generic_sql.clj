@@ -3,9 +3,7 @@
             [clojure.tools.logging :as log]
             [korma.core :as k]
             [korma.sql.utils :as utils]
-            [metabase.driver :as driver]
-            (metabase.driver [interface :refer [max-sync-lazy-seq-results defdriver]]
-                             [sync :as driver-sync])
+            [metabase.driver :refer [max-sync-lazy-seq-results defdriver]]
             (metabase.driver.generic-sql [query-processor :as qp]
                                          [util :refer :all])
             [metabase.models.field :as field]
@@ -175,7 +173,7 @@
       Return a korma form appropriate for converting a Unix timestamp integer field or value to an proper SQL `Timestamp`.
       SECONDS-OR-MILLISECONDS refers to the resolution of the int in question and with be either `:seconds` or `:milliseconds`.
 
-   *  `(timezone->set-timezone-sql [timezone])`
+   *  `(timezone->set-timezone-sql [timezone])` *(OPTIONAL)*
 
       Return a string that represents the SQL statement that should be used to set the timezone
       for the current transaction.
@@ -187,23 +185,31 @@
 
    *  `(date-interval [unit amount])`
 
-      Return a korma form for a date relative to NOW(), e.g. on that would produce SQL like `(NOW() + INTERVAL '1 month')`."
+      Return a korma form for a date relative to NOW(), e.g. on that would produce SQL like `(NOW() + INTERVAL '1 month')`.
+
+   * `qp-clause->handler` *(OPTIONAL)*
+
+     A map of query processor clause keywords to functions of the form `(fn [korma-query query-map])` that are used apply them.
+     By default, its value is `metabase.driver.generic-sql.query-processor/clause->handler`. These functions are exposed in this way so drivers
+     can override default clause application behavior where appropriate -- for example, SQL Server needs to override the function used to apply the
+     `:limit` clause, since T-SQL uses `TOP` rather than `LIMIT`."
   [driver]
   ;; Verify the driver
   (verify-sql-driver driver)
   (merge
-   {:features                      #{:foreign-keys
-                                     :standard-deviation-aggregations
-                                     :unix-timestamp-special-type-fields}
-    :can-connect?                  (partial can-connect? (:connection-details->spec driver))
-    :process-query                 process-query
-    :sync-in-context               sync-in-context
-    :active-table-names            active-table-names
-    :active-column-names->type     (partial active-column-names->type (:column->base-type driver))
-    :table-pks                     table-pks
-    :field-values-lazy-seq         field-values-lazy-seq
-    :table-rows-seq                table-rows-seq
-    :table-fks                     table-fks
-    :field-avg-length              (partial field-avg-length (:sql-string-length-fn driver))
-    :field-percent-urls            field-percent-urls}
+   {:features                  #{:foreign-keys
+                                 :standard-deviation-aggregations
+                                 :unix-timestamp-special-type-fields}
+    :qp-clause->handler        qp/clause->handler
+    :can-connect?              (partial can-connect? (:connection-details->spec driver))
+    :process-query             process-query
+    :sync-in-context           sync-in-context
+    :active-table-names        active-table-names
+    :active-column-names->type (partial active-column-names->type (:column->base-type driver))
+    :table-pks                 table-pks
+    :field-values-lazy-seq     field-values-lazy-seq
+    :table-rows-seq            table-rows-seq
+    :table-fks                 table-fks
+    :field-avg-length          (partial field-avg-length (:sql-string-length-fn driver))
+    :field-percent-urls        field-percent-urls}
    driver))

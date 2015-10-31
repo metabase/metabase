@@ -9,7 +9,6 @@
             [korma.core :as k]
             [swiss.arrows :refer [-<>]]
             [metabase.db :refer [sel]]
-            [metabase.driver.interface :as driver]
             [metabase.driver.query-processor.interface :refer :all]
             [metabase.util :as u])
   (:import (clojure.lang Keyword)))

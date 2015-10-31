@@ -6,8 +6,8 @@
                    mysql)
             (korma.sql [engine :refer [sql-func]]
                        [utils :as utils])
-            (metabase.driver [generic-sql :refer [sql-driver]]
-                             [interface :as i, :refer [defdriver]])
+            [metabase.driver :as driver, :refer [defdriver]]
+            [metabase.driver.generic-sql :refer [sql-driver]]
             [metabase.driver.generic-sql.util :refer [funcs]]))
 
 ;;; # Korma 0.4.2 Bug Workaround
@@ -127,16 +127,16 @@
 (defn- humanize-connection-error-message [message]
   (condp re-matches message
         #"^Communications link failure\s+The last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.$"
-        (i/connection-error-messages :cannot-connect-check-host-and-port)
+        (driver/connection-error-messages :cannot-connect-check-host-and-port)
 
         #"^Unknown database .*$"
-        (i/connection-error-messages :database-name-incorrect)
+        (driver/connection-error-messages :database-name-incorrect)
 
         #"Access denied for user.*$"
-        (i/connection-error-messages :username-or-password-incorrect)
+        (driver/connection-error-messages :username-or-password-incorrect)
 
         #"Must specify port after ':' in connection string"
-        (i/connection-error-messages :invalid-hostname)
+        (driver/connection-error-messages :invalid-hostname)
 
         #".*" ; default
         message))

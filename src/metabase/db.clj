@@ -62,6 +62,12 @@
              (case (config/config-kw :mb-db-type)
                :h2       {:type     :h2
                           :db       @db-file}
+               :mysql    {:type     :mysql
+                          :host     (config/config-str :mb-db-host)
+                          :port     (config/config-int :mb-db-port)
+                          :dbname   (config/config-str :mb-db-dbname)
+                          :user     (config/config-str :mb-db-user)
+                          :password (config/config-str :mb-db-pass)}
                :postgres {:type     :postgres
                           :host     (config/config-str :mb-db-host)
                           :port     (config/config-int :mb-db-port)
@@ -75,6 +81,7 @@
            (case (:type details)
              :h2       (kdb/h2 (assoc details :naming {:keys   s/lower-case
                                                        :fields s/upper-case}))
+             :mysql    (kdb/mysql (assoc details :db (:dbname details)))
              :postgres (kdb/postgres (assoc details :db (:dbname details)))))))
 
 
@@ -88,6 +95,7 @@
 
    *  `:up`            - Migrate up
    *  `:down`          - Rollback *all* migrations
+   *  `:down-one`      - Rollback a single migration
    *  `:print`         - Just print the SQL for running the migrations, don't actually run them.
    *  `:release-locks` - Manually release migration locks left by an earlier failed migration.
                          (This shouldn't be necessary now that we run migrations inside a transaction,
@@ -103,6 +111,7 @@
          (case direction
            :up            (.update liquibase "")
            :down          (.rollback liquibase 10000 "")
+           :down-one      (.rollback liquibase 1 "")
            :print         (let [writer (StringWriter.)]
                             (.update liquibase "" writer)
                             (.toString writer))
@@ -311,7 +320,9 @@
                   (models/pre-insert entity)
                   (models/internal-pre-insert entity))
         {:keys [id]} (-> (k/insert entity (k/values vals))
-                         (set/rename-keys {(keyword "scope_identity()") :id}))]
+                         ;; this takes database specific keys returned from a jdbc insert and maps them to :id
+                         (set/rename-keys {(keyword "scope_identity()") :id
+                                           :generated_key               :id}))]
     (models/post-insert entity (entity id))))
 
 
