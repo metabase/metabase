@@ -2,6 +2,15 @@
     background-color: #f9fbfc;
 }
 
+.Dashboard--fullscreen .Header-buttonSection {
+  transition: opacity 0.3s linear;
+  opacity: 0;
+}
+
+.Dashboard--fullscreen .QueryBuilder-section:hover .Header-buttonSection {
+  opacity: 1;
+}
+
 .Dash-wrapper {
     width: 100%;
 }
