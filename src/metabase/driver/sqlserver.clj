@@ -2,8 +2,8 @@
   (:require (korma [core :as k]
                    [db :as kdb])
             [korma.sql.utils :as utils]
-            (metabase.driver [generic-sql :refer [sql-driver]]
-                             [interface :refer [defdriver]]))
+            [metabase.driver :refer [defdriver]]
+            [metabase.driver.generic-sql :refer [sql-driver]])
   (:import net.sourceforge.jtds.jdbc.Driver)) ; need to import this in order to load JDBC driver
 
 (defn- connection-details->spec [details-map]
@@ -82,33 +82,33 @@
                :date-interval             date-interval
                :unix-timestamp->timestamp unix-timestamp->timestamp}))
 
-(defn x []
-  (metabase.driver/process-query {:database 85
-                                  :type :native
-                                  :native {:query "SELECT COUNT(*) AS \"count\" FROM TABLES; GO"}}))
+;; (defn x []
+;;   (metabase.driver/process-query {:database 85
+;;                                   :type :native
+;;                                   :native {:query "SELECT COUNT(*) AS \"count\" FROM TABLES; GO"}}))
 
-(defn y []
-  (let [entity (metabase.driver.generic-sql.util/korma-entity (Database 85) {:name "sys.tables"})]
-    (k/sql-only
-     (k/select entity (k/limit 1)))))
+;; (defn y []
+;;   (let [entity (metabase.driver.generic-sql.util/korma-entity (Database 85) {:name "sys.tables"})]
+;;     (k/sql-only
+;;      (k/select entity (k/limit 1)))))
 
-(defn a []
-  (let [entity (metabase.driver.generic-sql.util/korma-entity (Database 85) {:name "sys.tables"})]
-    (k/sql-only
-     (k/select entity
-               (k/modifier "TOP 1")))))
+;; (defn a []
+;;   (let [entity (metabase.driver.generic-sql.util/korma-entity (Database 85) {:name "sys.tables"})]
+;;     (k/sql-only
+;;      (k/select entity
+;;                (k/modifier "TOP 1")))))
 
-(defn b []
-  (let [entity (metabase.driver.generic-sql.util/korma-entity (Database 85) {:name "sys.tables"})]
-    (k/select entity
-              (k/modifier (utils/func :TOP 1)))))
+;; (defn b []
+;;   (let [entity (metabase.driver.generic-sql.util/korma-entity (Database 85) {:name "sys.tables"})]
+;;     (k/select entity
+;;               (k/modifier (utils/func :TOP 1)))))
 
-(defn c []
-  (-> (k/select* (metabase.driver.generic-sql.util/korma-entity (Database 85) {:name "sys.tables"}))
-      (k/modifier (utils/func "TOP %s" [1]))))
+;; (defn c []
+;;   (-> (k/select* (metabase.driver.generic-sql.util/korma-entity (Database 85) {:name "sys.tables"}))
+;;       (k/modifier (utils/func "TOP %s" [1]))))
 
-(defn d []
-  (k/exec (c)))
+;; (defn d []
+;;   (k/exec (c)))
 
-(defn e []
-  (k/as-sql (c)))
+;; (defn e []
+;;   (k/as-sql (c)))
