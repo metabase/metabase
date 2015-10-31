@@ -95,6 +95,7 @@
 
    *  `:up`            - Migrate up
    *  `:down`          - Rollback *all* migrations
+   *  `:down-one`      - Rollback a single migration
    *  `:print`         - Just print the SQL for running the migrations, don't actually run them.
    *  `:release-locks` - Manually release migration locks left by an earlier failed migration.
                          (This shouldn't be necessary now that we run migrations inside a transaction,
@@ -110,6 +111,7 @@
          (case direction
            :up            (.update liquibase "")
            :down          (.rollback liquibase 10000 "")
+           :down-one      (.rollback liquibase 1 "")
            :print         (let [writer (StringWriter.)]
                             (.update liquibase "" writer)
                             (.toString writer))
