@@ -55,60 +55,42 @@
 
 (defn- unix-timestamp->timestamp [field-or-value seconds-or-milliseconds])
 
+(defn- apply-limit [korma-query {value :limit}]
+  (k/modifier korma-query (format "TOP %d" value)))
+
 (defdriver sqlserver
-  (sql-driver {:driver-name               "SQL Server"
-               :details-fields            [{:name         "host"
-                                            :display-name "Host"
-                                            :default "localhost"}
-                                           {:name         "port"
-                                            :display-name "Port"
-                                            :type         :integer
-                                            :default      1433}
-                                           {:name         "dbname"
-                                            :display-name "Database name"
-                                            :placeholder  "birds_of_the_word"}
-                                           {:name         "user"
-                                            :display-name "Database username"
-                                            :placeholder  "What username do you use to login to the database?"
-                                            :required     true}
-                                           {:name         "password"
-                                            :display-name "Database password"
-                                            :type         :password
-                                            :placeholder  "*******"}]
-               :sql-string-length-fn      :LEN
-               :column->base-type         column->base-type
-               :connection-details->spec  connection-details->spec
-               :date                      date
-               :date-interval             date-interval
-               :unix-timestamp->timestamp unix-timestamp->timestamp}))
+  (-> (sql-driver {:driver-name               "SQL Server"
+                   :details-fields            [{:name         "host"
+                                                :display-name "Host"
+                                                :default "localhost"}
+                                               {:name         "port"
+                                                :display-name "Port"
+                                                :type         :integer
+                                                :default      1433}
+                                               {:name         "dbname"
+                                                :display-name "Database name"
+                                                :placeholder  "birds_of_the_word"}
+                                               {:name         "user"
+                                                :display-name "Database username"
+                                                :placeholder  "What username do you use to login to the database?"
+                                                :required     true}
+                                               {:name         "password"
+                                                :display-name "Database password"
+                                                :type         :password
+                                                :placeholder  "*******"}]
+                   :sql-string-length-fn      :LEN
+                   ;; :ignored-schemas           #{"sys" "INFORMATION_SCHEMA"}
+                   :column->base-type         column->base-type
+                   :connection-details->spec  connection-details->spec
+                   :date                      date
+                   :date-interval             date-interval
+                   :unix-timestamp->timestamp unix-timestamp->timestamp})
+      (assoc-in [:qp-clause->handler :limit] apply-limit)))
 
-;; (defn x []
-;;   (metabase.driver/process-query {:database 85
-;;                                   :type :native
-;;                                   :native {:query "SELECT COUNT(*) AS \"count\" FROM TABLES; GO"}}))
+(defn x []
+  (metabase.driver/process-query {:database 92
+                                  :type :native
+                                  :native {:query "SELECT TOP 2000 \"sys.TABLES\".* FROM \"sys\".\"TABLES\";"}}))
 
-;; (defn y []
-;;   (let [entity (metabase.driver.generic-sql.util/korma-entity (Database 85) {:name "sys.tables"})]
-;;     (k/sql-only
-;;      (k/select entity (k/limit 1)))))
-
-;; (defn a []
-;;   (let [entity (metabase.driver.generic-sql.util/korma-entity (Database 85) {:name "sys.tables"})]
-;;     (k/sql-only
-;;      (k/select entity
-;;                (k/modifier "TOP 1")))))
-
-;; (defn b []
-;;   (let [entity (metabase.driver.generic-sql.util/korma-entity (Database 85) {:name "sys.tables"})]
-;;     (k/select entity
-;;               (k/modifier (utils/func :TOP 1)))))
-
-;; (defn c []
-;;   (-> (k/select* (metabase.driver.generic-sql.util/korma-entity (Database 85) {:name "sys.tables"}))
-;;       (k/modifier (utils/func "TOP %s" [1]))))
-
-;; (defn d []
-;;   (k/exec (c)))
-
-;; (defn e []
-;;   (k/as-sql (c)))
+;; TODO - use schema information in query expander, Generic SQL QP
+;; TODO - use schema information in other sync fns

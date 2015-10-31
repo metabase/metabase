@@ -173,7 +173,11 @@
 
 *  `(active-table-names [database])`
 
-   Return a set of string names of tables, collections, or equivalent that currently exist in DATABASE.
+   Return a set of pairs of strings `[schema-name table-name]` naming the tables/views, collections, or equivalent that currently exist in DATABASE.
+   For databases that do not support a notion of schemas, use `nil` for SCHEMA-NAME.
+
+       (active-table-names db-with-schemas)    -> #{[\"public\" \"table1\"], [\"public\" \"table2\"]}
+       (active-table-names db-without-schemas) -> #{[nil \"table1\"], [nil \"table2\"]}
 
 *  `(active-column-names->type [table])`
 

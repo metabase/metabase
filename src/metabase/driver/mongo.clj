@@ -78,8 +78,9 @@
 
 (defn- active-table-names [database]
   (with-mongo-connection [^com.mongodb.DB conn database]
-    (-> (mdb/get-collection-names conn)
-        (set/difference #{"system.indexes"}))))
+    (set (for [collection (-> (mdb/get-collection-names conn)
+                              (set/difference #{"system.indexes"}))]
+           [nil collection]))))
 
 (defn- active-column-names->type [table]
   (with-mongo-connection [_ @(:db table)]

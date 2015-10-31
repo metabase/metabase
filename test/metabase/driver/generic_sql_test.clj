@@ -23,7 +23,10 @@
 
 ;; ACTIVE-TABLE-NAMES
 (expect
-    #{"CATEGORIES" "VENUES" "CHECKINS" "USERS"}
+    #{[nil "CATEGORIES"]
+      [nil "VENUES"]
+      [nil "CHECKINS"]
+      [nil "USERS"]}
   ((:active-table-names h2) (db)))
 
 ;; ACTIVE-COLUMN-NAMES->TYPE

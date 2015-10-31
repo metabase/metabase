@@ -40,6 +40,7 @@
                   ^Keyword base-type
                   ^Keyword special-type
                   ^Integer table-id
+                  ^String  schema-name
                   ^String  table-name
                   ^Integer position
                   ^String  description

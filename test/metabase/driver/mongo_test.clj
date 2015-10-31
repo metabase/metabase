@@ -111,7 +111,10 @@
 
 ;; ### active-table-names
 (expect-when-testing-mongo
-    #{"checkins" "categories" "users" "venues"}
+    #{[nil "checkins"]
+      [nil "categories"]
+      [nil "users"]
+      [nil "venues"]}
   ((:active-table-names mongo) @mongo-test-db))
 
 ;; ### table->column-names

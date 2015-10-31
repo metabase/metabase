@@ -31,11 +31,12 @@
   (with-jdbc-metadata [_ database]
     (do-sync-fn)))
 
-(defn- active-table-names [database]
+(defn- active-table-names [ignored-schemas database]
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md database]
-    (->> (.getTables md nil nil nil (into-array String ["TABLE", "VIEW"]))
-         jdbc/result-set-seq
-         (map :table_name)
+    (->> (for [{table-name :table_name, schema :table_schem} (jdbc/result-set-seq (.getTables md nil nil nil (into-array String ["TABLE", "VIEW"])))]
+           (when-not (contains? ignored-schemas schema)
+             [schema table-name]))
+         (filter identity)
          set)))
 
 (defn- active-column-names->type [column->base-type table]
@@ -164,6 +165,10 @@
 
       Keyword name of the SQL function that should be used to get the length of a string, e.g. `:LENGTH`.
 
+   *  `ignored-schemas` *(OPTIONAL)*
+
+       A set of string names of schemas to skip syncing for DBs that support them.
+
    *  `(connection-details->spec [details-map])`
 
       Given a `Database` DETAILS-MAP, return a JDBC connection spec.
@@ -204,7 +209,7 @@
     :can-connect?              (partial can-connect? (:connection-details->spec driver))
     :process-query             process-query
     :sync-in-context           sync-in-context
-    :active-table-names        active-table-names
+    :active-table-names        (partial active-table-names (:ignored-schemas driver))
     :active-column-names->type (partial active-column-names->type (:column->base-type driver))
     :table-pks                 table-pks
     :field-values-lazy-seq     field-values-lazy-seq
