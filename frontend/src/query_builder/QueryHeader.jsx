@@ -124,11 +124,12 @@ export default React.createClass({
     },
 
     getHeaderButtons: function() {
-        var buttons = [];
+        var buttonSections = [[],[]];
 
         if (this.props.cardIsNewFn() && this.props.cardIsDirtyFn()) {
-            buttons.push(
+            buttonSections[0].push(
                 <ModalWithTrigger
+                    key="save"
                     ref="saveModal"
                     triggerClasses="h4 px1 text-grey-4 text-brand-hover text-uppercase"
                     triggerElement="Save"
@@ -144,8 +145,9 @@ export default React.createClass({
         }
 
         if (!this.props.cardIsNewFn()) {
-            buttons.push(
+            buttonSections[0].push(
                 <ModalWithTrigger
+                    key="history"
                     ref="cardHistory"
                     triggerElement={<Icon name="history" width="16px" height="16px" />}
                 >
@@ -163,47 +165,45 @@ export default React.createClass({
         }
 
         if (this.props.cardIsNewFn() && !this.props.cardIsDirtyFn()) {
-            buttons.push(
+            buttonSections[0].push(
                 <QueryModeToggle
+                    key="queryModeToggle"
                     currentQueryMode={this.props.card.dataset_query.type}
                     setQueryModeFn={this.setQueryMode}
                 />
             );
         }
 
-        var dataReferenceButtonClasses = cx({
-            'mx1': true,
-            'transition-color': true,
+        var dataReferenceButtonClasses = cx('mx1 transition-color', {
             'text-grey-4': !this.props.isShowingDataReference,
             'text-brand': this.props.isShowingDataReference,
             'text-brand-hover': !this.state.isShowingDataReference
         });
-        var dataReferenceButton = (
-            <a href="#" className={dataReferenceButtonClasses} title="Get help on what data means">
+        buttonSections[1].push(
+            <a key="dataReference" href="#" className={dataReferenceButtonClasses} title="Get help on what data means">
                 <Icon name='reference' width="16px" height="16px" onClick={this.toggleDataReference}></Icon>
             </a>
         );
 
-        return [buttons, [dataReferenceButton]];
+        return buttonSections;
     },
 
     getEditingButtons: function() {
-        var editingButtons = [];
-        editingButtons.push(
+        return [
             <ActionButton
+                key="save"
                 actionFn={() => this.onSave()}
                 className="Button Button--small Button--primary text-uppercase"
                 normalText="Save"
                 activeText="Saving…"
                 failedText="Save failed"
                 successText="Saved"
-            />
-        );
-        editingButtons.push(
-            <a className="Button Button--small text-uppercase" href="#" onClick={() => this.onCancel()}>Cancel</a>
-        );
-        editingButtons.push(
+            />,
+            <a key="cancel" className="Button Button--small text-uppercase" onClick={() => this.onCancel()}>
+                Cancel
+            </a>,
             <ModalWithTrigger
+                key="delete"
                 ref="deleteModal"
                 triggerClasses="Button Button--small text-uppercase"
                 triggerElement="Delete"
@@ -214,8 +214,7 @@ export default React.createClass({
                     closeFn={() => this.refs.deleteModal.toggle()}
                 />
             </ModalWithTrigger>
-        );
-        return editingButtons;
+        ];
     },
 
     render: function() {
