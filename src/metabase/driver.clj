@@ -405,31 +405,32 @@
   [query {:keys [executed_by]
           :as options}]
   {:pre [(integer? executed_by)]}
-  (let [query-execution {:uuid            (.toString (java.util.UUID/randomUUID))
-                         :executor_id     executed_by
-                         :json_query      query
-                         :query_id        nil
-                         :version         0
-                         :status          :starting
-                         :error           ""
-                         :started_at      (u/new-sql-timestamp)
-                         :finished_at     (u/new-sql-timestamp)
-                         :running_time    0
-                         :result_rows     0
-                         :result_file     ""
-                         :result_data     "{}"
-                         :raw_query       ""
-                         :additional_info ""}]
-    (let [query-execution (assoc query-execution :start_time_millis (System/currentTimeMillis))]
-      (try
-        (let [query-result (process-query query)]
-          (when-not (contains? query-result :status)
-            (throw (Exception. "invalid response from database driver. no :status provided")))
-          (when (= :failed (:status query-result))
-            (throw (Exception. ^String (get query-result :error "general error"))))
-          (query-complete query-execution query-result))
-        (catch Exception e
-          (query-fail query-execution (.getMessage e)))))))
+  (let [query-execution {:uuid              (.toString (java.util.UUID/randomUUID))
+                         :executor_id       executed_by
+                         :json_query        query
+                         :query_id          nil
+                         :version           0
+                         :status            :starting
+                         :error             ""
+                         :started_at        (u/new-sql-timestamp)
+                         :finished_at       (u/new-sql-timestamp)
+                         :running_time      0
+                         :result_rows       0
+                         :result_file       ""
+                         :result_data       "{}"
+                         :raw_query         ""
+                         :additional_info   ""
+                         :start_time_millis (System/currentTimeMillis)}]
+    (try
+      (let [query-result (process-query query)]
+        (when-not (contains? query-result :status)
+          (throw (Exception. "invalid response from database driver. no :status provided")))
+        (when (= :failed (:status query-result))
+          (throw (Exception. ^String (get query-result :error "general error"))))
+        (query-complete query-execution query-result))
+      (catch Exception e
+        (log/error (u/format-color 'red "Query failure: %s" (.getMessage e)))
+        (query-fail query-execution (.getMessage e))))))
 
 (defn query-fail
   "Save QueryExecution state and construct a failed query response"
