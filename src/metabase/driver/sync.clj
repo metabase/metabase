@@ -38,18 +38,17 @@
 
 ;; ## sync-database! and sync-table!
 
-(defn- validate-active-table-names [results]
+(defn- validate-active-tables [results]
   (when-not (and (set? results)
-                 (every? vector? results)
-                 (every? #(= 2 (count %)) results)
-                 (every? (partial every? string?) results))
-    (throw (Exception. "Invalid results returned by active-table-names. Results should be a set of [schema-name-str table-name-str] pairs."))))
+                 (every? map? results)
+                 (every? :name results))
+    (throw (Exception. "Invalid results returned by active-tables. Results should be a set of maps like {:name \"table_name\", :schema \"schema_name_or_nil\"}."))))
 
 (defn- mark-inactive-tables!
-  "Mark any `Tables` that are no longer active as such. These are ones that exist in the DB but didn't come back from `active-table-names`."
-  [database active-schema+table existing-schema+table->id]
-  (doseq [[[schema table, :as schema+table] table-id] existing-schema+table->id]
-    (when-not (contains? active-schema+table schema+table)
+  "Mark any `Tables` that are no longer active as such. These are ones that exist in the DB but didn't come back from `active-tables`."
+  [database active-tables existing-table->id]
+  (doseq [[[{table :name, schema :schema, :as table}] table-id] existing-table->id]
+    (when-not (contains? active-tables table)
       (upd Table table-id :active false)
       (log/info (u/format-color 'cyan "Marked table %s.%s%s as inactive." (:name database) (if schema (str schema \.) "") table))
 
@@ -59,16 +58,16 @@
                 (k/set-fields {:active false})))))
 
 (defn- create-new-tables!
-  "Create new `Tables` as needed. These are ones that came back from `active-table-names` but don't already exist in the DB."
-  [database active-schema+table existing-schema+table->id]
-  (let [existing-schema+table (set (keys existing-schema+table->id))
-        new-schema+table      (set/difference active-schema+table existing-schema+table)]
-    (when (seq new-schema+table)
-      (log/debug (u/format-color 'blue "Found new tables: %s" (for [[schema table] new-schema+table]
+  "Create new `Tables` as needed. These are ones that came back from `active-tables` but don't already exist in the DB."
+  [database active-tables existing-table->id]
+  (let [existing-tables (set (keys existing-table->id))
+        new-tables      (set/difference active-tables existing-tables)]
+    (when (seq new-tables)
+      (log/debug (u/format-color 'blue "Found new tables: %s" (for [{table :name, schema :schema} new-tables]
                                                                 (if schema
                                                                   (str schema \. table)
                                                                   table))))
-      (doseq [[schema table] new-schema+table]
+      (doseq [{table :name, schema :schema} new-tables]
         ;; If it's a _metabase_metadata table then we'll handle later once everything else has been synced
         (when-not (= (s/lower-case table) "_metabase_metadata")
           (ins Table :db_id (:id database), :active true, :schema schema, :name table))))))
@@ -78,14 +77,14 @@
                                   ;; replace default delays with ones that reuse database (and don't require a DB call)
                                   (assoc table :db (delay database)))))
 
-(defn- -sync-database! [{:keys [active-table-names], :as driver} database]
-  (let [active-schema+table       (active-table-names database)
-        existing-schema+table->id (into {} (for [{:keys [name schema id]} (sel :many :fields [Table :name :schema :id], :db_id (:id database), :active true)]
-                                             {[schema name] id}))]
-    (validate-active-table-names active-schema+table)
+(defn- -sync-database! [{:keys [active-tables], :as driver} database]
+  (let [active-tables      (active-tables database)
+        existing-table->id (into {} (for [{:keys [name schema id]} (sel :many :fields [Table :name :schema :id], :db_id (:id database), :active true)]
+                                      {{:name name, :schema schema} id}))]
+    (validate-active-tables active-tables)
 
-    (mark-inactive-tables! database active-schema+table existing-schema+table->id)
-    (create-new-tables!    database active-schema+table existing-schema+table->id))
+    (mark-inactive-tables! database active-tables existing-table->id)
+    (create-new-tables!    database active-tables existing-table->id))
 
   (fetch-and-sync-database-active-tables! database)
 
@@ -129,9 +128,9 @@
    `keypath` is of the form `table-name.key` or `table-name.field-name.key`, where `key` is the name of some property of `Table` or `Field`.
 
    This functionality is currently only used by the Sample Dataset. In order to use this functionality, drivers must implement optional fn `:table-rows-seq`."
-  [{:keys [table-rows-seq active-table-names]} database]
+  [{:keys [table-rows-seq active-tables]} database]
   (when table-rows-seq
-    (doseq [[_ table-name] (active-table-names database)]
+    (doseq [[_ table-name] (active-tables database)]
       (when (= (s/lower-case table-name) "_metabase_metadata")
         (doseq [{:keys [keypath value]} (table-rows-seq database table-name)]
           (let [[_ table-name field-name k] (re-matches #"^([^.]+)\.(?:([^.]+)\.)?([^.]+)$" keypath)]
