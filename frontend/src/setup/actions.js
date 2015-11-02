@@ -36,6 +36,7 @@ function createThunkAction(actionType, actionThunkCreator) {
 // // resource wrappers
 const SetupApi = new AngularResourceProxy("Setup", ["create", "validate_db"]);
 const UtilApi = new AngularResourceProxy("Util", ["password_check"]);
+const MetabaseApi = new AngularResourceProxy("Metabase", ["db_form_input"]);
 
 
 // action constants
@@ -47,6 +48,7 @@ export const VALIDATE_DATABASE = 'VALIDATE_DATABASE';
 export const VALIDATE_PASSWORD = 'VALIDATE_PASSWORD';
 export const SUBMIT_SETUP = 'SUBMIT_SETUP';
 export const COMPLETE_SETUP = 'COMPLETE_SETUP';
+export const FETCH_ENGINES = 'FETCH_ENGINES';
 
 
 // action creators
@@ -108,4 +110,11 @@ export const completeSetup = createAction(COMPLETE_SETUP, function(apiResponse) 
     MetabaseSettings.setAll({'setup_token': null});
 
     return true;
+});
+
+export const fetchEngines = createThunkAction(FETCH_ENGINES, function() {
+    return async function(dispatch, getState) {
+        let formInput = await MetabaseApi.db_form_input();
+        return formInput.engines;
+    };
 });

@@ -96,15 +96,11 @@ export default class DatabaseStep extends Component {
         let { engine } = this.state,
         engineNames = _.keys(engines).sort();
 
-        let options = [(<option value="">Select the type of Database you use</option>)];
-        engineNames.forEach(function(opt) {
-            options.push((<option key={opt} value={opt}>{engines[opt].name}</option>))
-        });
-
         return (
             <label className="Select Form-offset mt1">
                 <select ref="engine" defaultValue={engine} onChange={this.chooseDatabaseEngine.bind(this)}>
-                    {options}
+                    <option value="">Select the type of Database you use</option>
+                    {engineNames.map(opt => <option key={opt} value={opt}>{engines[opt]['driver-name']}</option>)}
                 </select>
             </label>
         );

@@ -8,7 +8,7 @@ import UserStep from './UserStep.jsx';
 import DatabaseStep from './DatabaseStep.jsx';
 import PreferencesStep from './PreferencesStep.jsx';
 
-import { setActiveStep } from '../actions';
+import { setActiveStep, fetchEngines } from '../actions';
 
 const WELCOME_STEP_NUMBER = 0;
 const USER_STEP_NUMBER = 1;
@@ -19,6 +19,10 @@ const PREFERENCES_STEP_NUMBER = 3;
 export default class Setup extends Component {
     static propTypes = {
         dispatch: PropTypes.func.isRequired
+    }
+
+    componentDidMount() {
+        this.props.dispatch(fetchEngines());
     }
 
     completeWelcome() {
