@@ -418,3 +418,21 @@ export function hasLatitudeAndLongitudeColumns(columnDefs) {
     }
     return hasLatitude && hasLongitude;
 }
+
+export function foreignKeyCountsByOriginTable(fks) {
+    if (fks === null || !Array.isArray(fks)) {
+        return null;
+    }
+
+    return fks.map(function(fk) {
+        return ('origin' in fk) ? fk.origin.table.id : null;
+    }).reduce(function(prev, curr, idx, array) {
+        if (curr in prev) {
+            prev[curr]++;
+        } else {
+            prev[curr] = 1;
+        }
+
+        return prev;
+    }, {});
+}
