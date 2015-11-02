@@ -23,10 +23,10 @@
 
 ;; ACTIVE-TABLES
 (expect
-    #{{:name "CATEGORIES", :schema nil}
-      {:name "VENUES",     :schema nil}
-      {:name "CHECKINS",   :schema nil}
-      {:name "USERS",      :schema nil}}
+    #{{:name "CATEGORIES", :schema "PUBLIC"}
+      {:name "VENUES",     :schema "PUBLIC"}
+      {:name "CHECKINS",   :schema "PUBLIC"}
+      {:name "USERS",      :schema "PUBLIC"}}
     ((:active-tables h2) (db)))
 
 ;; ACTIVE-COLUMN-NAMES->TYPE

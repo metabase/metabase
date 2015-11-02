@@ -1,17 +1,18 @@
 (ns metabase.driver.generic-sql.query-processor
   "The Query Processor is responsible for translating the Metabase Query Language into korma SQL forms."
   (:require [clojure.core.match :refer [match]]
-            [clojure.tools.logging :as log]
+            [clojure.java.jdbc :as jdbc]
             [clojure.string :as s]
+            [clojure.tools.logging :as log]
             (korma [core :as k]
                    [db :as kdb])
             (korma.sql [fns :as kfns]
                        [utils :as utils])
             [metabase.config :as config]
             [metabase.driver :as driver]
-            [metabase.driver.query-processor :as qp]
             (metabase.driver.generic-sql [native :as native]
                                          [util :refer :all])
+            [metabase.driver.query-processor :as qp]
             [metabase.util :as u])
   (:import java.sql.Timestamp
            java.util.Date
@@ -217,7 +218,7 @@
 
 (defn process-structured
   "Convert QUERY into a korma `select` form, execute it, and annotate the results."
-  [{{:keys [source-table] :as query} :query, driver :driver, database :database, :as outer-query}]
+  [{{:keys [source-table] :as query} :query, {:keys [set-timezone-sql], :as driver} :driver, database :database, :as outer-query}]
   (binding [*query* outer-query]
     (try
       (let [entity      (korma-entity database source-table)
@@ -236,11 +237,18 @@
         (kdb/with-db (:db entity)
           (if (and (seq timezone)
                    (contains? (:features driver) :set-timezone))
-            (kdb/transaction
-             (try (k/exec-raw [(:set-timezone-sql driver) [timezone]])
-                  (catch Throwable e
-                    (log/error (u/format-color 'red "Failed to set timezone: %s" (.getMessage e)))))
-             (k/exec korma-query))
+            (do (println "\n\n\n\n\n"
+                         [set-timezone-sql
+                          [timezone]]
+                         "\n\n\n\n\n")
+                (try (kdb/transaction (k/exec-raw ["SET LOCAL TIME ZONE ?;" ["US/Pacific"]])
+                                      (println :ok)
+                                      (jdbc/execute! (kdb/*current-conn*) ["SET LOCAL TIME ZONE ?;" ["US/Pacific"]])
+                                      (k/exec korma-query))
+                     (catch Throwable e
+                       (log/error (u/format-color 'red "Failed to set timezone: \n%s"
+                                    (with-out-str (jdbc/print-sql-exception-chain e))))
+                       (k/exec korma-query))))
             (k/exec korma-query))))
 
       (catch java.sql.SQLException e

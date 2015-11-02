@@ -33,16 +33,15 @@
 
 (defn- active-tables [excluded-schemas database]
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md database]
-    (->> (for [{table :table_name, schema :table_schem} (jdbc/result-set-seq (.getTables md nil nil nil (into-array String ["TABLE", "VIEW"])))]
-           (when-not (contains? excluded-schemas schema)
-             {:name table, :schema schema}))
-         (filter identity)
-         set)))
+    (set (for [table (filter #(not (contains? excluded-schemas (:table_schem %)))
+                             (jdbc/result-set-seq (.getTables md nil nil nil (into-array String ["TABLE", "VIEW"]))))]
+           {:name   (:table_name table)
+            :schema (:table_schem table)}))))
 
 (defn- active-column-names->type [column->base-type table]
   {:pre [(map? column->base-type)]}
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db table)]
-    (into {} (for [{:keys [column_name type_name]} (jdbc/result-set-seq (.getColumns md nil nil (:name table) nil))]
+    (into {} (for [{:keys [column_name type_name]} (jdbc/result-set-seq (.getColumns md nil (:schema table) (:name table) nil))]
                {column_name (or (column->base-type (keyword type_name))
                                 :UnknownField)}))))
 

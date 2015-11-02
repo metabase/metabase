@@ -197,6 +197,6 @@
     :unix-timestamp->timestamp         unix-timestamp->timestamp
     :date                              date
     :date-interval                     date-interval
-    :set-timezone-sql                  "SET LOCAL timezone TO ?;"
+    :set-timezone-sql                  "SET LOCAL TIME ZONE ?;"
     :driver-specific-sync-field!       driver-specific-sync-field!
     :humanize-connection-error-message humanize-connection-error-message}))

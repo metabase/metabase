@@ -72,10 +72,10 @@
         (when-not (= (s/lower-case table) "_metabase_metadata")
           (ins Table :db_id (:id database), :active true, :schema schema, :name table))))))
 
-(defn- fetch-and-sync-database-active-tables! [database]
-  (sync-database-active-tables! (for [table (sel :many Table, :db_id (:id database) :active true)]
-                                  ;; replace default delays with ones that reuse database (and don't require a DB call)
-                                  (assoc table :db (delay database)))))
+(defn- fetch-and-sync-database-active-tables! [driver database]
+  (sync-database-active-tables! driver (for [table (sel :many Table, :db_id (:id database) :active true)]
+                                         ;; replace default delays with ones that reuse database (and don't require a DB call)
+                                         (assoc table :db (delay database)))))
 
 (defn- -sync-database! [{:keys [active-tables], :as driver} database]
   (let [active-tables      (active-tables database)
@@ -86,7 +86,7 @@
     (mark-inactive-tables! database active-tables existing-table->id)
     (create-new-tables!    database active-tables existing-table->id))
 
-  (fetch-and-sync-database-active-tables! database)
+  (fetch-and-sync-database-active-tables! driver database)
 
   ;; Ok, now if we had a _metabase_metadata table from earlier we can go ahead and sync from it
   (sync-metabase-metadata-table! driver database))
@@ -130,7 +130,7 @@
    This functionality is currently only used by the Sample Dataset. In order to use this functionality, drivers must implement optional fn `:table-rows-seq`."
   [{:keys [table-rows-seq active-tables]} database]
   (when table-rows-seq
-    (doseq [[_ table-name] (active-tables database)]
+    (doseq [{table-name :name} (active-tables database)]
       (when (= (s/lower-case table-name) "_metabase_metadata")
         (doseq [{:keys [keypath value]} (table-rows-seq database table-name)]
           (let [[_ table-name field-name k] (re-matches #"^([^.]+)\.(?:([^.]+)\.)?([^.]+)$" keypath)]
