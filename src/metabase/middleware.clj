@@ -4,7 +4,7 @@
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             (cheshire factory
-                      [generate :refer [add-encoder encode-str]])
+                      [generate :refer [add-encoder encode-str encode-nil]])
             [korma.core :as k]
             [medley.core :refer [filter-vals map-vals]]
             [metabase.api.common :refer [*current-user* *current-user-id*]]
@@ -146,6 +146,9 @@
 
 ;; Encode BSON IDs like strings
 (add-encoder org.bson.types.ObjectId encode-str)
+
+;; Encode BSON undefined like nil
+(add-encoder org.bson.BsonUndefined encode-nil)
 
 ;; serialize sql dates (i.e., QueryProcessor results) like YYYY-MM-DD instead of as a full-blown timestamp
 (add-encoder java.sql.Date (fn [^java.sql.Date date ^com.fasterxml.jackson.core.JsonGenerator json-generator]
