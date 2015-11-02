@@ -143,7 +143,8 @@ function equivalentArgument(field, table) {
     if (isCategory(field)) {
         if (field.id in table.field_values && table.field_values[field.id].length > 0) {
             let validValues = table.field_values[field.id];
-            validValues.sort();
+            // this sort function works for both numbers and strings:
+            validValues.sort((a, b) => a === b ? 0 : (a < b ? -1 : 1));
             return {
                 type: "select",
                 values: validValues
