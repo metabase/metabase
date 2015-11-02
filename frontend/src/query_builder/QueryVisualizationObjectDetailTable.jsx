@@ -4,6 +4,7 @@ import ExpandableString from './ExpandableString.jsx';
 import Icon from 'metabase/components/Icon.jsx';
 import IconBorder from 'metabase/components/IconBorder.jsx';
 import LoadingSpinner from 'metabase/components/LoadingSpinner.jsx';
+import { foreignKeyCountsByOriginTable } from 'metabase/lib/schema_metadata';
 import { singularize, inflect } from 'inflection';
 
 import cx from "classnames";
@@ -102,8 +103,12 @@ export default class QueryVisualizationObjectDetailTable extends Component {
             return (<p className="my4 text-centered">No relationships found.</p>);
         }
 
+        const fkCountsByTable = foreignKeyCountsByOriginTable(this.props.tableForeignKeys);
+
         var component = this;
-        var relationships = this.props.tableForeignKeys.map(function(fk) {
+        var relationships = this.props.tableForeignKeys.sort(function(a, b) {
+            return a.origin.table.display_name.localeCompare(b.origin.table.display_name);
+        }).map(function(fk) {
 
             var fkCount = (
                 <LoadingSpinner width="25px" height="25px" />
@@ -128,11 +133,12 @@ export default class QueryVisualizationObjectDetailTable extends Component {
             );
 
             var relationName = inflect(fk.origin.table.display_name, fkCountValue);
+            const via = (fkCountsByTable[fk.origin.table.id] > 1) ? (<span className="text-grey-3 text-normal"> via {fk.origin.display_name}</span>) : null;
 
             var info = (
                 <div>
                     <h2>{fkCount}</h2>
-                    <h5 className="block">{relationName}</h5>
+                    <h5 className="block">{relationName}{via}</h5>
                  </div>
             );
             var fkReference;

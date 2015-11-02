@@ -161,11 +161,11 @@
                                          :placeholder  "*******"}]
     :column->base-type                 column->base-type
     :sql-string-length-fn              :CHAR_LENGTH
+    :excluded-schemas                  #{"INFORMATION_SCHEMA"}
     :connection-details->spec          connection-details->spec
     :unix-timestamp->timestamp         unix-timestamp->timestamp
     :date                              date
     :date-interval                     date-interval
-    :excluded-schemas                  #{"INFORMATION_SCHEMA"}
     ;; If this fails you need to load the timezone definitions from your system into MySQL;
     ;; run the command `mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql`
     ;; See https://dev.mysql.com/doc/refman/5.7/en/time-zone-support.html for details

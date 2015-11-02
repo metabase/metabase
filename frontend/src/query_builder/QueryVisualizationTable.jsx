@@ -11,6 +11,13 @@ import { formatValue, capitalize } from "metabase/lib/formatting";
 import _ from "underscore";
 import cx from "classnames";
 
+const QUICK_FILTERS = [
+    { name: "<", value: "<" },
+    { name: "=", value: "=" },
+    { name: "≠", value: "!=" },
+    { name: ">", value: ">" }
+];
+
 export default class QueryVisualizationTable extends Component {
     constructor(props, context) {
         super(props, context);
@@ -185,8 +192,8 @@ export default class QueryVisualizationTable extends Component {
                     >
                         <div className="bg-white bordered shadowed p1">
                             <ul className="h1 flex align-center">
-                                { ["<", "=", "≠", ">"].map(operator =>
-                                    <li key={operator} className="p2 text-brand-hover" onClick={this.popoverFilterClicked.bind(this, rowIndex, cellDataKey, operator)}>{operator}</li>
+                                { QUICK_FILTERS.map(({ name, value }) =>
+                                    <li key={value} className="p2 text-brand-hover" onClick={this.popoverFilterClicked.bind(this, rowIndex, cellDataKey, value)}>{name}</li>
                                 )}
                             </ul>
                         </div>

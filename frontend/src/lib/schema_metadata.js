@@ -143,7 +143,8 @@ function equivalentArgument(field, table) {
     if (isCategory(field)) {
         if (field.id in table.field_values && table.field_values[field.id].length > 0) {
             let validValues = table.field_values[field.id];
-            validValues.sort();
+            // this sort function works for both numbers and strings:
+            validValues.sort((a, b) => a === b ? 0 : (a < b ? -1 : 1));
             return {
                 type: "select",
                 values: validValues
@@ -417,4 +418,22 @@ export function hasLatitudeAndLongitudeColumns(columnDefs) {
         }
     }
     return hasLatitude && hasLongitude;
+}
+
+export function foreignKeyCountsByOriginTable(fks) {
+    if (fks === null || !Array.isArray(fks)) {
+        return null;
+    }
+
+    return fks.map(function(fk) {
+        return ('origin' in fk) ? fk.origin.table.id : null;
+    }).reduce(function(prev, curr, idx, array) {
+        if (curr in prev) {
+            prev[curr]++;
+        } else {
+            prev[curr] = 1;
+        }
+
+        return prev;
+    }, {});
 }

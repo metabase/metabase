@@ -109,8 +109,11 @@ export default class DataSelector extends Component {
                     name: table.display_name,
                     database: database,
                     table: table
-                }))
-            }))
+                })).sort(function(a, b) {
+                    return a.name.localeCompare(b.name);
+                })
+            }));
+
         } else {
             sections = [{
                 items: this.props.databases.map(database => ({

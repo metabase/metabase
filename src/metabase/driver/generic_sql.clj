@@ -170,10 +170,11 @@
       Return a korma form appropriate for converting a Unix timestamp integer field or value to an proper SQL `Timestamp`.
       SECONDS-OR-MILLISECONDS refers to the resolution of the int in question and with be either `:seconds` or `:milliseconds`.
 
-   *  `(timezone->set-timezone-sql [timezone])` *(OPTIONAL)*
+   *  `set-timezone-sql` *(OPTIONAL)*
 
-      Return a string that represents the SQL statement that should be used to set the timezone
-      for the current transaction.
+      This should be a prepared JDBC SQL statement string to be used to set the timezone for the current transaction.
+
+          \"SET @@session.timezone = ?;\"
 
    *  `(date [this ^Keyword unit field-or-value])`
 

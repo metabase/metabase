@@ -237,7 +237,9 @@
           (if (and (seq timezone)
                    (contains? (:features driver) :set-timezone))
             (kdb/transaction
-             (k/exec-raw ((:timezone->set-timezone-sql driver) timezone))
+             (try (k/exec-raw [(:set-timezone-sql driver) [timezone]])
+                  (catch Throwable e
+                    (log/error (u/format-color 'red "Failed to set timezone: %s" (.getMessage e)))))
              (k/exec korma-query))
             (k/exec korma-query))))
 
