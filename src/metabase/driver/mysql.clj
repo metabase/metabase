@@ -69,12 +69,6 @@
                 :milliseconds "FROM_UNIXTIME(%s / 1000)")
                 [field-or-value]))
 
-(defn- timezone->set-timezone-sql [timezone]
-  ;; If this fails you need to load the timezone definitions from your system into MySQL;
-  ;; run the command `mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql`
-  ;; See https://dev.mysql.com/doc/refman/5.7/en/time-zone-support.html for details
-  (format "SET @@session.time_zone = '%s';" timezone))
-
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting back to a date.
 ;; See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an explanation of format specifiers
 (defn- trunc-with-format [format-str]
@@ -170,7 +164,10 @@
        :unix-timestamp->timestamp         unix-timestamp->timestamp
        :date                              date
        :date-interval                     date-interval
-       :timezone->set-timezone-sql        timezone->set-timezone-sql
+       ;; If this fails you need to load the timezone definitions from your system into MySQL;
+       ;; run the command `mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql`
+       ;; See https://dev.mysql.com/doc/refman/5.7/en/time-zone-support.html for details
+       :set-timezone-sql                  "SET @@session.time_zone = ?;"
        :humanize-connection-error-message humanize-connection-error-message}
       sql-driver
       (update :features conj :set-timezone)))

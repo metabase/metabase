@@ -100,10 +100,6 @@
                 :milliseconds "TO_TIMESTAMP(%s / 1000)")
               [field-or-value]))
 
-(defn- timezone->set-timezone-sql [timezone]
-  (format "SET LOCAL timezone TO '%s';" timezone))
-
-
 (defn- driver-specific-sync-field! [{:keys [table], :as field}]
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db @table)]
     (let [[{:keys [type_name]}] (->> (.getColumns md nil nil (:name @table) (:name field))
@@ -200,7 +196,7 @@
        :unix-timestamp->timestamp         unix-timestamp->timestamp
        :date                              date
        :date-interval                     date-interval
-       :timezone->set-timezone-sql        timezone->set-timezone-sql
+       :set-timezone-sql                  "SET LOCAL timezone TO ?;"
        :driver-specific-sync-field!       driver-specific-sync-field!
        :humanize-connection-error-message humanize-connection-error-message}
       sql-driver
