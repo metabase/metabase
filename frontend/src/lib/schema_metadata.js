@@ -46,7 +46,8 @@ const TYPES = {
     },
 
     [SUMMABLE]: {
-        include: [NUMBER]
+        include: [NUMBER],
+        exclude: [ENTITY, LOCATION, DATE_TIME]
     },
     [CATEGORY]: {
         base: ["BooleanField"],
@@ -67,7 +68,15 @@ export function isFieldType(type, field) {
             return true;
         }
     }
-    // recursively check to see if it's another field th:
+    // recursively check to see if it's NOT another field type:
+    if (def.exclude) {
+        for (let excludeType of def.exclude) {
+            if (isFieldType(excludeType, field)) {
+                return false;
+            }
+        }
+    }
+    // recursively check to see if it's another field type:
     if (def.include) {
         for (let includeType of def.include) {
             if (isFieldType(includeType, field)) {
