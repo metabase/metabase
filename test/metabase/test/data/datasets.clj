@@ -34,6 +34,8 @@
     "Given keyword TABLE-NAME and FIELD-NAME, return the corresponding `Field` ID.")
   (fks-supported? [this]
     "Does this driver support Foreign Keys?")
+  (default-schema [this]
+    "Return the default schema name that tables for this DB should be expected to have.")
   (format-name [this table-or-field-name]
     "Transform a lowercase string `Table` or `Field` name in a way appropriate for this dataset
      (e.g., `h2` would want to upcase these names; `mongo` would want to use `\"_id\"` in place of `\"id\"`.")
@@ -75,6 +77,7 @@
         table-or-field-name))
 
   (fks-supported?       [_] false)
+  (default-schema       [_] nil)
   (id-field-type        [_] :IntegerField)
   (sum-field-type       [_] :IntegerField)
   (timestamp-field-type [_] :DateField))
@@ -133,6 +136,7 @@
                                (Table (table-name->id this (s/upper-case (name table-name)))))
           :field-name->id    (fn [this table-name field-name]
                                (memoized-field-name->id (:id (db this)) (s/upper-case (name table-name)) (s/upper-case (name field-name))))
+          :default-schema    (constantly "PUBLIC")
           :format-name       (fn [_ table-or-field-name]
                                (clojure.string/upper-case table-or-field-name))
           :id-field-type     (constantly :BigIntegerField)
@@ -148,6 +152,7 @@
   (merge GenericSQLIDatasetMixin
          {:dataset-loader (fn [_]
                             (postgres/dataset-loader))
+          :default-schema (constantly "public")
           :sum-field-type (constantly :IntegerField)}))
 
 
@@ -160,6 +165,7 @@
   (merge GenericSQLIDatasetMixin
          {:dataset-loader (fn [_]
                             (mysql/dataset-loader))
+          :default-schema (constantly nil)
           :sum-field-type (constantly :BigIntegerField)}))
 
 

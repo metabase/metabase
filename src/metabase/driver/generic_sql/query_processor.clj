@@ -35,9 +35,9 @@
   (formatted
     ([this]
      (formatted this false))
-    ([{:keys [table-name special-type field-name], :as field} include-as?]
+    ([{:keys [schema-name table-name special-type field-name], :as field} include-as?]
      (let [->timestamp (:unix-timestamp->timestamp (:driver *query*))
-           field       (cond-> (keyword (str table-name \. field-name))
+           field       (cond-> (keyword (str (when schema-name (str schema-name \.)) table-name \. field-name))
                          (= special-type :timestamp_seconds)      (->timestamp :seconds)
                          (= special-type :timestamp_milliseconds) (->timestamp :milliseconds))]
        (if include-as? [field (keyword field-name)]
@@ -182,14 +182,15 @@
 
 (defn- apply-page [korma-query {{:keys [items page]} :page}]
   (-> korma-query
-      (k/limit items)
-      (k/offset (* items (dec page)))))
+      ((-> *query* :driver :qp-clause->handler :limit) {:limit items}) ; lookup apply-limit from the driver and use that rather than calling k/limit directly
+      (k/offset (* items (dec page)))))                                ; so drivers that override it (like SQL Server) don't need to override this function as well
 
 (defn- log-korma-form
   [korma-form]
   (when (config/config-bool :mb-db-logging)
     (when-not qp/*disable-qp-logging*
       (log/debug
+       (u/format-color 'green "\nKORMA FORM: 😋\n%s" (u/pprint-to-str (dissoc korma-form :db :ent :from :options :aliases :results :type :alias)))
        (u/format-color 'blue "\nSQL: 😈\n%s\n" (-> (k/as-sql korma-form)
                                                   (s/replace #"\sFROM" "\nFROM")           ; add newlines to the SQL to make it more readable
                                                   (s/replace #"\sLEFT JOIN" "\nLEFT JOIN")

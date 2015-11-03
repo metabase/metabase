@@ -109,10 +109,13 @@
 
 (resolve-private-fns metabase.driver.mongo field->base-type table->column-names)
 
-;; ### active-table-names
+;; ### active-tables
 (expect-when-testing-mongo
-    #{"checkins" "categories" "users" "venues"}
-  ((:active-table-names mongo) @mongo-test-db))
+    #{{:name "checkins"}
+      {:name "categories"}
+      {:name "users"}
+      {:name "venues"}}
+    ((:active-tables mongo) @mongo-test-db))
 
 ;; ### table->column-names
 (expect-when-testing-mongo

@@ -76,9 +76,11 @@
   ([{db-delay :db, :as table}]
    {:pre [(delay? db-delay)]}
    (korma-entity @db-delay table))
-  ([db {table-name :name}]
+  ([db {schema :schema, table-name :name}]
    {:pre [(map? db)]}
-   {:table table-name
+   {:table (if (seq schema)
+             (str schema \. table-name)
+             table-name)
     :pk    :id
     :db    (db->korma-db db)}))
 

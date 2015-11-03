@@ -166,38 +166,37 @@
     message))
 
 (defdriver postgres
-  (-> {:driver-name                       "PostgreSQL"
-       :details-fields                    [{:name         "host"
-                                            :display-name "Host"
-                                            :default "localhost"}
-                                           {:name         "port"
-                                            :display-name "Port"
-                                            :type         :integer
-                                            :default      5432}
-                                           {:name         "dbname"
-                                            :display-name "Database name"
-                                            :placeholder  "birds_of_the_word"
-                                            :required     true}
-                                           {:name         "user"
-                                            :display-name "Database username"
-                                            :placeholder  "What username do you use to login to the database?"
-                                            :required     true}
-                                           {:name         "password"
-                                            :display-name "Database password"
-                                            :type         :password
-                                            :placeholder  "*******"}
-                                           {:name         "ssl"
-                                            :display-name "Use a secure connection (SSL)?"
-                                            :type         :boolean
-                                            :default      false}]
-       :sql-string-length-fn              :CHAR_LENGTH
-       :column->base-type                 column->base-type
-       :connection-details->spec          connection-details->spec
-       :unix-timestamp->timestamp         unix-timestamp->timestamp
-       :date                              date
-       :date-interval                     date-interval
-       :set-timezone-sql                  "UPDATE pg_settings SET setting = ? WHERE name ILIKE 'timezone';"
-       :driver-specific-sync-field!       driver-specific-sync-field!
-       :humanize-connection-error-message humanize-connection-error-message}
-      sql-driver
-      (update :features conj :set-timezone)))
+  (sql-driver
+   {:driver-name                       "PostgreSQL"
+    :details-fields                    [{:name         "host"
+                                         :display-name "Host"
+                                         :default "localhost"}
+                                        {:name         "port"
+                                         :display-name "Port"
+                                         :type         :integer
+                                         :default      5432}
+                                        {:name         "dbname"
+                                         :display-name "Database name"
+                                         :placeholder  "birds_of_the_word"
+                                         :required     true}
+                                        {:name         "user"
+                                         :display-name "Database username"
+                                         :placeholder  "What username do you use to login to the database?"
+                                         :required     true}
+                                        {:name         "password"
+                                         :display-name "Database password"
+                                         :type         :password
+                                         :placeholder  "*******"}
+                                        {:name         "ssl"
+                                         :display-name "Use a secure connection (SSL)?"
+                                         :type         :boolean
+                                         :default      false}]
+    :sql-string-length-fn              :CHAR_LENGTH
+    :column->base-type                 column->base-type
+    :connection-details->spec          connection-details->spec
+    :unix-timestamp->timestamp         unix-timestamp->timestamp
+    :date                              date
+    :date-interval                     date-interval
+    :set-timezone-sql                  "UPDATE pg_settings SET setting = ? WHERE name ILIKE 'timezone';"
+    :driver-specific-sync-field!       driver-specific-sync-field!
+    :humanize-connection-error-message humanize-connection-error-message}))

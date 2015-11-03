@@ -76,10 +76,10 @@
   (with-mongo-connection [_ database]
     (do-sync-fn)))
 
-(defn- active-table-names [database]
+(defn- active-tables [database]
   (with-mongo-connection [^com.mongodb.DB conn database]
-    (-> (mdb/get-collection-names conn)
-        (set/difference #{"system.indexes"}))))
+    (set (for [collection (set/difference (mdb/get-collection-names conn) #{"system.indexes"})]
+           {:name collection}))))
 
 (defn- active-column-names->type [table]
   (with-mongo-connection [_ @(:db table)]
@@ -147,7 +147,7 @@
                                         :default      false}]
    :features                          #{:nested-fields}
    :can-connect?                      can-connect?
-   :active-table-names                active-table-names
+   :active-tables                     active-tables
    :field-values-lazy-seq             field-values-lazy-seq
    :active-column-names->type         active-column-names->type
    :table-pks                         (constantly #{"_id"})

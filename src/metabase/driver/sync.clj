@@ -38,46 +38,66 @@
 
 ;; ## sync-database! and sync-table!
 
-(defn- -sync-database! [{:keys [active-table-names], :as driver} database]
-  (let [start-time (System/currentTimeMillis)
+(defn- validate-active-tables [results]
+  (when-not (and (set? results)
+                 (every? map? results)
+                 (every? :name results))
+    (throw (Exception. "Invalid results returned by active-tables. Results should be a set of maps like {:name \"table_name\", :schema \"schema_name_or_nil\"}."))))
+
+(defn- mark-inactive-tables!
+  "Mark any `Tables` that are no longer active as such. These are ones that exist in the DB but didn't come back from `active-tables`."
+  [database active-tables existing-table->id]
+  (doseq [[[{table :name, schema :schema, :as table}] table-id] existing-table->id]
+    (when-not (contains? active-tables table)
+      (upd Table table-id :active false)
+      (log/info (u/format-color 'cyan "Marked table %s.%s%s as inactive." (:name database) (if schema (str schema \.) "") table))
+
+      ;; We need to mark driver Table's Fields as inactive so we don't expose them in UI such as FK selector (etc.)
+      (k/update Field
+                (k/where {:table_id table-id})
+                (k/set-fields {:active false})))))
+
+(defn- create-new-tables!
+  "Create new `Tables` as needed. These are ones that came back from `active-tables` but don't already exist in the DB."
+  [database active-tables existing-table->id]
+  (let [existing-tables (set (keys existing-table->id))
+        new-tables      (set/difference active-tables existing-tables)]
+    (when (seq new-tables)
+      (log/debug (u/format-color 'blue "Found new tables: %s" (for [{table :name, schema :schema} new-tables]
+                                                                (if schema
+                                                                  (str schema \. table)
+                                                                  table))))
+      (doseq [{table :name, schema :schema} new-tables]
+        ;; If it's a _metabase_metadata table then we'll handle later once everything else has been synced
+        (when-not (= (s/lower-case table) "_metabase_metadata")
+          (ins Table :db_id (:id database), :active true, :schema schema, :name table))))))
+
+(defn- fetch-and-sync-database-active-tables! [driver database]
+  (sync-database-active-tables! driver (for [table (sel :many Table, :db_id (:id database) :active true)]
+                                         ;; replace default delays with ones that reuse database (and don't require a DB call)
+                                         (assoc table :db (delay database)))))
+
+(defn- -sync-database! [{:keys [active-tables], :as driver} database]
+  (let [active-tables      (active-tables database)
+        existing-table->id (into {} (for [{:keys [name schema id]} (sel :many :fields [Table :name :schema :id], :db_id (:id database), :active true)]
+                                      {{:name name, :schema schema} id}))]
+    (validate-active-tables active-tables)
+
+    (mark-inactive-tables! database active-tables existing-table->id)
+    (create-new-tables!    database active-tables existing-table->id))
+
+  (fetch-and-sync-database-active-tables! driver database)
+
+  ;; Ok, now if we had a _metabase_metadata table from earlier we can go ahead and sync from it
+  (sync-metabase-metadata-table! driver database))
+
+(defn- -sync-database-with-tracking! [driver database]
+  (let [start-time    (System/currentTimeMillis)
         tracking-hash (str (java.util.UUID/randomUUID))]
     (log/info (u/format-color 'magenta "Syncing %s database '%s'..." (name (:engine database)) (:name database)))
     (events/publish-event :database-sync-begin {:database_id (:id database) :custom_id tracking-hash})
 
-    (let [active-table-names (active-table-names database)
-          table-name->id     (sel :many :field->id [Table :name] :db_id (:id database) :active true)]
-      (assert (set? active-table-names) "active-table-names should return a set.")
-      (assert (every? string? active-table-names) "active-table-names should return the names of Tables as *strings*.")
-
-      ;; First, let's mark any Tables that are no longer active as such.
-      ;; These are ones that exist in table-name->id but not in active-table-names.
-      (doseq [[table-name table-id] table-name->id]
-        (when-not (contains? active-table-names table-name)
-          (upd Table table-id :active false)
-          (log/info (u/format-color 'cyan "Marked table %s.%s as inactive." (:name database) table-name))
-
-          ;; We need to mark driver Table's Fields as inactive so we don't expose them in UI such as FK selector (etc.)
-          (k/update Field
-                    (k/where {:table_id table-id})
-                    (k/set-fields {:active false}))))
-
-      ;; Next, we'll create new Tables (ones that came back in active-table-names but *not* in table-name->id)
-      (let [existing-table-names (set (keys table-name->id))
-            new-table-names      (set/difference active-table-names existing-table-names)]
-        (when (seq new-table-names)
-          (log/debug (u/format-color 'blue "Found new tables: %s" new-table-names))
-          (doseq [new-table-name new-table-names]
-            ;; If it's a _metabase_metadata table then we'll handle later once everything else has been synced
-            (when-not (= (s/lower-case new-table-name) "_metabase_metadata")
-              (ins Table :db_id (:id database), :active true, :name new-table-name))))))
-
-    ;; Now sync the active tables
-    (->> (sel :many Table :db_id (:id database) :active true)
-         (map #(assoc % :db (delay database))) ; replace default delays with ones that reuse database (and don't require a DB call)
-         (sync-database-active-tables! driver))
-
-    ;; Ok, now if we had a _metabase_metadata table from earlier we can go ahead and sync from it
-    (sync-metabase-metadata-table! driver database)
+    (-sync-database! driver database)
 
     (events/publish-event :database-sync-end {:database_id (:id database) :custom_id tracking-hash :running_time (- (System/currentTimeMillis) start-time)})
     (log/info (u/format-color 'magenta "Finished syncing %s database %s. (%d ms)" (name (:engine database)) (:name database)
@@ -88,7 +108,7 @@
   [{:keys [sync-in-context], :as driver} database]
   (binding [qp/*disable-qp-logging* true
             *sel-disable-logging* true]
-    (let [f (partial -sync-database! driver database)]
+    (let [f (partial -sync-database-with-tracking! driver database)]
       (if sync-in-context
         (sync-in-context database f)
         (f)))))
@@ -108,9 +128,9 @@
    `keypath` is of the form `table-name.key` or `table-name.field-name.key`, where `key` is the name of some property of `Table` or `Field`.
 
    This functionality is currently only used by the Sample Dataset. In order to use this functionality, drivers must implement optional fn `:table-rows-seq`."
-  [{:keys [table-rows-seq active-table-names]} database]
+  [{:keys [table-rows-seq active-tables]} database]
   (when table-rows-seq
-    (doseq [table-name (active-table-names database)]
+    (doseq [{table-name :name} (active-tables database)]
       (when (= (s/lower-case table-name) "_metabase_metadata")
         (doseq [{:keys [keypath value]} (table-rows-seq database table-name)]
           (let [[_ table-name field-name k] (re-matches #"^([^.]+)\.(?:([^.]+)\.)?([^.]+)$" keypath)]
