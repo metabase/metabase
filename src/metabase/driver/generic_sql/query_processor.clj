@@ -237,24 +237,18 @@
         (kdb/with-db (:db entity)
           (if (and (seq timezone)
                    (contains? (:features driver) :set-timezone))
-            (do (println "\n\n\n\n\n"
-                         [set-timezone-sql
-                          [timezone]]
-                         "\n\n\n\n\n")
-                (try (kdb/transaction (k/exec-raw ["SET LOCAL TIME ZONE ?;" ["US/Pacific"]])
-                                      (println :ok)
-                                      (jdbc/execute! (kdb/*current-conn*) ["SET LOCAL TIME ZONE ?;" ["US/Pacific"]])
-                                      (k/exec korma-query))
-                     (catch Throwable e
-                       (log/error (u/format-color 'red "Failed to set timezone: \n%s"
-                                    (with-out-str (jdbc/print-sql-exception-chain e))))
-                       (k/exec korma-query))))
+            (try (kdb/transaction (k/exec-raw [(:set-timezone-sql driver) [timezone]])
+                                  (k/exec korma-query))
+                 (catch Throwable e
+                   (log/error (u/format-color 'red "Failed to set timezone:\n%s"
+                                (with-out-str (jdbc/print-sql-exception-chain e))))
+                   (k/exec korma-query)))
             (k/exec korma-query))))
 
       (catch java.sql.SQLException e
-        (let [^String message (or (->> (.getMessage e) ; error message comes back like "Error message ... [status-code]" sometimes
+        (let [^String message (or (->> (.getMessage e)                       ; error message comes back like "Error message ... [status-code]" sometimes
                                        (re-find  #"(?s)(^.*)\s+\[[\d-]+\]$") ; status code isn't useful and makes unit tests hard to write so strip it off
-                                       second) ; (?s) = Pattern.DOTALL - tell regex `.` to match newline characters as well
+                                       second)                               ; (?s) = Pattern.DOTALL - tell regex `.` to match newline characters as well
                                   (.getMessage e))]
           (throw (Exception. message)))))))
 
