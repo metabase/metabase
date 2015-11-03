@@ -218,7 +218,7 @@
 
 (defn process-structured
   "Convert QUERY into a korma `select` form, execute it, and annotate the results."
-  [{{:keys [source-table] :as query} :query, {:keys [set-timezone-sql], :as driver} :driver, database :database, :as outer-query}]
+  [{{:keys [source-table] :as query} :query, driver :driver, database :database, :as outer-query}]
   (binding [*query* outer-query]
     (try
       (let [entity      (korma-entity database source-table)
