@@ -58,29 +58,30 @@
 ;; ## GET /api/table/:id
 (expect
     (match-$ (Table (id :venues))
-      {:description nil
-       :entity_type nil
+      {:description     nil
+       :entity_type     nil
        :visibility_type nil
-       :db          (match-$ (db)
-                      {:created_at $
-                       :engine "h2"
-                       :id $
-                       :updated_at $
-                       :name "Test Database"
-                       :is_sample false
-                       :organization_id nil
-                       :description nil})
-       :name        "VENUES"
-       :display_name "Venues"
-       :rows        100
-       :updated_at  $
-       :entity_name nil
-       :active      true
-       :pk_field    (deref $pk_field)
-       :id          (id :venues)
-       :db_id       (db-id)
-       :created_at  $})
-  ((user->client :rasta) :get 200 (format "table/%d" (id :venues))))
+       :db              (match-$ (db)
+                          {:created_at      $
+                           :engine          "h2"
+                           :id              $
+                           :updated_at      $
+                           :name            "Test Database"
+                           :is_sample       false
+                           :organization_id nil
+                           :description     nil})
+       :schema          "PUBLIC"
+       :name            "VENUES"
+       :display_name    "Venues"
+       :rows            100
+       :updated_at      $
+       :entity_name     nil
+       :active          true
+       :pk_field        (deref $pk_field)
+       :id              (id :venues)
+       :db_id           (db-id)
+       :created_at      $})
+    ((user->client :rasta) :get 200 (format "table/%d" (id :venues))))
 
 ;; ## GET /api/table/:id/fields
 (expect [(match-$ (Field (id :categories :id))

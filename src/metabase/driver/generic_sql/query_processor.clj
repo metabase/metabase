@@ -182,8 +182,8 @@
 
 (defn- apply-page [korma-query {{:keys [items page]} :page}]
   (-> korma-query
-      ((-> *query* :driver :qp-clause->handler :limit) items) ; lookup apply-limit from the driver and use that rather than calling k/limit directly
-      (k/offset (* items (dec page)))))                       ; so drivers that override it (like SQL Server) don't need to override this function as well
+      ((-> *query* :driver :qp-clause->handler :limit) {:limit items}) ; lookup apply-limit from the driver and use that rather than calling k/limit directly
+      (k/offset (* items (dec page)))))                                ; so drivers that override it (like SQL Server) don't need to override this function as well
 
 (defn- log-korma-form
   [korma-form]

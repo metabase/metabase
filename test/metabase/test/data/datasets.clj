@@ -152,7 +152,7 @@
   (merge GenericSQLIDatasetMixin
          {:dataset-loader (fn [_]
                             (postgres/dataset-loader))
-          :default-schema (constantly nil)
+          :default-schema (constantly "public")
           :sum-field-type (constantly :IntegerField)}))
 
 
@@ -165,7 +165,7 @@
   (merge GenericSQLIDatasetMixin
          {:dataset-loader (fn [_]
                             (mysql/dataset-loader))
-          :default-schema (constantly "public")
+          :default-schema (constantly nil)
           :sum-field-type (constantly :BigIntegerField)}))
 
 
