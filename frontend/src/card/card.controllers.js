@@ -254,7 +254,7 @@ CardControllers.controller('CardDetail', [
 
                 if (!coldef || !coldef.special_type) return false;
 
-                if (coldef.special_type === 'id' || (coldef.special_type === 'fk' && coldef.target)) {
+                if (coldef.table_id != null && coldef.special_type === 'id' || (coldef.special_type === 'fk' && coldef.target)) {
                     return true;
                 } else {
                     return false;
