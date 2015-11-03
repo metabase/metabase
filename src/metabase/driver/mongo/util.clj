@@ -44,13 +44,12 @@
   "Run F with a new connection (bound to `*mongo-connection*`) to DATABASE.
    Don't use this directly; use `with-mongo-connection`."
   [f database]
-  ;; The Mongo SSL detail is keyed by :use-ssl because the frontend has accidentally been saving all of the Mongo DBs with {:ssl true}
-  (let [{:keys [dbname host port user pass use-ssl]
-         :or   {port 27017, pass "", use-ssl false}} (cond
-                                                       (string? database)            {:dbname database}
-                                                       (:dbname (:details database)) (:details database) ; entire Database obj
-                                                       (:dbname database)            database            ; connection details map only
-                                                       :else                         (throw (Exception. (str "with-mongo-connection failed: bad connection details:" (:details database)))))
+  (let [{:keys [dbname host port user pass ssl]
+         :or   {port 27017, pass "", ssl false}} (cond
+                                                   (string? database)            {:dbname database}
+                                                   (:dbname (:details database)) (:details database) ; entire Database obj
+                                                   (:dbname database)            database            ; connection details map only
+                                                   :else                         (throw (Exception. (str "with-mongo-connection failed: bad connection details:" (:details database)))))
         user             (when (seq user) ; ignore empty :user and :pass strings
                            user)
         pass             (when (seq pass)
@@ -58,7 +57,7 @@
         server-address   (mg/server-address host port)
         credentials      (when user
                            (mcred/create user dbname pass))
-        connect          (partial mg/connect server-address (build-connection-options :ssl? use-ssl))
+        connect          (partial mg/connect server-address (build-connection-options :ssl? ssl))
         conn             (if credentials
                            (connect credentials)
                            (connect))
