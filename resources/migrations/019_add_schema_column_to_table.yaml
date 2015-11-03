@@ -8,4 +8,4 @@ databaseChangeLog:
             columns:
               - column:
                   name: schema
-                  type: VARCHAR
+                  type: VARCHAR(256)
