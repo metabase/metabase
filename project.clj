@@ -41,13 +41,13 @@
                                com.sun.jmx/jmxri]]
                  [medley "0.7.0"]                                     ; lightweight lib of useful functions
                  [mysql/mysql-connector-java "5.1.37"]                ; MySQL JDBC driver
-                 [net.sourceforge.jtds/jtds "1.3.1"]                  ; SQL Server driver
                  [org.liquibase/liquibase-core "3.4.1"]               ; migration management (Java lib)
                  [org.slf4j/slf4j-log4j12 "1.7.12"]
                  [org.yaml/snakeyaml "1.16"]                          ; YAML parser (required by liquibase)
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
                  [ring/ring-jetty-adapter "1.4.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
+                 [microsoft/sqljdbc4 "4.2"]
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
                  [swiss-arrows "1.0.0"]]                              ; 'Magic wand' macro -<>, etc.
   :plugins [[lein-environ "1.0.0"]                                    ; easy access to environment variables
@@ -76,6 +76,7 @@
                              [lein-environ "1.0.0"]                   ; Specify env-vars in project.clj
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'
                              [lein-instant-cheatsheet "2.1.4"]        ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
+                             [lein-localrepo "0.5.3"]
                              [michaelblume/lein-marginalia "0.9.0"]   ; generate documentation with 'lein marg'
                              [refactor-nrepl "2.0.0-SNAPSHOT"]]       ; support for advanced refactoring in Emacs/LightTable
                    :global-vars {*warn-on-reflection* true}           ; Emit warnings on all reflection calls

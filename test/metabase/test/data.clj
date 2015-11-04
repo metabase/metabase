@@ -183,9 +183,13 @@
         dbdef  (map->DatabaseDefinition (assoc dbdef :short-lived? true))]
     (try
       (binding [*sel-disable-logging* true]
+        (println "<remove-database!>")
         (remove-database! loader dbdef)
+        (println "</remove-database!>")
+        (println "<get-or-create-database!>")
         (let [db (-> (get-or-create-database! loader dbdef)
                      temp-db-add-getter-delay)]
+          (println "</get-or-create-database!>")
           (assert db)
           (assert (exists? Database :id (:id db)))
           (binding [*temp-db*             db
@@ -193,7 +197,11 @@
             (f db))))
       (finally
         (binding [*sel-disable-logging* true]
-          (remove-database! loader dbdef))))))
+          (println "<finally>")
+          (try
+            (remove-database! loader dbdef)
+            (catch Throwable _))
+          (println "</finally>"))))))
 
 
 (defmacro with-temp-db

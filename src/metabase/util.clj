@@ -279,4 +279,20 @@
       (->> (map str (.getStackTrace e))
            (filterv (partial re-find #"metabase"))))))
 
+(defmacro with-timeout
+  "Run BODY in a `future` and throw an exception if it fails to complete after TIMEOUT-MS."
+  [timeout-ms & body]
+  `(let [future# (future ~@body)
+         result# (deref future# ~timeout-ms :timeout)]
+     (when (= result# :timeout)
+       (throw (Exception. (format "Timed out after %d milliseconds." ~timeout-ms))))
+     result#))
+
+(defmacro pfor
+  "Parallel form of `for`."
+  [[binding collection] & body]
+  `(pmap (fn [~binding]
+           ~@body)
+         ~(seq collection)))
+
 (require-dox-in-this-namespace)

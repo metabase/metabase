@@ -13,7 +13,8 @@
                                 [h2 :as h2]
                                 [mongo :as mongo]
                                 [mysql :as mysql]
-                                [postgres :as postgres])
+                                [postgres :as postgres]
+                                [sqlserver :as sqlserver])
             [metabase.util :as u]))
 
 ;; # IDataset
@@ -163,14 +164,27 @@
           :sum-field-type (constantly :BigIntegerField)}))
 
 
+;;; ### SQLServer
+
+(defrecord SQLServerDriverData [dbpromise])
+
+(extend SQLServerDriverData
+  IDataset
+  (merge GenericSQLIDatasetMixin
+         {:dataset-loader (fn [_]
+                            (sqlserver/dataset-loader))
+          :sum-field-type (constantly :IntegerField)}))
+
+
 ;; # Concrete Instances
 
 (def dataset-name->dataset
   "Map of dataset keyword name -> dataset instance (i.e., an object that implements `IDataset`)."
-  {:mongo    (MongoDriverData.)
-   :h2       (H2DriverData. (promise))
-   :postgres (PostgresDriverData. (promise))
-   :mysql    (MySQLDriverData. (promise))})
+  {:mongo     (MongoDriverData.)
+   :h2        (H2DriverData.        (promise))
+   :postgres  (PostgresDriverData.  (promise))
+   :mysql     (MySQLDriverData.     (promise))
+   :sqlserver (SQLServerDriverData. (promise))})
 
 (def ^:const all-valid-dataset-names
   "Set of names of all valid datasets."

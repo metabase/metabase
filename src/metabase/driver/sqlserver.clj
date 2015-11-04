@@ -4,18 +4,19 @@
             [korma.sql.utils :as utils]
             [metabase.driver :refer [defdriver]]
             [metabase.driver.generic-sql :refer [sql-driver]])
-  (:import net.sourceforge.jtds.jdbc.Driver)) ; need to import this in order to load JDBC driver
+  ;; (:import net.sourceforge.jtds.jdbc.Driver)
+  ) ; need to import this in order to load JDBC driver
 
-(defn- connection-details->spec [details-map]
-  (assoc (kdb/mssql details-map)
-         :classname   "net.sourceforge.jtds.jdbc.Driver"
-         :subprotocol "jtds:sqlserver"))
+;; (defn- connection-details->spec [details-map]
+;;   (assoc (kdb/mssql details-map)
+;;          :classname   "net.sourceforge.jtds.jdbc.Driver"
+;;          :subprotocol "jtds:sqlserver"))
 
 (def ^:private ^:const column->base-type
   "See [this page](https://msdn.microsoft.com/en-us/library/ms187752.aspx) for details."
   {:bigint           :BigIntegerField
    :binary           :UnknownField
-   :bit              :UnknownField
+   :bit              :BooleanField     ; actually this is 1 / 0 instead of true / false ...
    :char             :CharField
    :cursor           :UnknownField
    :date             :DateField
@@ -81,7 +82,7 @@
                    :sql-string-length-fn      :LEN
                    ;; :ignored-schemas           #{"sys" "INFORMATION_SCHEMA"}
                    :column->base-type         column->base-type
-                   :connection-details->spec  connection-details->spec
+                   :connection-details->spec  kdb/mssql ; connection-details->spec
                    :date                      date
                    :date-interval             date-interval
                    :unix-timestamp->timestamp unix-timestamp->timestamp})

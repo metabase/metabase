@@ -1,16 +1,17 @@
 (ns metabase.driver.query-processor-test
   "Query processing tests that can be ran between any of the available drivers, and should give the same results."
-  (:require [clojure.walk :as walk]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.walk :as walk]
             [expectations :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.query-processor :refer :all]
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
-            [metabase.test.data :refer :all]
             (metabase.test.data [dataset-definitions :as defs]
                                 [datasets :as datasets :refer [*dataset*]]
                                 [interface :refer [create-database-definition]])
+            [metabase.test.data :refer :all]
             [metabase.test.util.q :refer [Q]]
             [metabase.util :as u]))
 
@@ -823,6 +824,14 @@
      return first-row first
      aggregate count of sightings
      filter = category_id->categories.id 8))
+
+
+(defn x []
+  (try (Q dataset tupac-sightings use sqlserver
+          return rows of sightings
+          limit 10)
+       (catch java.sql.SQLException e
+         (jdbc/print-sql-exception-chain e))))
 
 
 ;; THE 10 MOST RECENT TUPAC SIGHTINGS (!)

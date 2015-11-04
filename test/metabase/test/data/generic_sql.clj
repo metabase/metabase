@@ -2,7 +2,8 @@
   "Common functionality for various Generic SQL dataset loaders."
   (:require [clojure.tools.logging :as log]
             [korma.core :as k]
-            [metabase.test.data.interface :as i])
+            [metabase.test.data.interface :as i]
+            [metabase.util :as u])
   (:import (metabase.test.data.interface DatabaseDefinition
                                          TableDefinition)))
 
@@ -32,7 +33,9 @@
     "Given a `Field.base_type`, return the SQL type we should use for that column when creating a DB."))
 
 
-(defn create-physical-table! [dataset-loader database-definition {:keys [table-name field-definitions], :as table-definition}]
+(defn create-physical-table! [dataset-loader {:keys [database-name], :as database-definition} {:keys [table-name field-definitions], :as table-definition}
+                              & {:keys [table-name-qualification]
+                                 :or   {table-name-qualification :none}}]
   ;; Drop the table if it already exists
   (i/drop-physical-table! dataset-loader database-definition table-definition)
 
@@ -41,7 +44,9 @@
     (let [quot (partial quote-name dataset-loader)
           pk-field-name (quot (pk-field-name dataset-loader))]
       (format "CREATE TABLE %s (%s, %s %s, PRIMARY KEY (%s));"
-              (quot table-name)
+              (case table-name-qualification
+                :database (format "%s.%s" (quot database-name) (quot table-name))
+                :none     (quot table-name))
               (->> field-definitions
                    (map (fn [{:keys [field-name base-type]}]
                           (format "%s %s" (quot field-name) (field-base-type->sql-type dataset-loader base-type))))
@@ -78,10 +83,16 @@
 
 (defn load-table-data! [dataset-loader database-definition table-definition]
   (let [rows              (:rows table-definition)
-        fields-for-insert (map :field-name (:field-definitions table-definition))]
-    (-> (korma-entity dataset-loader database-definition table-definition)
-        (k/insert (k/values (->> (for [row rows]
-                                   (for [v row]
-                                     (if (instance? java.util.Date v) (java.sql.Timestamp. (.getTime ^java.util.Date v))
-                                         v)))
-                                 (map (partial zipmap fields-for-insert))))))))
+        fields-for-insert (mapv :field-name (:field-definitions table-definition))
+        entity            (korma-entity dataset-loader database-definition table-definition)]
+    ;; Insert groups of 200 rows at a time
+    ;; otherwise SQL Server will be *very* snippy if we try to run queries with too many parameters in them
+    ;; We can prepare the queries in parallel, however, and save ourselves a bit of time
+    (doseq [query (u/pfor [group (partition-all 200 rows)]
+                    (-> (k/insert* entity)
+                        (k/values (mapv (partial zipmap fields-for-insert)
+                                        (for [row group]
+                                          (for [v row]
+                                            (if (instance? java.util.Date v) (java.sql.Timestamp. (.getTime ^java.util.Date v))
+                                                v)))))))]
+      (k/exec query))))
