@@ -31,23 +31,19 @@
   (with-jdbc-metadata [_ database]
     (do-sync-fn)))
 
-(defn- active-table-names [database]
+(defn- active-tables [excluded-schemas database]
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md database]
-    (->> (.getTables md nil nil nil (into-array String ["TABLE", "VIEW"]))
-         jdbc/result-set-seq
-         (map :table_name)
-         set)))
+    (set (for [table (filter #(not (contains? excluded-schemas (:table_schem %)))
+                             (jdbc/result-set-seq (.getTables md nil nil nil (into-array String ["TABLE", "VIEW"]))))]
+           {:name   (:table_name table)
+            :schema (:table_schem table)}))))
 
 (defn- active-column-names->type [column->base-type table]
   {:pre [(map? column->base-type)]}
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db table)]
-    (->> (.getColumns md nil nil (:name table) nil)
-         jdbc/result-set-seq
-         (filter #(not= (:table_schem %) "INFORMATION_SCHEMA")) ; filter out internal tables
-         (map (fn [{:keys [column_name type_name]}]
-                {column_name (or (column->base-type (keyword type_name))
-                                 :UnknownField)}))
-         (into {}))))
+    (into {} (for [{:keys [column_name type_name]} (jdbc/result-set-seq (.getColumns md nil (:schema table) (:name table) nil))]
+               {column_name (or (column->base-type (keyword type_name))
+                                :UnknownField)}))))
 
 (defn- table-pks [table]
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db table)]
@@ -188,6 +184,10 @@
 
       Return a korma form for a date relative to NOW(), e.g. on that would produce SQL like `(NOW() + INTERVAL '1 month')`.
 
+   *  `excluded-schemas` *(OPTIONAL)*
+
+      Set of string names of schemas to skip syncing tables from.
+
    * `qp-clause->handler` *(OPTIONAL)*
 
      A map of query processor clause keywords to functions of the form `(fn [korma-query query-map])` that are used apply them.
@@ -198,14 +198,15 @@
   ;; Verify the driver
   (verify-sql-driver driver)
   (merge
-   {:features                  #{:foreign-keys
-                                 :standard-deviation-aggregations
-                                 :unix-timestamp-special-type-fields}
+   {:features                  (set (cond-> [:foreign-keys
+                                             :standard-deviation-aggregations
+                                             :unix-timestamp-special-type-fields]
+                                      (:set-timezone-sql driver) (conj :set-timezone)))
     :qp-clause->handler        qp/clause->handler
     :can-connect?              (partial can-connect? (:connection-details->spec driver))
     :process-query             process-query
     :sync-in-context           sync-in-context
-    :active-table-names        active-table-names
+    :active-tables             (partial active-tables (:excluded-schemas driver))
     :active-column-names->type (partial active-column-names->type (:column->base-type driver))
     :table-pks                 table-pks
     :field-values-lazy-seq     field-values-lazy-seq

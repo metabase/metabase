@@ -5,6 +5,7 @@
             [metabase.db :as db]
             (metabase.models [card :refer [Card]]
                              [database :refer [Database]]
+                             [table :refer [Table]]
                              [setting :as setting])
             [metabase.sample-data :as sample-data]
             [metabase.util :as u]))
@@ -66,3 +67,16 @@
 (defmigration set-mongodb-databases-ssl-false
   (doseq [{:keys [id details]} (db/sel :many :fields [Database :id :details] :engine "mongo")]
     (db/upd Database id, :details (assoc details :ssl false))))
+
+
+;; Set default values for :schema in existing tables now that we've added the column
+;; That way sync won't get confused next time around
+(defmigration set-default-schemas
+  (doseq [[engine default-schema] [["postgres" "public"]
+                                   ["h2"       "PUBLIC"]]]
+    (k/update Table
+              (k/set-fields {:schema default-schema})
+              (k/where      {:schema nil
+                             :db_id  [in (k/subselect Database
+                                                      (k/fields :id)
+                                                      (k/where {:engine engine}))]}))))

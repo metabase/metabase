@@ -56,6 +56,7 @@
   (:id (db)))
 
 (defn fks-supported? []       (datasets/fks-supported? *dataset*))
+(defn default-schema []       (datasets/default-schema *dataset*))
 (defn format-name [name]      (datasets/format-name *dataset* name))
 (defn id-field-type []        (datasets/id-field-type *dataset*))
 (defn sum-field-type []       (datasets/sum-field-type *dataset*))

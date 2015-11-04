@@ -46,50 +46,52 @@
 ;; These are meant for inclusion in the expected output of the QP tests, to save us from writing the same results several times
 
 ;; #### categories
+
+(defn- col-defaults []
+  {:extra_info      {}
+   :target          nil
+   :description     nil
+   :preview_display true
+   :schema_name     (default-schema)})
+
 (defn- categories-col
   "Return column information for the `categories` column named by keyword COL."
   [col]
-  (case col
-    :id   {:extra_info {} :target nil :special_type :id, :base_type (id-field-type), :description nil,
-           :name (format-name "id") :display_name "Id" :preview_display true :table_id (id :categories), :id (id :categories :id)}
-    :name {:extra_info {} :target nil :special_type :name, :base_type :TextField, :description nil,
-           :name (format-name "name") :display_name "Name" :preview_display true :table_id (id :categories), :id (id :categories :name)}))
+  (merge
+   (col-defaults)
+   {:table_id (id :categories)
+    :id       (id :categories col)}
+   (case col
+     :id   {:special_type :id
+            :base_type    (id-field-type)
+            :name         (format-name "id")
+            :display_name "Id"}
+     :name {:special_type :name
+            :base_type    :TextField
+            :name         (format-name "name")
+            :display_name "Name"})))
 
 ;; #### users
 (defn- users-col
   "Return column information for the `users` column named by keyword COL."
   [col]
-  (case col
-    :id         {:extra_info   {}
-                 :target       nil
-                 :special_type :id
-                 :base_type    (id-field-type)
-                 :description  nil
-                 :name         (format-name "id")
-                 :display_name "Id"
-                 :preview_display true
-                 :table_id     (id :users)
-                 :id           (id :users :id)}
-    :name       {:extra_info   {}
-                 :target       nil
-                 :special_type :category
-                 :base_type    :TextField
-                 :description  nil
-                 :name         (format-name "name")
-                 :display_name "Name"
-                 :preview_display true
-                 :table_id     (id :users)
-                 :id           (id :users :name)}
-    :last_login {:extra_info   {}
-                 :target       nil
-                 :special_type :category
-                 :base_type    (timestamp-field-type)
-                 :description  nil
-                 :name         (format-name "last_login")
-                 :display_name "Last Login"
-                 :preview_display true
-                 :table_id     (id :users)
-                 :id           (id :users :last_login)}))
+  (merge
+   (col-defaults)
+   {:table_id (id :users)
+    :id       (id :users col)}
+   (case col
+     :id         {:special_type :id
+                  :base_type    (id-field-type)
+                  :name         (format-name "id")
+                  :display_name "Id"}
+     :name       {:special_type :category
+                  :base_type    :TextField
+                  :name         (format-name "name")
+                  :display_name "Name"}
+     :last_login {:special_type :category
+                  :base_type    (timestamp-field-type)
+                  :name         (format-name "last_login")
+                  :display_name "Last Login"})))
 
 ;; #### venues
 (defn- venues-columns
@@ -100,71 +102,41 @@
 (defn- venues-col
   "Return column information for the `venues` column named by keyword COL."
   [col]
-  (case col
-    :id          {:extra_info   {}
-                  :target       nil
-                  :special_type :id
-                  :base_type    (id-field-type)
-                  :description  nil
-                  :name         (format-name "id")
-                  :display_name "Id"
-                  :preview_display true
-                  :table_id     (id :venues)
-                  :id           (id :venues :id)}
-    :category_id {:extra_info   (if (fks-supported?) {:target_table_id (id :categories)}
-                                    {})
-                  :target       (if (fks-supported?) (-> (categories-col :id)
-                                                         (dissoc :target :extra_info))
-                                    nil)
-                  :special_type (if (fks-supported?) :fk
-                                    :category)
-                  :base_type    :IntegerField
-                  :description  nil
-                  :name         (format-name "category_id")
-                  :display_name "Category Id"
-                  :preview_display true
-                  :table_id     (id :venues)
-                  :id           (id :venues :category_id)}
-    :price       {:extra_info   {}
-                  :target       nil
-                  :special_type :category
-                  :base_type    :IntegerField
-                  :description  nil
-                  :name         (format-name "price")
-                  :display_name "Price"
-                  :preview_display true
-                  :table_id     (id :venues)
-                  :id           (id :venues :price)}
-    :longitude   {:extra_info   {}
-                  :target       nil
-                  :special_type :longitude,
-                  :base_type    :FloatField,
-                  :description  nil
-                  :name         (format-name "longitude")
-                  :display_name "Longitude"
-                  :preview_display true
-                  :table_id     (id :venues)
-                  :id           (id :venues :longitude)}
-    :latitude    {:extra_info   {}
-                  :target       nil
-                  :special_type :latitude
-                  :base_type    :FloatField
-                  :description  nil
-                  :name         (format-name "latitude")
-                  :display_name "Latitude"
-                  :preview_display true
-                  :table_id     (id :venues)
-                  :id           (id :venues :latitude)}
-    :name        {:extra_info   {}
-                  :target       nil
-                  :special_type :name
-                  :base_type    :TextField
-                  :description  nil
-                  :name         (format-name "name")
-                  :display_name "Name"
-                  :preview_display true
-                  :table_id     (id :venues)
-                  :id           (id :venues :name)}))
+  (merge
+   (col-defaults)
+   {:table_id (id :venues)
+    :id       (id :venues col)}
+   (case col
+     :id          {:special_type :id
+                   :base_type    (id-field-type)
+                   :name         (format-name "id")
+                   :display_name "Id"}
+     :category_id {:extra_info   (if (fks-supported?) {:target_table_id (id :categories)}
+                                     {})
+                   :target       (if (fks-supported?) (-> (categories-col :id)
+                                                          (dissoc :target :extra_info :schema_name))
+                                     nil)
+                   :special_type (if (fks-supported?) :fk
+                                     :category)
+                   :base_type    :IntegerField
+                   :name         (format-name "category_id")
+                   :display_name "Category Id"}
+     :price       {:special_type :category
+                   :base_type    :IntegerField
+                   :name         (format-name "price")
+                   :display_name "Price"}
+     :longitude   {:special_type :longitude,
+                   :base_type    :FloatField,
+                   :name         (format-name "longitude")
+                   :display_name "Longitude"}
+     :latitude    {:special_type :latitude
+                   :base_type    :FloatField
+                   :name         (format-name "latitude")
+                   :display_name "Latitude"}
+     :name        {:special_type :name
+                   :base_type    :TextField
+                   :name         (format-name "name")
+                   :display_name "Name"})))
 
 (defn- venues-cols
   "`cols` information for all the columns in `venues`."
@@ -175,45 +147,35 @@
 (defn- checkins-col
   "Return column information for the `checkins` column named by keyword COL."
   [col]
-  (case col
-    :id       {:extra_info   {}
-               :target       nil
-               :special_type :id
-               :base_type    (id-field-type)
-               :description  nil
-               :name         (format-name "id")
-               :display_name "Id"
-               :preview_display true
-               :table_id     (id :checkins)
-               :id           (id :checkins :id)}
-    :venue_id {:extra_info   (if (fks-supported?) {:target_table_id (id :venues)}
-                               {})
-               :target       (if (fks-supported?) (-> (venues-col :id)
-                                                      (dissoc :target :extra_info))
-                                 nil)
-               :special_type (when (fks-supported?)
-                               :fk)
-               :base_type    :IntegerField
-               :description  nil
-               :name         (format-name "venue_id")
-               :display_name "Venue Id"
-               :preview_display true
-               :table_id     (id :checkins)
-               :id           (id :checkins :venue_id)}
-    :user_id  {:extra_info   (if (fks-supported?) {:target_table_id (id :users)}
-                                 {})
-               :target       (if (fks-supported?) (-> (users-col :id)
-                                                      (dissoc :target :extra_info))
-                                 nil)
-               :special_type (if (fks-supported?) :fk
-                                 :category)
-               :base_type    :IntegerField
-               :description  nil
-               :name         (format-name "user_id")
-               :display_name "User Id"
-               :preview_display true
-               :table_id     (id :checkins)
-               :id           (id :checkins :user_id)}))
+  (merge
+   (col-defaults)
+   {:table_id (id :checkins)
+    :id       (id :checkins col)}
+   (case col
+     :id       {:special_type :id
+                :base_type    (id-field-type)
+                :name         (format-name "id")
+                :display_name "Id"}
+     :venue_id {:extra_info   (if (fks-supported?) {:target_table_id (id :venues)}
+                                  {})
+                :target       (if (fks-supported?) (-> (venues-col :id)
+                                                       (dissoc :target :extra_info :schema_name))
+                                  nil)
+                :special_type (when (fks-supported?)
+                                :fk)
+                :base_type    :IntegerField
+                :name         (format-name "venue_id")
+                :display_name "Venue Id"}
+     :user_id  {:extra_info   (if (fks-supported?) {:target_table_id (id :users)}
+                                  {})
+                :target       (if (fks-supported?) (-> (users-col :id)
+                                                       (dissoc :target :extra_info :schema_name))
+                                  nil)
+                :special_type (if (fks-supported?) :fk
+                                  :category)
+                :base_type    :IntegerField
+                :name         (format-name "user_id")
+                :display_name "User Id"})))
 
 
 ;;; #### aggregate columns
@@ -236,8 +198,7 @@
               :extra_info   {}
               :target       nil}))
   ([ag-col-kw {:keys [base_type special_type]}]
-   {:pre [base_type
-          special_type]}
+   {:pre [base_type special_type]}
    {:base_type    base_type
     :special_type special_type
     :id           nil

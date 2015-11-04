@@ -228,9 +228,9 @@
   `(try
      (~f ~@params)
      (catch Throwable e#
-       (log/error (color/red ~(format "Caught exception in %s:" f)
+       (log/error (color/red ~(format "Caught exception in %s: " f)
                              (or (.getMessage e#) e#)
-                             (with-out-str (.printStackTrace e#)))))))
+                             #_(with-out-str (.printStackTrace e#)))))))
 
 (defn indecies-satisfying
   "Return a set of indencies in COLL that satisfy PRED.

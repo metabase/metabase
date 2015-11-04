@@ -44,7 +44,7 @@
 
 (def ^:private ^:const required-fns
   #{:can-connect?
-    :active-table-names
+    :active-tables
     :active-column-names->type
     :table-pks
     :field-values-lazy-seq
@@ -171,9 +171,11 @@
    Check whether we can connect to a `Database` with DETAILS-MAP and perform a simple query. For example, a SQL database might
    try running a query like `SELECT 1;`. This function should return `true` or `false`.
 
-*  `(active-table-names [database])`
+*  `(active-tables [database])`
 
-   Return a set of string names of tables, collections, or equivalent that currently exist in DATABASE.
+   Return a set of maps containing information about the active tables/views, collections, or equivalent that currently exist in DATABASE.
+   Each map should contain the key `:name`, which is the string name of the table. For databases that have a concept of schemas,
+   this map should also include the string name of the table's `:schema`.
 
 *  `(active-column-names->type [table])`
 
