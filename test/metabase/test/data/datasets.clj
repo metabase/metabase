@@ -6,6 +6,7 @@
             [environ.core :refer [env]]
             [expectations :refer :all]
             [metabase.db :refer :all]
+            [metabase.driver :as driver]
             [metabase.driver.mongo.test-data :as mongo-data]
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
@@ -179,6 +180,7 @@
   (merge GenericSQLIDatasetMixin
          {:dataset-loader (fn [_]
                             (sqlserver/dataset-loader))
+          :default-schema (constantly "dbo")
           :sum-field-type (constantly :IntegerField)}))
 
 
@@ -236,15 +238,21 @@
 
 (def ^:dynamic *dataset*
   "The dataset we're currently testing against, bound by `with-dataset`.
-   Defaults to `:h2`."
+   Defaults to `(dataset-name->dataset :h2)`."
   (dataset-name->dataset (if (contains? test-dataset-names :h2) :h2
                              (first test-dataset-names))))
+
+(def ^:dynamic *engine*
+  "Keyword name of the engine that we're currently testing against. Defaults to `:h2`."
+  :h2)
 
 (defmacro with-dataset
   "Bind `*dataset*` to the dataset with DATASET-NAME and execute BODY."
   [dataset-name & body]
-  `(binding [*dataset* (dataset-name->dataset ~dataset-name)]
-     ~@body))
+  `(let [engine# ~dataset-name]
+     (binding [*engine*  engine#
+               *dataset* (dataset-name->dataset engine#)]
+       ~@body)))
 
 (defmacro when-testing-dataset
   "Execute BODY only if we're currently testing against DATASET-NAME."
@@ -300,6 +308,6 @@
   [& pairs]
   `(cond ~@(mapcat (fn [[dataset then]]
                      (assert (contains? all-valid-dataset-names dataset))
-                     [`(= *dataset* (dataset-name->dataset ~dataset))
+                     [`(= *engine* ~dataset)
                       then])
                    (partition 2 pairs))))

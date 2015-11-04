@@ -131,15 +131,7 @@
               [field-or-value]))
 
 (defn- date-interval [unit amount]
-  (utils/generated (format (case unit
-                             :minute  "(NOW() + INTERVAL '%d minute')"
-                             :hour    "(NOW() + INTERVAL '%d hour')"
-                             :day     "(NOW() + INTERVAL '%d day')"
-                             :week    "(NOW() + INTERVAL '%d week')"
-                             :month   "(NOW() + INTERVAL '%d month')"
-                             :quarter "(NOW() + INTERVAL '%d quarter')"
-                             :year    "(NOW() + INTERVAL '%d year')")
-                           amount)))
+  (utils/generated (format "(NOW() + INTERVAL '%d %s')" amount (name unit))))
 
 (defn- humanize-connection-error-message [message]
   (condp re-matches message
@@ -191,7 +183,7 @@
                                          :display-name "Use a secure connection (SSL)?"
                                          :type         :boolean
                                          :default      false}]
-    :sql-string-length-fn              :CHAR_LENGTH
+    :string-length-fn                  :CHAR_LENGTH
     :column->base-type                 column->base-type
     :connection-details->spec          connection-details->spec
     :unix-timestamp->timestamp         unix-timestamp->timestamp

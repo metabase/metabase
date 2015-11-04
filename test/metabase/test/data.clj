@@ -77,17 +77,13 @@
      (or (metabase-instance database-definition engine)
          (do
            ;; Create the database
-           (create-physical-db! dataset-loader database-definition)
-
-           ;; Load data
-           (doseq [^TableDefinition table-definition (:table-definitions database-definition)]
-             (load-table-data! dataset-loader database-definition table-definition))
+           (create-db! dataset-loader database-definition)
 
            ;; Add DB object to Metabase DB
            (let [db (ins Database
                       :name    database-name
                       :engine  (name engine)
-                      :details (database->connection-details dataset-loader database-definition))]
+                      :details (database->connection-details dataset-loader :db database-definition))]
 
              ;; Sync the database
              (driver/sync-database! db)
@@ -95,13 +91,16 @@
              ;; Add extra metadata like Field field-type, base-type, etc.
              (doseq [^TableDefinition table-definition (:table-definitions database-definition)]
                (let [table-name (:table-name table-definition)
-                     table      (delay (let [table (metabase-instance table-definition db)]
-                                         (assert table)
-                                         table))]
+                     table      (delay (or  (metabase-instance table-definition db)
+                                            (throw (Exception. (format "Table '%s' not loaded from definiton:\n%s\nFound:\n%s"
+                                                                       table-name
+                                                                       (u/pprint-to-str (dissoc table-definition :rows))
+                                                                       (u/pprint-to-str (sel :many :fields [Table :schema :name], :db_id (:id db))))))))]
                  (doseq [{:keys [field-name field-type special-type], :as field-definition} (:field-definitions table-definition)]
-                   (let [field (delay (let [field (metabase-instance field-definition @table)]
-                                        (assert field)
-                                        field))]
+                   (let [field (delay (or (metabase-instance field-definition @table)
+                                          (throw (Exception. (format "Field '%s' not loaded from definition:\n"
+                                                                     field-name
+                                                                     (u/pprint-to-str field-definition))))))]
                      (when field-type
                        (log/debug (format "SET FIELD TYPE %s.%s -> %s" table-name field-name field-type))
                        (upd Field (:id @field) :field_type (name field-type)))
@@ -121,7 +120,7 @@
    (cascade-delete Database :id (:id (metabase-instance database-definition (engine dataset-loader))))
 
    ;; now delete the DBMS database
-   (drop-physical-db! dataset-loader database-definition)))
+   (destroy-db! dataset-loader database-definition)))
 
 
 ;; ## Temporary Dataset Macros
@@ -184,13 +183,9 @@
         dbdef  (map->DatabaseDefinition (assoc dbdef :short-lived? true))]
     (try
       (binding [*sel-disable-logging* true]
-        (println "<remove-database!>")
-        (remove-database! loader dbdef)
-        (println "</remove-database!>")
-        (println "<get-or-create-database!>")
+        #_(remove-database! loader dbdef)
         (let [db (-> (get-or-create-database! loader dbdef)
                      temp-db-add-getter-delay)]
-          (println "</get-or-create-database!>")
           (assert db)
           (assert (exists? Database :id (:id db)))
           (binding [*temp-db*             db
@@ -198,11 +193,7 @@
             (f db))))
       (finally
         (binding [*sel-disable-logging* true]
-          (println "<finally>")
-          (try
-            (remove-database! loader dbdef)
-            (catch Throwable _))
-          (println "</finally>"))))))
+          (remove-database! loader dbdef))))))
 
 
 (defmacro with-temp-db

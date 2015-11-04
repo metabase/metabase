@@ -314,6 +314,7 @@
 
      metabase.driver.<engine>/<engine>"
   [engine]
+  {:pre [engine]}
   (let [nmspc (symbol (format "metabase.driver.%s" (name engine)))]
     (require nmspc)
     @(ns-resolve nmspc (symbol (name engine)))))
@@ -336,7 +337,7 @@
 
 (def ^:private ^:const can-connect-timeout-ms
   "Consider `can-connect?`/`can-connect-with-details?` to have failed after this many milliseconds."
-  1000)
+  5000)
 
 (defn can-connect?
   "Check whether we can connect to DATABASE and perform a basic query (such as `SELECT 1`)."

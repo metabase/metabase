@@ -43,7 +43,8 @@
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db table)]
     (into {} (for [{:keys [column_name type_name]} (jdbc/result-set-seq (.getColumns md nil (:schema table) (:name table) nil))]
                {column_name (or (column->base-type (keyword type_name))
-                                :UnknownField)}))))
+                                (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :UnknownField." type_name))
+                                    :UnknownField))}))))
 
 (defn- table-pks [table]
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db table)]
@@ -92,9 +93,9 @@
                  :dest-column-name (:pkcolumn_name result)}))
          set)))
 
-(defn- field-avg-length [sql-string-length-fn field]
+(defn- field-avg-length [string-length-fn field]
   (or (some-> (korma-entity @(:table field))
-              (k/select (k/aggregate (avg (k/sqlfn* sql-string-length-fn
+              (k/select (k/aggregate (avg (k/sqlfn* string-length-fn
                                                     (utils/func "CAST(%s AS CHAR)"
                                                                 [(keyword (:name field))])))
                                      :len))
@@ -106,11 +107,11 @@
 (defn- field-percent-urls [field]
   (or (let [korma-table (korma-entity @(:table field))]
         (when-let [total-non-null-count (:count (first (k/select korma-table
-                                                                 (k/aggregate (count :*) :count)
+                                                                 (k/aggregate (count (k/raw "*")) :count)
                                                                  (k/where {(keyword (:name field)) [not= nil]}))))]
           (when (> total-non-null-count 0)
             (when-let [url-count (:count (first (k/select korma-table
-                                                          (k/aggregate (count :*) :count)
+                                                          (k/aggregate (count (k/raw "*")) :count)
                                                           (k/where {(keyword (:name field)) [like "http%://_%.__%"]}))))]
               (float (/ url-count total-non-null-count))))))
       0.0))
@@ -122,7 +123,7 @@
     :date
     :date-interval})
 
-(defn- verify-sql-driver [{:keys [column->base-type sql-string-length-fn], :as driver}]
+(defn- verify-sql-driver [{:keys [column->base-type string-length-fn], :as driver}]
   ;; Check the :column->base-type map
   (assert column->base-type
     "SQL drivers must define :column->base-type.")
@@ -134,11 +135,11 @@
     (assert (contains? field/base-types v)
       (format "Invalid field base-type: %s" v)))
 
-  ;; Check :sql-string-length-fn
-  (assert sql-string-length-fn
-    "SQL drivers must define :sql-string-length-fn.")
-  (assert (keyword? sql-string-length-fn)
-    ":sql-string-length-fn must be a keyword.")
+  ;; Check :string-length-fn
+  (assert string-length-fn
+    "SQL drivers must define :string-length-fn.")
+  (assert (keyword? string-length-fn)
+    ":string-length-fn must be a keyword.")
 
   ;; Check required fns
   (doseq [f required-fns]
@@ -156,9 +157,17 @@
 
       A map of native DB column types (as keywords) to the `Field` `base-types` they map to.
 
-   *  `sql-string-length-fn`
+   *  `string-length-fn`
 
       Keyword name of the SQL function that should be used to get the length of a string, e.g. `:LENGTH`.
+
+   *  `stddev-fn` *(OPTIONAL)*
+
+      Keyword name of the SQL function that should be used to get the length of a string. Defaults to `:STDDEV`.
+
+   *  `current-timestamp-fn` *(OPTIONAL)*
+
+      Keyword name of the SQL function that should be used to get the current `DATETIME` (or equivalent).  Defaults to `:NOW`.
 
    *  `(connection-details->spec [details-map])`
 
@@ -212,6 +221,13 @@
     :field-values-lazy-seq     field-values-lazy-seq
     :table-rows-seq            table-rows-seq
     :table-fks                 table-fks
-    :field-avg-length          (partial field-avg-length (:sql-string-length-fn driver))
-    :field-percent-urls        field-percent-urls}
+    :field-avg-length          (partial field-avg-length (:string-length-fn driver))
+    :field-percent-urls        field-percent-urls
+    :date-interval             (let [date-interval (:date-interval driver)]
+                                 (fn [unit amount]
+                                   ;; Add some extra param validation
+                                   {:pre [(contains? #{:second :minute :hour :day :week :month :quarter :year} unit)]}
+                                   (date-interval unit amount)))
+    :stddev-fn                 :STDDEV
+    :current-datetime-fn       :NOW}
    driver))

@@ -1,6 +1,7 @@
 (ns metabase.driver.query-processor
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific implementations."
   (:require [clojure.core.match :refer [match]]
+            [clojure.java.jdbc :as jdbc]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
@@ -43,6 +44,7 @@
     (try (qp query)
          (catch Throwable e
            {:status         :failed
+            :class          (class e)
             :error          (or (.getMessage e) (str e))
             :stacktrace     (u/filtered-stacktrace e)
             :query          (dissoc query :database :driver)

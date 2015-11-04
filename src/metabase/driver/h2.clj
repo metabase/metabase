@@ -170,15 +170,9 @@
 
 ;; TODO - maybe rename this relative-date ?
 (defn- date-interval [unit amount]
-  (utils/generated (format (case unit
-                             :minute  "DATEADD('MINUTE', %d,       NOW())"
-                             :hour    "DATEADD('HOUR',   %d,       NOW())"
-                             :day     "DATEADD('DAY',    %d,       NOW())"
-                             :week    "DATEADD('WEEK',   %d,       NOW())"
-                             :month   "DATEADD('MONTH',  %d,       NOW())"
-                             :quarter "DATEADD('MONTH',  (%d * 3), NOW())"
-                             :year    "DATEADD('YEAR',   %d,       NOW())")
-                           amount)))
+  (utils/generated (if (= unit :quarter)
+                     (format "DATEADD('MONTH', (%d * 3), NOW())" amount)
+                     (format "DATEADD('%s', %d, NOW())" (s/upper-case (name unit)) amount))))
 
 (defn- humanize-connection-error-message [message]
   (condp re-matches message
@@ -201,7 +195,7 @@
                                                     :placeholder  "file:/Users/camsaul/bird_sightings/toucans;AUTO_SERVER=TRUE"
                                                     :required     true}]
                :column->base-type                 column->base-type
-               :sql-string-length-fn              :LENGTH
+               :string-length-fn                  :LENGTH
                :connection-details->spec          connection-details->spec
                :date                              date
                :date-interval                     date-interval
