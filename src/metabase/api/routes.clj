@@ -9,6 +9,7 @@
                           [field :as field]
                           [foreignkey :as fk]
                           [notify :as notify]
+                          [pulse :as pulse]
                           [revision :as revision]
                           [session :as session]
                           [setting :as setting]
@@ -39,6 +40,7 @@
                                   {:status 200 :body {:status "ok"}}
                                   {:status 503 :body {:status "initializing" :progress ((resolve 'metabase.core/initialization-progress))}}))
   (context "/notify"       [] (+apikey notify/routes))
+  (context "/pulse"        [] (+auth pulse/routes))
   (context "/revision"     [] (+auth revision/routes))
   (context "/session"      [] session/routes)
   (context "/setting"      [] (+auth setting/routes))

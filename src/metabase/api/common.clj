@@ -340,11 +340,19 @@
   [symb value :nillable]
   (checkp-with map? symb value "value must be a dictionary."))
 
+;; TODO - this doesn't work
 (defannotation ArrayOfIntegers
   "Param must be an array of integers (this does *not* cast the param)."
   [symb value :nillable]
   (checkp-with vector? symb value "value must be an array.")
   (map (fn [v] (checkp-with integer? symb v "array value must be an integer.")) value))
+
+;; TODO - this doesn't work
+(defannotation ArrayOfMaps
+  "Param must be an array of maps (this does *not* cast the param)."
+  [symb value :nillable]
+  (checkp-with vector? symb value "value must be an array.")
+  (map (fn [v] (checkp-with map? symb v "array value must be a map.")) value))
 
 (defannotation NonEmptyString
   "Param must be a non-empty string (strings that only contain whitespace are considered empty)."

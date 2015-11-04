@@ -1,5 +1,6 @@
 (ns metabase.models.pulse-card
-  (:require [korma.core :as k]))
+  (:require [korma.core :as k]
+            [metabase.models.interface :refer :all]))
 
-(k/defentity PulseCard
-  (k/table :pulse_card))
+(defentity PulseCard
+  [(k/table :pulse_card)])
