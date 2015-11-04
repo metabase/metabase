@@ -44,7 +44,7 @@
 
 (def ^:private ^:const required-fns
   #{:can-connect?
-    :active-table-names
+    :active-tables
     :active-column-names->type
     :table-pks
     :field-values-lazy-seq
@@ -171,13 +171,11 @@
    Check whether we can connect to a `Database` with DETAILS-MAP and perform a simple query. For example, a SQL database might
    try running a query like `SELECT 1;`. This function should return `true` or `false`.
 
-*  `(active-table-names [database])`
+*  `(active-tables [database])`
 
-   Return a set of pairs of strings `[schema-name table-name]` naming the tables/views, collections, or equivalent that currently exist in DATABASE.
-   For databases that do not support a notion of schemas, use `nil` for SCHEMA-NAME.
-
-       (active-table-names db-with-schemas)    -> #{[\"public\" \"table1\"], [\"public\" \"table2\"]}
-       (active-table-names db-without-schemas) -> #{[nil \"table1\"], [nil \"table2\"]}
+   Return a set of maps containing information about the active tables/views, collections, or equivalent that currently exist in DATABASE.
+   Each map should contain the key `:name`, which is the string name of the table. For databases that have a concept of schemas,
+   this map should also include the string name of the table's `:schema`.
 
 *  `(active-column-names->type [table])`
 
@@ -415,31 +413,32 @@
   [query {:keys [executed_by]
           :as options}]
   {:pre [(integer? executed_by)]}
-  (let [query-execution {:uuid            (.toString (java.util.UUID/randomUUID))
-                         :executor_id     executed_by
-                         :json_query      query
-                         :query_id        nil
-                         :version         0
-                         :status          :starting
-                         :error           ""
-                         :started_at      (u/new-sql-timestamp)
-                         :finished_at     (u/new-sql-timestamp)
-                         :running_time    0
-                         :result_rows     0
-                         :result_file     ""
-                         :result_data     "{}"
-                         :raw_query       ""
-                         :additional_info ""}]
-    (let [query-execution (assoc query-execution :start_time_millis (System/currentTimeMillis))]
-      (try
-        (let [query-result (process-query query)]
-          (when-not (contains? query-result :status)
-            (throw (Exception. "invalid response from database driver. no :status provided")))
-          (when (= :failed (:status query-result))
-            (throw (Exception. ^String (get query-result :error "general error"))))
-          (query-complete query-execution query-result))
-        (catch Exception e
-          (query-fail query-execution (.getMessage e)))))))
+  (let [query-execution {:uuid              (.toString (java.util.UUID/randomUUID))
+                         :executor_id       executed_by
+                         :json_query        query
+                         :query_id          nil
+                         :version           0
+                         :status            :starting
+                         :error             ""
+                         :started_at        (u/new-sql-timestamp)
+                         :finished_at       (u/new-sql-timestamp)
+                         :running_time      0
+                         :result_rows       0
+                         :result_file       ""
+                         :result_data       "{}"
+                         :raw_query         ""
+                         :additional_info   ""
+                         :start_time_millis (System/currentTimeMillis)}]
+    (try
+      (let [query-result (process-query query)]
+        (when-not (contains? query-result :status)
+          (throw (Exception. "invalid response from database driver. no :status provided")))
+        (when (= :failed (:status query-result))
+          (throw (Exception. ^String (get query-result :error "general error"))))
+        (query-complete query-execution query-result))
+      (catch Exception e
+        (log/error (u/format-color 'red "Query failure: %s" (.getMessage e)))
+        (query-fail query-execution (.getMessage e))))))
 
 (defn query-fail
   "Save QueryExecution state and construct a failed query response"

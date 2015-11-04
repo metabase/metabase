@@ -7,7 +7,8 @@ import {
     NUMBER,
     BOOLEAN,
     LOCATION,
-    COORDINATE
+    COORDINATE,
+    foreignKeyCountsByOriginTable
 } from 'metabase/lib/schema_metadata';
 
 describe('schema_metadata', () => {
@@ -42,6 +43,18 @@ describe('schema_metadata', () => {
         });
         it('should know what it doesn\'t know', () => {
             expect(getFieldType({ base_type: 'DERP DERP DERP' })).toEqual(undefined)
+        });
+    });
+
+    describe('foreignKeyCountsByOriginTable', () => {
+        it('should work with null input', () => {
+            expect(foreignKeyCountsByOriginTable(null)).toEqual(null)
+        });
+        it('should require an array as input', () => {
+            expect(foreignKeyCountsByOriginTable({})).toEqual(null)
+        });
+        it('should count occurrences by origin.table.id', () => {
+            expect(foreignKeyCountsByOriginTable([{ origin: {table: {id: 123}} }, { origin: {table: {id: 123}} }, { origin: {table: {id: 123}} }, { origin: {table: {id: 456}} }])).toEqual({123: 3, 456: 1})
         });
     });
 });

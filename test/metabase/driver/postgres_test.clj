@@ -46,8 +46,8 @@
 
 ;; Check that we can load a Postgres Database with a :UUIDField
 (expect-with-dataset :postgres
-  {:cols    [{:description nil, :base_type :IntegerField, :name "id", :display_name "Id", :preview_display true, :special_type :id, :target nil, :extra_info {}}
-             {:description nil, :base_type :UUIDField, :name "user_id", :display_name "User Id", :preview_display true, :special_type :category, :target nil, :extra_info {}}],
+  {:cols    [{:description nil, :base_type :IntegerField, :schema_name "public", :name "id", :display_name "Id", :preview_display true, :special_type :id, :target nil, :extra_info {}}
+             {:description nil, :base_type :UUIDField, :schema_name "public", :name "user_id", :display_name "User Id", :preview_display true, :special_type :category, :target nil, :extra_info {}}],
    :columns ["id" "user_id"],
    :rows    [[1 #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
              [2 #uuid "4652b2e7-d940-4d55-a971-7e484566663e"]

@@ -1,7 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
 import DataReferenceQueryButton from './DataReferenceQueryButton.jsx';
-
+import { foreignKeyCountsByOriginTable } from 'metabase/lib/schema_metadata';
 import inflection from 'inflection';
 import cx from "classnames";
 
@@ -90,10 +90,16 @@ export default class DataReferenceTable extends Component {
                 });
                 pane = <ul>{fields}</ul>;
             } else if (this.state.pane === "connections") {
-                var connections = this.state.tableForeignKeys.map((fk, index) => {
+                const fkCountsByTable = foreignKeyCountsByOriginTable(this.state.tableForeignKeys);
+
+                var connections = this.state.tableForeignKeys.sort(function(a, b) {
+                    return a.origin.table.display_name.localeCompare(b.origin.table.display_name);
+                }).map((fk, index) => {
+                    const via = (fkCountsByTable[fk.origin.table.id] > 1) ? (<span className="text-grey-3 text-light h5"> via {fk.origin.display_name}</span>) : null;
+
                     return (
                         <li key={fk.id} className="p1 border-row-divider">
-                            <a className="text-brand text-brand-darken-hover no-decoration" href="#" onClick={this.props.showField.bind(null, fk.origin)}>{fk.origin.table.display_name}</a>
+                            <a className="text-brand text-brand-darken-hover no-decoration" href="#" onClick={this.props.showField.bind(null, fk.origin)}>{fk.origin.table.display_name}{via}</a>
                         </li>
                     );
                 });

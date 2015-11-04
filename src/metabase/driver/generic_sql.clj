@@ -31,24 +31,19 @@
   (with-jdbc-metadata [_ database]
     (do-sync-fn)))
 
-(defn- active-table-names [ignored-schemas database]
+(defn- active-tables [excluded-schemas database]
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md database]
-    (->> (for [{table-name :table_name, schema :table_schem} (jdbc/result-set-seq (.getTables md nil nil nil (into-array String ["TABLE", "VIEW"])))]
-           (when-not (contains? ignored-schemas schema)
-             [schema table-name]))
-         (filter identity)
-         set)))
+    (set (for [table (filter #(not (contains? excluded-schemas (:table_schem %)))
+                             (jdbc/result-set-seq (.getTables md nil nil nil (into-array String ["TABLE", "VIEW"]))))]
+           {:name   (:table_name table)
+            :schema (:table_schem table)}))))
 
 (defn- active-column-names->type [column->base-type table]
   {:pre [(map? column->base-type)]}
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db table)]
-    (->> (.getColumns md nil nil (:name table) nil)
-         jdbc/result-set-seq
-         (filter #(not= (:table_schem %) "INFORMATION_SCHEMA")) ; filter out internal tables
-         (map (fn [{:keys [column_name type_name]}]
-                {column_name (or (column->base-type (keyword type_name))
-                                 :UnknownField)}))
-         (into {}))))
+    (into {} (for [{:keys [column_name type_name]} (jdbc/result-set-seq (.getColumns md nil (:schema table) (:name table) nil))]
+               {column_name (or (column->base-type (keyword type_name))
+                                :UnknownField)}))))
 
 (defn- table-pks [table]
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db table)]
@@ -165,10 +160,6 @@
 
       Keyword name of the SQL function that should be used to get the length of a string, e.g. `:LENGTH`.
 
-   *  `ignored-schemas` *(OPTIONAL)*
-
-       A set of string names of schemas to skip syncing for DBs that support them.
-
    *  `(connection-details->spec [details-map])`
 
       Given a `Database` DETAILS-MAP, return a JDBC connection spec.
@@ -178,10 +169,11 @@
       Return a korma form appropriate for converting a Unix timestamp integer field or value to an proper SQL `Timestamp`.
       SECONDS-OR-MILLISECONDS refers to the resolution of the int in question and with be either `:seconds` or `:milliseconds`.
 
-   *  `(timezone->set-timezone-sql [timezone])` *(OPTIONAL)*
+   *  `set-timezone-sql` *(OPTIONAL)*
 
-      Return a string that represents the SQL statement that should be used to set the timezone
-      for the current transaction.
+      This should be a prepared JDBC SQL statement string to be used to set the timezone for the current transaction.
+
+          \"SET @@session.timezone = ?;\"
 
    *  `(date [this ^Keyword unit field-or-value])`
 
@@ -191,6 +183,10 @@
    *  `(date-interval [unit amount])`
 
       Return a korma form for a date relative to NOW(), e.g. on that would produce SQL like `(NOW() + INTERVAL '1 month')`.
+
+   *  `excluded-schemas` *(OPTIONAL)*
+
+      Set of string names of schemas to skip syncing tables from.
 
    * `qp-clause->handler` *(OPTIONAL)*
 
@@ -202,14 +198,15 @@
   ;; Verify the driver
   (verify-sql-driver driver)
   (merge
-   {:features                  #{:foreign-keys
-                                 :standard-deviation-aggregations
-                                 :unix-timestamp-special-type-fields}
+   {:features                  (set (cond-> [:foreign-keys
+                                             :standard-deviation-aggregations
+                                             :unix-timestamp-special-type-fields]
+                                      (:set-timezone-sql driver) (conj :set-timezone)))
     :qp-clause->handler        qp/clause->handler
     :can-connect?              (partial can-connect? (:connection-details->spec driver))
     :process-query             process-query
     :sync-in-context           sync-in-context
-    :active-table-names        (partial active-table-names (:ignored-schemas driver))
+    :active-tables             (partial active-tables (:excluded-schemas driver))
     :active-column-names->type (partial active-column-names->type (:column->base-type driver))
     :table-pks                 table-pks
     :field-values-lazy-seq     field-values-lazy-seq

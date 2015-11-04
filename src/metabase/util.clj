@@ -228,7 +228,7 @@
   `(try
      (~f ~@params)
      (catch Throwable e#
-       (log/error (color/red ~(format "Caught exception in %s:" f)
+       (log/error (color/red ~(format "Caught exception in %s: " f)
                              (or (.getMessage e#) e#)
                              #_(with-out-str (.printStackTrace e#)))))))
 

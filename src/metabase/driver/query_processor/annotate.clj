@@ -232,6 +232,7 @@
                                 :field-id           :id
                                 :field-name         :name
                                 :field-display-name :display_name
+                                :schema-name        :schema_name
                                 :special-type       :special_type
                                 :preview-display    :preview_display
                                 :table-id           :table_id})
