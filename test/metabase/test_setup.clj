@@ -60,19 +60,7 @@
                       (< (count e) (count a))             "actual is larger than expected"
                       (> (count e) (count a))             "expected is larger than actual"))))
 
-
 ;; # ------------------------------ FUNCTIONS THAT GET RUN ON TEST SUITE START / STOP ------------------------------
-
-
-(defn around-each
-  ""
-  {:expectations-options :in-context}
-  [work]
-  (work))
-
-
-;; # ------------------------------ FUNCTIONS THAT GET RUN ON TEST SUITE START / STOP ------------------------------
-
 
 (defn load-test-datasets
   "Call `load-data!` on all the datasets we're testing against."
