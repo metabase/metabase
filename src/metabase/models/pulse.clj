@@ -46,7 +46,7 @@
 
 ;; ## Helper Functions
 
-(defn update-pulse-cards
+(defn- update-pulse-cards
   "Update the `PulseCards` for a given PULSE.
    CARD-IDS should be a definitive collection of *all* IDs of cards for the pulse in the desired order.
 
@@ -80,7 +80,7 @@
       ;; 4. NOT in channels, NOT in db-channels = NO-OP
       :else nil)))
 
-(defn update-pulse-channels
+(defn- update-pulse-channels
   "Update the `PulseChannels` for a given PULSE.
    CHANNELS should be a definitive collection of *all* of the channels for the the pulse.
 
@@ -108,11 +108,11 @@
          (every? integer? cards)
          (coll? channels)
          (every? map? channels)]}
-  ;; TODO: ideally this would all be in a transaction
-  (db/upd Pulse id :name name)
-  (update-pulse-cards pulse cards)
-  (update-pulse-channels pulse channels)
-  (db/sel :one Pulse :id id))
+  (kdb/transaction
+    (db/upd Pulse id :name name)
+    (update-pulse-cards pulse cards)
+    (update-pulse-channels pulse channels)
+    (db/sel :one Pulse :id id)))
 
 (defn create-pulse
   "Create a new `Pulse` by inserting it into the database along with all associated pieces of data such as:
@@ -125,12 +125,12 @@
          (every? integer? cards)
          (coll? channels)
          (every? map? channels)]}
-  ;; TODO: ideally this would all be in a transaction
-  (let [{:keys [id] :as pulse} (db/ins Pulse
-                                 :creator_id creator-id
-                                 :name name)]
-    ;; add cards to the Pulse
-    (update-pulse-cards pulse cards)
-    ;; add channels to the Pulse
-    (update-pulse-channels pulse channels)
-    (db/sel :one Pulse :id id)))
+  (kdb/transaction
+    (let [{:keys [id] :as pulse} (db/ins Pulse
+                                   :creator_id creator-id
+                                   :name name)]
+      ;; add cards to the Pulse
+      (update-pulse-cards pulse cards)
+      ;; add channels to the Pulse
+      (update-pulse-channels pulse channels)
+      (db/sel :one Pulse :id id))))
