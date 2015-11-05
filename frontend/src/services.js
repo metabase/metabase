@@ -394,6 +394,35 @@ CoreServices.factory('Revision', ['$resource', function($resource) {
     });
 }]);
 
+CoreServices.factory('Pulse', ['$resource', '$cookies', function($resource, $cookies) {
+    return $resource('/api/pulse/:pulseId', {}, {
+        list: {
+            url: '/api/pulse',
+            method: 'GET',
+            isArray: true
+        },
+        create: {
+            url: '/api/pulse',
+            method: 'POST',
+            headers: { 'X-CSRFToken': () => $cookies.csrftoken },
+        },
+        get: {
+            method: 'GET',
+            params: { pulseId: '@pulseId' },
+        },
+        update: {
+            method: 'PUT',
+            params: { pulseId: '@id' },
+            headers: { 'X-CSRFToken': () => $cookies.csrftoken },
+        },
+        delete: {
+            method: 'DELETE',
+            params: { pulseId: '@pulseId' },
+            headers: { 'X-CSRFToken': () => $cookies.csrftoken },
+        },
+    });
+}]);
+
 CoreServices.factory('Util', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/util/', {}, {
         password_check: {
