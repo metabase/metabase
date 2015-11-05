@@ -15,7 +15,7 @@
   "Fetch all `Pulses`"
   []
   (-> (db/sel :many Pulse (order :name :ASC))
-      (hydrate :creator :cards)))
+      (hydrate :creator :cards :channels)))
 
 
 (defendpoint POST "/"
@@ -24,17 +24,16 @@
   {name     [Required NonEmptyString]
    cards    [Required ArrayOfMaps]
    channels [Required ArrayOfMaps]}
-  (clojure.pprint/pprint body)
   (let-500 [card-ids (filter identity (map :id cards))
-            pulse (pulse/create-pulse name *current-user-id* card-ids channels)]
-    (hydrate pulse :cards)))
+            pulse    (pulse/create-pulse name *current-user-id* card-ids channels)]
+    (hydrate pulse :cards :channels)))
 
 
 (defendpoint GET "/:id"
   "Fetch `Pulse` with ID."
   [id]
   (->404 (db/sel :one Pulse :id id)
-         (hydrate :creator :cards)))
+         (hydrate :creator :cards :channels)))
 
 
 (defendpoint PUT "/:id"
@@ -43,13 +42,13 @@
   {name     [Required NonEmptyString]
    cards    [Required ArrayOfMaps]
    channels [Required ArrayOfMaps]}
-  (let-404 [pulse (db/sel :one Pulse :id id)]
-    (->500
-      (pulse/update-pulse {:id       id
-                           :name     name
-                           :cards    (filter identity (into [] (map :id cards)))
-                           :channels []})
-      (hydrate :creator :cards))))
+  (check-404 (db/exists? Pulse :id id))
+  (let-500 [result (pulse/update-pulse {:id       id
+                                        :name     name
+                                        :cards    (filter identity (into [] (map :id cards)))
+                                        :channels channels})]
+    (-> (db/sel :one Pulse :id id)
+        (hydrate :creator :cards :channels))))
 
 
 (defendpoint DELETE "/:id"

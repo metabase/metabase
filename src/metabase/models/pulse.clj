@@ -1,12 +1,13 @@
 (ns metabase.models.pulse
-  (:require [korma.core :as k]
+  (:require [clojure.tools.logging :as log]
+            [korma.core :as k]
             [korma.db :as kdb]
             [metabase.db :as db]
             (metabase.models [card :refer [Card]]
                              [common :refer [perms-readwrite]]
                              [interface :refer :all]
                              [pulse-card :refer [PulseCard]]
-                             [pulse-channel :refer [PulseChannel]]
+                             [pulse-channel :refer [PulseChannel] :as pulse-channel]
                              [user :refer [User]])
             [metabase.util :as u]))
 
@@ -53,49 +54,83 @@
    *  If an existing `PulseCard` has no corresponding ID in CARD-IDs, it will be deleted.
    *  All cards will be updated with a `position` according to their place in the collection of CARD-IDS"
   {:arglists '([pulse card-ids])}
-  [{:keys [id] :as pulse} card-ids]
+  [{:keys [id]} card-ids]
   {:pre [(integer? id)
          (coll? card-ids)
          (every? integer? card-ids)]}
-  ;; IMPORTANT!  This is done in a transaction so that we can have the delete & insert be atomic
-  (kdb/transaction
-    ;; first off, just delete any cards associated with this pulse (we add them again below)
-    (k/delete PulseCard (k/where {:pulse_id id}))
-    ;; now just insert all of the cards that were given to us
-    (let [cards (map-indexed (fn [idx itm] {:pulse_id id :card_id itm :position idx}) card-ids)]
-      (k/insert PulseCard (k/values cards))))
-  pulse)
+  ;; first off, just delete any cards associated with this pulse (we add them again below)
+  (k/delete PulseCard (k/where {:pulse_id id}))
+  ;; now just insert all of the cards that were given to us
+  (let [cards (map-indexed (fn [idx itm] {:pulse_id id :card_id itm :position idx}) card-ids)]
+    (k/insert PulseCard (k/values cards))))
+
+(defn- update-pulse-channel
+  "Utility function which determines how to properly update a single pulse channel given "
+  [pulse-id new-channel existing-channel]
+  ;; NOTE that we force the :id of the channel being updated to the :id we *know* from our
+  ;;      existing list of `PulseChannels` pulled from the db to ensure we affect the right record
+  (let [channel (when new-channel (assoc new-channel :pulse_id pulse-id :id (:id existing-channel)))]
+    (cond
+      ;; 1. in channels, NOT in db-channels = CREATE
+      (and channel (not existing-channel))  (pulse-channel/create-pulse-channel channel)
+      ;; 2. NOT in channels, in db-channels = DELETE
+      (and (nil? channel) existing-channel) (db/cascade-delete PulseChannel :id (:id existing-channel))
+      ;; 3. in channels, in db-channels = UPDATE
+      (and channel existing-channel)        (pulse-channel/update-pulse-channel channel)
+      ;; 4. NOT in channels, NOT in db-channels = NO-OP
+      :else nil)))
+
+(defn update-pulse-channels
+  "Update the `PulseChannels` for a given PULSE.
+   CHANNELS should be a definitive collection of *all* of the channels for the the pulse.
+
+   * If a channel in the list has no existing `PulseChannel` object, one will be created.
+   * If an existing `PulseChannel` has no corresponding entry in CHANNELS, it will be deleted.
+   * All previously existing channels will be updated with their most recent information."
+  {:arglists '([pulse channels])}
+  [{:keys [id]} channels]
+  {:pre [(integer? id)
+         (coll? channels)
+         (every? map? channels)]}
+  (let [new-channels   (group-by #(keyword (:channel_type %)) channels)
+        old-channels   (group-by #(keyword (:channel_type %)) (db/sel :many PulseChannel :pulse_id id))
+        handle-channel #(update-pulse-channel id (first (get new-channels %)) (first (get old-channels %)))]
+    (assert (= 0 (count (get new-channels nil))) "Cannot have channels without a :channel_type attribute")
+    (dorun (map handle-channel (vec (keys pulse-channel/channel-types))))))
 
 (defn update-pulse
   "Update an existing `Pulse`"
   [{:keys [id name cards channels] :as pulse}]
-  {:pre [(string? name)
+  {:pre [(integer? id)
+         (string? name)
          (coll? cards)
          (> (count cards) 0)
          (every? integer? cards)
-         ;(coll? channels)
-         ;(every? map? channels)
-         ]}
+         (coll? channels)
+         (every? map? channels)]}
   ;; TODO: ideally this would all be in a transaction
   (db/upd Pulse id :name name)
   (update-pulse-cards pulse cards)
+  (update-pulse-channels pulse channels)
   (db/sel :one Pulse :id id))
 
 (defn create-pulse
   "Create a new `Pulse` by inserting it into the database along with all associated pieces of data such as:
-  `PulseCards`, `PulseChannels`, and `PulseChannelRecipients`.
-
-   This entire operation is atomic and happens within a transaction, so any failure will void the entire creation."
+  `PulseCards`, `PulseChannels`, and `PulseChannelRecipients`."
   [name creator-id cards channels]
   {:pre [(string? name)
          (integer? creator-id)
          (coll? cards)
          (> (count cards) 0)
          (every? integer? cards)
-         ;(coll? channels)
-         ;(every? map? channels)
-         ]}
-  (let [pulse (db/ins Pulse
-                :creator_id creator-id
-                :name name)]
-    (update-pulse-cards pulse cards)))
+         (coll? channels)
+         (every? map? channels)]}
+  ;; TODO: ideally this would all be in a transaction
+  (let [{:keys [id] :as pulse} (db/ins Pulse
+                                 :creator_id creator-id
+                                 :name name)]
+    ;; add cards to the Pulse
+    (update-pulse-cards pulse cards)
+    ;; add channels to the Pulse
+    (update-pulse-channels pulse channels)
+    (db/sel :one Pulse :id id)))

@@ -93,6 +93,17 @@
   (-> (select-keys card [:id :name :description])
       (assoc :display (name (:display card)))))
 
+(defn pulse-channel-details [channel]
+  (match-$ channel
+    {:id               $
+     :pulse_id         $
+     :channel_type     $
+     :details          $
+     :schedule_type    $
+     :schedule_details $
+     :created_at       $
+     :updated_at       $}))
+
 (defn pulse-details [pulse]
   (match-$ pulse
     {:id           $
@@ -102,8 +113,8 @@
      :updated_at   $
      :creator_id   $
      :creator      (user-details @(:creator pulse))
-     :cards        [(map pulse-card-details @(:cards pulse))]
-     :channels     []}))
+     :cards        (mapv pulse-card-details @(:cards pulse))
+     :channels     (mapv pulse-channel-details @(:channels pulse))}))
 
 (defn pulse-response [{:keys [created_at updated_at] :as pulse}]
   (-> pulse
@@ -124,9 +135,9 @@
   ((user->client :rasta) :post 400 "pulse" {:name  "abc"
                                             :cards "foobar"}))
 
-;(expect {:errors {:cards "Invalid value 'abc' for 'cards': array value must be a map."}}
-;  ((user->client :rasta) :post 400 "pulse" {:name  "abc"
-;                                            :cards ["abc"]}))
+(expect {:errors {:cards "Invalid value 'abc' for 'cards': array value must be a map."}}
+  ((user->client :rasta) :post 400 "pulse" {:name  "abc"
+                                            :cards ["abc"]}))
 
 (expect {:errors {:channels "field is a required param."}}
   ((user->client :rasta) :post 400 "pulse" {:name "abc"
@@ -134,13 +145,13 @@
 
 (expect {:errors {:channels "Invalid value 'foobar' for 'channels': value must be an array."}}
   ((user->client :rasta) :post 400 "pulse" {:name    "abc"
-                                            :cards   [1 2 3]
+                                            :cards   [{:id 100} {:id 200}]
                                             :channels "foobar"}))
 
-;(expect {:errors {:channels "Invalid value 'abc' for 'channels': array value must be a map."}}
-;  ((user->client :rasta) :post 400 "pulse" {:name     "abc"
-;                                            :cards    [{:id 100} {:id 200}]
-;                                            :channels ["abc"]}))
+(expect {:errors {:channels "Invalid value 'abc' for 'channels': array value must be a map."}}
+  ((user->client :rasta) :post 400 "pulse" {:name     "abc"
+                                            :cards    [{:id 100} {:id 200}]
+                                            :channels ["abc"]}))
 
 (expect-let [card1 (new-card)
              card2 (new-card)]

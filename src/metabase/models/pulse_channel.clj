@@ -2,7 +2,7 @@
   (:require [clojure.set :as set]
             [korma.core :as k]
             [metabase.api.common :refer [check]]
-            [metabase.db :refer :all]
+            [metabase.db :as db]
             (metabase.models [pulse-channel-recipient :refer [PulseChannelRecipient]]
                              [interface :refer :all]
                              [user :refer [User]])
@@ -15,36 +15,36 @@
   "Map which contains the definitions for each type of pulse channel we allow.  Each key is a channel type with a map
    which contains any other relevant information for defining the channel.  E.g.
 
-   {:email {:name \"Email\"}
-    :slack {:name \"Slack\"}}"
-  {:email {}
-   :slack {}})
+   {:email {:name \"Email\", :recipients? true}
+    :slack {:name \"Slack\", :recipients? false}}"
+  {:email {:recipients? true}
+   :slack {:recipients? false}})
 
-(defn pulse-channel?
-  "Predicate function which returns `true` if the given channel is a valid option as a pulse channel type, `false` otherwise."
+(defn channel-type?
+  "Predicate function which returns `true` if the given argument is a valid value as a channel-type, `false` otherwise."
+  [channel-type]
+  (contains? (set (keys channel-types)) (keyword channel-type)))
+
+(def schedule-types
+  "Map which contains the definitions for each type of pulse schedule type we allow.  Each key is a schedule-type with
+   a map which contains any other relevant information related to the defined schedule-type.  E.g.
+
+   {:hourly {:name \"Hourly\"}
+    :dailye {:name \"Daily\"}}"
+  {:hourly {}
+   :daily  {}
+   :weekly {}})
+
+(defn schedule-type?
+  "Predicate function which returns `true` if the given argument is a valid value as a schedule-type, `false` otherwise."
+  [schedule-type]
+  (contains? (set (keys schedule-types)) (keyword schedule-type)))
+
+(defn supports-recipients?
+  "Predicate function which returns `true` if the given channel type supports a list of recipients, `false` otherwise."
   [channel]
-  (contains? (set (keys channel-types)) (keyword channel)))
+  (boolean (:recipients? (get channel-types channel))))
 
-(def modes
-  {:active   {:id 1
-              :name "Active"}
-   :disabled {:id 2
-              :name "Disabled"}})
-
-(def mode-kws
-  (set (keys modes)))
-
-(defn mode->id [mode]
-  {:pre [(contains? mode-kws mode)]}
-  (:id (modes mode)))
-
-(defn mode->name [mode]
-  {:pre [(contains? mode-kws mode)]}
-  (:name (modes mode)))
-
-(def modes-input
-  [{:id (mode->id :active),   :name (mode->name :active)}
-   {:id (mode->id :disabled), :name (mode->name :disabled)}])
 
 (def days-of-week
   "Simple `vector` of the days in the week used for reference and lookups.
@@ -87,22 +87,22 @@
 (defentity PulseChannel
   [(k/table :pulse_channel)
    (hydration-keys pulse_channel)
-   (types :schedule_details :json)
+   (types :details :json, :schedule_details :json)
    timestamped]
 
   (post-select [_ {:keys [id creator_id] :as pulse-channel}]
     (map->PulseChannelInstance
       (u/assoc* pulse-channel
-                :recipients   (delay (sel :many User
+                :recipients   (delay (db/sel :many User
                                           (k/where {:id [in (k/subselect PulseChannelRecipient (k/fields :user_id) (k/where {:pulse_channel_id id}))]}))))))
 
   (pre-cascade-delete [_ {:keys [id]}]
-    (cascade-delete PulseChannelRecipient :pulse_channel_id id)))
+    (db/cascade-delete PulseChannelRecipient :pulse_channel_id id)))
 
 (extend-ICanReadWrite PulseChannelEntity :read :always, :write :superuser)
 
 
-;; ## Related Functions
+;; ## Helper Functions
 
 (defn update-recipients
   "Update the `PulseChannelRecipients` for PULSE.
@@ -115,7 +115,7 @@
   {:pre [(integer? id)
          (coll? user-ids)
          (every? integer? user-ids)]}
-  (let [recipients-old (set (sel :many :field [PulseChannelRecipient :user_id] :pulse_channel_id id))
+  (let [recipients-old (set (db/sel :many :field [PulseChannelRecipient :user_id] :pulse_channel_id id))
         recipients-new (set user-ids)
         recipients+    (set/difference recipients-new recipients-old)
         recipients-    (set/difference recipients-old recipients-new)]
@@ -128,3 +128,37 @@
       (k/delete PulseChannelRecipient
               (k/where {:pulse_channel_id id
                       :user_id [in recipients-]})))))
+
+(defn update-pulse-channel
+  "Updates an existing `PulseChannel` along with all related data associated with the channel such as `PulseChannelRecipients`."
+  [{:keys [id channel_type details recipients schedule_details schedule_type]
+    :or   {details          {}
+           recipients       []
+           schedule_details {}}}]
+  {:pre [(integer? id)
+         (channel-type? channel_type)
+         (schedule-type? schedule_type)]}
+  (db/upd PulseChannel id
+    :details          details
+    :schedule_type    schedule_type
+    :schedule_details schedule_details)
+  (when (and (supports-recipients? channel_type) (seq recipients))
+    "do recipients"))
+
+(defn create-pulse-channel
+  "Create a new `PulseChannel` along with all related data associated with the channel such as `PulseChannelRecipients`."
+  [{:keys [channel_type details pulse_id recipients schedule_details schedule_type]
+    :or   {details          {}
+           recipients       []
+           schedule_details {}}}]
+  {:pre [(channel-type? channel_type)
+         (integer? pulse_id)
+         (schedule-type? schedule_type)]}
+  (let [{:keys [id]} (db/ins PulseChannel
+                       :pulse_id         pulse_id
+                       :channel_type     channel_type
+                       :details          details
+                       :schedule_type    schedule_type
+                       :schedule_details schedule_details)]
+    (when (and (supports-recipients? channel_type) (seq recipients))
+      "do recipients")))
