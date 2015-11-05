@@ -105,7 +105,7 @@
 ;; ## Helper Functions
 
 (defn update-recipients
-  "Update the `PulseChannelRecipients` for PULSE.
+  "Update the `PulseChannelRecipients` for PULSE-CHANNEL.
    USER-IDS should be a definitive collection of *all* IDs of users who should receive the pulse.
 
    *  If an ID in USER-IDS has no corresponding existing `PulseChannelRecipients` object, one will be created.
@@ -120,14 +120,10 @@
         recipients+    (set/difference recipients-new recipients-old)
         recipients-    (set/difference recipients-old recipients-new)]
     (when (seq recipients+)
-      (let [vs (map #(assoc {:pulse_channel_id id} :user_id %)
-                    recipients+)]
-        (k/insert PulseChannelRecipient
-                (k/values vs))))
+      (let [vs (map #(assoc {:pulse_channel_id id} :user_id %) recipients+)]
+        (k/insert PulseChannelRecipient (k/values vs))))
     (when (seq recipients-)
-      (k/delete PulseChannelRecipient
-              (k/where {:pulse_channel_id id
-                      :user_id [in recipients-]})))))
+      (k/delete PulseChannelRecipient (k/where {:pulse_channel_id id :user_id [in recipients-]})))))
 
 (defn update-pulse-channel
   "Updates an existing `PulseChannel` along with all related data associated with the channel such as `PulseChannelRecipients`."
@@ -154,7 +150,8 @@
   {:pre [(channel-type? channel_type)
          (integer? pulse_id)
          (schedule-type? schedule_type)]}
-  (let [{:keys [id]} (db/ins PulseChannel
+  (let [
+        {:keys [id]} (db/ins PulseChannel
                        :pulse_id         pulse_id
                        :channel_type     channel_type
                        :details          details

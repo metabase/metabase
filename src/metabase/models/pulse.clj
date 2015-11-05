@@ -5,6 +5,7 @@
             [metabase.db :as db]
             (metabase.models [card :refer [Card]]
                              [common :refer [perms-readwrite]]
+                             [hydrate :refer :all]
                              [interface :refer :all]
                              [pulse-card :refer [PulseCard]]
                              [pulse-channel :refer [PulseChannel] :as pulse-channel]
@@ -65,7 +66,7 @@
     (k/insert PulseCard (k/values cards))))
 
 (defn- update-pulse-channel
-  "Utility function which determines how to properly update a single pulse channel given "
+  "Utility function which determines how to properly update a single pulse channel."
   [pulse-id new-channel existing-channel]
   ;; NOTE that we force the :id of the channel being updated to the :id we *know* from our
   ;;      existing list of `PulseChannels` pulled from the db to ensure we affect the right record
@@ -98,8 +99,23 @@
     (assert (= 0 (count (get new-channels nil))) "Cannot have channels without a :channel_type attribute")
     (dorun (map handle-channel (vec (keys pulse-channel/channel-types))))))
 
+(defn retrieve-pulse
+  "Fetch a single `Pulse` by its ID value."
+  [id]
+  {:pre [(integer? id)]}
+  (-> (db/sel :one Pulse :id id)
+      (hydrate :creator :cards :channels)))
+
+(defn retrieve-pulses
+  "Fetch all `Pulses`."
+  []
+  (-> (db/sel :many Pulse (k/order :name :ASC))
+      (hydrate :creator :cards :channels)))
+
 (defn update-pulse
-  "Update an existing `Pulse`"
+  "Update an existing `Pulse`, including all associated data such as: `PulseCards`, `PulseChannels`, and `PulseChannelRecipients`.
+
+   Returns the updated `Pulse` or throws an Exception."
   [{:keys [id name cards channels] :as pulse}]
   {:pre [(integer? id)
          (string? name)
@@ -112,11 +128,13 @@
     (db/upd Pulse id :name name)
     (update-pulse-cards pulse cards)
     (update-pulse-channels pulse channels)
-    (db/sel :one Pulse :id id)))
+    (retrieve-pulse id)))
 
 (defn create-pulse
   "Create a new `Pulse` by inserting it into the database along with all associated pieces of data such as:
-  `PulseCards`, `PulseChannels`, and `PulseChannelRecipients`."
+  `PulseCards`, `PulseChannels`, and `PulseChannelRecipients`.
+
+   Returns the newly created `Pulse` or throws an Exception."
   [name creator-id cards channels]
   {:pre [(string? name)
          (integer? creator-id)
@@ -133,4 +151,4 @@
       (update-pulse-cards pulse cards)
       ;; add channels to the Pulse
       (update-pulse-channels pulse channels)
-      (db/sel :one Pulse :id id))))
+      (retrieve-pulse id))))
