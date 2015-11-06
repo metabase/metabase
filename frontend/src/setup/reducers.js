@@ -6,8 +6,7 @@ import {
     SET_DATABASE_DETAILS,
     SET_ALLOW_TRACKING,
     SUBMIT_SETUP,
-    COMPLETE_SETUP,
-    FETCH_ENGINES
+    COMPLETE_SETUP
 } from './actions';
 
 
@@ -36,7 +35,3 @@ export const setupError = handleActions({
 export const setupComplete = handleActions({
     [COMPLETE_SETUP]: { next: (state, { payload }) => true }
 }, false);
-
-export const engines = handleActions({
-    [FETCH_ENGINES]: { next: (state, { payload }) => payload }
-}, {});

@@ -42,17 +42,6 @@
   (sample-data/add-sample-dataset!)
   (sel :one Database :is_sample true))
 
-(defn form-input
-  "`GET /api/database/form_input`
-   Values of options for the create/edit `Database` UI.
-
-   This is defined *without* using `defendpoint` because we don't want it to be included in `routes`, which would make
-   it subject to the `+auth` requirements we use for those endpoints."
-  [_]
-  {:status 200
-   :body   {:timezones metabase.models.common/timezones
-            :engines   @driver/available-drivers}})
-
 ;; Stub function that will eventually validate a connection string
 (defendpoint POST "/validate"
   "Validate that we can connect to a `Database`."
