@@ -130,7 +130,8 @@
          (every? map? channels)]}
   (kdb/transaction
     (db/upd Pulse id :name name)
-    (update-pulse-cards pulse cards)
+    (when (not= cards (db/sel :many :field [PulseCard :card_id] :pulse_id id (k/order :position :asc)))
+      (update-pulse-cards pulse cards))
     (update-pulse-channels pulse channels)
     (retrieve-pulse id)))
 
