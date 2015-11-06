@@ -10,7 +10,7 @@
     [:td {:style td-style} (first row)]
     [:td {:style (str td-style " font-weight: bolder;")} (second row)]
     [:td {:style td-style}
-      [:div {:style (str "background-color: rgb(135, 93, 175); height: 40px; width: " (float (* 100 (/ (second row) max-value))) "%")} "&nbsp;"]]])
+      [:div {:style (str "background-color: rgb(135, 93, 175); height: 20px; width: " (float (* 100 (/ (second row) max-value))) "%")} "&nbsp;"]]])
 
 (defn bar-chart
   [data]

@@ -1,12 +1,9 @@
 import React, { Component, PropTypes } from "react";
 
-import PulseModal from "./PulseModal.jsx";
-
-import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
-
 import _ from "underscore";
 
 function formatSchedule(channels) {
+    if (!channels) { return "nyi" };
     let types = {};
     for (let c of channels) {
         types[c.type] = types[c.type] || [];
@@ -41,13 +38,12 @@ export default class PulseListItem extends Component {
 
     render() {
         let { pulse } = this.props;
-
         return (
             <div className="bordered rounded mb3 px4 py3">
                 <div className="flex mb2">
                     <div>
                         <h2 className="mb1">{pulse.name}</h2>
-                        <span>Pulse by <span className="text-bold">{pulse.creator}</span></span>
+                        <span>Pulse by <span className="text-bold">{pulse.creator && pulse.creator.common_name}</span></span>
                     </div>
                     <div className="flex-align-right">
                         { pulse.subscribed ?
@@ -55,23 +51,13 @@ export default class PulseListItem extends Component {
                         :
                             <button className="Button">Get this pulse</button>
                         }
-                        <ModalWithTrigger
-                            ref="editPulseModal"
-                            triggerClasses="Button ml1"
-                            triggerElement="Edit"
-                        >
-                            <PulseModal
-                                pulse={pulse}
-                                onClose={() => this.refs.editPulseModal.close()}
-                                onSave={this.props.onSave}
-                            />
-                        </ModalWithTrigger>
+                        <a href={"/pulse/" + pulse.id} className="Button ml1">Edit</a>
                     </div>
                 </div>
                 <ol className="mb2">
                     { pulse.cards.map(card =>
                         <li className="Button mr1">
-                            {card}
+                            {card.name}
                         </li>
                     )}
                 </ol>

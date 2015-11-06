@@ -2,7 +2,9 @@ import { createStore, applyMiddleware, combineReducers, compose } from 'redux';
 import promiseMiddleware from 'redux-promise';
 import thunkMidleware from "redux-thunk";
 
-import PulseApp from './containers/PulseApp.jsx';
+import PulseListApp from './containers/PulseListApp.jsx';
+import PulseEditApp from './containers/PulseEditApp.jsx';
+
 import * as reducers from './reducers';
 
 const finalCreateStore = compose(
@@ -22,8 +24,32 @@ Pulse.config(['$routeProvider', function ($routeProvider) {
         template: '<div mb-redux-component class="flex flex-column flex-full" />',
         controller: ['$scope', '$location', '$route', '$routeParams',
             function($scope, $location, $route, $routeParams) {
-                $scope.Component = PulseApp;
+                $scope.Component = PulseListApp;
                 $scope.props = {};
+                $scope.store = finalCreateStore(reducer, {});
+            }
+        ]
+    });
+
+    $routeProvider.when('/pulse/create', {
+        template: '<div mb-redux-component class="flex flex-column flex-full" />',
+        controller: ['$scope', '$location', '$route', '$routeParams',
+            function($scope, $location, $route, $routeParams) {
+                $scope.Component = PulseEditApp;
+                $scope.props = {};
+                $scope.store = finalCreateStore(reducer, {});
+            }
+        ]
+    });
+
+    $routeProvider.when('/pulse/:pulseId', {
+        template: '<div mb-redux-component class="flex flex-column flex-full" />',
+        controller: ['$scope', '$location', '$route', '$routeParams',
+            function($scope, $location, $route, $routeParams) {
+                $scope.Component = PulseEditApp;
+                $scope.props = {
+                    pulseId: $routeParams.pulseId
+                };
                 $scope.store = finalCreateStore(reducer, {});
             }
         ]
