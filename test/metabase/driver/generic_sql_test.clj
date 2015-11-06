@@ -21,10 +21,13 @@
 (def users-name-field
   (delay (Field (id :users :name))))
 
-;; ACTIVE-TABLE-NAMES
+;; ACTIVE-TABLES
 (expect
-    #{"CATEGORIES" "VENUES" "CHECKINS" "USERS"}
-  ((:active-table-names h2) (db)))
+    #{{:name "CATEGORIES", :schema "PUBLIC"}
+      {:name "VENUES",     :schema "PUBLIC"}
+      {:name "CHECKINS",   :schema "PUBLIC"}
+      {:name "USERS",      :schema "PUBLIC"}}
+    ((:active-tables h2) (db)))
 
 ;; ACTIVE-COLUMN-NAMES->TYPE
 (expect

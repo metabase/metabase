@@ -138,36 +138,36 @@
         message))
 
 (defdriver mysql
-  (-> {:driver-name                       "MySQL"
-       :details-fields                    [{:name         "host"
-                                            :display-name "Host"
-                                            :default      "localhost"}
-                                           {:name         "port"
-                                            :display-name "Port"
-                                            :type         :integer
-                                            :default      3306}
-                                           {:name         "dbname"
-                                            :display-name "Database name"
-                                            :placeholder  "birds_of_the_word"
-                                            :required     true}
-                                           {:name         "user"
-                                            :display-name "Database username"
-                                            :placeholder  "What username do you use to login to the database?"
-                                            :required     true}
-                                           {:name         "password"
-                                            :display-name "Database password"
-                                            :type         :password
-                                            :placeholder  "*******"}]
-       :column->base-type                 column->base-type
-       :sql-string-length-fn              :CHAR_LENGTH
-       :connection-details->spec          connection-details->spec
-       :unix-timestamp->timestamp         unix-timestamp->timestamp
-       :date                              date
-       :date-interval                     date-interval
-       ;; If this fails you need to load the timezone definitions from your system into MySQL;
-       ;; run the command `mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql`
-       ;; See https://dev.mysql.com/doc/refman/5.7/en/time-zone-support.html for details
-       :set-timezone-sql                  "SET @@session.time_zone = ?;"
-       :humanize-connection-error-message humanize-connection-error-message}
-      sql-driver
-      (update :features conj :set-timezone)))
+  (sql-driver
+   {:driver-name                       "MySQL"
+    :details-fields                    [{:name         "host"
+                                         :display-name "Host"
+                                         :default      "localhost"}
+                                        {:name         "port"
+                                         :display-name "Port"
+                                         :type         :integer
+                                         :default      3306}
+                                        {:name         "dbname"
+                                         :display-name "Database name"
+                                         :placeholder  "birds_of_the_word"
+                                         :required     true}
+                                        {:name         "user"
+                                         :display-name "Database username"
+                                         :placeholder  "What username do you use to login to the database?"
+                                         :required     true}
+                                        {:name         "password"
+                                         :display-name "Database password"
+                                         :type         :password
+                                         :placeholder  "*******"}]
+    :column->base-type                 column->base-type
+    :sql-string-length-fn              :CHAR_LENGTH
+    :excluded-schemas                  #{"INFORMATION_SCHEMA"}
+    :connection-details->spec          connection-details->spec
+    :unix-timestamp->timestamp         unix-timestamp->timestamp
+    :date                              date
+    :date-interval                     date-interval
+    ;; If this fails you need to load the timezone definitions from your system into MySQL;
+    ;; run the command `mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql`
+    ;; See https://dev.mysql.com/doc/refman/5.7/en/time-zone-support.html for details
+    :set-timezone-sql                  "SET @@session.time_zone = ?;"
+    :humanize-connection-error-message humanize-connection-error-message}))

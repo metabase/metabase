@@ -189,7 +189,7 @@ Will give you a list of out-of-date dependencies.
 
 Once's this repo is made public, this Clojars badge will work and show the status as well:
 
-[![Dependencies Status](http://jarkeeper.com/metabase/metabase-init/status.png)](http://jarkeeper.com/metabase/metabase)
+[![Dependencies Status](https://jarkeeper.com/metabase/metabase-init/status.svg)](https://jarkeeper.com/metabase/metabase)
 
 
 ## Documentation

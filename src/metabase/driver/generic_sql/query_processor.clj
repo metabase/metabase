@@ -1,17 +1,18 @@
 (ns metabase.driver.generic-sql.query-processor
   "The Query Processor is responsible for translating the Metabase Query Language into korma SQL forms."
   (:require [clojure.core.match :refer [match]]
-            [clojure.tools.logging :as log]
+            [clojure.java.jdbc :as jdbc]
             [clojure.string :as s]
+            [clojure.tools.logging :as log]
             (korma [core :as k]
                    [db :as kdb])
             (korma.sql [fns :as kfns]
                        [utils :as utils])
             [metabase.config :as config]
             [metabase.driver :as driver]
-            [metabase.driver.query-processor :as qp]
             (metabase.driver.generic-sql [native :as native]
                                          [util :refer :all])
+            [metabase.driver.query-processor :as qp]
             [metabase.util :as u])
   (:import java.sql.Timestamp
            java.util.Date
@@ -34,9 +35,9 @@
   (formatted
     ([this]
      (formatted this false))
-    ([{:keys [table-name special-type field-name], :as field} include-as?]
+    ([{:keys [schema-name table-name special-type field-name], :as field} include-as?]
      (let [->timestamp (:unix-timestamp->timestamp (:driver *query*))
-           field       (cond-> (keyword (str table-name \. field-name))
+           field       (cond-> (keyword (str (when schema-name (str schema-name \.)) table-name \. field-name))
                          (= special-type :timestamp_seconds)      (->timestamp :seconds)
                          (= special-type :timestamp_milliseconds) (->timestamp :milliseconds))]
        (if include-as? [field (keyword field-name)]
@@ -181,14 +182,15 @@
 
 (defn- apply-page [korma-query {{:keys [items page]} :page}]
   (-> korma-query
-      (k/limit items)
-      (k/offset (* items (dec page)))))
+      ((-> *query* :driver :qp-clause->handler :limit) {:limit items}) ; lookup apply-limit from the driver and use that rather than calling k/limit directly
+      (k/offset (* items (dec page)))))                                ; so drivers that override it (like SQL Server) don't need to override this function as well
 
 (defn- log-korma-form
   [korma-form]
   (when (config/config-bool :mb-db-logging)
     (when-not qp/*disable-qp-logging*
       (log/debug
+       (u/format-color 'green "\nKORMA FORM: 😋\n%s" (u/pprint-to-str (dissoc korma-form :db :ent :from :options :aliases :results :type :alias)))
        (u/format-color 'blue "\nSQL: 😈\n%s\n" (-> (k/as-sql korma-form)
                                                   (s/replace #"\sFROM" "\nFROM")           ; add newlines to the SQL to make it more readable
                                                   (s/replace #"\sLEFT JOIN" "\nLEFT JOIN")
@@ -235,17 +237,18 @@
         (kdb/with-db (:db entity)
           (if (and (seq timezone)
                    (contains? (:features driver) :set-timezone))
-            (kdb/transaction
-             (try (k/exec-raw [(:set-timezone-sql driver) [timezone]])
-                  (catch Throwable e
-                    (log/error (u/format-color 'red "Failed to set timezone: %s" (.getMessage e)))))
-             (k/exec korma-query))
+            (try (kdb/transaction (k/exec-raw [(:set-timezone-sql driver) [timezone]])
+                                  (k/exec korma-query))
+                 (catch Throwable e
+                   (log/error (u/format-color 'red "Failed to set timezone:\n%s"
+                                (with-out-str (jdbc/print-sql-exception-chain e))))
+                   (k/exec korma-query)))
             (k/exec korma-query))))
 
       (catch java.sql.SQLException e
-        (let [^String message (or (->> (.getMessage e) ; error message comes back like "Error message ... [status-code]" sometimes
+        (let [^String message (or (->> (.getMessage e)                       ; error message comes back like "Error message ... [status-code]" sometimes
                                        (re-find  #"(?s)(^.*)\s+\[[\d-]+\]$") ; status code isn't useful and makes unit tests hard to write so strip it off
-                                       second) ; (?s) = Pattern.DOTALL - tell regex `.` to match newline characters as well
+                                       second)                               ; (?s) = Pattern.DOTALL - tell regex `.` to match newline characters as well
                                   (.getMessage e))]
           (throw (Exception. message)))))))
 
