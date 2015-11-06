@@ -43,7 +43,7 @@
 (defn supports-recipients?
   "Predicate function which returns `true` if the given channel type supports a list of recipients, `false` otherwise."
   [channel]
-  (boolean (:recipients? (get channel-types channel))))
+  (boolean (:recipients? (get channel-types (keyword channel)))))
 
 
 (def days-of-week
@@ -90,11 +90,17 @@
    (types :details :json, :schedule_details :json)
    timestamped]
 
-  (post-select [_ {:keys [id creator_id] :as pulse-channel}]
+  (post-select [_ {:keys [id creator_id details] :as pulse-channel}]
     (map->PulseChannelInstance
       (u/assoc* pulse-channel
-                :recipients   (delay (db/sel :many User
-                                          (k/where {:id [in (k/subselect PulseChannelRecipient (k/fields :user_id) (k/where {:pulse_channel_id id}))]}))))))
+                ;; don't include `:emails`, we use that purely internally
+                :details    (dissoc details :emails)
+                ;; here we recombine user details w/ freeform emails
+                :recipients (delay (into (or (->> (:emails details)
+                                                  (mapv #(assoc {} :email %)))
+                                             [])
+                                         (db/sel :many [User :id :email :first_name :last_name]
+                                           (k/where {:id [in (k/subselect PulseChannelRecipient (k/fields :user_id) (k/where {:pulse_channel_id id}))]})))))))
 
   (pre-cascade-delete [_ {:keys [id]}]
     (db/cascade-delete PulseChannelRecipient :pulse_channel_id id)))
@@ -104,30 +110,25 @@
 
 ;; ## Helper Functions
 
-(defn update-recipients
-  "Update the `PulseChannelRecipients` for PULSE.
+(defn update-recipients!
+  "Update the `PulseChannelRecipients` for PULSE-CHANNEL.
    USER-IDS should be a definitive collection of *all* IDs of users who should receive the pulse.
 
    *  If an ID in USER-IDS has no corresponding existing `PulseChannelRecipients` object, one will be created.
    *  If an existing `PulseChannelRecipients` has no corresponding ID in USER-IDs, it will be deleted."
-  {:arglists '([pulse-channel user-ids])}
-  [{:keys [id]} user-ids]
+  [id user-ids]
   {:pre [(integer? id)
          (coll? user-ids)
          (every? integer? user-ids)]}
-  (let [recipients-old (set (db/sel :many :field [PulseChannelRecipient :user_id] :pulse_channel_id id))
+  (let [recipients-old     (set (db/sel :many :field [PulseChannelRecipient :user_id] :pulse_channel_id id))
         recipients-new (set user-ids)
         recipients+    (set/difference recipients-new recipients-old)
         recipients-    (set/difference recipients-old recipients-new)]
     (when (seq recipients+)
-      (let [vs (map #(assoc {:pulse_channel_id id} :user_id %)
-                    recipients+)]
-        (k/insert PulseChannelRecipient
-                (k/values vs))))
+      (let [vs (map #(assoc {:pulse_channel_id id} :user_id %) recipients+)]
+        (k/insert PulseChannelRecipient (k/values vs))))
     (when (seq recipients-)
-      (k/delete PulseChannelRecipient
-              (k/where {:pulse_channel_id id
-                      :user_id [in recipients-]})))))
+      (k/delete PulseChannelRecipient (k/where {:pulse_channel_id id :user_id [in recipients-]})))))
 
 (defn update-pulse-channel
   "Updates an existing `PulseChannel` along with all related data associated with the channel such as `PulseChannelRecipients`."
@@ -137,13 +138,17 @@
            schedule_details {}}}]
   {:pre [(integer? id)
          (channel-type? channel_type)
-         (schedule-type? schedule_type)]}
-  (db/upd PulseChannel id
-    :details          details
-    :schedule_type    schedule_type
-    :schedule_details schedule_details)
-  (when (and (supports-recipients? channel_type) (seq recipients))
-    "do recipients"))
+         (schedule-type? schedule_type)
+         (coll? recipients)
+         (every? map? recipients)]}
+  (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))]
+    (db/upd PulseChannel id
+      :details          (cond-> details
+                          (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
+      :schedule_type    schedule_type
+      :schedule_details schedule_details)
+    (when (and (supports-recipients? channel_type) (seq (get recipients-by-type true)))
+      (update-recipients! id (get recipients-by-type true)))))
 
 (defn create-pulse-channel
   "Create a new `PulseChannel` along with all related data associated with the channel such as `PulseChannelRecipients`."
@@ -153,12 +158,16 @@
            schedule_details {}}}]
   {:pre [(channel-type? channel_type)
          (integer? pulse_id)
-         (schedule-type? schedule_type)]}
-  (let [{:keys [id]} (db/ins PulseChannel
+         (schedule-type? schedule_type)
+         (coll? recipients)
+         (every? map? recipients)]}
+  (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))
+        {:keys [id]} (db/ins PulseChannel
                        :pulse_id         pulse_id
                        :channel_type     channel_type
-                       :details          details
+                       :details          (cond-> details
+                                           (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
                        :schedule_type    schedule_type
                        :schedule_details schedule_details)]
-    (when (and (supports-recipients? channel_type) (seq recipients))
-      "do recipients")))
+    (when (and (supports-recipients? channel_type) (seq (get recipients-by-type true)))
+      (update-recipients! id (get recipients-by-type true)))))

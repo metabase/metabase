@@ -7,8 +7,7 @@
             [metabase.api.common :refer :all]
             [metabase.db :as db]
             [metabase.driver :as driver]
-            (metabase.models [card :refer [Card] :as card]
-                             [common :as common]
+            (metabase.models [card :refer [Card]]
                              [database :refer [Database]]
                              [hydrate :refer :all]
                              [pulse :refer [Pulse] :as pulse])
@@ -19,8 +18,7 @@
 (defendpoint GET "/"
   "Fetch all `Pulses`"
   []
-  (-> (db/sel :many Pulse (order :name :ASC))
-      (hydrate :creator :cards :channels)))
+  (pulse/retrieve-pulses))
 
 
 (defendpoint POST "/"
@@ -29,16 +27,13 @@
   {name     [Required NonEmptyString]
    cards    [Required ArrayOfMaps]
    channels [Required ArrayOfMaps]}
-  (let-500 [card-ids (filter identity (map :id cards))
-            pulse    (pulse/create-pulse name *current-user-id* card-ids channels)]
-    (hydrate pulse :cards :channels)))
+  (->500 (pulse/create-pulse name *current-user-id* (filter identity (map :id cards)) channels)))
 
 
 (defendpoint GET "/:id"
   "Fetch `Pulse` with ID."
   [id]
-  (->404 (db/sel :one Pulse :id id)
-         (hydrate :creator :cards :channels)))
+  (->404 (pulse/retrieve-pulse id)))
 
 
 (defendpoint PUT "/:id"
@@ -48,12 +43,11 @@
    cards    [Required ArrayOfMaps]
    channels [Required ArrayOfMaps]}
   (check-404 (db/exists? Pulse :id id))
-  (let-500 [result (pulse/update-pulse {:id       id
-                                        :name     name
-                                        :cards    (filter identity (into [] (map :id cards)))
-                                        :channels channels})]
-    (-> (db/sel :one Pulse :id id)
-        (hydrate :creator :cards :channels))))
+  (pulse/update-pulse {:id       id
+                       :name     name
+                       :cards    (filter identity (into [] (map :id cards)))
+                       :channels channels})
+  (pulse/retrieve-pulse id))
 
 
 (defendpoint DELETE "/:id"
