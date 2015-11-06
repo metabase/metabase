@@ -54,7 +54,7 @@
                    codec/form-decode
                    walk/keywordize-keys))))
 
-(def ^:private db-connection-details
+(def db-connection-details
   "Connection details that can be used when pretending the Metabase DB is itself a `Database`
    (e.g., to use the Generic SQL driver functions on the Metabase DB itself)."
   (delay (or (when-let [uri (config/config-str :mb-db-connection-uri)]
@@ -75,14 +75,16 @@
                           :user     (config/config-str :mb-db-user)
                           :password (config/config-str :mb-db-pass)}))))
 
-(def ^:private jdbc-connection-details
-  "Connection details for Korma / JDBC."
-  (delay (let [details @db-connection-details]
-           (case (:type details)
-             :h2       (kdb/h2 (assoc details :naming {:keys   s/lower-case
-                                                       :fields s/upper-case}))
-             :mysql    (kdb/mysql (assoc details :db (:dbname details)))
-             :postgres (kdb/postgres (assoc details :db (:dbname details)))))))
+(defn jdbc-details
+  "Takes our own MB details map and formats them properly for connection details for Korma / JDBC."
+  [db-details]
+  {:pre [(map? db-details)]}
+  ;; TODO: it's probably a good idea to put some more validation here and be really strict about what's in `db-details`
+  (case (:type db-details)
+    :h2       (kdb/h2 (assoc db-details :naming {:keys   s/lower-case
+                                                 :fields s/upper-case}))
+    :mysql    (kdb/mysql (assoc db-details :db (:dbname db-details)))
+    :postgres (kdb/postgres (assoc db-details :db (:dbname db-details)))))
 
 
 ;; ## MIGRATE
@@ -100,24 +102,22 @@
    *  `:release-locks` - Manually release migration locks left by an earlier failed migration.
                          (This shouldn't be necessary now that we run migrations inside a transaction,
                          but is available just in case)."
-  ([direction]
-   (migrate @jdbc-connection-details direction))
-  ([jdbc-connection-details direction]
-   (try
-     (jdbc/with-db-transaction [conn jdbc-connection-details]
-       (let [^Database  database  (-> (DatabaseFactory/getInstance)
-                                      (.findCorrectDatabaseImplementation (JdbcConnection. (jdbc/get-connection conn))))
-             ^Liquibase liquibase (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database)]
-         (case direction
-           :up            (.update liquibase "")
-           :down          (.rollback liquibase 10000 "")
-           :down-one      (.rollback liquibase 1 "")
-           :print         (let [writer (StringWriter.)]
-                            (.update liquibase "" writer)
-                            (.toString writer))
-           :release-locks (.forceReleaseLocks liquibase))))
-     (catch Throwable e
-       (throw (DatabaseException. e))))))
+  [db-details direction]
+  (try
+    (jdbc/with-db-transaction [conn (jdbc-details db-details)]
+      (let [^Database database (-> (DatabaseFactory/getInstance)
+                                   (.findCorrectDatabaseImplementation (JdbcConnection. (jdbc/get-connection conn))))
+            ^Liquibase liquibase (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database)]
+        (case direction
+          :up            (.update liquibase "")
+          :down          (.rollback liquibase 10000 "")
+          :down-one      (.rollback liquibase 1 "")
+          :print         (let [writer (StringWriter.)]
+                           (.update liquibase "" writer)
+                           (.toString writer))
+          :release-locks (.forceReleaseLocks liquibase))))
+    (catch Throwable e
+      (throw (DatabaseException. e)))))
 
 
 ;; ## SETUP-DB
@@ -148,23 +148,23 @@
 (defn setup-db
   "Do general perparation of database by validating that we can connect.
    Caller can specify if we should run any pending database migrations."
-  [& {:keys [auto-migrate]
-      :or {auto-migrate true}}]
+  [db-details & {:keys [auto-migrate]
+                 :or {auto-migrate true}}]
   (reset! setup-db-has-been-called? true)
 
   ;; Test DB connection and throw exception if we have any troubles connecting
   (log/info "Verifying Database Connection ...")
-  (assert (db-can-connect? {:engine  (:type @db-connection-details)
-                            :details @db-connection-details})
+  (assert (db-can-connect? {:engine  (:type db-details)
+                            :details db-details})
     "Unable to connect to Metabase DB.")
   (log/info "Verify Database Connection ... CHECK")
 
   ;; Run through our DB migration process and make sure DB is fully prepared
   (if auto-migrate
-    (migrate :up)
+    (migrate db-details :up)
     ;; if we are not doing auto migrations then print out migration sql for user to run manually
     ;; then throw an exception to short circuit the setup process and make it clear we can't proceed
-    (let [sql (migrate :print)]
+    (let [sql (migrate db-details :print)]
       (log/info (str "Database Upgrade Required\n\n"
                      "NOTICE: Your database requires updates to work with this version of Metabase.  "
                      "Please execute the following sql commands on your database before proceeding.\n\n"
@@ -175,7 +175,7 @@
   (log/info "Database Migrations Current ... CHECK")
 
   ;; Establish our 'default' Korma DB Connection
-  (kdb/default-connection (kdb/create-db @jdbc-connection-details))
+  (kdb/default-connection (kdb/create-db (jdbc-details db-details)))
 
   ;; Do any custom code-based migrations now that the db structure is up to date
   ;; NOTE: we use dynamic resolution to prevent circular dependencies
@@ -183,7 +183,7 @@
 
 (defn setup-db-if-needed [& args]
   (when-not @setup-db-has-been-called?
-    (apply setup-db args)))
+    (apply setup-db @db-connection-details args)))
 
 
 ;; # ---------------------------------------- UTILITY FUNCTIONS ----------------------------------------
