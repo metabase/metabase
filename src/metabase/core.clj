@@ -121,7 +121,7 @@
   (reset! metabase-initialization-progress 0.3)
 
   ;; startup database.  validates connection & runs any necessary migrations
-  (db/setup-db @db/db-connection-details :auto-migrate (config/config-bool :mb-db-automigrate))
+  (db/setup-db :auto-migrate (config/config-bool :mb-db-automigrate))
   (reset! metabase-initialization-progress 0.5)
 
   ;; run a very quick check to see if we are doing a first time installation

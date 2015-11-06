@@ -148,8 +148,9 @@
 (defn setup-db
   "Do general perparation of database by validating that we can connect.
    Caller can specify if we should run any pending database migrations."
-  [db-details & {:keys [auto-migrate]
-                 :or {auto-migrate true}}]
+  [& {:keys [db-details auto-migrate]
+      :or   {db-details   @db-connection-details
+             auto-migrate true}}]
   (reset! setup-db-has-been-called? true)
 
   ;; Test DB connection and throw exception if we have any troubles connecting
@@ -183,7 +184,7 @@
 
 (defn setup-db-if-needed [& args]
   (when-not @setup-db-has-been-called?
-    (apply setup-db @db-connection-details args)))
+    (apply setup-db args)))
 
 
 ;; # ---------------------------------------- UTILITY FUNCTIONS ----------------------------------------

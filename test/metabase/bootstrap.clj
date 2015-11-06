@@ -15,7 +15,7 @@
   "Create a `User` for development purposes.
    You may optionally load the test data."
   []
-  (setup-db @db-connection-details :auto-migrate true)
+  (setup-db :auto-migrate true)
   (let [{:keys [email]} (bootstrap-user)]
     (println (format "Successfully created User \"%s\"." email))))
 
