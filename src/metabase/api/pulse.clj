@@ -7,7 +7,8 @@
             [metabase.api.common :refer :all]
             [metabase.db :as db]
             [metabase.driver :as driver]
-            (metabase.models [database :refer [Database]]
+            (metabase.models [card :refer [Card]]
+                             [database :refer [Database]]
                              [hydrate :refer :all]
                              [pulse :refer [Pulse] :as pulse])
             [metabase.util :as util]

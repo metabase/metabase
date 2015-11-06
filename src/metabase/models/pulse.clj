@@ -104,13 +104,13 @@
   [id]
   {:pre [(integer? id)]}
   (-> (db/sel :one Pulse :id id)
-      (hydrate :creator :cards :channels)))
+      (hydrate :creator :cards [:channels :recipients])))
 
 (defn retrieve-pulses
   "Fetch all `Pulses`."
   []
   (-> (db/sel :many Pulse (k/order :name :ASC))
-      (hydrate :creator :cards :channels)))
+      (hydrate :creator :cards [:channels :recipients])))
 
 (defn update-pulse
   "Update an existing `Pulse`, including all associated data such as: `PulseCards`, `PulseChannels`, and `PulseChannelRecipients`.
