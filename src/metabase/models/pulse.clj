@@ -33,14 +33,13 @@
 
   (post-select [_ {:keys [id creator_id] :as pulse}]
     (map->PulseInstance
-      (u/assoc* pulse
-                :cards    (delay (k/select Card
-                                   (k/join PulseCard (= :pulse_card.card_id :id))
-                                   (k/fields :id :name :description :display)
-                                   (k/where {:pulse_card.pulse_id id})
-                                   (k/order :pulse_card.position :asc)))
-                :channels (delay (db/sel :many PulseChannel (k/where {:pulse_id id})))
-                :creator  (delay (when creator_id (db/sel :one User :id creator_id))))))
+      (assoc pulse :cards    (delay (k/select Card
+                                      (k/join PulseCard (= :pulse_card.card_id :id))
+                                      (k/fields :id :name :description :display)
+                                      (k/where {:pulse_card.pulse_id id})
+                                      (k/order :pulse_card.position :asc)))
+                   :channels (delay (db/sel :many PulseChannel (k/where {:pulse_id id})))
+                   :creator  (delay (when creator_id (db/sel :one User :id creator_id))))))
 
   (pre-cascade-delete [_ {:keys [id]}]
     (db/cascade-delete PulseCard :pulse_id id)
@@ -49,7 +48,7 @@
 (extend-ICanReadWrite PulseEntity :read :public-perms, :write :public-perms)
 
 
-;; ## Helper Functions
+;; ## Persistence Functions
 
 (defn- update-pulse-cards
   "Update the `PulseCards` for a given PULSE.
@@ -61,10 +60,10 @@
   {:arglists '([pulse card-ids])}
   [{:keys [id]} card-ids]
   {:pre [(integer? id)
-         (coll? card-ids)
+         (sequential? card-ids)
          (every? integer? card-ids)]}
   ;; first off, just delete any cards associated with this pulse (we add them again below)
-  (k/delete PulseCard (k/where {:pulse_id id}))
+  (db/cascade-delete PulseCard :pulse_id id)
   ;; now just insert all of the cards that were given to us
   (let [cards (map-indexed (fn [idx itm] {:pulse_id id :card_id itm :position idx}) card-ids)]
     (k/insert PulseCard (k/values cards))))
@@ -97,8 +96,8 @@
   {:pre [(integer? id)
          (coll? channels)
          (every? map? channels)]}
-  (let [new-channels   (group-by #(keyword (:channel_type %)) channels)
-        old-channels   (group-by #(keyword (:channel_type %)) (db/sel :many PulseChannel :pulse_id id))
+  (let [new-channels   (group-by (comp keyword :channel_type) channels)
+        old-channels   (group-by (comp keyword :channel_type) (db/sel :many PulseChannel :pulse_id id))
         handle-channel #(create-update-delete-channel id (first (get new-channels %)) (first (get old-channels %)))]
     (assert (= 0 (count (get new-channels nil))) "Cannot have channels without a :channel_type attribute")
     (dorun (map handle-channel (vec (keys pulse-channel/channel-types))))))
@@ -123,7 +122,7 @@
   [{:keys [id name cards channels] :as pulse}]
   {:pre [(integer? id)
          (string? name)
-         (coll? cards)
+         (sequential? cards)
          (> (count cards) 0)
          (every? integer? cards)
          (coll? channels)
@@ -143,7 +142,7 @@
   [name creator-id cards channels]
   {:pre [(string? name)
          (integer? creator-id)
-         (coll? cards)
+         (sequential? cards)
          (> (count cards) 0)
          (every? integer? cards)
          (coll? channels)

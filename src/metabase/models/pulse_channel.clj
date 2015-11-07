@@ -11,7 +11,7 @@
 
 ;; ## Static Definitions
 
-(def channel-types
+(def ^:const channel-types
   "Map which contains the definitions for each type of pulse channel we allow.  Each key is a channel type with a map
    which contains any other relevant information for defining the channel.  E.g.
 
@@ -25,7 +25,7 @@
   [channel-type]
   (contains? (set (keys channel-types)) (keyword channel-type)))
 
-(def schedule-types
+(def ^:const schedule-types
   "Map which contains the definitions for each type of pulse schedule type we allow.  Each key is a schedule-type with
    a map which contains any other relevant information related to the defined schedule-type.  E.g.
 
@@ -46,7 +46,7 @@
   (boolean (:recipients? (get channel-types (keyword channel)))))
 
 
-(def days-of-week
+(def ^:const days-of-week
   "Simple `vector` of the days in the week used for reference and lookups.
 
    NOTE: order is important here!!
@@ -59,7 +59,7 @@
    {:id "fri" :name "Fri"},
    {:id "sat" :name "Sat"}])
 
-(def times-of-day
+(def ^:const times-of-day
   [{:id "morning" :name "Morning" :realhour 8},
    {:id "midday" :name "Midday" :realhour 12},
    {:id "afternoon" :name "Afternoon" :realhour 16},
@@ -92,15 +92,13 @@
 
   (post-select [_ {:keys [id creator_id details] :as pulse-channel}]
     (map->PulseChannelInstance
-      (u/assoc* pulse-channel
-                ;; don't include `:emails`, we use that purely internally
-                :details    (dissoc details :emails)
-                ;; here we recombine user details w/ freeform emails
-                :recipients (delay (into (or (->> (:emails details)
-                                                  (mapv #(assoc {} :email %)))
-                                             [])
-                                         (db/sel :many [User :id :email :first_name :last_name]
-                                           (k/where {:id [in (k/subselect PulseChannelRecipient (k/fields :user_id) (k/where {:pulse_channel_id id}))]})))))))
+      (assoc pulse-channel
+             ;; don't include `:emails`, we use that purely internally
+             :details    (dissoc details :emails)
+             ;; here we recombine user details w/ freeform emails
+             :recipients (delay (into (mapv (partial array-map :email) (:emails details))
+                                      (db/sel :many [User :id :email :first_name :last_name]
+                                        (k/where {:id [in (k/subselect PulseChannelRecipient (k/fields :user_id) (k/where {:pulse_channel_id id}))]})))))))
 
   (pre-cascade-delete [_ {:keys [id]}]
     (db/cascade-delete PulseChannelRecipient :pulse_channel_id id)))
@@ -108,7 +106,7 @@
 (extend-ICanReadWrite PulseChannelEntity :read :always, :write :superuser)
 
 
-;; ## Helper Functions
+;; ## Persistence Functions
 
 (defn update-recipients!
   "Update the `PulseChannelRecipients` for PULSE-CHANNEL.

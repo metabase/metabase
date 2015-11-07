@@ -45,7 +45,7 @@
   (check-404 (db/exists? Pulse :id id))
   (pulse/update-pulse {:id       id
                        :name     name
-                       :cards    (filter identity (into [] (map :id cards)))
+                       :cards    (filter identity (map :id cards))
                        :channels channels})
   (pulse/retrieve-pulse id))
 
