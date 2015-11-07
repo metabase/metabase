@@ -2,7 +2,7 @@ import React, { Component, PropTypes } from "react";
 
 import _ from "underscore";
 
-export default class PulseModalNamePane extends Component {
+export default class PulseEditName extends Component {
     constructor(props) {
         super(props);
         this.state = {};
@@ -21,12 +21,12 @@ export default class PulseModalNamePane extends Component {
     render() {
         let { pulse } = this.props;
         return (
-            <div className="py4 flex flex-column align-center">
-                <h3>Name your pulse</h3>
+            <div className="py4">
+                <h2>Name your pulse</h2>
+                <p>Give your pulse a name to help others understand what it's about.</p>
                 <div className="my3">
                     <input className="input" value={pulse.name} onChange={this.setName} />
                 </div>
-                <p>A pulse is  away for you to send answers to people outside Metabase on a schedule. Start by giving it a name so people will know what they're getting.</p>
             </div>
         );
     }

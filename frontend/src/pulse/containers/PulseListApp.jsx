@@ -2,10 +2,10 @@ import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
 
 import PulseList from "../components/PulseList.jsx";
-import { pulseSelectors } from "../selectors";
+import { listPulseSelectors } from "../selectors";
 
-@connect(pulseSelectors)
-export default class PulseApp extends Component {
+@connect(listPulseSelectors)
+export default class PulseListApp extends Component {
     render() {
         return (
             <PulseList { ...this.props } />
