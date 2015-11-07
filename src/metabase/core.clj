@@ -213,7 +213,7 @@
 
 (defn- run-cmd [cmd & args]
   (let [cmd->fn {:migrate (fn [direction]
-                            (db/migrate (keyword direction)))}]
+                            (db/migrate @db/db-connection-details (keyword direction)))}]
     (if-let [f (cmd->fn cmd)]
       (do (apply f args)
           (println "Success.")
