@@ -121,7 +121,8 @@
                                                 :default      1433}
                                                {:name         "dbname"
                                                 :display-name "Database name"
-                                                :placeholder  "birds_of_the_word"}
+                                                :placeholder  "birds_of_the_word"
+                                                :required     true}
                                                {:name         "user"
                                                 :display-name "Database username"
                                                 :placeholder  "What username do you use to login to the database?"

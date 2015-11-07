@@ -183,7 +183,6 @@
         dbdef  (map->DatabaseDefinition (assoc dbdef :short-lived? true))]
     (try
       (binding [*sel-disable-logging* true]
-        #_(remove-database! loader dbdef)
         (let [db (-> (get-or-create-database! loader dbdef)
                      temp-db-add-getter-delay)]
           (assert db)

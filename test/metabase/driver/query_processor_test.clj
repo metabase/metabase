@@ -1,7 +1,6 @@
 (ns metabase.driver.query-processor-test
   "Query processing tests that can be ran between any of the available drivers, and should give the same results."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.walk :as walk]
+  (:require [clojure.math.numeric-tower :as math]
             [expectations :refer :all]
             [korma.core :as k]
             [metabase.db :refer :all]
@@ -20,6 +19,9 @@
 ;; ## Dataset-Independent QP Tests
 
 ;; ### Helper Fns + Macros
+
+(def ^:private ^:const sql-engines
+  #{:h2 :postgres :mysql :sqlserver})
 
 (defmacro ^:private qp-expect-with-all-datasets [data q-form & post-process-fns]
   `(datasets/expect-with-all-datasets
@@ -538,7 +540,7 @@
 ;;; SQL-Only for the time being
 
 ;; ## "STDDEV" AGGREGATION
-(qp-expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(qp-expect-with-datasets sql-engines
   {:columns ["stddev"]
    :cols    [(aggregate-col :stddev (venues-col :latitude))]
    :rows    [[(datasets/dataset-case
@@ -558,7 +560,7 @@
 ;;; ## order_by aggregate fields (SQL-only for the time being)
 
 ;;; ### order_by aggregate ["count"]
-(qp-expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(qp-expect-with-datasets sql-engines
   {:columns [(format-name "price")
              "count"]
    :rows    [[4 6]
@@ -573,7 +575,7 @@
 
 
 ;;; ### order_by aggregate ["sum" field-id]
-(qp-expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(qp-expect-with-datasets sql-engines
   {:columns [(format-name "price")
              "sum"]
    :rows    [[2 (->sum-type 2855)]
@@ -588,7 +590,7 @@
 
 
 ;;; ### order_by aggregate ["distinct" field-id]
-(qp-expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(qp-expect-with-datasets sql-engines
   {:columns [(format-name "price")
              "count"]
    :rows    [[4 6]
@@ -603,7 +605,7 @@
 
 
 ;;; ### order_by aggregate ["avg" field-id]
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(datasets/expect-with-datasets sql-engines
   {:columns [(format-name "price")
              "avg"]
    :rows    [[3 (datasets/dataset-case
@@ -635,37 +637,24 @@
      order ag.0+))
 
 ;;; ### order_by aggregate ["stddev" field-id]
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+;; MySQL has a nasty tendency to return different results on different systems so just round everything to the nearest int.
+;; It also seems to give slightly different results than less-sucky DBs as evidenced below
+(datasets/expect-with-datasets sql-engines
   {:columns [(format-name "price")
              "stddev"]
-   :rows    [[3 (datasets/dataset-case
-                 :h2        26.19160170741759
-                 :postgres  26.1916017074175897M
-                 :mysql     25.16407695964168
-                 :sqlserver 26.19160170741759)]
-             [1 (datasets/dataset-case
-                 :h2        24.112111881665186
-                 :postgres  24.1121118816651851M
-                 :mysql     23.55773635451336
-                 :sqlserver 24.112111881665186)]
-             [2 (datasets/dataset-case
-                 :h2        21.418692164795292
-                 :postgres  21.4186921647952867M
-                 :mysql     21.236402107939313
-                 :sqlserver 21.41869216479529)]
-             [4 (datasets/dataset-case
-                 :h2        14.788509052639485
-                 :postgres  14.7885090526394851M
-                 :mysql     13.5
-                 :sqlserver 14.788509052639485)]]
+   :rows    [[3 (datasets/dataset-case :h2 26, :postgres 26, :mysql 25, :sqlserver 26)]
+             [1 24]
+             [2 21]
+             [4 (datasets/dataset-case :h2 15, :postgres 15, :mysql 14, :sqlserver 15)]]
    :cols    [(venues-col :price)
              (aggregate-col :stddev (venues-col :category_id))]}
-  (Q return :data
-     of venues
-     aggregate stddev category_id
-     breakout price
-     order ag.0-))
-
+  (-> (Q return :data
+         of venues
+         aggregate stddev category_id
+         breakout price
+         order ag.0-)
+      (update :rows (partial mapv (fn [[x y]]
+                                    [x (int (math/round y))])))))
 
 ;;; ### make sure that rows where preview_display = false are included and properly marked up
 (datasets/expect-with-all-datasets
@@ -731,7 +720,7 @@
      ~else))
 
 ;; There were 9 "sad toucan incidents" on 2015-06-02
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(datasets/expect-with-datasets sql-engines
   (if-sqlserver
     10
     9)
@@ -744,7 +733,7 @@
 
 
 ;;; Unix timestamp breakouts -- SQL only
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(datasets/expect-with-datasets sql-engines
   (if-sqlserver
     ;; SQL Server doesn't have a concept of timezone so results are all grouped by UTC
     ;; This is technically correct but the results differ from less-wack DBs
@@ -782,7 +771,7 @@
 
 ;; The top 10 cities by number of Tupac sightings
 ;; Test that we can breakout on an FK field (Note how the FK Field is returned in the results)
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(datasets/expect-with-datasets sql-engines
   [["Arlington" 16]
    ["Albany" 15]
    ["Portland" 14]
@@ -805,7 +794,7 @@
 ;; Number of Tupac sightings in the Expa office
 ;; (he was spotted here 60 times)
 ;; Test that we can filter on an FK field
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(datasets/expect-with-datasets sql-engines
   60
   (Q dataset tupac-sightings
      return first-row first
@@ -816,7 +805,7 @@
 ;; THE 10 MOST RECENT TUPAC SIGHTINGS (!)
 ;; (What he was doing when we saw him, sighting ID)
 ;; Check that we can include an FK field in the :fields clause
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(datasets/expect-with-datasets sql-engines
   [[772 "In the Park"]
    [894 "Working at a Pet Store"]
    [684 "At the Airport"]
@@ -839,7 +828,7 @@
 ;;    (this query targets sightings and orders by cities.name and categories.name)
 ;; 2. Check that we can join MULTIPLE tables in a single query
 ;;    (this query joins both cities and categories)
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(datasets/expect-with-datasets sql-engines
   ;; CITY_ID, CATEGORY_ID, ID
   ;; Cities are already alphabetized in the source data which is why CITY_ID is sorted
   [[1 12 6]
@@ -1079,7 +1068,7 @@
           limit 10
           return rows)))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(datasets/expect-with-datasets sql-engines
   (if-sqlserver
    [[#inst "2015-06-01T17:31" 1]
     [#inst "2015-06-01T23:06" 1]
@@ -1104,7 +1093,7 @@
     [#inst "2015-06-02T11:11" 1]])
   (sad-toucan-incidents-with-bucketing :default))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(datasets/expect-with-datasets sql-engines
   (if-sqlserver
    [[#inst "2015-06-01T17:31" 1]
     [#inst "2015-06-01T23:06" 1]
@@ -1129,7 +1118,7 @@
     [#inst "2015-06-02T11:11" 1]])
   (sad-toucan-incidents-with-bucketing :minute))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(datasets/expect-with-datasets sql-engines
   [[0 5]
    [1 4]
    [2 2]
@@ -1142,7 +1131,7 @@
    [9 1]]
   (sad-toucan-incidents-with-bucketing :minute-of-hour))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(datasets/expect-with-datasets sql-engines
   (if-sqlserver
     [[#inst "2015-06-01T17" 1]
      [#inst "2015-06-01T23" 1]
@@ -1167,13 +1156,13 @@
      [#inst "2015-06-02T13" 1]])
   (sad-toucan-incidents-with-bucketing :hour))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(datasets/expect-with-datasets sql-engines
   (if-sqlserver
    [[0 13] [1  8] [2  4] [3  7] [4  5] [5 13] [6 10] [7  8] [8  9] [9  7]]
    [[0  8] [1  9] [2  7] [3 10] [4 10] [5  9] [6  6] [7  5] [8  7] [9  7]])
   (sad-toucan-incidents-with-bucketing :hour-of-day))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(datasets/expect-with-datasets sql-engines
   (if-sqlserver
    [[#inst "2015-06-01T07" 6]
     [#inst "2015-06-02T07" 10]
@@ -1198,25 +1187,25 @@
     [#inst "2015-06-10T07" 10]])
   (sad-toucan-incidents-with-bucketing :day))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(datasets/expect-with-datasets sql-engines
   (if-sqlserver
    [[1 28] [2 38] [3 29] [4 27] [5 24] [6 30] [7 24]]
    [[1 29] [2 36] [3 33] [4 29] [5 13] [6 38] [7 22]])
   (sad-toucan-incidents-with-bucketing :day-of-week))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(datasets/expect-with-datasets sql-engines
   (if-sqlserver
    [[1  6] [2 10] [3  4] [4  9] [5  9] [6  8] [7  8] [8  9] [9  7] [10  9]]
    [[1  8] [2  9] [3  9] [4  4] [5 11] [6  8] [7  6] [8 10] [9  6] [10 10]])
   (sad-toucan-incidents-with-bucketing :day-of-month))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(datasets/expect-with-datasets sql-engines
   (if-sqlserver
    [[152  6] [153 10] [154  4] [155  9] [156  9] [157  8] [158  8] [159  9] [160  7] [161  9]]
    [[152  8] [153  9] [154  9] [155  4] [156 11] [157  8] [158  6] [159 10] [160  6] [161 10]])
   (sad-toucan-incidents-with-bucketing :day-of-year))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(datasets/expect-with-datasets sql-engines
   (if-sqlserver
    [[#inst "2015-05-31T07" 46]
     [#inst "2015-06-07T07" 47]
@@ -1231,29 +1220,29 @@
     [#inst "2015-06-28T07" 7]])
   (sad-toucan-incidents-with-bucketing :week))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(datasets/expect-with-datasets sql-engines
   (if-sqlserver
    [[23 54] [24 46] [25 39] [26 61]]
    [[23 49] [24 47] [25 39] [26 58] [27 7]])
   (sad-toucan-incidents-with-bucketing :week-of-year))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(datasets/expect-with-datasets sql-engines
   [[#inst "2015-06-01T07" 200]]
   (sad-toucan-incidents-with-bucketing :month))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(datasets/expect-with-datasets sql-engines
   [[6 200]]
   (sad-toucan-incidents-with-bucketing :month-of-year))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(datasets/expect-with-datasets sql-engines
   [[#inst "2015-04-01T07" 200]]
   (sad-toucan-incidents-with-bucketing :quarter))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(datasets/expect-with-datasets sql-engines
   [[2 200]]
   (sad-toucan-incidents-with-bucketing :quarter-of-year))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(datasets/expect-with-datasets sql-engines
   [[2015 200]]
   (sad-toucan-incidents-with-bucketing :year))
 
@@ -1279,22 +1268,22 @@
        filter = ["datetime_field" (id :checkins :timestamp) "as" (name field-grouping)] (apply vector "relative_datetime" relative-datetime-args)
        return first-row first)))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver} 4 (count-of-grouping (checkins:4-per-minute) :minute "current"))
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver} 4 (count-of-grouping (checkins:4-per-minute) :minute -1 "minute"))
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver} 4 (count-of-grouping (checkins:4-per-minute) :minute  1 "minute"))
+(datasets/expect-with-datasets sql-engines 4 (count-of-grouping (checkins:4-per-minute) :minute "current"))
+(datasets/expect-with-datasets sql-engines 4 (count-of-grouping (checkins:4-per-minute) :minute -1 "minute"))
+(datasets/expect-with-datasets sql-engines 4 (count-of-grouping (checkins:4-per-minute) :minute  1 "minute"))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver} 4 (count-of-grouping (checkins:4-per-hour) :hour "current"))
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver} 4 (count-of-grouping (checkins:4-per-hour) :hour -1 "hour"))
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver} 4 (count-of-grouping (checkins:4-per-hour) :hour  1 "hour"))
+(datasets/expect-with-datasets sql-engines 4 (count-of-grouping (checkins:4-per-hour) :hour "current"))
+(datasets/expect-with-datasets sql-engines 4 (count-of-grouping (checkins:4-per-hour) :hour -1 "hour"))
+(datasets/expect-with-datasets sql-engines 4 (count-of-grouping (checkins:4-per-hour) :hour  1 "hour"))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver} 1 (count-of-grouping (checkins:1-per-day) :day "current"))
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver} 1 (count-of-grouping (checkins:1-per-day) :day -1 "day"))
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver} 1 (count-of-grouping (checkins:1-per-day) :day  1 "day"))
+(datasets/expect-with-datasets sql-engines 1 (count-of-grouping (checkins:1-per-day) :day "current"))
+(datasets/expect-with-datasets sql-engines 1 (count-of-grouping (checkins:1-per-day) :day -1 "day"))
+(datasets/expect-with-datasets sql-engines 1 (count-of-grouping (checkins:1-per-day) :day  1 "day"))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver} 7 (count-of-grouping (checkins:1-per-day) :week "current"))
+(datasets/expect-with-datasets sql-engines 7 (count-of-grouping (checkins:1-per-day) :week "current"))
 
 ;; SYNTACTIC SUGAR
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(datasets/expect-with-datasets sql-engines
   1
   (with-temp-db [_ (checkins:1-per-day)]
     (-> (driver/process-query
@@ -1305,7 +1294,7 @@
                      :filter       ["TIME_INTERVAL" (id :checkins :timestamp) "current" "day"]}})
         :data :rows first first)))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql :sqlserver}
+(datasets/expect-with-datasets sql-engines
   7
   (with-temp-db [_ (checkins:1-per-day)]
     (-> (driver/process-query

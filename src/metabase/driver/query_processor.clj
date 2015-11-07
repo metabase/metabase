@@ -1,7 +1,6 @@
 (ns metabase.driver.query-processor
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific implementations."
   (:require [clojure.core.match :refer [match]]
-            [clojure.java.jdbc :as jdbc]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]

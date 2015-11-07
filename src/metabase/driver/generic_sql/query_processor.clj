@@ -201,8 +201,7 @@
                                                       (s/replace #"\sORDER BY" "\nORDER BY")
                                                       (s/replace #"\sLIMIT" "\nLIMIT")
                                                       (s/replace #"\sAND" "\n   AND")
-                                                      (s/replace #"\sOR" "\n    OR")
-                                                      (s/replace #"\sAS\s([\"`][^,]+),\s", " AS $1,\n  "))))
+                                                      (s/replace #"\sOR" "\n    OR"))))
         ;; (k/as-sql korma-form) will barf if the korma form is invalid
         (catch Throwable e
           (log/error (u/format-color 'red "Invalid korma form: %s" (.getMessage e))))))))

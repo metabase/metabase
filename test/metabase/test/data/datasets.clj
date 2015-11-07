@@ -289,9 +289,8 @@
   "Generate unit tests for all datasets in DATASET-NAMES; each test will only run if we're currently testing the corresponding dataset.
    `*dataset*` is bound to the current dataset inside each test."
   [dataset-names expected actual]
-  `(do ~@(map (fn [dataset-name]
-                `(expect-with-dataset ~dataset-name ~expected ~actual))
-              dataset-names)))
+  `(do ~@(for [dataset-name (eval dataset-names)]
+           `(expect-with-dataset ~dataset-name ~expected ~actual))))
 
 (defmacro expect-with-all-datasets
   "Generate unit tests for all valid datasets; each test will only run if we're currently testing the corresponding dataset.
