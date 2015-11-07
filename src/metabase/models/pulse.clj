@@ -48,7 +48,7 @@
 (extend-ICanReadWrite PulseEntity :read :public-perms, :write :public-perms)
 
 
-;; ## Helper Functions
+;; ## Persistence Functions
 
 (defn- update-pulse-cards
   "Update the `PulseCards` for a given PULSE.
@@ -60,7 +60,7 @@
   {:arglists '([pulse card-ids])}
   [{:keys [id]} card-ids]
   {:pre [(integer? id)
-         (coll? card-ids)
+         (sequential? card-ids)
          (every? integer? card-ids)]}
   ;; first off, just delete any cards associated with this pulse (we add them again below)
   (db/cascade-delete PulseCard :pulse_id id)
@@ -122,7 +122,7 @@
   [{:keys [id name cards channels] :as pulse}]
   {:pre [(integer? id)
          (string? name)
-         (coll? cards)
+         (sequential? cards)
          (> (count cards) 0)
          (every? integer? cards)
          (coll? channels)
@@ -142,7 +142,7 @@
   [name creator-id cards channels]
   {:pre [(string? name)
          (integer? creator-id)
-         (coll? cards)
+         (sequential? cards)
          (> (count cards) 0)
          (every? integer? cards)
          (coll? channels)
