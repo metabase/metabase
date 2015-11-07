@@ -7,7 +7,6 @@
 
 .ColumnarSelector-column {
     min-width: 180px;
-    min-height: 300px;
     max-height: 340px;
     flex: 1;
 }

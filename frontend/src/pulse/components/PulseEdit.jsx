@@ -60,7 +60,7 @@ export default class PulseEdit extends Component {
                         failedText="Save failed"
                         successText="Saved"
                     />
-                    <a className="text-bold flex-align-right" href="/pulse">Cancel</a>
+                    <a className="text-bold flex-align-right no-decoration text-brand-hover" href="/pulse">Cancel</a>
                 </div>
             </div>
         );

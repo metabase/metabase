@@ -38,7 +38,7 @@ export default class PulseEditCard extends Component {
         }
 
         return (
-            <div className="py4">
+            <div className="py1">
                 <h2>Pick your data</h2>
                 <p>Pick up to five questions you'd like to send in this pulse</p>
                 <ol className="my3">
