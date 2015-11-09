@@ -1,9 +1,10 @@
 import React, { Component, PropTypes } from "react";
 
+import RecipientPicker from "./RecipientPicker.jsx";
+import SchedulePicker from "./SchedulePicker.jsx";
+
 import Select from "metabase/components/Select.jsx";
 import Toggle from "metabase/components/Toggle.jsx";
-
-import { capitalize } from "metabase/lib/formatting";
 
 import _ from "underscore";
 
@@ -11,7 +12,7 @@ const CHANNELS = [
     {
         type: "email",
         name: "Email",
-        recipients: ["account", "email"],
+        recipients: ["user", "email"],
         schedules: ["daily", "weekly"]
     },
     {
@@ -31,25 +32,6 @@ const CHANNELS = [
     }
 ];
 
-const HOUR_OPTIONS = _.times(12, (n) => (
-    { name: (n === 0 ? 12 : n)+":00", value: n }
-));
-
-const AM_PM_OPTIONS = [
-    { name: "AM", value: 0 },
-    { name: "PM", value: 1 }
-];
-
-const DAY_OF_WEEK_OPTIONS = [
-    { name: "Sunday", value: "sun" },
-    { name: "Monday", value: "mon" },
-    { name: "Tuesday", value: "tue" },
-    { name: "Wednesday", value: "wed" },
-    { name: "Thursday", value: "thu" },
-    { name: "Friday", value: "fri" },
-    { name: "Saturday", value: "sat" }
-];
-
 export default class PulseEditChannel extends Component {
     constructor(props) {
         super(props);
@@ -67,10 +49,21 @@ export default class PulseEditChannel extends Component {
             return;
         }
 
+        let details = {};
+        if (channelSpec.fields) {
+            for (let field of channelSpec.fields) {
+                if (field.required) {
+                    if (field.type === "select") {
+                        details[field.name] = field.options[0];
+                    }
+                }
+            }
+        }
+
         let channel = {
             channel_type: type,
             recipients: [],
-            details: {},
+            details: details,
             schedule_type: channelSpec.schedules[0],
             schedule_details: { day_of_week: "mon", hour_of_day: 8 }
         };
@@ -99,64 +92,50 @@ export default class PulseEditChannel extends Component {
         }
     }
 
-    renderDayPicker(c, index) {
+    renderFields(channel, index, channelSpec) {
         return (
-            <span className="mt1">
-                <span className="mx1">on</span>
-                <Select
-                    value={_.find(DAY_OF_WEEK_OPTIONS, (o) => o.value === c.schedule_details.day_of_week)}
-                    options={DAY_OF_WEEK_OPTIONS}
-                    optionNameFn={o => o.name}
-                    optionValueFn={o => o.value}
-                    onChange={(o) => this.onChannelPropertyChange(index, "schedule_details", { ...c.schedule_details, day_of_week: o }) }
-                />
-            </span>
-        );
-    }
-
-    renderHourPicker(c, index) {
-        let hourOfDay = isNaN(c.schedule_details.hour_of_day) ? 8 : c.schedule_details.hour_of_day;
-        let hour = hourOfDay % 12;
-        let amPm = hourOfDay >= 12 ? 1 : 0;
-        return (
-            <div className="mt1">
-                <span className="mr1">at</span>
-                <Select
-                    className="mr1"
-                    value={_.find(HOUR_OPTIONS, (o) => o.value === hour)}
-                    options={HOUR_OPTIONS}
-                    optionNameFn={o => o.name}
-                    optionValueFn={o => o.value}
-                    onChange={(o) => this.onChannelPropertyChange(index, "schedule_details", { ...c.schedule_details, hour_of_day: o + amPm * 12 }) }
-                />
-                <Select
-                    value={_.find(AM_PM_OPTIONS, (o) => o.value === amPm)}
-                    options={AM_PM_OPTIONS}
-                    optionNameFn={o => o.name}
-                    optionValueFn={o => o.value}
-                    onChange={(o) => this.onChannelPropertyChange(index, "schedule_details", { ...c.schedule_details, hour_of_day: hour + o * 12 }) }
-                />
+            <div>
+                {channelSpec.fields.map(field =>
+                    <div>
+                        <span className="h4 text-bold mr1">{field.displayName}</span>
+                        { field.type === "select" ?
+                            <Select
+                                className="h4 text-bold"
+                                value={channel.details[field.name]}
+                                options={field.options}
+                                optionNameFn={o => o}
+                                optionValueFn={o => o}
+                                onChange={(o) => this.onChannelPropertyChange(index, "details", { ...channel.details, [field.name]: o })}
+                            />
+                        : null }
+                    </div>
+                )}
             </div>
-        );
+        )
     }
 
     renderChannel(channel, index, channelSpec) {
         return (
-            <li className="py1">
-                <span className="mr1">Sent</span>
-                <Select
-                    value={channel.schedule_type}
-                    options={channelSpec.schedules}
-                    optionNameFn={o => capitalize(o)}
-                    optionValueFn={o => o}
-                    onChange={(o) => this.onChannelPropertyChange(index, "schedule_type", o)}
+            <li key={index} className="py1">
+                { channelSpec.recipients &&
+                    <div>
+                        <div className="h4 text-bold mb1">To:</div>
+                        <RecipientPicker
+                            recipients={channel.recipients}
+                            recipientTypes={channelSpec.recipients}
+                            users={this.props.userList}
+                            onRecipientsChange={(recipients) => this.onChannelPropertyChange(index, "recipients", recipients)}
+                        />
+                    </div>
+                }
+                { channelSpec.fields &&
+                    this.renderFields(channel, index, channelSpec)
+                }
+                <SchedulePicker
+                    channel={channel}
+                    channelSpec={channelSpec}
+                    onPropertyChange={this.onChannelPropertyChange.bind(this, index)}
                 />
-                { channel.schedule_type === "weekly" &&
-                    this.renderDayPicker(channel, index)
-                }
-                { (channel.schedule_type === "daily" || channel.schedule_type === "weekly") &&
-                    this.renderHourPicker(channel, index)
-                }
             </li>
         )
     }
@@ -166,7 +145,7 @@ export default class PulseEditChannel extends Component {
         return (
             <li key={channelSpec.type} className="py2 border-row-divider">
                 <div className="flex align-center">
-                    <h3>{channelSpec.name}</h3>
+                    <h2>{channelSpec.name}</h2>
                     <Toggle className="flex-align-right" value={pulse.channels.some(c => c.channel_type === channelSpec.type)} onChange={this.toggleChannel.bind(this, channelSpec.type)} />
                 </div>
                 <ul>

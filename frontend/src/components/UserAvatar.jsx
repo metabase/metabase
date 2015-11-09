@@ -29,11 +29,11 @@ export default class UserAvatar extends Component {
         let initials = '??';
 
         if (first_name !== 'undefined') {
-            initials = first_name.substring(0, 1);
+            initials = first_name.substring(0, 1).toUpperCase();
         }
 
         if (last_name !== 'undefined') {
-            initials = initials + last_name.substring(0, 1);
+            initials = initials + last_name.substring(0, 1).toUpperCase();
         }
 
         return initials;

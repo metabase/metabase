@@ -43,7 +43,7 @@ export default class PulseEditCard extends Component {
                 <p>Pick up to five questions you'd like to send in this pulse</p>
                 <ol className="my3">
                     {cards && pulseCards.map((card, index) =>
-                        <li className="my1 flex align-top" style={{ width: "400px" }}>
+                        <li key={index} className="my1 flex align-top" style={{ width: "400px" }}>
                             <span className="h3 text-bold mr1 mt1">{index + 1}.</span>
                             { card ?
                                 <PulseCardPreview card={card} onRemove={this.removeCard.bind(this, index)} />

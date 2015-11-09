@@ -48,7 +48,7 @@ Pulse.config(['$routeProvider', function ($routeProvider) {
             function($scope, $location, $route, $routeParams) {
                 $scope.Component = PulseEditApp;
                 $scope.props = {
-                    pulseId: $routeParams.pulseId
+                    pulseId: parseInt($routeParams.pulseId)
                 };
                 $scope.store = finalCreateStore(reducer, {});
             }

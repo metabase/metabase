@@ -10,7 +10,8 @@ import {
     setEditingPulse,
     updateEditingPulse,
     saveEditingPulse,
-    fetchCards
+    fetchCards,
+    fetchUsers
 } from "../actions";
 
 import _ from "underscore";
@@ -30,6 +31,7 @@ export default class PulseEdit extends Component {
     componentDidMount() {
         this.props.dispatch(setEditingPulse(this.props.pulseId));
         this.props.dispatch(fetchCards());
+        this.props.dispatch(fetchUsers());
     }
 
     async save() {

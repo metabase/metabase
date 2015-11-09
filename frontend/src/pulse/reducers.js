@@ -6,7 +6,8 @@ import {
     SET_EDITING_PULSE,
     UPDATE_EDITING_PULSE,
     SAVE_EDITING_PULSE,
-    FETCH_CARDS
+    FETCH_CARDS,
+    FETCH_USERS
 } from "./actions";
 
 export const pulses = handleActions({
@@ -32,4 +33,9 @@ export const cards = handleActions({
 }, {});
 export const cardList = handleActions({
     [FETCH_CARDS]: { next: (state, { payload }) => payload.result }
+}, []);
+
+// NOTE: duplicated from admin/people/reducers.js
+export const users = handleActions({
+    [FETCH_USERS]: { next: (state, { payload }) => ({ ...payload.entities.user }) }
 }, []);
