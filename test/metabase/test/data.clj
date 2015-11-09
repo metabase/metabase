@@ -4,6 +4,7 @@
                      [walk :as walk])
             [clojure.tools.logging :as log]
             [colorize.core :as color]
+            [expectations :as expectations]
             [medley.core :as m]
             (metabase [db :refer :all]
                       [driver :as driver])
@@ -212,3 +213,53 @@
   `(-with-temp-db ~database-definition
      (fn [~db-binding]
        ~@body)))
+
+
+(defmacro expect-with-test-db
+  "Identical to `expect` but wraps the entire evaluation in `with-temp-db` so that both expected and actual statements
+   have access to the test data required for the test.
+
+     (expect-with-test-db [_ test-data]
+       (id :venues :id)
+       (sel :one :field [ForeignKey :destination_id] :origin_id (id :checkins :venue_id)))"
+  [test-db-binding expected actual]
+  (let [fn-name (gensym)]
+    `(def ~(vary-meta fn-name assoc :expectation true)
+       (fn []
+         (with-temp-db ~test-db-binding
+           (expectations/doexpect ~expected ~actual))))))
+
+
+;;; ## ---------------------------------------- Test-Data Interface ----------------------------------------
+
+
+(def base-test-data
+  {:init! (fn [_])
+   :restart! (fn [_])
+   :destroy! (fn [_])})
+
+(defn with-test-data [i-test-data f]
+  (try
+    (binding [*sel-disable-logging* true]
+      (when (:init! i-test-data)
+        ((:init! i-test-data) i-test-data))
+      (binding [*sel-disable-logging* false]
+        (f)))
+    (finally
+      (binding [*sel-disable-logging* true]
+        (when (:destroy! i-test-data)
+          ((:destroy! i-test-data) i-test-data))))))
+
+(defmacro expect-with-test-data
+  "Identical to `expect` but wraps the entire evaluation in `with-temp-db` so that both expected and actual statements
+   have access to the test data required for the test.
+
+     (expect-with-test-db [_ test-data]
+       (id :venues :id)
+       (sel :one :field [ForeignKey :destination_id] :origin_id (id :checkins :venue_id)))"
+  [i-test-data expected actual]
+  (let [fn-name (gensym)]
+    `(def ~(vary-meta fn-name assoc :expectation true)
+       (fn []
+         (with-test-data ~i-test-data
+           (fn [] (expectations/doexpect ~expected ~actual)))))))
