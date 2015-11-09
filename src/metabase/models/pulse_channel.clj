@@ -17,8 +17,22 @@
 
    {:email {:name \"Email\", :recipients? true}
     :slack {:name \"Slack\", :recipients? false}}"
-  {:email {:recipients? true}
-   :slack {:recipients? false}})
+  {:email {:displayName "Email"
+           :recipients? true
+           :fields [{:name "recipients"
+                     :displayName "Send to"
+                     :multi: true
+                     :type: "email"
+                     :placeholder "Enter email address these questions should be sent to"
+                     :required true}]}
+   :slack {:displayName "Slack"
+           :recipients? false
+           :fields [{:name "channel"
+                     :displayName "Send to"
+                     :multi: false
+                     :type: "select"
+                     :options ["#general", "#random", "#ios"]
+                     :required true}]}})
 
 (defn channel-type?
   "Predicate function which returns `true` if the given argument is a valid value as a channel-type, `false` otherwise."
