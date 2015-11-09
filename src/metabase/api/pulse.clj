@@ -10,7 +10,8 @@
             (metabase.models [card :refer [Card]]
                              [database :refer [Database]]
                              [hydrate :refer :all]
-                             [pulse :refer [Pulse] :as pulse])
+                             [pulse :refer [Pulse] :as pulse]
+                             [pulse-channel :refer [channel-types]])
             [metabase.util :as util]
             [metabase.pulse :as p]))
 
@@ -59,10 +60,7 @@
 (defendpoint GET "/form_input"
   ""
   []
-  (let [card (Card id)]
-    (read-check Database (:database (:dataset_query card)))
-    (let [data (:data (driver/dataset-query (:dataset_query card) {:executed_by *current-user-id*}))]
-      {:status 200 :body (html [:html [:body {:style ""} (p/render-pulse-card card data)]])})))
+  {:channel_types channel-types})
 
 
 (defendpoint GET "/preview_card/:id"
