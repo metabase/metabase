@@ -3,23 +3,22 @@ import React, { Component, PropTypes } from "react";
 import _ from "underscore";
 
 function formatSchedule(channels) {
-    if (!channels) { return "nyi" };
     let types = {};
     for (let c of channels) {
-        types[c.type] = types[c.type] || [];
-        types[c.type].push(c);
+        types[c.channel_type] = types[c.channel_type] || [];
+        types[c.channel_type].push(c);
     }
-    return Object.keys(types).map(type => formatChannel(type, types[type])).join(" and ");
+    return Object.keys(types).sort().map(type => formatChannel(type, types[type])).join(" and ");
 }
 
 function formatChannel(type, channels) {
     switch (type) {
         case "email":
-            return "Emailed " + formatList(_.uniq(channels.map(c => c.schedule)) );
+            return "Emailed " + formatList(_.uniq(channels.map(c => c.schedule_type)) );
         case "slack":
-            return "Slack'd to " + formatList(channels.map(c => c.channel + " " + c.schedule))
+            return "Slack'd to " + formatList(channels.map(c => c.details.channel + " " + c.schedule_type))
         default:
-            return "Sent to " + type + " " + formatList(_.uniq(channels.map(c => c.schedule)));
+            return "Sent to " + type + " " + formatList(_.uniq(channels.map(c => c.schedule_type)));
     }
 }
 
