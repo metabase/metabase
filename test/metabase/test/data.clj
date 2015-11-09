@@ -233,22 +233,17 @@
 ;;; ## ---------------------------------------- Test-Data Interface ----------------------------------------
 
 
-(def base-test-data
-  {:init! (fn [_])
-   :restart! (fn [_])
-   :destroy! (fn [_])})
-
 (defn with-test-data [i-test-data f]
   (try
     (binding [*sel-disable-logging* true]
-      (when (:init! i-test-data)
-        ((:init! i-test-data) i-test-data))
+      (when (fn? (:before i-test-data))
+        ((:before i-test-data)))
       (binding [*sel-disable-logging* false]
         (f)))
     (finally
       (binding [*sel-disable-logging* true]
-        (when (:destroy! i-test-data)
-          ((:destroy! i-test-data) i-test-data))))))
+        (when (fn? (:after i-test-data))
+          ((:after i-test-data)))))))
 
 (defmacro expect-with-test-data
   "Identical to `expect` but wraps the entire evaluation in `with-temp-db` so that both expected and actual statements
