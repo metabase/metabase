@@ -21,7 +21,7 @@ export default class PulseEditName extends Component {
     render() {
         let { pulse } = this.props;
         return (
-            <div className="py4">
+            <div className="py1">
                 <h2>Name your pulse</h2>
                 <p>Give your pulse a name to help others understand what it's about.</p>
                 <div className="my3">
