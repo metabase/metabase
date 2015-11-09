@@ -170,13 +170,6 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             $scope.$apply(() => $location.path('/admin/databases/'));
         };
 
-        // load our form input data
-        Metabase.db_form_input(function(form_input) {
-            $scope.form_input = form_input;
-        }, function(error) {
-            console.log('error getting database form_input', error);
-        });
-
         function loadExistingDB() {
             // load existing database for editing
             Metabase.db_get({

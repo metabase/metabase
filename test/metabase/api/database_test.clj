@@ -21,28 +21,6 @@
                                                             :dbname "fakedb"
                                                             :user   "cam"}}))
 
-;; # FORM INPUT
-
-;; ## GET /api/database/form_input
-(expect
-    {:engines   (into {} (for [[driver info] @driver/available-drivers]
-                           {driver (-> info
-                                       (update :details-fields (partial map (fn [field]
-                                                                              (cond-> field
-                                                                                (:type field) (update :type name)))))
-                                       (update :features (partial map name)))}))
-     :timezones ["GMT"
-                 "UTC"
-                 "US/Alaska"
-                 "US/Arizona"
-                 "US/Central"
-                 "US/Eastern"
-                 "US/Hawaii"
-                 "US/Mountain"
-                 "US/Pacific"
-                 "America/Costa_Rica"]}
-    ((user->client :crowberto) :get 200 "database/form_input"))
-
 ;; # DB LIFECYCLE ENDPOINTS
 
 ;; ## GET /api/database/:id
