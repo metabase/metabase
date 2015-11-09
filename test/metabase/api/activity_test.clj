@@ -158,8 +158,10 @@
                         :model    model
                         :model_id model-id
                         :timestamp (u/new-sql-timestamp))
-                      ;; we sleep a few milliseconds to ensure no events have the same timestamp
-                      (Thread/sleep 5))]
+                      ;; we sleep a bit to ensure no events have the same timestamp
+                      ;; sadly, MySQL doesn't support milliseconds so we have to wait a second
+                      ;; otherwise our records are out of order and this test fails :(
+                      (Thread/sleep 1000))]
     (do
       (create-view (user->id :crowberto) "card" (:id card2))
       (create-view (user->id :crowberto) "dashboard" (:id dash1))
