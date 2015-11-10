@@ -28,7 +28,6 @@
 ;; simple job which looks up all databases and runs a sync on them
 (jobs/defjob SendPulses
              [ctx]
-             ;; determine what time it is right now (hour-of-day & day-of-week) in local timezone
              (send-pulses))
 
 (defn task-init []
@@ -96,8 +95,9 @@
           (= :slack channel_type) (send-pulse-slack pulse results details))))))
 
 (defn send-pulses
-  ""
+  "Send any `Pulses` which are scheduled to run in the current day/hour."
   []
+  ;; determine what time it is right now (hour-of-day & day-of-week) in local timezone
   (let [now               (time/to-time-zone (time/now) (time/time-zone-for-id (or (setting/get :report_timezone) "UTC")))
         curr-hour         (time/hour now)
         curr-weekday      (:id (get pulse-channel/days-of-week (time/day-of-week now)))
