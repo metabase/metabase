@@ -21,16 +21,16 @@
            :recipients? true
            :fields [{:name "recipients"
                      :displayName "Send to"
-                     :multi: true
-                     :type: "email"
+                     :multi true
+                     :type "email"
                      :placeholder "Enter email address these questions should be sent to"
                      :required true}]}
    :slack {:displayName "Slack"
            :recipients? false
            :fields [{:name "channel"
                      :displayName "Send to"
-                     :multi: false
-                     :type: "select"
+                     :multi false
+                     :type "select"
                      :options ["#general", "#random", "#ios"]
                      :required true}]}})
 
