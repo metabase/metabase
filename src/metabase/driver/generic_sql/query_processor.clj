@@ -90,7 +90,7 @@
     ([{:keys [amount unit], {field-unit :unit} :field} _]
      (let [{:keys [date date-interval]} (:driver *query*)]
        (date field-unit (if (zero? amount)
-                          (k/sqlfn :NOW)
+                          (k/sqlfn* (-> *query* :driver :current-datetime-fn))
                           (date-interval unit amount)))))))
 
 
@@ -101,14 +101,14 @@
     ;; aggregation clauses w/o a Field
     (case aggregation-type
       :rows  korma-query ; don't need to do anything special for `rows` - `select` selects all rows by default
-      :count (k/aggregate korma-query (count :*) :count))
+      :count (k/aggregate korma-query (count (k/raw "*")) :count))
     ;; aggregation clauses with a Field
     (let [field (formatted field)]
       (case aggregation-type
         :avg      (k/aggregate korma-query (avg field) :avg)
         :count    (k/aggregate korma-query (count field) :count)
         :distinct (k/aggregate korma-query (count (k/sqlfn :DISTINCT field)) :count)
-        :stddev   (k/fields    korma-query [(k/sqlfn :STDDEV field) :stddev])
+        :stddev   (k/fields    korma-query [(k/sqlfn* (-> *query* :driver :stddev-fn) field) :stddev])
         :sum      (k/aggregate korma-query (sum field) :sum)))))
 
 (defn- apply-breakout [korma-query {fields :breakout}]
@@ -182,22 +182,29 @@
 
 (defn- apply-page [korma-query {{:keys [items page]} :page}]
   (-> korma-query
-      ((-> *query* :driver :qp-clause->handler :limit) {:limit items}) ; lookup apply-limit from the driver and use that rather than calling k/limit directly
-      (k/offset (* items (dec page)))))                                ; so drivers that override it (like SQL Server) don't need to override this function as well
+      (k/limit items)
+      (k/offset (* items (dec page)))))
 
 (defn- log-korma-form
   [korma-form]
   (when (config/config-bool :mb-db-logging)
     (when-not qp/*disable-qp-logging*
       (log/debug
-       (u/format-color 'green "\nKORMA FORM: 😋\n%s" (u/pprint-to-str (dissoc korma-form :db :ent :from :options :aliases :results :type :alias)))
-       (u/format-color 'blue "\nSQL: 😈\n%s\n" (-> (k/as-sql korma-form)
-                                                  (s/replace #"\sFROM" "\nFROM")           ; add newlines to the SQL to make it more readable
-                                                  (s/replace #"\sLEFT JOIN" "\nLEFT JOIN")
-                                                  (s/replace #"\sWHERE" "\nWHERE")
-                                                  (s/replace #"\sGROUP BY" "\nGROUP BY")
-                                                  (s/replace #"\sORDER BY" "\nORDER BY")
-                                                  (s/replace #"\sLIMIT" "\nLIMIT")))))))
+       (u/format-color 'green "\nKORMA FORM: 😋\n%s" (u/pprint-to-str (dissoc korma-form :db :ent :from :options :aliases :results :type :alias))))
+      (try
+        (log/debug
+         (u/format-color 'blue "\nSQL: 😈\n%s\n" (-> (k/as-sql korma-form)
+                                                      (s/replace #"\sFROM" "\nFROM") ; add newlines to the SQL to make it more readable
+                                                      (s/replace #"\sLEFT JOIN" "\nLEFT JOIN")
+                                                      (s/replace #"\sWHERE" "\nWHERE")
+                                                      (s/replace #"\sGROUP BY" "\nGROUP BY")
+                                                      (s/replace #"\sORDER BY" "\nORDER BY")
+                                                      (s/replace #"\sLIMIT" "\nLIMIT")
+                                                      (s/replace #"\sAND" "\n   AND")
+                                                      (s/replace #"\sOR" "\n    OR"))))
+        ;; (k/as-sql korma-form) will barf if the korma form is invalid
+        (catch Throwable e
+          (log/error (u/format-color 'red "Invalid korma form: %s" (.getMessage e))))))))
 
 (def ^:const clause->handler
   "A map of QL clauses to fns that handle them. Each function is called like
@@ -246,6 +253,7 @@
             (k/exec korma-query))))
 
       (catch java.sql.SQLException e
+        (jdbc/print-sql-exception-chain e)
         (let [^String message (or (->> (.getMessage e)                       ; error message comes back like "Error message ... [status-code]" sometimes
                                        (re-find  #"(?s)(^.*)\s+\[[\d-]+\]$") ; status code isn't useful and makes unit tests hard to write so strip it off
                                        second)                               ; (?s) = Pattern.DOTALL - tell regex `.` to match newline characters as well

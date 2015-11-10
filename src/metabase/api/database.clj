@@ -42,12 +42,6 @@
   (sample-data/add-sample-dataset!)
   (sel :one Database :is_sample true))
 
-(defendpoint GET "/form_input"
-  "Values of options for the create/edit `Database` UI."
-  []
-  {:timezones metabase.models.common/timezones
-   :engines   @driver/available-drivers})
-
 ;; Stub function that will eventually validate a connection string
 (defendpoint POST "/validate"
   "Validate that we can connect to a `Database`."

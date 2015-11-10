@@ -25,13 +25,13 @@ export default class DatabaseEditForms extends Component {
 
     async detailsCaptured(database) {
         this.setState({ formError: null, formSuccess: null })
-            try {
-                await this.props.save({ ...database, id: this.props.database.id }, database.details);
-                // this object format is what FormMessage expects:
-                this.setState({ formSuccess: { data: { message: "Successfully saved!" }}});
-            } catch (error) {
-                this.setState({ formError: error })
-            }
+        try {
+            await this.props.save({ ...database, id: this.props.database.id }, database.details);
+            // this object format is what FormMessage expects:
+            this.setState({ formSuccess: { data: { message: "Successfully saved!" }}});
+        } catch (error) {
+            this.setState({ formError: error })
+        }
     }
 
     render() {

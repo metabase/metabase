@@ -43,6 +43,7 @@
     (try (qp query)
          (catch Throwable e
            {:status         :failed
+            :class          (class e)
             :error          (or (.getMessage e) (str e))
             :stacktrace     (u/filtered-stacktrace e)
             :query          (dissoc query :database :driver)

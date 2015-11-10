@@ -151,8 +151,7 @@
 (add-encoder org.bson.BsonUndefined encode-nil)
 
 ;; serialize sql dates (i.e., QueryProcessor results) like YYYY-MM-DD instead of as a full-blown timestamp
-(add-encoder java.sql.Date (fn [^java.sql.Date date ^com.fasterxml.jackson.core.JsonGenerator json-generator]
-                             (.writeString json-generator (.toString date))))
+(add-encoder java.sql.Date encode-str)
 
 (defn- remove-fns-and-delays
   "Remove values that are fns or delays from map M."

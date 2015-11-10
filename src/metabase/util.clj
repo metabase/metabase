@@ -1,6 +1,7 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:require [clojure.pprint :refer [pprint]]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.pprint :refer [pprint]]
             [clojure.tools.logging :as log]
             [colorize.core :as color]
             [medley.core :as m]
@@ -222,16 +223,6 @@
                   ~@body)
                 ~collection)))
 
-(defmacro try-apply
-  "Call F with PARAMS inside a try-catch block and log exceptions caught."
-  [f & params]
-  `(try
-     (~f ~@params)
-     (catch Throwable e#
-       (log/error (color/red ~(format "Caught exception in %s: " f)
-                             (or (.getMessage e#) e#)
-                             #_(with-out-str (.printStackTrace e#)))))))
-
 (defn indecies-satisfying
   "Return a set of indencies in COLL that satisfy PRED.
 
@@ -278,5 +269,28 @@
     (when-let [stacktrace (.getStackTrace e)]
       (->> (map str (.getStackTrace e))
            (filterv (partial re-find #"metabase"))))))
+
+(defmacro try-apply
+  "Call F with PARAMS inside a try-catch block and log exceptions caught."
+  [f & params]
+  `(try
+     (~f ~@params)
+     (catch java.sql.SQLException e#
+       (log/error (color/red ~(format "Caught exception in %s: " f)
+                             (with-out-str (jdbc/print-sql-exception-chain e#))
+                             (pprint-to-str (filtered-stacktrace e#)))))
+     (catch Throwable e#
+       (log/error (color/red ~(format "Caught exception in %s: " f)
+                             (or (.getMessage e#) e#)
+                             (pprint-to-str (filtered-stacktrace e#)))))))
+
+(defmacro with-timeout
+  "Run BODY in a `future` and throw an exception if it fails to complete after TIMEOUT-MS."
+  [timeout-ms & body]
+  `(let [future# (future ~@body)
+         result# (deref future# ~timeout-ms :timeout)]
+     (when (= result# :timeout)
+       (throw (Exception. (format "Timed out after %d milliseconds." ~timeout-ms))))
+     result#))
 
 (require-dox-in-this-namespace)
