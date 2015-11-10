@@ -54,9 +54,11 @@ export default class PulseListItem extends Component {
                     </div>
                 </div>
                 <ol className="mb2">
-                    { pulse.cards.map(card =>
-                        <li className="Button mr1">
-                            {card.name}
+                    { pulse.cards.map((card, index) =>
+                        <li key={index} className="mr1">
+                            <a className="Button" href={"/card/"+card.id}>
+                                {card.name}
+                            </a>
                         </li>
                     )}
                 </ol>

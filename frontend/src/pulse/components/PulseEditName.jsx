@@ -25,7 +25,14 @@ export default class PulseEditName extends Component {
                 <h2>Name your pulse</h2>
                 <p>Give your pulse a name to help others understand what it's about.</p>
                 <div className="my3">
-                    <input className="input" value={pulse.name} onChange={this.setName} />
+                    <input
+                        className="input h4 text-bold text-default"
+                        style={{"width":"400px"}}
+                        value={pulse.name}
+                        onChange={this.setName}
+                        placeholder="Important metrics"
+                        autoFocus
+                    />
                 </div>
             </div>
         );

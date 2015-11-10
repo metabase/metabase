@@ -6,33 +6,7 @@ import SchedulePicker from "./SchedulePicker.jsx";
 import Select from "metabase/components/Select.jsx";
 import Toggle from "metabase/components/Toggle.jsx";
 
-import _ from "underscore";
-
-const CHANNELS = [
-    {
-        type: "email",
-        name: "Email",
-        recipients: ["user", "email"],
-        schedules: ["daily", "weekly"]
-    },
-    {
-        type: "slack",
-        name: "Slack",
-        fields: [
-            {
-                name: "channel",
-                type: "select",
-                multi: false,
-                required: true,
-                options: ["#general", "#random", "#ios"],
-                displayName: "Post to"
-            }
-        ],
-        schedules: ["hourly", "daily"]
-    }
-];
-
-export default class PulseEditChannel extends Component {
+export default class PulseEditChannels extends Component {
     constructor(props) {
         super(props);
         this.state = {};
@@ -44,7 +18,7 @@ export default class PulseEditChannel extends Component {
     addChannel(type) {
         let { pulse } = this.props;
 
-        let channelSpec = _.find(CHANNELS, (c) => c.type === type);
+        let channelSpec = this.props.channelSpecs[type];
         if (!channelSpec) {
             return;
         }
@@ -96,7 +70,7 @@ export default class PulseEditChannel extends Component {
         return (
             <div>
                 {channelSpec.fields.map(field =>
-                    <div>
+                    <div key={field.name} className={field.name}>
                         <span className="h4 text-bold mr1">{field.displayName}</span>
                         { field.type === "select" ?
                             <Select
@@ -137,14 +111,14 @@ export default class PulseEditChannel extends Component {
                     onPropertyChange={this.onChannelPropertyChange.bind(this, index)}
                 />
             </li>
-        )
+        );
     }
 
     renderChannelSection(channelSpec) {
         let { pulse } = this.props;
         return (
             <li key={channelSpec.type} className="py2 border-row-divider">
-                <div className="flex align-center">
+                <div className="flex align-center mb1">
                     <h2>{channelSpec.name}</h2>
                     <Toggle className="flex-align-right" value={pulse.channels.some(c => c.channel_type === channelSpec.type)} onChange={this.toggleChannel.bind(this, channelSpec.type)} />
                 </div>
@@ -163,7 +137,7 @@ export default class PulseEditChannel extends Component {
             <div className="py1">
                 <h2>Where should this data go?</h2>
                 <ul>
-                    {CHANNELS.map(channelSpec =>
+                    {Object.values(this.props.channelSpecs).map(channelSpec =>
                         this.renderChannelSection(channelSpec)
                     )}
                 </ul>
