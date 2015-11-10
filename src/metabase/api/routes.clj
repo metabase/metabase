@@ -37,8 +37,8 @@
   (context "/field"        [] (+auth field/routes))
   (context "/foreignkey"   [] (+auth fk/routes))
   (GET     "/health"       [] (if ((resolve 'metabase.core/initialized?))
-                                  {:status 200 :body {:status "ok"}}
-                                  {:status 503 :body {:status "initializing" :progress ((resolve 'metabase.core/initialization-progress))}}))
+                                {:status 200 :body {:status "ok"}}
+                                {:status 503 :body {:status "initializing" :progress ((resolve 'metabase.core/initialization-progress))}}))
   (context "/notify"       [] (+apikey notify/routes))
   (context "/pulse"        [] (+auth pulse/routes))
   (context "/revision"     [] (+auth revision/routes))
