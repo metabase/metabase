@@ -10,7 +10,8 @@
             (metabase.models [card :refer [Card]]
                              [database :refer [Database]]
                              [hydrate :refer :all]
-                             [pulse :refer [Pulse] :as pulse])
+                             [pulse :refer [Pulse] :as pulse]
+                             [pulse-channel :refer [channel-types]])
             [metabase.util :as util]
             [metabase.pulse :as p]))
 
@@ -54,6 +55,12 @@
   "Delete a `Pulse`."
   [id]
   (db/cascade-delete Pulse :id id))
+
+
+(defendpoint GET "/form_input"
+  ""
+  []
+  {:channel_types channel-types})
 
 
 (defendpoint GET "/preview_card/:id"

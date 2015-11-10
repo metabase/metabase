@@ -4,6 +4,7 @@ import _ from "underscore";
 import DatabaseDetailsForm from "metabase/components/database/DatabaseDetailsForm.jsx";
 import FormField from "metabase/components/form/FormField.jsx";
 import MetabaseAnalytics from "metabase/lib/analytics";
+import MetabaseSettings from "metabase/lib/settings";
 
 import StepTitle from './StepTitle.jsx'
 import CollapsedStep from "./CollapsedStep.jsx";
@@ -18,7 +19,6 @@ export default class DatabaseStep extends Component {
 
     static propTypes = {
         dispatch: PropTypes.func.isRequired,
-        engines: PropTypes.object.isRequired,
         stepNumber: PropTypes.number.isRequired
     }
 
@@ -92,27 +92,24 @@ export default class DatabaseStep extends Component {
     }
 
     renderEngineSelect() {
-        let { engines } = this.props;
+        let engines = MetabaseSettings.get('engines');
         let { engine } = this.state,
         engineNames = _.keys(engines).sort();
-
-        let options = [(<option value="">Select the type of Database you use</option>)];
-        engineNames.forEach(function(opt) {
-            options.push((<option key={opt} value={opt}>{engines[opt].name}</option>))
-        });
 
         return (
             <label className="Select Form-offset mt1">
                 <select ref="engine" defaultValue={engine} onChange={this.chooseDatabaseEngine.bind(this)}>
-                    {options}
+                    <option value="">Select the type of Database you use</option>
+                    {engineNames.map(opt => <option key={opt} value={opt}>{engines[opt]['driver-name']}</option>)}
                 </select>
             </label>
         );
     }
 
     render() {
-        let { activeStep, databaseDetails, dispatch, engines, stepNumber } = this.props;
+        let { activeStep, databaseDetails, dispatch, stepNumber } = this.props;
         let { engine, formError } = this.state;
+        let engines = MetabaseSettings.get('engines');
 
         let stepText = 'Add your data';
         if (activeStep > stepNumber) {
