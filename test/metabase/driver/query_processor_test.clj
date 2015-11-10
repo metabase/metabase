@@ -1304,3 +1304,39 @@
                      :aggregation  ["count"]
                      :filter       ["TIME_INTERVAL" (id :checkins :timestamp) "last" "week"]}})
         :data :rows first first)))
+
+;; Make sure that when referencing the same field multiple times with different units we return the one
+;; that actually reflects the units the results are in.
+;; eg when we breakout by one unit and filter by another, make sure the results and the col info
+;; use the unit used by breakout
+(defn- date-bucketing-unit-when-you [& {:keys [breakout-by filter-by]}]
+  (with-temp-db [_ (checkins:1-per-day)]
+    (let [results (driver/process-query
+                   {:database (db-id)
+                    :type     :query
+                    :query     {:source_table (id :checkins)
+                                :aggregation  ["count"]
+                                :filter       ["TIME_INTERVAL" (id :checkins :timestamp) "current" filter-by]
+                                :breakout     [["datetime_field" (id :checkins :timestamp) "as" breakout-by]]}})]
+      {:rows (-> results :row_count)
+       :unit (-> results :data :cols first :unit)})))
+
+(datasets/expect-with-datasets sql-engines
+  {:rows 1, :unit :day}
+  (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day"))
+
+(datasets/expect-with-datasets sql-engines
+  {:rows 7, :unit :day}
+  (date-bucketing-unit-when-you :breakout-by "day", :filter-by "week"))
+
+(datasets/expect-with-datasets sql-engines
+  {:rows 1, :unit :week}
+  (date-bucketing-unit-when-you :breakout-by "week", :filter-by "day"))
+
+(datasets/expect-with-datasets sql-engines
+  {:rows 1, :unit :quarter}
+  (date-bucketing-unit-when-you :breakout-by "quarter", :filter-by "day"))
+
+(datasets/expect-with-datasets sql-engines
+  {:rows 1, :unit :hour}
+  (date-bucketing-unit-when-you :breakout-by "hour", :filter-by "day"))
