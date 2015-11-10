@@ -25,13 +25,17 @@
 (defonce ^:private send-pulses-job (atom nil))
 (defonce ^:private send-pulses-trigger (atom nil))
 
-;; simple job which looks up all databases and runs a sync on them
+;; triggers the sending of all pulses which are scheduled to run in the current hour
 (jobs/defjob SendPulses
-             [ctx]
-             (send-pulses))
+  [ctx]
+  ;; determine what time it is right now (hour-of-day & day-of-week) in reporting timezone
+  (let [now (time/to-time-zone (time/now) (time/time-zone-for-id (or (setting/get :report_timezone) "UTC")))
+        curr-hour (time/hour now)
+        curr-weekday (:id (get pulse-channel/days-of-week (time/day-of-week now)))]
+    (send-pulses curr-hour curr-weekday)))
 
 (defn task-init []
-  (log/info "Submitting sync-database task to scheduler")
+  (log/info "Submitting send-pulses task to scheduler")
   ;; build our job
   (reset! send-pulses-job (jobs/build
                                (jobs/of-type SendPulses)
@@ -50,6 +54,7 @@
 ;;; ## ---------------------------------------- PULSE SENDING ----------------------------------------
 
 
+;; TODO: this is probably something that could live somewhere else and just be reused by us
 (defn- ^:private execute-card
   "Execute the query for a single card."
   [card-id]
@@ -61,10 +66,10 @@
         (log/warn (format "Error running card query (%n)" card-id) t)))))
 
 (defn send-pulse-email
-  ""
+  "Send a `Pulse` email given a list of card results to render and a list of recipients to send to."
   [{:keys [id name]} results recipients]
   (log/debug (format "Sending Pulse (%d) via Channel :email" id))
-  (let [email-subject (str "Pulse Email: " name)
+  (let [email-subject    (str "Pulse Email: " name)
         email-recipients (filterv u/is-email? (map :email recipients))]
     (email/send-message
       :subject      email-subject
@@ -73,7 +78,7 @@
       :message      (with-out-str (clojure.pprint/pprint results)))))
 
 (defn send-pulse-slack
-  ""
+  "Post a `Pulse` to a slack channel given a list of card results to render and details about the slack destination."
   [{:keys [id] :as pulse} results details]
   (log/debug (format "Sending Pulse (%d) via Channel :slack" id)))
 
@@ -95,18 +100,19 @@
           (= :slack channel_type) (send-pulse-slack pulse results details))))))
 
 (defn send-pulses
-  "Send any `Pulses` which are scheduled to run in the current day/hour."
-  []
-  ;; determine what time it is right now (hour-of-day & day-of-week) in local timezone
-  (let [now               (time/to-time-zone (time/now) (time/time-zone-for-id (or (setting/get :report_timezone) "UTC")))
-        curr-hour         (time/hour now)
-        curr-weekday      (:id (get pulse-channel/days-of-week (time/day-of-week now)))
-        channels-by-pulse (group-by :pulse_id (pulse-channel/retrieve-scheduled-channels curr-hour curr-weekday))]
+  "Send any `Pulses` which are scheduled to run in the current day/hour.  We use the current time and determine the
+   hour of the day and day of the week according to the defined reporting timezone, or UTC.  We then find all `Pulses`
+   that are scheduled to run and send them."
+  [hour day]
+  [:pre [(integer? hour)
+         (and (< 0 hour) (> 23 hour))
+         (pulse-channel/day-of-week? day)]]
+  (let [channels-by-pulse (group-by :pulse_id (pulse-channel/retrieve-scheduled-channels hour day))]
     (doseq [pulse-id (keys channels-by-pulse)]
       (try
         (log/debug (format "Starting Pulse Execution: %d" pulse-id))
         (when-let [pulse (pulse/retrieve-pulse pulse-id)]
-          (send-pulse pulse (mapv :id (get channels-by-pulse pulse-id))))
+          (send-pulse pulse :channel-ids (mapv :id (get channels-by-pulse pulse-id))))
         (log/debug (format "Finished Pulse Execution: %d" pulse-id))
         (catch Exception e
-          (log/error "Error sending pulse: " pulse-id e))))))
+          (log/error "Error sending pulse:" pulse-id e))))))
