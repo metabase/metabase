@@ -9,7 +9,7 @@ export default class PulseCardPreview extends Component {
         super(props, context);
 
         this.state = {
-            height: 200
+            height: 0
         };
 
         _.bindAll(this, "onFrameLoad");

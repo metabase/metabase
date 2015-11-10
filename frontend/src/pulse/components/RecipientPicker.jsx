@@ -135,22 +135,24 @@ export default class RecipientPicker extends Component {
 
     render() {
         let { filteredUsers, selectedUser } = this.state;
+        let { recipients } = this.props;
 
         return (
-            <ul className={cx("px1 pb1 bordered rounded", { "input--focus": this.state.focused })} onMouseDownCapture={this.onMouseDownCapture}>
-                {this.props.recipients.map((recipient, index) =>
-                    <li key={index} className="inline-block mr1 py1 pl1 mt1 rounded bg-grey-1">
+            <ul className={cx("px1 pb1 bordered rounded flex flex-wrap", { "input--focus": this.state.focused })} onMouseDownCapture={this.onMouseDownCapture}>
+                {recipients.map((recipient, index) =>
+                    <li key={index} className="mr1 py1 pl1 mt1 rounded bg-grey-1">
                         <span className="h4 text-bold">{recipient.common_name || recipient.email}</span>
                         <a className="text-grey-2 text-grey-4-hover px1" onClick={this.removeRecipient.bind(this, recipient)}>
                             <Icon name="close" className="" width={12} height={12} />
                         </a>
                     </li>
                 )}
-                <li className="inline-block mr1 py1 pl1 mt1">
+                <li className="flex-full mr1 py1 pl1 mt1" style={{ "minWidth": " 100px" }}>
                     <input
                         ref="input"
                         type="text"
-                        className="h4 text-bold text-default no-focus borderless"
+                        className="full h4 text-bold text-default no-focus borderless"
+                        placeholder={recipients.length === 0 ? "Enter email addresses you'd like this data to go to" : null}
                         autoFocus
                         value={this.state.inputValue}
                         onKeyDown={this.onInputKeyDown}

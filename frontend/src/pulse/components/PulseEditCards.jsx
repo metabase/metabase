@@ -4,7 +4,7 @@ import PulseCardPreview from "./PulseCardPreview.jsx";
 
 import Select from "metabase/components/Select.jsx";
 
-export default class PulseEditCard extends Component {
+export default class PulseEditCards extends Component {
     constructor(props) {
         super(props);
         this.state = {};

@@ -6,41 +6,9 @@ import { fetchPulses, savePulse, createPulse } from "../actions";
 
 import _ from "underscore";
 
-// const DEMO_PULSES = [
-//     {   id: 0,
-//         name: "October Growth Sprint",
-//         creator: "Jack Mullis",
-//         cards: ["Saves per day", "Average daily saves with users with 10+ followees"],
-//         channels: [
-//             { type: "email", schedule: "daily", subscribers: [] }
-//         ]
-//     },
-//     {   id: 1,
-//         name: "3 things that matter",
-//         creator: "Luke Groesbeck",
-//         cards: ["DAU/MAU", "Spots", "Waitlist emails"],
-//         channels: [
-//             { type: "email", schedule: "daily", subscribers: ["tom@metabase.com"] }
-//         ],
-//         subscribed: true
-//     },
-//     {   id: 2,
-//         name: "IOS pulse",
-//         creator: "Jack Mullis",
-//         cards: ["Bugsnag Reports", "App Exceptions / HR", "Bugsnag - Crashes"],
-//         channels: [
-//             { type: "email", schedule: "hourly", subscribers: [] },
-//             { type: "slack", schedule: "hourly", channel: "#ios" }
-//         ]
-//     }
-// ];
-
 export default class PulseList extends Component {
-    constructor(props) {
-        super(props);
-        // this.state = {
-        //     pulses: [...DEMO_PULSES]
-        // };
+    constructor(props, context) {
+        super(props, context);
 
         _.bindAll(this, "onSave");
     }
