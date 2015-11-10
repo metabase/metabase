@@ -66,13 +66,12 @@
   (m/mapply fetch-or-create-user (user->info username)))
 
 (def user->id
-  "Memoized fn that returns the ID of User associated with USERNAME.
+  "fn that returns the ID of User associated with USERNAME, creating the user if needed.
 
     (user->id :rasta) -> 4"
-  (memoize
-   (fn [username]
-     {:pre [(contains? usernames username)]}
-     (:id (fetch-user username)))))
+  (fn [username]
+    {:pre [(contains? usernames username)]}
+    (:id (fetch-user username))))
 
 (defn user->credentials
   "Return a map with `:email` and `:password` for User with USERNAME.

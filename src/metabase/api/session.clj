@@ -7,6 +7,7 @@
             [korma.core :as k]
             [metabase.api.common :refer :all]
             [metabase.api.common.throttle :as throttle]
+            [metabase.config :as config]
             [metabase.db :refer :all]
             [metabase.email.messages :as email]
             [metabase.events :as events]
@@ -37,8 +38,10 @@
   [:as {{:keys [email password] :as body} :body, remote-address :remote-addr}]
   {email    [Required Email]
    password [Required NonEmptyString]}
-  (throttle/check (login-throttlers :ip-address) remote-address)
-  (throttle/check (login-throttlers :email)      email)
+  ;; TODO: ideally we'd have a better way of controlling when to apply throttlers
+  (when (not (config/is-test?))
+    (throttle/check (login-throttlers :ip-address) remote-address)
+    (throttle/check (login-throttlers :email)      email))
   (let [user (sel :one :fields [User :id :password_salt :password], :email email (k/where {:is_active true}))]
     ;; Don't leak whether the account doesn't exist or the password was incorrect
     (when-not (and user

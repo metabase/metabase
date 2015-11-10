@@ -1,6 +1,7 @@
 (ns metabase.test-setup
   "Functions that run before + after unit tests (setup DB, start web server, load test data)."
   (:require [clojure.java.io :as io]
+            [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
             [clojure.tools.logging :as log]
             [expectations :refer :all]
@@ -74,6 +75,37 @@
       ;; Check that dataset is loaded and working
       (assert (Table (datasets/table-name->id dataset :venues))
         (format "Loading test dataset %s failed: could not find 'venues' Table!" dataset-name)))))
+
+(defn test-wrapper
+  {:expectations-options :in-context}
+  [work]
+  (try
+    (println "clearing data")
+    ;; make sure all data is deleted from our app db
+    (jdbc/with-db-transaction [conn (db/jdbc-details @db/db-connection-details)]
+      (let [tables      ["data_migrations"
+                         "activity"
+                         "revision"
+                         "setting"
+                         "core_session"
+                         "view_log"
+                         "query_queryexecution"
+                         "report_cardfavorite"
+                         "report_dashboardcard"
+                         "report_dashboardsubscription"
+                         "report_dashboard"
+                         "report_card"
+                         "metabase_foreignkey"
+                         "metabase_fieldvalues"
+                         "metabase_field"
+                         "metabase_table"
+                         "metabase_database"
+                         "core_user"]
+            mk-del-stmt (partial str "delete from ")]
+        (dorun (map (comp (partial jdbc/db-do-prepared conn) mk-del-stmt) tables))))
+    (catch Throwable e
+      (.printStackTrace e)))
+  (work))
 
 (defn test-startup
   {:expectations-options :before-run}

@@ -14,10 +14,11 @@
                            [util :refer [resolve-private-fns]])
             (metabase.test.data [datasets :as datasets]
                                 [interface :refer [create-database-definition]])
+            [metabase.test.data.data :refer [test-data]]
             [metabase.util :as u]))
 
 (def users-table
-  (delay (sel :one Table :name "USERS")))
+  (delay (Table (id :users))))
 
 (def venues-table
   (delay (Table (id :venues))))
@@ -30,11 +31,12 @@
 
 
 ;; ## TEST PK SYNCING
-(expect [:id
-         nil
-         :id
-         :latitude
-         :id]
+(expect-with-test-db [_ test-data]
+  [:id
+   nil
+   :id
+   :latitude
+   :id]
   (let [get-special-type (fn [] (sel :one :field [Field :special_type] :id (id :venues :id)))]
     [;; Special type should be :id to begin with
      (get-special-type)
@@ -56,19 +58,23 @@
 
 ;; Check that Foreign Key relationships were created on sync as we expect
 
-(expect (id :venues :id)
+(expect-with-test-db [_ test-data]
+  (id :venues :id)
   (sel :one :field [ForeignKey :destination_id] :origin_id (id :checkins :venue_id)))
 
-(expect (id :users :id)
+(expect-with-test-db [_ test-data]
+  (id :users :id)
   (sel :one :field [ForeignKey :destination_id] :origin_id (id :checkins :user_id)))
 
-(expect (id :categories :id)
+(expect-with-test-db [_ test-data]
+  (id :categories :id)
   (sel :one :field [ForeignKey :destination_id] :origin_id (id :venues :category_id)))
 
 ;; Check that sync-table! causes FKs to be set like we'd expect
-(expect [[:fk true]
-         [nil false]
-         [:fk true]]
+(expect-with-test-db [_ test-data]
+  [[:fk true]
+   [nil false]
+   [:fk true]]
   (let [field-id (id :checkins :user_id)
         get-special-type-and-fk-exists? (fn []
                                           [(sel :one :field [Field :special_type] :id field-id)
@@ -87,45 +93,49 @@
 ;; ## Tests for DETERMINE-FK-TYPE
 ;; Since COUNT(category_id) > COUNT(DISTINCT(category_id)) the FK relationship should be Mt1
 (def determine-fk-type (u/runtime-resolved-fn 'metabase.driver.sync 'determine-fk-type))
-(expect :Mt1
+(expect-with-test-db [_ test-data]
+  :Mt1
   (determine-fk-type (Field (id :venues :category_id))))
 
 ;; Since COUNT(id) == COUNT(DISTINCT(id)) the FK relationship should be 1t1
 ;; (yes, ID isn't really a FK field, but determine-fk-type doesn't need to know that)
-(expect :1t1
+(expect-with-test-db [_ test-data]
+  :1t1
   (determine-fk-type (Field (id :venues :id))))
 
 
 ;;; ## FieldValues Syncing
 
-(let [get-field-values    (fn [] (sel :one :field [FieldValues :values] :field_id (id :venues :price)))
-      get-field-values-id (fn [] (sel :one :id FieldValues :field_id (id :venues :price)))]
-  ;; Test that when we delete FieldValues syncing the Table again will cause them to be re-created
-  (expect
-      [[1 2 3 4]  ; 1
-       nil        ; 2
-       [1 2 3 4]] ; 3
+;; Test that when we delete FieldValues syncing the Table again will cause them to be re-created
+(expect-with-test-db [_ test-data]
+  [[1 2 3 4]  ; 1
+   nil        ; 2
+   [1 2 3 4]] ; 3
+  (let [get-field-values    (fn [] (sel :one :field [FieldValues :values] :field_id (id :venues :price)))
+        get-field-values-id (fn [] (sel :one :id FieldValues :field_id (id :venues :price)))]
     [ ;; 1. Check that we have expected field values to start with
      (get-field-values)
      ;; 2. Delete the Field values, make sure they're gone
      (do (cascade-delete FieldValues :id (get-field-values-id))
          (get-field-values))
      ;; 3. Now re-sync the table and make sure they're back
-     (do (driver/sync-table! @venues-table)
-         (get-field-values))])
+     (do (driver/sync-table! (Table (id :venues)))
+         (get-field-values))]))
 
-  ;; Test that syncing will cause FieldValues to be updated
-  (expect
-      [[1 2 3 4]  ; 1
-       [1 2 3]    ; 2
-       [1 2 3 4]] ; 3
+;; Test that syncing will cause FieldValues to be updated
+(expect-with-test-db [_ test-data]
+  [[1 2 3 4]  ; 1
+   [1 2 3]    ; 2
+   [1 2 3 4]] ; 3
+  (let [get-field-values    (fn [] (sel :one :field [FieldValues :values] :field_id (id :venues :price)))
+        get-field-values-id (fn [] (sel :one :id FieldValues :field_id (id :venues :price)))]
     [ ;; 1. Check that we have expected field values to start with
      (get-field-values)
      ;; 2. Update the FieldValues, remove one of the values that should be there
      (do (upd FieldValues (get-field-values-id) :values [1 2 3])
          (get-field-values))
      ;; 3. Now re-sync the table and make sure the value is back
-     (do (driver/sync-table! @venues-table)
+     (do (driver/sync-table! (Table (id :venues)))
          (get-field-values))]))
 
 
