@@ -42,6 +42,7 @@
                  [medley "0.7.0"]                                     ; lightweight lib of useful functions
                  [mysql/mysql-connector-java "5.1.37"]                ; MySQL JDBC driver
                  [net.sf.cssbox/cssbox "4.10"]
+                 [net.sourceforge.jtds/jtds "1.3.1"]                  ; Open Source SQL Server driver
                  [org.xhtmlrenderer/flying-saucer-core "9.0.8"]
                  [org.liquibase/liquibase-core "3.4.1"]               ; migration management (Java lib)
                  [org.slf4j/slf4j-log4j12 "1.7.12"]

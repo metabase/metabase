@@ -20,7 +20,7 @@
   (delay (sel :one Table :name "USERS")))
 
 (def venues-table
-  (delay (sel :one Table :name "VENUES")))
+  (delay (Table (id :venues))))
 
 (def korma-users-table
   (delay (korma-entity @users-table)))

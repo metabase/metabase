@@ -63,10 +63,10 @@
   (let [existing-tables (set (keys existing-table->id))
         new-tables      (set/difference active-tables existing-tables)]
     (when (seq new-tables)
-      (log/debug (u/format-color 'blue "Found new tables: %s" (for [{table :name, schema :schema} new-tables]
-                                                                (if schema
-                                                                  (str schema \. table)
-                                                                  table))))
+      (log/debug (u/format-color 'blue "Found new tables: %s" (vec (for [{table :name, schema :schema} new-tables]
+                                                                     (if schema
+                                                                       (str schema \. table)
+                                                                       table)))))
       (doseq [{table :name, schema :schema} new-tables]
         ;; If it's a _metabase_metadata table then we'll handle later once everything else has been synced
         (when-not (= (s/lower-case table) "_metabase_metadata")
@@ -201,13 +201,13 @@
   [driver active-tables]
   (let [active-tables (sort-by :name active-tables)]
     ;; First, create all the Fields / PKs for all of the Tables
-    (u/pdoseq [table active-tables]
+    (doseq [table active-tables]
       (u/try-apply sync-table-active-fields-and-pks! driver table))
 
     ;; After that, we can do all the other syncing for the Tables
     (let [tables-count          (count active-tables)
           finished-tables-count (atom 0)]
-      (u/pdoseq [table active-tables]
+      (doseq [table active-tables]
         ;; make sure table has :display_name
         (u/try-apply update-table-display-name! table)
 

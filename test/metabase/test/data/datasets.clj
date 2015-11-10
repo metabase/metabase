@@ -6,6 +6,7 @@
             [environ.core :refer [env]]
             [expectations :refer :all]
             [metabase.db :refer :all]
+            [metabase.driver :as driver]
             [metabase.driver.mongo.test-data :as mongo-data]
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
@@ -13,7 +14,8 @@
                                 [h2 :as h2]
                                 [mongo :as mongo]
                                 [mysql :as mysql]
-                                [postgres :as postgres])
+                                [postgres :as postgres]
+                                [sqlserver :as sqlserver])
             [metabase.util :as u]))
 
 ;; # IDataset
@@ -169,14 +171,28 @@
           :sum-field-type (constantly :BigIntegerField)}))
 
 
+;;; ### SQLServer
+
+(defrecord SQLServerDriverData [dbpromise])
+
+(extend SQLServerDriverData
+  IDataset
+  (merge GenericSQLIDatasetMixin
+         {:dataset-loader (fn [_]
+                            (sqlserver/dataset-loader))
+          :default-schema (constantly "dbo")
+          :sum-field-type (constantly :IntegerField)}))
+
+
 ;; # Concrete Instances
 
 (def dataset-name->dataset
   "Map of dataset keyword name -> dataset instance (i.e., an object that implements `IDataset`)."
-  {:mongo    (MongoDriverData.)
-   :h2       (H2DriverData. (promise))
-   :postgres (PostgresDriverData. (promise))
-   :mysql    (MySQLDriverData. (promise))})
+  {:mongo     (MongoDriverData.)
+   :h2        (H2DriverData.        (promise))
+   :postgres  (PostgresDriverData.  (promise))
+   :mysql     (MySQLDriverData.     (promise))
+   :sqlserver (SQLServerDriverData. (promise))})
 
 (def ^:const all-valid-dataset-names
   "Set of names of all valid datasets."
@@ -222,15 +238,21 @@
 
 (def ^:dynamic *dataset*
   "The dataset we're currently testing against, bound by `with-dataset`.
-   Defaults to `:h2`."
+   Defaults to `(dataset-name->dataset :h2)`."
   (dataset-name->dataset (if (contains? test-dataset-names :h2) :h2
                              (first test-dataset-names))))
+
+(def ^:dynamic *engine*
+  "Keyword name of the engine that we're currently testing against. Defaults to `:h2`."
+  :h2)
 
 (defmacro with-dataset
   "Bind `*dataset*` to the dataset with DATASET-NAME and execute BODY."
   [dataset-name & body]
-  `(binding [*dataset* (dataset-name->dataset ~dataset-name)]
-     ~@body))
+  `(let [engine# ~dataset-name]
+     (binding [*engine*  engine#
+               *dataset* (dataset-name->dataset engine#)]
+       ~@body)))
 
 (defmacro when-testing-dataset
   "Execute BODY only if we're currently testing against DATASET-NAME."
@@ -267,9 +289,8 @@
   "Generate unit tests for all datasets in DATASET-NAMES; each test will only run if we're currently testing the corresponding dataset.
    `*dataset*` is bound to the current dataset inside each test."
   [dataset-names expected actual]
-  `(do ~@(map (fn [dataset-name]
-                `(expect-with-dataset ~dataset-name ~expected ~actual))
-              dataset-names)))
+  `(do ~@(for [dataset-name (eval dataset-names)]
+           `(expect-with-dataset ~dataset-name ~expected ~actual))))
 
 (defmacro expect-with-all-datasets
   "Generate unit tests for all valid datasets; each test will only run if we're currently testing the corresponding dataset.
@@ -286,6 +307,6 @@
   [& pairs]
   `(cond ~@(mapcat (fn [[dataset then]]
                      (assert (contains? all-valid-dataset-names dataset))
-                     [`(= *dataset* (dataset-name->dataset ~dataset))
+                     [`(= *engine* ~dataset)
                       then])
                    (partition 2 pairs))))
