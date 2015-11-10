@@ -18,6 +18,7 @@
                               (catch-api-exceptions 0)
                               (check 1)
                               (checkp 1)
+                              (cond-as-> 2)
                               (cond-let 0)
                               (conda 0)
                               (context 2)

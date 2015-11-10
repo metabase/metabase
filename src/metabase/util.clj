@@ -293,4 +293,24 @@
        (throw (Exception. (format "Timed out after %d milliseconds." ~timeout-ms))))
      result#))
 
+(defmacro cond-as->
+  "Anaphoric version of `cond->`. Binds EXPR to NAME through a series
+   of pairs of TEST and FORM. NAME is successively bound to the value
+   of each FORM whose TEST succeeds.
+
+     (defn maybe-wrap-fn [before after f]
+       (as-> f <>
+         (fn? before) (fn [] (before) (<>))
+         (fn? after)  (fn [] (try (<>)
+                                  (finally (after))))))"
+  {:arglists '([expr nm tst form & more])}
+  [expr nm & clauses]
+  {:pre [(even? (count clauses))]}
+  `(let [~nm ~expr
+         ~@(apply concat (for [[tst form] (partition 2 clauses)]
+                           [nm `(if ~tst
+                                  ~form
+                                  ~nm)]))]
+     ~nm))
+
 (require-dox-in-this-namespace)
