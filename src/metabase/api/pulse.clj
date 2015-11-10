@@ -56,21 +56,12 @@
   (db/cascade-delete Pulse :id id))
 
 
-(defendpoint GET "/form_input"
-  ""
-  []
-  (let [card (Card id)]
-    (read-check Database (:database (:dataset_query card)))
-    (let [data (:data (driver/dataset-query (:dataset_query card) {:executed_by *current-user-id*}))]
-      {:status 200 :body (html [:html [:body {:style ""} (p/render-pulse-card card data)]])})))
-
-
 (defendpoint GET "/preview_card/:id"
   "Get HTML rendering of a `Card` with ID."
   [id]
   (let [card (Card id)]
         (read-check Database (:database (:dataset_query card)))
         (let [data (:data (driver/dataset-query (:dataset_query card) {:executed_by *current-user-id*}))]
-              {:status 200 :body (html [:html [:body {:style ""} (p/render-pulse-card card data)]])})))
+              {:status 200 :body (html [:html [:body {:style "margin: 0;"} (p/render-pulse-card card data)]])})))
 
 (define-routes)
