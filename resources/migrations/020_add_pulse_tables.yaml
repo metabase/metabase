@@ -1,27 +1,5 @@
 databaseChangeLog:
   - changeSet:
-      id: 20-A
-      author: agilliland
-      preConditions:
-        onFail: MARK_RAN
-        and:
-          tableExists:
-            tableName: report_emailreport
-          tableExists:
-            tableName: report_emailreportexecutions
-          tableExists:
-            tableName: report_emailreport_recipients
-      changes:
-        - dropTable:
-            tableName: report_emailreport_recipients
-            cascadeConstraints: true
-        - dropTable:
-            tableName: report_emailreportexecutions
-            cascadeConstraints: true
-        - dropTable:
-            tableName: report_emailreport
-            cascadeConstraints: true
-  - changeSet:
       id: 20
       author: agilliland
       changes:
@@ -150,10 +128,15 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: schedule_details
-                  type: text
+                  name: schedule_hour
+                  type: int
                   constraints:
-                    nullable: false
+                    nullable: true
+              - column:
+                  name: schedule_day
+                  type: varchar(64)
+                  constraints:
+                    nullable: true
               - column:
                   name: created_at
                   type: DATETIME
