@@ -39,7 +39,8 @@ export default class PulseEditChannels extends Component {
             recipients: [],
             details: details,
             schedule_type: channelSpec.schedules[0],
-            schedule_details: { day_of_week: "mon", hour_of_day: 8 }
+            schedule_day: "mon",
+            schedule_hour: 8
         };
 
         this.props.setPulse({ ...pulse, channels: pulse.channels.concat(channel) });

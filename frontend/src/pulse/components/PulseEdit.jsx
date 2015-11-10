@@ -58,8 +58,20 @@ export default class PulseEdit extends Component {
         if (!channelSpec) {
             return false;
         }
-        if (!channel.schedule_type) {
-            // TODO: validate schedule_details?
+        switch (channel.schedule_type) {
+            // these cases intentionally fall though
+            case "weekly": if (channel.schedule_day == null) { return false };
+            case "daily":  if (channel.schedule_hour == null) { return false };
+            case "hourly": break;
+            default:       return false;
+        }
+        if (channel.schedule_type === "weekly") {
+
+        } else if (channel.schedule_type === "daily") {
+
+        } else if (channel.schedule_type === "hourly") {
+
+        } else {
             return false;
         }
         if (channelSpec.recipients) {
