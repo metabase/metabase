@@ -314,6 +314,7 @@
 
      metabase.driver.<engine>/<engine>"
   [engine]
+  {:pre [engine]}
   (let [nmspc (symbol (format "metabase.driver.%s" (name engine)))]
     (require nmspc)
     @(ns-resolve nmspc (symbol (name engine)))))
@@ -334,13 +335,18 @@
 
 ;; ## Implementation-Agnostic Driver API
 
+(def ^:private ^:const can-connect-timeout-ms
+  "Consider `can-connect?`/`can-connect-with-details?` to have failed after this many milliseconds."
+  5000)
+
 (defn can-connect?
   "Check whether we can connect to DATABASE and perform a basic query (such as `SELECT 1`)."
   [database]
   {:pre [(map? database)]}
   (let [driver (engine->driver (:engine database))]
     (try
-      ((:can-connect? driver) (:details database))
+      (u/with-timeout can-connect-timeout-ms
+        ((:can-connect? driver) (:details database)))
       (catch Throwable e
         (log/error "Failed to connect to database:" (.getMessage e))
         false))))
@@ -357,7 +363,8 @@
          (map? details-map)]}
   (let [{:keys [humanize-connection-error-message], :as driver} (engine->driver engine)]
     (try
-      ((:can-connect? driver) details-map)
+      (u/with-timeout can-connect-timeout-ms
+        ((:can-connect? driver) details-map))
       (catch Throwable e
         (log/error "Failed to connect to database:" (.getMessage e))
         (when rethrow-exceptions

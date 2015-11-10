@@ -34,7 +34,8 @@
 
 ;; Check that we get proper error responses for malformed SQL
 (expect {:status :failed
-         :error "Column \"ZID\" not found"}
+         :class  java.lang.Exception
+         :error  "Column \"ZID\" not found"}
   (dissoc (driver/process-query {:native   {:query "SELECT ZID FROM CHECKINS LIMIT 2;"} ; make sure people know it's to be expected
                                  :type     :native
                                  :database (db-id)})
