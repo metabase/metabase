@@ -1,10 +1,13 @@
 (ns metabase.task.send-pulses
   "Tasks related to running `Pulses`."
   (:require [clojure.tools.logging :as log]
+            [cheshire.core :as cheshire]
             (clojurewerkz.quartzite [jobs :as jobs]
                                     [triggers :as triggers])
             [clojurewerkz.quartzite.schedule.cron :as cron]
+            [clj-http.client :as client]
             [clj-time.core :as time]
+            [hiccup.core :refer [html]]
             [metabase.db :as db]
             [metabase.driver :as driver]
             [metabase.email :as email]
@@ -14,7 +17,8 @@
                              [pulse-channel :as pulse-channel]
                              [setting :as setting])
             [metabase.task :as task]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.pulse :as p]))
 
 
 (declare send-pulses)
@@ -54,28 +58,49 @@
   "Execute the query for a single card."
   [card-id]
   {:pre [(integer? card-id)]}
-  (let [{:keys [creator_id dataset_query]} (db/sel :one Card :id card-id)]
+  (let [card (db/sel :one Card :id card-id)
+        {:keys [creator_id dataset_query]} card]
     (try
-      (driver/dataset-query dataset_query {:executed_by creator_id})
+      {:card card :result (driver/dataset-query dataset_query {:executed_by creator_id})}
       (catch Throwable t
         (log/warn (format "Error running card query (%n)" card-id) t)))))
 
 (defn send-pulse-email
   ""
-  [{:keys [id name]} results recipients]
+  [{:keys [id name] :as pulse} results recipients]
   (log/debug (format "Sending Pulse (%d) via Channel :email" id))
   (let [email-subject (str "Pulse Email: " name)
         email-recipients (filterv u/is-email? (map :email recipients))]
     (email/send-message
       :subject      email-subject
       :recipients   email-recipients
-      :message-type :text
-      :message      (with-out-str (clojure.pprint/pprint results)))))
+      :message-type :html
+      :message      (html [:html [:body (p/render-pulse pulse results)]]))))
+
+(defn- create-slack-attachment
+  ""
+  [{:keys [card result]}]
+  (log/debug (str "Sending Pulse Card " card result))
+  (let [ba (p/render-pulse-card-to-png card (:data result) false)
+        upload-result (client/post "https://slack.com/api/files.upload"
+                                   {:multipart [["token" (setting/get :slack-token)]
+                                                ["file" ba]]
+                                    :as :json})]
+    {:title (:name card)
+     :title_link (str (setting/get :-site-url) "/card/" (:id card) "?clone")
+     :image_url (-> upload-result :body :file :url)
+     :fallback (:name card)}))
 
 (defn send-pulse-slack
   ""
-  [{:keys [id] :as pulse} results details]
-  (log/debug (format "Sending Pulse (%d) via Channel :slack" id)))
+  [{:keys [id name] :as pulse} results details]
+  (log/debug (format "Sending Pulse (%d) via Channel :slack" id))
+  (client/post "https://slack.com/api/chat.postMessage"
+               {:form-params {:token (setting/get :slack-token)
+                              :channel "@tom";(:channel details)
+                              :username "MetaBot"
+                              :text (str "Pulse: " name)
+                              :attachments (cheshire/generate-string (mapv create-slack-attachment results))}}))
 
 (defn send-pulse
   "Execute and Send a `Pulse`, optionally specifying the specific `PulseChannels`.  This includes running each

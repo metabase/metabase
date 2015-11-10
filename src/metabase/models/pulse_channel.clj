@@ -161,8 +161,7 @@
 
 (defn update-pulse-channel
   "Updates an existing `PulseChannel` along with all related data associated with the channel such as `PulseChannelRecipients`."
-  [{{:keys [day_of_week hour_of_day]} :schedule_details
-    :keys [id channel_type details recipients schedule_type]
+  [{:keys [id channel_type details recipients schedule_type schedule_day schedule_hour]
     :or   {details          {}
            recipients       []}}]
   {:pre [(integer? id)
@@ -170,23 +169,22 @@
          (schedule-type? schedule_type)
          (coll? recipients)
          (every? map? recipients)]}
-  ;; TODO: validate full schedule choice.  e.g. daily requires a hour_of_day, weekly requires day_of_week
+  ;; TODO: validate full schedule choice.  e.g. daily requires a schedule_hour, weekly requires schedule_day
   (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))]
     (db/upd PulseChannel id
       :details          (cond-> details
                           (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
       :schedule_type    schedule_type
       :schedule_hour    (when (not= schedule_type schedule-type-hourly)
-                          hour_of_day)
+                          schedule_hour)
       :schedule_day     (when (= schedule_type schedule-type-weekly)
-                          day_of_week))
+                          schedule_day))
     (when (and (supports-recipients? channel_type) (seq (get recipients-by-type true)))
       (update-recipients! id (get recipients-by-type true)))))
 
 (defn create-pulse-channel
   "Create a new `PulseChannel` along with all related data associated with the channel such as `PulseChannelRecipients`."
-  [{{:keys [day_of_week hour_of_day]} :schedule_details
-    :keys [channel_type details pulse_id recipients schedule_type]
+  [{:keys [channel_type details pulse_id recipients schedule_type schedule_day schedule_hour]
     :or   {details          {}
            recipients       []}}]
   {:pre [(channel-type? channel_type)
@@ -194,7 +192,7 @@
          (schedule-type? schedule_type)
          (coll? recipients)
          (every? map? recipients)]}
-  ;; TODO: validate full schedule choice.  e.g. daily requires a hour_of_day, weekly requires day_of_week
+  ;; TODO: validate full schedule choice.  e.g. daily requires a schedule_hour, weekly requires schedule_day
   (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))
         {:keys [id]} (db/ins PulseChannel
                        :pulse_id         pulse_id
@@ -203,8 +201,8 @@
                                            (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
                        :schedule_type    schedule_type
                        :schedule_hour    (when (not= schedule_type schedule-type-hourly)
-                                           hour_of_day)
+                                           schedule_hour)
                        :schedule_day     (when (= schedule_type schedule-type-weekly)
-                                           day_of_week))]
+                                           schedule_day))]
     (when (and (supports-recipients? channel_type) (seq (get recipients-by-type true)))
       (update-recipients! id (get recipients-by-type true)))))
