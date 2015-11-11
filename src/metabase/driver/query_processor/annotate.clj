@@ -44,34 +44,54 @@
   (assoc field :field-name (keyword (apply str (->> (rest (i/qualified-name-components field))
                                                     (interpose "."))))))
 
-(defn- flatten-collect-fields [form]
-  (let [fields (transient [])]
-    (clojure.walk/prewalk (fn [f]
-                            (cond
-                              (= (type f) metabase.driver.query_processor.interface.Field)
-                              (do
-                                (conj! fields f)
-                                ;; HACK !!!
-                                ;; Nested Mongo fields come back inside of their parent when you specify them in the fields clause
-                                ;; e.g. (Q fields venue...name) will return rows like {:venue {:name "Kyle's Low-Carb Grill"}}
-                                ;; Until we fix this the right way we'll just include the parent Field in the :query-fields list so the pattern
-                                ;; matching works correctly.
-                                ;; (This hack was part of the old annotation code too, it just sticks out better because it's no longer hidden amongst the others)
-                                (when (:parent f)
-                                  (conj! fields (:parent f))))
+(defn- collect-fields
+  "Return a sequence of all the `Fields` inside THIS, recursing as needed for collections.
+   For maps, add or `conj` to property `:path`, recording the keypath used to reach each `Field.`
 
-                              ;; For a DateTimeField we'll flatten it back into regular Field but include the :unit info for the frontend
-                              ;; Recurse so this fn will handle the resulting Field normally
-                              (= (type f) metabase.driver.query_processor.interface.DateTimeField)
-                              (recur (assoc (:field f)
-                                            :unit (:unit f)))
+     (collect-fields {:name \"id\", ...})     -> [{:name \"id\", ...}]
+     (collect-fields [{:name \"id\", ...}])   -> [{:name \"id\", ...}]
+     (collect-fields {:a {:name \"id\", ...}) -> [{:name \"id\", :path [:a], ...}]"
+  [this]
+  (condp instance? this
+    clojure.lang.IPersistentMap
+    (for [[k v] (seq this)
+          field (collect-fields v)]
+      (update field :path conj k))
 
-                              :else f))
-                          form)
-    (->> (persistent! fields)
-         distinct
-         (map field-qualify-name)
-         (mapv (u/rpartial dissoc :parent :parent-id :table-name)))))
+    clojure.lang.Sequential
+    (mapcat collect-fields this)
+
+    metabase.driver.query_processor.interface.Field
+    (if-let [{:keys [parent]} this]
+      ;; Nested Mongo fields come back inside of their parent when you specify them in the fields clause
+      ;; e.g. (Q fields venue...name) will return rows like {:venue {:name "Kyle's Low-Carb Grill"}}
+      ;; Until we fix this the right way we'll just include the parent Field in the :query-fields list so the pattern
+      ;; matching works correctly.
+      [this parent]
+      [this])
+
+    ;; For a DateTimeField we'll flatten it back into regular Field but include the :unit info for the frontend
+    metabase.driver.query_processor.interface.DateTimeField
+    (recur (assoc (:field this) :unit (:unit this)))
+
+    nil))
+
+(defn- flatten-fields
+  "Flatten a group of fields, keeping those which are more important when duplicates exist."
+  [fields]
+  (let [path-importance (fn [{[k] :path}]
+                          (cond
+                            (= k :breakout) 0     ; lower number = higher importance, because `sort` is ascending
+                            (= k :fields)   1     ; more important versions of fields are the ones we'll actually see in results,
+                            :else           2))]  ; so look at each field's :path. For now, it's enough just to look at the first element.
+    (distinct (sort-by path-importance fields)))) ; this is important so we don't use return the wrong version of a Field (e.g. with the wrong unit)
+
+(defn- flatten-collect-fields
+  "Collect fields from COLL, and remove duplicates."
+  [coll]
+  (for [field (flatten-fields (collect-fields coll))]
+    (dissoc (field-qualify-name field)
+            :parent :parent-id :table-name :path)))  ; remove keys we don't need anymore
 
 (defn- flatten-collect-ids-domain [form]
   (apply fd/domain (sort (map :field-id (flatten-collect-fields form)))))
