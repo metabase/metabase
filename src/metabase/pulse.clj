@@ -1,5 +1,8 @@
 (ns metabase.pulse
   (:require [hiccup.core :refer [html]]
+            [clj-time.core :as t]
+            [clj-time.coerce :as c]
+            [clj-time.format :as f]
             [clojure.tools.logging :as log]
             [clojure.pprint :refer [cl-format]]
             [clojure.string :refer [upper-case]]
@@ -10,75 +13,7 @@
 
 (defsetting slack-token "Slack API bearer token obtained from https://api.slack.com/web#authentication")
 
-
 (def ^:private card-width 400)
-
-(defn parse-dom
-  [stream]
-  (let [dbf (javax.xml.parsers.DocumentBuilderFactory/newInstance)]
-    (.setNamespaceAware dbf true)
-    (.setFeature dbf "http://apache.org/xml/features/nonvalidating/load-external-dtd" false)
-    (.parse (.newDocumentBuilder dbf) stream)))
-
-; ported from https://github.com/radkovo/CSSBox/blob/cssbox-4.10/src/main/java/org/fit/cssbox/demo/ImageRenderer.java
-(defn render-to-png
-  [html, os]
-  (let [is (new java.io.ByteArrayInputStream (.getBytes html java.nio.charset.StandardCharsets/UTF_8))
-        docSource (new org.fit.cssbox.io.StreamDocumentSource is nil "text/html")
-        parser (new org.fit.cssbox.io.DefaultDOMSource docSource)
-        doc (-> parser .parse)
-        windowSize (new java.awt.Dimension card-width 1)
-        media (new cz.vutbr.web.css.MediaSpec "screen")]
-    (.setDimensions media (.width windowSize) (.height windowSize))
-    (.setDeviceDimensions media (.width windowSize) (.height windowSize))
-    (let [da (new org.fit.cssbox.css.DOMAnalyzer doc (.getURL docSource))]
-      (.setMediaSpec da media)
-      (.attributesToStyles da)
-      (.addStyleSheet da nil (org.fit.cssbox.css.CSSNorm/stdStyleSheet) org.fit.cssbox.css.DOMAnalyzer$Origin/AGENT)
-      (.addStyleSheet da nil (org.fit.cssbox.css.CSSNorm/userStyleSheet) org.fit.cssbox.css.DOMAnalyzer$Origin/AGENT)
-      (.addStyleSheet da nil (org.fit.cssbox.css.CSSNorm/formsStyleSheet) org.fit.cssbox.css.DOMAnalyzer$Origin/AGENT)
-      (.getStyleSheets da)
-      (let [contentCanvas (new org.fit.cssbox.layout.BrowserCanvas (.getRoot da) da (.getURL docSource))]
-        (-> contentCanvas (.setAutoMediaUpdate false))
-        (-> contentCanvas (.setAutoSizeUpdate true))
-        (-> contentCanvas .getConfig (.setClipViewport false))
-        (-> contentCanvas .getConfig (.setLoadImages true))
-        (-> contentCanvas .getConfig (.setLoadBackgroundImages true))
-        (-> contentCanvas (.createLayout windowSize))
-        (javax.imageio.ImageIO/write (.getImage contentCanvas) "png" os)))))
-
-; ported from https://stackoverflow.com/questions/17061682/java-html-rendering-engine
-(defn render-to-png-swing
-  [html os]
-  (let [image (-> (java.awt.GraphicsEnvironment/getLocalGraphicsEnvironment)
-              .getDefaultScreenDevice
-              .getDefaultConfiguration
-              (.createCompatibleImage card-width 600))
-        graphics (.createGraphics image)
-        jep (new javax.swing.JEditorPane "text/html" html)]
-    (.setSize jep card-width 600)
-    (.print jep graphics)
-    (javax.imageio.ImageIO/write image "png" os)))
-
-; ported from http://grepcode.com/file/repo1.maven.org/maven2/org.xhtmlrenderer/core-renderer/R8pre2/org/xhtmlrenderer/simple/Graphics2DRenderer.java
-(defn render-to-png-flying-saucer
-  [html os]
-  (let [is (new java.io.ByteArrayInputStream (.getBytes html java.nio.charset.StandardCharsets/UTF_8))
-        dom (parse-dom is)
-        renderer (new org.xhtmlrenderer.simple.Graphics2DRenderer)
-        rect (new java.awt.Dimension card-width 600)
-        buff (new java.awt.image.BufferedImage (.getWidth rect) (.getHeight rect) java.awt.image.BufferedImage/TYPE_INT_ARGB)
-        g (.getGraphics buff)]
-    (.setDocument renderer dom nil)
-    (.layout renderer g rect)
-    (.dispose g)
-    (let [rect (.getMinimumSize renderer)
-          buff (new java.awt.image.BufferedImage (.getWidth rect) (.getHeight rect) java.awt.image.BufferedImage/TYPE_INT_ARGB)
-          g (.getGraphics buff)]
-      (.render renderer g)
-      (.dispose g)
-      (javax.imageio.ImageIO/write buff "png" os))))
-
 
 (def ^:private font-style "font-family: Lato, \"Helvetica Neue\", Helvetica, Arial, sans-serif;")
 (def ^:private section-style font-style)
@@ -87,9 +22,26 @@
 (def ^:private bar-th-style  (str font-style "font-size: 10px; font-weight: 400; color: rgb(57,67,64); border-bottom: 4px solid rgb(248, 248, 248); padding-top: 0px; padding-bottom: 10px;"))
 (def ^:private bar-td-style  (str font-style "font-size: 16px; font-weight: 400; text-align: left; padding-right: 1em; padding-top: 8px;"))
 
-(defn format-number
+(defn- format-number
   [n]
   (if (integer? n) (cl-format nil "~:d" n) (cl-format nil "~,2f" n)))
+
+(defn- format-number-short
+  [n]
+  (cond
+    (>= n 1000000000) (str (cl-format nil "~,1f" (/ n 1000000000.0)) "B")
+    (>= n 1000000) (str (cl-format nil "~,1f" (/ n 1000000.0)) "M")
+    (>= n 1000) (str (cl-format nil "~,1f" (/ n 1000.0)) "K")
+    :else (str (cl-format nil "~,1f" n))))
+
+(defn- format-timestamp
+  [timestamp]
+  (let [date (c/from-long timestamp)
+        today (t/today-at 0 00)]
+    (cond
+      (t/within? (t/interval today (t/plus today (t/days 1))) date) "Today"
+      (t/within? (t/interval (t/minus today (t/days 1)) today) date) "Yesterday"
+      :else (f/unparse (f/formatter "MMM d, YYYY") date))))
 
 (defn render-bar-chart-row
   [index row max-value]
@@ -158,7 +110,20 @@
           ymax (apply max ys)
           yrange (- ymax ymin)
           ys' (map #(/ (- % ymin) yrange) ys)]
-      [:img {:src (generate-data-uri (render-sparkline-to-png xs' ys' 300 200) "image/png")}]))
+      [:div {:style "color: rgb(214,214,214);" }
+        [:div {:style "display: inline-block; position: relative; margin-left: 30px;" }
+          [:div {:style "position: relative;"}
+            [:div {:style "position: absolute; height: 100%; text-align: right; background-color: red;"}
+              [:div {:style "position: absolute; top: 0; right: 0;"} (format-number-short ymax)]
+              [:div {:style "position: absolute; top: 150px; right: 0;"} (format-number-short ymin)]]
+            [:img {:style "display: block; left: 20px;" :src (generate-data-uri (render-sparkline-to-png xs' ys' 285 150) "image/png")}]
+          ]
+          [:div
+            [:div {:style "height: 15px; margin-left: 10px; margin-right: 10px; border: 4px solid rgb(233,233,233); border-top: none; border-bottom: none;"} "&#160;"]
+            [:div {:style "height: 15px; margin-left: 10px; margin-right: 10px;"}
+              [:div {:style "float: left;"} (format-timestamp xmin)]
+              [:div {:style "float: right;"} (format-timestamp xmax)]]
+          ]]]))
 
 (defn render-pulse-card
   [card data include-title]
@@ -181,6 +146,33 @@
   [:div
     [:h1 {:style (str section-style "margin: 16px; color: rgb(57,67,64);")} (:name pulse)]
     (apply vector :div (mapv render-pulse-section results))])
+
+; ported from https://github.com/radkovo/CSSBox/blob/cssbox-4.10/src/main/java/org/fit/cssbox/demo/ImageRenderer.java
+(defn render-to-png
+  [html, os]
+  (let [is (new java.io.ByteArrayInputStream (.getBytes html java.nio.charset.StandardCharsets/UTF_8))
+        docSource (new org.fit.cssbox.io.StreamDocumentSource is nil "text/html")
+        parser (new org.fit.cssbox.io.DefaultDOMSource docSource)
+        doc (-> parser .parse)
+        windowSize (new java.awt.Dimension card-width 1)
+        media (new cz.vutbr.web.css.MediaSpec "screen")]
+    (.setDimensions media (.width windowSize) (.height windowSize))
+    (.setDeviceDimensions media (.width windowSize) (.height windowSize))
+    (let [da (new org.fit.cssbox.css.DOMAnalyzer doc (.getURL docSource))]
+      (.setMediaSpec da media)
+      (.attributesToStyles da)
+      (.addStyleSheet da nil (org.fit.cssbox.css.CSSNorm/stdStyleSheet) org.fit.cssbox.css.DOMAnalyzer$Origin/AGENT)
+      (.addStyleSheet da nil (org.fit.cssbox.css.CSSNorm/userStyleSheet) org.fit.cssbox.css.DOMAnalyzer$Origin/AGENT)
+      (.addStyleSheet da nil (org.fit.cssbox.css.CSSNorm/formsStyleSheet) org.fit.cssbox.css.DOMAnalyzer$Origin/AGENT)
+      (.getStyleSheets da)
+      (let [contentCanvas (new org.fit.cssbox.layout.BrowserCanvas (.getRoot da) da (.getURL docSource))]
+        (-> contentCanvas (.setAutoMediaUpdate false))
+        (-> contentCanvas (.setAutoSizeUpdate true))
+        (-> contentCanvas .getConfig (.setClipViewport false))
+        (-> contentCanvas .getConfig (.setLoadImages true))
+        (-> contentCanvas .getConfig (.setLoadBackgroundImages true))
+        (-> contentCanvas (.createLayout windowSize))
+        (javax.imageio.ImageIO/write (.getImage contentCanvas) "png" os)))))
 
 (defn render-pulse-card-to-png
   [card data include-title]
