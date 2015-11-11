@@ -115,6 +115,9 @@ export default class Navbar extends Component {
                     <li className="pl1">
                         <a style={this.styles.navButton} className="NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2 transition-background" href="/card/">Saved Questions</a>
                     </li>
+                    <li className="pl1">
+                        <a style={this.styles.navButton} className="NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2 transition-background" href="/pulse/">Pulses</a>
+                    </li>
                     <li className="pl3">
                         <a style={this.styles.newQuestion} className="NavNewQuestion rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration transition-all" href="/q">New <span className="hide sm-show">Question</span></a>
                     </li>
