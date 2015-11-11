@@ -20,7 +20,7 @@ const CHANNELS = {
                 name: "channel",
                 type: "select",
                 required: true,
-                options: ["#general", "#random", "#ios"],
+                options: ["#general", "#random", "#pulse_v1", "@tom", "@allen", "@sameer", "@cam", "@kdoh", "@maz"],
                 displayName: "Post to"
             }
         ],
