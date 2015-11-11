@@ -43,18 +43,24 @@
       (t/within? (t/interval (t/minus today (t/days 1)) today) date) "Yesterday"
       :else (f/unparse (f/formatter "MMM d, YYYY") date))))
 
-(defn render-bar-chart-row
-  [index row max-value]
-  [:tr {:style (if (odd? index) "color: rgb(189,193,191);" "color: rgb(124,131,129);")}
-    [:td {:style bar-td-style} (first row)]
-    [:td {:style (str bar-td-style "font-weight: 700;")} (format-number (second row))]
-    [:td {:style (str bar-td-style "width: 99%;")}
-      [:div {:style (str "background-color: rgb(135, 93, 175); height: 20px; width: " (float (* 100 (/ (second row) max-value))) "%")} "&#160;"]]])
+(defn- format-cell
+  [value]
+  (cond
+    (instance? java.util.Date value) (format-timestamp (.getTime value))
+    (number? value) (format-number value)
+    :else (str value)))
 
-(defn render-bar-chart
-  [data]
-  (let [{cols :cols rows :rows } data
-        max-value (apply max (map second rows))]
+(defn render-table-row
+  [index row bar-column max-value]
+  [:tr {:style (if (odd? index) "color: rgb(189,193,191);" "color: rgb(124,131,129);")}
+    [:td {:style bar-td-style} (format-cell (first row))]
+    [:td {:style (str bar-td-style "font-weight: 700;")} (format-cell (second row))]
+    (if bar-column [:td {:style (str bar-td-style "width: 99%;")}
+      [:div {:style (str "background-color: rgb(135, 93, 175); height: 20px; width: " (float (* 100 (/ (bar-column row) max-value))) "%")} "&#160;"]])])
+
+(defn render-table
+  [{:keys [cols rows]} bar-column]
+  (let [max-value (if bar-column (apply max (map bar-column rows)))]
     [:table {:style "border-collapse: collapse;"}
       [:thead
         [:tr
@@ -62,13 +68,19 @@
             (-> cols first :display_name upper-case)]
           [:th {:style (str bar-td-style bar-th-style "min-width: 60px;")}
             (-> cols second :display_name upper-case)]
-          [:th {:style (str bar-td-style bar-th-style "width: 99%;")}]]]
+          (if bar-column [:th {:style (str bar-td-style bar-th-style "width: 99%;")}])]]
       [:tbody
-        (map-indexed #(render-bar-chart-row %1 %2 max-value) rows)]]))
+        (map-indexed #(render-table-row %1 %2 bar-column max-value) rows)]]))
+
+(defn render-bar-chart
+  [data]
+  [:div {:style ""}
+    (render-table data second)])
 
 (defn render-scalar
   [data]
-  [:div {:style scalar-style} (-> data :rows first first format-number)])
+  [:div {:style scalar-style}
+    (-> data :rows first first format-cell)])
 
 (def ^:private sparkline-dot-radius 6)
 (def ^:private sparkline-thickness 4)
@@ -98,18 +110,19 @@
   [bytes file-type]
   (str "data:" file-type ";base64," (new String (org.fit.cssbox.misc.Base64Coder/encode bytes))))
 
-  (defn render-sparkline
-    [{:keys [rows cols]}]
-    (let [xs (map #(-> % first .getTime) rows)
-          xmin (apply min xs)
-          xmax (apply max xs)
-          xrange (- xmax xmin)
-          xs' (map #(/ (- % xmin) xrange) xs)
-          ys (map second rows)
-          ymin (apply min ys)
-          ymax (apply max ys)
-          yrange (- ymax ymin)
-          ys' (map #(/ (- % ymin) yrange) ys)]
+(defn render-sparkline
+  [{:keys [rows cols] :as data}]
+  (let [xs (map #(-> % first .getTime) rows)
+        xmin (apply min xs)
+        xmax (apply max xs)
+        xrange (- xmax xmin)
+        xs' (map #(/ (- % xmin) xrange) xs)
+        ys (map second rows)
+        ymin (apply min ys)
+        ymax (apply max ys)
+        yrange (- ymax ymin)
+        ys' (map #(/ (- % ymin) yrange) ys)]
+    [:div
       [:div {:style "color: rgb(214,214,214);" }
         [:div {:style "display: inline-block; position: relative; margin-left: 30px;" }
           [:div {:style "position: relative;"}
@@ -123,7 +136,9 @@
             [:div {:style "height: 15px; margin-left: 10px; margin-right: 10px;"}
               [:div {:style "float: left;"} (format-timestamp xmin)]
               [:div {:style "float: right;"} (format-timestamp xmax)]]
-          ]]]))
+          ]]]
+      [:div {:style "margin-top: 20px; margin-left: 30px;"}
+        (render-table {:cols cols :rows [(last rows) (first rows)]} nil)]]))
 
 (defn render-pulse-card
   [card data include-title]
