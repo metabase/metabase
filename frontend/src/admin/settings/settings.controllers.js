@@ -25,7 +25,7 @@ var TIMEZONES = [
 var EXTRA_SETTINGS_METADATA = {
     "site-name":            { display_name: "Site Name",          section: "General", index: 0, type: "string" },
     "-site-url":            { display_name: "Site URL",           section: "General", index: 1, type: "string" },
-    "admin-email":          { display_name: "Admin Email",        section: "General", index: 2, type: "string" },
+    "admin-email":          { display_name: "Email Address for Help Requests", section: "General", index: 2, type: "string" },
     "report-timezone":      { display_name: "Report Timezone",    section: "General", index: 3, type: "select", options: TIMEZONES, placeholder: "Select a timezone" },
     "anon-tracking-enabled":{ display_name: "Anonymous Tracking", section: "General", index: 4, type: "boolean" },
     "email-smtp-host":      { display_name: "SMTP Host",          section: "Email",   index: 0, type: "string" },
