@@ -49,6 +49,12 @@
   (-> (slack-api-get (slack-token) "channels.list" {:exclude_archived 1})
       (handle-api-response)))
 
+(defn users-list
+  "Calls Slack api `users.list` function and returns the list of available users."
+  []
+  (-> (slack-api-get (slack-token) "users.list")
+      (handle-api-response)))
+
 (defn files-upload
   "Calls Slack api `files.upload` function and returns the url of the uploaded file."
   [file]
