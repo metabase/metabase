@@ -70,6 +70,16 @@
        (test-setting-2))
    (db-fetch-setting :test-setting-2)])
 
+;; Set multiple at one time
+(expect-eval-actual-first
+  ["I win!"
+   "For realz"]
+  (do
+    (setting/set-all {:test-setting-1 "I win!"
+                      :test-setting-2 "For realz"})
+    [(db-fetch-setting :test-setting-1)
+     (db-fetch-setting :test-setting-2)]))
+
 
 ;; ## DELETE
 ;; Test defsetting delete w/o default value
