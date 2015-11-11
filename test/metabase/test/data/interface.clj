@@ -64,28 +64,22 @@
   (engine [this]
     "Return the engine keyword associated with this database, e.g. `:h2` or `:mongo`.")
 
-  (database->connection-details [this ^DatabaseDefinition database-definition]
-    "Return the connection details map that should be used to connect to this database.")
+  (database->connection-details [this ^Keyword context, ^DatabaseDefinition database-definition]
+    "Return the connection details map that should be used to connect to this database (i.e. a Metabase `Database` details map)
+     CONTEXT is one of:
 
-  ;; create-physical-database, etc.
-  (create-physical-db! [this ^DatabaseDefinition database-definition]
-    "Create a new database from DATABASE-DEFINITION, including adding tables, fields, and foreign key constraints.
-     This refers to the actual *DBMS* database itself, *not* a Metabase `Database` object.
-     This method should *not* add data to the database, create any metabase objects (such as `Database`), or trigger syncing.")
+     *  `:server` - Return details for making the connection in a way that isn't DB-specific (e.g., for creating/destroying databases)
+     *  `:db`     - Return details for connecting specifically to the DB.")
 
-  (drop-physical-db! [this ^DatabaseDefinition database-definition]
+  (create-db! [this ^DatabaseDefinition database-definition]
+    "Create a new database from DATABASE-DEFINITION, including adding tables, fields, and foreign key constraints,
+     and add the appropriate data. This method should drop existing databases with the same name if applicable.
+     (This refers to creating the actual *DBMS* database itself, *not* a Metabase `Database` object.)")
+
+  (destroy-db! [this ^DatabaseDefinition database-definition]
     "Destroy database, if any, associated with DATABASE-DEFINITION.
      This refers to destroying a *DBMS* database -- removing an H2 file, dropping a Postgres database, etc.
-     This does not need to remove corresponding Metabase definitions -- this is handled by `DatasetLoader`.")
-
-  (create-physical-table! [this ^DatabaseDefinition database-definition, ^TableDefinition table-definition]
-    "Create a new DBMS table/collection/etc for TABLE-DEFINITION. Don't load any data.")
-
-  (load-table-data! [this ^DatabaseDefinition database-definition, ^TableDefinition table-definition]
-    "Load data for the DMBS table/collection/etc. corresponding to TABLE-DEFINITION.")
-
-  (drop-physical-table! [this ^DatabaseDefinition database-definition, ^TableDefinition table-definition]
-    "Drop the DBMS table/collection/etc. associated with TABLE-DEFINITION."))
+     This does not need to remove corresponding Metabase definitions -- this is handled by `DatasetLoader`."))
 
 
 ;; ## Helper Functions for Creating New Definitions

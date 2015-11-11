@@ -110,15 +110,7 @@
                 [field-or-value])))
 
 (defn- date-interval [unit amount]
-  (utils/generated (format (case unit
-                             :minute  "DATE_ADD(NOW(), INTERVAL %d MINUTE)"
-                             :hour    "DATE_ADD(NOW(), INTERVAL %d HOUR)"
-                             :day     "DATE_ADD(NOW(), INTERVAL %d DAY)"
-                             :week    "DATE_ADD(NOW(), INTERVAL %d WEEK)"
-                             :month   "DATE_ADD(NOW(), INTERVAL %d MONTH)"
-                             :quarter "DATE_ADD(NOW(), INTERVAL %d QUARTER)"
-                             :year    "DATE_ADD(NOW(), INTERVAL %d YEAR)")
-                           amount)))
+  (utils/generated (format "DATE_ADD(NOW(), INTERVAL %d %s)" amount (s/upper-case (name unit)))))
 
 (defn- humanize-connection-error-message [message]
   (condp re-matches message
@@ -160,7 +152,7 @@
                                          :type         :password
                                          :placeholder  "*******"}]
     :column->base-type                 column->base-type
-    :sql-string-length-fn              :CHAR_LENGTH
+    :string-length-fn                  :CHAR_LENGTH
     :excluded-schemas                  #{"INFORMATION_SCHEMA"}
     :connection-details->spec          connection-details->spec
     :unix-timestamp->timestamp         unix-timestamp->timestamp
