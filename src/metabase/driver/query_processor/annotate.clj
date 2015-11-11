@@ -83,12 +83,12 @@
   "Flatten a group of fields, keeping those which are more important when duplicates exist."
   [fields]
   {:pre [(every? identity fields)]}
-  (let [path-importance (fn [{[k] :path}]
-                          (cond
-                            (= k :breakout) 0     ; lower number = higher importance, because `sort` is ascending
-                            (= k :fields)   1     ; more important versions of fields are the ones we'll actually see in results,
-                            :else           2))]  ; so look at each field's :path. For now, it's enough just to look at the first element.
-    (distinct (sort-by path-importance fields)))) ; this is important so we don't use return the wrong version of a Field (e.g. with the wrong unit)
+  (distinct (sort-by (fn [{[k] :path}]       ; more important versions of fields are the ones we'll actually see in results,
+                       (cond                 ; this is important so we don't use return the wrong version of a Field (e.g. with the wrong unit)
+                         (= k :breakout) 0   ; so look at each field's :path. For now, it's enough just to look at the first element.
+                         (= k :fields)   1   ; (lower number = higher importance, because `sort` is ascending)
+                         :else           2))
+                     fields)))
 
 (defn- flatten-collect-fields
   "Collect fields from COLL, and remove duplicates."
