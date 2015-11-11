@@ -58,7 +58,7 @@
 (defendpoint GET "/form_input"
   "Provides relevant configuration information and user choices for creating/updating `Pulses`."
   []
-  (if-not (setting/get :slack-token)
+  (if (empty? (setting/get :slack-token))
     {:channels channel-types}
     (let [slack-channels (mapv (fn [ch] (str "#" (get ch "name"))) (get (slack/channels-list) "channels"))
           slack-users    (mapv (fn [u] (str "@" (get u "name"))) (get (slack/users-list) "members"))]

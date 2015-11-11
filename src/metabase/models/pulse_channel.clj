@@ -30,11 +30,6 @@
   [schedule-type]
   (contains? (set (keys schedule-types)) (keyword schedule-type)))
 
-(defn supports-recipients?
-  "Predicate function which returns `true` if the given channel type supports a list of recipients, `false` otherwise."
-  [channel]
-  (boolean (:recipients? (get channel-types (keyword channel)))))
-
 (def ^:const channel-types
   "Map which contains the definitions for each type of pulse channel we allow.  Each key is a channel type with a map
    which contains any other relevant information for defining the channel.  E.g.
@@ -60,6 +55,11 @@
   "Predicate function which returns `true` if the given argument is a valid value as a channel-type, `false` otherwise."
   [channel-type]
   (contains? (set (keys channel-types)) (keyword channel-type)))
+
+(defn supports-recipients?
+  "Predicate function which returns `true` if the given channel type supports a list of recipients, `false` otherwise."
+  [channel]
+  (boolean (:recipients? (get channel-types (keyword channel)))))
 
 (def ^:const days-of-week
   "Simple `vector` of the days in the week used for reference and lookups.
