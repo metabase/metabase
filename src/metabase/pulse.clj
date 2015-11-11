@@ -3,7 +3,8 @@
             [clojure.tools.logging :as log]
             [clojure.pprint :refer [cl-format]]
             [clojure.string :refer [upper-case]]
-            (metabase.models [setting :refer [defsetting] :as setting])))
+            (metabase.models [setting :refer [defsetting] :as setting])
+            [metabase.util :as u]))
 
 ;;; ## CONFIG
 
@@ -117,14 +118,57 @@
   [data]
   [:div {:style scalar-style} (-> data :rows first first format-number)])
 
+(def ^:private sparkline-dot-radius 6)
+(def ^:private sparkline-thickness 4)
+(def ^:private sparkline-pad 10)
+
+(defn render-sparkline-to-png
+  "Takes two arrays of numbers between 0 and 1 and plots them as a sparkline"
+  [xs ys width height]
+  (let [os (new java.io.ByteArrayOutputStream)
+        image (new java.awt.image.BufferedImage (+ width (* 2 sparkline-pad)) (+ height (* 2 sparkline-pad)) java.awt.image.BufferedImage/TYPE_INT_ARGB)
+        g2 (.createGraphics image)
+        xt (map #(+ sparkline-pad (* width %)) xs)
+        yt (map #(+ sparkline-pad (- height (* height %))) ys)]
+    (.setRenderingHints g2 (new java.awt.RenderingHints java.awt.RenderingHints/KEY_ANTIALIASING java.awt.RenderingHints/VALUE_ANTIALIAS_ON))
+    (.setColor g2 (new java.awt.Color 45 134 212))
+    (.setStroke g2 (new java.awt.BasicStroke sparkline-thickness java.awt.BasicStroke/CAP_ROUND java.awt.BasicStroke/JOIN_ROUND))
+    (.drawPolyline g2 (int-array (count xt) xt) (int-array (count yt) yt) (count xt))
+    (.fillOval g2 (- (last xt) sparkline-dot-radius) (- (last yt) sparkline-dot-radius) (* 2 sparkline-dot-radius) (* 2 sparkline-dot-radius))
+    (.setColor g2 java.awt.Color/white)
+    (.setStroke g2 (new java.awt.BasicStroke 2))
+    (.drawOval g2 (- (last xt) sparkline-dot-radius) (- (last yt) sparkline-dot-radius) (* 2 sparkline-dot-radius) (* 2 sparkline-dot-radius))
+    (javax.imageio.ImageIO/write image "png" os)
+    (.toByteArray os)))
+
+(defn generate-data-uri
+  "Takes a byte array and returns a Base64 encoded URI"
+  [bytes file-type]
+  (str "data:" file-type ";base64," (new String (org.fit.cssbox.misc.Base64Coder/encode bytes))))
+
+  (defn render-sparkline
+    [{:keys [rows cols]}]
+    (let [xs (map #(-> % first .getTime) rows)
+          xmin (apply min xs)
+          xmax (apply max xs)
+          xrange (- xmax xmin)
+          xs' (map #(/ (- % xmin) xrange) xs)
+          ys (map second rows)
+          ymin (apply min ys)
+          ymax (apply max ys)
+          yrange (- ymax ymin)
+          ys' (map #(/ (- % ymin) yrange) ys)]
+      [:img {:src (generate-data-uri (render-sparkline-to-png xs' ys' 300 200) "image/png")}]))
+
 (defn render-pulse-card
   [card data include-title]
   [:div {:style (str section-style "margin: 16px;")}
     (if include-title [:div {:style "margin-bottom: 16px;"}
       [:a {:style header-style :href (str (setting/get :-site-url) "/card/" (:id card) "?clone")} (:name card)]] nil)
     (cond
-      (and (= (count (:cols data)) 1) (= (count (:rows data)) 1)) (render-scalar data)
-      (and (= (count (:cols data)) 2)) (render-bar-chart data)
+      (and (= (-> data :cols count) 1) (= (-> data :rows count) 1)) (render-scalar data)
+      (and (= (-> data :cols count) 2) (= (-> data :cols first :base_type) :DateTimeField)) (render-sparkline data)
+      (and (= (-> data :cols count) 2)) (render-bar-chart data)
       :else [:div {:style "color: red;"} "Unable to render card"])])
 
 (defn- render-pulse-section
