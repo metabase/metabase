@@ -33,9 +33,14 @@
 (jobs/defjob SendPulses
   [ctx]
   ;; determine what time it is right now (hour-of-day & day-of-week) in reporting timezone
-  (let [now (time/to-time-zone (time/now) (time/time-zone-for-id (or (setting/get :report_timezone) "UTC")))
-        curr-hour (time/hour now)
-        curr-weekday (:id (get pulse-channel/days-of-week (time/day-of-week now)))]
+  (let [reporting-timezone (setting/get :report-timezone)
+        now                (if (empty? reporting-timezone)
+                             (time/now)
+                             (time/to-time-zone (time/now) (time/time-zone-for-id reporting-timezone)))
+        curr-hour          (time/hour now)
+        curr-weekday       (->> (time/day-of-week now)
+                                (get pulse-channel/days-of-week)
+                                :id)]
     (send-pulses curr-hour curr-weekday)))
 
 (defn task-init []
