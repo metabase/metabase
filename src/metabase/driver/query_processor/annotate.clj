@@ -44,7 +44,7 @@
   (assoc field :field-name (keyword (apply str (->> (rest (i/qualified-name-components field))
                                                     (interpose "."))))))
 
-(defn- collect-fields
+(defn collect-fields
   "Return a sequence of all the `Fields` inside THIS, recursing as needed for collections.
    For maps, add or `conj` to property `:path`, recording the keypath used to reach each `Field.`
 
@@ -53,16 +53,14 @@
      (collect-fields {:a {:name \"id\", ...}) -> [{:name \"id\", :path [:a], ...}]"
   [this]
   (condp instance? this
-    clojure.lang.IPersistentMap
-    (for [[k v] (seq this)
-          field (collect-fields v)]
-      (update field :path conj k))
-
-    clojure.lang.Sequential
-    (mapcat collect-fields this)
+    ;; For a DateTimeField we'll flatten it back into regular Field but include the :unit info for the frontend.
+    ;; Recurse so it is otherwise handled normally
+    metabase.driver.query_processor.interface.DateTimeField
+    (let [{:keys [field unit]} this]
+      (recur (assoc field :unit unit)))
 
     metabase.driver.query_processor.interface.Field
-    (if-let [{:keys [parent]} this]
+    (if-let [parent (:parent this)]
       ;; Nested Mongo fields come back inside of their parent when you specify them in the fields clause
       ;; e.g. (Q fields venue...name) will return rows like {:venue {:name "Kyle's Low-Carb Grill"}}
       ;; Until we fix this the right way we'll just include the parent Field in the :query-fields list so the pattern
@@ -70,15 +68,21 @@
       [this parent]
       [this])
 
-    ;; For a DateTimeField we'll flatten it back into regular Field but include the :unit info for the frontend
-    metabase.driver.query_processor.interface.DateTimeField
-    (recur (assoc (:field this) :unit (:unit this)))
+    clojure.lang.IPersistentMap
+    (for [[k v] (seq this)
+          field (collect-fields v)
+          :when field]
+      (update field :path conj k))
+
+    clojure.lang.Sequential
+    (mapcat collect-fields this)
 
     nil))
 
 (defn- flatten-fields
   "Flatten a group of fields, keeping those which are more important when duplicates exist."
   [fields]
+  {:pre [(every? identity fields)]}
   (let [path-importance (fn [{[k] :path}]
                           (cond
                             (= k :breakout) 0     ; lower number = higher importance, because `sort` is ascending
