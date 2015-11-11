@@ -12,7 +12,8 @@ import {
     saveEditingPulse,
     deletePulse,
     fetchCards,
-    fetchUsers
+    fetchUsers,
+    fetchPulseFormInput
 } from "../actions";
 
 import _ from "underscore";
@@ -34,6 +35,7 @@ export default class PulseEdit extends Component {
         this.props.dispatch(setEditingPulse(this.props.pulseId));
         this.props.dispatch(fetchCards());
         this.props.dispatch(fetchUsers());
+        this.props.dispatch(fetchPulseFormInput());
     }
 
     async save() {
@@ -54,7 +56,7 @@ export default class PulseEdit extends Component {
     }
 
     channelIsValid(channel) {
-        let channelSpec = this.props.channelSpecs[channel.channel_type];
+        let channelSpec = this.props.formInput.channels && this.props.formInput.channels[channel.channel_type];
         if (!channelSpec) {
             return false;
         }

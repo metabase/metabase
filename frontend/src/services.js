@@ -420,6 +420,10 @@ CoreServices.factory('Pulse', ['$resource', '$cookies', function($resource, $coo
             params: { pulseId: '@pulseId' },
             headers: { 'X-CSRFToken': () => $cookies.csrftoken },
         },
+        form_input: {
+            url: '/api/pulse/form_input',
+            method: 'GET',
+        }
     });
 }]);
 

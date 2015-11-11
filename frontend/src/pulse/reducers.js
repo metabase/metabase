@@ -7,7 +7,8 @@ import {
     UPDATE_EDITING_PULSE,
     SAVE_EDITING_PULSE,
     FETCH_CARDS,
-    FETCH_USERS
+    FETCH_USERS,
+    FETCH_PULSE_FORM_INPUT
 } from "./actions";
 
 export const pulses = handleActions({
@@ -39,3 +40,7 @@ export const cardList = handleActions({
 export const users = handleActions({
     [FETCH_USERS]: { next: (state, { payload }) => ({ ...payload.entities.user }) }
 }, []);
+
+export const formInput = handleActions({
+    [FETCH_PULSE_FORM_INPUT]: { next: (state, { payload }) => payload }
+}, {});

@@ -5,6 +5,7 @@ import SchedulePicker from "./SchedulePicker.jsx";
 
 import Select from "metabase/components/Select.jsx";
 import Toggle from "metabase/components/Toggle.jsx";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
 export default class PulseEditChannels extends Component {
     constructor(props) {
@@ -16,23 +17,23 @@ export default class PulseEditChannels extends Component {
     static defaultProps = {};
 
     addChannel(type) {
-        let { pulse } = this.props;
+        let { pulse, formInput } = this.props;
 
-        let channelSpec = this.props.channelSpecs[type];
+        let channelSpec = formInput.channels[type];
         if (!channelSpec) {
             return;
         }
 
         let details = {};
-        if (channelSpec.fields) {
-            for (let field of channelSpec.fields) {
-                if (field.required) {
-                    if (field.type === "select") {
-                        details[field.name] = field.options[0];
-                    }
-                }
-            }
-        }
+        // if (channelSpec.fields) {
+        //     for (let field of channelSpec.fields) {
+        //         if (field.required) {
+        //             if (field.type === "select") {
+        //                 details[field.name] = field.options[0];
+        //             }
+        //         }
+        //     }
+        // }
 
         let channel = {
             channel_type: type,
@@ -134,14 +135,19 @@ export default class PulseEditChannels extends Component {
     }
 
     render() {
+        let { formInput } = this.props;
         return (
             <div className="py1">
                 <h2>Where should this data go?</h2>
-                <ul>
-                    {Object.values(this.props.channelSpecs).map(channelSpec =>
-                        this.renderChannelSection(channelSpec)
-                    )}
-                </ul>
+                <LoadingAndErrorWrapper loading={!formInput.channels}>
+                {() =>
+                    <ul>
+                        {Object.values(formInput.channels).map(channelSpec =>
+                            this.renderChannelSection(channelSpec)
+                        )}
+                    </ul>
+                }
+                </LoadingAndErrorWrapper>
             </div>
         );
     }
