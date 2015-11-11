@@ -1,18 +1,16 @@
 (ns metabase.api.pulse
   "/api/pulse endpoints."
-  (:require [korma.core :refer [where subselect fields order limit]]
-            [compojure.core :refer [defroutes GET PUT POST DELETE]]
+  (:require [compojure.core :refer [defroutes GET PUT POST DELETE]]
             [hiccup.core :refer [html]]
-            [medley.core :refer :all]
             [metabase.api.common :refer :all]
             [metabase.db :as db]
             [metabase.driver :as driver]
+            [metabase.integrations.slack :as slack]
             (metabase.models [card :refer [Card]]
                              [database :refer [Database]]
-                             [hydrate :refer :all]
                              [pulse :refer [Pulse] :as pulse]
-                             [pulse-channel :refer [channel-types]])
-            [metabase.util :as util]
+                             [pulse-channel :refer [channel-types]]
+                             [setting :as setting])
             [metabase.pulse :as p]))
 
 
@@ -58,9 +56,13 @@
 
 
 (defendpoint GET "/form_input"
-  ""
+  "Provides relevant configuration information and user choices for creating/updating `Pulses`."
   []
-  {:channel_types channel-types})
+  (if (empty? (setting/get :slack-token))
+    {:channels channel-types}
+    (let [slack-channels (mapv (fn [ch] (str "#" (get ch "name"))) (get (slack/channels-list) "channels"))
+          slack-users    (mapv (fn [u] (str "@" (get u "name"))) (get (slack/users-list) "members"))]
+      {:channels (assoc-in channel-types [:slack :fields 0 :options] (concat slack-channels slack-users))})))
 
 
 (defendpoint GET "/preview_card/:id"

@@ -5,12 +5,12 @@
             (clojurewerkz.quartzite [jobs :as jobs]
                                     [triggers :as triggers])
             [clojurewerkz.quartzite.schedule.cron :as cron]
-            [clj-http.client :as client]
             [clj-time.core :as time]
             [hiccup.core :refer [html]]
             [metabase.db :as db]
             [metabase.driver :as driver]
             [metabase.email :as email]
+            [metabase.integrations.slack :as slack]
             (metabase.models [card :refer [Card]]
                              [hydrate :refer :all]
                              [pulse :refer [Pulse] :as pulse]
@@ -73,7 +73,7 @@
 (defn send-pulse-email
   "Send a `Pulse` email given a list of card results to render and a list of recipients to send to."
   [{:keys [id name] :as pulse} results recipients]
-  (log/debug (format "Sending Pulse (%d) via Channel :email" id))
+  (log/debug (format "Sending Pulse (%d: %s) via Channel :email" id name))
   (let [email-subject    (str "Pulse Email: " name)
         email-recipients (filterv u/is-email? (map :email recipients))]
     (email/send-message
@@ -83,29 +83,23 @@
       :message      (html [:html [:body (p/render-pulse pulse results)]]))))
 
 (defn- create-slack-attachment
-  ""
-  [{:keys [card result]}]
-  (log/debug (str "Sending Pulse Card " card result))
-  (let [ba (p/render-pulse-card-to-png card (:data result) false)
-        upload-result (client/post "https://slack.com/api/files.upload"
-                                   {:multipart [["token" (setting/get :slack-token)]
-                                                ["file" ba]]
-                                    :as :json})]
-    {:title (:name card)
-     :title_link (str (setting/get :-site-url) "/card/" (:id card) "?clone")
-     :image_url (-> upload-result :body :file :url)
-     :fallback (:name card)}))
+  "Create an attachment in Slack for a given Card by rendering its result into an image and uploading it."
+  [{{:keys [id name] :as card} :card, {:keys [data]} :result}]
+  (let [image-byte-array (p/render-pulse-card-to-png card data false)
+        upload-result    (slack/files-upload image-byte-array)]
+    {:title      name
+     :title_link (format "%s/card/%d?clone" (setting/get :-site-url) id)
+     :image_url  (-> upload-result :file :url)
+     :fallback   name}))
 
 (defn send-pulse-slack
   "Post a `Pulse` to a slack channel given a list of card results to render and details about the slack destination."
-  [{:keys [id name] :as pulse} results details]
-  (log/debug (format "Sending Pulse (%d) via Channel :slack" id))
-  (client/post "https://slack.com/api/chat.postMessage"
-               {:form-params {:token (setting/get :slack-token)
-                              :channel (:channel details)
-                              :username "MetaBot"
-                              :text (str "Pulse: " name)
-                              :attachments (cheshire/generate-string (mapv create-slack-attachment results))}}))
+  [{:keys [id name]} results details]
+  (log/debug (format "Sending Pulse (%d: %s) via Channel :slack" id name))
+  (let [attachments (mapv create-slack-attachment results)]
+    (slack/chat-post-message (:channel details)
+                             (str "Pulse: " name)
+                             (cheshire/generate-string attachments))))
 
 (defn send-pulse
   "Execute and Send a `Pulse`, optionally specifying the specific `PulseChannels`.  This includes running each

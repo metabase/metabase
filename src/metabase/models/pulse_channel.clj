@@ -11,34 +11,6 @@
 
 ;; ## Static Definitions
 
-(def ^:const channel-types
-  "Map which contains the definitions for each type of pulse channel we allow.  Each key is a channel type with a map
-   which contains any other relevant information for defining the channel.  E.g.
-
-   {:email {:name \"Email\", :recipients? true}
-    :slack {:name \"Slack\", :recipients? false}}"
-  {:email {:displayName "Email"
-           :recipients? true
-           :fields [{:name "recipients"
-                     :displayName "Send to"
-                     :multi true
-                     :type "email"
-                     :placeholder "Enter email address these questions should be sent to"
-                     :required true}]}
-   :slack {:displayName "Slack"
-           :recipients? false
-           :fields [{:name "channel"
-                     :displayName "Send to"
-                     :multi false
-                     :type "select"
-                     :options ["#general", "#random", "#ios"]
-                     :required true}]}})
-
-(defn channel-type?
-  "Predicate function which returns `true` if the given argument is a valid value as a channel-type, `false` otherwise."
-  [channel-type]
-  (contains? (set (keys channel-types)) (keyword channel-type)))
-
 (def ^:const schedule-type-hourly :hourly)
 (def ^:const schedule-type-daily :daily)
 (def ^:const schedule-type-weekly :weekly)
@@ -58,11 +30,36 @@
   [schedule-type]
   (contains? (set (keys schedule-types)) (keyword schedule-type)))
 
+(def ^:const channel-types
+  "Map which contains the definitions for each type of pulse channel we allow.  Each key is a channel type with a map
+   which contains any other relevant information for defining the channel.  E.g.
+
+   {:email {:name \"Email\", :recipients? true}
+    :slack {:name \"Slack\", :recipients? false}}"
+  {:email {:type        "email"
+           :name        "Email"
+           :recipients? true
+           :recipients  ["user", "email"]
+           :schedules   [schedule-type-daily schedule-type-weekly]}
+   :slack {:type        "slack"
+           :name        "Slack"
+           :recipients? false
+           :schedules   [schedule-type-hourly schedule-type-daily schedule-type-weekly]
+           :fields      [{:name "channel"
+                          :type "select"
+                          :displayName "Post to"
+                          :options ["#general"]
+                          :required true}]}})
+
+(defn channel-type?
+  "Predicate function which returns `true` if the given argument is a valid value as a channel-type, `false` otherwise."
+  [channel-type]
+  (contains? (set (keys channel-types)) (keyword channel-type)))
+
 (defn supports-recipients?
   "Predicate function which returns `true` if the given channel type supports a list of recipients, `false` otherwise."
   [channel]
   (boolean (:recipients? (get channel-types (keyword channel)))))
-
 
 (def ^:const days-of-week
   "Simple `vector` of the days in the week used for reference and lookups.
