@@ -80,3 +80,9 @@
                              :db_id  [in (k/subselect Database
                                                       (k/fields :id)
                                                       (k/where {:engine engine}))]}))))
+
+
+;; Populate the initial value for the `:admin-email` setting for anyone who hasn't done it yet
+(defmigration set-admin-email
+  (when-not (setting/get :admin-email)
+    (setting/set :admin-email (db/sel :one :field ['User :email] (k/where {:is_superuser true :is_active true})))))
