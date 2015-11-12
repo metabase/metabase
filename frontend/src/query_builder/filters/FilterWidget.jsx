@@ -43,10 +43,6 @@ export default class FilterWidget extends Component {
         let fieldDef = target && target.field;
         let operatorDef = fieldDef && fieldDef.operators_lookup[operator];
 
-        if (!operatorDef) {
-            operatorDef = fieldDef && fieldDef.operators_lookup['='];
-        }
-
         this.setState({
             field: field,
             fieldDef: fieldDef,
@@ -93,7 +89,7 @@ export default class FilterWidget extends Component {
     renderValues() {
         let { operatorDef, fieldDef, values } = this.state;
 
-        if (operatorDef.multi && values.length > 1) {
+        if (operatorDef && operatorDef.multi && values.length > 1) {
             values = [values.length + " selections"];
         }
 
@@ -103,7 +99,7 @@ export default class FilterWidget extends Component {
 
         return values.map((value, valueIndex) => {
             var valueString = value != null ? value.toString() : null;
-            return (
+            return value != undefined && (
                 <div key={valueIndex} className="Filter-section Filter-section-value" onClick={this.open}>
                     <span className="QueryOption">{valueString}</span>
                 </div>

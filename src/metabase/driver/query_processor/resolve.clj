@@ -79,8 +79,11 @@
     :else     this))
 
 (defmethod resolve-table Field [{:keys [table-id], :as this} table-id->table]
-  (assoc this :table-name (:name (or (table-id->table table-id)
-                                     (throw (Exception. (format "Query expansion failed: could not find table %d." table-id)))))))
+  (let [table (or (table-id->table table-id)
+                  (throw (Exception. (format "Query expansion failed: could not find table %d." table-id))))]
+    (assoc this
+           :table-name  (:name table)
+           :schema-name (:schema table))))
 
 
 ;; ## FieldPlaceholder
@@ -194,7 +197,7 @@
   [{{source-table-id :source-table} :query, database-id :database, :keys [table-ids fk-field-ids], :as expanded-query-dict}]
   {:pre [(integer? source-table-id)]}
   (let [table-ids       (conj table-ids source-table-id)
-        table-id->table (sel :many :id->fields [Table :name :id] :id [in table-ids])
+        table-id->table (sel :many :id->fields [Table :schema :name :id] :id [in table-ids])
         join-tables     (vals (dissoc table-id->table source-table-id))]
 
     (-<> expanded-query-dict

@@ -7,19 +7,16 @@
                    [db :as kdb])
             [korma.sql.utils :as utils]
             [metabase.driver :as driver]
-            [metabase.driver.query-processor :as qp]
-            [metabase.driver.generic-sql.interface :as i]))
+            [metabase.driver.query-processor :as qp]))
 
 (defn- db->connection-spec
   "Return a JDBC connection spec for a Metabase `Database`."
   [{{:keys [short-lived?]} :details, :as database}]
-  (let [driver                              (driver/engine->driver (:engine database))
-        database->connection-details        (partial i/database->connection-details driver)
-        connection-details->connection-spec (partial i/connection-details->connection-spec driver)]
-    (merge (-> database database->connection-details connection-details->connection-spec)
+  (let [{:keys [connection-details->spec]} (driver/engine->driver (:engine database))]
+    (assoc (connection-details->spec (:details database))
            ;; unless this is a temp DB, we need to make a pool or the connection will be closed before we get a chance to unCLOB-er the results during JSON serialization
            ;; TODO - what will we do once we have CLOBS in temp DBs?
-           {:make-pool? (not short-lived?)})))
+           :make-pool? (not short-lived?))))
 
 (def ^{:arglists '([database])}
   db->korma-db
@@ -79,9 +76,11 @@
   ([{db-delay :db, :as table}]
    {:pre [(delay? db-delay)]}
    (korma-entity @db-delay table))
-  ([db {table-name :name}]
+  ([db {schema :schema, table-name :name}]
    {:pre [(map? db)]}
-   {:table table-name
+   {:table (if (seq schema)
+             (str schema \. table-name)
+             table-name)
     :pk    :id
     :db    (db->korma-db db)}))
 

@@ -23,6 +23,7 @@
    ;; check here for all available options:
    ;; https://github.com/ring-clojure/ring/blob/master/ring-jetty-adapter/src/ring/adapter/jetty.clj
    :mb-jetty-port "3000"
+   :mb-jetty-join "true"
    ;; Other Application Settings
    :mb-password-complexity "normal"
    ;:mb-password-length "8"

@@ -27,13 +27,10 @@
   `(binding [email/*send-email-fn* fake-inbox-email-fn]
      (reset-inbox!)
      ;; Push some fake settings for SMTP username + password, and restore originals when done
-     (let [orig-username# (email/email-smtp-username)
-           orig-password# (email/email-smtp-password)]
-       (email/email-smtp-username "fake_smtp_username")
-       (email/email-smtp-password "ABCD1234!!")
+     (let [orig-hostname# (email/email-smtp-host)]
+       (email/email-smtp-host "fake_smtp_host")
        (try ~@body
-            (finally (email/email-smtp-username orig-username#)
-                     (email/email-smtp-password orig-password#))))))
+            (finally (email/email-smtp-host orig-hostname#))))))
 
 ;; new user email
 ;; NOTE: we are not validating the content of the email body namely because it's got randomized elements and thus

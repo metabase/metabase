@@ -11,7 +11,7 @@ import ProfileLink from "metabase/components/ProfileLink.jsx";
 export default class Navbar extends Component {
     static propTypes = {
         context: PropTypes.string.isRequired,
-        location: PropTypes.string.isRequired,
+        location: PropTypes.object.isRequired,
         user: PropTypes.object
     };
 

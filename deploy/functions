@@ -38,9 +38,9 @@ upload_release_artifacts() {
 }
 
 mk_release_artifacts() {
-    METABASE_JAR_NAME="metabase-standalone.jar"
+    METABASE_JAR_NAME="metabase.jar"
     RELEASE_TYPE="aws-eb-docker"
-    RELEASE_JAR_FILE_NAME=${METABASE_JAR_NAME%-standalone.jar}-$BRANCH-$DATE-$COMMITISH.jar
+    RELEASE_JAR_FILE_NAME=${METABASE_JAR_NAME%.jar}-$BRANCH-$DATE-$COMMITISH.jar
     RELEASE_ZIP_FILE_NAME="$1"
     UBERJAR_DIR="${PROJECT_ROOT}/target/uberjar"
 

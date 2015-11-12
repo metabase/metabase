@@ -21,23 +21,30 @@ Readonly my $zipfile         => artifact('Metabase.zip');
 Readonly my $appcast         => artifact('appcast.xml');
 Readonly my $release_notes   => artifact('release-notes.html');
 Readonly my $dmg             => artifact('Metabase.dmg');
-Readonly my @files_to_upload => ($zipfile, $appcast, $release_notes, $dmg);
 
 Readonly my $xcode_project   => get_file_or_die('OSX/Metabase.xcodeproj');
 
-# Get the version saved in the CFBundle, e.g. 0.11.3.1
+# Get the version saved in the CFBundle, e.g. '0.11.3.1'
 sub version {
     return trim(plist_buddy_exec('Print', 'CFBundleVersion'));
 }
 
-# Next version after version(), e.g. 0.11.3.2
+# Get the tag saved in version.properties, e.g. '0.12.0'
+sub version_from_props_file {
+  open(FILE, get_file_or_die('resources/version.properties')) or die $!;
+  while (<FILE>) { m/^tag/ && s/^tag=v([0-9.]+)[^0-9.]*$/$1/ && (return trim($_)); };
+}
+
+# This is the name of the subdirectory on s3, e.g. 'v.0.12.0'
+sub upload_subdir {
+  return 'v' . version_from_props_file();
+}
+
+# Next version after version(), e.g. '0.11.3.2'
 sub next_version {
     my ($old_version_tag, $old_version_point_release) = (version() =~ /^(\d+\.\d+\.\d+)\.(\d+)$/);
 
-    # Get the tag saved in version.properties
-    my $tag_from_props_file = '';
-    open(FILE, get_file_or_die('resources/version.properties')) or die $!;
-    while (<FILE>) { m/^tag/ && s/^tag=v(.+)$/$1/ && ($tag_from_props_file = trim($_)); };
+    Readonly my $tag_from_props_file => version_from_props_file();
 
     # Now calculate the new version, which is ($tag.$point_release)
     # Check and see if tag has changed in version.properties; if so, new version is the first "point release" of that tag.
@@ -146,7 +153,6 @@ sub generate_appcast {
 
     remove_tree($appcast);
 
-    my $aws_region  = config('awsRegion')  or return;
     my $aws_bucket  = config('awsBucket')  or return;
     my $signature   = generate_signature() or return;
 
@@ -155,8 +161,8 @@ sub generate_appcast {
         VERSION   => version(),
         SIGNATURE => $signature,
         LENGTH    => stat(get_file_or_die($zipfile))->size,
-        S3_REGION => $aws_region,
-        S3_BUCKET => $aws_bucket
+        S3_BUCKET => $aws_bucket,
+        S3_SUBDIR => upload_subdir()
     });
     close $out;
 }
@@ -181,7 +187,7 @@ sub create_dmg_from_source_dir {
            '-fs', 'HFS+',
            '-fsargs', '-c c=64,a=16,e=16',
            '-format', 'UDRW',
-           '-size', '144MB',          # it looks like this can be whatever size we want; compression slims it down
+           '-size', '256MB',          # it looks like this can be whatever size we want; compression slims it down
            $dmg_filename) == 0 or die $!;
 }
 
@@ -290,7 +296,7 @@ sub create_dmg {
 sub announce_on_slack {
     Readonly my $slack_url => config('slackWebhookURL') or return;
     Readonly my $version   => version();
-    Readonly my $awsURL    => 'https://s3-' . config('awsRegion') . '.amazonaws.com/' . config('awsBucket') . '/Metabase.dmg';
+    Readonly my $awsURL    => 'https://s3.amazonaws.com/' . config('awsBucket') . '/' . upload_subdir() . '/Metabase.dmg';
     my $text = "Metabase OS X $version 'Turbulent Toucan' Is Now Available!\n\n" .
                "Get it here: $awsURL\n\n";
 
@@ -316,17 +322,30 @@ sub announce_on_slack {
 # Make sure to run `aws configure --profile metabase` first to set up your ~/.aws/config file correctly
 sub upload {
     my $aws_profile = config('awsProfile') or return;
-    my $aws_region  = config('awsRegion')  or return;
     my $aws_bucket  = config('awsBucket')  or return;
 
-    for my $file (@files_to_upload) {
-        announce "Uploading $file ...";
-        system('aws',
-               '--profile', $aws_profile,
-               '--region', $aws_region,
-               's3', 'cp', get_file_or_die($file),
-               "s3://$aws_bucket") == 0 or die "Upload failed: $!\n";
+    # Make a folder that contains the files we want to upload
+    Readonly my $upload_dir => artifact('upload');
+    remove_tree($upload_dir) if -d $upload_dir;
+    mkdir $upload_dir or die $!;
+
+    # appcast.xml goes in the root directory
+    copy(get_file_or_die($appcast), $upload_dir) or die $!;
+
+    # zipfile, release notes, and DMG go in a dir like v0.12.0
+    Readonly my $upload_subdir => $upload_dir . '/' . upload_subdir();
+    mkdir $upload_subdir or die $!;
+
+    for my $file ($zipfile, $release_notes, $dmg) {
+      copy(get_file_or_die($file), $upload_subdir) or die $!;
     }
+
+    announce "Uploading files to $aws_bucket...";
+    system('aws', '--recursive',
+           '--profile', $aws_profile,
+           '--region', 'us-east-1',
+           's3', 'cp', $upload_dir,
+           "s3://$aws_bucket") == 0 or die "Upload failed: $!\n";
 
     announce_on_slack;
 

@@ -8,6 +8,7 @@ var SettingsAdminControllers = angular.module('metabaseadmin.settings.controller
 
 // from common.clj
 var TIMEZONES = [
+    { name: "Database Default", value: "" },
     "GMT",
     "UTC",
     "US/Alaska",
@@ -24,8 +25,9 @@ var TIMEZONES = [
 var EXTRA_SETTINGS_METADATA = {
     "site-name":            { display_name: "Site Name",          section: "General", index: 0, type: "string" },
     "-site-url":            { display_name: "Site URL",           section: "General", index: 1, type: "string" },
-    "report-timezone":      { display_name: "Report Timezone",    section: "General", index: 2, type: "select", options: TIMEZONES, placeholder: "Select a timezone" },
-    "anon-tracking-enabled":{ display_name: "Anonymous Tracking", section: "General", index: 3, type: "boolean" },
+    "admin-email":          { display_name: "Email Address for Help Requests", section: "General", index: 2, type: "string" },
+    "report-timezone":      { display_name: "Report Timezone",    section: "General", index: 3, type: "select", options: TIMEZONES, placeholder: "Select a timezone" },
+    "anon-tracking-enabled":{ display_name: "Anonymous Tracking", section: "General", index: 4, type: "boolean" },
     "email-smtp-host":      { display_name: "SMTP Host",          section: "Email",   index: 0, type: "string" },
     "email-smtp-port":      { display_name: "SMTP Port",          section: "Email",   index: 1, type: "string" },
     "email-smtp-security":  { display_name: "SMTP Security",      section: "Email",   index: 2, type: "radio", options: { none: "None", tls: "TLS", ssl: "SSL" } },

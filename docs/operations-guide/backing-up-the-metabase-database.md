@@ -1,4 +1,4 @@
-## Backing up Metabase Application data
+## Backing up Metabase Application Data
 
 If you are using Metabase in a production environment or simply want to make sure you don't lose any of the work that you've done, then backups are what you need.
 

@@ -9,14 +9,9 @@
             [swiss.arrows :refer :all]
             [metabase.db :refer [upd]]
             [metabase.models.field :refer [Field]]
-            [metabase.driver :as driver]
-            (metabase.driver [generic-sql :as generic-sql, :refer [GenericSQLIDriverMixin GenericSQLISyncDriverTableFKsMixin
-                                                                   GenericSQLISyncDriverFieldAvgLengthMixin GenericSQLISyncDriverFieldPercentUrlsMixin]]
-                             [interface :as i, :refer [IDriver ISyncDriverTableFKs ISyncDriverFieldAvgLength ISyncDriverFieldPercentUrls
-                                                       ISyncDriverSpecificSyncField]])
-            [metabase.driver.generic-sql :as generic-sql]
-            (metabase.driver.generic-sql [interface :refer [ISqlDriverDatabaseSpecific]]
-                                         [util :refer [with-jdbc-metadata]]))
+            [metabase.driver :as driver, :refer [defdriver]]
+            [metabase.driver.generic-sql :refer [sql-driver]]
+            [metabase.driver.generic-sql.util :refer [with-jdbc-metadata]])
   ;; This is necessary for when NonValidatingFactory is passed in the sslfactory connection string argument,
   ;; e.x. when connecting to a Heroku Postgres database from outside of Heroku.
   (:import org.postgresql.ssl.NonValidatingFactory))
@@ -88,34 +83,24 @@
    :sslmode    "require"
    :sslfactory "org.postgresql.ssl.NonValidatingFactory"})  ; HACK Why enable SSL if we disable certificate validation?
 
-(defn- connection-details->connection-spec [_ {:keys [ssl] :as details-map}]
+(defn- connection-details->spec [{:keys [ssl] :as details-map}]
   (-> details-map
+      (update :port (fn [port]
+                      (if (string? port) (Integer/parseInt port)
+                          port)))
       (dissoc :ssl)               ; remove :ssl in case it's false; DB will still try (& fail) to connect if the key is there
       (merge (when ssl            ; merging ssl-params will add :ssl back in if desirable
                ssl-params))
       (rename-keys {:dbname :db})
       kdb/postgres))
 
-(defn- database->connection-details [_ {:keys [details]}]
-  (let [{:keys [host port]} details]
-    (-> details
-        (assoc :host host
-               :ssl  (:ssl details)
-               :port (if (string? port) (Integer/parseInt port)
-                         port))
-        (rename-keys {:dbname :db}))))
-
-(defn- unix-timestamp->timestamp [_ field-or-value seconds-or-milliseconds]
+(defn- unix-timestamp->timestamp [field-or-value seconds-or-milliseconds]
   (utils/func (case seconds-or-milliseconds
                 :seconds      "TO_TIMESTAMP(%s)"
                 :milliseconds "TO_TIMESTAMP(%s / 1000)")
               [field-or-value]))
 
-(defn- timezone->set-timezone-sql [_ timezone]
-  (format "SET LOCAL timezone TO '%s';" timezone))
-
-
-(defn- driver-specific-sync-field! [_ {:keys [table], :as field}]
+(defn- driver-specific-sync-field! [{:keys [table], :as field}]
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db @table)]
     (let [[{:keys [type_name]}] (->> (.getColumns md nil nil (:name @table) (:name field))
                                      jdbc/result-set-seq)]
@@ -123,7 +108,7 @@
         (upd Field (:id field) :special_type :json)
         (assoc field :special_type :json)))))
 
-(defn- date [_ unit field-or-value]
+(defn- date [unit field-or-value]
   (utils/func (case unit
                 :default         "CAST(%s AS TIMESTAMP)"
                 :minute          "DATE_TRUNC('minute', %s)"
@@ -145,33 +130,25 @@
                 :year            "CAST(EXTRACT(YEAR FROM %s) AS INTEGER)")
               [field-or-value]))
 
-(defn- date-interval [_ unit amount]
-  (utils/generated (format (case unit
-                             :minute  "(NOW() + INTERVAL '%d minute')"
-                             :hour    "(NOW() + INTERVAL '%d hour')"
-                             :day     "(NOW() + INTERVAL '%d day')"
-                             :week    "(NOW() + INTERVAL '%d week')"
-                             :month   "(NOW() + INTERVAL '%d month')"
-                             :quarter "(NOW() + INTERVAL '%d quarter')"
-                             :year    "(NOW() + INTERVAL '%d year')")
-                           amount)))
+(defn- date-interval [unit amount]
+  (utils/generated (format "(NOW() + INTERVAL '%d %s')" amount (name unit))))
 
-(defn- humanize-connection-error-message [_ message]
+(defn- humanize-connection-error-message [message]
   (condp re-matches message
     #"^FATAL: database \".*\" does not exist$"
-    (i/connection-error-messages :database-name-incorrect)
+    (driver/connection-error-messages :database-name-incorrect)
 
     #"^No suitable driver found for.*$"
-    (i/connection-error-messages :invalid-hostname)
+    (driver/connection-error-messages :invalid-hostname)
 
     #"^Connection refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.$"
-    (i/connection-error-messages :cannot-connect-check-host-and-port)
+    (driver/connection-error-messages :cannot-connect-check-host-and-port)
 
     #"^FATAL: role \".*\" does not exist$"
-    (i/connection-error-messages :username-incorrect)
+    (driver/connection-error-messages :username-incorrect)
 
     #"^FATAL: password authentication failed for user.*$"
-    (i/connection-error-messages :password-incorrect)
+    (driver/connection-error-messages :password-incorrect)
 
     #"^FATAL: .*$" ; all other FATAL messages: strip off the 'FATAL' part, capitalize, and add a period
     (let [[_ message] (re-matches #"^FATAL: (.*$)" message)]
@@ -180,23 +157,38 @@
     #".*" ; default
     message))
 
-(defrecord PostgresDriver [])
-
-(extend PostgresDriver
-  ISqlDriverDatabaseSpecific   {:connection-details->connection-spec connection-details->connection-spec
-                                :database->connection-details        database->connection-details
-                                :unix-timestamp->timestamp           unix-timestamp->timestamp
-                                :date                                date
-                                :date-interval                       date-interval
-                                :timezone->set-timezone-sql          timezone->set-timezone-sql}
-  ISyncDriverSpecificSyncField {:driver-specific-sync-field!         driver-specific-sync-field!}
-  IDriver                      (assoc GenericSQLIDriverMixin
-                                      :humanize-connection-error-message humanize-connection-error-message)
-  ISyncDriverTableFKs          GenericSQLISyncDriverTableFKsMixin
-  ISyncDriverFieldAvgLength    GenericSQLISyncDriverFieldAvgLengthMixin
-  ISyncDriverFieldPercentUrls  GenericSQLISyncDriverFieldPercentUrlsMixin)
-
-(def ^:const driver
-  (map->PostgresDriver {:column->base-type    column->base-type
-                        :features             (conj generic-sql/features :set-timezone)
-                        :sql-string-length-fn :CHAR_LENGTH}))
+(defdriver postgres
+  (sql-driver
+   {:driver-name                       "PostgreSQL"
+    :details-fields                    [{:name         "host"
+                                         :display-name "Host"
+                                         :default "localhost"}
+                                        {:name         "port"
+                                         :display-name "Port"
+                                         :type         :integer
+                                         :default      5432}
+                                        {:name         "dbname"
+                                         :display-name "Database name"
+                                         :placeholder  "birds_of_the_word"
+                                         :required     true}
+                                        {:name         "user"
+                                         :display-name "Database username"
+                                         :placeholder  "What username do you use to login to the database?"
+                                         :required     true}
+                                        {:name         "password"
+                                         :display-name "Database password"
+                                         :type         :password
+                                         :placeholder  "*******"}
+                                        {:name         "ssl"
+                                         :display-name "Use a secure connection (SSL)?"
+                                         :type         :boolean
+                                         :default      false}]
+    :string-length-fn                  :CHAR_LENGTH
+    :column->base-type                 column->base-type
+    :connection-details->spec          connection-details->spec
+    :unix-timestamp->timestamp         unix-timestamp->timestamp
+    :date                              date
+    :date-interval                     date-interval
+    :set-timezone-sql                  "UPDATE pg_settings SET setting = ? WHERE name ILIKE 'timezone';"
+    :driver-specific-sync-field!       driver-specific-sync-field!
+    :humanize-connection-error-message humanize-connection-error-message}))

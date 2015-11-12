@@ -4,7 +4,7 @@
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             (cheshire factory
-                      [generate :refer [add-encoder encode-str]])
+                      [generate :refer [add-encoder encode-str encode-nil]])
             [korma.core :as k]
             [medley.core :refer [filter-vals map-vals]]
             [metabase.api.common :refer [*current-user* *current-user-id*]]
@@ -52,7 +52,7 @@
   [handler]
   (fn [{:keys [metabase-session-id] :as request}]
     ;; TODO - what kind of validations can we do on the sessionid to make sure it's safe to handle?  str?  alphanumeric?
-    (handler (or (when metabase-session-id
+    (handler (or (when (and metabase-session-id ((resolve 'metabase.core/initialized?)))
                    (when-let [session (first (k/select Session
                                                        ;; NOTE: we join with the User table and ensure user.is_active = true
                                                        (k/with User (k/where {:is_active true}))
@@ -147,9 +147,11 @@
 ;; Encode BSON IDs like strings
 (add-encoder org.bson.types.ObjectId encode-str)
 
+;; Encode BSON undefined like nil
+(add-encoder org.bson.BsonUndefined encode-nil)
+
 ;; serialize sql dates (i.e., QueryProcessor results) like YYYY-MM-DD instead of as a full-blown timestamp
-(add-encoder java.sql.Date (fn [^java.sql.Date date ^com.fasterxml.jackson.core.JsonGenerator json-generator]
-                             (.writeString json-generator (.toString date))))
+(add-encoder java.sql.Date encode-str)
 
 (defn- remove-fns-and-delays
   "Remove values that are fns or delays from map M."

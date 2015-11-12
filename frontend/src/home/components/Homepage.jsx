@@ -13,7 +13,7 @@ export default class Homepage extends Component {
         super(props, context);
 
         this.state = {
-            greeting: Greeting.simpleGreeting(),
+            greeting: Greeting.sayHello(props.user && props.user.first_name),
             onboarding: props.showOnboarding
         };
 
@@ -55,7 +55,7 @@ export default class Homepage extends Component {
                                 <span className="float-left mr1">
                                     <Smile />
                                 </span>
-                                <span>{(user) ? this.state.greeting + ' ' + user.first_name : this.state.greeting}</span>
+                                <span>{this.state.greeting}</span>
                             </header>
                         </div>
                     </div>

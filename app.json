@@ -11,15 +11,14 @@
   "repository": "https://github.com/metabase/metabase",
   "logo": "https://avatars3.githubusercontent.com/u/10520629?v=3&s=200",
   "success_url": "/setup",
-  "buildpacks": [
-    {
-      "url": "https://github.com/heroku/heroku-buildpack-nodejs"
-    },
-    {
-      "url": "https://github.com/heroku/heroku-buildpack-clojure"
-    }
-  ],
   "env": {
-    "NPM_CONFIG_LOGLEVEL": "info"
-  }
+  },
+  "addons": [
+    "heroku-postgresql",
+    "mailgun"
+  ],
+  "buildpacks": [
+    { "url": "https://github.com/heroku/heroku-buildpack-nodejs" },
+    { "url": "https://github.com/heroku/heroku-buildpack-clojure" }
+  ]
 }

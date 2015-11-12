@@ -12,9 +12,7 @@
                     [operators :refer :all]
                     [query :refer :all])
             [metabase.db :refer :all]
-            [metabase.driver :as driver]
-            (metabase.driver [interface :as i]
-                             [query-processor :as qp])
+            [metabase.driver.query-processor :as qp]
             [metabase.driver.query-processor.interface :refer [qualified-name-components]]
             [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
             [metabase.models.field :as field]
@@ -109,8 +107,6 @@
    (field->name (:field this)))
   ([this separator]
    (field->name (:field this) separator)))
-
-;;; ## FILTERING
 
 (defmulti format-value class)
 

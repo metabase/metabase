@@ -46,7 +46,8 @@ const TYPES = {
     },
 
     [SUMMABLE]: {
-        include: [NUMBER]
+        include: [NUMBER],
+        exclude: [ENTITY, LOCATION, DATE_TIME]
     },
     [CATEGORY]: {
         base: ["BooleanField"],
@@ -67,7 +68,15 @@ export function isFieldType(type, field) {
             return true;
         }
     }
-    // recursively check to see if it's another field th:
+    // recursively check to see if it's NOT another field type:
+    if (def.exclude) {
+        for (let excludeType of def.exclude) {
+            if (isFieldType(excludeType, field)) {
+                return false;
+            }
+        }
+    }
+    // recursively check to see if it's another field type:
     if (def.include) {
         for (let includeType of def.include) {
             if (isFieldType(includeType, field)) {
@@ -143,7 +152,8 @@ function equivalentArgument(field, table) {
     if (isCategory(field)) {
         if (field.id in table.field_values && table.field_values[field.id].length > 0) {
             let validValues = table.field_values[field.id];
-            validValues.sort();
+            // this sort function works for both numbers and strings:
+            validValues.sort((a, b) => a === b ? 0 : (a < b ? -1 : 1));
             return {
                 type: "select",
                 values: validValues
@@ -253,7 +263,9 @@ const OPERATORS_BY_TYPE_ORDERED = {
         { name: "=",       verboseName: "Is" },
         { name: "<",       verboseName: "Before" },
         { name: ">",       verboseName: "After" },
-        { name: "BETWEEN", verboseName: "Between" }
+        { name: "BETWEEN", verboseName: "Between" },
+        { name: "IS_NULL", verboseName: "Is empty", advanced: true },
+        { name: "NOT_NULL",verboseName: "Not empty", advanced: true }
     ],
     [LOCATION]: [
         { name: "=",       verboseName: "Is" },
@@ -415,4 +427,22 @@ export function hasLatitudeAndLongitudeColumns(columnDefs) {
         }
     }
     return hasLatitude && hasLongitude;
+}
+
+export function foreignKeyCountsByOriginTable(fks) {
+    if (fks === null || !Array.isArray(fks)) {
+        return null;
+    }
+
+    return fks.map(function(fk) {
+        return ('origin' in fk) ? fk.origin.table.id : null;
+    }).reduce(function(prev, curr, idx, array) {
+        if (curr in prev) {
+            prev[curr]++;
+        } else {
+            prev[curr] = 1;
+        }
+
+        return prev;
+    }, {});
 }

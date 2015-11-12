@@ -90,8 +90,20 @@ export default class Popover extends Component {
             // compute the options for this attachment position then set it
             let options = getAttachmentOptions(best, attachment);
             this._setTetherOptions(tetherOptions, options);
-            // test to see how much of the popover is off-screen
+
+            // get bounds within *document*
             let elementRect = Tether.Utils.getBounds(tetherOptions.element);
+
+            // get bounds within *window*
+            let doc = document.documentElement;
+            let left = (window.pageXOffset || doc.scrollLeft) - (doc.clientLeft || 0);
+            let top = (window.pageYOffset || doc.scrollTop)  - (doc.clientTop || 0);
+            elementRect.top -= top;
+            elementRect.bottom += top;
+            elementRect.left -= left;
+            elementRect.right += left;
+
+            // test to see how much of the popover is off-screen
             let offScreen = offscreenProps.map(prop => Math.min(elementRect[prop], 0)).reduce((a, b) => a + b);
             // if none then we're done, otherwise check to see if it's the best option so far
             if (offScreen === 0) {

@@ -1,13 +1,12 @@
 /*global google*/
 
 import _ from "underscore";
-import $ from 'jquery';
 import crossfilter from 'crossfilter';
 import d3 from 'd3';
 import dc from 'dc';
 import moment from 'moment';
 
-import { formatNumber } from "metabase/lib/formatting";
+import { formatNumber, formatValueString } from "metabase/lib/formatting";
 
 import tip from 'd3-tip';
 tip(d3);
@@ -15,7 +14,6 @@ tip(d3);
 // ---------------------------------------- TODO - Maybe. Lots of these things never worked in the first place. ----------------------------------------
 // IMPORTANT
 // - 'titles' (tooltips)
-// - finish removing jQuery
 // - tweak padding for labels
 //
 // LESS IMPORTANT
@@ -199,21 +197,26 @@ function applyChartTimeseriesXAxis(chart, card, coldefs, data) {
 
     // set the axis label
     if (x.labels_enabled) {
-        chart.xAxisLabel((x.title_text || null) || coldefs[0].name);
+        chart.xAxisLabel((x.title_text || null) || coldefs[0].display_name);
         chart.renderVerticalGridLines(x.gridLine_enabled);
-        xAxis.tickFormat(d3.time.format.multi([
-            [".%L",    (d) => d.getMilliseconds()],
-            [":%S",    (d) => d.getSeconds()],
-            ["%I:%M",  (d) => d.getMinutes()],
-            ["%I %p",  (d) => d.getHours()],
-            ["%a %d",  (d) => d.getDay() && d.getDate() != 1],
-            ["%b %d",  (d) => d.getDate() != 1],
-            ["%B", (d) => d.getMonth()], // default "%B"
-            ["%Y", () => true] // default "%Y"
-        ]));
+
+        if (coldefs[0] && coldefs[0].unit) {
+            xAxis.tickFormat(d => formatValueString(d, coldefs[0]));
+        } else {
+            xAxis.tickFormat(d3.time.format.multi([
+                [".%L",    (d) => d.getMilliseconds()],
+                [":%S",    (d) => d.getSeconds()],
+                ["%I:%M",  (d) => d.getMinutes()],
+                ["%I %p",  (d) => d.getHours()],
+                ["%a %d",  (d) => d.getDay() && d.getDate() != 1],
+                ["%b %d",  (d) => d.getDate() != 1],
+                ["%B", (d) => d.getMonth()], // default "%B"
+                ["%Y", () => true] // default "%Y"
+            ]));
+        }
 
         // Compute a sane interval to display based on the data granularity, domain, and chart width
-        var interval = computeTimeseriesTicksInterval(data, chart.width(), MIN_PIXELS_PER_TICK.x);
+        var interval = computeTimeseriesTicksInterval(data, coldefs[0], chart.width(), MIN_PIXELS_PER_TICK.x);
         xAxis.ticks(d3.time[interval.interval], interval.count);
     } else {
         xAxis.ticks(0);
@@ -221,6 +224,11 @@ function applyChartTimeseriesXAxis(chart, card, coldefs, data) {
 
     // calculate the x-axis domain
     chart.x(d3.time.scale().domain(xDomain));
+
+    // prevents skinny time series bar charts by using xUnits that match the provided column unit, if possible
+    if (coldefs[0] && coldefs[0].unit && d3.time[coldefs[0].unit + "s"]) {
+        chart.xUnits(d3.time[coldefs[0].unit + "s"]);
+    }
 }
 
 // mostly matches https://github.com/mbostock/d3/wiki/Time-Scales
@@ -247,6 +255,16 @@ const TIMESERIES_INTERVALS = [
     { interval: "year",   count: 1,  testFn: (d) => d.getUTCMonth()        }  // 1 year
 ];
 
+const TIMESERIES_INTERVAL_INDEX_BY_UNIT = {
+    "minute": 1,
+    "hour": 9,
+    "day": 13,
+    "week": 15,
+    "month": 16,
+    "quarter": 17,
+    "year": 18,
+};
+
 function computeTimeseriesDataInvervalIndex(data) {
     // Keep track of the value seen for each level of granularity,
     // if any don't match then we know the data is *at least* that granular.
@@ -267,16 +285,19 @@ function computeTimeseriesDataInvervalIndex(data) {
     return index - 1;
 }
 
-function computeTimeseriesTicksInterval(data, chartWidth, minPixelsPerTick) {
+function computeTimeseriesTicksInterval(data, col, chartWidth, minPixelsPerTick) {
     // If the interval that matches the data granularity results in too many ticks reduce the granularity until it doesn't.
     // TODO: compute this directly instead of iteratively
-    var maxTickCount = Math.round(chartWidth / minPixelsPerTick);
-    var domain = getMinMax(data, 0);
-    var index = computeTimeseriesDataInvervalIndex(data);
+    let maxTickCount = Math.round(chartWidth / minPixelsPerTick);
+    let domain = getMinMax(data, 0);
+    let index = col && col.unit ? TIMESERIES_INTERVAL_INDEX_BY_UNIT[col.unit] : null;
+    if (typeof index !== "number") {
+        index = computeTimeseriesDataInvervalIndex(data);
+    }
     while (index < TIMESERIES_INTERVALS.length - 1) {
-        var interval = TIMESERIES_INTERVALS[index];
-        var intervalMs = moment(0).add(interval.count, interval.interval).valueOf();
-        var tickCount = (domain[1] - domain[0]) / intervalMs;
+        let interval = TIMESERIES_INTERVALS[index];
+        let intervalMs = moment(0).add(interval.count, interval.interval).valueOf();
+        let tickCount = (domain[1] - domain[0]) / intervalMs;
         if (tickCount <= maxTickCount) {
             break;
         }
@@ -296,7 +317,7 @@ function applyChartOrdinalXAxis(chart, card, coldefs, data, minPixelsPerTick) {
         xAxis = chart.xAxis();
 
     if (x.labels_enabled) {
-        chart.xAxisLabel((x.title_text || null) || coldefs[0].name);
+        chart.xAxisLabel((x.title_text || null) || coldefs[0].display_name);
         chart.renderVerticalGridLines(x.gridLine_enabled);
         xAxis.ticks(data.length);
         adjustTicksIfNeeded(xAxis, chart.width(), minPixelsPerTick);
@@ -315,7 +336,7 @@ function applyChartOrdinalXAxis(chart, card, coldefs, data, minPixelsPerTick) {
 
             xAxis.tickValues(visibleKeys);
         }
-        xAxis.tickFormat((d) => d == null ? '[unset]' : d);
+        xAxis.tickFormat(d => formatValueString(d, coldefs[0]));
     } else {
         xAxis.ticks(0);
         xAxis.tickFormat('');
@@ -334,7 +355,7 @@ function applyChartYAxis(chart, card, coldefs, data, minPixelsPerTick) {
         yAxis = chart.yAxis();
 
     if (y.labels_enabled) {
-        chart.yAxisLabel((y.title_text || null) || coldefs[1].name);
+        chart.yAxisLabel((y.title_text || null) || coldefs[1].display_name);
         chart.renderHorizontalGridLines(true);
 
         if (y.min || y.max) {
@@ -368,14 +389,13 @@ function applyChartColors(dcjsChart, card) {
     return dcjsChart.ordinalColors(uniqueColors);
 }
 
-function applyChartTooltips(dcjsChart, card, cols) {
+function applyChartTooltips(dcjsChart, id, card, cols) {
     dcjsChart.on('renderlet', function(chart) {
         // Remove old tooltips which are sometimes not removed due to chart being rerendered while tip is visible
-        // We should only ever have one tooltip on screen, right?
-        Array.prototype.forEach.call(document.querySelectorAll('.ChartTooltip'), (t) => t.parentNode.removeChild(t));
+        Array.prototype.forEach.call(document.querySelectorAll('.ChartTooltip--'+id), (t) => t.parentNode.removeChild(t));
 
         var tip = d3.tip()
-            .attr('class', 'ChartTooltip')
+            .attr('class', 'ChartTooltip ChartTooltip--'+id)
             .direction('n')
             .offset([-10, 0])
             .html(function(d) {
@@ -384,7 +404,7 @@ function applyChartTooltips(dcjsChart, card, cols) {
                     // TODO: this is not the ideal way to calculate the percentage, but it works for now
                     values += " (" + formatNumber((d.endAngle - d.startAngle) / Math.PI * 50) + '%)'
                 }
-                return '<div><span class="ChartTooltip-name">' + d.data.key + '</span></div>' +
+                return '<div><span class="ChartTooltip-name">' + formatValueString(d.data.key, cols[0]) + '</span></div>' +
                     '<div><span class="ChartTooltip-value">' + values + '</span></div>';
             });
 
@@ -393,7 +413,7 @@ function applyChartTooltips(dcjsChart, card, cols) {
             .on('mouseover.tip', function(slice) {
                 tip.show.apply(tip, arguments);
                 if (card.display === "pie") {
-                    var tooltip = d3.select('.ChartTooltip');
+                    var tooltip = d3.select('.ChartTooltip--'+id);
                     let tooltipOffset = getTooltipOffset(tooltip);
                     let sliceCentroid = getPieSliceCentroid(this, slice);
                     tooltip.style({
@@ -427,11 +447,19 @@ function getPieSliceCentroid(element, slice) {
     };
 }
 
+function getScrollOffset() {
+    let doc = document.documentElement;
+    let left = (window.pageXOffset || doc.scrollLeft) - (doc.clientLeft || 0);
+    let top = (window.pageYOffset || doc.scrollTop)  - (doc.clientTop || 0);
+    return { left, top }
+}
+
 function getTooltipOffset(tooltip) {
-    var tooltipRect = tooltip[0][0].getBoundingClientRect();
+    let tooltipRect = tooltip[0][0].getBoundingClientRect();
+    let scrollOffset = getScrollOffset();
     return {
-        x: -tooltipRect.width / 2,
-        y: -tooltipRect.height - 30
+        x: -tooltipRect.width / 2 + scrollOffset.left,
+        y: -tooltipRect.height - 30 + scrollOffset.top
     };
 }
 
@@ -770,7 +798,7 @@ export var CardRenderer = {
             if (width !== null) {
                 el.style.width = width + "px";
             }
-            $(el).trigger('cardrenderer-card-resized');
+            el.dispatchEvent(new Event("cardrenderer-card-resized"));
         }
 
         // dynamically resize the chart if applicable
@@ -818,7 +846,7 @@ export var CardRenderer = {
                         .group(group)
                         .colors(settings.pie.colors)
                         .colorCalculator((d, i) => settings.pie.colors[((i * 5) + Math.floor(i / 5)) % settings.pie.colors.length])
-                        .label(row => row.key == null ? '[unset]' : row.key)
+                        .label(row => formatValueString(row.key, result.cols[0]))
                         .title(function(d) {
                             // ghetto rounding to 1 decimal digit since Math.round() doesn't let
                             // you specify a precision and always rounds to int
@@ -829,7 +857,7 @@ export var CardRenderer = {
             // disables ability to select slices
             chart.filter = function() {};
 
-        applyChartTooltips(chart, card, result.cols);
+        applyChartTooltips(chart, id, card, result.cols);
 
         chart.render();
     },
@@ -892,7 +920,7 @@ export var CardRenderer = {
         // TODO: if we are multi-series this could be split axis
         applyChartYAxis(chart, card, result.cols, data, MIN_PIXELS_PER_TICK.y);
 
-        applyChartTooltips(chart, card, result.cols);
+        applyChartTooltips(chart, id, card, result.cols);
         applyChartColors(chart, card);
 
         // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
@@ -969,7 +997,7 @@ export var CardRenderer = {
         // TODO: if we are multi-series this could be split axis
         applyChartYAxis(chart, card, result.cols, data, MIN_PIXELS_PER_TICK.y);
 
-        applyChartTooltips(chart, card, result.cols);
+        applyChartTooltips(chart, id, card, result.cols);
         applyChartColors(chart, card);
 
         // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
@@ -1164,7 +1192,7 @@ export var CardRenderer = {
         //listen for resize event (internal to CardRenderer)
         //to let google maps api know about the resize
         //(see https://developers.google.com/maps/documentation/javascript/reference)
-        $('#' + id).on('cardrenderer-card-resized', function() {
+        document.getElementById(id).addEventListener('cardrenderer-card-resized', function() {
             google.maps.event.trigger(map, 'resize');
         });
     },

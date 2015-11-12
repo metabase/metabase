@@ -21,23 +21,6 @@
                                                             :dbname "fakedb"
                                                             :user   "cam"}}))
 
-;; # FORM INPUT
-
-;; ## GET /api/database/form_input
-(expect
-    {:engines driver/available-drivers
-     :timezones ["GMT"
-                 "UTC"
-                 "US/Alaska"
-                 "US/Arizona"
-                 "US/Central"
-                 "US/Eastern"
-                 "US/Hawaii"
-                 "US/Mountain"
-                 "US/Pacific"
-                 "America/Costa_Rica"]}
-  ((user->client :crowberto) :get 200 "database/form_input"))
-
 ;; # DB LIFECYCLE ENDPOINTS
 
 ;; ## GET /api/database/:id
@@ -162,66 +145,67 @@
 ;; ## GET /api/meta/table/:id/query_metadata
 ;; TODO - add in example with Field :values
 (expect
-  (match-$ (db)
-           {:created_at      $
-            :engine          "h2"
-            :id              $
-            :updated_at      $
-            :name            "Test Database"
-            :is_sample       false
-            :organization_id nil
-            :description     nil
-            :tables [(match-$ (Table (id :categories))
-                              {:description  nil
-                               :entity_type  nil
-                               :visibility_type nil
-                               :name         "CATEGORIES"
-                               :display_name "Categories"
-                               :fields       [(match-$ (Field (id :categories :id))
-                                                       {:description     nil
-                                                        :table_id        (id :categories)
-                                                        :special_type    "id"
-                                                        :name            "ID"
-                                                        :display_name    "Id"
-                                                        :updated_at      $
-                                                        :active          true
-                                                        :id              $
-                                                        :field_type      "info"
-                                                        :position        0
-                                                        :target          nil
-                                                        :preview_display true
-                                                        :created_at      $
-                                                        :base_type       "BigIntegerField"
-                                                        :parent_id       nil
-                                                        :parent          nil
-                                                        :values          []})
-                                              (match-$ (Field (id :categories :name))
-                                                       {:description     nil
-                                                        :table_id        (id :categories)
-                                                        :special_type    "name"
-                                                        :name            "NAME"
-                                                        :display_name    "Name"
-                                                        :updated_at      $
-                                                        :active          true
-                                                        :id              $
-                                                        :field_type      "info"
-                                                        :position        0
-                                                        :target          nil
-                                                        :preview_display true
-                                                        :created_at      $
-                                                        :base_type       "TextField"
-                                                        :parent_id       nil
-                                                        :parent          nil
-                                                        :values          []})]
-                               :rows         75
-                               :updated_at   $
-                               :entity_name  nil
-                               :active       true
-                               :id           (id :categories)
-                               :db_id        (db-id)
-                               :created_at   $})]})
-  (let [resp ((user->client :rasta) :get 200 (format "database/%d/metadata" (db-id)))]
-    (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp)))))
+    (match-$ (db)
+      {:created_at      $
+       :engine          "h2"
+       :id              $
+       :updated_at      $
+       :name            "Test Database"
+       :is_sample       false
+       :organization_id nil
+       :description     nil
+       :tables [(match-$ (Table (id :categories))
+                  {:description     nil
+                   :entity_type     nil
+                   :visibility_type nil
+                   :schema          "PUBLIC"
+                   :name            "CATEGORIES"
+                   :display_name    "Categories"
+                   :fields          [(match-$ (Field (id :categories :id))
+                                       {:description     nil
+                                        :table_id        (id :categories)
+                                        :special_type    "id"
+                                        :name            "ID"
+                                        :display_name    "Id"
+                                        :updated_at      $
+                                        :active          true
+                                        :id              $
+                                        :field_type      "info"
+                                        :position        0
+                                        :target          nil
+                                        :preview_display true
+                                        :created_at      $
+                                        :base_type       "BigIntegerField"
+                                        :parent_id       nil
+                                        :parent          nil
+                                        :values          []})
+                                     (match-$ (Field (id :categories :name))
+                                       {:description     nil
+                                        :table_id        (id :categories)
+                                        :special_type    "name"
+                                        :name            "NAME"
+                                        :display_name    "Name"
+                                        :updated_at      $
+                                        :active          true
+                                        :id              $
+                                        :field_type      "info"
+                                        :position        0
+                                        :target          nil
+                                        :preview_display true
+                                        :created_at      $
+                                        :base_type       "TextField"
+                                        :parent_id       nil
+                                        :parent          nil
+                                        :values          []})]
+                   :rows            75
+                   :updated_at      $
+                   :entity_name     nil
+                   :active          true
+                   :id              (id :categories)
+                   :db_id           (db-id)
+                   :created_at      $})]})
+    (let [resp ((user->client :rasta) :get 200 (format "database/%d/metadata" (db-id)))]
+      (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp)))))
 
 
 ;; # DB TABLES ENDPOINTS
@@ -231,11 +215,11 @@
 (expect
     (let [db-id (db-id)]
       [(match-$ (Table (id :categories))
-         {:description nil, :entity_type nil, :visibility_type nil, :name "CATEGORIES", :rows 75, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Categories"})
+         {:description nil, :entity_type nil, :visibility_type nil, :schema "PUBLIC", :name "CATEGORIES", :rows 75, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Categories"})
        (match-$ (Table (id :checkins))
-         {:description nil, :entity_type nil, :visibility_type nil, :name "CHECKINS", :rows 1000, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Checkins"})
+         {:description nil, :entity_type nil, :visibility_type nil, :schema "PUBLIC", :name "CHECKINS", :rows 1000, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Checkins"})
        (match-$ (Table (id :users))
-         {:description nil, :entity_type nil, :visibility_type nil, :name "USERS", :rows 15, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Users"})
+         {:description nil, :entity_type nil, :visibility_type nil, :schema "PUBLIC", :name "USERS", :rows 15, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Users"})
        (match-$ (Table (id :venues))
-         {:description nil, :entity_type nil, :visibility_type nil, :name "VENUES", :rows 100, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Venues"})])
+         {:description nil, :entity_type nil, :visibility_type nil, :schema "PUBLIC", :name "VENUES", :rows 100, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Venues"})])
   ((user->client :rasta) :get 200 (format "database/%d/tables" (db-id))))

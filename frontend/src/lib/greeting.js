@@ -1,9 +1,9 @@
 const greetingPrefixes = [
-    'Hey there',
-    'How\'s it going',
-    'Howdy',
-    'Greetings',
-    'Good to see you',
+    'Hey there,',
+    'How\'s it going,',
+    'Howdy,',
+    'Greetings,',
+    'Good to see you,',
 ];
 
 const subheadPrefixes = [
@@ -22,7 +22,13 @@ var Greeting = {
 
 	sayHello: function(personalization) {
         if(personalization) {
-            return Greeting.simpleGreeting() + ' ' + personalization;
+            var g = Greeting.simpleGreeting();
+            if (g === 'How\'s it going,'){
+                return g + ' ' + personalization + '?';    
+            } else {
+                return g + ' ' + personalization;
+            }
+            
         } else {
         	return Greeting.simpleGreeting();
         }

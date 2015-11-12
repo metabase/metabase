@@ -63,8 +63,8 @@
 
 (defn resolve-dataset [dataset]
   (var-get (core/or (resolve dataset)
-                       (ns-resolve 'metabase.test.data.dataset-definitions dataset)
-                       (throw (Exception. (format "Don't know how to find dataset '%s'." dataset))))))
+                    (ns-resolve 'metabase.test.data.dataset-definitions dataset)
+                    (throw (Exception. (format "Don't know how to find dataset '%s'." dataset))))))
 
 
 ;;; # DSL KEYWORD MACROS

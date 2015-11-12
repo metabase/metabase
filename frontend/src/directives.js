@@ -194,10 +194,6 @@ MetabaseDirectives.directive('mbReactComponent', ['$timeout', function ($timeout
                 React.render(<Component {...props}/>, element[0]);
             }
 
-            scope.$on("$destroy", function() {
-                React.unmountComponentAtNode(element[0]);
-            });
-
             // limit renders to once per animation frame
             var timeout;
             scope.$watch(function() {
@@ -206,6 +202,15 @@ MetabaseDirectives.directive('mbReactComponent', ['$timeout', function ($timeout
                         timeout = null;
                         render();
                     });
+                }
+            });
+
+            scope.$on("$destroy", function() {
+                React.unmountComponentAtNode(element[0]);
+                // make sure to clear the timeout if set otherwise we might accidentally render a destroyed component
+                if (timeout) {
+                    window.cancelAnimationFrame(timeout);
+                    timeout = null;
                 }
             });
 

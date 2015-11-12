@@ -6,12 +6,9 @@
                    mysql)
             (korma.sql [engine :refer [sql-func]]
                        [utils :as utils])
-            (metabase.driver [generic-sql :as generic-sql, :refer [GenericSQLIDriverMixin GenericSQLISyncDriverTableFKsMixin
-                                                                   GenericSQLISyncDriverFieldAvgLengthMixin GenericSQLISyncDriverFieldPercentUrlsMixin]]
-                             [interface :as i, :refer [IDriver ISyncDriverTableFKs ISyncDriverFieldAvgLength ISyncDriverFieldPercentUrls
-                                                       ISyncDriverSpecificSyncField driver-specific-sync-field!]])
-            (metabase.driver.generic-sql [interface :refer [ISqlDriverDatabaseSpecific]]
-                                         [util :refer [funcs]])))
+            [metabase.driver :as driver, :refer [defdriver]]
+            [metabase.driver.generic-sql :refer [sql-driver]]
+            [metabase.driver.generic-sql.util :refer [funcs]]))
 
 ;;; # Korma 0.4.2 Bug Workaround
 ;; (Buggy code @ https://github.com/korma/Korma/blob/684178c386df529558bbf82097635df6e75fb339/src/korma/mysql.clj)
@@ -61,25 +58,16 @@
    :VARCHAR    :TextField
    :YEAR       :IntegerField})
 
-(defn- connection-details->connection-spec [_ details]
+(defn- connection-details->spec [details]
   (-> details
       (set/rename-keys {:dbname :db})
       kdb/mysql))
 
-(defn- database->connection-details [_ {:keys [details]}]
-  details)
-
-(defn- unix-timestamp->timestamp [_ field-or-value seconds-or-milliseconds]
+(defn- unix-timestamp->timestamp [field-or-value seconds-or-milliseconds]
   (utils/func (case seconds-or-milliseconds
                 :seconds      "FROM_UNIXTIME(%s)"
                 :milliseconds "FROM_UNIXTIME(%s / 1000)")
                 [field-or-value]))
-
-(defn- timezone->set-timezone-sql [_ timezone]
-  ;; If this fails you need to load the timezone definitions from your system into MySQL;
-  ;; run the command `mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql`
-  ;; See https://dev.mysql.com/doc/refman/5.7/en/time-zone-support.html for details
-  (format "SET @@session.time_zone = '%s';" timezone))
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting back to a date.
 ;; See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an explanation of format specifiers
@@ -97,7 +85,7 @@
           ["((QUARTER(%s) * 3) - 2)" field-or-value]
           (k/raw "'-01'")]))
 
-(defn- date [_ unit field-or-value]
+(defn- date [unit field-or-value]
   (if (= unit :quarter)
     (trunc-to-quarter field-or-value)
     (utils/func (case unit
@@ -121,50 +109,57 @@
                   :year            "YEAR(%s)")
                 [field-or-value])))
 
-(defn- date-interval [_ unit amount]
-  (utils/generated (format (case unit
-                             :minute  "DATE_ADD(NOW(), INTERVAL %d MINUTE)"
-                             :hour    "DATE_ADD(NOW(), INTERVAL %d HOUR)"
-                             :day     "DATE_ADD(NOW(), INTERVAL %d DAY)"
-                             :week    "DATE_ADD(NOW(), INTERVAL %d WEEK)"
-                             :month   "DATE_ADD(NOW(), INTERVAL %d MONTH)"
-                             :quarter "DATE_ADD(NOW(), INTERVAL %d QUARTER)"
-                             :year    "DATE_ADD(NOW(), INTERVAL %d YEAR)")
-                           amount)))
+(defn- date-interval [unit amount]
+  (utils/generated (format "DATE_ADD(NOW(), INTERVAL %d %s)" amount (s/upper-case (name unit)))))
 
-(defn- humanize-connection-error-message [_ message]
+(defn- humanize-connection-error-message [message]
   (condp re-matches message
         #"^Communications link failure\s+The last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.$"
-        (i/connection-error-messages :cannot-connect-check-host-and-port)
+        (driver/connection-error-messages :cannot-connect-check-host-and-port)
 
         #"^Unknown database .*$"
-        (i/connection-error-messages :database-name-incorrect)
+        (driver/connection-error-messages :database-name-incorrect)
 
         #"Access denied for user.*$"
-        (i/connection-error-messages :username-or-password-incorrect)
+        (driver/connection-error-messages :username-or-password-incorrect)
 
         #"Must specify port after ':' in connection string"
-        (i/connection-error-messages :invalid-hostname)
+        (driver/connection-error-messages :invalid-hostname)
 
         #".*" ; default
         message))
 
-(defrecord MySQLDriver [])
-
-(extend MySQLDriver
-  ISqlDriverDatabaseSpecific  {:connection-details->connection-spec connection-details->connection-spec
-                               :database->connection-details        database->connection-details
-                               :unix-timestamp->timestamp           unix-timestamp->timestamp
-                               :date                                date
-                               :date-interval                       date-interval
-                               :timezone->set-timezone-sql          timezone->set-timezone-sql}
-  IDriver                     (assoc GenericSQLIDriverMixin
-                                     :humanize-connection-error-message humanize-connection-error-message)
-  ISyncDriverTableFKs         GenericSQLISyncDriverTableFKsMixin
-  ISyncDriverFieldAvgLength   GenericSQLISyncDriverFieldAvgLengthMixin
-  ISyncDriverFieldPercentUrls GenericSQLISyncDriverFieldPercentUrlsMixin)
-
-(def ^:const driver
-  (map->MySQLDriver {:column->base-type    column->base-type
-                     :features             (conj generic-sql/features :set-timezone)
-                     :sql-string-length-fn :CHAR_LENGTH}))
+(defdriver mysql
+  (sql-driver
+   {:driver-name                       "MySQL"
+    :details-fields                    [{:name         "host"
+                                         :display-name "Host"
+                                         :default      "localhost"}
+                                        {:name         "port"
+                                         :display-name "Port"
+                                         :type         :integer
+                                         :default      3306}
+                                        {:name         "dbname"
+                                         :display-name "Database name"
+                                         :placeholder  "birds_of_the_word"
+                                         :required     true}
+                                        {:name         "user"
+                                         :display-name "Database username"
+                                         :placeholder  "What username do you use to login to the database?"
+                                         :required     true}
+                                        {:name         "password"
+                                         :display-name "Database password"
+                                         :type         :password
+                                         :placeholder  "*******"}]
+    :column->base-type                 column->base-type
+    :string-length-fn                  :CHAR_LENGTH
+    :excluded-schemas                  #{"INFORMATION_SCHEMA"}
+    :connection-details->spec          connection-details->spec
+    :unix-timestamp->timestamp         unix-timestamp->timestamp
+    :date                              date
+    :date-interval                     date-interval
+    ;; If this fails you need to load the timezone definitions from your system into MySQL;
+    ;; run the command `mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql`
+    ;; See https://dev.mysql.com/doc/refman/5.7/en/time-zone-support.html for details
+    :set-timezone-sql                  "SET @@session.time_zone = ?;"
+    :humanize-connection-error-message humanize-connection-error-message}))
