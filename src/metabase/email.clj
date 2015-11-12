@@ -6,11 +6,11 @@
 
 ;; ## CONFIG
 
-(defsetting email-from-address "Email address used as the sender of system notifications." "notifications@metabase.com")
-(defsetting email-smtp-host "SMTP host.")
+(defsetting email-from-address "Email address you want to use as the sender of Metabase system notifications." "notifications@metabase.com")
+(defsetting email-smtp-host "The address of the SMTP server that handles your emails.")
 (defsetting email-smtp-username "SMTP username.")
 (defsetting email-smtp-password "SMTP password.")
-(defsetting email-smtp-port "SMTP port." "587")
+(defsetting email-smtp-port "The port your SMTP server uses for outgoing emails.")
 (defsetting email-smtp-security "SMTP secure connection protocol. (tls, ssl, or none)" "none")
 
 ;; ## PUBLIC INTERFACE

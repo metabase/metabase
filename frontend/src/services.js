@@ -351,6 +351,13 @@ CoreServices.factory('Settings', ['$resource', function($resource) {
             isArray: true,
         },
 
+        // set multiple values at once
+        setAll: {
+            url: '/api/setting/',
+            method: 'PUT',
+            isArray: true
+        },
+
         // POST endpoint handles create + update in this case
         put: {
             url: '/api/setting/:key',

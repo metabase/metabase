@@ -2,6 +2,7 @@ import React, { Component, PropTypes } from "react";
 
 import SettingsHeader from "./SettingsHeader.jsx";
 import SettingsSetting from "./SettingsSetting.jsx";
+import SettingsEmailForm from "./SettingsEmailForm.jsx";
 
 import _ from "underscore";
 import cx from 'classnames';
@@ -12,14 +13,15 @@ export default class SettingsEditor extends Component {
         this.handleChangeEvent = this.handleChangeEvent.bind(this);
         this.selectSection = this.selectSection.bind(this);
         this.updateSetting = this.updateSetting.bind(this);
+        this.updateEmailSettings = this.updateEmailSettings.bind(this);
 
         this.state = {
-            currentSection: Object.keys(props.sections)[0]
+            currentSection: 0
         };
     }
 
     static propTypes = {
-        initialSection: React.string,
+        initialSection: PropTypes.number,
         sections: PropTypes.object.isRequired,
         updateSetting: PropTypes.func.isRequired
     };
@@ -46,35 +48,58 @@ export default class SettingsEditor extends Component {
         });
     }
 
+    updateEmailSettings(settings) {
+        console.log('updating email settings', settings);
+        this.props.updateSettings(settings).then(() => {
+            console.log("settings updated!");
+        }, (error) => {
+            console.log("error updating settings!", error);
+        });
+    }
+
     handleChangeEvent(setting, event) {
         this.updateSetting(setting, event.target.value);
     }
 
     renderSettingsPane() {
-        var section = this.props.sections[this.state.currentSection];
-        var settings = section.map((setting, index) => {
-            return <SettingsSetting key={setting.key} setting={setting} updateSetting={this.updateSetting} handleChangeEvent={this.handleChangeEvent} autoFocus={index === 0}/>
-        });
-        return (
-            <div className="MetadataTable px2 flex-full">
-                <ul>{settings}</ul>
-            </div>
-        );
+        let section = this.props.sections[this.state.currentSection];
+
+        if (section.name === "Email") {
+            return (
+                <div className="MetadataTable px2 flex-full">
+                    <SettingsEmailForm
+                        elements={section.settings}
+                        submitFn={this.updateEmailSettings} />
+                </div>
+            );
+        } else {
+            let settings = section.settings.map((setting, index) => {
+                return <SettingsSetting key={setting.key} setting={setting} updateSetting={this.updateSetting} handleChangeEvent={this.handleChangeEvent} autoFocus={index === 0}/>
+            });
+
+            return (
+                <div className="MetadataTable px2 flex-full">
+                    <ul>{settings}</ul>
+                </div>
+            );
+        }
     }
 
     renderSettingsSections() {
-        var sections = _.map(this.props.sections, (section, sectionName, sectionIndex) => {
-            var classes = cx("AdminList-item", "flex", "align-center", "no-decoration", {
-                "selected": this.state.currentSection === sectionName
+        const sections = _.map(this.props.sections, (section, idx) => {
+            const classes = cx("AdminList-item", "flex", "align-center", "no-decoration", {
+                "selected": this.state.currentSection === idx
             });
+
             return (
-                <li key={sectionName}>
-                    <a href="#" className={classes} onClick={this.selectSection.bind(null, sectionName)}>
-                        {sectionName}
+                <li key={section.name}>
+                    <a href="#" className={classes} onClick={this.selectSection.bind(null, idx)}>
+                        {section.name}
                     </a>
                 </li>
             );
         });
+
         return (
             <div className="MetadataEditor-table-list AdminList">
                 <ul className="AdminList-items pt1">
