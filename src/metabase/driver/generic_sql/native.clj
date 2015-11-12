@@ -6,10 +6,9 @@
                    db)
             [metabase.db :refer [sel]]
             [metabase.driver :as driver]
-            [metabase.driver.interface :refer [supports?]]
-            (metabase.driver.generic-sql [interface :as i]
-                                         [util :refer :all])
-            [metabase.models.database :refer [Database]]))
+            [metabase.driver.generic-sql.util :refer :all]
+            [metabase.models.database :refer [Database]]
+            [metabase.util :as u]))
 
 (defn- value->base-type
   "Attempt to match a value we get back from the DB with the corresponding base-type`."
@@ -18,37 +17,41 @@
 
 (defn process-and-run
   "Process and run a native (raw SQL) QUERY."
-  {:arglists '([query])}
   [{{sql :query} :native, database-id :database, :as query}]
-  {:pre [(string? sql)
-         (integer? database-id)]}
-  (log/debug "QUERY: \n"
-             (with-out-str (clojure.pprint/pprint (update query :driver class))))
-  (try (let [database (sel :one [Database :engine :details] :id database-id)
-             db (-> database
-                    db->korma-db
-                    korma.db/get-connection)
-             [columns & [first-row :as rows]] (jdbc/with-db-transaction [conn db :read-only? true]
-                                                ;; If timezone is specified in the Query and the driver supports setting the timezone
-                                                ;; then execute SQL to set it
-                                                (when-let [timezone (or (-> query :native :timezone)
-                                                                        (driver/report-timezone))]
-                                                  (when (seq timezone)
-                                                    (let [driver (driver/engine->driver (:engine database))]
-                                                      (when (supports? driver :set-timezone)
-                                                        (log/debug "Setting timezone to:" timezone)
-                                                        (jdbc/db-do-prepared conn (i/timezone->set-timezone-sql driver timezone))))))
-                                                (jdbc/query conn sql :as-arrays? true))]
-         ;; TODO - Why don't we just use annotate?
-         {:rows    rows
-          :columns columns
-          :cols    (map (fn [column first-value]
-                          {:name      column
-                           :base_type (value->base-type first-value)})
-                        columns first-row)})
+  (try (let [database                            (sel :one :fields [Database :engine :details] :id database-id)
+             db-conn                             (-> database
+                                                     db->korma-db
+                                                     korma.db/get-connection)
+             {:keys [features set-timezone-sql]} (driver/engine->driver (:engine database))]
+
+         (jdbc/with-db-transaction [t-conn db-conn]
+           (let [^java.sql.Connection jdbc-connection (:connection t-conn)]
+             ;; Disable auto-commit for this transaction, that way shady queries are unable to modify the database
+             (.setAutoCommit jdbc-connection false)
+             (try
+               ;; Set the timezone if applicable
+               (when-let [timezone (driver/report-timezone)]
+                 (when (and (seq timezone)
+                            (contains? features :set-timezone))
+                   (log/debug (u/format-color 'green "%s" set-timezone-sql))
+                   (try (jdbc/db-do-prepared t-conn set-timezone-sql [timezone])
+                        (catch Throwable e
+                          (log/error (u/format-color 'red "Failed to set timezone: %s" (.getMessage e)))))))
+
+               ;; Now run the query itself
+               (log/debug (u/format-color 'green "%s" sql))
+               (let [[columns & [first-row :as rows]] (jdbc/query t-conn sql, :as-arrays? true)]
+                 {:rows    rows
+                  :columns columns
+                  :cols    (for [[column first-value] (zipmap columns first-row)]
+                             {:name      column
+                              :base_type (value->base-type first-value)})})
+
+               ;; Rollback any changes made during this transaction just to be extra-double-sure JDBC doesn't try to commit them automatically for us
+               (finally (.rollback jdbc-connection))))))
        (catch java.sql.SQLException e
-         (let [^String message (or (->> (.getMessage e)     ; error message comes back like 'Column "ZID" not found; SQL statement: ... [error-code]' sometimes
+         (let [^String message (or (->> (.getMessage e) ; error message comes back like 'Column "ZID" not found; SQL statement: ... [error-code]' sometimes
                                         (re-find #"^(.*);") ; the user already knows the SQL, and error code is meaningless
-                                        second)             ; so just return the part of the exception that is relevant
+                                        second) ; so just return the part of the exception that is relevant
                                    (.getMessage e))]
            (throw (Exception. message))))))

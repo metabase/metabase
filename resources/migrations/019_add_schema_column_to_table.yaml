@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: 19
+      author: camsaul
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: schema
+                  type: VARCHAR(256)

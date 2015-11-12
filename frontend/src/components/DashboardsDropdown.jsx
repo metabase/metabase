@@ -29,7 +29,7 @@ export default class DashboardsDropdown extends Component {
         _.bindAll(this, "toggleDropdown", "closeDropdown", "toggleModal", "closeModal");
     }
 
-    propTypes = {
+    static propTypes = {
         createDashboardFn: PropTypes.func.isRequired,
         dashboards: PropTypes.array.isRequired
     };

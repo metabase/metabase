@@ -17,6 +17,7 @@ export default class DatabaseEditForms extends Component {
     static propTypes = {
         database: PropTypes.object,
         details: PropTypes.object,
+        engines: PropTypes.object.isRequired,
         hiddenFields: PropTypes.object,
         save: PropTypes.func.isRequired
     };
@@ -34,7 +35,7 @@ export default class DatabaseEditForms extends Component {
     }
 
     render() {
-        let { database, details, hiddenFields, ENGINES } = this.props;
+        let { database, details, hiddenFields, engines } = this.props;
         let { formError, formSuccess } = this.state;
 
         let errors = {};
@@ -47,24 +48,25 @@ export default class DatabaseEditForms extends Component {
                             <label className="Select Form-offset mt1">
                                 <select className="Select" value={database.engine} onChange={(e) => this.props.selectEngine(e.target.value)}>
                                     <option value="" disabled>Select a database type</option>
-                                    {Object.keys(ENGINES).map(engine =>
-                                        <option value={engine}>{ENGINES[engine].name}</option>
-                                    )}
+                                    {Object.keys(engines).map(engine =>
+                                        <option value={engine}>{engines[engine]['driver-name']}</option>
+                                     )}
                                 </select>
                             </label>
                         </div>
 
                         { database.engine ?
-                            <DatabaseDetailsForm
-                                details={{ ...details, name: database.name }}
-                                engine={database.engine}
-                                formError={formError}
-                                formSuccess={formSuccess}
-                                hiddenFields={hiddenFields}
-                                submitFn={this.detailsCaptured.bind(this)}
-                                submitButtonText={'Save'}>
-                            </DatabaseDetailsForm>
-                        : null }
+                          <DatabaseDetailsForm
+                              details={{ ...details, name: database.name }}
+                              engine={database.engine}
+                              engines={engines}
+                              formError={formError}
+                              formSuccess={formSuccess}
+                              hiddenFields={hiddenFields}
+                              submitFn={this.detailsCaptured.bind(this)}
+                              submitButtonText={'Save'}>
+                          </DatabaseDetailsForm>
+                          : null }
                     </div>
                 }
             </LoadingAndErrorWrapper>

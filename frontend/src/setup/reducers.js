@@ -29,7 +29,7 @@ export const allowTracking = handleActions({
 }, true);
 
 export const setupError = handleActions({
-    [SUBMIT_SETUP]: { next: (state, { payload }) => payload}
+    [SUBMIT_SETUP]: { next: (state, { payload }) => payload }
 }, null);
 
 export const setupComplete = handleActions({

@@ -22,12 +22,16 @@
    Bound by top-level `with-mongo-connection` so it may be reused within its body."
   nil)
 
-(def ^:private mongo-connection-options
-  ;; Have to use the Java builder directly since monger's wrapper method doesn't support .serverSelectionTimeout :unamused:
+(defn- build-connection-options
+  "Build connection options for Mongo.
+   We have to use `MongoClientOptions.Builder` directly to configure our Mongo connection
+   since Monger's wrapper method doesn't support `.serverSelectionTimeout` or `.sslEnabled`."
+  [& {:keys [ssl?]}]
   (-> (com.mongodb.MongoClientOptions$Builder.)
       (.connectTimeout connection-timeout-ms)
       (.serverSelectionTimeout connection-timeout-ms)
-      (.build)))
+      (.sslEnabled ssl?)
+      .build))
 
 ;; The arglists metadata for mg/connect are actually *WRONG* -- the function additionally supports a 3-arg airity where you can pass
 ;; options and credentials, as we'd like to do. We need to go in and alter the metadata of this function ourselves because otherwise
@@ -40,12 +44,12 @@
   "Run F with a new connection (bound to `*mongo-connection*`) to DATABASE.
    Don't use this directly; use `with-mongo-connection`."
   [f database]
-  (let [{:keys [dbname host port user pass]
-         :or   {port 27017, pass ""}} (cond
-                                        (string? database)            {:dbname database}
-                                        (:dbname (:details database)) (:details database) ; entire Database obj
-                                        (:dbname database)            database            ; connection details map only
-                                        :else                         (throw (Exception. (str "with-mongo-connection failed: bad connection details:" (:details database)))))
+  (let [{:keys [dbname host port user pass ssl]
+         :or   {port 27017, pass "", ssl false}} (cond
+                                                   (string? database)            {:dbname database}
+                                                   (:dbname (:details database)) (:details database) ; entire Database obj
+                                                   (:dbname database)            database            ; connection details map only
+                                                   :else                         (throw (Exception. (str "with-mongo-connection failed: bad connection details:" (:details database)))))
         user             (when (seq user) ; ignore empty :user and :pass strings
                            user)
         pass             (when (seq pass)
@@ -53,7 +57,7 @@
         server-address   (mg/server-address host port)
         credentials      (when user
                            (mcred/create user dbname pass))
-        connect          (partial mg/connect server-address mongo-connection-options)
+        connect          (partial mg/connect server-address (build-connection-options :ssl? ssl))
         conn             (if credentials
                            (connect credentials)
                            (connect))

@@ -84,6 +84,7 @@
     "build": "./node_modules/webpack/bin/webpack.js",
     "build-watch": "./node_modules/webpack/bin/webpack.js --watch",
     "build-hot": "NODE_ENV=hot ./node_modules/webpack/bin/webpack.js && NODE_ENV=hot node_modules/webpack-dev-server/bin/webpack-dev-server.js --hot --inline --content-base frontend",
+    "shrinkwrap": "npm shrinkwrap --dev",
     "start": "npm run build && lein ring server"
   }
 }

@@ -4,7 +4,6 @@
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             (metabase.driver [h2 :as h2]
-                             [interface :as i]
                              [sync :as sync])
             [metabase.driver.generic-sql.util :refer [korma-entity]]
             (metabase.models [field :refer [Field]]
@@ -21,7 +20,7 @@
   (delay (sel :one Table :name "USERS")))
 
 (def venues-table
-  (delay (sel :one Table :name "VENUES")))
+  (delay (Table (id :venues))))
 
 (def korma-users-table
   (delay (korma-entity @users-table)))

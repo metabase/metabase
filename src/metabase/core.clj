@@ -32,6 +32,8 @@
 
 (defsetting -site-url "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"")
 
+(defsetting admin-email "The email address users should be referred to if they encounter a problem.")
+
 (defsetting anon-tracking-enabled "Enable the collection of anonymous usage data in order to help Metabase improve." "true")
 
 (defn site-url
@@ -71,7 +73,7 @@
 
 ;;; ## ---------------------------------------- LIFECYCLE ----------------------------------------
 
-(def ^:private metabase-initialization-progress
+(defonce ^:private metabase-initialization-progress
   (atom 0))
 
 (defn initialized?
@@ -166,16 +168,23 @@
   "Start the embedded Jetty web server."
   []
   (when-not @jetty-instance
-    (let [jetty-config (cond-> (m/filter-vals identity {:port (config/config-int :mb-jetty-port)
-                                                        :host (config/config-str :mb-jetty-host)
-                                                        :max-threads (config/config-int :mb-jetty-maxthreads)
-                                                        :min-threads (config/config-int :mb-jetty-minthreads)
-                                                        :max-queued (config/config-int :mb-jetty-maxqueued)
-                                                        :max-idle-time (config/config-int :mb-jetty-maxidletime)})
-                         (config/config-str :mb-jetty-join) (assoc :join? (config/config-bool :mb-jetty-join))
-                         (config/config-str :mb-jetty-daemon) (assoc :daemon? (config/config-bool :mb-jetty-daemon)))]
-      (log/info "Launching Embedded Jetty Webserver with config:\n" (with-out-str (clojure.pprint/pprint jetty-config)))
-      (->> (ring-jetty/run-jetty app jetty-config)
+    (let [jetty-ssl-config (m/filter-vals identity {:ssl-port       (config/config-int :mb-jetty-ssl-port)
+                                                    :keystore       (config/config-str :mb-jetty-ssl-keystore)
+                                                    :key-password   (config/config-str :mb-jetty-ssl-keystore-password)
+                                                    :truststore     (config/config-str :mb-jetty-ssl-truststore)
+                                                    :trust-password (config/config-str :mb-jetty-ssl-truststore-password)})
+          jetty-config     (cond-> (m/filter-vals identity {:port           (config/config-int :mb-jetty-port)
+                                                            :host           (config/config-str :mb-jetty-host)
+                                                            :max-threads    (config/config-int :mb-jetty-maxthreads)
+                                                            :min-threads    (config/config-int :mb-jetty-minthreads)
+                                                            :max-queued     (config/config-int :mb-jetty-maxqueued)
+                                                            :max-idle-time  (config/config-int :mb-jetty-maxidletime)})
+                             (config/config-str :mb-jetty-daemon) (assoc :daemon? (config/config-bool :mb-jetty-daemon))
+                             (config/config-str :mb-jetty-ssl)    (-> (assoc :ssl? true)
+                                                                      (merge jetty-ssl-config)))]
+      (log/info "Launching Embedded Jetty Webserver with config:\n" (with-out-str (clojure.pprint/pprint (m/filter-keys (fn [k] (not (re-matches #".*password.*" (str k)))) jetty-config))))
+      ;; NOTE: we always start jetty w/ join=false so we can start the server first then do init in the background
+      (->> (ring-jetty/run-jetty app (assoc jetty-config :join? false))
            (reset! jetty-instance)))))
 
 (defn stop-jetty
@@ -198,14 +207,15 @@
     ;; run our initialization process
     (init)
     ;; Ok, now block forever while Jetty does its thing
-    (.join ^org.eclipse.jetty.server.Server @jetty-instance)
+    (when (config/config-bool :mb-jetty-join)
+      (.join ^org.eclipse.jetty.server.Server @jetty-instance))
     (catch Exception e
       (.printStackTrace e)
       (log/error "Metabase Initialization FAILED: " (.getMessage e)))))
 
 (defn- run-cmd [cmd & args]
   (let [cmd->fn {:migrate (fn [direction]
-                            (db/migrate (keyword direction)))}]
+                            (db/migrate @db/db-connection-details (keyword direction)))}]
     (if-let [f (cmd->fn cmd)]
       (do (apply f args)
           (println "Success.")

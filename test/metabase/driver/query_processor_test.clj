@@ -1,16 +1,17 @@
 (ns metabase.driver.query-processor-test
   "Query processing tests that can be ran between any of the available drivers, and should give the same results."
-  (:require [clojure.walk :as walk]
+  (:require [clojure.math.numeric-tower :as math]
             [expectations :refer :all]
+            [korma.core :as k]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.query-processor :refer :all]
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
-            [metabase.test.data :refer :all]
             (metabase.test.data [dataset-definitions :as defs]
-                                [datasets :as datasets :refer [*dataset*]]
+                                [datasets :as datasets :refer [*dataset* *engine*]]
                                 [interface :refer [create-database-definition]])
+            [metabase.test.data :refer :all]
             [metabase.test.util.q :refer [Q]]
             [metabase.util :as u]))
 
@@ -18,6 +19,9 @@
 ;; ## Dataset-Independent QP Tests
 
 ;; ### Helper Fns + Macros
+
+(def ^:private ^:const sql-engines
+  #{:h2 :postgres :mysql :sqlserver})
 
 (defmacro ^:private qp-expect-with-all-datasets [data q-form & post-process-fns]
   `(datasets/expect-with-all-datasets
@@ -46,50 +50,52 @@
 ;; These are meant for inclusion in the expected output of the QP tests, to save us from writing the same results several times
 
 ;; #### categories
+
+(defn- col-defaults []
+  {:extra_info      {}
+   :target          nil
+   :description     nil
+   :preview_display true
+   :schema_name     (default-schema)})
+
 (defn- categories-col
   "Return column information for the `categories` column named by keyword COL."
   [col]
-  (case col
-    :id   {:extra_info {} :target nil :special_type :id, :base_type (id-field-type), :description nil,
-           :name (format-name "id") :display_name "Id" :preview_display true :table_id (id :categories), :id (id :categories :id)}
-    :name {:extra_info {} :target nil :special_type :name, :base_type :TextField, :description nil,
-           :name (format-name "name") :display_name "Name" :preview_display true :table_id (id :categories), :id (id :categories :name)}))
+  (merge
+   (col-defaults)
+   {:table_id (id :categories)
+    :id       (id :categories col)}
+   (case col
+     :id   {:special_type :id
+            :base_type    (id-field-type)
+            :name         (format-name "id")
+            :display_name "Id"}
+     :name {:special_type :name
+            :base_type    :TextField
+            :name         (format-name "name")
+            :display_name "Name"})))
 
 ;; #### users
 (defn- users-col
   "Return column information for the `users` column named by keyword COL."
   [col]
-  (case col
-    :id         {:extra_info   {}
-                 :target       nil
-                 :special_type :id
-                 :base_type    (id-field-type)
-                 :description  nil
-                 :name         (format-name "id")
-                 :display_name "Id"
-                 :preview_display true
-                 :table_id     (id :users)
-                 :id           (id :users :id)}
-    :name       {:extra_info   {}
-                 :target       nil
-                 :special_type :category
-                 :base_type    :TextField
-                 :description  nil
-                 :name         (format-name "name")
-                 :display_name "Name"
-                 :preview_display true
-                 :table_id     (id :users)
-                 :id           (id :users :name)}
-    :last_login {:extra_info   {}
-                 :target       nil
-                 :special_type :category
-                 :base_type    (timestamp-field-type)
-                 :description  nil
-                 :name         (format-name "last_login")
-                 :display_name "Last Login"
-                 :preview_display true
-                 :table_id     (id :users)
-                 :id           (id :users :last_login)}))
+  (merge
+   (col-defaults)
+   {:table_id (id :users)
+    :id       (id :users col)}
+   (case col
+     :id         {:special_type :id
+                  :base_type    (id-field-type)
+                  :name         (format-name "id")
+                  :display_name "Id"}
+     :name       {:special_type :category
+                  :base_type    :TextField
+                  :name         (format-name "name")
+                  :display_name "Name"}
+     :last_login {:special_type :category
+                  :base_type    (timestamp-field-type)
+                  :name         (format-name "last_login")
+                  :display_name "Last Login"})))
 
 ;; #### venues
 (defn- venues-columns
@@ -100,71 +106,41 @@
 (defn- venues-col
   "Return column information for the `venues` column named by keyword COL."
   [col]
-  (case col
-    :id          {:extra_info   {}
-                  :target       nil
-                  :special_type :id
-                  :base_type    (id-field-type)
-                  :description  nil
-                  :name         (format-name "id")
-                  :display_name "Id"
-                  :preview_display true
-                  :table_id     (id :venues)
-                  :id           (id :venues :id)}
-    :category_id {:extra_info   (if (fks-supported?) {:target_table_id (id :categories)}
-                                    {})
-                  :target       (if (fks-supported?) (-> (categories-col :id)
-                                                         (dissoc :target :extra_info))
-                                    nil)
-                  :special_type (if (fks-supported?) :fk
-                                    :category)
-                  :base_type    :IntegerField
-                  :description  nil
-                  :name         (format-name "category_id")
-                  :display_name "Category Id"
-                  :preview_display true
-                  :table_id     (id :venues)
-                  :id           (id :venues :category_id)}
-    :price       {:extra_info   {}
-                  :target       nil
-                  :special_type :category
-                  :base_type    :IntegerField
-                  :description  nil
-                  :name         (format-name "price")
-                  :display_name "Price"
-                  :preview_display true
-                  :table_id     (id :venues)
-                  :id           (id :venues :price)}
-    :longitude   {:extra_info   {}
-                  :target       nil
-                  :special_type :longitude,
-                  :base_type    :FloatField,
-                  :description  nil
-                  :name         (format-name "longitude")
-                  :display_name "Longitude"
-                  :preview_display true
-                  :table_id     (id :venues)
-                  :id           (id :venues :longitude)}
-    :latitude    {:extra_info   {}
-                  :target       nil
-                  :special_type :latitude
-                  :base_type    :FloatField
-                  :description  nil
-                  :name         (format-name "latitude")
-                  :display_name "Latitude"
-                  :preview_display true
-                  :table_id     (id :venues)
-                  :id           (id :venues :latitude)}
-    :name        {:extra_info   {}
-                  :target       nil
-                  :special_type :name
-                  :base_type    :TextField
-                  :description  nil
-                  :name         (format-name "name")
-                  :display_name "Name"
-                  :preview_display true
-                  :table_id     (id :venues)
-                  :id           (id :venues :name)}))
+  (merge
+   (col-defaults)
+   {:table_id (id :venues)
+    :id       (id :venues col)}
+   (case col
+     :id          {:special_type :id
+                   :base_type    (id-field-type)
+                   :name         (format-name "id")
+                   :display_name "Id"}
+     :category_id {:extra_info   (if (fks-supported?) {:target_table_id (id :categories)}
+                                     {})
+                   :target       (if (fks-supported?) (-> (categories-col :id)
+                                                          (dissoc :target :extra_info :schema_name))
+                                     nil)
+                   :special_type (if (fks-supported?) :fk
+                                     :category)
+                   :base_type    :IntegerField
+                   :name         (format-name "category_id")
+                   :display_name "Category Id"}
+     :price       {:special_type :category
+                   :base_type    :IntegerField
+                   :name         (format-name "price")
+                   :display_name "Price"}
+     :longitude   {:special_type :longitude,
+                   :base_type    :FloatField,
+                   :name         (format-name "longitude")
+                   :display_name "Longitude"}
+     :latitude    {:special_type :latitude
+                   :base_type    :FloatField
+                   :name         (format-name "latitude")
+                   :display_name "Latitude"}
+     :name        {:special_type :name
+                   :base_type    :TextField
+                   :name         (format-name "name")
+                   :display_name "Name"})))
 
 (defn- venues-cols
   "`cols` information for all the columns in `venues`."
@@ -175,45 +151,35 @@
 (defn- checkins-col
   "Return column information for the `checkins` column named by keyword COL."
   [col]
-  (case col
-    :id       {:extra_info   {}
-               :target       nil
-               :special_type :id
-               :base_type    (id-field-type)
-               :description  nil
-               :name         (format-name "id")
-               :display_name "Id"
-               :preview_display true
-               :table_id     (id :checkins)
-               :id           (id :checkins :id)}
-    :venue_id {:extra_info   (if (fks-supported?) {:target_table_id (id :venues)}
-                               {})
-               :target       (if (fks-supported?) (-> (venues-col :id)
-                                                      (dissoc :target :extra_info))
-                                 nil)
-               :special_type (when (fks-supported?)
-                               :fk)
-               :base_type    :IntegerField
-               :description  nil
-               :name         (format-name "venue_id")
-               :display_name "Venue Id"
-               :preview_display true
-               :table_id     (id :checkins)
-               :id           (id :checkins :venue_id)}
-    :user_id  {:extra_info   (if (fks-supported?) {:target_table_id (id :users)}
-                                 {})
-               :target       (if (fks-supported?) (-> (users-col :id)
-                                                      (dissoc :target :extra_info))
-                                 nil)
-               :special_type (if (fks-supported?) :fk
-                                 :category)
-               :base_type    :IntegerField
-               :description  nil
-               :name         (format-name "user_id")
-               :display_name "User Id"
-               :preview_display true
-               :table_id     (id :checkins)
-               :id           (id :checkins :user_id)}))
+  (merge
+   (col-defaults)
+   {:table_id (id :checkins)
+    :id       (id :checkins col)}
+   (case col
+     :id       {:special_type :id
+                :base_type    (id-field-type)
+                :name         (format-name "id")
+                :display_name "Id"}
+     :venue_id {:extra_info   (if (fks-supported?) {:target_table_id (id :venues)}
+                                  {})
+                :target       (if (fks-supported?) (-> (venues-col :id)
+                                                       (dissoc :target :extra_info :schema_name))
+                                  nil)
+                :special_type (when (fks-supported?)
+                                :fk)
+                :base_type    :IntegerField
+                :name         (format-name "venue_id")
+                :display_name "Venue Id"}
+     :user_id  {:extra_info   (if (fks-supported?) {:target_table_id (id :users)}
+                                  {})
+                :target       (if (fks-supported?) (-> (users-col :id)
+                                                       (dissoc :target :extra_info :schema_name))
+                                  nil)
+                :special_type (if (fks-supported?) :fk
+                                  :category)
+                :base_type    :IntegerField
+                :name         (format-name "user_id")
+                :display_name "User Id"})))
 
 
 ;;; #### aggregate columns
@@ -236,8 +202,7 @@
               :extra_info   {}
               :target       nil}))
   ([ag-col-kw {:keys [base_type special_type]}]
-   {:pre [base_type
-          special_type]}
+   {:pre [base_type special_type]}
    {:base_type    base_type
     :special_type special_type
     :id           nil
@@ -575,13 +540,14 @@
 ;;; SQL-Only for the time being
 
 ;; ## "STDDEV" AGGREGATION
-(qp-expect-with-datasets #{:h2 :postgres :mysql}
+(qp-expect-with-datasets sql-engines
   {:columns ["stddev"]
    :cols    [(aggregate-col :stddev (venues-col :latitude))]
    :rows    [[(datasets/dataset-case
-                :h2       3.43467255295115      ; annoying :/
-                :postgres 3.4346725529512736
-                :mysql    3.417456040761316)]]}
+                :h2        3.43467255295115      ; annoying :/
+                :postgres  3.4346725529512736
+                :mysql     3.417456040761316
+                :sqlserver 3.43467255295126)]]}
   (Q aggregate stddev latitude of venues))
 
 ;; Make sure standard deviation fails for the Mongo driver since its not supported
@@ -594,7 +560,7 @@
 ;;; ## order_by aggregate fields (SQL-only for the time being)
 
 ;;; ### order_by aggregate ["count"]
-(qp-expect-with-datasets #{:h2 :postgres :mysql}
+(qp-expect-with-datasets sql-engines
   {:columns [(format-name "price")
              "count"]
    :rows    [[4 6]
@@ -609,7 +575,7 @@
 
 
 ;;; ### order_by aggregate ["sum" field-id]
-(qp-expect-with-datasets #{:h2 :postgres :mysql}
+(qp-expect-with-datasets sql-engines
   {:columns [(format-name "price")
              "sum"]
    :rows    [[2 (->sum-type 2855)]
@@ -624,7 +590,7 @@
 
 
 ;;; ### order_by aggregate ["distinct" field-id]
-(qp-expect-with-datasets #{:h2 :postgres :mysql}
+(qp-expect-with-datasets sql-engines
   {:columns [(format-name "price")
              "count"]
    :rows    [[4 6]
@@ -639,13 +605,29 @@
 
 
 ;;; ### order_by aggregate ["avg" field-id]
-(datasets/expect-with-dataset :h2
+(datasets/expect-with-datasets sql-engines
   {:columns [(format-name "price")
              "avg"]
-   :rows    [[3 22]
-             [2 28]
-             [1 32]
-             [4 53]]
+   :rows    [[3 (datasets/dataset-case
+                 :h2        22
+                 :postgres  22.0000000000000000M
+                 :mysql     22.0000M
+                 :sqlserver 22)]
+             [2 (datasets/dataset-case
+                 :h2        28
+                 :postgres  28.2881355932203390M
+                 :mysql     28.2881M
+                 :sqlserver 28)]
+             [1 (datasets/dataset-case
+                 :h2        32
+                 :postgres  32.8181818181818182M
+                 :mysql     32.8182M
+                 :sqlserver 32)]
+             [4 (datasets/dataset-case
+                 :h2        53
+                 :postgres  53.5000000000000000M
+                 :mysql     53.5000M
+                 :sqlserver 53)]]
    :cols    [(venues-col :price)
              (aggregate-col :avg (venues-col :category_id))]}
   (Q return :data
@@ -654,53 +636,25 @@
      breakout price
      order ag.0+))
 
-;; Values are slightly different for Postgres
-(datasets/expect-with-dataset :postgres
-  {:rows [[3 22.0000000000000000M]
-          [2 28.2881355932203390M]
-          [1 32.8181818181818182M]
-          [4 53.5000000000000000M]]
-   :columns [(format-name "price")
-             "avg"]
-   :cols [(venues-col :price)
-          (aggregate-col :avg (venues-col :category_id))]}
-  (Q return :data
-     of venues
-     aggregate avg category_id
-     breakout price
-     order ag.0+))
-
 ;;; ### order_by aggregate ["stddev" field-id]
-(datasets/expect-with-dataset :h2
+;; MySQL has a nasty tendency to return different results on different systems so just round everything to the nearest int.
+;; It also seems to give slightly different results than less-sucky DBs as evidenced below
+(datasets/expect-with-datasets sql-engines
   {:columns [(format-name "price")
              "stddev"]
-   :rows    [[3 26.19160170741759]
-             [1 24.112111881665186]
-             [2 21.418692164795292]
-             [4 14.788509052639485]]
+   :rows    [[3 (datasets/dataset-case :h2 26, :postgres 26, :mysql 25, :sqlserver 26)]
+             [1 24]
+             [2 21]
+             [4 (datasets/dataset-case :h2 15, :postgres 15, :mysql 14, :sqlserver 15)]]
    :cols    [(venues-col :price)
              (aggregate-col :stddev (venues-col :category_id))]}
-  (Q return :data
-     of venues
-     aggregate stddev category_id
-     breakout price
-     order ag.0-))
-
-(datasets/expect-with-dataset :postgres
-  {:columns [(format-name "price")
-             "stddev"]
-   :rows    [[3 26.1916017074175897M]
-             [1 24.1121118816651851M]
-             [2 21.4186921647952867M]
-             [4 14.7885090526394851M]]
-   :cols    [(venues-col :price)
-             (aggregate-col :stddev (venues-col :category_id))]}
-  (Q return :data
-     of venues
-     aggregate stddev category_id
-     breakout price
-     order ag.0-))
-
+  (-> (Q return :data
+         of venues
+         aggregate stddev category_id
+         breakout price
+         order ag.0-)
+      (update :rows (partial mapv (fn [[x y]]
+                                    [x (int (math/round y))])))))
 
 ;;; ### make sure that rows where preview_display = false are included and properly marked up
 (datasets/expect-with-all-datasets
@@ -749,16 +703,27 @@
   ;; Filter out the timestamps from the results since they're hard to test :/
   (-> (Q aggregate rows of users
          order id+)
-      (update-in [:data :rows] (partial mapv (partial filterv #(not (isa? (type %) java.util.Date)))))))
+      (update-in [:data :rows] (partial mapv (fn [[id last-login name]]
+                                               [id name])))))
 
 
 ;; +------------------------------------------------------------------------------------------------------------------------+
 ;; |                                           UNIX TIMESTAMP SPECIAL_TYPE FIELDS                                           |
 ;; +------------------------------------------------------------------------------------------------------------------------+
 
+(defmacro if-sqlserver
+  "SQLServer lacks timezone support; the groupings in sad-toucan-incidents happen in UTC rather than US/Pacfic time. This
+   macro is provided as a convenience for specifying the *slightly* different expected results in the multi-driver unit tests below."
+  [then else]
+  `(if (= *engine* :sqlserver)
+     ~then
+     ~else))
+
 ;; There were 9 "sad toucan incidents" on 2015-06-02
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
-  9
+(datasets/expect-with-datasets sql-engines
+  (if-sqlserver
+    10
+    9)
   (Q dataset sad-toucan-incidents
      of incidents
      filter and > timestamp "2015-06-01"
@@ -768,24 +733,36 @@
 
 
 ;;; Unix timestamp breakouts -- SQL only
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
-  [["2015-06-01" 8]
-   ["2015-06-02" 9]
-   ["2015-06-03" 9]
-   ["2015-06-04" 4]
-   ["2015-06-05" 11]
-   ["2015-06-06" 8]
-   ["2015-06-07" 6]
-   ["2015-06-08" 10]
-   ["2015-06-09" 6]
-   ["2015-06-10" 10]]
-  (->> (Q dataset sad-toucan-incidents
-          aggregate count of incidents
-          breakout timestamp
-          limit 10
-          return rows)
-       (map (fn [[^java.util.Date date count]]
-              [(.toString date) (int count)]))))
+(datasets/expect-with-datasets sql-engines
+  (if-sqlserver
+    ;; SQL Server doesn't have a concept of timezone so results are all grouped by UTC
+    ;; This is technically correct but the results differ from less-wack DBs
+    [[#inst "2015-06-01T07" 6]
+     [#inst "2015-06-02T07" 10]
+     [#inst "2015-06-03T07" 4]
+     [#inst "2015-06-04T07" 9]
+     [#inst "2015-06-05T07" 9]
+     [#inst "2015-06-06T07" 8]
+     [#inst "2015-06-07T07" 8]
+     [#inst "2015-06-08T07" 9]
+     [#inst "2015-06-09T07" 7]
+     [#inst "2015-06-10T07" 9]]
+    ;; Postgres, MySQL, and H2 -- grouped by DB timezone, US/Pacific in this case
+    [[#inst "2015-06-01T07" 8]
+     [#inst "2015-06-02T07" 9]
+     [#inst "2015-06-03T07" 9]
+     [#inst "2015-06-04T07" 4]
+     [#inst "2015-06-05T07" 11]
+     [#inst "2015-06-06T07" 8]
+     [#inst "2015-06-07T07" 6]
+     [#inst "2015-06-08T07" 10]
+     [#inst "2015-06-09T07" 6]
+     [#inst "2015-06-10T07" 10]])
+  (Q dataset sad-toucan-incidents
+     aggregate count of incidents
+     breakout timestamp
+     limit 10
+     return rows))
 
 
 ;; +------------------------------------------------------------------------------------------------------------------------+
@@ -794,7 +771,7 @@
 
 ;; The top 10 cities by number of Tupac sightings
 ;; Test that we can breakout on an FK field (Note how the FK Field is returned in the results)
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-datasets sql-engines
   [["Arlington" 16]
    ["Albany" 15]
    ["Portland" 14]
@@ -817,7 +794,7 @@
 ;; Number of Tupac sightings in the Expa office
 ;; (he was spotted here 60 times)
 ;; Test that we can filter on an FK field
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-datasets sql-engines
   60
   (Q dataset tupac-sightings
      return first-row first
@@ -828,7 +805,7 @@
 ;; THE 10 MOST RECENT TUPAC SIGHTINGS (!)
 ;; (What he was doing when we saw him, sighting ID)
 ;; Check that we can include an FK field in the :fields clause
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-datasets sql-engines
   [[772 "In the Park"]
    [894 "Working at a Pet Store"]
    [684 "At the Airport"]
@@ -851,7 +828,7 @@
 ;;    (this query targets sightings and orders by cities.name and categories.name)
 ;; 2. Check that we can join MULTIPLE tables in a single query
 ;;    (this query joins both cities and categories)
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-datasets sql-engines
   ;; CITY_ID, CATEGORY_ID, ID
   ;; Cities are already alphabetized in the source data which is why CITY_ID is sorted
   [[1 12 6]
@@ -1091,33 +1068,57 @@
           limit 10
           return rows)))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
-  [[#inst "2015-06-01T10:31" 1]
-   [#inst "2015-06-01T16:06" 1]
-   [#inst "2015-06-01T17:23" 1]
-   [#inst "2015-06-01T18:55" 1]
-   [#inst "2015-06-01T21:04" 1]
-   [#inst "2015-06-01T21:19" 1]
-   [#inst "2015-06-02T02:13" 1]
-   [#inst "2015-06-02T05:37" 1]
-   [#inst "2015-06-02T08:20" 1]
-   [#inst "2015-06-02T11:11" 1]]
+(datasets/expect-with-datasets sql-engines
+  (if-sqlserver
+   [[#inst "2015-06-01T17:31" 1]
+    [#inst "2015-06-01T23:06" 1]
+    [#inst "2015-06-02T00:23" 1]
+    [#inst "2015-06-02T01:55" 1]
+    [#inst "2015-06-02T04:04" 1]
+    [#inst "2015-06-02T04:19" 1]
+    [#inst "2015-06-02T09:13" 1]
+    [#inst "2015-06-02T12:37" 1]
+    [#inst "2015-06-02T15:20" 1]
+    [#inst "2015-06-02T18:11" 1]]
+
+   [[#inst "2015-06-01T10:31" 1]
+    [#inst "2015-06-01T16:06" 1]
+    [#inst "2015-06-01T17:23" 1]
+    [#inst "2015-06-01T18:55" 1]
+    [#inst "2015-06-01T21:04" 1]
+    [#inst "2015-06-01T21:19" 1]
+    [#inst "2015-06-02T02:13" 1]
+    [#inst "2015-06-02T05:37" 1]
+    [#inst "2015-06-02T08:20" 1]
+    [#inst "2015-06-02T11:11" 1]])
   (sad-toucan-incidents-with-bucketing :default))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
-  [[#inst "2015-06-01T10:31" 1]
-   [#inst "2015-06-01T16:06" 1]
-   [#inst "2015-06-01T17:23" 1]
-   [#inst "2015-06-01T18:55" 1]
-   [#inst "2015-06-01T21:04" 1]
-   [#inst "2015-06-01T21:19" 1]
-   [#inst "2015-06-02T02:13" 1]
-   [#inst "2015-06-02T05:37" 1]
-   [#inst "2015-06-02T08:20" 1]
-   [#inst "2015-06-02T11:11" 1]]
+(datasets/expect-with-datasets sql-engines
+  (if-sqlserver
+   [[#inst "2015-06-01T17:31" 1]
+    [#inst "2015-06-01T23:06" 1]
+    [#inst "2015-06-02T00:23" 1]
+    [#inst "2015-06-02T01:55" 1]
+    [#inst "2015-06-02T04:04" 1]
+    [#inst "2015-06-02T04:19" 1]
+    [#inst "2015-06-02T09:13" 1]
+    [#inst "2015-06-02T12:37" 1]
+    [#inst "2015-06-02T15:20" 1]
+    [#inst "2015-06-02T18:11" 1]]
+
+   [[#inst "2015-06-01T10:31" 1]
+    [#inst "2015-06-01T16:06" 1]
+    [#inst "2015-06-01T17:23" 1]
+    [#inst "2015-06-01T18:55" 1]
+    [#inst "2015-06-01T21:04" 1]
+    [#inst "2015-06-01T21:19" 1]
+    [#inst "2015-06-02T02:13" 1]
+    [#inst "2015-06-02T05:37" 1]
+    [#inst "2015-06-02T08:20" 1]
+    [#inst "2015-06-02T11:11" 1]])
   (sad-toucan-incidents-with-bucketing :minute))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-datasets sql-engines
   [[0 5]
    [1 4]
    [2 2]
@@ -1130,129 +1131,136 @@
    [9 1]]
   (sad-toucan-incidents-with-bucketing :minute-of-hour))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
-  [[#inst "2015-06-01T10" 1]
-   [#inst "2015-06-01T16" 1]
-   [#inst "2015-06-01T17" 1]
-   [#inst "2015-06-01T18" 1]
-   [#inst "2015-06-01T21" 2]
-   [#inst "2015-06-02T02" 1]
-   [#inst "2015-06-02T05" 1]
-   [#inst "2015-06-02T08" 1]
-   [#inst "2015-06-02T11" 1]
-   [#inst "2015-06-02T13" 1]]
+(datasets/expect-with-datasets sql-engines
+  (if-sqlserver
+    [[#inst "2015-06-01T17" 1]
+     [#inst "2015-06-01T23" 1]
+     [#inst "2015-06-02T00" 1]
+     [#inst "2015-06-02T01" 1]
+     [#inst "2015-06-02T04" 2]
+     [#inst "2015-06-02T09" 1]
+     [#inst "2015-06-02T12" 1]
+     [#inst "2015-06-02T15" 1]
+     [#inst "2015-06-02T18" 1]
+     [#inst "2015-06-02T20" 1]]
+
+    [[#inst "2015-06-01T10" 1]
+     [#inst "2015-06-01T16" 1]
+     [#inst "2015-06-01T17" 1]
+     [#inst "2015-06-01T18" 1]
+     [#inst "2015-06-01T21" 2]
+     [#inst "2015-06-02T02" 1]
+     [#inst "2015-06-02T05" 1]
+     [#inst "2015-06-02T08" 1]
+     [#inst "2015-06-02T11" 1]
+     [#inst "2015-06-02T13" 1]])
   (sad-toucan-incidents-with-bucketing :hour))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
-  [[0 8]
-   [1 9]
-   [2 7]
-   [3 10]
-   [4 10]
-   [5 9]
-   [6 6]
-   [7 5]
-   [8 7]
-   [9 7]]
+(datasets/expect-with-datasets sql-engines
+  (if-sqlserver
+   [[0 13] [1  8] [2  4] [3  7] [4  5] [5 13] [6 10] [7  8] [8  9] [9  7]]
+   [[0  8] [1  9] [2  7] [3 10] [4 10] [5  9] [6  6] [7  5] [8  7] [9  7]])
   (sad-toucan-incidents-with-bucketing :hour-of-day))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
-  [[#inst "2015-06-01T07" 8]
-   [#inst "2015-06-02T07" 9]
-   [#inst "2015-06-03T07" 9]
-   [#inst "2015-06-04T07" 4]
-   [#inst "2015-06-05T07" 11]
-   [#inst "2015-06-06T07" 8]
-   [#inst "2015-06-07T07" 6]
-   [#inst "2015-06-08T07" 10]
-   [#inst "2015-06-09T07" 6]
-   [#inst "2015-06-10T07" 10]]
+(datasets/expect-with-datasets sql-engines
+  (if-sqlserver
+   [[#inst "2015-06-01T07" 6]
+    [#inst "2015-06-02T07" 10]
+    [#inst "2015-06-03T07" 4]
+    [#inst "2015-06-04T07" 9]
+    [#inst "2015-06-05T07" 9]
+    [#inst "2015-06-06T07" 8]
+    [#inst "2015-06-07T07" 8]
+    [#inst "2015-06-08T07" 9]
+    [#inst "2015-06-09T07" 7]
+    [#inst "2015-06-10T07" 9]]
+
+   [[#inst "2015-06-01T07" 8]
+    [#inst "2015-06-02T07" 9]
+    [#inst "2015-06-03T07" 9]
+    [#inst "2015-06-04T07" 4]
+    [#inst "2015-06-05T07" 11]
+    [#inst "2015-06-06T07" 8]
+    [#inst "2015-06-07T07" 6]
+    [#inst "2015-06-08T07" 10]
+    [#inst "2015-06-09T07" 6]
+    [#inst "2015-06-10T07" 10]])
   (sad-toucan-incidents-with-bucketing :day))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
-  [[1 29]
-   [2 36]
-   [3 33]
-   [4 29]
-   [5 13]
-   [6 38]
-   [7 22]]
+(datasets/expect-with-datasets sql-engines
+  (if-sqlserver
+   [[1 28] [2 38] [3 29] [4 27] [5 24] [6 30] [7 24]]
+   [[1 29] [2 36] [3 33] [4 29] [5 13] [6 38] [7 22]])
   (sad-toucan-incidents-with-bucketing :day-of-week))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
-  [[1 8]
-   [2 9]
-   [3 9]
-   [4 4]
-   [5 11]
-   [6 8]
-   [7 6]
-   [8 10]
-   [9 6]
-   [10 10]]
+(datasets/expect-with-datasets sql-engines
+  (if-sqlserver
+   [[1  6] [2 10] [3  4] [4  9] [5  9] [6  8] [7  8] [8  9] [9  7] [10  9]]
+   [[1  8] [2  9] [3  9] [4  4] [5 11] [6  8] [7  6] [8 10] [9  6] [10 10]])
   (sad-toucan-incidents-with-bucketing :day-of-month))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
-  [[152 8]
-   [153 9]
-   [154 9]
-   [155 4]
-   [156 11]
-   [157 8]
-   [158 6]
-   [159 10]
-   [160 6]
-   [161 10]]
+(datasets/expect-with-datasets sql-engines
+  (if-sqlserver
+   [[152  6] [153 10] [154  4] [155  9] [156  9] [157  8] [158  8] [159  9] [160  7] [161  9]]
+   [[152  8] [153  9] [154  9] [155  4] [156 11] [157  8] [158  6] [159 10] [160  6] [161 10]])
   (sad-toucan-incidents-with-bucketing :day-of-year))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
-  [[#inst "2015-05-31T07" 49]
-   [#inst "2015-06-07T07" 47]
-   [#inst "2015-06-14T07" 39]
-   [#inst "2015-06-21T07" 58]
-   [#inst "2015-06-28T07" 7]]
+(datasets/expect-with-datasets sql-engines
+  (if-sqlserver
+   [[#inst "2015-05-31T07" 46]
+    [#inst "2015-06-07T07" 47]
+    [#inst "2015-06-14T07" 40]
+    [#inst "2015-06-21T07" 60]
+    [#inst "2015-06-28T07" 7]]
+
+   [[#inst "2015-05-31T07" 49]
+    [#inst "2015-06-07T07" 47]
+    [#inst "2015-06-14T07" 39]
+    [#inst "2015-06-21T07" 58]
+    [#inst "2015-06-28T07" 7]])
   (sad-toucan-incidents-with-bucketing :week))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
-  [[23 49]
-   [24 47]
-   [25 39]
-   [26 58]
-   [27 7]]
+(datasets/expect-with-datasets sql-engines
+  (if-sqlserver
+   [[23 54] [24 46] [25 39] [26 61]]
+   [[23 49] [24 47] [25 39] [26 58] [27 7]])
   (sad-toucan-incidents-with-bucketing :week-of-year))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-datasets sql-engines
   [[#inst "2015-06-01T07" 200]]
   (sad-toucan-incidents-with-bucketing :month))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-datasets sql-engines
   [[6 200]]
   (sad-toucan-incidents-with-bucketing :month-of-year))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-datasets sql-engines
   [[#inst "2015-04-01T07" 200]]
   (sad-toucan-incidents-with-bucketing :quarter))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-datasets sql-engines
   [[2 200]]
   (sad-toucan-incidents-with-bucketing :quarter-of-year))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-datasets sql-engines
   [[2015 200]]
   (sad-toucan-incidents-with-bucketing :year))
 
 ;; RELATIVE DATES
 (defn- database-def-with-timestamps [interval-seconds]
-  (create-database-definition "DB"
-    ["checkins"
-     [{:field-name "timestamp"
-       :base-type  :DateTimeField}]
-     (vec (for [i (range -15 15)]
-            [(java.sql.Timestamp. (+ (System/currentTimeMillis) (* i 1000 interval-seconds)))]))]))
+  (let [{:keys [date-interval]} (driver/engine->driver *engine*)]
+    (create-database-definition "DB"
+      ["checkins"
+       [{:field-name "timestamp"
+         :base-type  :DateTimeField}]
+       (vec (for [i (range -15 15)]
+              ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of generating `java.sql.Timestamps` here so
+              ;; they'll be in the DB's native timezone. Some DBs refuse to use the same timezone we're running the tests from *cough* SQL Server *cough*
+              [(date-interval :second (* i interval-seconds))]))])))
 
-(def ^:private checkins:4-per-minute (database-def-with-timestamps 15))
-(def ^:private checkins:4-per-hour   (database-def-with-timestamps (* 60 15)))
-(def ^:private checkins:1-per-day    (database-def-with-timestamps (* 60 60 24)))
+(def ^:private checkins:4-per-minute (partial database-def-with-timestamps 15))
+(def ^:private checkins:4-per-hour   (partial database-def-with-timestamps (* 60 15)))
+(def ^:private checkins:1-per-day    (partial database-def-with-timestamps (* 60 60 24)))
 
 (defn- count-of-grouping [db field-grouping & relative-datetime-args]
   (with-temp-db [_ db]
@@ -1260,24 +1268,24 @@
        filter = ["datetime_field" (id :checkins :timestamp) "as" (name field-grouping)] (apply vector "relative_datetime" relative-datetime-args)
        return first-row first)))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql} 4 (count-of-grouping checkins:4-per-minute :minute "current"))
-(datasets/expect-with-datasets #{:h2 :postgres :mysql} 4 (count-of-grouping checkins:4-per-minute :minute -1 "minute"))
-(datasets/expect-with-datasets #{:h2 :postgres :mysql} 4 (count-of-grouping checkins:4-per-minute :minute  1 "minute"))
+(datasets/expect-with-datasets sql-engines 4 (count-of-grouping (checkins:4-per-minute) :minute "current"))
+(datasets/expect-with-datasets sql-engines 4 (count-of-grouping (checkins:4-per-minute) :minute -1 "minute"))
+(datasets/expect-with-datasets sql-engines 4 (count-of-grouping (checkins:4-per-minute) :minute  1 "minute"))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql} 4 (count-of-grouping checkins:4-per-hour :hour "current"))
-(datasets/expect-with-datasets #{:h2 :postgres :mysql} 4 (count-of-grouping checkins:4-per-hour :hour -1 "hour"))
-(datasets/expect-with-datasets #{:h2 :postgres :mysql} 4 (count-of-grouping checkins:4-per-hour :hour  1 "hour"))
+(datasets/expect-with-datasets sql-engines 4 (count-of-grouping (checkins:4-per-hour) :hour "current"))
+(datasets/expect-with-datasets sql-engines 4 (count-of-grouping (checkins:4-per-hour) :hour -1 "hour"))
+(datasets/expect-with-datasets sql-engines 4 (count-of-grouping (checkins:4-per-hour) :hour  1 "hour"))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql} 1 (count-of-grouping checkins:1-per-day :day "current"))
-(datasets/expect-with-datasets #{:h2 :postgres :mysql} 1 (count-of-grouping checkins:1-per-day :day -1 "day"))
-(datasets/expect-with-datasets #{:h2 :postgres :mysql} 1 (count-of-grouping checkins:1-per-day :day  1 "day"))
+(datasets/expect-with-datasets sql-engines 1 (count-of-grouping (checkins:1-per-day) :day "current"))
+(datasets/expect-with-datasets sql-engines 1 (count-of-grouping (checkins:1-per-day) :day -1 "day"))
+(datasets/expect-with-datasets sql-engines 1 (count-of-grouping (checkins:1-per-day) :day  1 "day"))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql} 7 (count-of-grouping checkins:1-per-day :week "current"))
+(datasets/expect-with-datasets sql-engines 7 (count-of-grouping (checkins:1-per-day) :week "current"))
 
 ;; SYNTACTIC SUGAR
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-datasets sql-engines
   1
-  (with-temp-db [_ checkins:1-per-day]
+  (with-temp-db [_ (checkins:1-per-day)]
     (-> (driver/process-query
          {:database (db-id)
           :type     :query
@@ -1286,9 +1294,9 @@
                      :filter       ["TIME_INTERVAL" (id :checkins :timestamp) "current" "day"]}})
         :data :rows first first)))
 
-(datasets/expect-with-datasets #{:h2 :postgres :mysql}
+(datasets/expect-with-datasets sql-engines
   7
-  (with-temp-db [_ checkins:1-per-day]
+  (with-temp-db [_ (checkins:1-per-day)]
     (-> (driver/process-query
          {:database (db-id)
           :type     :query
@@ -1296,3 +1304,39 @@
                      :aggregation  ["count"]
                      :filter       ["TIME_INTERVAL" (id :checkins :timestamp) "last" "week"]}})
         :data :rows first first)))
+
+;; Make sure that when referencing the same field multiple times with different units we return the one
+;; that actually reflects the units the results are in.
+;; eg when we breakout by one unit and filter by another, make sure the results and the col info
+;; use the unit used by breakout
+(defn- date-bucketing-unit-when-you [& {:keys [breakout-by filter-by]}]
+  (with-temp-db [_ (checkins:1-per-day)]
+    (let [results (driver/process-query
+                   {:database (db-id)
+                    :type     :query
+                    :query     {:source_table (id :checkins)
+                                :aggregation  ["count"]
+                                :breakout     [["datetime_field" (id :checkins :timestamp) "as" breakout-by]]
+                                :filter       ["TIME_INTERVAL" (id :checkins :timestamp) "current" filter-by]}})]
+      {:rows (-> results :row_count)
+       :unit (-> results :data :cols first :unit)})))
+
+(datasets/expect-with-datasets sql-engines
+  {:rows 1, :unit :day}
+  (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day"))
+
+(datasets/expect-with-datasets sql-engines
+  {:rows 7, :unit :day}
+  (date-bucketing-unit-when-you :breakout-by "day", :filter-by "week"))
+
+(datasets/expect-with-datasets sql-engines
+  {:rows 1, :unit :week}
+  (date-bucketing-unit-when-you :breakout-by "week", :filter-by "day"))
+
+(datasets/expect-with-datasets sql-engines
+  {:rows 1, :unit :quarter}
+  (date-bucketing-unit-when-you :breakout-by "quarter", :filter-by "day"))
+
+(datasets/expect-with-datasets sql-engines
+  {:rows 1, :unit :hour}
+  (date-bucketing-unit-when-you :breakout-by "hour", :filter-by "day"))

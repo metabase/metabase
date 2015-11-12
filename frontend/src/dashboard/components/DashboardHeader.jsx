@@ -80,22 +80,21 @@ export default class DashboardHeader extends Component {
     }
 
     getEditingButtons() {
-        var editingButtons = [];
-        editingButtons.push(
+        return [
             <ActionButton
+                key="save"
                 actionFn={() => this.onSave()}
                 className="Button Button--small Button--primary text-uppercase"
                 normalText="Save"
                 activeText="Saving…"
                 failedText="Save failed"
                 successText="Saved"
-            />
-        );
-        editingButtons.push(
-            <a className="Button Button--small text-uppercase" href="#" onClick={() => this.onCancel()}>Cancel</a>
-        );
-        editingButtons.push(
+            />,
+            <a key="cancel" className="Button Button--small text-uppercase" onClick={() => this.onCancel()}>
+                Cancel
+            </a>,
             <ModalWithTrigger
+                key="delete"
                 ref="deleteDashboardModal"
                 triggerClasses="Button Button--small text-uppercase"
                 triggerElement="Delete"
@@ -107,18 +106,18 @@ export default class DashboardHeader extends Component {
                     onDelete={() => this.onDelete()}
                 />
             </ModalWithTrigger>
-        );
-        return editingButtons;
+        ];
     }
 
     getHeaderButtons() {
-        var buttonSections = [];
+        var buttonSections = [[],[]];
 
         var { dashboard } = this.props;
 
         if (this.props.isEditing) {
-            buttonSections.push([
+            buttonSections[0].push(
                 <ModalWithTrigger
+                    key="history"
                     ref="dashboardHistory"
                     triggerElement={<Icon className="text-brand-hover" name="history" width="16px" height="16px" />}
                 >
@@ -133,26 +132,21 @@ export default class DashboardHeader extends Component {
                         onReverted={() => this.onRevertedRevision()}
                     />
                 </ModalWithTrigger>
-            ]);
+            );
         }
 
         if (dashboard && dashboard.can_write && !this.props.isEditing) {
-            buttonSections.push([
-                <a title="Edit Dashboard Layout" className="text-brand-hover cursor-pointer" onClick={() => this.onEdit()}>
+            buttonSections[0].push(
+                <a key="edit" title="Edit Dashboard Layout" className="text-brand-hover cursor-pointer" onClick={() => this.onEdit()}>
                     <Icon name="pencil" width="16px" height="16px" />
                 </a>
-            ]);
+            );
         }
 
-        // buttonSections.push([
-        //     <a title="Add Question to Dashboard" className="text-brand-hover" onClick={() => this.addQuestion()}>
-        //         <Icon name="add" width="16px" height="16px" />
-        //     </a>
-        // ]);
-
         var isEmpty = dashboard.ordered_cards.length === 0;
-        buttonSections.push([
+        buttonSections[1].push(
             <ModalWithTrigger
+                key="add"
                 ref="addQuestionModal"
                 triggerElement={
                     <a title="Add a question to this dashboard">
@@ -167,7 +161,7 @@ export default class DashboardHeader extends Component {
                     onClose={() => this.refs.addQuestionModal.toggle()}
                 />
             </ModalWithTrigger>
-        ]);
+        );
 
         return buttonSections;
     }

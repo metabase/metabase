@@ -32,9 +32,9 @@ To run the jar you will need to have a Java Runtime installed. As a quick check 
 
 If you see something like
 
-    java version "1.8.0_31"
-    Java(TM) SE Runtime Environment (build 1.8.0_31-b13)
-    Java HotSpot(TM) 64-Bit Server VM (build 25.31-b07, mixed mode)
+    java version "1.8.0_51"
+    Java(TM) SE Runtime Environment (build 1.8.0_51-b16)
+    Java HotSpot(TM) 64-Bit Server VM (build 25.51-b03, mixed mode)
 
 you are good to go. Otherwise, download the Java Runtime Environment at http://java.com/
 

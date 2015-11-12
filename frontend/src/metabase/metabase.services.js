@@ -23,10 +23,6 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
                 'X-CSRFToken': function() {
                     return $cookies.csrftoken;
                 }
-            },
-            transformRequest: function(data) {
-                data = MetabaseCore.prepareDatabaseDetails(data);
-                return angular.toJson(data);
             }
         },
         validate_connection: {
@@ -36,10 +32,6 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
                 'X-CSRFToken': function() {
                     return $cookies.csrftoken;
                 }
-            },
-            transformRequest: function(data) {
-                data = MetabaseCore.prepareDatabaseDetails(data);
-                return angular.toJson(data);
             }
         },
         db_add_sample_dataset: {
@@ -290,4 +282,3 @@ MetabaseServices.factory('ForeignKey', ['$resource', '$cookies', function($resou
 
     });
 }]);
-

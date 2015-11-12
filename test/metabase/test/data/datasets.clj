@@ -6,6 +6,7 @@
             [environ.core :refer [env]]
             [expectations :refer :all]
             [metabase.db :refer :all]
+            [metabase.driver :as driver]
             [metabase.driver.mongo.test-data :as mongo-data]
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
@@ -13,7 +14,8 @@
                                 [h2 :as h2]
                                 [mongo :as mongo]
                                 [mysql :as mysql]
-                                [postgres :as postgres])
+                                [postgres :as postgres]
+                                [sqlserver :as sqlserver])
             [metabase.util :as u]))
 
 ;; # IDataset
@@ -34,6 +36,8 @@
     "Given keyword TABLE-NAME and FIELD-NAME, return the corresponding `Field` ID.")
   (fks-supported? [this]
     "Does this driver support Foreign Keys?")
+  (default-schema [this]
+    "Return the default schema name that tables for this DB should be expected to have.")
   (format-name [this table-or-field-name]
     "Transform a lowercase string `Table` or `Field` name in a way appropriate for this dataset
      (e.g., `h2` would want to upcase these names; `mongo` would want to use `\"_id\"` in place of `\"id\"`.")
@@ -75,6 +79,7 @@
         table-or-field-name))
 
   (fks-supported?       [_] false)
+  (default-schema       [_] nil)
   (id-field-type        [_] :IntegerField)
   (sum-field-type       [_] :IntegerField)
   (timestamp-field-type [_] :DateField))
@@ -133,6 +138,7 @@
                                (Table (table-name->id this (s/upper-case (name table-name)))))
           :field-name->id    (fn [this table-name field-name]
                                (memoized-field-name->id (:id (db this)) (s/upper-case (name table-name)) (s/upper-case (name field-name))))
+          :default-schema    (constantly "PUBLIC")
           :format-name       (fn [_ table-or-field-name]
                                (clojure.string/upper-case table-or-field-name))
           :id-field-type     (constantly :BigIntegerField)
@@ -148,6 +154,7 @@
   (merge GenericSQLIDatasetMixin
          {:dataset-loader (fn [_]
                             (postgres/dataset-loader))
+          :default-schema (constantly "public")
           :sum-field-type (constantly :IntegerField)}))
 
 
@@ -160,17 +167,32 @@
   (merge GenericSQLIDatasetMixin
          {:dataset-loader (fn [_]
                             (mysql/dataset-loader))
+          :default-schema (constantly nil)
           :sum-field-type (constantly :BigIntegerField)}))
+
+
+;;; ### SQLServer
+
+(defrecord SQLServerDriverData [dbpromise])
+
+(extend SQLServerDriverData
+  IDataset
+  (merge GenericSQLIDatasetMixin
+         {:dataset-loader (fn [_]
+                            (sqlserver/dataset-loader))
+          :default-schema (constantly "dbo")
+          :sum-field-type (constantly :IntegerField)}))
 
 
 ;; # Concrete Instances
 
 (def dataset-name->dataset
   "Map of dataset keyword name -> dataset instance (i.e., an object that implements `IDataset`)."
-  {:mongo    (MongoDriverData.)
-   :h2       (H2DriverData. (promise))
-   :postgres (PostgresDriverData. (promise))
-   :mysql    (MySQLDriverData. (promise))})
+  {:mongo     (MongoDriverData.)
+   :h2        (H2DriverData.        (promise))
+   :postgres  (PostgresDriverData.  (promise))
+   :mysql     (MySQLDriverData.     (promise))
+   :sqlserver (SQLServerDriverData. (promise))})
 
 (def ^:const all-valid-dataset-names
   "Set of names of all valid datasets."
@@ -216,15 +238,21 @@
 
 (def ^:dynamic *dataset*
   "The dataset we're currently testing against, bound by `with-dataset`.
-   Defaults to `:h2`."
+   Defaults to `(dataset-name->dataset :h2)`."
   (dataset-name->dataset (if (contains? test-dataset-names :h2) :h2
                              (first test-dataset-names))))
+
+(def ^:dynamic *engine*
+  "Keyword name of the engine that we're currently testing against. Defaults to `:h2`."
+  :h2)
 
 (defmacro with-dataset
   "Bind `*dataset*` to the dataset with DATASET-NAME and execute BODY."
   [dataset-name & body]
-  `(binding [*dataset* (dataset-name->dataset ~dataset-name)]
-     ~@body))
+  `(let [engine# ~dataset-name]
+     (binding [*engine*  engine#
+               *dataset* (dataset-name->dataset engine#)]
+       ~@body)))
 
 (defmacro when-testing-dataset
   "Execute BODY only if we're currently testing against DATASET-NAME."
@@ -261,9 +289,8 @@
   "Generate unit tests for all datasets in DATASET-NAMES; each test will only run if we're currently testing the corresponding dataset.
    `*dataset*` is bound to the current dataset inside each test."
   [dataset-names expected actual]
-  `(do ~@(map (fn [dataset-name]
-                `(expect-with-dataset ~dataset-name ~expected ~actual))
-              dataset-names)))
+  `(do ~@(for [dataset-name (eval dataset-names)]
+           `(expect-with-dataset ~dataset-name ~expected ~actual))))
 
 (defmacro expect-with-all-datasets
   "Generate unit tests for all valid datasets; each test will only run if we're currently testing the corresponding dataset.
@@ -280,6 +307,6 @@
   [& pairs]
   `(cond ~@(mapcat (fn [[dataset then]]
                      (assert (contains? all-valid-dataset-names dataset))
-                     [`(= *dataset* (dataset-name->dataset ~dataset))
+                     [`(= *engine* ~dataset)
                       then])
                    (partition 2 pairs))))
