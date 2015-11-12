@@ -47,15 +47,15 @@
   [v1 v2 l]
   (conda
     ;; This is just an optimization for cases where L isn't a logic var; it's much faster <3
-    ((nonlvaro l)  ((fn -ordered° [[item & more]]
-                      (conda
-                        ((== v1 item)         s#)
-                        ((== v2 item)         fail)
-                        ((when (seq more) s#) (-ordered° more))))
-                    l))
-    (s#            (conda
-                     ((firsto l v1))
-                     ((firsto l v2) fail)
-                     ((fresh [more]
-                        (resto l more)
-                        (matches-seq-order° v1 v2 more)))))))
+    ((nonlvaro l) ((fn -ordered° [[item & more]]
+                     (conda
+                       ((== v1 item)         s#)
+                       ((== v2 item)         fail)
+                       ((when (seq more) s#) (-ordered° more))))
+                   l))
+    (s#           (conda
+                    ((firsto l v1))
+                    ((firsto l v2) fail)
+                    ((fresh [more]
+                       (resto l more)
+                       (matches-seq-order° v1 v2 more)))))))

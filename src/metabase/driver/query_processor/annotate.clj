@@ -1,11 +1,12 @@
 (ns metabase.driver.query-processor.annotate
   (:refer-clojure :exclude [==])
-  (:require [clojure.core.logic :refer :all]
-            (clojure.core.logic [arithmetic :as ar]
+  (:require (clojure.core.logic [arithmetic :as ar]
                                 [fd :as fd])
-            [clojure.tools.macro :refer [macrolet]]
+            [clojure.core.logic :refer :all]
             (clojure [set :as set]
                      [string :as s])
+            [clojure.tools.logging :as log]
+            [clojure.tools.macro :refer [macrolet]]
             [metabase.db :refer [sel]]
             [metabase.driver.query-processor.interface :as i]
             (metabase.models [field :refer [Field], :as field]
@@ -40,11 +41,12 @@
 ;; Walk the expanded query and collect the fields found therein. Associate some additional info to each that we'll pass to core.logic so it knows
 ;; how to order the results
 
+;; TODO - Why do we need this again?
 (defn- field-qualify-name [field]
   (assoc field :field-name (keyword (apply str (->> (rest (i/qualified-name-components field))
                                                     (interpose "."))))))
 
-(defn collect-fields
+(defn- collect-fields
   "Return a sequence of all the `Fields` inside THIS, recursing as needed for collections.
    For maps, add or `conj` to property `:path`, recording the keypath used to reach each `Field.`
 
@@ -52,12 +54,13 @@
      (collect-fields [{:name \"id\", ...}])   -> [{:name \"id\", ...}]
      (collect-fields {:a {:name \"id\", ...}) -> [{:name \"id\", :path [:a], ...}]"
   [this]
+  {:post [(every? (partial instance? metabase.driver.query_processor.interface.Field) %)]}
   (condp instance? this
     ;; For a DateTimeField we'll flatten it back into regular Field but include the :unit info for the frontend.
     ;; Recurse so it is otherwise handled normally
     metabase.driver.query_processor.interface.DateTimeField
     (let [{:keys [field unit]} this]
-      (recur (assoc field :unit unit)))
+      (collect-fields (assoc field :unit unit)))
 
     metabase.driver.query_processor.interface.Field
     (if-let [parent (:parent this)]
@@ -82,147 +85,188 @@
 (defn- flatten-fields
   "Flatten a group of fields, keeping those which are more important when duplicates exist."
   [fields]
-  {:pre [(every? identity fields)]}
-  (distinct (sort-by (fn [{[k] :path}]       ; more important versions of fields are the ones we'll actually see in results,
-                       (cond                 ; this is important so we don't use return the wrong version of a Field (e.g. with the wrong unit)
-                         (= k :breakout) 0   ; so look at each field's :path. For now, it's enough just to look at the first element.
-                         (= k :fields)   1   ; (lower number = higher importance, because `sort` is ascending)
-                         :else           2))
-                     fields)))
+  (vec (distinct (sort-by (fn [{[k] :path}]       ; more important versions of fields are the ones we'll actually see in results,
+                            (cond                 ; this is important so we don't use return the wrong version of a Field (e.g. with the wrong unit)
+                              (= k :breakout) 0   ; so look at each field's :path. For now, it's enough just to look at the first element.
+                              (= k :fields)   1   ; (lower number = higher importance, because `sort` is ascending)
+                              :else           2))
+                          fields))))
 
 (defn- flatten-collect-fields
   "Collect fields from COLL, and remove duplicates."
   [coll]
-  (for [field (flatten-fields (collect-fields coll))]
-    (dissoc (field-qualify-name field)
-            :parent :parent-id :table-name :path)))  ; remove keys we don't need anymore
-
-(defn- flatten-collect-ids-domain [form]
-  (apply fd/domain (sort (map :field-id (flatten-collect-fields form)))))
+  (vec (for [field (flatten-fields (collect-fields coll))]
+         (dissoc (field-qualify-name field)
+                 :parent :parent-id :table-name :path)))) ; remove keys we don't need anymore
 
 
 ;;; # ---------------------------------------- COLUMN RESOLUTION & ORDERING (CORE.LOGIC)  ----------------------------------------
 
-;; Use core.logic to determine the appropriate ordering / result Fields
+(defn- field-name°
+  "A relation such that FIELD's name is FIELD-NAME."
+  [field field-name]
+  (all (trace-lvars "field-name°" field field-name)
+       (featurec field {:field-name field-name})))
 
-(defn- field-name° [field field-name]
-  (featurec field {:field-name field-name}))
+(defn- make-field-in°
+  "Create a relation such that FIELD has an ID matching one of the Field IDs found in FORM."
+  [form]
+  (let [fields (collect-fields form)]
+    (if-not (seq fields)
+      (constantly fail)
+      (let [ids-domain (apply fd/domain (sort (distinct (map :field-id fields))))]
+        (fn [field]
+          (all (trace-lvars "make-field-in°" field ids-domain)
+               (fresh [id]
+                 (featurec field {:field-id id})
+                 (fd/in id ids-domain))))))))
 
-(defn- make-field-in° [items]
-  (if-not (seq items)
-    (constantly fail)
-    (let [ids-domain (flatten-collect-ids-domain items)]
-      (fn [field]
-        (fresh [id]
-          (featurec field {:field-id id})
-          (fd/in id ids-domain))))))
-
-(defn- breakout-field° [{:keys [breakout]}]
+(defn- breakout-field°
+  "Create a relation such that a FIELD is present in the `:breakout` clause."
+  [{:keys [breakout]}]
   (make-field-in° breakout))
 
-(defn- explicit-fields-field° [{:keys [fields-is-implicit fields], :as query}]
-  (if fields-is-implicit (constantly fail)
-      (make-field-in° fields)))
+(defn- explicit-fields-field°
+  "Create a relation such that a FIELD is present in an explicitly specified `:fields` clause."
+  [{:keys [fields-is-implicit fields], :as query}]
+  (if fields-is-implicit
+    (constantly fail)
+    (make-field-in° fields)))
 
-(defn- aggregate-field° [{{ag-type :aggregation-type, ag-field :field} :aggregation}]
+(defn- aggregate-field°
+  "Create a relation such that a FIELD is an aggregate field like `:count` or `:sum`."
+  [{{ag-type :aggregation-type, ag-field :field} :aggregation}]
   (if-not (contains? #{:avg :count :distinct :stddev :sum} ag-type)
     (constantly fail)
     (let [ag-field (if (contains? #{:count :distinct} ag-type)
-                     {:base-type    :IntegerField
-                      :field-name   :count
+                     {:base-type          :IntegerField
+                      :field-name         :count
                       :field-display-name "count"
-                      :special-type :number}
+                      :special-type       :number}
                      (-> ag-field
                          (select-keys [:base-type :special-type])
-                         (assoc :field-name (if (= ag-type :distinct) :count
-                                                ag-type))
-                         (assoc :field-display-name (if (= ag-type :distinct) "count"
+                         (assoc :field-name         (if (= ag-type :distinct) :count
+                                                        ag-type)
+                                :field-display-name (if (= ag-type :distinct) "count"
                                                         (name ag-type)))))]
       (fn [out]
-        (trace-lvars "*" out)
-        (== out ag-field)))))
+        (all (trace-lvars "aggregate-field°" out)
+             (== out ag-field))))))
 
-(defn- unknown-field° [field-name out]
+(defn- unknown-field°
+  "Relation for handling otherwise unknown Fields. If we can't determine why we're seeing a given Field
+   (i.e., all other relations like `breakout-field°` and `aggregate-field°` fail), this one will succeed
+   as a last resort and bind some fallback properties of the Field, such as giving it a `:base-type` of
+   `:UnknownField`. If this relation succeeds, it generally indicates a bug in the query processor."
+  [field-name out]
   (all
-   (== out {:base-type    :UnknownField
-            :special-type nil
-            :field-name   field-name
+   (== out {:base-type          :UnknownField
+            :special-type       nil
+            :field-name         field-name
             :field-display-name field-name})
    (trace-lvars "UNKNOWN FIELD - NOT PRESENT IN EXPANDED QUERY (!)" out)))
 
-(defn- field° [query]
-  (let [ag-field°     (aggregate-field° query)
-        normal-field° (let [field-name->field (let [fields (flatten-collect-fields query)]
-                                                (zipmap (map :field-name fields) fields))]
-                        (fn [field-name out]
-                          (if-let [field (field-name->field field-name)]
-                            (== out field)
-                            fail)))]
+(defn- field°
+  "Create a relation such that a FIELD is a normal `Field` referenced somewhere in QUERY, or an aggregate
+   Field such as a `:count`."
+  [query]
+  (let [ag-field°         (aggregate-field° query)
+        fields            (flatten-collect-fields query)
+        field-name->field (zipmap (map :field-name fields) fields)
+        normal-field°     (fn [field-name out]
+                            (all (trace-lvars "normal-field°" field-name out)
+                                 (if-let [field (field-name->field field-name)]
+                                   (== out field)
+                                   fail)))]
     (fn [field-name field]
-      (conda
-        ((normal-field° field-name field))
-        ((ag-field° field))))))
+      (all (trace-lvars "field°" field-name field)
+           (conda
+             ((normal-field° field-name field))
+             ((ag-field° field)))))))
 
 (def ^:const ^:private field-groups
+  "Relative importance of each clause as a source of Fields for the purposes of ordering our results.
+   e.g. if a Field comes from a `:breakout` clause, we should return that column first in the results."
   {:breakout        0
    :aggregation     1
    :explicit-fields 2
    :other           3})
 
-(defn- field-group° [query]
+(defn- field-group°
+  "Create a relation such that OUT is the corresponding value of `field-groups` for FIELD."
+  [query]
   (let [breakout° (breakout-field° query)
         agg°      (aggregate-field° query)
         xfields°  (explicit-fields-field° query)]
     (fn [field out]
-      (conda
-        ((breakout° field) (== out (field-groups :breakout)))
-        ((agg° field)      (== out (field-groups :aggregation)))
-        ((xfields° field)  (== out (field-groups :explicit-fields)))
-        (s#                (== out (field-groups :other)))))))
+      (all (trace-lvars "field-group°" field out)
+           (conda
+             ((breakout° field) (== out (field-groups :breakout)))
+             ((agg° field)      (== out (field-groups :aggregation)))
+             ((xfields° field)  (== out (field-groups :explicit-fields)))
+             (s#                (== out (field-groups :other))))))))
 
-(defn- field-position° [field out]
-  (featurec field {:position out}))
+(defn- field-position°
+  "A relation such that FIELD's `:position` is OUT. `:position` is the index of the FIELD in its
+   source clause, e.g. 2 if it was the third Field in the `:fields` clause where we found it."
+  [field out]
+  (all (trace-lvars "field-position°" field out)
+       (featurec field {:position out})))
 
 (def ^:const ^:private special-type-groups
+  "Relative importance of different Field `:special-types` for the purposes of ordering.
+   i.e. a Field with special type `:id` should be sorted ahead of all other Fields in the results."
   {:id    0
    :name  1
    :other 2})
 
-(defn- special-type-group° [field out]
+(defn- special-type-group°
+  "A relation such that OUT is the corresponding value of `special-type-groupds` for FIELD."
+  [field out]
   (conda
    ((featurec field {:special-type :id})   (== out (special-type-groups :id)))
    ((featurec field {:special-type :name}) (== out (special-type-groups :name)))
    (s#                                     (== out (special-type-groups :other)))))
 
-(defn- field-name< [query]
+(defn- field-name<
+  "Create a relation such that the name of Field F1 comes alphabetically before the name of Field F2."
+  [query]
   (fn [f1 f2]
     (fresh [name-1 name-2]
+      (trace-lvars "field-name<" f1 f2)
       (field-name° f1 name-1)
       (field-name° f2 name-2)
       (matches-seq-order° name-1 name-2 (:result-keys query)))))
 
-(defn- clause-position< [query]
+(defn- clause-position<
+  "Create a relation such that Field F1 comes before Field F2 in the clause where they were defined."
+  [query]
   (let [group°          (field-group° query)
         breakout-fields (flatten-collect-fields (:breakout query))
         fields-fields   (flatten-collect-fields (:fields query))]
     (fn [f1 f2]
-      (conda
-       ((group° f1 (field-groups :breakout))        (matches-seq-order° f1 f2 breakout-fields))
-       ((group° f1 (field-groups :explicit-fields)) (matches-seq-order° f1 f2 fields-fields))))))
+      (all (trace-lvars "clause-position<" f1 f2)
+           (conda
+             ((group° f1 (field-groups :breakout))        (matches-seq-order° f1 f2 breakout-fields))
+             ((group° f1 (field-groups :explicit-fields)) (matches-seq-order° f1 f2 fields-fields)))))))
 
-(defn- fields-sorted° [query]
+(defn- fields-sorted°
+  "Create a relation such that Field F1 should be sorted ahead of Field F2 according to the rules
+   listed at the top of this page."
+  [query]
   (let [group°      (field-group° query)
         name<       (field-name< query)
         clause-pos< (clause-position< query)]
     (fn [f1 f2]
-      (macrolet [(<-or-== [f & ==-clauses] `(conda
-                                              ((fresh [v#]
-                                                 (~f ~'f1 v#)
-                                                 (~f ~'f2 v#)) ~@==-clauses)
-                                              ((fresh [v1# v2#]
-                                                 (~f ~'f1 v1#)
-                                                 (~f ~'f2 v2#)
-                                                 (ar/< v1# v2#)) ~'s#)))]
+      (macrolet [(<-or-== [f & ==-clauses] `(all (trace-lvars "fields-sorted°" ~'f1 ~'f2)
+                                                 (conda
+                                                   ((fresh [v#]
+                                                      (~f ~'f1 v#)
+                                                      (~f ~'f2 v#)) ~@==-clauses)
+                                                   ((fresh [v1# v2#]
+                                                      (~f ~'f1 v1#)
+                                                      (~f ~'f2 v2#)
+                                                      (ar/< v1# v2#)) ~'s#))))]
         (<-or-== group°
           (<-or-== field-position°
             (conda
@@ -230,7 +274,10 @@
                                                    (name< f1 f2)))
               ((clause-pos< f1 f2)))))))))
 
-(defn- resolve+order-cols [{:keys [result-keys], :as query}]
+(defn- resolve+order-cols
+  "Use `core.logic` to determine the source of the RESULT-KEYS returned by running a QUERY,
+   and sort them according to the rules at the top of this page."
+  [{:keys [result-keys], :as query}]
   (when (seq result-keys)
     (first (let [fields       (vec (lvars (count result-keys)))
                  known-field° (field° query)]
@@ -247,11 +294,13 @@
 
 ;; Format the results in the way the front-end expects.
 
-(defn- format-col [col]
+(defn- format-col
+  "Rename keys, provide default values, etc. for FIELD so it is in the format expected by the frontend."
+  [field]
   (merge {:description nil
           :id          nil
           :table_id    nil}
-         (-> col
+         (-> field
              (set/rename-keys  {:base-type          :base_type
                                 :field-id           :id
                                 :field-name         :name
@@ -291,16 +340,31 @@
                     :extra_info (if-not dest-field {}
                                         {:target_table_id (:table_id dest-field)})))))))
 
-(defn post-annotate [qp]
+(defn post-annotate
+  "QP middleware that runs directly after the the query is ran. This stage:
+
+  1.  Sorts the results according to the rules at the top of this page
+  2.  Resolves the Fields returned in the results and adds information like `:columns` and `:cols`
+      expected by the frontend."
+  [qp]
   (fn [query]
-    (let [results (qp query)
-          cols    (->> (assoc (:query query) :result-keys (vec (sort (keys (first results)))))
-                       resolve+order-cols
-                       (map format-col)
-                       add-fields-extra-info)
-          columns (map :name cols)]
-      {:cols    (vec (for [col cols]
-                       (update col :name name)))
-       :columns (mapv name columns)
-       :rows    (for [row results]
-                  (mapv row columns))})))
+    (try
+      (let [results (qp query)
+            cols    (->> (assoc (:query query) :result-keys (vec (sort (keys (first results)))))
+                         resolve+order-cols
+                         (map format-col)
+                         add-fields-extra-info)
+            columns (map :name cols)]
+        {:cols    (vec (for [col cols]
+                         (update col :name name)))
+         :columns (mapv name columns)
+         :rows    (for [row results]
+                    (mapv row columns))}))))
+
+(u/ns-wrap-try-catch! :exclude 'x 'z 'post-annotate)
+
+(require '[metabase.test.util.q :refer [Q]])
+(defn x []
+  (Q aggregate rows of categories use postgres
+     page 1 items 5
+     order id+))
