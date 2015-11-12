@@ -1,8 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
+import CardPicker from "./CardPicker.jsx";
 import PulseCardPreview from "./PulseCardPreview.jsx";
-
-import Select from "metabase/components/Select.jsx";
 
 export default class PulseEditCards extends Component {
     constructor(props) {
@@ -40,7 +39,7 @@ export default class PulseEditCards extends Component {
         return (
             <div className="py1">
                 <h2>Pick your data</h2>
-                <p>Pick up to five questions you'd like to send in this pulse</p>
+                <p className="mt1 h4 text-bold text-grey-3">Pick up to five questions you'd like to send in this pulse</p>
                 <ol className="my3">
                     {cards && pulseCards.map((card, index) =>
                         <li key={index} className="my1 flex align-top" style={{ width: "400px" }}>
@@ -48,13 +47,8 @@ export default class PulseEditCards extends Component {
                             { card ?
                                 <PulseCardPreview card={card} onRemove={this.removeCard.bind(this, index)} />
                             :
-                                <Select
-                                    className="flex-full"
-                                    placeholder="Pick a question to include in this pulse"
-                                    value={card && cards[card.id]}
-                                    options={cardList}
-                                    optionNameFn={o => o.name}
-                                    optionValueFn={o => o.id}
+                                <CardPicker
+                                    cardList={cardList}
                                     onChange={this.setCard.bind(this, index)}
                                 />
                             }

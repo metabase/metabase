@@ -67,15 +67,6 @@ export default class PulseEdit extends Component {
             case "hourly": break;
             default:       return false;
         }
-        if (channel.schedule_type === "weekly") {
-
-        } else if (channel.schedule_type === "daily") {
-
-        } else if (channel.schedule_type === "hourly") {
-
-        } else {
-            return false;
-        }
         if (channelSpec.recipients) {
             if (!channel.recipients || channel.recipients.length === 0) {
                 return false;
@@ -94,30 +85,32 @@ export default class PulseEdit extends Component {
     render() {
         let { pulse } = this.props;
         return (
-            <div className="wrapper">
-                <div className="flex align-center border-bottom py3">
+            <div className="PulseEdit">
+                <div className="PulseEdit-header flex align-center border-bottom py3">
                     <h1>{pulse && pulse.id != null ? "Edit" : "New"} pulse</h1>
                     <a className="text-brand text-bold flex-align-right">What's a pulse?</a>
                 </div>
-                <PulseEditName {...this.props} setPulse={this.setPulse} />
-                <PulseEditCards {...this.props} setPulse={this.setPulse} />
-                <PulseEditChannels {...this.props} setPulse={this.setPulse} />
-                { pulse && pulse.id != null &&
-                    <div className="mb2">
-                        <h2 className="text-error">Danger Zone</h2>
-                        <div className="py2">
-                            <ActionButton
-                                actionFn={() => confirm("Delete this pulse?") && this.delete()}
-                                className="Button Button--danger"
-                                normalText="Delete this Pulse"
-                                activeText="Deleting…"
-                                failedText="Delete failed"
-                                successText="Deleted"
-                            />
+                <div className="PulseEdit-content pt2">
+                    <PulseEditName {...this.props} setPulse={this.setPulse} />
+                    <PulseEditCards {...this.props} setPulse={this.setPulse} />
+                    <PulseEditChannels {...this.props} setPulse={this.setPulse} />
+                    { pulse && pulse.id != null &&
+                        <div className="mb2">
+                            <h2 className="text-error">Danger Zone</h2>
+                            <div className="py2">
+                                <ActionButton
+                                    actionFn={() => confirm("Delete this pulse?") && this.delete()}
+                                    className="Button Button--danger"
+                                    normalText="Delete this Pulse"
+                                    activeText="Deleting…"
+                                    failedText="Delete failed"
+                                    successText="Deleted"
+                                />
+                            </div>
                         </div>
-                    </div>
-                }
-                <div className="flex align-center border-top py3">
+                    }
+                </div>
+                <div className="PulseEdit-footer flex align-center border-top py3">
                     <ActionButton
                         actionFn={this.save}
                         className={cx("Button Button--primary", { "disabled": !this.isValid() })}

@@ -1,0 +1,29 @@
+.PulseEdit-header,
+.PulseEdit-footer {
+    width: 100%;
+    margin: 0 auto;
+    padding-left: 180px;
+    padding-right: 180px;
+}
+
+.PulseEdit-content {
+    max-width: 450px;
+    margin-left: 180px;
+}
+
+.PulseEdit .input,
+.PulseEdit .bordered,
+.PulseEdit .AdminSelect {
+  border-width: 2px;
+  border-color: rgb(222,228,226);
+}
+
+
+.PulseEdit .AdminSelect {
+  padding: 1em;
+}
+
+.PulseEdit .input:focus {
+  border-width: 2px;
+  border-color: rgb(97,167,229);
+}

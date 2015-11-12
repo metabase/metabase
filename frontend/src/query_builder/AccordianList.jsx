@@ -67,14 +67,12 @@ export default class AccordianList extends Component {
             return this.props.renderItem(item, itemIndex);
         } else {
             return (
-                <div className="flex-full flex">
-                    <a className="flex-full flex align-center px1 py1 cursor-pointer"
-                         onClick={this.onChange.bind(this, item)}
-                    >
-                        { this.renderItemIcon(item, itemIndex) }
-                        <h4 className="List-item-title ml2">{item.name}</h4>
-                    </a>
-                </div>
+                <a className="flex-full flex align-center px1 py1 cursor-pointer"
+                     onClick={this.onChange.bind(this, item)}
+                >
+                    { this.renderItemIcon(item, itemIndex) }
+                    <h4 className="List-item-title ml2">{item.name}</h4>
+                </a>
             );
         }
     }
