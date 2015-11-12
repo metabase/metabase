@@ -1316,8 +1316,8 @@
                     :type     :query
                     :query     {:source_table (id :checkins)
                                 :aggregation  ["count"]
-                                :filter       ["TIME_INTERVAL" (id :checkins :timestamp) "current" filter-by]
-                                :breakout     [["datetime_field" (id :checkins :timestamp) "as" breakout-by]]}})]
+                                :breakout     [["datetime_field" (id :checkins :timestamp) "as" breakout-by]]
+                                :filter       ["TIME_INTERVAL" (id :checkins :timestamp) "current" filter-by]}})]
       {:rows (-> results :row_count)
        :unit (-> results :data :cols first :unit)})))
 

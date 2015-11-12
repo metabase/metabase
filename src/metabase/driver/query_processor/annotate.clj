@@ -1,18 +1,14 @@
 (ns metabase.driver.query-processor.annotate
   (:refer-clojure :exclude [==])
-  (:require (clojure.core.logic [arithmetic :as ar]
-                                [fd :as fd])
-            [clojure.core.logic :refer :all]
-            (clojure [set :as set]
+  (:require (clojure [set :as set]
                      [string :as s])
             [clojure.tools.logging :as log]
-            [clojure.tools.macro :refer [macrolet]]
+            [medley.core :as m]
             [metabase.db :refer [sel]]
             [metabase.driver.query-processor.interface :as i]
             (metabase.models [field :refer [Field], :as field]
                              [foreign-key :refer [ForeignKey]])
-            [metabase.util :as u]
-            [metabase.util.logic :refer :all]))
+            [metabase.util :as u]))
 
 ;; Fields should be returned in the following order:
 ;; 1.  Breakout Fields
@@ -36,15 +32,7 @@
 ;;         When two Fields have the same :position and :special_type "group", fall back to sorting Fields alphabetically by name.
 ;;         This is arbitrary, but it makes the QP deterministic by keeping the results in a consistent order, which makes it testable.
 
-;;; # ---------------------------------------- FIELD COLLECTION  ----------------------------------------
-
-;; Walk the expanded query and collect the fields found therein. Associate some additional info to each that we'll pass to core.logic so it knows
-;; how to order the results
-
-;; TODO - Why do we need this again?
-(defn- field-qualify-name [field]
-  (assoc field :field-name (keyword (apply str (->> (rest (i/qualified-name-components field))
-                                                    (interpose "."))))))
+;;; ## Field Resolution
 
 (defn- collect-fields
   "Return a sequence of all the `Fields` inside THIS, recursing as needed for collections.
@@ -75,270 +63,175 @@
     (for [[k v] (seq this)
           field (collect-fields v)
           :when field]
-      (update field :path conj k))
+      (assoc field :source k))
 
     clojure.lang.Sequential
-    (mapcat collect-fields this)
+    (for [[i field] (m/indexed (mapcat collect-fields this))]
+      (assoc field :clause-position i))
 
     nil))
 
-(defn- flatten-fields
-  "Flatten a group of fields, keeping those which are more important when duplicates exist."
-  [fields]
-  (vec (distinct (sort-by (fn [{[k] :path}]       ; more important versions of fields are the ones we'll actually see in results,
-                            (cond                 ; this is important so we don't use return the wrong version of a Field (e.g. with the wrong unit)
-                              (= k :breakout) 0   ; so look at each field's :path. For now, it's enough just to look at the first element.
-                              (= k :fields)   1   ; (lower number = higher importance, because `sort` is ascending)
-                              :else           2))
-                          fields))))
+(defn- qualify-field-name
+  "Update the `field-name` to reflect the name we expect to see coming back from the query.
+   (This is for handling Mongo nested Fields, I think (?))"
+  [field]
+  {:post [(keyword? (:field-name %))]}
+  (assoc field :field-name (->> (rest (i/qualified-name-components field))
+                                (interpose ".")
+                                (apply str)
+                                keyword)))
 
-(defn- flatten-collect-fields
-  "Collect fields from COLL, and remove duplicates."
-  [coll]
-  (vec (for [field (flatten-fields (collect-fields coll))]
-         (dissoc (field-qualify-name field)
-                 :parent :parent-id :table-name :path)))) ; remove keys we don't need anymore
+(defn- add-aggregate-field-if-needed
+  "Add a Field containing information about an aggregate column such as `:count` or `:distinct` if needed."
+  [{{ag-type :aggregation-type, ag-field :field, :as ag} :aggregation} fields]
+  (if (or (not ag-type)
+          (= ag-type :rows))
+    fields
+    (conj fields (merge {:source :aggregation}
+                        (if (contains? #{:count :distinct} ag-type)
+                          {:base-type          :IntegerField
+                           :field-name         :count
+                           :field-display-name :count
+                           :special-type       :number}
+                          (merge (select-keys ag-field [:base-type :special-type])
+                                 {:field-name         ag-type
+                                  :field-display-name ag-type}))))))
+
+(defn- add-unknown-fields-if-needed
+  "When create info maps for any fields we didn't expect to come back from the query.
+   Ideally, this should never happen, but on the off chance it does we still want to return it in the results."
+  [actual-keys fields]
+  {:pre [(set? actual-keys)
+         (every? keyword? actual-keys)]}
+  (let [expected-keys (set (map :field-name fields))
+        _             (assert (every? keyword? expected-keys))
+        missing-keys  (set/difference actual-keys expected-keys)]
+    (when (seq missing-keys)
+      (log/error (u/format-color 'red "Unknown fields - returned by results but not present in expanded query: %s\nExpected: %s\nActual: %s"
+                   missing-keys expected-keys actual-keys)))
+    (concat fields (for [k missing-keys]
+                     {:base-type          :UnknownField
+                      :special-type       nil
+                      :field-name         k
+                      :field-display-name k}))))
 
 
-;;; # ---------------------------------------- COLUMN RESOLUTION & ORDERING (CORE.LOGIC)  ----------------------------------------
+;;; ## Field Sorting
 
-(defn- field-name°
-  "A relation such that FIELD's name is FIELD-NAME."
-  [field field-name]
-  (all (trace-lvars "field-name°" field field-name)
-       (featurec field {:field-name field-name})))
+;; We sort Fields with a "importance" vector like [source-importance position special-type-importance name]
 
-(defn- make-field-in°
-  "Create a relation such that FIELD has an ID matching one of the Field IDs found in FORM."
-  [form]
-  (let [fields (collect-fields form)]
-    (if-not (seq fields)
-      (constantly fail)
-      (let [ids-domain (apply fd/domain (sort (distinct (map :field-id fields))))]
-        (fn [field]
-          (all (trace-lvars "make-field-in°" field ids-domain)
-               (fresh [id]
-                 (featurec field {:field-id id})
-                 (fd/in id ids-domain))))))))
-
-(defn- breakout-field°
-  "Create a relation such that a FIELD is present in the `:breakout` clause."
-  [{:keys [breakout]}]
-  (make-field-in° breakout))
-
-(defn- explicit-fields-field°
-  "Create a relation such that a FIELD is present in an explicitly specified `:fields` clause."
-  [{:keys [fields-is-implicit fields], :as query}]
-  (if fields-is-implicit
-    (constantly fail)
-    (make-field-in° fields)))
-
-(defn- aggregate-field°
-  "Create a relation such that a FIELD is an aggregate field like `:count` or `:sum`."
-  [{{ag-type :aggregation-type, ag-field :field} :aggregation}]
-  (if-not (contains? #{:avg :count :distinct :stddev :sum} ag-type)
-    (constantly fail)
-    (let [ag-field (if (contains? #{:count :distinct} ag-type)
-                     {:base-type          :IntegerField
-                      :field-name         :count
-                      :field-display-name "count"
-                      :special-type       :number}
-                     (-> ag-field
-                         (select-keys [:base-type :special-type])
-                         (assoc :field-name         (if (= ag-type :distinct) :count
-                                                        ag-type)
-                                :field-display-name (if (= ag-type :distinct) "count"
-                                                        (name ag-type)))))]
-      (fn [out]
-        (all (trace-lvars "aggregate-field°" out)
-             (== out ag-field))))))
-
-(defn- unknown-field°
-  "Relation for handling otherwise unknown Fields. If we can't determine why we're seeing a given Field
-   (i.e., all other relations like `breakout-field°` and `aggregate-field°` fail), this one will succeed
-   as a last resort and bind some fallback properties of the Field, such as giving it a `:base-type` of
-   `:UnknownField`. If this relation succeeds, it generally indicates a bug in the query processor."
-  [field-name out]
-  (all
-   (== out {:base-type          :UnknownField
-            :special-type       nil
-            :field-name         field-name
-            :field-display-name field-name})
-   (trace-lvars "UNKNOWN FIELD - NOT PRESENT IN EXPANDED QUERY (!)" out)))
-
-(defn- field°
-  "Create a relation such that a FIELD is a normal `Field` referenced somewhere in QUERY, or an aggregate
-   Field such as a `:count`."
-  [query]
-  (let [ag-field°         (aggregate-field° query)
-        fields            (flatten-collect-fields query)
-        field-name->field (zipmap (map :field-name fields) fields)
-        normal-field°     (fn [field-name out]
-                            (all (trace-lvars "normal-field°" field-name out)
-                                 (if-let [field (field-name->field field-name)]
-                                   (== out field)
-                                   fail)))]
-    (fn [field-name field]
-      (all (trace-lvars "field°" field-name field)
-           (conda
-             ((normal-field° field-name field))
-             ((ag-field° field)))))))
-
-(def ^:const ^:private field-groups
-  "Relative importance of each clause as a source of Fields for the purposes of ordering our results.
+(defn- source-importance-fn
+  "Create a function to return a importance for FIELD based on its source clause in the query.
    e.g. if a Field comes from a `:breakout` clause, we should return that column first in the results."
-  {:breakout        0
-   :aggregation     1
-   :explicit-fields 2
-   :other           3})
+  [{:keys [fields-is-implicit]}]
+  (fn [{:keys [source]}]
+    (or (when (= source :breakout)
+          :0-breakout)
+        (when (= source :aggregation)
+          :1-aggregation)
+        (when-not fields-is-implicit
+          (when (= source :fields)
+            :2-fields))
+        :3-other)))
 
-(defn- field-group°
-  "Create a relation such that OUT is the corresponding value of `field-groups` for FIELD."
-  [query]
-  (let [breakout° (breakout-field° query)
-        agg°      (aggregate-field° query)
-        xfields°  (explicit-fields-field° query)]
-    (fn [field out]
-      (all (trace-lvars "field-group°" field out)
-           (conda
-             ((breakout° field) (== out (field-groups :breakout)))
-             ((agg° field)      (== out (field-groups :aggregation)))
-             ((xfields° field)  (== out (field-groups :explicit-fields)))
-             (s#                (== out (field-groups :other))))))))
-
-(defn- field-position°
-  "A relation such that FIELD's `:position` is OUT. `:position` is the index of the FIELD in its
-   source clause, e.g. 2 if it was the third Field in the `:fields` clause where we found it."
-  [field out]
-  (all (trace-lvars "field-position°" field out)
-       (featurec field {:position out})))
-
-(def ^:const ^:private special-type-groups
-  "Relative importance of different Field `:special-types` for the purposes of ordering.
+(defn- special-type-importance
+  "Return a importance for FIELD based on the relative importance of its `:special-type`.
    i.e. a Field with special type `:id` should be sorted ahead of all other Fields in the results."
-  {:id    0
-   :name  1
-   :other 2})
+  [{:keys [special-type]}]
+  (condp = special-type
+    :id   :0-id
+    :name :1-name
+          :2-other))
 
-(defn- special-type-group°
-  "A relation such that OUT is the corresponding value of `special-type-groupds` for FIELD."
-  [field out]
-  (conda
-   ((featurec field {:special-type :id})   (== out (special-type-groups :id)))
-   ((featurec field {:special-type :name}) (== out (special-type-groups :name)))
-   (s#                                     (== out (special-type-groups :other)))))
-
-(defn- field-name<
-  "Create a relation such that the name of Field F1 comes alphabetically before the name of Field F2."
+(defn- field-importance-fn
+  "Create a function to return an \"importance\" vector for use in sorting FIELD."
   [query]
-  (fn [f1 f2]
-    (fresh [name-1 name-2]
-      (trace-lvars "field-name<" f1 f2)
-      (field-name° f1 name-1)
-      (field-name° f2 name-2)
-      (matches-seq-order° name-1 name-2 (:result-keys query)))))
+  (let [source-importance (source-importance-fn query)]
+    (fn [{:keys [position clause-position field-name source], :as field}]
+      [(source-importance field)
+       (or position
+           (when (= source :fields)
+             clause-position)
+           Integer/MAX_VALUE)
+       (special-type-importance field)
+       field-name])))
 
-(defn- clause-position<
-  "Create a relation such that Field F1 comes before Field F2 in the clause where they were defined."
-  [query]
-  (let [group°          (field-group° query)
-        breakout-fields (flatten-collect-fields (:breakout query))
-        fields-fields   (flatten-collect-fields (:fields query))]
-    (fn [f1 f2]
-      (all (trace-lvars "clause-position<" f1 f2)
-           (conda
-             ((group° f1 (field-groups :breakout))        (matches-seq-order° f1 f2 breakout-fields))
-             ((group° f1 (field-groups :explicit-fields)) (matches-seq-order° f1 f2 fields-fields)))))))
+(defn- sort-fields
+  "Sort FIELDS by their \"importance\" vectors."
+  [query fields]
+  (let [field-importance (field-importance-fn query)]
+    (log/debug (u/format-color 'yellow "Sorted fields:\n%s" (u/pprint-to-str (sort (map field-importance fields)))))
+    (sort-by field-importance fields)))
 
-(defn- fields-sorted°
-  "Create a relation such that Field F1 should be sorted ahead of Field F2 according to the rules
-   listed at the top of this page."
-  [query]
-  (let [group°      (field-group° query)
-        name<       (field-name< query)
-        clause-pos< (clause-position< query)]
-    (fn [f1 f2]
-      (macrolet [(<-or-== [f & ==-clauses] `(all (trace-lvars "fields-sorted°" ~'f1 ~'f2)
-                                                 (conda
-                                                   ((fresh [v#]
-                                                      (~f ~'f1 v#)
-                                                      (~f ~'f2 v#)) ~@==-clauses)
-                                                   ((fresh [v1# v2#]
-                                                      (~f ~'f1 v1#)
-                                                      (~f ~'f2 v2#)
-                                                      (ar/< v1# v2#)) ~'s#))))]
-        (<-or-== group°
-          (<-or-== field-position°
-            (conda
-              ((group° f1 (field-groups :other)) (<-or-== special-type-group°
-                                                   (name< f1 f2)))
-              ((clause-pos< f1 f2)))))))))
-
-(defn- resolve+order-cols
-  "Use `core.logic` to determine the source of the RESULT-KEYS returned by running a QUERY,
-   and sort them according to the rules at the top of this page."
-  [{:keys [result-keys], :as query}]
-  (when (seq result-keys)
-    (first (let [fields       (vec (lvars (count result-keys)))
-                 known-field° (field° query)]
-             (run 1 [q]
-               (everyg (fn [[result-key field]]
-                         (conda
-                           ((known-field°   result-key field))
-                           ((unknown-field° result-key field))))
-                       (zipmap result-keys fields))
-               (sorted-permutation° (fields-sorted° query) fields q))))))
-
-
-;;; # ---------------------------------------- COLUMN DETAILS  ----------------------------------------
-
-;; Format the results in the way the front-end expects.
-
-(defn- format-col
+(defn- convert-field-to-expected-format
   "Rename keys, provide default values, etc. for FIELD so it is in the format expected by the frontend."
   [field]
-  (merge {:description nil
-          :id          nil
-          :table_id    nil}
-         (-> field
-             (set/rename-keys  {:base-type          :base_type
-                                :field-id           :id
-                                :field-name         :name
-                                :field-display-name :display_name
-                                :schema-name        :schema_name
-                                :special-type       :special_type
-                                :preview-display    :preview_display
-                                :table-id           :table_id})
-             (dissoc :position))))
+  {:pre  [field]
+   :post [(keyword? (:name %))]}
+  (let [defaults {:description nil
+                  :id          nil
+                  :table_id    nil}]
+    (-> (merge defaults field)
+        (update :field-display-name name)
+        (set/rename-keys  {:base-type          :base_type
+                           :field-id           :id
+                           :field-name         :name
+                           :field-display-name :display_name
+                           :schema-name        :schema_name
+                           :special-type       :special_type
+                           :preview-display    :preview_display
+                           :table-id           :table_id})
+        (dissoc :position :clause-position :source :parent :parent-id :table-name))))
 
-(defn- add-fields-extra-info
+(defn- fk-field->dest-fn
+  "Fetch fk info and return a function that returns the destination Field of a given Field."
+  ([fields]
+   (or (fk-field->dest-fn fields (for [{:keys [special_type id]} fields
+                                       :when (= special_type :fk)]
+                                   id))
+       (constantly nil)))
+  ;; Fetch the ForeignKey objects whose origin is in the returned Fields, create a map of origin-field-id->destination-field-id
+  ([fields fk-ids]
+   (when (seq fk-ids)
+     (fk-field->dest-fn fields fk-ids (sel :many :field->field [ForeignKey :origin_id :destination_id]
+                                           :origin_id      [in fk-ids]
+                                           :destination_id [not= nil]))))
+  ;; Fetch the destination Fields referenced by the ForeignKeys
+  ([fields fk-ids id->dest-id]
+   (when (seq (vals id->dest-id))
+     (fk-field->dest-fn fields fk-ids id->dest-id (sel :many :id->fields [Field :id :name :display_name :table_id :description :base_type :special_type :preview_display]
+                                                       :id [in (vals id->dest-id)]))))
+  ;; Return a function that will return the corresponding destination Field for a given Field
+  ([fields fk-ids id->dest-id dest-id->field]
+   (fn [{:keys [id]}]
+     (some-> id id->dest-id dest-id->field))))
+
+(defn- add-extra-info-to-fk-fields
   "Add `:extra_info` about `ForeignKeys` to `Fields` whose `special_type` is `:fk`."
   [fields]
-  ;; Get a sequence of add Field IDs that have a :special_type of FK
-  (let [fk-field-ids            (->> fields
-                                     (filter #(= (:special_type %) :fk))
-                                     (map :id)
-                                     (filter identity))
-        ;; Look up the Foreign keys info if applicable.
-        ;; Build a map of FK Field IDs -> Destination Field IDs
-        field-id->dest-field-id (when (seq fk-field-ids)
-                                  (sel :many :field->field [ForeignKey :origin_id :destination_id], :origin_id [in fk-field-ids], :destination_id [not= nil]))
+  (let [field->dest (fk-field->dest-fn fields)]
+    (for [field fields]
+      (let [{:keys [table_id], :as dest-field} (field->dest field)]
+        (assoc field
+               :target     dest-field
+               :extra_info (if table_id {:target_table_id table_id} {}))))))
 
-        ;; Build a map of Destination Field IDs -> Destination Fields
-        dest-field-id->field    (when (and (seq fk-field-ids)
-                                           (seq (vals field-id->dest-field-id)))
-                                  (sel :many :id->fields [Field :id :name :display_name :table_id :description :base_type :special_type :preview_display], :id [in (vals field-id->dest-field-id)]))]
-
-    ;; Add the :extra_info + :target to every Field. For non-FK Fields, these are just {} and nil, respectively.
-    (vec (for [{field-id :id, :as field} fields]
-           (let [dest-field (when (seq fk-field-ids)
-                              (some->> field-id
-                                       field-id->dest-field-id
-                                       dest-field-id->field))]
-             (assoc field
-                    :target     dest-field
-                    :extra_info (if-not dest-field {}
-                                        {:target_table_id (:table_id dest-field)})))))))
+(defn- resolve-sort-and-format-columns
+  "Collect the Fields referenced in QUERY, sort them according to the rules at the top
+   of this page, format them as expected by the frontend, and return the results."
+  [query result-keys]
+  {:pre [(set? result-keys)]}
+  (when (seq result-keys)
+    (->> (collect-fields query)
+         (map qualify-field-name)
+         (add-aggregate-field-if-needed query)
+         (map (u/rpartial update :field-name keyword))
+         (add-unknown-fields-if-needed result-keys)
+         (sort-fields query)
+         (map convert-field-to-expected-format)
+         (filter (comp (partial contains? result-keys) :name))
+         (m/distinct-by :name)
+         add-extra-info-to-fk-fields)))
 
 (defn post-annotate
   "QP middleware that runs directly after the the query is ran. This stage:
@@ -348,23 +241,12 @@
       expected by the frontend."
   [qp]
   (fn [query]
-    (try
-      (let [results (qp query)
-            cols    (->> (assoc (:query query) :result-keys (vec (sort (keys (first results)))))
-                         resolve+order-cols
-                         (map format-col)
-                         add-fields-extra-info)
-            columns (map :name cols)]
-        {:cols    (vec (for [col cols]
-                         (update col :name name)))
-         :columns (mapv name columns)
-         :rows    (for [row results]
-                    (mapv row columns))}))))
-
-(u/ns-wrap-try-catch! :exclude 'x 'z 'post-annotate)
-
-(require '[metabase.test.util.q :refer [Q]])
-(defn x []
-  (Q aggregate rows of categories use postgres
-     page 1 items 5
-     order id+))
+    (let [results     (qp query)
+          result-keys (set (keys (first results)))
+          cols        (resolve-sort-and-format-columns (:query query) result-keys)
+          columns     (mapv :name cols)]
+      {:cols    (vec (for [col cols]
+                       (update col :name name)))
+       :columns (mapv name columns)
+       :rows    (for [row results]
+                  (mapv row columns))})))

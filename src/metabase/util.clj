@@ -270,23 +270,28 @@
   [^Throwable e]
   (when e
     (when-let [stacktrace (.getStackTrace e)]
-      (->> (map str (.getStackTrace e))
-           (filterv (partial re-find #"metabase"))))))
+      (filterv (partial re-find #"metabase")
+               (map str (.getStackTrace e))))))
 
 (defn wrap-try-catch
   "Returns a new function that wraps F in a `try-catch`. When an exception is caught, it is logged
    with `log/error` and returns `nil`."
-  [f]
-  (fn [& args]
-    (try
-      (apply f args)
-      (catch java.sql.SQLException e
-        (log/error (color/red "Caught exception:\n"
-                              (with-out-str (jdbc/print-sql-exception-chain e)) "\n"
-                              (pprint-to-str (filtered-stacktrace e)))))
-      (catch Throwable e
-        (log/error (color/red "Caught exception: " (or (.getMessage e) e) "\n"
-                              (pprint-to-str (filtered-stacktrace e))))))))
+  ([f]
+   (wrap-try-catch f nil))
+  ([f f-name]
+   (let [exception-message (if f-name
+                             (format "Caught exception in %s: " f-name)
+                             "Caught exception: ")]
+     (fn [& args]
+       (try
+         (apply f args)
+         (catch java.sql.SQLException e
+           (log/error (color/red exception-message "\n"
+                                 (with-out-str (jdbc/print-sql-exception-chain e)) "\n"
+                                 (pprint-to-str (filtered-stacktrace e)))))
+         (catch Throwable e
+           (log/error (color/red exception-message (or (.getMessage e) e) "\n"
+                                 (pprint-to-str (filtered-stacktrace e))))))))))
 
 (defn try-apply
   "Like `apply`, but wraps F inside a `try-catch` block and logs exceptions caught."
@@ -307,7 +312,7 @@
   (let [varr                    (resolve fn-symb)
         {nmspc :ns, symb :name} (meta varr)]
     (println (format "wrap-try-catch! %s/%s" nmspc symb))
-    (intern nmspc symb (wrap-try-catch @varr))))
+    (intern nmspc symb (wrap-try-catch @varr fn-symb))))
 
 (defn ns-wrap-try-catch!
   "Re-intern all functions in NAMESPACE as ones that wrap the originals with a `try-catch`.
