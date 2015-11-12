@@ -166,7 +166,7 @@
                             (or (nil? tracking?) (= "true" tracking?)))
    :site_name             (get :site-name)
    :email_configured      (not (s/blank? (or (get :email-smtp-host) (get-from-env-var :email-smtp-host))))
-   :admin_email           (sel :one :field ['User :email] (k/where {:is_superuser true :is_active true}))})
+   :admin_email           (get :admin-email)})
 
 ;; # IMPLEMENTATION
 

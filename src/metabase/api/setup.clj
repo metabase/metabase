@@ -42,6 +42,7 @@
     (set-user-password (:id new-user) password)
     ;; set a couple preferences
     (setting/set :site-name site_name)
+    (setting/set :admin-email email)
     (setting/set :anon-tracking-enabled (or allow_tracking "true"))
     ;; setup database (if needed)
     (when (driver/is-engine? engine)

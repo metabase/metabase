@@ -4,6 +4,7 @@
             [metabase.db :refer :all]
             [metabase.http-client :as http]
             (metabase.models [session :refer [Session]]
+                             [setting :as setting]
                              [user :refer [User]])
             [metabase.setup :as setup]
             (metabase.test [data :refer :all]
@@ -14,10 +15,11 @@
 ;; Check that we can create a new superuser via setup-token
 (let [user-name (random-name)]
   (expect-eval-actual-first
-    (match-$ (->> (sel :one User :email (str user-name "@metabase.com"))
-               (:id)
-               (sel :one Session :user_id))
+    [(match-$ (->> (sel :one User :email (str user-name "@metabase.com"))
+                  (:id)
+                  (sel :one Session :user_id))
       {:id $id})
+     (str user-name "@metabase.com")]
     (let [resp (http/client :post 200 "setup" {:token (setup/token-create)
                                                :prefs {:site_name "Metabase Test"}
                                                :user  {:first_name user-name
@@ -27,7 +29,7 @@
       ;; reset our setup token
       (setup/token-create)
       ;; return api response
-      resp)))
+      [resp (setting/get :admin-email)])))
 
 
 ;; Test input validations

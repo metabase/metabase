@@ -32,6 +32,8 @@
 
 (defsetting -site-url "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"")
 
+(defsetting admin-email "The email address users should be referred to if they encounter a problem.")
+
 (defsetting anon-tracking-enabled "Enable the collection of anonymous usage data in order to help Metabase improve." "true")
 
 (defn site-url
