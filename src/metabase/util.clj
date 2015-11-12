@@ -3,10 +3,10 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.pprint :refer [pprint]]
             [clojure.tools.logging :as log]
-            [colorize.core :as color]
-            [medley.core :as m]
+            [clj-time.coerce :as coerce]
             [clj-time.format :as time]
-            [clj-time.coerce :as coerce])
+            [colorize.core :as color]
+            [medley.core :as m])
   (:import (java.net Socket
                      InetSocketAddress
                      InetAddress)
@@ -237,10 +237,13 @@
 
 (defn format-color
   "Like `format`, but uses a function in `colorize.core` to colorize the output.
-   COLOR-SYMB should be a symbol like `green`.
+   COLOR-SYMB should be a quoted symbol like `green`, `red`, `yellow`, `blue`,
+   `cyan`, `magenta`, etc. See the entire list of avaliable colors
+   [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj).
 
      (format-color 'red \"Fatal error: %s\" error-message)"
   [color-symb format-string & args]
+  {:pre [(symbol? color-symb)]}
   ((ns-resolve 'colorize.core color-symb) (apply format format-string args)))
 
 (defn pprint-to-str
@@ -267,31 +270,81 @@
   [^Throwable e]
   (when e
     (when-let [stacktrace (.getStackTrace e)]
-      (->> (map str (.getStackTrace e))
-           (filterv (partial re-find #"metabase"))))))
+      (filterv (partial re-find #"metabase")
+               (map str (.getStackTrace e))))))
 
-(defmacro try-apply
-  "Call F with PARAMS inside a try-catch block and log exceptions caught."
-  [f & params]
-  `(try
-     (~f ~@params)
-     (catch java.sql.SQLException e#
-       (log/error (color/red ~(format "Caught exception in %s: " f)
-                             (with-out-str (jdbc/print-sql-exception-chain e#))
-                             (pprint-to-str (filtered-stacktrace e#)))))
-     (catch Throwable e#
-       (log/error (color/red ~(format "Caught exception in %s: " f)
-                             (or (.getMessage e#) e#)
-                             (pprint-to-str (filtered-stacktrace e#)))))))
+(defn wrap-try-catch
+  "Returns a new function that wraps F in a `try-catch`. When an exception is caught, it is logged
+   with `log/error` and returns `nil`."
+  ([f]
+   (wrap-try-catch f nil))
+  ([f f-name]
+   (let [exception-message (if f-name
+                             (format "Caught exception in %s: " f-name)
+                             "Caught exception: ")]
+     (fn [& args]
+       (try
+         (apply f args)
+         (catch java.sql.SQLException e
+           (log/error (color/red exception-message "\n"
+                                 (with-out-str (jdbc/print-sql-exception-chain e)) "\n"
+                                 (pprint-to-str (filtered-stacktrace e)))))
+         (catch Throwable e
+           (log/error (color/red exception-message (or (.getMessage e) e) "\n"
+                                 (pprint-to-str (filtered-stacktrace e))))))))))
+
+(defn try-apply
+  "Like `apply`, but wraps F inside a `try-catch` block and logs exceptions caught."
+  [^clojure.lang.IFn f & args]
+  (apply (wrap-try-catch f) args))
+
+(defn wrap-try-catch!
+  "Re-intern FN-SYMB as a new fn that wraps the original with a `try-catch`. Intended for debugging.
+
+     (defn z [] (throw (Exception. \"!\")))
+     (z) ; -> exception
+
+     (wrap-try-catch! 'z)
+     (z) ; -> nil; exception logged with log/error"
+  [fn-symb]
+  {:pre [(symbol? fn-symb)
+         (fn? @(resolve fn-symb))]}
+  (let [varr                    (resolve fn-symb)
+        {nmspc :ns, symb :name} (meta varr)]
+    (println (format "wrap-try-catch! %s/%s" nmspc symb))
+    (intern nmspc symb (wrap-try-catch @varr fn-symb))))
+
+(defn ns-wrap-try-catch!
+  "Re-intern all functions in NAMESPACE as ones that wrap the originals with a `try-catch`.
+   Defaults to the current namespace. You may optionally exclude a set of symbols using the kwarg `:exclude`.
+
+     (ns-wrap-try-catch!)
+     (ns-wrap-try-catch! 'metabase.driver)
+     (ns-wrap-try-catch! 'metabase.driver :exclude 'query-complete)
+
+   Intended for debugging."
+  {:arglists '([namespace? :exclude & excluded-symbs])}
+  [& args]
+  (let [[nmspc args] (optional #(try-apply the-ns [%]) args *ns*)
+        excluded     (when (= (first args) :exclude)
+                       (set (rest args)))]
+    (doseq [[symb varr] (ns-interns nmspc)]
+      (when (fn? @varr)
+        (when-not (contains? excluded symb)
+          (wrap-try-catch! (symbol (str (ns-name nmspc) \/ symb))))))))
+
+(defn deref-with-timeout
+  "Call `deref` on a FUTURE and throw an exception if it takes more than TIMEOUT-MS."
+  [futur timeout-ms]
+  (let [result (deref futur timeout-ms ::timeout)]
+    (when (= result ::timeout)
+      (throw (Exception. (format "Timed out after %d milliseconds." timeout-ms))))
+    result))
 
 (defmacro with-timeout
   "Run BODY in a `future` and throw an exception if it fails to complete after TIMEOUT-MS."
   [timeout-ms & body]
-  `(let [future# (future ~@body)
-         result# (deref future# ~timeout-ms :timeout)]
-     (when (= result# :timeout)
-       (throw (Exception. (format "Timed out after %d milliseconds." ~timeout-ms))))
-     result#))
+  `(deref-with-timeout (future ~@body) ~timeout-ms))
 
 (defmacro cond-as->
   "Anaphoric version of `cond->`. Binds EXPR to NAME through a series
