@@ -7,10 +7,6 @@ var MetabaseServices = angular.module('metabase.metabase.services', [
 
 MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', function($resource, $cookies, MetabaseCore) {
     return $resource('/api/meta', {}, {
-        db_form_input: {
-            url: '/api/database/form_input',
-            method: 'GET'
-        },
         db_list: {
             url: '/api/database/?org=:orgId',
             method: 'GET',
