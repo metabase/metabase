@@ -1,12 +1,14 @@
 (ns metabase.email
   (:require [clojure.tools.logging :as log]
             [postal.core :as postal]
+            [postal.support :refer [make-props]]
             [metabase.models.setting :refer [defsetting]]
-            [metabase.util :as u]))
+            [metabase.util :as u])
+  (:import [javax.mail Session]))
 
 ;; ## CONFIG
 
-(defsetting email-from-address "Email address you want to use as the sender of Metabase system notifications." "notifications@metabase.com")
+(defsetting email-from-address "Email address you want to use as the sender of Metabase." "notifications@metabase.com")
 (defsetting email-smtp-host "The address of the SMTP server that handles your emails.")
 (defsetting email-smtp-username "SMTP username.")
 (defsetting email-smtp-password "SMTP password.")
@@ -20,6 +22,24 @@
    Provided so you can swap this out with an \"inbox\" for test purposes."
   postal/send-message)
 
+(def ^:private smtp-details
+  "Get our application SMTP connection details from settings"
+  (delay
+    {:host     (email-smtp-host)
+     :user     (email-smtp-username)
+     :pass     (email-smtp-password)
+     :port     (email-smtp-port)
+     :security (email-smtp-security)
+     :from     (email-from-address)}))
+
+(defn- humanize-error-messages
+  ""
+  [response]
+  ;; bad host = "Unknown SMTP host: foobar"
+  ;; host seems valid, but host/port failed connection = "Could not connect to SMTP host: localhost, port: 123"
+  ;; mandrill saying "Invalid Addresses" when wrong credentials provided
+  )
+
 (defn send-message
   "Send an email to one or more RECIPIENTS.
    RECIPIENTS is a sequence of email addresses; MESSAGE-TYPE must be either `:text` or `:html`.
@@ -31,34 +51,51 @@
       :message      \"How are you today?\")
 
    Upon success, this returns the MESSAGE that was just sent."
-  [& {:keys [subject recipients message-type message]}]
+  [& {:keys [details subject recipients message-type message]
+      :or   {details @smtp-details}}]
   {:pre [(string? subject)
          (sequential? recipients)
          (every? u/is-email? recipients)
          (contains? #{:text :html} message-type)
-         (string? message)]}
+         (string? message)
+         (map? details)]}
   (try
     ;; Check to make sure all valid settings are set!
-    (when-not (email-smtp-host)
+    (when-not (:host details)
       (throw (Exception. "SMTP host is not set.")))
     ;; Now send the email
-    (let [{error :error error-message :message} (*send-email-fn* (-> {:host (email-smtp-host)
-                                                                      :user (email-smtp-username)
-                                                                      :pass (email-smtp-password)
-                                                                      :port (Integer/parseInt (email-smtp-port))}
-                                                                     (merge (case (keyword (email-smtp-security))
-                                                                              :tls {:tls true}
-                                                                              :ssl {:ssl true}
-                                                                              {})))
-                                                                 {:from    (email-from-address)
-                                                                  :to      recipients
-                                                                  :subject subject
-                                                                  :body    (case message-type
-                                                                             :text message
-                                                                             :html [{:type    "text/html; charset=utf-8"
-                                                                                     :content message}])})]
-      (when-not (= error :SUCCESS)
-        (throw (Exception. (format "Emails failed to send: error: %s; message: %s" error error-message))))
-      message)
+    (let [{:keys [from port security]} details]
+      (*send-email-fn* (-> (assoc details :port (Integer/parseInt port))
+                           (merge (case (keyword security)
+                                    :tls {:tls true}
+                                    :ssl {:ssl true}
+                                    {})))
+                       {:from    from
+                        :to      recipients
+                        :subject subject
+                        :body    (case message-type
+                                   :text message
+                                   :html [{:type    "text/html; charset=utf-8"
+                                           :content message}])}))
     (catch Throwable e
-      (log/warn "Failed to send email: " (.getMessage e)))))
+      (log/warn "Failed to send email: " (.getMessage e))
+      {:error   :ERROR
+       :message (.getMessage e)})))
+
+(defn test-connection
+  ""
+  [{:keys [host port user pass sender ssl] :as details}]
+  {:pre [(string? host)
+         (integer? port)]}
+  (try
+    (let [proto   (if ssl "smtps" "smtp")
+          session (doto (Session/getInstance (make-props sender (assoc details :proto proto)))
+                    (.setDebug false))]
+      (with-open [transport (.getTransport session proto)]
+        (.connect transport host port user pass)))
+    {:error   :SUCCESS
+     :message nil}
+    (catch Exception e
+      (println "err" (.getMessage e))
+      {:error   :ERROR
+       :message (.getMessage e)})))
