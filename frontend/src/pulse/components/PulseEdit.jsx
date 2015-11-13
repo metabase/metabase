@@ -40,10 +40,12 @@ export default class PulseEdit extends Component {
 
     async save() {
         await this.props.dispatch(saveEditingPulse());
+        this.props.onChangeLocation("/pulse/"+this.props.pulse.id);
     }
 
     async delete() {
         await this.props.dispatch(deletePulse(this.props.pulse.id));
+        this.props.onChangeLocation("/pulse");
     }
 
     setPulse(pulse) {

@@ -36,7 +36,11 @@ Pulse.config(['$routeProvider', function ($routeProvider) {
         controller: ['$scope', '$location', '$route', '$routeParams',
             function($scope, $location, $route, $routeParams) {
                 $scope.Component = PulseEditApp;
-                $scope.props = {};
+                $scope.props = {
+                    onChangeLocation: function(url) {
+                        $scope.$apply(() => $location.url(url));
+                    }
+                };
                 $scope.store = finalCreateStore(reducer, {});
             }
         ]
@@ -48,7 +52,10 @@ Pulse.config(['$routeProvider', function ($routeProvider) {
             function($scope, $location, $route, $routeParams) {
                 $scope.Component = PulseEditApp;
                 $scope.props = {
-                    pulseId: parseInt($routeParams.pulseId)
+                    pulseId: parseInt($routeParams.pulseId),
+                    onChangeLocation: function(url) {
+                        $scope.$apply(() => $location.url(url));
+                    }
                 };
                 $scope.store = finalCreateStore(reducer, {});
             }
