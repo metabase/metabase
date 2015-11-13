@@ -285,7 +285,7 @@
    :distinct "count"
    :sum      "sum"})
 
-(defn- ag-type->group-by-clause [{:keys [aggregation-type field]}]
+(defn- aggregation->rvalue [{:keys [aggregation-type field]}]
   (if-not field
     (case aggregation-type
       :count {$sum 1})
@@ -298,24 +298,32 @@
       :sum      {$sum (->rvalue field)})))
 
 (defn- handle-breakout+aggregation [{breakout-fields :breakout, {ag-type :aggregation-type, :as aggregation} :aggregation} pipeline]
-  (when (and ag-type
-             (not= ag-type :rows))
-    (let [ag-field-name (ag-type->field-name ag-type)]
-      (filter identity
-              [(when (seq breakout-fields)
-                 {$project {"_id"      "$_id"
-                            "___group" (into {} (for [field breakout-fields] ; create a totally sweet made-up column called __group
-                                                  {(->lvalue field) (->rvalue field)}))}}) ; to store the fields we'd like to group by
-               {$group {"_id"         (when (seq breakout-fields)
-                                        "$___group")
-                        ag-field-name (ag-type->group-by-clause aggregation)}}
-               {$sort {"_id" 1}}
-               {$project (merge {"_id"         false
-                                 ag-field-name (if (= ag-type :distinct)
-                                                 {$size "$count"} ; HACK
-                                                 true)}
-                                (into {} (for [field breakout-fields]
-                                           {(->lvalue field) (format "$_id.%s" (->lvalue field))})))}]))))
+  (let [aggregation? (and ag-type
+                          (not= ag-type :rows))
+        breakout?    (seq breakout-fields)]
+    (when (or aggregation? breakout?)
+      (let [ag-field-name (ag-type->field-name ag-type)]
+        (filter identity
+                [ ;; create a totally sweet made-up column called __group to store the fields we'd like to group by
+                 (when breakout?
+                   {$project {"_id"      "$_id"
+                              "___group" (into {} (for [field breakout-fields]
+                                                    {(->lvalue field) (->rvalue field)}))}})
+                 ;; Now project onto the __group and the aggregation rvalue
+                 {$group (merge {"_id" (when breakout?
+                                         "$___group")}
+                                (when aggregation
+                                  {ag-field-name (aggregation->rvalue aggregation)}))}
+                 ;; Sort by _id (___group)
+                 {$sort {"_id" 1}}
+                 ;; now project back to the fields we expect
+                 {$project (merge {"_id" false}
+                                  (when aggregation?
+                                    {ag-field-name (if (= ag-type :distinct)
+                                                     {$size "$count"} ; HACK
+                                                     true)})
+                                  (into {} (for [field breakout-fields]
+                                             {(->lvalue field) (format "$_id.%s" (->lvalue field))})))}])))))
 
 
 ;;; ### order-by
@@ -412,6 +420,6 @@
       (log-monger-form generated-pipeline)
       (->> (with-mongo-connection [_ database]
              (mc/aggregate *mongo-connection* source-table-name generated-pipeline
-                           :allow-disk-use (not (config/is-test?))))
+                           :allow-disk-use true))
            unescape-names
            unstringify-dates))))

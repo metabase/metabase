@@ -113,7 +113,6 @@
   (let [expected-keys (set (map :field-name fields))
         _             (assert (every? keyword? expected-keys))
         missing-keys  (set/difference actual-keys expected-keys)]
-
     (when (seq missing-keys)
       (log/warn (u/format-color 'yellow "There are fields we weren't expecting in the results: %s\nExpected: %s\nActual: %s"
                   missing-keys expected-keys actual-keys)))
@@ -206,7 +205,7 @@
                                            :destination_id [not= nil]))))
   ;; Fetch the destination Fields referenced by the ForeignKeys
   ([fields fk-ids id->dest-id]
-   (when (seq (vals id->dest-id))
+   (when (seq id->dest-id)
      (fk-field->dest-fn fields fk-ids id->dest-id (sel :many :id->fields [Field :id :name :display_name :table_id :description :base_type :special_type :preview_display]
                                                        :id [in (vals id->dest-id)]))))
   ;; Return a function that will return the corresponding destination Field for a given Field

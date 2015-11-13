@@ -8,7 +8,7 @@
 ;; Check that setting a Field's special_type to :category will cause a corresponding FieldValues to be created asynchronously
 (expect
     [nil
-     75
+     40
      :done]
   (let [orig-special-type      (sel :one :field [Field :special_type] :id (id :categories :name))
         set-field-special-type (fn [special-type]

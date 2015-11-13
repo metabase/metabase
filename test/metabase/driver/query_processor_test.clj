@@ -430,10 +430,20 @@
      breakout user_id
      order user_id+))
 
+;; ### BREAKOUT w/o AGGREGATION
+;; This should act as a "distinct values" query and return ordered results
+(qp-expect-with-all-datasets
+    {:cols    [(checkins-col :user_id)]
+     :columns [(format-name "user_id")]
+     :rows    [[1] [2] [3] [4] [5] [6] [7] [8] [9] [10]]}
+  (Q breakout user_id of checkins
+     limit 10))
+
+
 ;; ### "BREAKOUT" - MULTIPLE COLUMNS W/ IMPLICT "ORDER_BY"
 ;; Fields should be implicitly ordered :ASC for all the fields in `breakout` that are not specified in `order_by`
 (qp-expect-with-all-datasets
-    {:rows    [[1 1 1] [1 5 1] [1 7 1] [1 10 1] [1 13 1] [1 16 1] [1 26 1] [1 31 1] [1 35 1] [1 36 1]],
+    {:rows    [[1 1 1] [1 5 1] [1 7 1] [1 10 1] [1 13 1] [1 16 1] [1 26 1] [1 31 1] [1 35 1] [1 36 1]]
      :columns [(format-name "user_id")
                (format-name "venue_id")
                "count"]
@@ -821,8 +831,7 @@
    [897 "Wearing a Biggie Shirt"]
    [499 "In the Expa Office"]]
   (Q dataset tupac-sightings
-     return rows
-     of sightings
+     return rows of sightings
      fields id category_id->categories.name
      order timestamp-
      limit 10))

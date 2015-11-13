@@ -166,7 +166,7 @@
        :hour    (trunc-with-format "yyyy-MM-dd'T'HH:00:00")
        :day     (trunc-with-format "yyyy-MM-dd")
        :week    (let [day-of-week (date-extract :day-of-week date)
-                      date        (relative-date :day (- day-of-week) date)]
+                      date        (relative-date :day (- (dec day-of-week)) date)]
                   (trunc-with-format "yyyy-MM-dd" date))
        :month   (trunc-with-format "yyyy-MM")
        :quarter (let [year    (date-extract :year date)
@@ -426,9 +426,20 @@
                                  (pprint-to-str (filtered-stacktrace e))))))))))
 
 (defn try-apply
-  "Like `apply`, but wraps F inside a `try-catch` block and logs exceptions caught."
+  "Like `apply`, but wraps F inside a `try-catch` block and logs exceptions caught.
+   (This is actaully more flexible than `apply` -- the last argument doesn't have to be
+   a sequence:
+
+     (try-apply vector :a :b [:c :d]) -> [:a :b :c :d]
+     (apply vector :a :b [:c :d])     -> [:a :b :c :d]
+     (try-apply vector :a :b :c :d)   -> [:a :b :c :d]
+     (apply vector :a :b :c :d)       -> Not ok - :d is not a sequence
+
+   This allows us to use `try-apply` in more situations than we'd otherwise be able to."
   [^clojure.lang.IFn f & args]
-  (apply (wrap-try-catch f) args))
+  (apply (wrap-try-catch f) (concat (butlast args) (if (sequential? (last args))
+                                                     (last args)
+                                                     [(last args)]))))
 
 (defn wrap-try-catch!
   "Re-intern FN-SYMB as a new fn that wraps the original with a `try-catch`. Intended for debugging.

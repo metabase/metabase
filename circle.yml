@@ -8,6 +8,12 @@ machine:
     version: 2.7.3
 dependencies:
   override:
+    - sudo apt-get purge mongodb-org*
+    - sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
+    - echo "deb http://repo.mongodb.org/apt/ubuntu precise/mongodb-org/3.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.0.list
+    - sudo apt-get update
+    - sudo apt-get install -y mongodb-org
+    - sudo service mongod restart
     - lein deps
     - pip install awscli==1.7.3
 database:

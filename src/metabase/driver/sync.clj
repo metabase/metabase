@@ -357,31 +357,22 @@
 
 ;; ## sync-field
 
-(defmacro ^:private sync-field->>
-  "Like `->>`, but wrap each form with `try-apply`, and pass FIELD along to the next if the previous form returned `nil`."
-  [field & fns]
-  `(->> ~field
-        ~@(->> fns
-               (map (fn [f]
-                      (let [[f & args] (if (list? f) f [f])]
-                        `((fn [field#]
-                             (or (u/try-apply ~f ~@args field#)
-                                 field#)))))))))
-
 (defn- sync-field!
   "Sync the metadata for FIELD, marking urls, categories, etc. when applicable."
   [driver field]
-  {:pre [driver
-         field]}
-  (sync-field->> field
-                 (maybe-driver-specific-sync-field! driver)
-                 set-field-display-name-if-needed!
-                 (mark-url-field! driver)
-                 (mark-no-preview-display-field! driver)
-                 mark-category-field-or-update-field-values!
-                 (mark-json-field! driver)
-                 auto-assign-field-special-type-by-name!
-                 (sync-field-nested-fields! driver)))
+  {:pre [driver field]}
+  (loop [field field, [f & more] [(partial maybe-driver-specific-sync-field! driver)
+                                  set-field-display-name-if-needed!
+                                  (partial mark-url-field! driver)
+                                  (partial mark-no-preview-display-field! driver)
+                                  mark-category-field-or-update-field-values!
+                                  (partial mark-json-field! driver)
+                                  auto-assign-field-special-type-by-name!
+                                  (partial sync-field-nested-fields! driver)]]
+    (let [field (or (u/try-apply f field)
+                    field)]
+      (when (seq more)
+        (recur field more)))))
 
 
 ;; Each field-syncing function below should return FIELD with any updates that we made, or nil.
@@ -453,7 +444,7 @@
 
 ;; ### mark-category-field-or-update-field-values!
 
-(def ^:const ^:private low-cardinality-threshold
+(def ^:const low-cardinality-threshold
   "Fields with less than this many distinct values should automatically be marked with `special_type = :category`."
   40)
 
