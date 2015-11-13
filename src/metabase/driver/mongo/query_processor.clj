@@ -11,7 +11,8 @@
                     [db :as mdb]
                     [operators :refer :all]
                     [query :refer :all])
-            [metabase.db :refer :all]
+            (metabase [config :as config]
+                      [db :refer :all])
             [metabase.driver.query-processor :as qp]
             (metabase.driver.query-processor [annotate :as annotate]
                                              [interface :refer [qualified-name-components map->DateTimeField map->DateTimeValue]])
@@ -411,6 +412,6 @@
       (log-monger-form generated-pipeline)
       (->> (with-mongo-connection [_ database]
              (mc/aggregate *mongo-connection* source-table-name generated-pipeline
-                           :allow-disk-use true))
+                           :allow-disk-use (not (config/is-test?))))
            unescape-names
            unstringify-dates))))
