@@ -10,8 +10,11 @@ export default class SettingsEmailForm extends Component {
 
     constructor(props, context) {
         super(props, context);
+
         this.state = {
             formData: {},
+            sendingEmail: "default",
+            submitting: "default",
             valid: false,
             validationErrors: {}
         }
@@ -20,8 +23,39 @@ export default class SettingsEmailForm extends Component {
     static propTypes = {
         elements: PropTypes.object,
         formErrors: PropTypes.object,
-        submitFn: PropTypes.func.isRequired
+        submitFn: PropTypes.func.isRequired,
+        testEmailFn: PropTypes.func.isRequired
     };
+
+    componentWillMount() {
+        // this gives us an opportunity to load up our formData with any existing values for elements
+        let formData = {};
+        this.props.elements.forEach(function(element) {
+            formData[element.key] = element.value;
+        });
+
+        this.setState({formData});
+    }
+
+    componentDidMount() {
+        this.validateForm();
+    }
+
+    componentDidUpdate() {
+        this.validateForm();
+    }
+
+    setSubmitting(submitting) {
+        this.setState({submitting});
+    }
+
+    setSendingEmail(sendingEmail) {
+        this.setState({sendingEmail});
+    }
+
+    setFormErrors(formErrors) {
+        this.setState({formErrors});
+    }
 
     // return null if element passes validation, otherwise return an error message
     validateElement([validationType, validationMessage], value, element) {
@@ -45,11 +79,9 @@ export default class SettingsEmailForm extends Component {
         elements.forEach(function(element) {
             // test for required elements
             if (element.required && MetabaseUtils.isEmpty(formData[element.key])) {
-                // TODO: allow the element to indicate if it wants to report failed requirements as validationErrors
                 valid = false;
             }
 
-            // TODO: other validations such as email, value type, length, etc
             if (element.validations) {
                 element.validations.forEach(function(validation) {
                     validationErrors[element.key] = this.validateElement(validation, formData[element.key], element);
@@ -63,27 +95,19 @@ export default class SettingsEmailForm extends Component {
         }
     }
 
-    componentWillMount() {
-        // this gives us an opportunity to load up our formData with any existing values for elements
-        let formData = {};
-        this.props.elements.forEach(function(element) {
-            formData[element.key] = element.value;
-        });
-
-        this.setState({formData});
-    }
-
-    componentDidMount() {
-        this.validateForm();
-    }
-
-    componentDidUpdate() {
-        this.validateForm();
-    }
-
     handleChangeEvent(element, value, event) {
-        // TODO: we can handle some value typing here if defined in the element
-        this.setState({ formData: { ...this.state.formData, [element.key]: value }});
+        this.setState({ formData: { ...this.state.formData, [element.key]: (MetabaseUtils.isEmpty(value)) ? null : value }});
+    }
+
+    sendTestEmail(e) {
+        e.preventDefault();
+
+        let { testEmailFn } = this.props;
+        let { formData, valid } = this.state;
+
+        if (valid) {
+            testEmailFn(formData);
+        }
     }
 
     formSubmitted(e) {
@@ -97,13 +121,9 @@ export default class SettingsEmailForm extends Component {
         }
     }
 
-    // TODO: make the render function configurable
     render() {
-        let { elements, formErrors } = this.props;
-        let { formData, valid, validationErrors } = this.state;
-        console.log('formErrors=', formErrors);
-        console.log('formData=', formData);
-        console.log('validationErrors=', validationErrors);
+        let { elements } = this.props;
+        let { formData, formErrors, sendingEmail, submitting, valid, validationErrors } = this.state;
 
         let settings = elements.map((element, index) => {
             // merge together data from a couple places to provide a complete view of the Element state
@@ -116,15 +136,34 @@ export default class SettingsEmailForm extends Component {
                         handleChangeEvent={this.handleChangeEvent.bind(this)} />
         });
 
+        let sendTestButtonStates = {
+            default: "Send test email",
+            working: "Sending...",
+            success: "Sent!"
+        };
+
+        let saveSettingsButtonStates = {
+            default: "Save changes",
+            working: "Saving...",
+            success: "Changes saved!"
+        };
+
+        let disabled = (!valid || submitting !== "default" || sendingEmail !== "default"),
+            emailButtonText = sendTestButtonStates[sendingEmail],
+            saveButtonText = saveSettingsButtonStates[submitting];
+
         return (
-            <form onSubmit={this.formSubmitted.bind(this)} noValidate>
+            <form noValidate>
                 <ul>
                     {settings}
                     <li className="m2 mb4">
-                        <button className={cx("Button", {"Button--primary": valid})} disabled={!valid}>
-                            Save changes
+                        <button className={cx("Button mr2", {"Button--success-new": sendingEmail === "success"})} disabled={disabled} onClick={this.sendTestEmail.bind(this)}>
+                            {emailButtonText}
                         </button>
-                        { formErrors && formErrors.message ? <span>{formErrors.message}</span> : null}
+                        <button className={cx("Button", {"Button--primary": !disabled}, {"Button--success-new": submitting === "success"})} disabled={disabled} onClick={this.formSubmitted.bind(this)}>
+                            {saveButtonText}
+                        </button>
+                        { formErrors && formErrors.message ? <span className="pl2 text-error text-bold">{formErrors.message}</span> : null}
                     </li>
                 </ul>
             </form>

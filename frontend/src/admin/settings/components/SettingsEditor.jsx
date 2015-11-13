@@ -14,6 +14,7 @@ export default class SettingsEditor extends Component {
         this.selectSection = this.selectSection.bind(this);
         this.updateSetting = this.updateSetting.bind(this);
         this.updateEmailSettings = this.updateEmailSettings.bind(this);
+        this.sendTestEmail = this.sendTestEmail.bind(this);
 
         this.state = {
             currentSection: 0
@@ -23,7 +24,9 @@ export default class SettingsEditor extends Component {
     static propTypes = {
         initialSection: PropTypes.number,
         sections: PropTypes.object.isRequired,
-        updateSetting: PropTypes.func.isRequired
+        updateSetting: PropTypes.func.isRequired,
+        updateEmailSettings: PropTypes.func.isRequired,
+        sendTestEmail: PropTypes.func.isRequired
     };
 
     componentWillMount() {
@@ -48,12 +51,45 @@ export default class SettingsEditor extends Component {
         });
     }
 
+    handleFormErrors(error) {
+        // parse and format
+        let formErrors = {};
+        if (error.data && error.data.message) {
+            formErrors.message = error.data.message;
+        } else {
+            formErrors.message = "Looks like we ran into some problems";
+        }
+
+        if (error.data && error.data.errors) {
+            formErrors.elements = error.data.errors;
+        }
+
+        this.refs.emailForm.setFormErrors(formErrors);
+    }
+
     updateEmailSettings(settings) {
-        console.log('updating email settings', settings);
-        this.props.updateSettings(settings).then(() => {
-            console.log("settings updated!");
+        this.refs.emailForm.setFormErrors(null);
+        this.refs.emailForm.setSubmitting("working");
+
+        this.props.updateEmailSettings(settings).then(() => {
+            this.refs.emailForm.setSubmitting("success");
+            setTimeout(() => this.refs.emailForm.setSubmitting("default"), 3000);
         }, (error) => {
-            console.log("error updating settings!", error);
+            this.refs.emailForm.setSubmitting("default");
+            this.handleFormErrors(error);
+        });
+    }
+
+    sendTestEmail(settings) {
+        this.refs.emailForm.setFormErrors(null);
+        this.refs.emailForm.setSendingEmail("working");
+
+        this.props.sendTestEmail(settings).then(() => {
+            this.refs.emailForm.setSendingEmail("success");
+            setTimeout(() => this.refs.emailForm.setSendingEmail("default"), 3000);
+        }, (error) => {
+            this.refs.emailForm.setSendingEmail("default");
+            this.handleFormErrors(error);
         });
     }
 
@@ -68,8 +104,10 @@ export default class SettingsEditor extends Component {
             return (
                 <div className="MetadataTable px2 flex-full">
                     <SettingsEmailForm
+                        ref="emailForm"
                         elements={section.settings}
-                        submitFn={this.updateEmailSettings} />
+                        submitFn={this.updateEmailSettings}
+                        testEmailFn={this.sendTestEmail} />
                 </div>
             );
         } else {

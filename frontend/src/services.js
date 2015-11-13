@@ -377,6 +377,21 @@ CoreServices.factory('Settings', ['$resource', function($resource) {
     });
 }]);
 
+CoreServices.factory('Email', ['$resource', function($resource) {
+    return $resource('/api/email', {}, {
+
+        updateSettings: {
+            url: '/api/email/',
+            method: 'PUT'
+        },
+
+        sendTest: {
+            url: '/api/email/test',
+            method: 'POST'
+        }
+    });
+}]);
+
 CoreServices.factory('Revision', ['$resource', function($resource) {
     return $resource('/api/revision', {}, {
         list: {

@@ -107,8 +107,8 @@ const SECTIONS = [
     }
 ];
 
-SettingsAdminControllers.controller('SettingsEditor', ['$scope', '$location', 'Settings', 'AppState', 'settings',
-    function($scope, $location, Settings, AppState, settings) {
+SettingsAdminControllers.controller('SettingsEditor', ['$scope', '$location', 'Settings', 'Email', 'AppState', 'settings',
+    function($scope, $location, Settings, Email, AppState, settings) {
         $scope.SettingsEditor = SettingsEditor;
 
         if ('section' in $location.search()) {
@@ -122,9 +122,13 @@ SettingsAdminControllers.controller('SettingsEditor', ['$scope', '$location', 'S
             AppState.refreshSiteSettings();
         };
 
-        $scope.updateSettings = async function(settings) {
-            await Settings.setAll(settings).$promise;
+        $scope.updateEmailSettings = async function(settings) {
+            await Email.updateSettings(settings).$promise;
             AppState.refreshSiteSettings();
+        }
+
+        $scope.sendTestEmail = async function(settings) {
+            await Email.sendTest(settings).$promise;
         }
 
         let settingsByKey = _.groupBy(settings, 'key');
