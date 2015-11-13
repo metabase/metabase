@@ -19,6 +19,7 @@ const User = new AngularResourceProxy("User", ["list"]);
 export const FETCH_PULSES = 'FETCH_PULSES';
 export const SET_EDITING_PULSE = 'SET_EDITING_PULSE';
 export const UPDATE_EDITING_PULSE = 'UPDATE_EDITING_PULSE';
+export const SAVE_PULSE = 'SAVE_PULSE';
 export const SAVE_EDITING_PULSE = 'SAVE_EDITING_PULSE';
 export const DELETE_PULSE = 'DELETE_PULSE';
 
@@ -50,6 +51,12 @@ export const setEditingPulse = createThunkAction(SET_EDITING_PULSE, function(id)
 });
 
 export const updateEditingPulse = createAction(UPDATE_EDITING_PULSE);
+
+export const savePulse = createThunkAction(SAVE_PULSE, function(pulse) {
+    return async function(dispatch, getState) {
+        return await Pulse.update(pulse);
+    };
+});
 
 export const saveEditingPulse = createThunkAction(SAVE_EDITING_PULSE, function() {
     return async function(dispatch, getState) {

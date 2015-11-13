@@ -6,6 +6,7 @@ import {
     SET_EDITING_PULSE,
     UPDATE_EDITING_PULSE,
     SAVE_EDITING_PULSE,
+    SAVE_PULSE,
     FETCH_CARDS,
     FETCH_USERS,
     FETCH_PULSE_FORM_INPUT
@@ -13,6 +14,7 @@ import {
 
 export const pulses = handleActions({
     [FETCH_PULSES]: { next: (state, { payload }) => ({ ...payload.entities.pulse }) },
+    [SAVE_PULSE]: { next: (state, { payload }) =>  ({ ...state, [payload.id]: payload }) },
     [SAVE_EDITING_PULSE]: { next: (state, { payload }) =>  ({ ...state, [payload.id]: payload }) }
 }, {});
 
