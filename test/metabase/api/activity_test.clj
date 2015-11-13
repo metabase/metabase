@@ -24,7 +24,7 @@
              activity1 (db/ins Activity
                          :topic     "install"
                          :details   {}
-                         :timestamp (u/parse-iso8601 "2015-09-09T12:13:14.888Z"))
+                         :timestamp (u/->Timestamp "2015-09-09T12:13:14.888Z"))
              activity2 (db/ins Activity
                          :topic     "dashboard-create"
                          :user_id   (user->id :crowberto)
@@ -33,13 +33,13 @@
                          :details   {:description  "Because I can!"
                                      :name         "Bwahahaha"
                                      :public_perms 2}
-                         :timestamp (u/parse-iso8601 "2015-09-10T18:53:01.632Z"))
+                         :timestamp (u/->Timestamp "2015-09-10T18:53:01.632Z"))
              activity3 (db/ins Activity
                          :topic     "user-joined"
                          :user_id   (user->id :rasta)
                          :model     "user"
                          :details   {}
-                         :timestamp (u/parse-iso8601 "2015-09-10T05:33:43.641Z"))]
+                         :timestamp (u/->Timestamp "2015-09-10T05:33:43.641Z"))]
   [(match-$ (db/sel :one Activity :id (:id activity2))
      {:id           $
       :topic        "dashboard-create"

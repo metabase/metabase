@@ -1,19 +1,194 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [clj-time.coerce :as coerce]
+            [clj-time.format :as time]
+            [clojure.java.jdbc :as jdbc]
             [clojure.pprint :refer [pprint]]
             [clojure.tools.logging :as log]
-            [clj-time.coerce :as coerce]
-            [clj-time.format :as time]
             [colorize.core :as color]
             [medley.core :as m])
   (:import (java.net Socket
                      InetSocketAddress
                      InetAddress)
            java.sql.Timestamp
-           javax.xml.bind.DatatypeConverter))
+           java.util.Calendar
+           javax.xml.bind.DatatypeConverter
+           org.joda.time.format.DateTimeFormatter))
 
 (set! *warn-on-reflection* true)
+
+;;; ### Protocols
+
+(defprotocol ITimestampCoercible
+  "Coerce object to a `java.sql.Timestamp`."
+  (->Timestamp ^java.sql.Timestamp [this]
+    "Coerce this object to a `java.sql.Timestamp`.
+     Strings are parsed as ISO-8601."))
+
+(extend-protocol ITimestampCoercible
+  nil            (->Timestamp [_]
+                   nil)
+  Timestamp      (->Timestamp [this]
+                   this)
+  java.util.Date (->Timestamp [this]
+                   (Timestamp. (.getTime this)))
+  Number         (->Timestamp [this]
+                   (Timestamp. this))
+  Calendar       (->Timestamp [this]
+                   (->Timestamp (.getTime this)))
+  ;; Strings are expected to be in ISO-8601 format. `YYYY-MM-DD` strings *are* valid ISO-8601 dates.
+  String         (->Timestamp [this]
+                   (->Timestamp (DatatypeConverter/parseDateTime this))))
+
+
+(defprotocol IDateTimeFormatterCoercible
+  "Protocol for converting objects to `DateTimeFormatters`."
+  (->DateTimeFormatter ^org.joda.time.format.DateTimeFormatter [this]
+    "Coerce object to a `DateTimeFormatter`."))
+
+(extend-protocol IDateTimeFormatterCoercible
+  String            (->DateTimeFormatter [this] (time/formatter this))
+  DateTimeFormatter (->DateTimeFormatter [this] this))
+
+
+;;; ## Date Stuff
+
+(defn new-sql-timestamp
+  "`java.sql.Date` doesn't have an empty constructor so this is a convenience that lets you make one with the current date.
+   (Some DBs like Postgres will get snippy if you don't use a `java.sql.Timestamp`)."
+  ^java.sql.Timestamp []
+  (->Timestamp (System/currentTimeMillis)))
+
+(defn format-date
+  "Format DATE using a given FORMATTER.
+   DATE is anything that can be passed `->Timestamp`, such as a `Long` or ISO-8601 `String`.
+   DATE-FORMAT is anything that can be passed to `->DateTimeFormatter`, including a `String` or `DateTimeFormatter`."
+  ^String [date-format date]
+  (time/unparse (->DateTimeFormatter date-format) (coerce/from-long (.getTime (->Timestamp date)))))
+
+(def ^{:arglists '([date])} date->yyyy-mm-dd
+  "Format DATE as a `YYYY-MM-DD` string."
+  (partial format-date "yyyy-MM-dd"))
+
+(def ^{:arglists '([date])} date->iso-8601
+  "Format DATE a an ISO-8601 string."
+  (partial format-date (time/formatters :date-time)))
+
+(defn now-iso8601
+  "Return the current date as an ISO-8601 formatted string."
+  []
+  (date->iso-8601 (System/currentTimeMillis)))
+
+(defn date-string?
+  "Is S a valid ISO 8601 date string?"
+  [s]
+  (boolean (when (string? s)
+             (try (->Timestamp s)
+                  (catch Throwable e)))))
+
+(defn ->Date
+  "Coerece DATE to a `java.util.Date`."
+  ^java.util.Date [date]
+  (java.util.Date. (.getTime (->Timestamp date))))
+
+(defn ->Calendar
+  "Coerce DATE to a `java.util.Calendar`."
+  ^java.util.Calendar [date]
+  (doto (Calendar/getInstance)
+    (.setTimeInMillis (.getTime (->Timestamp date)))))
+
+(defn relative-date
+  "Return a new `Timestamp` relative to the current time using a relative date UNIT.
+
+     (relative-date :year -1) -> #inst 2014-11-12 ..."
+  ^java.sql.Timestamp
+  ([unit amount]
+   (relative-date unit amount (Calendar/getInstance)))
+  ([unit amount date]
+   (let [cal               (->Calendar date)
+         [unit multiplier] (case unit
+                             :second  [Calendar/SECOND 1]
+                             :minute  [Calendar/MINUTE 1]
+                             :hour    [Calendar/HOUR   1]
+                             :day     [Calendar/DATE   1]
+                             :week    [Calendar/DATE   7]
+                             :month   [Calendar/MONTH  1]
+                             :quarter [Calendar/MONTH  3]
+                             :year    [Calendar/YEAR   1])]
+     (.set cal unit (+ (.get cal unit)
+                       (* amount multiplier)))
+     (->Timestamp cal))))
+
+
+(def ^:private ^:const date-extract-units
+  #{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year :month-of-year :quarter-of-year :year})
+
+(defn date-extract
+  "Extract UNIT from DATE. DATE defaults to now.
+
+     (date-extract :year) -> 2015"
+  ([unit]
+   (date-extract unit (System/currentTimeMillis)))
+  ([unit date]
+   (let [cal (->Calendar date)]
+     (case unit
+       :minute-of-hour  (.get cal Calendar/MINUTE)
+       :hour-of-day     (.get cal Calendar/HOUR)
+       :day-of-week     (.get cal Calendar/DAY_OF_WEEK) ; 1 = Sunday, etc.
+       :day-of-month    (.get cal Calendar/DAY_OF_MONTH)
+       :day-of-year     (.get cal Calendar/DAY_OF_YEAR)
+       :week-of-year    (.get cal Calendar/WEEK_OF_YEAR)
+       :month-of-year   (.get cal Calendar/MONTH)
+       :quarter-of-year (let [month (.get cal Calendar/MONTH)]
+                          (int (/ (+ 2 month)
+                                  3)))
+       :year            (.get cal Calendar/YEAR)))))
+
+
+(def ^:private ^:const date-trunc-units
+  #{:minute :hour :day :week :month :quarter})
+
+(defn date-trunc
+  "Truncate DATE to UNIT. DATE defaults to now.
+
+     (date-trunc :month).
+     ;; -> #inst \"2015-11-01T00:00:00\""
+  ([unit]
+   (date-trunc unit (System/currentTimeMillis)))
+  ([unit date]
+   (let [trunc-with-format (fn trunc-with-format
+                             ([format-string]
+                              (trunc-with-format format-string date))
+                             ([format-string d]
+                              (->Timestamp (format-date format-string d))))]
+     (case unit
+       :minute  (trunc-with-format "yyyy-MM-dd'T'HH:mm:00")
+       :hour    (trunc-with-format "yyyy-MM-dd'T'HH:00:00")
+       :day     (trunc-with-format "yyyy-MM-dd")
+       :week    (let [day-of-week (date-extract :day-of-week date)
+                      date        (relative-date :day (- day-of-week) date)]
+                  (trunc-with-format "yyyy-MM-dd" date))
+       :month   (trunc-with-format "yyyy-MM")
+       :quarter (let [year    (date-extract :year date)
+                      quarter (date-extract :quarter date)]
+                  (->Timestamp (format "%d-%02d" year (* 3 quarter))))))))
+
+(defn date-trunc-or-extract
+  "Apply date bucketing with UNIT to DATE. DATE defaults to now."
+  ([unit]
+   (date-trunc-or-extract unit (System/currentTimeMillis)))
+  ([unit date]
+   (cond
+     (= unit :default) date
+
+     (contains? date-extract-units unit)
+     (date-extract unit date)
+
+     (contains? date-trunc-units unit)
+     (date-trunc unit date))))
+
+
+;;; ## Etc
 
 (defmacro -assoc*
   "Internal. Don't use this directly; use `assoc*` instead."
@@ -33,49 +208,6 @@
   `((fn [~'<>] ; wrap in a `fn` so this can be used in `->`/`->>` forms
       (-assoc* ~@kvs))
     ~object))
-
-(defn new-sql-timestamp
-  "`java.sql.Date` doesn't have an empty constructor so this is a convenience that lets you make one with the current date.
-   (Some DBs like Postgres will get snippy if you don't use a `java.sql.Timestamp`)."
-  []
-  (Timestamp. (System/currentTimeMillis)))
-
-;; Actually this only supports [RFC 3339](https://tools.ietf.org/html/rfc3339), which is basically a subset of ISO 8601
-(defn parse-iso8601
-  "Parse a string value expected in the iso8601 format into a `java.sql.Timestamp`.
-   NOTE: `YYYY-MM-DD` dates *are* valid iso8601 dates."
-  ^java.sql.Timestamp
-  [^String datetime]
-  (some->> datetime
-           DatatypeConverter/parseDateTime
-           .getTime     ; Calendar -> Date
-           .getTime     ; Date -> ms
-           Timestamp.))
-
-(def ^:private ^java.text.SimpleDateFormat yyyy-mm-dd-simple-date-format
-  (java.text.SimpleDateFormat. "yyyy-MM-dd"))
-
-(defn date->yyyy-mm-dd
-  "Convert a date to a `YYYY-MM-DD` string."
-  ^String [^java.util.Date date]
-  (.format yyyy-mm-dd-simple-date-format date))
-
-(defn date-string?
-  "Is S a valid ISO 8601 date string?"
-  [s]
-  (boolean (when (string? s)
-             (try (parse-iso8601 s)
-                  (catch Throwable e)))))
-
-(defn now-iso8601
-  "format the current time as iso8601 date/time string."
-  []
-  (time/unparse (time/formatters :date-time) (coerce/from-long (System/currentTimeMillis))))
-
-(defn now-with-format
-  "format the current time using a custom format."
-  [format-string]
-  (time/unparse (time/formatter format-string) (coerce/from-long (System/currentTimeMillis))))
 
 (defn format-num
   "format a number into a more human readable form."
