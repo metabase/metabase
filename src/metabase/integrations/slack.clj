@@ -20,9 +20,12 @@
     {:pre [(string? method)
            (map? params)]}
    (when token
-     (client/get (str slack-api-baseurl "/" method) {:query-params   (merge params {:token token})
-                                                     :conn-timeout   1000
-                                                     :socket-timeout 1000}))))
+     (try
+       (client/get (str slack-api-baseurl "/" method) {:query-params   (merge params {:token token})
+                                                       :conn-timeout   1000
+                                                       :socket-timeout 1000})
+       (catch Throwable t
+         (log/warn "Error making Slack API call:" (.getMessage t)))))))
 
 (defn slack-api-post
   "Generic function which calls a given method on the Slack api via HTTP POST."
@@ -32,9 +35,12 @@
    {:pre [(string? method)
           (map? params)]}
    (when token
-     (client/post (str slack-api-baseurl "/" method) {:form-params   (merge params {:token token})
-                                                      :conn-timeout   1000
-                                                      :socket-timeout 1000}))))
+     (try
+       (client/post (str slack-api-baseurl "/" method) {:form-params   (merge params {:token token})
+                                                        :conn-timeout   1000
+                                                        :socket-timeout 1000})
+       (catch Throwable t
+         (log/warn "Error making Slack API call:" (.getMessage t)))))))
 
 (defn- ^:private handle-api-response
   "Simple helper that checks that response is a HTTP 200 and deserializes the `:body` if so, otherwise logs an error"
