@@ -81,16 +81,6 @@
   (swap! cached-setting->value assoc k v)
   v)
 
-(defn set-all
-  "Set the value of a `Setting`.
-
-    (set :mandrill-api-key \"xyz123\")"
-  [settings]
-  {:pre [(map? settings)]}
-  (doseq [k (keys settings)]
-    (set k (clojure.core/get settings k)))
-  settings)
-
 (defn delete
   "Delete a `Setting`."
   [k]
@@ -98,6 +88,18 @@
   (restore-cache-if-needed)
   (swap! cached-setting->value dissoc k)
   (del Setting :key (name k)))
+
+(defn set-all
+  "Set the value of a `Setting`.
+
+    (set :mandrill-api-key \"xyz123\")"
+  [settings]
+  {:pre [(map? settings)]}
+  (doseq [k (keys settings)]
+    (if-let [v (clojure.core/get settings k)]
+      (set k v)
+      (delete k)))
+  settings)
 
 ;; ## DEFSETTING
 
