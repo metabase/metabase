@@ -11,6 +11,29 @@
 
 ;; ## Static Definitions
 
+(def ^:const days-of-week
+  "Simple `vector` of the days in the week used for reference and lookups.
+
+   NOTE: order is important here!!
+         these indexes match the values from clj-time `day-of-week` function (0 = Sunday, 6 = Saturday)"
+  [{:id "sun" :name "Sun"},
+   {:id "mon" :name "Mon"},
+   {:id "tue" :name "Tue"},
+   {:id "wed" :name "Wed"},
+   {:id "thu" :name "Thu"},
+   {:id "fri" :name "Fri"},
+   {:id "sat" :name "Sat"}])
+
+(defn day-of-week?
+  "Predicate function which returns `true` if the given day is a valid day-of-week choice, `false` otherwise."
+  [day]
+  (contains? (set (map :id days-of-week)) day))
+
+(defn hour-of-day?
+  "Predicate function which returns `true` if the given hour is a valid hour of the day (24 hour), `false` otherwise."
+  [hour]
+  (and (integer? hour) (<= 0 hour) (>= 23 hour)))
+
 (def ^:const schedule-type-hourly :hourly)
 (def ^:const schedule-type-daily :daily)
 (def ^:const schedule-type-weekly :weekly)
@@ -29,6 +52,20 @@
   "Predicate function which returns `true` if the given argument is a valid value as a schedule-type, `false` otherwise."
   [schedule-type]
   (contains? (set (keys schedule-types)) (keyword schedule-type)))
+
+(defn valid-schedule?
+  "Predicate function which returns `true` if the combination of scheduling choices is valid, `false` otherwise."
+  [schedule-type schedule-hour schedule-day]
+  (or
+    ;; hourly schedule does not care about other inputs
+    (= schedule-type schedule-type-hourly)
+    ;; daily schedule requires a valid `hour`
+    (and (= schedule-type schedule-type-daily)
+         (hour-of-day? schedule-hour))
+    ;; weekly schedule requires a valid `hour` and `day`
+    (and (= schedule-type schedule-type-weekly)
+         (hour-of-day? schedule-hour)
+         (day-of-week? schedule-day))))
 
 (def ^:const channel-types
   "Map which contains the definitions for each type of pulse channel we allow.  Each key is a channel type with a map
@@ -61,24 +98,6 @@
   [channel]
   (boolean (:recipients? (get channel-types (keyword channel)))))
 
-(def ^:const days-of-week
-  "Simple `vector` of the days in the week used for reference and lookups.
-
-   NOTE: order is important here!!
-         these indexes match the values from clj-time `day-of-week` function (0 = Sunday, 6 = Saturday)"
-  [{:id "sun" :name "Sun"},
-   {:id "mon" :name "Mon"},
-   {:id "tue" :name "Tue"},
-   {:id "wed" :name "Wed"},
-   {:id "thu" :name "Thu"},
-   {:id "fri" :name "Fri"},
-   {:id "sat" :name "Sat"}])
-
-(defn day-of-week?
-  "Predicate function which returns `true` if the given day is a valid day-of-week choice, `false` otherwise."
-  [day]
-  (contains? (set (map :id days-of-week)) day))
-
 
 ;; ## Entity
 
@@ -93,7 +112,7 @@
 (defentity PulseChannel
   [(k/table :pulse_channel)
    (hydration-keys pulse_channel)
-   (types :details :json, :channel_type :keyword)
+   (types :details :json, :channel_type :keyword, :schedule_type :keyword)
    timestamped]
 
   (post-select [_ {:keys [id creator_id details] :as pulse-channel}]
@@ -146,7 +165,7 @@
   {:pre [(integer? id)
          (coll? user-ids)
          (every? integer? user-ids)]}
-  (let [recipients-old     (set (db/sel :many :field [PulseChannelRecipient :user_id] :pulse_channel_id id))
+  (let [recipients-old (set (db/sel :many :field [PulseChannelRecipient :user_id] :pulse_channel_id id))
         recipients-new (set user-ids)
         recipients+    (set/difference recipients-new recipients-old)
         recipients-    (set/difference recipients-old recipients-new)]
@@ -164,9 +183,9 @@
   {:pre [(integer? id)
          (channel-type? channel_type)
          (schedule-type? schedule_type)
+         (valid-schedule? schedule_type schedule_hour schedule_day)
          (coll? recipients)
          (every? map? recipients)]}
-  ;; TODO: validate full schedule choice.  e.g. daily requires a schedule_hour, weekly requires schedule_day
   (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))]
     (db/upd PulseChannel id
       :details          (cond-> details
@@ -176,8 +195,8 @@
                           schedule_hour)
       :schedule_day     (when (= schedule_type schedule-type-weekly)
                           schedule_day))
-    (when (and (supports-recipients? channel_type) (seq (get recipients-by-type true)))
-      (update-recipients! id (get recipients-by-type true)))))
+    (when (and (supports-recipients? channel_type))
+      (update-recipients! id (or (get recipients-by-type true) [])))))
 
 (defn create-pulse-channel
   "Create a new `PulseChannel` along with all related data associated with the channel such as `PulseChannelRecipients`."
@@ -187,9 +206,9 @@
   {:pre [(channel-type? channel_type)
          (integer? pulse_id)
          (schedule-type? schedule_type)
+         (valid-schedule? schedule_type schedule_hour schedule_day)
          (coll? recipients)
          (every? map? recipients)]}
-  ;; TODO: validate full schedule choice.  e.g. daily requires a schedule_hour, weekly requires schedule_day
   (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))
         {:keys [id]} (db/ins PulseChannel
                        :pulse_id         pulse_id
@@ -202,4 +221,6 @@
                        :schedule_day     (when (= schedule_type schedule-type-weekly)
                                            schedule_day))]
     (when (and (supports-recipients? channel_type) (seq (get recipients-by-type true)))
-      (update-recipients! id (get recipients-by-type true)))))
+      (update-recipients! id (get recipients-by-type true)))
+    ;; return the id of our newly created channel
+    id))
