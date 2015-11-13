@@ -2,30 +2,19 @@ import React, { Component, PropTypes } from "react";
 
 import PulseListItem from "./PulseListItem.jsx";
 
-import { fetchPulses, savePulse, createPulse } from "../actions";
-
-import _ from "underscore";
+import { fetchPulses, fetchPulseFormInput } from "../actions";
 
 export default class PulseList extends Component {
     constructor(props, context) {
         super(props, context);
-
-        _.bindAll(this, "onSave");
     }
 
     static propTypes = {};
     static defaultProps = {};
 
     componentDidMount() {
-        this.props.dispatch(fetchPulses())
-    }
-
-    onSave(pulse) {
-        if (pulse.id != null) {
-            this.props.dispatch(savePulse(pulse));
-        } else {
-            this.props.dispatch(createPulse(pulse));
-        }
+        this.props.dispatch(fetchPulses());
+        this.props.dispatch(fetchPulseFormInput());
     }
 
     render() {
@@ -41,7 +30,8 @@ export default class PulseList extends Component {
                         <li key={pulse.id}>
                             <PulseListItem
                                 pulse={pulse}
-                                onSave={this.onSave}
+                                formInput={this.props.formInput}
+                                dispatch={this.props.dispatch}
                             />
                         </li>
                     )}

@@ -1,59 +1,27 @@
 import React, { Component, PropTypes } from "react";
 
-import _ from "underscore";
-
-function formatSchedule(channels) {
-    let types = {};
-    for (let c of channels) {
-        types[c.channel_type] = types[c.channel_type] || [];
-        types[c.channel_type].push(c);
-    }
-    return Object.keys(types).sort().map(type => formatChannel(type, types[type])).join(" and ");
-}
-
-function formatChannel(type, channels) {
-    switch (type) {
-        case "email":
-            return "Emailed " + formatList(_.uniq(channels.map(c => c.schedule_type)) );
-        case "slack":
-            return "Slack'd to " + formatList(channels.map(c => c.details.channel + " " + c.schedule_type))
-        default:
-            return "Sent to " + type + " " + formatList(_.uniq(channels.map(c => c.schedule_type)));
-    }
-}
-
-function formatList(list) {
-    return list.slice(0, -1).join(", ") + (list.length < 2 ? "" : ", and ") + list[list.length - 1];
-}
+import PulseListChannel from "./PulseListChannel.jsx";
 
 export default class PulseListItem extends Component {
-    constructor(props) {
-        super(props);
-        this.state = {};
-    }
-
-    static propTypes = {};
-    static defaultProps = {};
+    static propTypes = {
+        pulse: PropTypes.object.isRequired,
+        formInput: PropTypes.object.isRequired
+    };
 
     render() {
-        let { pulse } = this.props;
+        let { pulse, formInput } = this.props;
+
         return (
-            <div className="bordered rounded mb3 px4 py3">
-                <div className="flex mb2">
+            <div className="bordered rounded mb2 pt3">
+                <div className="flex px4 mb2">
                     <div>
-                        <h2 className="mb1">{pulse.name}</h2>
+                        <h2 className="mb1">
+                            <a className="no-decoration" href={"/pulse/" + pulse.id}>{pulse.name}</a>
+                        </h2>
                         <span>Pulse by <span className="text-bold">{pulse.creator && pulse.creator.common_name}</span></span>
                     </div>
-                    <div className="flex-align-right">
-                        { pulse.subscribed ?
-                            <button className="Button Button--primary">You recieve this pulse</button>
-                        :
-                            <button className="Button">Get this pulse</button>
-                        }
-                        <a href={"/pulse/" + pulse.id} className="Button ml1">Edit</a>
-                    </div>
                 </div>
-                <ol className="mb2 flex">
+                <ol className="mb2 px4 flex">
                     { pulse.cards.map((card, index) =>
                         <li key={index} className="mr1">
                             <a className="Button" href={"/card/"+card.id}>
@@ -62,9 +30,18 @@ export default class PulseListItem extends Component {
                         </li>
                     )}
                 </ol>
-                <div>
-                    {formatSchedule(pulse.channels)}
-                </div>
+                <ul className="border-top px4" style={{backgroundColor: "rgb(252,252,253)"}}>
+                    {pulse.channels.map(channel =>
+                        <li className="border-row-divider">
+                            <PulseListChannel
+                                pulse={pulse}
+                                channel={channel}
+                                channelSpec={formInput.channels && formInput.channels[channel.channel_type]}
+                                dispatch={this.props.dispatch}
+                            />
+                        </li>
+                    )}
+                </ul>
             </div>
         );
     }

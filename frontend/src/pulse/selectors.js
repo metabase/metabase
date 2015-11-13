@@ -1,8 +1,6 @@
 
 import { createSelector } from 'reselect';
 
-// LIST
-
 const pulsesSelector = state => state.pulses;
 const pulseIdListSelector = state => state.pulseList;
 
@@ -10,13 +8,6 @@ const pulseListSelector = createSelector(
     [pulseIdListSelector, pulsesSelector],
     (pulseIdList, pulses) => pulseIdList && pulseIdList.map(id => pulses[id])
 );
-
-export const listPulseSelectors = createSelector(
-    [pulseListSelector],
-    (pulses) => ({ pulses })
-);
-
-// EDIT
 
 const editingPulseSelector = state => state.editingPulse;
 
@@ -37,6 +28,13 @@ const userListSelector = createSelector(
     (users) => Object.values(users)
 );
 
+// LIST
+export const listPulseSelectors = createSelector(
+    [pulseListSelector, formInputSelector],
+    (pulses, formInput) => ({ pulses, formInput })
+);
+
+// EDIT
 export const editPulseSelectors = createSelector(
     [editingPulseSelector, cardsSelector, cardListSelector, userListSelector, formInputSelector],
     (pulse, cards, cardList, userList, formInput) => ({ pulse, cards, cardList, userList, formInput})
