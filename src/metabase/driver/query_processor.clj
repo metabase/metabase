@@ -82,11 +82,19 @@
   (fn [{{:keys [source-table], {source-table-id :id} :source-table} :query, :as query}]
     (qp (if-not (should-add-implicit-fields? query)
           query
-          (let [fields (->> (sel :many :fields [Field :name :display_name :base_type :special_type :preview_display :display_name :table_id :id :position :description], :table_id source-table-id,
-                                 :active true, :field_type [not= "sensitive"], :parent_id nil, (k/order :position :asc), (k/order :id :desc))
-                            (map resolve/rename-mb-field-keys)
-                            (map map->Field)
-                            (map #(resolve/resolve-table % {source-table-id source-table})))]
+          (let [fields (for [field (sel :many :fields [Field :name :display_name :base_type :special_type :preview_display :display_name :table_id :id :position :description]
+                                        :table_id   source-table-id
+                                        :active     true
+                                        :field_type [not= "sensitive"]
+                                        :parent_id  nil
+                                        (k/order :position :asc) (k/order :id :desc))]
+                         (let [field (-> (resolve/rename-mb-field-keys field)
+                                         map->Field
+                                         (resolve/resolve-table {source-table-id source-table}))]
+                           (if (or (contains? #{:DateField :DateTimeField} (:base-type field))
+                                   (contains? #{:timestamp_seconds :timestamp_milliseconds} (:special-type field)))
+                             (map->DateTimeField {:field field, :unit :day})
+                             field)))]
             (if-not (seq fields)
               (do (log/warn (format "Table '%s' has no Fields associated with it." (:name source-table)))
                   query)

@@ -25,7 +25,7 @@
                            :joinUrl join-url
                            :quotation (:quote data-quote)
                            :quotationAuthor (:author data-quote)
-                           :today (u/now-with-format "MMM'&nbsp;'dd,'&nbsp;'yyyy")}
+                           :today (u/format-date "MMM'&nbsp;'dd,'&nbsp;'yyyy" (System/currentTimeMillis))}
                           (stencil/render-string tmpl))]
     (email/send-message
       :subject     (str "You're invited to join " company "'s Metabase")

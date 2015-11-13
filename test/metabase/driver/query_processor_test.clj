@@ -95,7 +95,8 @@
      :last_login {:special_type :category
                   :base_type    (timestamp-field-type)
                   :name         (format-name "last_login")
-                  :display_name "Last Login"})))
+                  :display_name "Last Login"
+                  :unit         :day})))
 
 ;; #### venues
 (defn- venues-columns
@@ -429,10 +430,20 @@
      breakout user_id
      order user_id+))
 
+;; ### BREAKOUT w/o AGGREGATION
+;; This should act as a "distinct values" query and return ordered results
+(qp-expect-with-all-datasets
+    {:cols    [(checkins-col :user_id)]
+     :columns [(format-name "user_id")]
+     :rows    [[1] [2] [3] [4] [5] [6] [7] [8] [9] [10]]}
+  (Q breakout user_id of checkins
+     limit 10))
+
+
 ;; ### "BREAKOUT" - MULTIPLE COLUMNS W/ IMPLICT "ORDER_BY"
 ;; Fields should be implicitly ordered :ASC for all the fields in `breakout` that are not specified in `order_by`
 (qp-expect-with-all-datasets
-    {:rows    [[1 1 1] [1 5 1] [1 7 1] [1 10 1] [1 13 1] [1 16 1] [1 26 1] [1 31 1] [1 35 1] [1 36 1]],
+    {:rows    [[1 1 1] [1 5 1] [1 7 1] [1 10 1] [1 13 1] [1 16 1] [1 26 1] [1 31 1] [1 35 1] [1 36 1]]
      :columns [(format-name "user_id")
                (format-name "venue_id")
                "count"]
@@ -711,17 +722,22 @@
 ;; |                                           UNIX TIMESTAMP SPECIAL_TYPE FIELDS                                           |
 ;; +------------------------------------------------------------------------------------------------------------------------+
 
+(defmacro if-questionable-timezone-support [then else]
+  `(if (contains? #{:sqlserver :mongo} *engine*)
+     ~then
+     ~else))
+
 (defmacro if-sqlserver
   "SQLServer lacks timezone support; the groupings in sad-toucan-incidents happen in UTC rather than US/Pacfic time. This
    macro is provided as a convenience for specifying the *slightly* different expected results in the multi-driver unit tests below."
   [then else]
-  `(if (= *engine* :sqlserver)
+  `(if (= :sqlserver *engine*)
      ~then
      ~else))
 
 ;; There were 9 "sad toucan incidents" on 2015-06-02
-(datasets/expect-with-datasets sql-engines
-  (if-sqlserver
+(datasets/expect-with-all-datasets
+  (if-questionable-timezone-support
     10
     9)
   (Q dataset sad-toucan-incidents
@@ -731,10 +747,8 @@
      order timestamp+
      return rows count))
 
-
-;;; Unix timestamp breakouts -- SQL only
-(datasets/expect-with-datasets sql-engines
-  (if-sqlserver
+(datasets/expect-with-all-datasets
+  (if-questionable-timezone-support
     ;; SQL Server doesn't have a concept of timezone so results are all grouped by UTC
     ;; This is technically correct but the results differ from less-wack DBs
     [[#inst "2015-06-01T07" 6]
@@ -817,8 +831,7 @@
    [897 "Wearing a Biggie Shirt"]
    [499 "In the Expa Office"]]
   (Q dataset tupac-sightings
-     return rows
-     of sightings
+     return rows of sightings
      fields id category_id->categories.name
      order timestamp-
      limit 10))
@@ -952,22 +965,24 @@
 ;;; Nested Field in FIELDS
 ;; Return the first 10 tips with just tip.venue.name
 (datasets/expect-when-testing-dataset :mongo
-    [[{:name "Lucky's Gluten-Free Café"} 1]
-     [{:name "Joe's Homestyle Eatery"} 2]
-     [{:name "Lower Pac Heights Cage-Free Coffee House"} 3]
-     [{:name "Oakland European Liquor Store"} 4]
-     [{:name "Tenderloin Gormet Restaurant"} 5]
-     [{:name "Marina Modern Sushi"} 6]
-     [{:name "Sunset Homestyle Grill"} 7]
-     [{:name "Kyle's Low-Carb Grill"} 8]
-     [{:name "Mission Homestyle Churros"} 9]
-     [{:name "Sameer's Pizza Liquor Store"} 10]]
-  (Q dataset geographical-tips use mongo
-     return rows
-     aggregate rows of tips
-     order id
-     fields venue...name
-     limit 10))
+  {:columns ["venue.name"]
+   :rows    [["Lucky's Gluten-Free Café"]
+             ["Joe's Homestyle Eatery"]
+             ["Lower Pac Heights Cage-Free Coffee House"]
+             ["Oakland European Liquor Store"]
+             ["Tenderloin Gormet Restaurant"]
+             ["Marina Modern Sushi"]
+             ["Sunset Homestyle Grill"]
+             ["Kyle's Low-Carb Grill"]
+             ["Mission Homestyle Churros"]
+             ["Sameer's Pizza Liquor Store"]]}
+  (select-keys (Q dataset geographical-tips use mongo
+                  return :data
+                  aggregate rows of tips
+                  order id
+                  fields venue...name
+                  limit 10)
+               [:columns :rows]))
 
 
 ;;; Nested Field w/ ordering by aggregation
@@ -1068,7 +1083,7 @@
           limit 10
           return rows)))
 
-(datasets/expect-with-datasets sql-engines
+(datasets/expect-with-all-datasets
   (if-sqlserver
    [[#inst "2015-06-01T17:31" 1]
     [#inst "2015-06-01T23:06" 1]
@@ -1093,8 +1108,8 @@
     [#inst "2015-06-02T11:11" 1]])
   (sad-toucan-incidents-with-bucketing :default))
 
-(datasets/expect-with-datasets sql-engines
-  (if-sqlserver
+(datasets/expect-with-all-datasets
+  (if-questionable-timezone-support
    [[#inst "2015-06-01T17:31" 1]
     [#inst "2015-06-01T23:06" 1]
     [#inst "2015-06-02T00:23" 1]
@@ -1118,7 +1133,7 @@
     [#inst "2015-06-02T11:11" 1]])
   (sad-toucan-incidents-with-bucketing :minute))
 
-(datasets/expect-with-datasets sql-engines
+(datasets/expect-with-all-datasets
   [[0 5]
    [1 4]
    [2 2]
@@ -1156,14 +1171,14 @@
      [#inst "2015-06-02T13" 1]])
   (sad-toucan-incidents-with-bucketing :hour))
 
-(datasets/expect-with-datasets sql-engines
-  (if-sqlserver
+(datasets/expect-with-all-datasets
+  (if-questionable-timezone-support
    [[0 13] [1  8] [2  4] [3  7] [4  5] [5 13] [6 10] [7  8] [8  9] [9  7]]
    [[0  8] [1  9] [2  7] [3 10] [4 10] [5  9] [6  6] [7  5] [8  7] [9  7]])
   (sad-toucan-incidents-with-bucketing :hour-of-day))
 
-(datasets/expect-with-datasets sql-engines
-  (if-sqlserver
+(datasets/expect-with-all-datasets
+  (if-questionable-timezone-support
    [[#inst "2015-06-01T07" 6]
     [#inst "2015-06-02T07" 10]
     [#inst "2015-06-03T07" 4]
@@ -1187,26 +1202,26 @@
     [#inst "2015-06-10T07" 10]])
   (sad-toucan-incidents-with-bucketing :day))
 
-(datasets/expect-with-datasets sql-engines
-  (if-sqlserver
+(datasets/expect-with-all-datasets
+  (if-questionable-timezone-support
    [[1 28] [2 38] [3 29] [4 27] [5 24] [6 30] [7 24]]
    [[1 29] [2 36] [3 33] [4 29] [5 13] [6 38] [7 22]])
   (sad-toucan-incidents-with-bucketing :day-of-week))
 
-(datasets/expect-with-datasets sql-engines
-  (if-sqlserver
+(datasets/expect-with-all-datasets
+  (if-questionable-timezone-support
    [[1  6] [2 10] [3  4] [4  9] [5  9] [6  8] [7  8] [8  9] [9  7] [10  9]]
    [[1  8] [2  9] [3  9] [4  4] [5 11] [6  8] [7  6] [8 10] [9  6] [10 10]])
   (sad-toucan-incidents-with-bucketing :day-of-month))
 
-(datasets/expect-with-datasets sql-engines
-  (if-sqlserver
+(datasets/expect-with-all-datasets
+  (if-questionable-timezone-support
    [[152  6] [153 10] [154  4] [155  9] [156  9] [157  8] [158  8] [159  9] [160  7] [161  9]]
    [[152  8] [153  9] [154  9] [155  4] [156 11] [157  8] [158  6] [159 10] [160  6] [161 10]])
   (sad-toucan-incidents-with-bucketing :day-of-year))
 
-(datasets/expect-with-datasets sql-engines
-  (if-sqlserver
+(datasets/expect-with-all-datasets
+  (if-questionable-timezone-support
    [[#inst "2015-05-31T07" 46]
     [#inst "2015-06-07T07" 47]
     [#inst "2015-06-14T07" 40]
@@ -1220,29 +1235,33 @@
     [#inst "2015-06-28T07" 7]])
   (sad-toucan-incidents-with-bucketing :week))
 
-(datasets/expect-with-datasets sql-engines
-  (if-sqlserver
-   [[23 54] [24 46] [25 39] [26 61]]
-   [[23 49] [24 47] [25 39] [26 58] [27 7]])
-  (sad-toucan-incidents-with-bucketing :week-of-year))
+(datasets/expect-with-all-datasets
+ (datasets/dataset-case
+   :sqlserver [[23 54] [24 46] [25 39] [26 61]]
+   :mongo     [[23 46] [24 47] [25 40] [26 60] [27 7]] ; why are these different then ?
+   :h2        [[23 49] [24 47] [25 39] [26 58] [27 7]]
+   :postgres  [[23 49] [24 47] [25 39] [26 58] [27 7]]
+   :mysql     [[23 49] [24 47] [25 39] [26 58] [27 7]])
+ (sad-toucan-incidents-with-bucketing :week-of-year))
 
-(datasets/expect-with-datasets sql-engines
+(datasets/expect-with-all-datasets
   [[#inst "2015-06-01T07" 200]]
   (sad-toucan-incidents-with-bucketing :month))
 
-(datasets/expect-with-datasets sql-engines
+(datasets/expect-with-all-datasets
   [[6 200]]
   (sad-toucan-incidents-with-bucketing :month-of-year))
 
-(datasets/expect-with-datasets sql-engines
+(datasets/expect-with-all-datasets
   [[#inst "2015-04-01T07" 200]]
   (sad-toucan-incidents-with-bucketing :quarter))
 
-(datasets/expect-with-datasets sql-engines
-  [[2 200]]
-  (sad-toucan-incidents-with-bucketing :quarter-of-year))
+(datasets/expect-with-all-datasets
+ [[(datasets/dataset-case :h2 2, :postgres 2, :mysql 2, :sqlserver 2, :mongo 2.0)
+   200]]
+ (sad-toucan-incidents-with-bucketing :quarter-of-year))
 
-(datasets/expect-with-datasets sql-engines
+(datasets/expect-with-all-datasets
   [[2015 200]]
   (sad-toucan-incidents-with-bucketing :year))
 
@@ -1268,22 +1287,22 @@
        filter = ["datetime_field" (id :checkins :timestamp) "as" (name field-grouping)] (apply vector "relative_datetime" relative-datetime-args)
        return first-row first)))
 
-(datasets/expect-with-datasets sql-engines 4 (count-of-grouping (checkins:4-per-minute) :minute "current"))
-(datasets/expect-with-datasets sql-engines 4 (count-of-grouping (checkins:4-per-minute) :minute -1 "minute"))
-(datasets/expect-with-datasets sql-engines 4 (count-of-grouping (checkins:4-per-minute) :minute  1 "minute"))
+(datasets/expect-with-all-datasets 4 (count-of-grouping (checkins:4-per-minute) :minute "current"))
+(datasets/expect-with-all-datasets 4 (count-of-grouping (checkins:4-per-minute) :minute -1 "minute"))
+(datasets/expect-with-all-datasets 4 (count-of-grouping (checkins:4-per-minute) :minute  1 "minute"))
 
-(datasets/expect-with-datasets sql-engines 4 (count-of-grouping (checkins:4-per-hour) :hour "current"))
-(datasets/expect-with-datasets sql-engines 4 (count-of-grouping (checkins:4-per-hour) :hour -1 "hour"))
-(datasets/expect-with-datasets sql-engines 4 (count-of-grouping (checkins:4-per-hour) :hour  1 "hour"))
+(datasets/expect-with-all-datasets 4 (count-of-grouping (checkins:4-per-hour) :hour "current"))
+(datasets/expect-with-all-datasets 4 (count-of-grouping (checkins:4-per-hour) :hour -1 "hour"))
+(datasets/expect-with-all-datasets 4 (count-of-grouping (checkins:4-per-hour) :hour  1 "hour"))
 
-(datasets/expect-with-datasets sql-engines 1 (count-of-grouping (checkins:1-per-day) :day "current"))
-(datasets/expect-with-datasets sql-engines 1 (count-of-grouping (checkins:1-per-day) :day -1 "day"))
-(datasets/expect-with-datasets sql-engines 1 (count-of-grouping (checkins:1-per-day) :day  1 "day"))
+(datasets/expect-with-all-datasets 1 (count-of-grouping (checkins:1-per-day) :day "current"))
+(datasets/expect-with-all-datasets 1 (count-of-grouping (checkins:1-per-day) :day -1 "day"))
+(datasets/expect-with-all-datasets 1 (count-of-grouping (checkins:1-per-day) :day  1 "day"))
 
-(datasets/expect-with-datasets sql-engines 7 (count-of-grouping (checkins:1-per-day) :week "current"))
+(datasets/expect-with-all-datasets 7 (count-of-grouping (checkins:1-per-day) :week "current"))
 
 ;; SYNTACTIC SUGAR
-(datasets/expect-with-datasets sql-engines
+(datasets/expect-with-all-datasets
   1
   (with-temp-db [_ (checkins:1-per-day)]
     (-> (driver/process-query
@@ -1294,7 +1313,7 @@
                      :filter       ["TIME_INTERVAL" (id :checkins :timestamp) "current" "day"]}})
         :data :rows first first)))
 
-(datasets/expect-with-datasets sql-engines
+(datasets/expect-with-all-datasets
   7
   (with-temp-db [_ (checkins:1-per-day)]
     (-> (driver/process-query
@@ -1321,22 +1340,22 @@
       {:rows (-> results :row_count)
        :unit (-> results :data :cols first :unit)})))
 
-(datasets/expect-with-datasets sql-engines
+(datasets/expect-with-all-datasets
   {:rows 1, :unit :day}
   (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day"))
 
-(datasets/expect-with-datasets sql-engines
+(datasets/expect-with-all-datasets
   {:rows 7, :unit :day}
   (date-bucketing-unit-when-you :breakout-by "day", :filter-by "week"))
 
-(datasets/expect-with-datasets sql-engines
+(datasets/expect-with-all-datasets
   {:rows 1, :unit :week}
   (date-bucketing-unit-when-you :breakout-by "week", :filter-by "day"))
 
-(datasets/expect-with-datasets sql-engines
+(datasets/expect-with-all-datasets
   {:rows 1, :unit :quarter}
   (date-bucketing-unit-when-you :breakout-by "quarter", :filter-by "day"))
 
-(datasets/expect-with-datasets sql-engines
+(datasets/expect-with-all-datasets
   {:rows 1, :unit :hour}
   (date-bucketing-unit-when-you :breakout-by "hour", :filter-by "day"))

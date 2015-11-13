@@ -17,7 +17,7 @@
   (match value
     (_ :guard u/date-string?)
     (map->DateTimeValue {:field field
-                         :value (u/parse-iso8601 value)})
+                         :value (u/->Timestamp value)})
 
     ["relative_datetime" "current"]
     (map->RelativeDateTimeValue {:amount 0, :field field})

@@ -154,5 +154,6 @@
    :process-query                     process-query
    :process-query-in-context          process-query-in-context
    :sync-in-context                   sync-in-context
+   :date-interval                     u/relative-date
    :humanize-connection-error-message humanize-connection-error-message
    :active-nested-field-name->type    active-nested-field-name->type})
