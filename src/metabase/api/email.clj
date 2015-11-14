@@ -22,18 +22,14 @@
   (setting/set-all (select-keys settings (keys email-settings))))
 
 (defendpoint POST "/test"
-  "Send a test email using the supplied settings. You must be a superuser to do this."
-  [:as {settings :body}]
-  {settings [Required Dict]}
+  "Send a test email. You must be a superuser to do this."
+  []
   (check-superuser)
-  (let [smtp-details (-> (select-keys settings (keys email-settings))
-                         (set/rename-keys email-settings))
-        response     (email/send-message
-                       :details      smtp-details
-                       :subject      "Metabase Test Email"
-                       :recipients   [(:email @*current-user*)]
-                       :message-type :text
-                       :message      "The Metabase emails are working, hooray!")]
+  (let [response (email/send-message
+                   :subject      "Metabase Test Email"
+                   :recipients   [(:email @*current-user*)]
+                   :message-type :text
+                   :message      "The Metabase emails are working, hooray!")]
     (if (= (:error response) :SUCCESS)
       response
       {:status 500
