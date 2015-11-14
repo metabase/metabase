@@ -51,7 +51,7 @@
 (defn schedule-type?
   "Predicate function which returns `true` if the given argument is a valid value as a schedule-type, `false` otherwise."
   [schedule-type]
-  (contains? (set (keys schedule-types)) (keyword schedule-type)))
+  (contains? (set (keys schedule-types)) schedule-type))
 
 (defn valid-schedule?
   "Predicate function which returns `true` if the combination of scheduling choices is valid, `false` otherwise."
@@ -91,12 +91,12 @@
 (defn channel-type?
   "Predicate function which returns `true` if the given argument is a valid value as a channel-type, `false` otherwise."
   [channel-type]
-  (contains? (set (keys channel-types)) (keyword channel-type)))
+  (contains? (set (keys channel-types)) channel-type))
 
 (defn supports-recipients?
   "Predicate function which returns `true` if the given channel type supports a list of recipients, `false` otherwise."
   [channel]
-  (boolean (:recipients? (get channel-types (keyword channel)))))
+  (boolean (:recipients? (get channel-types channel))))
 
 
 ;; ## Entity

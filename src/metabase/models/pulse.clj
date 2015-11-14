@@ -73,7 +73,11 @@
   [pulse-id new-channel existing-channel]
   ;; NOTE that we force the :id of the channel being updated to the :id we *know* from our
   ;;      existing list of `PulseChannels` pulled from the db to ensure we affect the right record
-  (let [channel (when new-channel (assoc new-channel :pulse_id pulse-id :id (:id existing-channel)))]
+  (let [channel (when new-channel (assoc new-channel
+                                    :pulse_id      pulse-id
+                                    :id            (:id existing-channel)
+                                    :channel_type  (keyword (:channel_type new-channel))
+                                    :schedule_type (keyword (:schedule_type new-channel))))]
     (cond
       ;; 1. in channels, NOT in db-channels = CREATE
       (and channel (not existing-channel))  (pulse-channel/create-pulse-channel channel)
@@ -100,6 +104,7 @@
         old-channels   (group-by (comp keyword :channel_type) (db/sel :many PulseChannel :pulse_id id))
         handle-channel #(create-update-delete-channel id (first (get new-channels %)) (first (get old-channels %)))]
     (assert (= 0 (count (get new-channels nil))) "Cannot have channels without a :channel_type attribute")
+    ;; for each of our possible channel types call our handler function
     (dorun (map handle-channel (vec (keys pulse-channel/channel-types))))))
 
 (defn retrieve-pulse

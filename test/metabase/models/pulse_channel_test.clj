@@ -34,6 +34,7 @@
 (expect false (schedule-type? nil))
 (expect false (schedule-type? "abc"))
 (expect false (schedule-type? 123))
+(expect false (schedule-type? "daily"))
 (expect true (schedule-type? schedule-type-hourly))
 (expect true (schedule-type? schedule-type-daily))
 (expect true (schedule-type? schedule-type-weekly))
@@ -56,6 +57,7 @@
 (expect false (channel-type? "abc"))
 (expect false (channel-type? 123))
 (expect false (channel-type? :sms))
+(expect false (channel-type? "email"))
 (expect true (channel-type? :email))
 (expect true (channel-type? :slack))
 
@@ -195,7 +197,7 @@
     (tu/with-temp PulseChannel [{channel-id :id} {:pulse_id      id
                                                   :channel_type  :email
                                                   :details       {}
-                                                  :schedule_type "daily"}]
+                                                  :schedule_type schedule-type-daily}]
       (let [upd-recipients (fn [recipients]
                              (update-recipients! channel-id recipients)
                              (->> (db/sel :many PulseChannelRecipient :pulse_channel_id channel-id)
