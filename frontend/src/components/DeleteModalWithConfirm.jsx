@@ -13,7 +13,7 @@ export default class DeleteModalWithConfirm extends Component {
             checked: {}
         };
 
-        _.bindAll(this, onDelete);
+        _.bindAll(this, "onDelete");
     }
 
     static propTypes = {
