@@ -285,12 +285,7 @@ CoreServices.factory('Card', ['$resource', '$cookies', function($resource, $cook
         },
         create: {
             url: '/api/card',
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
-            }
+            method: 'POST'
         },
         get: {
             method: 'GET',
@@ -302,22 +297,12 @@ CoreServices.factory('Card', ['$resource', '$cookies', function($resource, $cook
             method: 'PUT',
             params: {
                 cardId: '@id'
-            },
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
             }
         },
         delete: {
             method: 'DELETE',
             params: {
                 cardId: '@cardId'
-            },
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
             }
         },
         isfavorite: {
@@ -332,11 +317,6 @@ CoreServices.factory('Card', ['$resource', '$cookies', function($resource, $cook
             method: 'POST',
             params: {
                 cardId: '@cardId'
-            },
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
             }
         },
         unfavorite: {
@@ -344,11 +324,6 @@ CoreServices.factory('Card', ['$resource', '$cookies', function($resource, $cook
             method: 'DELETE',
             params: {
                 cardId: '@cardId'
-            },
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
             }
         }
     });
@@ -363,8 +338,7 @@ CoreServices.factory('Dashboard', ['$resource', '$cookies', function($resource, 
         },
         create: {
             url:'/api/dashboard',
-            method:'POST',
-            headers: {'X-CSRFToken': function() { return $cookies.csrftoken; }},
+            method:'POST'
         },
         get: {
             method:'GET',
@@ -372,31 +346,26 @@ CoreServices.factory('Dashboard', ['$resource', '$cookies', function($resource, 
         },
         update: {
             method:'PUT',
-            params:{dashId:'@id'},
-            headers: {'X-CSRFToken': function() { return $cookies.csrftoken; }},
+            params:{dashId:'@id'}
         },
         delete: {
             method:'DELETE',
-            params:{dashId:'@dashId'},
-            headers: {'X-CSRFToken': function() { return $cookies.csrftoken; }},
+            params:{dashId:'@dashId'}
         },
         addcard: {
             url:'/api/dashboard/:dashId/cards',
             method:'POST',
-            params:{dashId:'@dashId'},
-            headers: {'X-CSRFToken': function() { return $cookies.csrftoken; }},
+            params:{dashId:'@dashId'}
         },
         removecard: {
             url:'/api/dashboard/:dashId/cards',
             method:'DELETE',
-            params:{dashId:'@dashId'},
-            headers: {'X-CSRFToken': function() { return $cookies.csrftoken; }},
+            params:{dashId:'@dashId'}
         },
         reposition_cards: {
             url:'/api/dashboard/:dashId/reposition',
             method:'POST',
-            params:{dashId:'@dashId'},
-            headers: {'X-CSRFToken': function() { return $cookies.csrftoken; }},
+            params:{dashId:'@dashId'}
         }
     });
 }]);
@@ -407,14 +376,8 @@ CoreServices.factory('ForeignKey', ['$resource', '$cookies', function($resource,
             method: 'DELETE',
             params: {
                 fkID: '@fkID'
-            },
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
-            },
-        },
-
+            }
+        }
     });
 }]);
 
@@ -427,21 +390,11 @@ CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', funct
         },
         db_create: {
             url: '/api/database/',
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
-            }
+            method: 'POST'
         },
         validate_connection: {
             url: '/api/database/validate/',
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
-            }
+            method: 'POST'
         },
         db_add_sample_dataset: {
             url: '/api/database/sample_dataset',
@@ -459,11 +412,6 @@ CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', funct
             method: 'PUT',
             params: {
                 dbId: '@id'
-            },
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
             }
         },
         db_delete: {
@@ -471,11 +419,6 @@ CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', funct
             method: 'DELETE',
             params: {
                 dbId: '@dbId'
-            },
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
             }
         },
         db_metadata: {
@@ -514,11 +457,6 @@ CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', funct
             method: 'POST',
             params: {
                 dbId: '@dbId'
-            },
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
             }
         },
         table_list: {
@@ -541,11 +479,6 @@ CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', funct
             method: 'PUT',
             params: {
                 tableId: '@id'
-            },
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
             }
         },
         table_fields: {
@@ -569,12 +502,7 @@ CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', funct
             method: 'POST',
             params: {
                 tableId: '@tableId'
-            },
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
-            },
+            }
         },
         table_query_metadata: {
             url: '/api/table/:tableId/query_metadata',
@@ -588,11 +516,6 @@ CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', funct
             method: 'POST',
             params: {
                 tableId: '@tableId'
-            },
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
             }
         },
         field_get: {
@@ -622,11 +545,6 @@ CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', funct
             method: 'POST',
             params: {
                 fieldId: '@fieldId'
-            },
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
             }
         },
         field_update: {
@@ -634,11 +552,6 @@ CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', funct
             method: 'PUT',
             params: {
                 fieldId: '@id'
-            },
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
             }
         },
         field_foreignkeys: {
@@ -654,21 +567,11 @@ CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', funct
             method: 'POST',
             params: {
                 fieldId: '@fieldId'
-            },
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
             }
         },
         dataset: {
             url: '/api/dataset',
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
-            }
+            method: 'POST'
         }
     });
 }]);
