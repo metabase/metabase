@@ -8,7 +8,7 @@
             [metabase.events :as events]
             (metabase.models common
                              [hydrate :refer [hydrate]]
-                             [database :refer [Database]]
+                             [database :refer [Database protected-password]]
                              [field :refer [Field]]
                              [table :refer [Table]])
             [metabase.sample-data :as sample-data]
@@ -18,6 +18,34 @@
   "Param must be a valid database engine type, e.g. `h2` or `postgres`."
   [symb value :nillable]
   (checkp-contains? (set (map name (keys @driver/available-drivers))) symb value))
+
+(defn test-database-connection
+  "Try out the connection details for a database and useful error message if connection fails, returns `nil` if connection succeeds."
+  [engine {:keys [host port] :as details}]
+  (let [engine           (keyword engine)
+        details          (assoc details :engine engine)
+        response-invalid (fn [field m] {:valid false
+                                        field m        ; work with the new {:field error-message} format
+                                        :message m})]  ; but be backwards-compatible with the UI as it exists right now
+    (try
+      (cond
+        (driver/can-connect-with-details? engine details :rethrow-exceptions) nil
+        (and host port (u/host-port-up? host port))                           (response-invalid :dbname (format "Connection to '%s:%d' successful, but could not connect to DB." host port))
+        (and host (u/host-up? host))                                          (response-invalid :port   (format "Connection to '%s' successful, but port %d is invalid." port))
+        host                                                                  (response-invalid :host   (format "'%s' is not reachable" host))
+        :else                                                                 (response-invalid :db     "Unable to connect to database."))
+      (catch Throwable e
+        (response-invalid :dbname (.getMessage e))))))
+
+(defn supports-ssl?
+  "Predicate function which determines if a given `engine` supports the `:ssl` setting."
+  [engine]
+  {:pre [(driver/is-engine? engine)]}
+  (let [driver-props (->> (driver/engine->driver engine)
+                          :details-fields
+                          (map :name)
+                          set)]
+    (contains? driver-props "ssl")))
 
 (defendpoint GET "/"
   "Fetch all `Databases`."
@@ -30,10 +58,26 @@
   {name    [Required NonEmptyString]
    engine  [Required DBEngine]
    details [Required Dict]}
-  ;; TODO - we should validate the contents of `details` here based on the engine
   (check-superuser)
-  (let-500 [new-db (ins Database :name name :engine engine :details details)]
-    (events/publish-event :database-create new-db)))
+  ;; this function tries connecting over ssl and non-ssl to establish a connection
+  ;; if it succeeds it returns the `details` that worked, otherwise it returns an error
+  (let [try-connection   (fn [engine details]
+                           (let [error (test-database-connection engine details)]
+                             (if (and error
+                                      (true? (:ssl details)))
+                               (recur engine (assoc details :ssl false))
+                               (or error details))))
+        details          (if (supports-ssl? engine)
+                           (assoc details :ssl true)
+                           details)
+        details-or-error (try-connection engine details)]
+    (if-not (false? (:valid details-or-error))
+      ;; no error, proceed with creation
+      (let-500 [new-db (ins Database :name name :engine engine :details details-or-error)]
+        (events/publish-event :database-create new-db))
+      ;; failed to connect, return error
+      {:status 400
+       :body   details-or-error})))
 
 (defendpoint POST "/sample_dataset"
   "Add the sample dataset as a new `Database`."
@@ -41,25 +85,6 @@
   (check-superuser)
   (sample-data/add-sample-dataset!)
   (sel :one Database :is_sample true))
-
-;; Stub function that will eventually validate a connection string
-(defendpoint POST "/validate"
-  "Validate that we can connect to a `Database`."
-  [:as {{:keys [host port engine] :as details} :body}]
-  (let [engine           (keyword engine)
-        details          (assoc details :engine engine)
-        response-invalid (fn [field m] {:status 400 :body {:valid false
-                                                          field m        ; work with the new {:field error-message} format
-                                                          :message m}})] ; but be backwards-compatible with the UI as it exists right now
-    (try
-      (cond
-        (driver/can-connect-with-details? engine details :rethrow-exceptions) {:valid true}
-        (and host port (u/host-port-up? host port))                           (response-invalid :dbname (format "Connection to '%s:%d' successful, but could not connect to DB." host port))
-        (and host (u/host-up? host))                                          (response-invalid :port   (format "Connection to '%s' successful, but port %d is invalid." port))
-        host                                                                  (response-invalid :host   (format "'%s' is not reachable" host))
-        :else                                                                 (response-invalid :db     "Unable to connect to database."))
-      (catch Throwable e
-        (response-invalid :dbname (.getMessage e))))))
 
 (defendpoint GET "/:id"
   "Get `Database` with ID."
@@ -69,13 +94,28 @@
 (defendpoint PUT "/:id"
   "Update a `Database`."
   [id :as {{:keys [name engine details]} :body}]
-  {name NonEmptyString, details Dict} ; TODO - check that engine is a valid choice
-  (write-check Database id)
-  (check-500 (upd-non-nil-keys Database id
-                               :name name
-                               :engine engine
-                               :details details))
-  (Database id))
+  {name    [Required NonEmptyString]
+   engine  [Required DBEngine]
+   details [Required Dict]}
+  (check-superuser)
+  (let-404 [database (Database id)]
+    (let [details    (if-not (= protected-password (:password details))
+                       details
+                       (assoc details :password (get-in database [:details :password])))
+          conn-error (test-database-connection engine details)]
+      (if-not conn-error
+        ;; no error, proceed with update
+        (do
+          ;; TODO: is there really a reason to let someone change the engine on an existing database?
+          ;;       that seems like the kind of thing that will almost never work in any practical way
+          (check-500 (upd-non-nil-keys Database id
+                                       :name name
+                                       :engine engine
+                                       :details details))
+          (Database id))
+        ;; failed to connect, return error
+        {:status 400
+         :body   conn-error}))))
 
 (defendpoint DELETE "/:id"
   "Delete a `Database`."
