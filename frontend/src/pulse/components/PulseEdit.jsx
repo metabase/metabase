@@ -5,6 +5,8 @@ import PulseEditCards from "./PulseEditCards.jsx";
 import PulseEditChannels from "./PulseEditChannels.jsx";
 
 import ActionButton from "metabase/components/ActionButton.jsx";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
+import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm.jsx";
 
 import {
     setEditingPulse,
@@ -84,6 +86,13 @@ export default class PulseEdit extends Component {
         return true;
     }
 
+    getConfirmItems() {
+        return [
+            "This pulse will no longer be emailed to 2 addresses Weekly on Mondays at 8:00 am",
+            "Slack channel #general will no longer get this pulse every day at 8:00 am."
+        ];
+    }
+
     render() {
         let { pulse } = this.props;
         return (
@@ -97,17 +106,26 @@ export default class PulseEdit extends Component {
                     <PulseEditCards {...this.props} setPulse={this.setPulse} />
                     <PulseEditChannels {...this.props} setPulse={this.setPulse} />
                     { pulse && pulse.id != null &&
-                        <div className="mb2">
-                            <h2 className="text-error">Danger Zone</h2>
-                            <div className="py2">
-                                <ActionButton
-                                    actionFn={() => confirm("Delete this pulse?") && this.delete()}
-                                    className="Button Button--danger"
-                                    normalText="Delete this Pulse"
-                                    activeText="Deleting…"
-                                    failedText="Delete failed"
-                                    successText="Deleted"
-                                />
+                        <div className="mb2 rounded bordered p2 border-error relative">
+                            <h3 className="text-error absolute top bg-white px1" style={{ marginTop: "-12px" }}>Danger Zone</h3>
+                            <div className="">
+                                <h4 className="text-bold mb1">Delete this pulse</h4>
+                                <div className="flex">
+                                    <p className="h4 pr2">Stop deliver and delete this pulse. There's no undo, so be careful.</p>
+                                    <ModalWithTrigger
+                                        ref={"deleteModal"+pulse.id}
+                                        triggerClasses="Button Button--danger flex-align-right flex-no-shrink"
+                                        triggerElement="Delete this Pulse"
+                                    >
+                                        <DeleteModalWithConfirm
+                                            objectType="pulse"
+                                            objectName={pulse.name}
+                                            confirmItems={this.getConfirmItems()}
+                                            onClose={() => this.refs["deleteModal"+pulse.id].close()}
+                                            onDelete={this.delete}
+                                        />
+                                    </ModalWithTrigger>
+                                </div>
                             </div>
                         </div>
                     }
