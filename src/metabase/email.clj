@@ -22,16 +22,6 @@
    Provided so you can swap this out with an \"inbox\" for test purposes."
   postal/send-message)
 
-(def ^:private smtp-details
-  "Get our application SMTP connection details from settings"
-  (delay
-    {:host     (email-smtp-host)
-     :user     (email-smtp-username)
-     :pass     (email-smtp-password)
-     :port     (email-smtp-port)
-     :security (email-smtp-security)
-     :from     (email-from-address)}))
-
 (defn- humanize-error-messages
   ""
   [response]
@@ -43,40 +33,38 @@
 (defn send-message
   "Send an email to one or more RECIPIENTS.
    RECIPIENTS is a sequence of email addresses; MESSAGE-TYPE must be either `:text` or `:html`.
-
      (email/send-message
       :subject      \"[Metabase] Password Reset Request\"
       :recipients   [\"cam@metabase.com\"]
       :message-type :text
       :message      \"How are you today?\")
-
    Upon success, this returns the MESSAGE that was just sent."
-  [& {:keys [details subject recipients message-type message]
-      :or   {details @smtp-details}}]
+  [& {:keys [subject recipients message-type message]}]
   {:pre [(string? subject)
          (sequential? recipients)
          (every? u/is-email? recipients)
          (contains? #{:text :html} message-type)
-         (string? message)
-         (map? details)]}
+         (string? message)]}
   (try
     ;; Check to make sure all valid settings are set!
-    (when-not (:host details)
+    (when-not (email-smtp-host)
       (throw (Exception. "SMTP host is not set.")))
     ;; Now send the email
-    (let [{:keys [from port security]} details]
-      (*send-email-fn* (-> (assoc details :port (Integer/parseInt port))
-                           (merge (case (keyword security)
-                                    :tls {:tls true}
-                                    :ssl {:ssl true}
-                                    {})))
-                       {:from    from
-                        :to      recipients
-                        :subject subject
-                        :body    (case message-type
-                                   :text message
-                                   :html [{:type    "text/html; charset=utf-8"
-                                           :content message}])}))
+    (*send-email-fn* (-> {:host (email-smtp-host)
+                          :user (email-smtp-username)
+                          :pass (email-smtp-password)
+                          :port (Integer/parseInt (email-smtp-port))}
+                         (merge (case (keyword (email-smtp-security))
+                                  :tls {:tls true}
+                                  :ssl {:ssl true}
+                                  {})))
+                     {:from    (email-from-address)
+                      :to      recipients
+                      :subject subject
+                      :body    (case message-type
+                                 :text message
+                                 :html [{:type    "text/html; charset=utf-8"
+                                         :content message}])})
     (catch Throwable e
       (log/warn "Failed to send email: " (.getMessage e))
       {:error   :ERROR
