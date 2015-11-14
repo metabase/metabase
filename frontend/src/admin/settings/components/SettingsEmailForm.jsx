@@ -12,6 +12,7 @@ export default class SettingsEmailForm extends Component {
         super(props, context);
 
         this.state = {
+            dirty: false,
             formData: {},
             sendingEmail: "default",
             submitting: "default",
@@ -96,7 +97,10 @@ export default class SettingsEmailForm extends Component {
     }
 
     handleChangeEvent(element, value, event) {
-        this.setState({ formData: { ...this.state.formData, [element.key]: (MetabaseUtils.isEmpty(value)) ? null : value }});
+        this.setState({
+            dirty: true,
+            formData: { ...this.state.formData, [element.key]: (MetabaseUtils.isEmpty(value)) ? null : value }
+        });
     }
 
     handleFormErrors(error) {
@@ -123,21 +127,17 @@ export default class SettingsEmailForm extends Component {
             sendingEmail: "working"
         });
 
-        let { formData, valid } = this.state;
+        this.props.sendTestEmail().then(() => {
+            this.setState({sendingEmail: "success"});
 
-        if (valid) {
-            this.props.sendTestEmail().then(() => {
-                this.setState({sendingEmail: "success"});
-
-                // show a confirmation for 3 seconds, then return to normal
-                setTimeout(() => this.setState({sendingEmail: "default"}), 3000);
-            }, (error) => {
-                this.setState({
-                    sendingEmail: "default",
-                    formErrors: this.handleFormErrors(error)
-                });
+            // show a confirmation for 3 seconds, then return to normal
+            setTimeout(() => this.setState({sendingEmail: "default"}), 3000);
+        }, (error) => {
+            this.setState({
+                sendingEmail: "default",
+                formErrors: this.handleFormErrors(error)
             });
-        }
+        });
     }
 
     updateEmailSettings(e) {
@@ -152,7 +152,10 @@ export default class SettingsEmailForm extends Component {
 
         if (valid) {
             this.props.updateEmailSettings(formData).then(() => {
-                this.setState({submitting: "success"});
+                this.setState({
+                    dirty: false,
+                    submitting: "success"
+                });
 
                 // show a confirmation for 3 seconds, then return to normal
                 setTimeout(() => this.setState({submitting: "default"}), 3000);
@@ -167,7 +170,7 @@ export default class SettingsEmailForm extends Component {
 
     render() {
         let { elements } = this.props;
-        let { formData, formErrors, sendingEmail, submitting, valid, validationErrors } = this.state;
+        let { dirty, formData, formErrors, sendingEmail, submitting, valid, validationErrors } = this.state;
 
         let settings = elements.map((element, index) => {
             // merge together data from a couple places to provide a complete view of the Element state
@@ -204,9 +207,11 @@ export default class SettingsEmailForm extends Component {
                         <button className={cx("Button mr2", {"Button--primary": !disabled}, {"Button--success-new": submitting === "success"})} disabled={disabled} onClick={this.updateEmailSettings.bind(this)}>
                             {saveButtonText}
                         </button>
-                        <button className={cx("Button", {"Button--success-new": sendingEmail === "success"})} disabled={disabled} onClick={this.sendTestEmail.bind(this)}>
-                            {emailButtonText}
-                        </button>
+                        { (valid && !dirty && submitting === "default") ?
+                            <button className={cx("Button", {"Button--success-new": sendingEmail === "success"})} disabled={disabled} onClick={this.sendTestEmail.bind(this)}>
+                                {emailButtonText}
+                            </button>
+                        : null }
                         { formErrors && formErrors.message ? <span className="pl2 text-error text-bold">{formErrors.message}</span> : null}
                     </li>
                 </ul>

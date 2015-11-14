@@ -2,7 +2,6 @@ import _ from "underscore";
 
 import SettingsEditor from './components/SettingsEditor.jsx';
 
-import Humanize from "humanize";
 
 var SettingsAdminControllers = angular.module('metabaseadmin.settings.controllers', ['metabase.services']);
 
@@ -78,7 +77,7 @@ const SECTIONS = [
                 display_name: "SMTP Security",
                 description: null,
                 type: "radio",
-                options: { none: "None", tls: "TLS", ssl: "SSL" },
+                options: { none: "None", ssl: "SSL", tls: "TLS" },
                 defaultValue: 'none'
             },
             {
@@ -145,9 +144,5 @@ SettingsAdminControllers.controller('SettingsEditor', ['$scope', '$location', 'S
             updatedSection.settings = sectionSettings;
             return updatedSection;
         });
-
-        function keyToDisplayName(key) {
-            return Humanize.capitalizeAll(key.replace(/-/g, " ")).trim();
-        }
     }
 ]);
