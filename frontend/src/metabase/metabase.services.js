@@ -21,15 +21,6 @@ MetabaseServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', f
                 }
             }
         },
-        validate_connection: {
-            url: '/api/database/validate/',
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': function() {
-                    return $cookies.csrftoken;
-                }
-            }
-        },
         db_add_sample_dataset: {
             url: '/api/database/sample_dataset',
             method: 'POST'
