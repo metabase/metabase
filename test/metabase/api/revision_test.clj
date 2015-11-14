@@ -27,7 +27,7 @@
       :description            rand-name
       :public_perms           2
       :display                "table"
-      :dataset_query          {:database (db-id)
+      :dataset_query          {:database (id)
                                :type     "query"
                                :query    {:aggregation ["rows"]
                                           :source_table (id :categories)}}

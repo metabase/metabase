@@ -11,11 +11,9 @@
                      InetSocketAddress
                      InetAddress)
            java.sql.Timestamp
-           java.util.Calendar
+           (java.util Calendar TimeZone)
            javax.xml.bind.DatatypeConverter
            org.joda.time.format.DateTimeFormatter))
-
-(set! *warn-on-reflection* true)
 
 ;;; ### Protocols
 
@@ -32,6 +30,7 @@
                    this)
   java.util.Date (->Timestamp [this]
                    (Timestamp. (.getTime this)))
+  ;; Number is assumed to be a UNIX timezone in milliseconds (UTC)
   Number         (->Timestamp [this]
                    (Timestamp. this))
   Calendar       (->Timestamp [this]
@@ -76,35 +75,39 @@
 
 (defn now-iso8601
   "Return the current date as an ISO-8601 formatted string."
-  []
+  ^String []
   (date->iso-8601 (System/currentTimeMillis)))
 
 (defn date-string?
   "Is S a valid ISO 8601 date string?"
-  [s]
+  [^String s]
   (boolean (when (string? s)
              (try (->Timestamp s)
                   (catch Throwable e)))))
 
 (defn ->Date
   "Coerece DATE to a `java.util.Date`."
-  ^java.util.Date [date]
-  (java.util.Date. (.getTime (->Timestamp date))))
+  (^java.util.Date []
+   (java.util.Date.))
+  (^java.util.Date [date]
+   (java.util.Date. (.getTime (->Timestamp date)))))
 
 (defn ->Calendar
   "Coerce DATE to a `java.util.Calendar`."
-  ^java.util.Calendar [date]
-  (doto (Calendar/getInstance)
-    (.setTimeInMillis (.getTime (->Timestamp date)))))
+  (^java.util.Calendar []
+   (doto (Calendar/getInstance)
+     (.setTimeZone (TimeZone/getTimeZone "UTC"))))
+  (^java.util.Calendar [date]
+   (doto (->Calendar)
+     (.setTime (->Timestamp date)))))
 
 (defn relative-date
   "Return a new `Timestamp` relative to the current time using a relative date UNIT.
 
      (relative-date :year -1) -> #inst 2014-11-12 ..."
-  ^java.sql.Timestamp
-  ([unit amount]
+  (^java.sql.Timestamp [unit amount]
    (relative-date unit amount (Calendar/getInstance)))
-  ([unit amount date]
+  (^java.sql.Timestamp [unit amount date]
    (let [cal               (->Calendar date)
          [unit multiplier] (case unit
                              :second  [Calendar/SECOND 1]
@@ -133,13 +136,14 @@
    (let [cal (->Calendar date)]
      (case unit
        :minute-of-hour  (.get cal Calendar/MINUTE)
-       :hour-of-day     (.get cal Calendar/HOUR)
-       :day-of-week     (.get cal Calendar/DAY_OF_WEEK) ; 1 = Sunday, etc.
+       :hour-of-day     (.get cal Calendar/HOUR_OF_DAY)
+       ;; 1 = Sunday <-> 6 = Saturday
+       :day-of-week     (.get cal Calendar/DAY_OF_WEEK)
        :day-of-month    (.get cal Calendar/DAY_OF_MONTH)
        :day-of-year     (.get cal Calendar/DAY_OF_YEAR)
        :week-of-year    (.get cal Calendar/WEEK_OF_YEAR)
-       :month-of-year   (.get cal Calendar/MONTH)
-       :quarter-of-year (let [month (.get cal Calendar/MONTH)]
+       :month-of-year   (inc (.get cal Calendar/MONTH))
+       :quarter-of-year (let [month (date-extract :month-of-year date)]
                           (int (/ (+ 2 month)
                                   3)))
        :year            (.get cal Calendar/YEAR)))))
@@ -153,25 +157,26 @@
 
      (date-trunc :month).
      ;; -> #inst \"2015-11-01T00:00:00\""
-  ([unit]
+  (^java.sql.Timestamp [unit]
    (date-trunc unit (System/currentTimeMillis)))
-  ([unit date]
+  (^java.sql.Timestamp [unit date]
    (let [trunc-with-format (fn trunc-with-format
                              ([format-string]
                               (trunc-with-format format-string date))
                              ([format-string d]
                               (->Timestamp (format-date format-string d))))]
      (case unit
-       :minute  (trunc-with-format "yyyy-MM-dd'T'HH:mm:00")
-       :hour    (trunc-with-format "yyyy-MM-dd'T'HH:00:00")
-       :day     (trunc-with-format "yyyy-MM-dd")
+       :minute  (trunc-with-format "yyyy-MM-dd'T'HH:mm:00+00:00")
+       :hour    (trunc-with-format "yyyy-MM-dd'T'HH:00:00+00:00")
+       :day     (trunc-with-format "yyyy-MM-dd+00:00")
        :week    (let [day-of-week (date-extract :day-of-week date)
                       date        (relative-date :day (- (dec day-of-week)) date)]
-                  (trunc-with-format "yyyy-MM-dd" date))
-       :month   (trunc-with-format "yyyy-MM")
+                  (trunc-with-format "yyyy-MM-dd+00:00" date))
+       :month   (trunc-with-format "yyyy-MM-01+00:00")
        :quarter (let [year    (date-extract :year date)
-                      quarter (date-extract :quarter date)]
-                  (->Timestamp (format "%d-%02d" year (* 3 quarter))))))))
+                      quarter (date-extract :quarter-of-year date)]
+                  (->Timestamp (format "%d-%02d-01+00:00" year (- (* 3 quarter)
+                                                                  2))))))))
 
 (defn date-trunc-or-extract
   "Apply date bucketing with UNIT to DATE. DATE defaults to now."

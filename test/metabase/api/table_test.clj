@@ -29,25 +29,25 @@
                               (datasets/with-dataset-when-testing dataset-name
                                 [{:name                (format-name "categories")
                                   :display_name        "Categories"
-                                  :db_id               (db-id)
+                                  :db_id               (id)
                                   :active              true
                                   :rows                75
                                   :id                  (id :categories)}
                                  {:name                (format-name "checkins")
                                   :display_name        "Checkins"
-                                  :db_id               (db-id)
+                                  :db_id               (id)
                                   :active              true
                                   :rows                1000
                                   :id                  (id :checkins)}
                                  {:name                (format-name "users")
                                   :display_name        "Users"
-                                  :db_id               (db-id)
+                                  :db_id               (id)
                                   :active              true
                                   :rows                15
                                   :id                  (id :users)}
                                  {:name                (format-name "venues")
                                   :display_name        "Venues"
-                                  :db_id               (db-id)
+                                  :db_id               (id)
                                   :active              true
                                   :rows                100
                                   :id                  (id :venues)}]))))
@@ -79,7 +79,7 @@
        :active          true
        :pk_field        (deref $pk_field)
        :id              (id :venues)
-       :db_id           (db-id)
+       :db_id           (id)
        :created_at      $})
     ((user->client :rasta) :get 200 (format "table/%d" (id :venues))))
 
@@ -176,7 +176,7 @@
        :entity_name     nil
        :active          true
        :id              (id :categories)
-       :db_id           (db-id)
+       :db_id           (id)
        :created_at      $})
     ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :categories))))
 
@@ -291,7 +291,7 @@
        :entity_name     nil
        :active          true
        :id              (id :users)
-       :db_id           (db-id)
+       :db_id           (id)
        :field_values    {(keyword (str (id :users :last_login)))
                          user-last-login-date-strs
 
@@ -389,7 +389,7 @@
        :entity_name     nil
        :active          true
        :id              (id :users)
-       :db_id           (db-id)
+       :db_id           (id)
        :field_values    {(keyword (str (id :users :last_login)))
                          user-last-login-date-strs
 
@@ -441,7 +441,7 @@
        :active          true
        :pk_field        (deref $pk_field)
        :id              $
-       :db_id           (db-id)
+       :db_id           (id)
        :created_at      $})
     (do ((user->client :crowberto) :put 200 (format "table/%d" (id :users)) {:display_name "Userz"
                                                                              :entity_type "person"

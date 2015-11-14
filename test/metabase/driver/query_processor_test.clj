@@ -1267,7 +1267,7 @@
 
 ;; RELATIVE DATES
 (defn- database-def-with-timestamps [interval-seconds]
-  (let [{:keys [date-interval]} (driver/engine->driver *engine*)]
+  (let [{:keys [date-interval]} (driver)]
     (create-database-definition "DB"
       ["checkins"
        [{:field-name "timestamp"
@@ -1306,7 +1306,7 @@
   1
   (with-temp-db [_ (checkins:1-per-day)]
     (-> (driver/process-query
-         {:database (db-id)
+         {:database (id)
           :type     :query
           :query    {:source_table (id :checkins)
                      :aggregation  ["count"]
@@ -1317,7 +1317,7 @@
   7
   (with-temp-db [_ (checkins:1-per-day)]
     (-> (driver/process-query
-         {:database (db-id)
+         {:database (id)
           :type     :query
           :query    {:source_table (id :checkins)
                      :aggregation  ["count"]
@@ -1331,7 +1331,7 @@
 (defn- date-bucketing-unit-when-you [& {:keys [breakout-by filter-by]}]
   (with-temp-db [_ (checkins:1-per-day)]
     (let [results (driver/process-query
-                   {:database (db-id)
+                   {:database (id)
                     :type     :query
                     :query     {:source_table (id :checkins)
                                 :aggregation  ["count"]

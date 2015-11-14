@@ -6,25 +6,27 @@
   (:import (metabase.driver.query_processor.interface DateTimeField
                                                       Field)))
 
-(defmulti parse-value (fn [field value]
-                        (class field)))
+(defprotocol IParseValueForField
+  (parse-value [this value]
+    "Parse a value for a given type of `Field`."))
 
-(defmethod parse-value Field [field value]
-  (map->Value {:field field
-               :value value}))
+(extend-protocol IParseValueForField
+  Field
+  (parse-value [this value]
+    (map->Value {:field this, :value value}))
 
-(defmethod parse-value DateTimeField [field value]
-  (match value
-    (_ :guard u/date-string?)
-    (map->DateTimeValue {:field field
-                         :value (u/->Timestamp value)})
+  DateTimeField
+  (parse-value [this value]
+    (match value
+      (_ :guard u/date-string?)
+      (map->DateTimeValue {:field this, :value (u/->Timestamp value)})
 
-    ["relative_datetime" "current"]
-    (map->RelativeDateTimeValue {:amount 0, :field field})
+      ["relative_datetime" "current"]
+      (map->RelativeDateTimeValue {:amount 0, :field this})
 
-    ["relative_datetime" (amount :guard integer?) (unit :guard relative-datetime-value-unit?)]
-    (map->RelativeDateTimeValue {:amount amount
-                                 :field  field
-                                 :unit   (keyword unit)})
+      ["relative_datetime" (amount :guard integer?) (unit :guard relative-datetime-value-unit?)]
+      (map->RelativeDateTimeValue {:amount amount
+                                   :field  this
+                                   :unit   (keyword unit)})
 
-    _ (throw (Exception. (format "Invalid value '%s': expected a DateTime." value)))))
+      _ (throw (Exception. (format "Invalid value '%s': expected a DateTime." value))))))

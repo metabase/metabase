@@ -42,21 +42,21 @@
 ;; [name last_login]
 (defonce ^:private users
   (let [rando-password (fn [] (str (java.util.UUID/randomUUID)))]
-    [["Plato Yeshua"        #inst "2014-04-01T08:30:00.000000000-00:00" (rando-password)]
-     ["Felipinho Asklepios" #inst "2014-12-05T15:15:00.000000000-00:00" (rando-password)]
-     ["Kaneonuskatew Eiran" #inst "2014-11-06T16:15:00.000000000-00:00" (rando-password)]
-     ["Simcha Yan"          #inst "2014-01-01T08:30:00.000000000-00:00" (rando-password)]
-     ["Quentin Sören"       #inst "2014-10-03T17:30:00.000000000-00:00" (rando-password)]
-     ["Shad Ferdynand"      #inst "2014-08-02T12:30:00.000000000-00:00" (rando-password)]
-     ["Conchúr Tihomir"     #inst "2014-08-02T09:30:00.000000000-00:00" (rando-password)]
-     ["Szymon Theutrich"    #inst "2014-02-01T10:15:00.000000000-00:00" (rando-password)]
-     ["Nils Gotam"          #inst "2014-04-03T09:30:00.000000000-00:00" (rando-password)]
-     ["Frans Hevel"         #inst "2014-07-03T19:30:00.000000000-00:00" (rando-password)]
-     ["Spiros Teofil"       #inst "2014-11-01T07:00:00.000000000-00:00" (rando-password)]
-     ["Kfir Caj"            #inst "2014-07-03T01:30:00.000000000-00:00" (rando-password)]
-     ["Dwight Gresham"      #inst "2014-08-01T10:30:00.000000000-00:00" (rando-password)]
-     ["Broen Olujimi"       #inst "2014-10-03T13:45:00.000000000-00:00" (rando-password)]
-     ["Rüstem Hebel"        #inst "2014-08-01T12:45:00.000000000-00:00" (rando-password)]]))
+    [["Plato Yeshua"        #inst "2014-04-01T08:30" (rando-password)]
+     ["Felipinho Asklepios" #inst "2014-12-05T15:15" (rando-password)]
+     ["Kaneonuskatew Eiran" #inst "2014-11-06T16:15" (rando-password)]
+     ["Simcha Yan"          #inst "2014-01-01T08:30" (rando-password)]
+     ["Quentin Sören"       #inst "2014-10-03T17:30" (rando-password)]
+     ["Shad Ferdynand"      #inst "2014-08-02T12:30" (rando-password)]
+     ["Conchúr Tihomir"     #inst "2014-08-02T09:30" (rando-password)]
+     ["Szymon Theutrich"    #inst "2014-02-01T10:15" (rando-password)]
+     ["Nils Gotam"          #inst "2014-04-03T09:30" (rando-password)]
+     ["Frans Hevel"         #inst "2014-07-03T19:30" (rando-password)]
+     ["Spiros Teofil"       #inst "2014-11-01T07:00" (rando-password)]
+     ["Kfir Caj"            #inst "2014-07-03T01:30" (rando-password)]
+     ["Dwight Gresham"      #inst "2014-08-01T10:30" (rando-password)]
+     ["Broen Olujimi"       #inst "2014-10-03T13:45" (rando-password)]
+     ["Rüstem Hebel"        #inst "2014-08-01T12:45" (rando-password)]]))
 
 ;; name
 (defonce ^:private categories

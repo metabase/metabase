@@ -37,7 +37,7 @@
                                 :display                :table
                                 :dataset_query          {}
                                 :visualization_settings {}
-                                :database_id            (db-id)}]
+                                :database_id            (id)}]
       (with-temp Card [{id2 :id} {:name                   (random-name)
                                   :public_perms           common/perms-none
                                   :creator_id             (user->id :crowberto)
@@ -50,7 +50,7 @@
                                                (map :id)
                                                set)
                                           card-id))]
-          [(card-returned? (db-id) id1)
+          [(card-returned? (id) id1)
            (card-returned? dbid id1)
            (card-returned? dbid id2)])))))
 
@@ -122,7 +122,7 @@
                                :visualization_settings {:global {:title nil}}
                                :public_perms 0
                                :created_at $
-                               :database_id (db-id)
+                               :database_id (id)
                                :table_id (id :categories)
                                :query_type "query"})
     (post-card card-name)))
@@ -155,7 +155,7 @@
          :visualization_settings {:global {:title nil}}
          :public_perms 0
          :created_at $
-         :database_id (db-id)
+         :database_id (id)
          :table_id (id :categories)
          :query_type "query"})
     (let [{:keys [id]} (post-card card-name)]
