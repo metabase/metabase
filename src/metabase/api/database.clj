@@ -22,20 +22,21 @@
 (defn test-database-connection
   "Try out the connection details for a database and useful error message if connection fails, returns `nil` if connection succeeds."
   [engine {:keys [host port] :as details}]
-  (let [engine           (keyword engine)
-        details          (assoc details :engine engine)
-        response-invalid (fn [field m] {:valid false
-                                        field m        ; work with the new {:field error-message} format
-                                        :message m})]  ; but be backwards-compatible with the UI as it exists right now
-    (try
-      (cond
-        (driver/can-connect-with-details? engine details :rethrow-exceptions) nil
-        (and host port (u/host-port-up? host port))                           (response-invalid :dbname (format "Connection to '%s:%d' successful, but could not connect to DB." host port))
-        (and host (u/host-up? host))                                          (response-invalid :port   (format "Connection to '%s' successful, but port %d is invalid." port))
-        host                                                                  (response-invalid :host   (format "'%s' is not reachable" host))
-        :else                                                                 (response-invalid :db     "Unable to connect to database."))
-      (catch Throwable e
-        (response-invalid :dbname (.getMessage e))))))
+  (when (not (metabase.config/is-test?))
+    (let [engine           (keyword engine)
+          details          (assoc details :engine engine)
+          response-invalid (fn [field m] {:valid false
+                                          field m        ; work with the new {:field error-message} format
+                                          :message m})]  ; but be backwards-compatible with the UI as it exists right now
+      (try
+        (cond
+          (driver/can-connect-with-details? engine details :rethrow-exceptions) nil
+          (and host port (u/host-port-up? host port))                           (response-invalid :dbname (format "Connection to '%s:%d' successful, but could not connect to DB." host port))
+          (and host (u/host-up? host))                                          (response-invalid :port   (format "Connection to '%s' successful, but port %d is invalid." port))
+          host                                                                  (response-invalid :host   (format "'%s' is not reachable" host))
+          :else                                                                 (response-invalid :db     "Unable to connect to database."))
+        (catch Throwable e
+          (response-invalid :dbname (.getMessage e)))))))
 
 (defn supports-ssl?
   "Predicate function which determines if a given `engine` supports the `:ssl` setting."
