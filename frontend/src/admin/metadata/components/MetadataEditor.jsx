@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import _ from "underscore";
 
 import MetadataHeader from './MetadataHeader.jsx';
 import MetadataTableList from './MetadataTableList.jsx';
@@ -23,6 +24,7 @@ export default class MetadataEditor extends Component {
         databaseId: PropTypes.number,
         databases: PropTypes.array.isRequired,
         selectDatabase: PropTypes.func.isRequired,
+        databaseMetadata: PropTypes.object,
         tableId: PropTypes.number,
         tables: PropTypes.object.isRequired,
         selectTable: PropTypes.func.isRequired,
@@ -63,7 +65,7 @@ export default class MetadataEditor extends Component {
     }
 
     render() {
-        var table = this.props.tables[this.props.tableId];
+        var table = (this.props.databaseMetadata) ? _.findWhere(this.props.databaseMetadata.tables, {id: this.props.tableId}) : null;
         var content;
         if (table) {
             if (this.state.isShowingSchema) {
@@ -100,7 +102,7 @@ export default class MetadataEditor extends Component {
                 <div className="MetadataEditor-main flex flex-row flex-full mt2">
                     <MetadataTableList
                         tableId={this.props.tableId}
-                        tables={this.props.tables}
+                        tables={(this.props.databaseMetadata) ? this.props.databaseMetadata.tables : []}
                         selectTable={this.props.selectTable}
                     />
                     {content}
