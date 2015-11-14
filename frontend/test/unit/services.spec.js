@@ -1,5 +1,4 @@
 import 'metabase/services';
-import 'metabase/metabase/metabase.services';
 
 describe('metabase.services', function() {
     beforeEach(angular.mock.module('metabase.services'));
