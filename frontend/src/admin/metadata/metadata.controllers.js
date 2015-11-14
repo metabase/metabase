@@ -98,7 +98,8 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
     $scope.updateField = function(field) {
         return Metabase.field_update(field).$promise.then(function(result) {
             _.each(result, (value, key) => { if (key.charAt(0) !== "$") { field[key] = value } });
-            table.metadataStrength = computeMetadataStrength(_.findWhere($scope.databaseMetadata.tables, {id: field.table_id}));
+            let table = _.findWhere($scope.databaseMetadata.tables, {id: field.table_id});
+            table.metadataStrength = computeMetadataStrength(table);
             return loadIdFields();
         }).then(function() {
             $timeout(() => $scope.$digest());
