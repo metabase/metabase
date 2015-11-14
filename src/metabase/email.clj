@@ -22,13 +22,6 @@
    Provided so you can swap this out with an \"inbox\" for test purposes."
   postal/send-message)
 
-(defn- humanize-error-messages
-  ""
-  [response]
-  ;; bad host = "Unknown SMTP host: foobar"
-  ;; host seems valid, but host/port failed connection = "Could not connect to SMTP host: localhost, port: 123"
-  ;; mandrill saying "Invalid Addresses" when wrong credentials provided
-  )
 
 (defn send-message
   "Send an email to one or more RECIPIENTS.
@@ -70,14 +63,32 @@
       {:error   :ERROR
        :message (.getMessage e)})))
 
-(defn test-connection
-  ""
-  [{:keys [host port user pass sender ssl] :as details}]
+
+(defn test-smtp-connection
+  "Test the connection to an SMTP server to determine if we can send emails.
+
+   Takes in a dictionary of properties such as:
+       {:host     \"localhost\"
+        :port     587
+        :user     \"bigbird\"
+        :pass     \"luckyme\"
+        :sender   \"foo@mycompany.com\"
+        :security \"tls\"}"
+  [{:keys [host port user pass sender security] :as details}]
   {:pre [(string? host)
          (integer? port)]}
   (try
-    (let [proto   (if ssl "smtps" "smtp")
-          session (doto (Session/getInstance (make-props sender (assoc details :proto proto)))
+    (let [ssl     (= security "ssl")
+          proto   (if ssl "smtps" "smtp")
+          details (-> details
+                      (assoc :proto proto
+                             :connectiontimeout "1000"
+                             :timeout "1000")
+                      (merge (case (keyword security)
+                           :tls {:tls true}
+                           :ssl {:ssl true}
+                           {})))
+          session (doto (Session/getInstance (make-props sender details))
                     (.setDebug false))]
       (with-open [transport (.getTransport session proto)]
         (.connect transport host port user pass)))
