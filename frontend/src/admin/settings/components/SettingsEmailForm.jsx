@@ -23,8 +23,8 @@ export default class SettingsEmailForm extends Component {
     static propTypes = {
         elements: PropTypes.object,
         formErrors: PropTypes.object,
-        submitFn: PropTypes.func.isRequired,
-        testEmailFn: PropTypes.func.isRequired
+        sendTestEmail: PropTypes.func.isRequired,
+        updateEmailSettings: PropTypes.func.isRequired
     };
 
     componentWillMount() {
@@ -99,25 +99,69 @@ export default class SettingsEmailForm extends Component {
         this.setState({ formData: { ...this.state.formData, [element.key]: (MetabaseUtils.isEmpty(value)) ? null : value }});
     }
 
+    handleFormErrors(error) {
+        // parse and format
+        let formErrors = {};
+        if (error.data && error.data.message) {
+            formErrors.message = error.data.message;
+        } else {
+            formErrors.message = "Looks like we ran into some problems";
+        }
+
+        if (error.data && error.data.errors) {
+            formErrors.elements = error.data.errors;
+        }
+
+        return formErrors;
+    }
+
     sendTestEmail(e) {
         e.preventDefault();
 
-        let { testEmailFn } = this.props;
+        this.setState({
+            formErrors: null,
+            sendingEmail: "working"
+        });
+
         let { formData, valid } = this.state;
 
         if (valid) {
-            testEmailFn(formData);
+            this.props.sendTestEmail().then(() => {
+                this.setState({sendingEmail: "success"});
+
+                // show a confirmation for 3 seconds, then return to normal
+                setTimeout(() => this.setState({sendingEmail: "default"}), 3000);
+            }, (error) => {
+                this.setState({
+                    sendingEmail: "default",
+                    formErrors: this.handleFormErrors(error)
+                });
+            });
         }
     }
 
-    formSubmitted(e) {
+    updateEmailSettings(e) {
         e.preventDefault();
 
-        let { submitFn } = this.props;
+        this.setState({
+            formErrors: null,
+            submitting: "working"
+        });
+
         let { formData, valid } = this.state;
 
         if (valid) {
-            submitFn(formData);
+            this.props.updateEmailSettings(formData).then(() => {
+                this.setState({submitting: "success"});
+
+                // show a confirmation for 3 seconds, then return to normal
+                setTimeout(() => this.setState({submitting: "default"}), 3000);
+            }, (error) => {
+                this.setState({
+                    submitting: "default",
+                    formErrors: this.handleFormErrors(error)
+                });
+            });
         }
     }
 
@@ -157,11 +201,11 @@ export default class SettingsEmailForm extends Component {
                 <ul>
                     {settings}
                     <li className="m2 mb4">
-                        <button className={cx("Button mr2", {"Button--success-new": sendingEmail === "success"})} disabled={disabled} onClick={this.sendTestEmail.bind(this)}>
-                            {emailButtonText}
-                        </button>
-                        <button className={cx("Button", {"Button--primary": !disabled}, {"Button--success-new": submitting === "success"})} disabled={disabled} onClick={this.formSubmitted.bind(this)}>
+                        <button className={cx("Button mr2", {"Button--primary": !disabled}, {"Button--success-new": submitting === "success"})} disabled={disabled} onClick={this.updateEmailSettings.bind(this)}>
                             {saveButtonText}
+                        </button>
+                        <button className={cx("Button", {"Button--success-new": sendingEmail === "success"})} disabled={disabled} onClick={this.sendTestEmail.bind(this)}>
+                            {emailButtonText}
                         </button>
                         { formErrors && formErrors.message ? <span className="pl2 text-error text-bold">{formErrors.message}</span> : null}
                     </li>

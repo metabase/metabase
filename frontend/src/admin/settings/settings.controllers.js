@@ -128,7 +128,7 @@ SettingsAdminControllers.controller('SettingsEditor', ['$scope', '$location', 'S
         }
 
         $scope.sendTestEmail = async function(settings) {
-            await Email.sendTest(settings).$promise;
+            await Email.sendTest().$promise;
         }
 
         let settingsByKey = _.groupBy(settings, 'key');
@@ -136,7 +136,6 @@ SettingsAdminControllers.controller('SettingsEditor', ['$scope', '$location', 'S
             let sectionSettings = section.settings.map(function(setting) {
                 const apiSetting = settingsByKey[setting.key][0];
                 if (apiSetting) {
-                    apiSetting.display_name = keyToDisplayName(apiSetting.key);
                     apiSetting.placeholder = apiSetting.default;
                     return _.extend(apiSetting, setting);
                 }
