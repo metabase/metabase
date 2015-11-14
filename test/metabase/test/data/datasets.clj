@@ -28,14 +28,6 @@
     "Return a dataset loader (an object that implements `IDatasetLoader`) for this dataset/driver.")
   (db [this]
     "Return `Database` containing test data for this driver.")
-  (table-name->table [this table-name]
-    "Given a TABLE-NAME keyword like `:venues`, *fetch* the corresponding `Table`.")
-  (table-name->id [this table-name]
-    "Given a TABLE-NAME keyword like `:venues`, return corresponding `Table` ID.")
-  (field-name->id [this table-name field-name]
-    "Given keyword TABLE-NAME and FIELD-NAME, return the corresponding `Field` ID.")
-  (fks-supported? [this]
-    "Does this driver support Foreign Keys?")
   (default-schema [this]
     "Return the default schema name that tables for this DB should be expected to have.")
   (format-name [this table-or-field-name]
@@ -65,20 +57,10 @@
   (db [_]
     @mongo-data/mongo-test-db)
 
-  (table-name->table [_ table-name]
-    (mongo-data/table-name->table table-name))
-
-  (table-name->id [_ table-name]
-    (mongo-data/table-name->id table-name))
-
-  (field-name->id [_ table-name field-name]
-    (mongo-data/field-name->id table-name (if (= field-name :id) :_id
-                                              field-name)))
   (format-name [_ table-or-field-name]
     (if (= table-or-field-name "id") "_id"
         table-or-field-name))
 
-  (fks-supported?       [_] false)
   (default-schema       [_] nil)
   (id-field-type        [_] :IntegerField)
   (sum-field-type       [_] :IntegerField)
@@ -87,38 +69,16 @@
 
 ;; ## Generic SQL
 
-;; TODO - Mongo implementation (etc.) might find these useful
-(def ^:private memoized-table-name->id
-  (memoize
-   (fn [db-id table-name]
-     {:pre  [(string? table-name)]
-      :post [(integer? %)]}
-     (sel :one :id Table :name table-name, :db_id db-id))))
-
-(def ^:private memoized-field-name->id
-  (memoize
-   (fn [db-id table-name field-name]
-     {:pre  [(string? field-name)]
-      :post [(integer? %)]}
-     (sel :one :id Field :name field-name, :table_id (memoized-table-name->id db-id table-name)))))
-
 (defn- generic-sql-load-data! [{:keys [dbpromise], :as this}]
   (when-not (realized? dbpromise)
-    (deliver dbpromise ((u/runtime-resolved-fn 'metabase.test.data 'get-or-create-database!) (dataset-loader this) data/test-data)))
+    (deliver dbpromise (@(resolve 'metabase.test.data/get-or-create-database!) (dataset-loader this) data/test-data)))
   @dbpromise)
 
 (def ^:private GenericSQLIDatasetMixin
   {:load-data!           generic-sql-load-data!
    :db                   generic-sql-load-data!
-   :table-name->id       (fn [this table-name]
-                           (memoized-table-name->id (:id (db this)) (name table-name)))
-   :table-name->table    (fn [this table-name]
-                           (Table (table-name->id this (name table-name))))
-   :field-name->id       (fn [this table-name field-name]
-                           (memoized-field-name->id (:id (db this)) (name table-name) (name field-name)))
    :format-name          (fn [_ table-or-field-name]
                            table-or-field-name)
-   :fks-supported?       (constantly true)
    :timestamp-field-type (constantly :DateTimeField)
    :id-field-type        (constantly :IntegerField)})
 
@@ -132,12 +92,6 @@
   (merge GenericSQLIDatasetMixin
          {:dataset-loader    (fn [_]
                                (h2/dataset-loader))
-          :table-name->id    (fn [this table-name]
-                               (memoized-table-name->id (:id (db this)) (s/upper-case (name table-name))))
-          :table-name->table (fn [this table-name]
-                               (Table (table-name->id this (s/upper-case (name table-name)))))
-          :field-name->id    (fn [this table-name field-name]
-                               (memoized-field-name->id (:id (db this)) (s/upper-case (name table-name)) (s/upper-case (name field-name))))
           :default-schema    (constantly "PUBLIC")
           :format-name       (fn [_ table-or-field-name]
                                (clojure.string/upper-case table-or-field-name))
@@ -186,7 +140,7 @@
 
 ;; # Concrete Instances
 
-(def dataset-name->dataset
+(def ^:private dataset-name->dataset*
   "Map of dataset keyword name -> dataset instance (i.e., an object that implements `IDataset`)."
   {:mongo     (MongoDriverData.)
    :h2        (H2DriverData.        (promise))
@@ -196,7 +150,11 @@
 
 (def ^:const all-valid-dataset-names
   "Set of names of all valid datasets."
-  (set (keys dataset-name->dataset)))
+  (set (keys dataset-name->dataset*)))
+
+(defn dataset-name->dataset [engine]
+  (or (dataset-name->dataset* engine)
+      (throw (Exception.(format "Invalid engine: %s\nMust be one of: %s" engine all-valid-dataset-names)))))
 
 
 ;; # Logic for determining which datasets to test against
@@ -220,7 +178,7 @@
              ;; Double check that the specified datasets are all valid
              (map (fn [dataset-name]
                     (assert (contains? all-valid-dataset-names dataset-name)
-                            (format "Invalid dataset specified in MB_TEST_DATASETS: %s" (name dataset-name)))
+                      (format "Invalid dataset specified in MB_TEST_DATASETS: %s" (name dataset-name)))
                     dataset-name))
              set)))
 

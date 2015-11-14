@@ -35,7 +35,7 @@
        :is_sample       false
        :organization_id nil
        :description     nil})
-  ((user->client :rasta) :get 200 (format "database/%d" (db-id))))
+  ((user->client :rasta) :get 200 (format "database/%d" (id))))
 
 ;; superusers *should* see DB details
 (expect
@@ -49,7 +49,7 @@
        :is_sample       false
        :organization_id nil
        :description     nil})
-  ((user->client :crowberto) :get 200 (format "database/%d" (db-id))))
+  ((user->client :crowberto) :get 200 (format "database/%d" (id))))
 
 ;; ## POST /api/database
 ;; Check that we can create a Database
@@ -202,9 +202,9 @@
                    :entity_name     nil
                    :active          true
                    :id              (id :categories)
-                   :db_id           (db-id)
+                   :db_id           (id)
                    :created_at      $})]})
-    (let [resp ((user->client :rasta) :get 200 (format "database/%d/metadata" (db-id)))]
+    (let [resp ((user->client :rasta) :get 200 (format "database/%d/metadata" (id)))]
       (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp)))))
 
 
@@ -213,7 +213,7 @@
 ;; ## GET /api/database/:id/tables
 ;; These should come back in alphabetical order
 (expect
-    (let [db-id (db-id)]
+    (let [db-id (id)]
       [(match-$ (Table (id :categories))
          {:description nil, :entity_type nil, :visibility_type nil, :schema "PUBLIC", :name "CATEGORIES", :rows 75, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Categories"})
        (match-$ (Table (id :checkins))
@@ -222,4 +222,4 @@
          {:description nil, :entity_type nil, :visibility_type nil, :schema "PUBLIC", :name "USERS", :rows 15, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Users"})
        (match-$ (Table (id :venues))
          {:description nil, :entity_type nil, :visibility_type nil, :schema "PUBLIC", :name "VENUES", :rows 100, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Venues"})])
-  ((user->client :rasta) :get 200 (format "database/%d/tables" (db-id))))
+  ((user->client :rasta) :get 200 (format "database/%d/tables" (id))))

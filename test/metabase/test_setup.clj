@@ -8,6 +8,7 @@
                       [db :as db]
                       [util :as u])
             (metabase.models [table :refer [Table]])
+            [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]))
 
 ;; # ---------------------------------------- EXPECTAIONS FRAMEWORK SETTINGS ------------------------------
@@ -72,8 +73,9 @@
       (datasets/load-data! dataset)
 
       ;; Check that dataset is loaded and working
-      (assert (Table (datasets/table-name->id dataset :venues))
-        (format "Loading test dataset %s failed: could not find 'venues' Table!" dataset-name)))))
+      (datasets/with-dataset dataset-name
+        (assert (Table (data/id :venues))
+          (format "Loading test dataset %s failed: could not find 'venues' Table!" dataset-name))))))
 
 (defn test-startup
   {:expectations-options :before-run}

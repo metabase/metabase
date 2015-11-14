@@ -263,7 +263,7 @@
 
 (defmacro Q* [f & args]
   `(Q** ~f
-        {:database (data/db-id)
+        {:database (data/id)
          :type     "query"
          :query    {}
          :context  {:driver  nil

@@ -36,7 +36,7 @@
                            :entity_name     nil
                            :active          true
                            :id              (id :users)
-                           :db_id           (db-id)
+                           :db_id           (id)
                            :created_at      $})
        :special_type    "category" ; metabase.driver.generic-sql.sync/check-for-low-cardinality should have marked this as such because it had no other special_type
        :name            "NAME"

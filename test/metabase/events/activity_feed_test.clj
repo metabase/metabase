@@ -41,7 +41,7 @@
                     :creator_id             (:id user)
                     :public_perms           2
                     :display                "table"
-                    :dataset_query          {:database (db-id)
+                    :dataset_query          {:database (id)
                                              :type     :query
                                              :query    {:source_table (id :categories)}}
                     :visualization_settings {})
@@ -61,7 +61,7 @@
    :user_id     (:id user)
    :model       "card"
    :model_id    (:id card)
-   :database_id (db-id)
+   :database_id (id)
    :table_id    (id :categories)
    :details     {:description  (:description card)
                  :name         (:name card)
@@ -79,7 +79,7 @@
    :user_id     (:id user)
    :model       "card"
    :model_id    (:id card)
-   :database_id (db-id)
+   :database_id (id)
    :table_id    (id :categories)
    :details     {:description  (:description card)
                  :name         (:name card)
@@ -97,7 +97,7 @@
    :user_id     (:id user)
    :model       "card"
    :model_id    (:id card)
-   :database_id (db-id)
+   :database_id (id)
    :table_id    (id :categories)
    :details     {:description  (:description card)
                  :name         (:name card)
@@ -189,8 +189,8 @@
    {:topic       :database-sync
     :user_id     nil
     :model       "database"
-    :model_id    (db-id)
-    :database_id (db-id)
+    :model_id    (id)
+    :database_id (id)
     :custom_id   "abc"
     :details     {:status      "started"
                   :name        (:name (db))
@@ -199,8 +199,8 @@
    {:topic       :database-sync
     :user_id     nil
     :model       "database"
-    :model_id    (db-id)
-    :database_id (db-id)
+    :model_id    (id)
+    :database_id (id)
     :custom_id   "abc"
     :details     {:status       "completed"
                   :running_time 0
@@ -210,11 +210,11 @@
   (do
     (k/delete Activity)
     (let [_            (process-activity-event {:topic :database-sync-begin
-                                                :item  {:database_id (db-id) :custom_id "abc"}})
+                                                :item  {:database_id (id) :custom_id "abc"}})
           activity1    (-> (db/sel :one Activity :topic "database-sync")
                            (select-keys [:topic :user_id :model :model_id :database_id :custom_id :details]))
           _            (process-activity-event {:topic :database-sync-end
-                                                :item  {:database_id (db-id) :custom_id "abc"}})
+                                                :item  {:database_id (id) :custom_id "abc"}})
           activity2    (-> (db/sel :one Activity :topic "database-sync")
                            (select-keys [:topic :user_id :model :model_id :database_id :custom_id :details])
                            (assoc-in [:details :running_time] 0))
