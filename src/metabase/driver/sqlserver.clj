@@ -119,9 +119,9 @@
                                                 :display-name "Port"
                                                 :type         :integer
                                                 :default      1433}
-                                               {:name         "dbname"
+                                               {:name         "db"
                                                 :display-name "Database name"
-                                                :placeholder  "birds_of_the_word"
+                                                :placeholder  "BirdsOfTheWorld"
                                                 :required     true}
                                                {:name         "user"
                                                 :display-name "Database username"
