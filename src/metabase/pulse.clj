@@ -1,5 +1,5 @@
 (ns metabase.pulse
-  (:require [hiccup.core :refer [html]]
+  (:require [hiccup.core :refer [html h]]
             [clj-time.core :as t]
             [clj-time.coerce :as c]
             [clj-time.format :as f]
@@ -8,6 +8,8 @@
             [clojure.string :refer [upper-case]]
             (metabase.models [setting :refer [defsetting] :as setting])
             [metabase.util :as u]))
+
+;; NOTE: hiccup does not escape content by default so be sure to use "h" to escape any user-controlled content :-/
 
 ;;; ## CONFIG
 
@@ -53,8 +55,8 @@
 (defn render-table-row
   [index row bar-column max-value]
   [:tr {:style (if (odd? index) "color: rgb(189,193,191);" "color: rgb(124,131,129);")}
-    [:td {:style bar-td-style} (format-cell (first row))]
-    [:td {:style (str bar-td-style "font-weight: 700;")} (format-cell (second row))]
+    [:td {:style bar-td-style} (-> row first format-cell h)]
+    [:td {:style (str bar-td-style "font-weight: 700;")} (-> row second format-cell h)]
     (if bar-column [:td {:style (str bar-td-style "width: 99%;")}
       [:div {:style (str "background-color: rgb(135, 93, 175); height: 20px; width: " (float (* 100 (/ (bar-column row) max-value))) "%")} "&#160;"]])])
 
@@ -65,22 +67,22 @@
       [:thead
         [:tr
           [:th {:style (str bar-td-style bar-th-style "min-width: 60px;")}
-            (-> cols first :display_name upper-case)]
+            (-> cols first :display_name upper-case h)]
           [:th {:style (str bar-td-style bar-th-style "min-width: 60px;")}
-            (-> cols second :display_name upper-case)]
+            (-> cols second :display_name upper-case h)]
           (if bar-column [:th {:style (str bar-td-style bar-th-style "width: 99%;")}])]]
       [:tbody
         (map-indexed #(render-table-row %1 %2 bar-column max-value) rows)]]))
 
 (defn render-bar-chart
   [data]
-  [:div {:style ""}
+  [:div
     (render-table data second)])
 
 (defn render-scalar
   [data]
   [:div {:style scalar-style}
-    (-> data :rows first first format-cell)])
+    (-> data :rows first first format-cell h)])
 
 (def ^:private sparkline-dot-radius 6)
 (def ^:private sparkline-thickness 4)
@@ -144,7 +146,8 @@
   [card data include-title]
   [:div {:style (str section-style "margin: 16px;")}
     (if include-title [:div {:style "margin-bottom: 16px;"}
-      [:a {:style header-style :href (str (setting/get :-site-url) "/card/" (:id card) "?clone")} (:name card)]] nil)
+      [:a {:style header-style :href (h (str (setting/get :-site-url) "/card/" (:id card) "?clone"))}
+        (-> card :name h)]])
     (cond
       (and (= (-> data :cols count) 1) (= (-> data :rows count) 1)) (render-scalar data)
       (and (= (-> data :cols count) 2) (= (-> data :cols first :base_type) :DateTimeField)) (render-sparkline data)
@@ -159,7 +162,7 @@
 (defn render-pulse
   [pulse results]
   [:div
-    [:h1 {:style (str section-style "margin: 16px; color: rgb(57,67,64);")} (:name pulse)]
+    [:h1 {:style (str section-style "margin: 16px; color: rgb(57,67,64);")} (-> pulse :name h)]
     (apply vector :div (mapv render-pulse-section results))])
 
 ; ported from https://github.com/radkovo/CSSBox/blob/cssbox-4.10/src/main/java/org/fit/cssbox/demo/ImageRenderer.java
