@@ -13,12 +13,12 @@
 ;; ## Logic for selectively running mongo
 
 (defmacro expect-when-testing-mongo [expected actual]
-  `(datasets/expect-when-testing-dataset :mongo
+  `(datasets/expect-when-testing-engine :mongo
      ~expected
      ~actual))
 
 (defn- mongo-db []
-  (datasets/db (datasets/dataset-name->dataset :mongo)))
+  (datasets/db (datasets/engine->loader :mongo)))
 
 ;; ## Constants + Helper Fns/Macros
 ;; TODO - move these to metabase.test-data ?

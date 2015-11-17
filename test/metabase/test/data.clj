@@ -6,7 +6,7 @@
             (metabase.models [database :refer [Database]]
                              [field :refer [Field] :as field]
                              [table :refer [Table]])
-            (metabase.test.data [datasets :as datasets :refer [*dataset*]]
+            (metabase.test.data [datasets :as datasets :refer [*data-loader*]]
                                 [h2 :as h2]
                                 [interface :refer :all])
             [metabase.util :as u])
@@ -19,7 +19,7 @@
 ;; These functions offer a generic way to get bits of info like Table + Field IDs from any of our many driver/dataset combos.
 
 (def ^:dynamic *get-db*
-  (fn [] (datasets/db *dataset*)))
+  (fn [] (datasets/db *data-loader*)))
 
 (defn db
   "Return the current database.
@@ -36,7 +36,7 @@
        ~@body)))
 
 (defn format-name [nm]
-  (datasets/format-name *dataset* (name nm)))
+  (datasets/format-name *data-loader* (name nm)))
 
 (defn- get-table-id-or-explode [db-id table-name]
   (let [table-name (format-name table-name)]
@@ -81,10 +81,10 @@
   []
   (contains? (:features (driver)) :foreign-keys))
 
-(defn default-schema []       (datasets/default-schema *dataset*))
-(defn id-field-type []        (datasets/id-field-type *dataset*))
-(defn sum-field-type []       (datasets/sum-field-type *dataset*))
-(defn timestamp-field-type [] (datasets/timestamp-field-type *dataset*))
+(defn default-schema []       (datasets/default-schema *data-loader*))
+(defn id-field-type []        (datasets/id-field-type *data-loader*))
+(defn sum-field-type []       (datasets/sum-field-type *data-loader*))
+(defn timestamp-field-type [] (datasets/timestamp-field-type *data-loader*))
 
 
 ;; ## Loading / Deleting Test Datasets
@@ -92,9 +92,9 @@
 (defn get-or-create-database!
   "Create DBMS database associated with DATABASE-DEFINITION, create corresponding Metabase `Databases`/`Tables`/`Fields`, and sync the `Database`.
    DATASET-LOADER should be an object that implements `IDatasetLoader`; it defaults to the value returned by the method `dataset-loader` for the
-   current dataset (`*dataset*`), which is H2 by default."
+   current dataset (`*data-loader*`), which is H2 by default."
   ([^DatabaseDefinition database-definition]
-   (get-or-create-database! *dataset* database-definition))
+   (get-or-create-database! *data-loader* database-definition))
   ([dataset-loader {:keys [database-name], :as ^DatabaseDefinition database-definition}]
    (let [engine (engine dataset-loader)]
      (or (metabase-instance database-definition engine)
@@ -135,9 +135,9 @@
 (defn remove-database!
   "Delete Metabase `Database`, `Fields` and `Tables` associated with DATABASE-DEFINITION, then remove the physical database from the associated DBMS.
    DATASET-LOADER should be an object that implements `IDatasetLoader`; by default it is the value returned by the method `dataset-loader` for the
-   current dataset, bound to `*dataset*`."
+   current dataset, bound to `*data-loader*`."
   ([^DatabaseDefinition database-definition]
-   (remove-database! *dataset* database-definition))
+   (remove-database! *data-loader* database-definition))
   ([dataset-loader ^DatabaseDefinition database-definition]
    ;; Delete the Metabase Database and associated objects
    (cascade-delete Database :id (:id (metabase-instance database-definition (engine dataset-loader))))
@@ -147,7 +147,7 @@
 
 
 (defn -with-temp-db [^DatabaseDefinition dbdef f]
-  (let [loader *dataset*
+  (let [loader *data-loader*
         dbdef  (map->DatabaseDefinition (assoc dbdef :short-lived? true))]
     (try
       (with-db (binding [*sel-disable-logging* true]

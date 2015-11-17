@@ -104,9 +104,9 @@
 (let [db-name (str "A" (random-name))] ; make sure this name comes before "test-data"
   (expect-eval-actual-first
       (set (filter identity
-                   (conj (for [dataset-name datasets/all-valid-dataset-names]
-                           (datasets/when-testing-dataset dataset-name
-                             (match-$ (datasets/db (datasets/dataset-name->dataset dataset-name))
+                   (conj (for [engine datasets/all-valid-engines]
+                           (datasets/when-testing-engine engine
+                             (match-$ (datasets/db (datasets/engine->loader engine))
                                {:created_at      $
                                 :engine          (name $engine)
                                 :id              $
@@ -127,9 +127,9 @@
     (do
       ;; Delete all the randomly created Databases we've made so far
       (cascade-delete Database :id [not-in (set (filter identity
-                                                        (for [dataset-name datasets/all-valid-dataset-names]
-                                                          (datasets/when-testing-dataset dataset-name
-                                                            (:id (datasets/db (datasets/dataset-name->dataset dataset-name)))))))])
+                                                        (for [engine datasets/all-valid-engines]
+                                                          (datasets/when-testing-engine engine
+                                                            (:id (datasets/db (datasets/engine->loader engine)))))))])
       ;; Add an extra DB so we have something to fetch besides the Test DB
       (create-db db-name)
       ;; Now hit the endpoint
