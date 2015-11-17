@@ -58,9 +58,6 @@
                                                :special_type :country
                                                :field_type   :dimension}))
 
-;; NOT field_type = senstive
-;; NOT base_type = date, datetime, time
-;; (required) special_type = category, city, state, country OR base_type = boolean
 
 ;; Check that setting a Field's special_type to :category will cause a corresponding FieldValues to be created asynchronously
 (expect
