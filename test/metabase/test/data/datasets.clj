@@ -7,16 +7,20 @@
             [expectations :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
-            [metabase.driver.mongo.test-data :as mongo-data]
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
-            (metabase.test.data [data :as data]
+            (metabase.test.data [dataset-definitions :as defs]
                                 [h2 :as h2]
                                 [mongo :as mongo]
                                 [mysql :as mysql]
                                 [postgres :as postgres]
                                 [sqlserver :as sqlserver])
-            [metabase.util :as u]))
+            [metabase.util :as u])
+  (:import metabase.test.data.h2.H2DatasetLoader
+           metabase.test.data.mongo.MongoDatasetLoader
+           metabase.test.data.mysql.MySQLDatasetLoader
+           metabase.test.data.postgres.PostgresDatasetLoader
+           metabase.test.data.sqlserver.SQLServerDatasetLoader))
 
 ;; # IDataset
 
@@ -24,8 +28,6 @@
   "Functions needed to fetch test data for various drivers."
   (load-data! [this]
     "Load the test data for this dataset.")
-  (dataset-loader [this]
-    "Return a dataset loader (an object that implements `IDatasetLoader`) for this dataset/driver.")
   (db [this]
     "Return `Database` containing test data for this driver.")
   (default-schema [this]
@@ -45,226 +47,201 @@
 
 ;; ## Mongo
 
-(deftype MongoDriverData []
+(defn- generic-load-data! [{:keys [dbpromise], :as this}]
+  (when-not (realized? dbpromise)
+    (deliver dbpromise (@(resolve 'metabase.test.data/get-or-create-database!) this defs/test-data)))
+  @dbpromise)
+
+(extend MongoDatasetLoader
   IDataset
-  (load-data! [_]
-    @mongo-data/mongo-test-db
-    (assert (integer? @mongo-data/mongo-test-db-id)))
-
-  (dataset-loader [_]
-    (mongo/dataset-loader))
-
-  (db [_]
-    @mongo-data/mongo-test-db)
-
-  (format-name [_ table-or-field-name]
-    (if (= table-or-field-name "id") "_id"
-        table-or-field-name))
-
-  (default-schema       [_] nil)
-  (id-field-type        [_] :IntegerField)
-  (sum-field-type       [_] :IntegerField)
-  (timestamp-field-type [_] :DateField))
+  {:load-data!           generic-load-data!
+   :db                   generic-load-data!
+   :format-name          (fn [_ table-or-field-name]
+                           (if (= table-or-field-name "id") "_id"
+                               table-or-field-name))
+   :default-schema       (constantly nil)
+   :id-field-type        (constantly :IntegerField)
+   :sum-field-type       (constantly :IntegerField)
+   :timestamp-field-type (constantly :DateField)})
 
 
 ;; ## Generic SQL
 
-(defn- generic-sql-load-data! [{:keys [dbpromise], :as this}]
-  (when-not (realized? dbpromise)
-    (deliver dbpromise (@(resolve 'metabase.test.data/get-or-create-database!) (dataset-loader this) data/test-data)))
-  @dbpromise)
-
 (def ^:private GenericSQLIDatasetMixin
-  {:load-data!           generic-sql-load-data!
-   :db                   generic-sql-load-data!
+  {:load-data!           generic-load-data!
+   :db                   generic-load-data!
    :format-name          (fn [_ table-or-field-name]
                            table-or-field-name)
    :timestamp-field-type (constantly :DateTimeField)
-   :id-field-type        (constantly :IntegerField)})
+   :id-field-type        (constantly :IntegerField)
+   :sum-field-type       (constantly :BigIntegerField)
+   :default-schema       (constantly nil)})
 
 
 ;;; ### H2
 
-(defrecord H2DriverData [dbpromise])
-
-(extend H2DriverData
+(extend H2DatasetLoader
   IDataset
   (merge GenericSQLIDatasetMixin
-         {:dataset-loader    (fn [_]
-                               (h2/dataset-loader))
-          :default-schema    (constantly "PUBLIC")
+         {:default-schema    (constantly "PUBLIC")
           :format-name       (fn [_ table-or-field-name]
-                               (clojure.string/upper-case table-or-field-name))
-          :id-field-type     (constantly :BigIntegerField)
-          :sum-field-type    (constantly :BigIntegerField)}))
+                               (s/upper-case table-or-field-name))
+          :id-field-type     (constantly :BigIntegerField)}))
 
 
 ;;; ### Postgres
 
-(defrecord PostgresDriverData [dbpromise])
-
-(extend PostgresDriverData
+(extend PostgresDatasetLoader
   IDataset
   (merge GenericSQLIDatasetMixin
-         {:dataset-loader (fn [_]
-                            (postgres/dataset-loader))
-          :default-schema (constantly "public")
+         {:default-schema (constantly "public")
           :sum-field-type (constantly :IntegerField)}))
 
 
 ;;; ### MySQL
 
-(defrecord MySQLDriverData [dbpromise])
-
-(extend MySQLDriverData
+(extend MySQLDatasetLoader
   IDataset
-  (merge GenericSQLIDatasetMixin
-         {:dataset-loader (fn [_]
-                            (mysql/dataset-loader))
-          :default-schema (constantly nil)
-          :sum-field-type (constantly :BigIntegerField)}))
+  GenericSQLIDatasetMixin)
 
 
 ;;; ### SQLServer
 
-(defrecord SQLServerDriverData [dbpromise])
-
-(extend SQLServerDriverData
+(extend SQLServerDatasetLoader
   IDataset
   (merge GenericSQLIDatasetMixin
-         {:dataset-loader (fn [_]
-                            (sqlserver/dataset-loader))
-          :default-schema (constantly "dbo")
+         {:default-schema (constantly "dbo")
           :sum-field-type (constantly :IntegerField)}))
 
 
 ;; # Concrete Instances
 
-(def ^:private dataset-name->dataset*
+(def ^:private engine->loader*
   "Map of dataset keyword name -> dataset instance (i.e., an object that implements `IDataset`)."
-  {:mongo     (MongoDriverData.)
-   :h2        (H2DriverData.        (promise))
-   :postgres  (PostgresDriverData.  (promise))
-   :mysql     (MySQLDriverData.     (promise))
-   :sqlserver (SQLServerDriverData. (promise))})
+  {:mongo     (MongoDatasetLoader.     (promise))
+   :h2        (H2DatasetLoader.        (promise))
+   :postgres  (PostgresDatasetLoader.  (promise))
+   :mysql     (MySQLDatasetLoader.     (promise))
+   :sqlserver (SQLServerDatasetLoader. (promise))})
 
-(def ^:const all-valid-dataset-names
+(def ^:const all-valid-engines
   "Set of names of all valid datasets."
-  (set (keys dataset-name->dataset*)))
+  (set (keys engine->loader*)))
 
-(defn dataset-name->dataset [engine]
-  (or (dataset-name->dataset* engine)
-      (throw (Exception.(format "Invalid engine: %s\nMust be one of: %s" engine all-valid-dataset-names)))))
+(defn engine->loader [engine]
+  (or (engine->loader* engine)
+      (throw (Exception.(format "Invalid engine: %s\nMust be one of: %s" engine all-valid-engines)))))
 
 
 ;; # Logic for determining which datasets to test against
 
 ;; By default, we'll test against against only the :h2 (H2) dataset; otherwise, you can specify which
-;; datasets to test against by setting the env var `MB_TEST_DATASETS` to a comma-separated list of dataset names, e.g.
+;; datasets to test against by setting the env var `ENGINES` to a comma-separated list of dataset names, e.g.
 ;;
 ;;    # test against :h2 and :mongo
-;;    MB_TEST_DATASETS=generic-sql,mongo
+;;    ENGINES=generic-sql,mongo
 ;;
 ;;    # just test against :h2 (default)
-;;    MB_TEST_DATASETS=generic-sql
+;;    ENGINES=generic-sql
 
-(defn- get-test-datasets-from-env
-  "Return a set of dataset names to test against from the env var `MB_TEST_DATASETS`."
+(defn- get-engines-from-env
+  "Return a set of dataset names to test against from the env var `ENGINES`."
   []
-  (when-let [env-drivers (some-> (env :mb-test-datasets)
-                                 s/lower-case)]
-    (some->> (s/split env-drivers #",")
+  (when-let [env-engines (some-> (env :engines) s/lower-case)]
+    (some->> (s/split env-engines #",")
              (map keyword)
              ;; Double check that the specified datasets are all valid
-             (map (fn [dataset-name]
-                    (assert (contains? all-valid-dataset-names dataset-name)
-                      (format "Invalid dataset specified in MB_TEST_DATASETS: %s" (name dataset-name)))
-                    dataset-name))
+             (map (fn [engine]
+                    (assert (contains? all-valid-engines engine)
+                      (format "Invalid dataset specified in ENGINES: %s" (name engine)))
+                    engine))
              set)))
 
-(defonce ^:const
-  ^{:doc (str "Set of names of drivers we should run tests against. "
-              "By default, this only contains `:h2` but can be overriden by setting env var `MB_TEST_DATASETS`.")}
-  test-dataset-names
-  (let [datasets (or (get-test-datasets-from-env)
-                     #{:h2})]
-    (log/info (color/green "Running QP tests against these datasets: " datasets))
-    datasets))
+(def ^:const test-engines
+  "Set of names of drivers we should run tests against.
+   By default, this only contains `:h2` but can be overriden by setting env var `ENGINES`."
+  (let [engines (or (get-engines-from-env)
+                    #{:h2})]
+    (log/info (color/green "Running QP tests against these engines: " engines))
+    engines))
 
 
 ;; # Helper Macros
 
-(def ^:dynamic *dataset*
-  "The dataset we're currently testing against, bound by `with-dataset`.
-   Defaults to `(dataset-name->dataset :h2)`."
-  (dataset-name->dataset (if (contains? test-dataset-names :h2) :h2
-                             (first test-dataset-names))))
+(def ^:private ^:const default-engine
+  (if (contains? test-engines :h2) :h2
+      (first test-engines)))
 
 (def ^:dynamic *engine*
   "Keyword name of the engine that we're currently testing against. Defaults to `:h2`."
-  :h2)
+  default-engine)
 
-(defmacro with-dataset
-  "Bind `*dataset*` to the dataset with DATASET-NAME and execute BODY."
-  [dataset-name & body]
-  `(let [engine# ~dataset-name]
+(def ^:dynamic *data-loader*
+  "The dataset we're currently testing against, bound by `with-engine`.
+   Defaults to `(engine->loader :h2)`."
+  (engine->loader default-engine))
+
+
+
+(defmacro with-engine
+  "Bind `*data-loader*` to the dataset with ENGINE and execute BODY."
+  [engine & body]
+  `(let [engine# ~engine]
      (binding [*engine*  engine#
-               *dataset* (dataset-name->dataset engine#)]
+               *data-loader* (engine->loader engine#)]
        ~@body)))
 
-(defmacro when-testing-dataset
-  "Execute BODY only if we're currently testing against DATASET-NAME."
-  [dataset-name & body]
-  `(when (contains? test-dataset-names ~dataset-name)
+(defmacro when-testing-engine
+  "Execute BODY only if we're currently testing against ENGINE."
+  [engine & body]
+  `(when (contains? test-engines ~engine)
      ~@body))
 
-(defmacro with-dataset-when-testing
-  "When testing DATASET-NAME, binding `*dataset*` and executes BODY."
-  [dataset-name & body]
-  `(when-testing-dataset ~dataset-name
-     (with-dataset ~dataset-name
+(defmacro with-engine-when-testing
+  "When testing ENGINE, binding `*data-loader*` and executes BODY."
+  [engine & body]
+  `(when-testing-engine ~engine
+     (with-engine ~engine
        ~@body)))
 
-(defmacro expect-when-testing-dataset
-  "Generate a unit test that only runs if we're currently testing against DATASET-NAME."
-  [dataset-name expected actual]
-  `(expect
-       (when-testing-dataset ~dataset-name
-         ~expected)
-     (when-testing-dataset ~dataset-name
+(defmacro expect-when-testing-engine
+  "Generate a unit test that only runs if we're currently testing against ENGINE."
+  [engine expected actual]
+  `(when-testing-engine ~engine
+     (expect ~expected
        ~actual)))
 
-(defmacro expect-with-dataset
-  "Generate a unit test that only runs if we're currently testing against DATASET-NAME, and that binds `*dataset*` to the current dataset."
-  [dataset-name expected actual]
-  `(expect-when-testing-dataset ~dataset-name
-     (with-dataset ~dataset-name
+(defmacro expect-with-engine
+  "Generate a unit test that only runs if we're currently testing against ENGINE, and that binds `*data-loader*` to the current dataset."
+  [engine expected actual]
+  `(expect-when-testing-engine ~engine
+     (with-engine ~engine
        ~expected)
-     (with-dataset ~dataset-name
+     (with-engine ~engine
        ~actual)))
 
-(defmacro expect-with-datasets
-  "Generate unit tests for all datasets in DATASET-NAMES; each test will only run if we're currently testing the corresponding dataset.
-   `*dataset*` is bound to the current dataset inside each test."
-  [dataset-names expected actual]
-  `(do ~@(for [dataset-name (eval dataset-names)]
-           `(expect-with-dataset ~dataset-name ~expected ~actual))))
+(defmacro expect-with-engines
+  "Generate unit tests for all datasets in ENGINES; each test will only run if we're currently testing the corresponding dataset.
+   `*data-loader*` is bound to the current dataset inside each test."
+  [engines expected actual]
+  `(do ~@(for [engine (eval engines)]
+           `(expect-with-engine ~engine ~expected ~actual))))
 
-(defmacro expect-with-all-datasets
+(defmacro expect-with-all-engines
   "Generate unit tests for all valid datasets; each test will only run if we're currently testing the corresponding dataset.
-  `*dataset*` is bound to the current dataset inside each test."
+  `*data-loader*` is bound to the current dataset inside each test."
   [expected actual]
-  `(expect-with-datasets ~all-valid-dataset-names ~expected ~actual))
+  `(expect-with-engines ~all-valid-engines ~expected ~actual))
 
-(defmacro dataset-case
+(defmacro engine-case
   "Case statement that switches off of the current dataset.
 
-     (dataset-case
+     (engine-case
        :h2       ...
        :postgres ...)"
   [& pairs]
-  `(cond ~@(mapcat (fn [[dataset then]]
-                     (assert (contains? all-valid-dataset-names dataset))
-                     [`(= *engine* ~dataset)
+  `(cond ~@(mapcat (fn [[engine then]]
+                     (assert (contains? all-valid-engines engine))
+                     [`(= *engine* ~engine)
                       then])
                    (partition 2 pairs))))

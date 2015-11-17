@@ -1,7 +1,7 @@
 (ns metabase.driver.postgres-test
   (:require [expectations :refer :all]
             [metabase.driver.postgres :refer [postgres]]
-            (metabase.test.data [datasets :refer [expect-with-dataset]]
+            (metabase.test.data [datasets :refer [expect-with-engine]]
                                 [interface :refer [def-database-definition]])
             [metabase.test.util.q :refer [Q]]))
 
@@ -45,7 +45,7 @@
     [#uuid "84ed434e-80b4-41cf-9c88-e334427104ae"]]])
 
 ;; Check that we can load a Postgres Database with a :UUIDField
-(expect-with-dataset :postgres
+(expect-with-engine :postgres
   {:cols    [{:description nil, :base_type :IntegerField, :schema_name "public", :name "id", :display_name "Id", :preview_display true, :special_type :id, :target nil, :extra_info {}}
              {:description nil, :base_type :UUIDField, :schema_name "public", :name "user_id", :display_name "User Id", :preview_display true, :special_type :category, :target nil, :extra_info {}}],
    :columns ["id" "user_id"],
@@ -60,7 +60,7 @@
       (update :cols (partial mapv #(dissoc % :id :table_id)))))
 
 ;; Check that we can filter by a UUID Field
-(expect-with-dataset :postgres
+(expect-with-engine :postgres
   [[2 #uuid "4652b2e7-d940-4d55-a971-7e484566663e"]]
   (Q dataset metabase.driver.postgres-test/with-uuid use postgres
      return rows

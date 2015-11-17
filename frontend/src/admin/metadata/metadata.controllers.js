@@ -51,8 +51,8 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
         $scope.tables = {};
         if ($scope.databaseId != null) {
             try {
-                await loadTableMetadata();
                 await loadIdFields();
+                await loadDatabaseMetadata();
                 $timeout(() => $scope.$digest());
             } catch (error) {
                 console.warn("error loading tables", error)
@@ -60,14 +60,10 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
         }
     }, true);
 
-    async function loadTableMetadata() {
-        var tables = await Metabase.db_tables({ 'dbId': $scope.databaseId }).$promise;
-        await* tables.map(async function(table) {
-            $scope.tables[table.id] = await Metabase.table_query_metadata({
-                'tableId': table.id,
-                'include_sensitive_fields': true
-            }).$promise;
-            computeMetadataStrength($scope.tables[table.id]);
+    async function loadDatabaseMetadata() {
+        $scope.databaseMetadata = await Metabase.db_metadata({ 'dbId': $scope.databaseId }).$promise;
+        $scope.databaseMetadata.tables.map(function(table, index) {
+            table.metadataStrength = computeMetadataStrength(table);
         });
     }
 
@@ -94,7 +90,7 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
     $scope.updateTable = function(table) {
         return Metabase.table_update(table).$promise.then(function(result) {
             _.each(result, (value, key) => { if (key.charAt(0) !== "$") { table[key] = value } });
-            computeMetadataStrength($scope.tables[table.id]);
+            table.metadataStrength = computeMetadataStrength(table);
             $timeout(() => $scope.$digest());
         });
     };
@@ -102,7 +98,8 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
     $scope.updateField = function(field) {
         return Metabase.field_update(field).$promise.then(function(result) {
             _.each(result, (value, key) => { if (key.charAt(0) !== "$") { field[key] = value } });
-            computeMetadataStrength($scope.tables[field.table_id]);
+            let table = _.findWhere($scope.databaseMetadata.tables, {id: field.table_id});
+            table.metadataStrength = computeMetadataStrength(table);
             return loadIdFields();
         }).then(function() {
             $timeout(() => $scope.$digest());
@@ -126,7 +123,7 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
             }
         });
 
-        table.metadataStrength = completed / total;
+        return (completed / total);
     }
 
     $scope.updateFieldSpecialType = async function(field) {

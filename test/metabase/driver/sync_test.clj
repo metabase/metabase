@@ -171,7 +171,7 @@
 (expect false (values-are-valid-json? ["false"]))
 
 
-(datasets/expect-with-dataset :postgres
+(datasets/expect-with-engine :postgres
   :json
   (with-temp-db
     [_

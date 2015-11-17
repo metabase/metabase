@@ -78,7 +78,7 @@
    [(+suffix db-name) "dbo" table-name field-name]))
 
 
-(defrecord SQLServerDatasetLoader [])
+(defrecord SQLServerDatasetLoader [dbpromise])
 
 (extend SQLServerDatasetLoader
   generic/IGenericSQLDatasetLoader
@@ -97,16 +97,13 @@
             :database->connection-details database->connection-details
             :engine                       (constantly :sqlserver)})))
 
-(defn dataset-loader []
-  (->SQLServerDatasetLoader))
-
 
 (defn- cleanup-leftover-dbs
   "Clean up any leftover DBs that weren't destroyed by the last test run (eg, if it failed for some reason).
    This is important because we're limited to a quota of 30 DBs on RDS."
   {:expectations-options :before-run}
   []
-  (when (contains? @(resolve 'metabase.test.data.datasets/test-dataset-names) :sqlserver)
+  (when (contains? @(resolve 'metabase.test.data.datasets/test-engines) :sqlserver)
     (let [connection-spec ((sqlserver :connection-details->spec) (database->connection-details nil :server nil))
           leftover-dbs    (mapv :name (jdbc/query connection-spec "SELECT name
                                                                    FROM   master.dbo.sysdatabases
