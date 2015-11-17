@@ -392,10 +392,6 @@ CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', funct
             url: '/api/database/',
             method: 'POST'
         },
-        validate_connection: {
-            url: '/api/database/validate/',
-            method: 'POST'
-        },
         db_add_sample_dataset: {
             url: '/api/database/sample_dataset',
             method: 'POST'

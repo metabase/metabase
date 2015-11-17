@@ -102,42 +102,10 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
         };
 
         var save = function(database, details) {
-            // validate_connection needs engine so add it to request body
-            details.engine = database.engine;
-
-            function handleError(error) {
-                $scope.$broadcast("form:api-error", error);
-                throw error;
-            }
-
-            // for an existing DB check that connection is valid before save
             if ($routeParams.databaseId) {
-                return Metabase.validate_connection(details).$promise.catch(handleError).then(function() {
-                    return update(database, details);
-                });
-
-            // for a new DB we want to infer SSL support. First try to connect w/ SSL. If that fails, disable SSL
+                return update(database, details);
             } else {
-                const engineSupportsSSL = _.contains(_.map($scope.engines[database.engine]['details-fields'], 'name'),
-                                                     'ssl');
-
-                function createDB() {
-                    console.log('Successfully connected to database with SSL = ' + details.ssl + '.');
-                    return create(database, details);
-                }
-
-                // if the engine supports SSL, try connecting with SSL first, and then without
-                if (engineSupportsSSL) {
-                    details.ssl = true;
-                    return Metabase.validate_connection(details).$promise.catch(function() {
-                        console.log('Unable to connect with SSL. Trying with SSL = false.');
-                        details.ssl = false;
-                        return Metabase.validate_connection(details).$promise;
-                    }).then(createDB).catch(handleError);
-                } else {
-                    delete details.ssl;
-                    return Metabase.validate_connection(details).$promise.catch(handleError).then(createDB);
-                }
+                return create(database, details);
             }
         };
 

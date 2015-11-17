@@ -5,6 +5,9 @@
             [metabase.models.interface :refer :all]
             [metabase.util :as u]))
 
+(def ^:const protected-password
+  "**MetabasePass**")
+
 (defrecord DatabaseInstance []
   ;; preserve normal IFn behavior so things like ((sel :one Database) :id) work correctly
   clojure.lang.IFn
@@ -15,6 +18,7 @@
   (api-serialize [this]
     ;; If current user isn't an admin strip out DB details which may include things like password
     (cond-> this
+      (get-in this [:details :password])    (assoc-in [:details :password] protected-password)
       (not (:is_superuser @*current-user*)) (dissoc :details))))
 
 (extend-ICanReadWrite DatabaseInstance :read :always, :write :superuser)

@@ -19,7 +19,8 @@
                                                   :details {:host   "localhost"
                                                             :port   5432
                                                             :dbname "fakedb"
-                                                            :user   "cam"}}))
+                                                            :user   "cam"
+                                                            :ssl    false}}))
 
 ;; # DB LIFECYCLE ENDPOINTS
 
@@ -59,7 +60,7 @@
         {:created_at      $
          :engine          "postgres" ; string because it's coming back from API instead of DB
          :id              $
-         :details         {:host "localhost", :port 5432, :dbname "fakedb", :user "cam"}
+         :details         {:host "localhost", :port 5432, :dbname "fakedb", :user "cam", :ssl true}
          :updated_at      $
          :name            db-name
          :is_sample       false
@@ -83,23 +84,17 @@
 (expect-let [[old-name new-name] (repeatedly 2 random-name)
              {db-id :id} (create-db old-name)
              sel-db (fn [] (sel :one :fields [Database :name :engine :details] :id db-id))]
-  [{:details {:host "localhost", :port 5432, :dbname "fakedb", :user "cam"}
+  [{:details {:host "localhost", :port 5432, :dbname "fakedb", :user "cam", :ssl true}
     :engine  :postgres
     :name    old-name}
    {:details {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
     :engine  :h2
-    :name    new-name}
-   {:details {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
-    :engine  :h2
-    :name    old-name}]
+    :name    new-name}]
   [(sel-db)
    ;; Check that we can update all the fields
    (do ((user->client :crowberto) :put 200 (format "database/%d" db-id) {:name    new-name
-                                                                        :engine  "h2"
-                                                                        :details {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}})
-       (sel-db))
-   ;; Check that we can update just a single field
-   (do ((user->client :crowberto) :put 200 (format "database/%d" db-id) {:name old-name})
+                                                                         :engine  "h2"
+                                                                         :details {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}})
        (sel-db))])
 
 ;; # DATABASES FOR ORG
