@@ -9,7 +9,8 @@ import {
     SAVE_PULSE,
     FETCH_CARDS,
     FETCH_USERS,
-    FETCH_PULSE_FORM_INPUT
+    FETCH_PULSE_FORM_INPUT,
+    FETCH_PULSE_CARD_PREVIEW
 } from "./actions";
 
 export const pulses = handleActions({
@@ -45,4 +46,8 @@ export const users = handleActions({
 
 export const formInput = handleActions({
     [FETCH_PULSE_FORM_INPUT]: { next: (state, { payload }) => payload }
+}, {});
+
+export const cardPreviews = handleActions({
+    [FETCH_PULSE_CARD_PREVIEW]: { next: (state, { payload }) => ({ ...state, [payload.id]: payload })}
 }, {});

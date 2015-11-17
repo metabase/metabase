@@ -29,7 +29,7 @@ export default class PulseEditCards extends Component {
     }
 
     render() {
-        let { pulse, cards, cardList } = this.props;
+        let { pulse, cards, cardList, cardPreviews } = this.props;
 
         let pulseCards = pulse ? pulse.cards.slice() : [];
         if (pulseCards.length < 5) {
@@ -45,7 +45,12 @@ export default class PulseEditCards extends Component {
                         <li key={index} className="my1 flex align-top" style={{ width: "400px" }}>
                             <span className="h3 text-bold mr1 mt1">{index + 1}.</span>
                             { card ?
-                                <PulseCardPreview card={card} onRemove={this.removeCard.bind(this, index)} />
+                                <PulseCardPreview
+                                    card={card}
+                                    cardPreviews={cardPreviews}
+                                    onRemove={this.removeCard.bind(this, index)}
+                                    dispatch={this.props.dispatch}
+                                />
                             :
                                 <CardPicker
                                     cardList={cardList}

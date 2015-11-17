@@ -423,6 +423,11 @@ CoreServices.factory('Pulse', ['$resource', '$cookies', function($resource, $coo
         form_input: {
             url: '/api/pulse/form_input',
             method: 'GET',
+        },
+        preview_card: {
+            url: '/api/pulse/preview_card_info/:id',
+            params: { id: '@id' },
+            method: 'GET',
         }
     });
 }]);

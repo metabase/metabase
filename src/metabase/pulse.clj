@@ -62,7 +62,8 @@
 
 (defn render-table
   [{:keys [cols rows]} bar-column]
-  (let [max-value (if bar-column (apply max (map bar-column rows)))]
+  (let [max-value (if bar-column (apply max (map bar-column rows)))
+        truncated-rows (take 10 rows)]
     [:table {:style "border-collapse: collapse;"}
       [:thead
         [:tr
@@ -72,7 +73,7 @@
             (-> cols second :display_name upper-case h)]
           (if bar-column [:th {:style (str bar-td-style bar-th-style "width: 99%;")}])]]
       [:tbody
-        (map-indexed #(render-table-row %1 %2 bar-column max-value) rows)]]))
+        (map-indexed #(render-table-row %1 %2 bar-column max-value) truncated-rows)]]))
 
 (defn render-bar-chart
   [data]
@@ -137,17 +138,25 @@
       [:div {:style "margin-top: 20px; margin-left: 30px;"}
         (render-table {:cols cols :rows [(last rows) (first rows)]} nil)]]))
 
+(defn detect-pulse-card-type
+  [card data]
+  (cond
+    (and (= (-> data :cols count) 1) (= (-> data :rows count) 1)) :scalar
+    (and (= (-> data :cols count) 2) (= (-> data :cols first :base_type) :DateTimeField)) :sparkline
+    (and (= (-> data :cols count) 2)) :bar
+    :else nil))
+
 (defn render-pulse-card
   [card data include-title render-img]
   [:div {:style (str section-style "margin: 16px;")}
     (if include-title [:div {:style "margin-bottom: 16px;"}
       [:a {:style header-style :href (h (str (setting/get :-site-url) "/card/" (:id card) "?clone"))}
         (-> card :name h)]])
-    (cond
-      (and (= (-> data :cols count) 1) (= (-> data :rows count) 1)) (render-scalar data)
-      (and (= (-> data :cols count) 2) (= (-> data :cols first :base_type) :DateTimeField)) (render-sparkline data render-img)
-      (and (= (-> data :cols count) 2)) (render-bar-chart data)
-      :else [:div {:style "color: red;"} "Unable to render card"])])
+    (case (detect-pulse-card-type card data)
+      :scalar    (render-scalar data)
+      :sparkline (render-sparkline data render-img)
+      :bar       (render-bar-chart data)
+      [:div {:style "color: red;"} "Unable to render card"])])
 
 (defn render-img-data-uri
   "Takes a PNG byte array and returns a Base64 encoded URI"

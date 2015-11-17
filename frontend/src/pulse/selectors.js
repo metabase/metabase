@@ -18,6 +18,8 @@ const usersSelector        = state => state.users
 
 const formInputSelector    = state => state.formInput
 
+const cardPreviewsSelector = state => state.cardPreviews
+
 const cardListSelector = createSelector(
     [cardIdListSelector, cardsSelector],
     (cardIdList, cards) => cardIdList && cardIdList.map(id => cards[id])
@@ -36,6 +38,6 @@ export const listPulseSelectors = createSelector(
 
 // EDIT
 export const editPulseSelectors = createSelector(
-    [editingPulseSelector, cardsSelector, cardListSelector, userListSelector, formInputSelector],
-    (pulse, cards, cardList, userList, formInput) => ({ pulse, cards, cardList, userList, formInput})
+    [editingPulseSelector, cardsSelector, cardListSelector, cardPreviewsSelector, userListSelector, formInputSelector],
+    (pulse, cards, cardList, cardPreviews, userList, formInput) => ({ pulse, cards, cardList, cardPreviews, userList, formInput})
 );
