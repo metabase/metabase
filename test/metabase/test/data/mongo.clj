@@ -47,6 +47,3 @@
    :destroy-db!                  destroy-db!
    :database->connection-details database->connection-details
    :engine                       (constantly :mongo)})
-
-(defn ^MongoDatasetLoader dataset-loader []
-  (->MongoDatasetLoader))

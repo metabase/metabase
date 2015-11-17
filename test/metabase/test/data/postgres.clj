@@ -44,6 +44,3 @@
   (merge generic/IDatasetLoaderMixin
          {:database->connection-details database->connection-details
           :engine                       (constantly :postgres)}))
-
-(defn dataset-loader []
-  (->PostgresDatasetLoader))

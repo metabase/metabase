@@ -51,7 +51,3 @@
   (merge generic/IDatasetLoaderMixin
          {:database->connection-details database->connection-details
           :engine                       (constantly :mysql)}))
-
-
-(defn dataset-loader []
-  (->MySQLDatasetLoader))

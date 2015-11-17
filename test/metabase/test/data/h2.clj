@@ -91,6 +91,3 @@
   (merge generic/IDatasetLoaderMixin
          {:database->connection-details database->connection-details
           :engine                       (constantly :h2)}))
-
-(defn dataset-loader []
-  (->H2DatasetLoader))

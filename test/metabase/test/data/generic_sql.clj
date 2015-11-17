@@ -222,7 +222,7 @@
 (defn- destroy-db! [loader dbdef]
   (execute-sql! loader :server dbdef (drop-db-if-exists-sql loader dbdef)))
 
-(def ^:const IDatasetLoaderMixin
+(def IDatasetLoaderMixin
   "Mixin for `IGenericSQLDatasetLoader` types to implemnt `create-db!` and `destroy-db!` from `IDatasetLoader`."
   {:create-db!  create-db!
    :destroy-db! destroy-db!})

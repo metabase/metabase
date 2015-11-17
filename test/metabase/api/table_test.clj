@@ -2,7 +2,6 @@
   "Tests for /api/table endpoints."
   (:require [expectations :refer :all]
             [metabase.db :refer :all]
-            [metabase.driver.mongo.test-data :as mongo-data :refer [mongo-test-db-id]]
             (metabase [http-client :as http]
                       [middleware :as middleware])
             (metabase.models [field :refer [Field]]
