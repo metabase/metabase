@@ -1,17 +1,12 @@
 (ns metabase.test.data
   "Code related to creating and deleting test databases + datasets."
-  (:require (clojure [string :as s]
-                     [walk :as walk])
-            [clojure.tools.logging :as log]
-            [colorize.core :as color]
-            [medley.core :as m]
+  (:require [clojure.tools.logging :as log]
             (metabase [db :refer :all]
                       [driver :as driver])
             (metabase.models [database :refer [Database]]
                              [field :refer [Field] :as field]
                              [table :refer [Table]])
-            (metabase.test.data [data :as data]
-                                [datasets :as datasets :refer [*dataset*]]
+            (metabase.test.data [datasets :as datasets :refer [*dataset*]]
                                 [h2 :as h2]
                                 [interface :refer :all])
             [metabase.util :as u])
