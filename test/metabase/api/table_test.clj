@@ -292,10 +292,7 @@
        :active          true
        :id              (id :users)
        :db_id           (id)
-       :field_values    {(keyword (str (id :users :last_login)))
-                         user-last-login-date-strs
-
-                         (keyword (str (id :users :name)))
+       :field_values    {(keyword (str (id :users :name)))
                          ["Broen Olujimi"
                           "Conchúr Tihomir"
                           "Dwight Gresham"
@@ -390,10 +387,7 @@
        :active          true
        :id              (id :users)
        :db_id           (id)
-       :field_values    {(keyword (str (id :users :last_login)))
-                         user-last-login-date-strs
-
-                         (keyword (str (id :users :name)))
+       :field_values    {(keyword (str (id :users :name)))
                          ["Broen Olujimi"
                           "Conchúr Tihomir"
                           "Dwight Gresham"
