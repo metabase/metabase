@@ -16,7 +16,7 @@ const finalCreateStore = compose(
 const reducer = combineReducers(reducers);
 
 
-var SetupControllers = angular.module('metabase.setup.controllers', ['metabase.setup.services']);
+var SetupControllers = angular.module('metabase.setup.controllers', ['metabase.services']);
 SetupControllers.controller('SetupController', ['$scope', '$location', '$timeout', 'ipCookie', function($scope, $location, $timeout, ipCookie) {
     $scope.Component = SetupApp;
     $scope.props = {
