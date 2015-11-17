@@ -4,8 +4,6 @@ import Icon from "metabase/components/Icon.jsx";
 
 import { fetchPulseCardPreview } from "../actions";
 
-import _ from "underscore";
-
 export default class PulseCardPreview extends Component {
     constructor(props, context) {
         super(props, context);
