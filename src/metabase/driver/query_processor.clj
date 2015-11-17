@@ -62,9 +62,9 @@
 
 (defn- pre-expand [qp]
   (fn [query]
-    (if (structured-query? query)
-      (qp (resolve/resolve (expand/expand query)))
-      (qp query))))
+    (qp (if (structured-query? query)
+          (resolve/resolve (expand/expand query))
+          query))))
 
 
 (defn- post-add-row-count-and-status
