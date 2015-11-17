@@ -85,7 +85,6 @@
 (defn id-field-type []        (datasets/id-field-type *dataset*))
 (defn sum-field-type []       (datasets/sum-field-type *dataset*))
 (defn timestamp-field-type [] (datasets/timestamp-field-type *dataset*))
-(defn dataset-loader []       (datasets/dataset-loader *dataset*))
 
 
 ;; ## Loading / Deleting Test Datasets
@@ -95,7 +94,7 @@
    DATASET-LOADER should be an object that implements `IDatasetLoader`; it defaults to the value returned by the method `dataset-loader` for the
    current dataset (`*dataset*`), which is H2 by default."
   ([^DatabaseDefinition database-definition]
-   (get-or-create-database! (dataset-loader) database-definition))
+   (get-or-create-database! *dataset* database-definition))
   ([dataset-loader {:keys [database-name], :as ^DatabaseDefinition database-definition}]
    (let [engine (engine dataset-loader)]
      (or (metabase-instance database-definition engine)
@@ -138,7 +137,7 @@
    DATASET-LOADER should be an object that implements `IDatasetLoader`; by default it is the value returned by the method `dataset-loader` for the
    current dataset, bound to `*dataset*`."
   ([^DatabaseDefinition database-definition]
-   (remove-database! (dataset-loader) database-definition))
+   (remove-database! *dataset* database-definition))
   ([dataset-loader ^DatabaseDefinition database-definition]
    ;; Delete the Metabase Database and associated objects
    (cascade-delete Database :id (:id (metabase-instance database-definition (engine dataset-loader))))
@@ -148,7 +147,7 @@
 
 
 (defn -with-temp-db [^DatabaseDefinition dbdef f]
-  (let [loader (dataset-loader)
+  (let [loader *dataset*
         dbdef  (map->DatabaseDefinition (assoc dbdef :short-lived? true))]
     (try
       (with-db (binding [*sel-disable-logging* true]

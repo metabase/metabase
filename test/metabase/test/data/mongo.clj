@@ -39,7 +39,7 @@
               (catch com.mongodb.MongoException _))))))))
 
 
-(defrecord MongoDatasetLoader [])
+(defrecord MongoDatasetLoader [dbpromise])
 
 (extend MongoDatasetLoader
   i/IDatasetLoader

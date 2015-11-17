@@ -31,7 +31,7 @@
   (format "DROP TABLE IF EXISTS \"%s\" CASCADE;" table-name))
 
 
-(defrecord PostgresDatasetLoader [])
+(defrecord PostgresDatasetLoader [dbpromise])
 
 (extend PostgresDatasetLoader
   generic/IGenericSQLDatasetLoader

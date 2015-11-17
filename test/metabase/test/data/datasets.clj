@@ -15,7 +15,12 @@
                                 [mysql :as mysql]
                                 [postgres :as postgres]
                                 [sqlserver :as sqlserver])
-            [metabase.util :as u]))
+            [metabase.util :as u])
+  (:import metabase.test.data.h2.H2DatasetLoader
+           metabase.test.data.mongo.MongoDatasetLoader
+           metabase.test.data.mysql.MySQLDatasetLoader
+           metabase.test.data.postgres.PostgresDatasetLoader
+           metabase.test.data.sqlserver.SQLServerDatasetLoader))
 
 ;; # IDataset
 
@@ -23,8 +28,6 @@
   "Functions needed to fetch test data for various drivers."
   (load-data! [this]
     "Load the test data for this dataset.")
-  (dataset-loader [this]
-    "Return a dataset loader (an object that implements `IDatasetLoader`) for this dataset/driver.")
   (db [this]
     "Return `Database` containing test data for this driver.")
   (default-schema [this]
@@ -46,17 +49,13 @@
 
 (defn- generic-load-data! [{:keys [dbpromise], :as this}]
   (when-not (realized? dbpromise)
-    (deliver dbpromise (@(resolve 'metabase.test.data/get-or-create-database!) (dataset-loader this) defs/test-data)))
+    (deliver dbpromise (@(resolve 'metabase.test.data/get-or-create-database!) this defs/test-data)))
   @dbpromise)
 
-(defrecord MongoDriverData [dbpromise])
-
-(extend MongoDriverData
+(extend MongoDatasetLoader
   IDataset
   {:load-data!           generic-load-data!
    :db                   generic-load-data!
-   :dataset-loader       (fn [_]
-                           (mongo/->MongoDatasetLoader))
    :format-name          (fn [_ table-or-field-name]
                            (if (= table-or-field-name "id") "_id"
                                table-or-field-name))
@@ -74,61 +73,44 @@
    :format-name          (fn [_ table-or-field-name]
                            table-or-field-name)
    :timestamp-field-type (constantly :DateTimeField)
-   :id-field-type        (constantly :IntegerField)})
+   :id-field-type        (constantly :IntegerField)
+   :sum-field-type       (constantly :BigIntegerField)
+   :default-schema       (constantly nil)})
 
 
 ;;; ### H2
 
-(defrecord H2DriverData [dbpromise])
-
-(extend H2DriverData
+(extend H2DatasetLoader
   IDataset
   (merge GenericSQLIDatasetMixin
-         {:dataset-loader    (fn [_]
-                               (h2/->H2DatasetLoader))
-          :default-schema    (constantly "PUBLIC")
+         {:default-schema    (constantly "PUBLIC")
           :format-name       (fn [_ table-or-field-name]
                                (clojure.string/upper-case table-or-field-name))
-          :id-field-type     (constantly :BigIntegerField)
-          :sum-field-type    (constantly :BigIntegerField)}))
+          :id-field-type     (constantly :BigIntegerField)}))
 
 
 ;;; ### Postgres
 
-(defrecord PostgresDriverData [dbpromise])
-
-(extend PostgresDriverData
+(extend PostgresDatasetLoader
   IDataset
   (merge GenericSQLIDatasetMixin
-         {:dataset-loader (fn [_]
-                            (postgres/->PostgresDatasetLoader))
-          :default-schema (constantly "public")
+         {:default-schema (constantly "public")
           :sum-field-type (constantly :IntegerField)}))
 
 
 ;;; ### MySQL
 
-(defrecord MySQLDriverData [dbpromise])
-
-(extend MySQLDriverData
+(extend MySQLDatasetLoader
   IDataset
-  (merge GenericSQLIDatasetMixin
-         {:dataset-loader (fn [_]
-                            (mysql/->MySQLDatasetLoader))
-          :default-schema (constantly nil)
-          :sum-field-type (constantly :BigIntegerField)}))
+  GenericSQLIDatasetMixin)
 
 
 ;;; ### SQLServer
 
-(defrecord SQLServerDriverData [dbpromise])
-
-(extend SQLServerDriverData
+(extend SQLServerDatasetLoader
   IDataset
   (merge GenericSQLIDatasetMixin
-         {:dataset-loader (fn [_]
-                            (sqlserver/->SQLServerDatasetLoader))
-          :default-schema (constantly "dbo")
+         {:default-schema (constantly "dbo")
           :sum-field-type (constantly :IntegerField)}))
 
 
@@ -136,11 +118,11 @@
 
 (def ^:private dataset-name->dataset*
   "Map of dataset keyword name -> dataset instance (i.e., an object that implements `IDataset`)."
-  {:mongo     (MongoDriverData.     (promise))
-   :h2        (H2DriverData.        (promise))
-   :postgres  (PostgresDriverData.  (promise))
-   :mysql     (MySQLDriverData.     (promise))
-   :sqlserver (SQLServerDriverData. (promise))})
+  {:mongo     (MongoDatasetLoader.     (promise))
+   :h2        (H2DatasetLoader.        (promise))
+   :postgres  (PostgresDatasetLoader.  (promise))
+   :mysql     (MySQLDatasetLoader.     (promise))
+   :sqlserver (SQLServerDatasetLoader. (promise))})
 
 (def ^:const all-valid-dataset-names
   "Set of names of all valid datasets."

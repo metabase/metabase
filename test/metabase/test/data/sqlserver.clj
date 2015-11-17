@@ -78,7 +78,7 @@
    [(+suffix db-name) "dbo" table-name field-name]))
 
 
-(defrecord SQLServerDatasetLoader [])
+(defrecord SQLServerDatasetLoader [dbpromise])
 
 (extend SQLServerDatasetLoader
   generic/IGenericSQLDatasetLoader
