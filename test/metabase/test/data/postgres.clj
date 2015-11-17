@@ -31,7 +31,7 @@
   (format "DROP TABLE IF EXISTS \"%s\" CASCADE;" table-name))
 
 
-(defrecord PostgresDatasetLoader [])
+(defrecord PostgresDatasetLoader [dbpromise])
 
 (extend PostgresDatasetLoader
   generic/IGenericSQLDatasetLoader
@@ -44,6 +44,3 @@
   (merge generic/IDatasetLoaderMixin
          {:database->connection-details database->connection-details
           :engine                       (constantly :postgres)}))
-
-(defn dataset-loader []
-  (->PostgresDatasetLoader))

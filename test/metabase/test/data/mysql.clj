@@ -37,7 +37,7 @@
     (when (seq statement)
       (generic/default-execute-sql! loader context dbdef statement))))
 
-(defrecord MySQLDatasetLoader [])
+(defrecord MySQLDatasetLoader [dbpromise])
 
 (extend MySQLDatasetLoader
   generic/IGenericSQLDatasetLoader
@@ -51,7 +51,3 @@
   (merge generic/IDatasetLoaderMixin
          {:database->connection-details database->connection-details
           :engine                       (constantly :mysql)}))
-
-
-(defn dataset-loader []
-  (->MySQLDatasetLoader))

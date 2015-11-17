@@ -78,7 +78,7 @@
    [(+suffix db-name) "dbo" table-name field-name]))
 
 
-(defrecord SQLServerDatasetLoader [])
+(defrecord SQLServerDatasetLoader [dbpromise])
 
 (extend SQLServerDatasetLoader
   generic/IGenericSQLDatasetLoader
@@ -96,9 +96,6 @@
                                             (create-db! this dbdef))
             :database->connection-details database->connection-details
             :engine                       (constantly :sqlserver)})))
-
-(defn dataset-loader []
-  (->SQLServerDatasetLoader))
 
 
 (defn- cleanup-leftover-dbs

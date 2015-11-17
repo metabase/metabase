@@ -5,7 +5,6 @@
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.mongo :refer [mongo]]
-            [metabase.driver.mongo.test-data :refer :all]
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
             [metabase.test.data.datasets :as datasets]
@@ -17,6 +16,9 @@
   `(datasets/expect-when-testing-dataset :mongo
      ~expected
      ~actual))
+
+(defn- mongo-db []
+  (datasets/db (datasets/dataset-name->dataset :mongo)))
 
 ;; ## Constants + Helper Fns/Macros
 ;; TODO - move these to metabase.test-data ?
@@ -49,7 +51,7 @@
   "Return an object that can be passed like a `Table` to driver sync functions."
   [table-name]
   {:pre [(keyword? table-name)]}
-  {:db   mongo-test-db
+  {:db   (delay (mongo-db))
    :name (name table-name)})
 
 (defn- field-name->fake-field
@@ -114,7 +116,7 @@
       {:name "categories"}
       {:name "users"}
       {:name "venues"}}
-    ((:active-tables mongo) @mongo-test-db))
+    ((:active-tables mongo) (mongo-db)))
 
 ;; ### table->column-names
 (expect-when-testing-mongo
@@ -173,7 +175,7 @@
      {:rows 1000, :active true, :name "checkins"}
      {:rows 15,   :active true, :name "users"}
      {:rows 100,  :active true, :name "venues"}]
-  (sel :many :fields [Table :name :active :rows] :db_id @mongo-test-db-id (k/order :name)))
+  (sel :many :fields [Table :name :active :rows] :db_id (:id (mongo-db)) (k/order :name)))
 
 ;; Test that Fields got synced correctly, and types are correct
 (expect-when-testing-mongo
@@ -196,6 +198,6 @@
   (let [table->fields (fn [table-name]
                         (sel :many :fields [Field :name :base_type :special_type]
                              :active true
-                             :table_id (sel :one :id Table :db_id @mongo-test-db-id, :name (name table-name))
+                             :table_id (sel :one :id Table :db_id (:id (mongo-db)), :name (name table-name))
                              (k/order :name)))]
     (map table->fields table-names)))
