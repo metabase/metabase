@@ -113,7 +113,7 @@ export default class Navbar extends Component {
                         </DashboardsDropdown>
                     </li>
                     <li className="pl1">
-                        <a style={this.styles.navButton} className="NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2 transition-background" href="/card/">Saved Questions</a>
+                        <a style={this.styles.navButton} className="NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2 transition-background" href="/card/">Questions</a>
                     </li>
                     <li className="pl1">
                         <a style={this.styles.navButton} className="NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2 transition-background" href="/pulse/">Pulses</a>

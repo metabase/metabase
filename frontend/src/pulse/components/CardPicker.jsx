@@ -64,7 +64,7 @@ export default class CardPicker extends Component {
         } else {
             return (
                 <li className="List-item">
-                    <a onClickCapture={this.onChange.bind(this, card.id)}>
+                    <a className="cursor-pointer" onClickCapture={this.onChange.bind(this, card.id)}>
                         <h4 className="List-item-title px2 py1">{card.name}</h4>
                     </a>
                 </li>

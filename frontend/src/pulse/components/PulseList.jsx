@@ -20,12 +20,14 @@ export default class PulseList extends Component {
     render() {
         let { pulses } = this.props;
         return (
-            <div className="wrapper pt3">
-                <div className="flex align-center mb2">
-                    <h1>Pulses</h1>
-                    <a href="/pulse/create" className="Button flex-align-right">Create a pulse</a>
+            <div className="pt3">
+                <div className="border-bottom mb2">
+                    <div className="wrapper wrapper--trim flex align-center mb2">
+                        <h1>Pulses</h1>
+                        <a href="/pulse/create" className="Button flex-align-right">Create a pulse</a>
+                    </div>
                 </div>
-                <ul>
+                <ul className="wrapper wrapper--trim">
                     {pulses && pulses.map(pulse =>
                         <li key={pulse.id}>
                             <PulseListItem

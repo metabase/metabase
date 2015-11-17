@@ -7,10 +7,6 @@ import { fetchPulseCardPreview } from "../actions";
 export default class PulseCardPreview extends Component {
     constructor(props, context) {
         super(props, context);
-
-        this.state = {
-            height: 0
-        };
     }
 
     static propTypes = {
@@ -23,7 +19,7 @@ export default class PulseCardPreview extends Component {
         this.props.dispatch(fetchPulseCardPreview(this.props.card.id));
     }
 
-    renderWarning(cardPreview) {
+    getWarning(cardPreview) {
         if (!cardPreview) {
             return null;
         }
@@ -40,7 +36,7 @@ export default class PulseCardPreview extends Component {
     render() {
         let { card, cardPreviews } = this.props;
         let cardPreview = cardPreviews[card.id];
-        let warning = this.renderWarning(cardPreview);
+        let warning = this.getWarning(cardPreview);
         return (
             <div className="flex relative flex-full">
                 <a className="text-grey-2 absolute" style={{ top: "15px", right: "15px" }} onClick={this.props.onRemove}>

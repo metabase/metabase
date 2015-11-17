@@ -84,18 +84,18 @@ export default class PulseListChannel extends Component {
         }
 
         return (
-            <div className="py1 flex align-center">
+            <div className="py2 flex align-center">
                 { this.renderChannelSchedule() }
                 { subscribable &&
                     <div className="flex-align-right">
                         { subscribed ?
                             <button className="rounded bg-green text-white text-bold flex align-center">
                                 <span className="pl2">You get this {channel.channel_type}</span>
-                                <Icon className="p1 text-grey-1 text-hover-white cursor-pointer" name="close" width={12} height={12} onClick={this.unsubscribe}/>
+                                <Icon className="p2 text-grey-1 text-hover-white cursor-pointer" name="close" width={12} height={12} onClick={this.unsubscribe}/>
                             </button>
                         :
                             <button className="rounded bordered bg-white text-default text-bold flex align-center cursor-pointer" onClick={this.subscribe}>
-                                <Icon className="p1" name="add" width={12} height={12}/>
+                                <Icon className="p2" name="add" width={12} height={12}/>
                                 <span className="pr2">Get this {channel.channel_type}</span>
                             </button>
                         }

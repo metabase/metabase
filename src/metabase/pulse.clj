@@ -138,25 +138,47 @@
       [:div {:style "margin-top: 20px; margin-left: 30px;"}
         (render-table {:cols cols :rows [(last rows) (first rows)]} nil)]]))
 
+(defn datetime-field?
+  [field]
+  (or (contains? #{:DateTimeField :TimeField :DateField} (:base_type field))
+      (contains? #{:timestamp_seconds :timestamp_milliseconds} (:special_type field))))
+
+(defn number-field?
+  [field]
+  (or (contains? #{:IntegerField :DecimalField :FloatField :BigIntegerField} (:base_type field))
+      (contains? #{:number} (:special_type field))))
+
 (defn detect-pulse-card-type
   [card data]
-  (cond
-    (and (= (-> data :cols count) 1) (= (-> data :rows count) 1)) :scalar
-    (and (= (-> data :cols count) 2) (= (-> data :cols first :base_type) :DateTimeField)) :sparkline
-    (and (= (-> data :cols count) 2)) :bar
-    :else nil))
+  (let [col-count (-> data :cols count)
+        row-count (-> data :rows count)
+        col-1 (-> data :cols first)
+        col-2 (-> data :cols second)
+        aggregation (-> card :dataset_query :query :aggregation first)]
+    (cond
+      (or (= aggregation :rows)
+          (contains? #{:pin_map :state :country} (:display card)))        nil
+      (and (= col-count 1) (= row-count 1))                               :scalar
+      (and (= col-count 2) (datetime-field? col-1) (number-field? col-2)) :sparkline
+      (and (= col-count 2) (number-field? col-2))                         :bar
+      :else                                                               :table)))
 
 (defn render-pulse-card
   [card data include-title render-img]
-  [:div {:style (str section-style "margin: 16px;")}
-    (if include-title [:div {:style "margin-bottom: 16px;"}
-      [:a {:style header-style :href (h (str (setting/get :-site-url) "/card/" (:id card) "?clone"))}
-        (-> card :name h)]])
-    (case (detect-pulse-card-type card data)
-      :scalar    (render-scalar data)
-      :sparkline (render-sparkline data render-img)
-      :bar       (render-bar-chart data)
-      [:div {:style "color: red;"} "Unable to render card"])])
+  (try
+    [:div {:style (str section-style "margin: 16px;")}
+      (if include-title [:div {:style "margin-bottom: 16px;"}
+        [:a {:style header-style :href (h (str (setting/get :-site-url) "/card/" (:id card) "?clone"))}
+          (-> card :name h)]])
+      (case (detect-pulse-card-type card data)
+        :scalar    (render-scalar data)
+        :sparkline (render-sparkline data render-img)
+        :bar       (render-bar-chart data)
+        :table     (render-table data nil)
+        [:div {:style (str font-style "color: #F9D45C; font-weight: 700;")}
+          "We were unable to display this card." [:br] "Please view this card in Metabase."])]
+  (catch Throwable e
+    [:div {:style (str font-style "color: #EF8C8C; font-weight: 700;")} "An error occurred while displaying this card."])))
 
 (defn render-img-data-uri
   "Takes a PNG byte array and returns a Base64 encoded URI"
