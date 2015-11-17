@@ -204,10 +204,8 @@
 (defmacro expect-when-testing-dataset
   "Generate a unit test that only runs if we're currently testing against DATASET-NAME."
   [dataset-name expected actual]
-  `(expect
-       (when-testing-dataset ~dataset-name
-         ~expected)
-     (when-testing-dataset ~dataset-name
+  `(when-testing-dataset ~dataset-name
+     (expect ~expected
        ~actual)))
 
 (defmacro expect-with-dataset
