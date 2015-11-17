@@ -51,7 +51,10 @@ export default class NewsletterForm extends Component {
         return (
             <div style={this.styles.container} className="bordered rounded p4 relative">
                 <div style={this.styles.label} className="absolute text-centered left right">
-                    <span className="px3 bg-white h5 text-bold text-grey-4 text-uppercase"><Icon className="mr1" name="mail" width="16px" height="16px" />Metabase Newsletter</span>
+                    <div className="px3 bg-white h5 text-bold text-grey-4 text-uppercase inline-block">
+                      <Icon className="mr1 float-left" name="mail" width="16px" height="16px" />
+                      <span className="inline-block" style={{marginTop: 1}}>Metabase Newsletter</span>
+                    </div>
                 </div>
 
                 <div className="MB-Newsletter sm-float-right">
