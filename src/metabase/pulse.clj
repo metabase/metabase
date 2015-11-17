@@ -107,13 +107,8 @@
     (javax.imageio.ImageIO/write image "png" os)
     (.toByteArray os)))
 
-(defn generate-data-uri
-  "Takes a byte array and returns a Base64 encoded URI"
-  [bytes file-type]
-  (str "data:" file-type ";base64," (new String (org.fit.cssbox.misc.Base64Coder/encode bytes))))
-
 (defn render-sparkline
-  [{:keys [rows cols] :as data}]
+  [{:keys [rows cols] :as data} render-img]
   (let [xs (map #(-> % first .getTime) rows)
         xmin (apply min xs)
         xmax (apply max xs)
@@ -131,7 +126,7 @@
             [:div {:style "position: absolute; height: 100%; text-align: right; background-color: red;"}
               [:div {:style "position: absolute; top: 0; right: 0;"} (format-number-short ymax)]
               [:div {:style "position: absolute; top: 150px; right: 0;"} (format-number-short ymin)]]
-            [:img {:style "display: block; left: 20px;" :src (generate-data-uri (render-sparkline-to-png xs' ys' 285 150) "image/png")}]
+            [:img {:style "display: block; left: 20px;" :src (render-img (render-sparkline-to-png xs' ys' 285 150))}]
           ]
           [:div
             [:div {:style "height: 15px; margin-left: 10px; margin-right: 10px; border: 4px solid rgb(233,233,233); border-top: none; border-bottom: none;"} "&#160;"]
@@ -143,27 +138,51 @@
         (render-table {:cols cols :rows [(last rows) (first rows)]} nil)]]))
 
 (defn render-pulse-card
-  [card data include-title]
+  [card data include-title render-img]
   [:div {:style (str section-style "margin: 16px;")}
     (if include-title [:div {:style "margin-bottom: 16px;"}
       [:a {:style header-style :href (h (str (setting/get :-site-url) "/card/" (:id card) "?clone"))}
         (-> card :name h)]])
     (cond
       (and (= (-> data :cols count) 1) (= (-> data :rows count) 1)) (render-scalar data)
-      (and (= (-> data :cols count) 2) (= (-> data :cols first :base_type) :DateTimeField)) (render-sparkline data)
+      (and (= (-> data :cols count) 2) (= (-> data :cols first :base_type) :DateTimeField)) (render-sparkline data render-img)
       (and (= (-> data :cols count) 2)) (render-bar-chart data)
       :else [:div {:style "color: red;"} "Unable to render card"])])
 
-(defn- render-pulse-section
-  [{:keys [card result]}]
-  [:div {:style "margin-top: 10px; margin-bottom: 20px;"}
-    (render-pulse-card card (:data result) true)])
+(defn render-img-data-uri
+  "Takes a PNG byte array and returns a Base64 encoded URI"
+  [bytes]
+  (str "data:image/png;base64," (new String (org.fit.cssbox.misc.Base64Coder/encode bytes))))
 
-(defn render-pulse
+(defn- render-pulse-section
+  [render-img {:keys [card result]}]
+  [:div {:style "margin-top: 10px; margin-bottom: 20px;"}
+    (render-pulse-card card (:data result) true render-img)])
+
+;; HACK: temporary workaround to postal requiring a file as the attachment
+(defn- write-byte-array-to-temp-file
+  [bytes]
+  (let [file (java.io.File/createTempFile "metabase_pulse_image_" ".png")
+        fos (new java.io.FileOutputStream file)]
+    (.deleteOnExit file)
+    (.write fos bytes)
+    (.close fos)
+    file))
+
+(defn render-pulse-email
+  "Take a pulse object and list of results, returns an array of attachment objects for an email"
   [pulse results]
-  [:div
-    [:h1 {:style (str section-style "margin: 16px; color: rgb(57,67,64);")} (-> pulse :name h)]
-    (apply vector :div (mapv render-pulse-section results))])
+  (let [images (atom [])
+        render-img (fn [bytes] (reset! images (conj @images bytes)) (str "cid:IMAGE_" (-> @images count dec)))
+        header [:h1 {:style (str section-style "margin: 16px; color: rgb(57,67,64);")} (-> pulse :name h)]
+        body (apply vector :div (mapv (partial render-pulse-section render-img) results))
+        content (html [:html [:body [:div header body]]])]
+    (apply vector {:type "text/html" :content content}
+                  (map-indexed (fn [idx bytes] {:type :inline
+                                                :content-id (str "IMAGE_" idx)
+                                                :content-type "image/png"
+                                                :content (write-byte-array-to-temp-file bytes)})
+                               @images))))
 
 ; ported from https://github.com/radkovo/CSSBox/blob/cssbox-4.10/src/main/java/org/fit/cssbox/demo/ImageRenderer.java
 (defn render-to-png
@@ -194,7 +213,7 @@
 
 (defn render-pulse-card-to-png
   [card data include-title]
-  (let [html (html [:html [:body {:style "margin: 0; background-color: white;"} (render-pulse-card card data include-title)]])
+  (let [html (html [:html [:body {:style "margin: 0; background-color: white;"} (render-pulse-card card data include-title render-img-data-uri)]])
         os (new java.io.ByteArrayOutputStream)]
     (render-to-png html os)
     (.toByteArray os)))

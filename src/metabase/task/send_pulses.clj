@@ -6,7 +6,6 @@
                                     [triggers :as triggers])
             [clojurewerkz.quartzite.schedule.cron :as cron]
             [clj-time.core :as time]
-            [hiccup.core :refer [html]]
             [metabase.db :as db]
             [metabase.driver :as driver]
             [metabase.email :as email]
@@ -84,8 +83,8 @@
     (email/send-message
       :subject      email-subject
       :recipients   email-recipients
-      :message-type :html
-      :message      (html [:html [:body (p/render-pulse pulse results)]]))))
+      :message-type :attachments
+      :message      (p/render-pulse-email pulse results))))
 
 (defn- create-slack-attachment
   "Create an attachment in Slack for a given Card by rendering its result into an image and uploading it."

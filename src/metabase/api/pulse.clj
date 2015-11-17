@@ -71,7 +71,7 @@
   (let [card (Card id)]
     (read-check Database (:database (:dataset_query card)))
     (let [data (:data (driver/dataset-query (:dataset_query card) {:executed_by *current-user-id*}))]
-      {:status 200 :body (html [:html [:body {:style "margin: 0;"} (p/render-pulse-card card data true)]])})))
+      {:status 200 :body (html [:html [:body {:style "margin: 0;"} (p/render-pulse-card card data true p/render-img-data-uri)]])})))
 
 (defendpoint GET "/preview_card_png/:id"
   "Get PNG rendering of a `Card` with ID."

@@ -35,8 +35,8 @@
   {:pre [(string? subject)
          (sequential? recipients)
          (every? u/is-email? recipients)
-         (contains? #{:text :html} message-type)
-         (string? message)]}
+         (contains? #{:text :html :attachments} message-type)
+         (if (= message-type :attachments) (sequential? message) (string? message))]}
   (try
     ;; Check to make sure all valid settings are set!
     (when-not (email-smtp-host)
@@ -54,6 +54,7 @@
                                                                   :to      recipients
                                                                   :subject subject
                                                                   :body    (case message-type
+                                                                             :attachments message
                                                                              :text message
                                                                              :html [{:type    "text/html; charset=utf-8"
                                                                                      :content message}])})]
