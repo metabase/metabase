@@ -223,6 +223,12 @@
 
 ;; # THE TESTS THEMSELVES (!)
 
+;; structured-query?
+(expect false (structured-query? {}))
+(expect false (structured-query? {:type "native"}))
+(expect true (structured-query? {:type "query"}))
+
+
 ;; ### "COUNT" AGGREGATION
 (qp-expect-with-all-datasets
     {:rows    [[100]]
