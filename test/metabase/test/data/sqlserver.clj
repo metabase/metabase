@@ -103,7 +103,7 @@
    This is important because we're limited to a quota of 30 DBs on RDS."
   {:expectations-options :before-run}
   []
-  (when (contains? @(resolve 'metabase.test.data.datasets/test-dataset-names) :sqlserver)
+  (when (contains? @(resolve 'metabase.test.data.datasets/test-engines) :sqlserver)
     (let [connection-spec ((sqlserver :connection-details->spec) (database->connection-details nil :server nil))
           leftover-dbs    (mapv :name (jdbc/query connection-spec "SELECT name
                                                                    FROM   master.dbo.sysdatabases

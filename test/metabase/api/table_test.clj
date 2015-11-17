@@ -24,8 +24,8 @@
 
 ;; ## GET /api/table?org
 ;; These should come back in alphabetical order and include relevant metadata
-(expect (set (reduce concat (for [dataset-name datasets/test-dataset-names]
-                              (datasets/with-dataset-when-testing dataset-name
+(expect (set (reduce concat (for [engine datasets/test-engines]
+                              (datasets/with-engine-when-testing engine
                                 [{:name                (format-name "categories")
                                   :display_name        "Categories"
                                   :db_id               (id)

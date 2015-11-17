@@ -124,9 +124,9 @@ or a specific test with
 
     lein test metabase.api.session-test
 
-By default, the tests only run against the `h2` dataset (built-in test database). You can specify which datasets/drivers to run tests against with the env var `MB_TEST_DATASETS`:
+By default, the tests only run against the `h2` dataset (built-in test database). You can specify which datasets/drivers to run tests against with the env var `ENGINES`:
 
-    MB_TEST_DATASETS=h2,postgres,mysql,mongo lein test
+    ENGINES=h2,postgres,mysql,mongo lein test
 
 At the time of this writing, the valid datasets are `h2`, `postgres`, `mysql`, and `mongo`.
 
