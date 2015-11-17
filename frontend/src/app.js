@@ -3,7 +3,6 @@ var Metabase = angular.module('metabase', [
     'ngRoute',
     'ngCookies',
     'ui.bootstrap', // bootstrap LIKE widgets via angular directives
-    'metabase.activity.services',
     'metabase.auth',
     'metabase.filters',
     'metabase.directives',

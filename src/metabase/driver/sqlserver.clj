@@ -47,13 +47,15 @@
    :xml              :UnknownField
    (keyword "int identity") :IntegerField}) ; auto-incrementing integer (ie pk) field
 
-(defn- connection-details->spec [details]
+(defn- connection-details->spec [{:keys [instance], :as details}]
   (-> (kdb/mssql details)
       ;; swap out Microsoft Driver details for jTDS ones
       (assoc :classname   "net.sourceforge.jtds.jdbc.Driver"
              :subprotocol "jtds:sqlserver")
       ;; adjust the connection URL to match up with the jTDS format (see http://jtds.sourceforge.net/faq.html#urlFormat)
-      (update :subname #(s/replace % #";database=" "/"))))
+      ;; and add the ;instance= option if applicable
+      (update :subname #(cond-> (s/replace % #";database=" "/")
+                          (seq instance) (str ";instance=" instance)))))
 
 ;; See also the [jTDS SQL <-> Java types table](http://jtds.sourceforge.net/typemap.html)
 (defn- date [unit field-or-value]
@@ -114,15 +116,18 @@
   (-> (sql-driver {:driver-name               "SQL Server"
                    :details-fields            [{:name         "host"
                                                 :display-name "Host"
-                                                :default "localhost"}
+                                                :default      "localhost"}
                                                {:name         "port"
                                                 :display-name "Port"
                                                 :type         :integer
                                                 :default      1433}
-                                               {:name         "dbname"
+                                               {:name         "db"
                                                 :display-name "Database name"
-                                                :placeholder  "birds_of_the_word"
+                                                :placeholder  "BirdsOfTheWorld"
                                                 :required     true}
+                                               {:name         "instance"
+                                                :display-name "Database instance name"
+                                                :placeholder  "N/A"}
                                                {:name         "user"
                                                 :display-name "Database username"
                                                 :placeholder  "What username do you use to login to the database?"

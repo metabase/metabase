@@ -33,6 +33,7 @@
          (contains? field :base_type)
          (contains? field :special_type)]}
   (and (not= (keyword field_type) :sensitive)
+       (not (contains? #{:DateField :DateTimeField :TimeField} (keyword base_type)))
        (or (contains? #{:category :city :state :country} (keyword special_type))
            (= (keyword base_type) :BooleanField))))
 
