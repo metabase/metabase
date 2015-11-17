@@ -13,8 +13,6 @@
 
 ;;; ## CONFIG
 
-(defsetting slack-token "Slack API bearer token obtained from https://api.slack.com/web#authentication")
-
 (def ^:private card-width 400)
 
 (def ^:private font-style "font-family: Lato, \"Helvetica Neue\", Helvetica, Arial, sans-serif;")
