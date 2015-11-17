@@ -9,7 +9,7 @@
                              [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])
             [metabase.test.data :refer :all]
-            (metabase.test.data [data :as data]
+            (metabase.test.data [dataset-definitions :as defs]
                                 [datasets :as datasets]
                                 [users :refer :all])
             [metabase.test.util :refer [match-$ expect-eval-actual-first]]))
@@ -66,7 +66,7 @@
                            :engine          "h2"
                            :id              $
                            :updated_at      $
-                           :name            "Test Database"
+                           :name            "test-data"
                            :is_sample       false
                            :organization_id nil
                            :description     nil})
@@ -129,7 +129,7 @@
                            :engine          "h2"
                            :id              $
                            :updated_at      $
-                           :name            "Test Database"
+                           :name            "test-data"
                            :is_sample       false
                            :organization_id nil
                            :description     nil})
@@ -189,7 +189,7 @@
                               (+ (.getYear inst) 1900)
                               (+ (.getMonth inst) 1)
                               (.getDate inst)))]
-    (->> data/test-data
+    (->> defs/test-data
          :table-definitions
          first
          :rows
@@ -211,7 +211,7 @@
                            :engine          "h2"
                            :id              $
                            :updated_at      $
-                           :name            "Test Database"
+                           :name            "test-data"
                            :is_sample       false
                            :organization_id nil
                            :description     nil})
@@ -323,7 +323,7 @@
                            :engine          "h2"
                            :id              $
                            :updated_at      $
-                           :name            "Test Database"
+                           :name            "test-data"
                            :is_sample       false
                            :organization_id nil
                            :description     nil})
@@ -419,7 +419,7 @@
        :db              (match-$ (db)
                           {:description     nil
                            :organization_id $
-                           :name            "Test Database"
+                           :name            "test-data"
                            :is_sample       false
                            :updated_at      $
                            :details         $
@@ -488,7 +488,7 @@
                                              :db              (match-$ (db)
                                                                 {:description     nil,
                                                                  :organization_id nil,
-                                                                 :name            "Test Database",
+                                                                 :name            "test-data",
                                                                  :is_sample       false,
                                                                  :updated_at      $,
                                                                  :id              $,

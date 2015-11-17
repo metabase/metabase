@@ -32,7 +32,7 @@
        :engine          "h2"
        :id              $
        :updated_at      $
-       :name            "Test Database"
+       :name            "test-data"
        :is_sample       false
        :organization_id nil
        :description     nil})
@@ -46,7 +46,7 @@
        :id              $
        :details         $
        :updated_at      $
-       :name            "Test Database"
+       :name            "test-data"
        :is_sample       false
        :organization_id nil
        :description     nil})
@@ -102,7 +102,7 @@
 ;; ## GET /api/database
 ;; Test that we can get all the DBs for an Org, ordered by name
 ;; Database details *should not* come back for Rasta since she's not a superuser
-(let [db-name (str "A" (random-name))] ; make sure this name comes before "Test Database"
+(let [db-name (str "A" (random-name))] ; make sure this name comes before "test-data"
   (expect-eval-actual-first
       (set (filter identity
                    (conj (for [dataset-name datasets/all-valid-dataset-names]
@@ -112,7 +112,7 @@
                                 :engine          (name $engine)
                                 :id              $
                                 :updated_at      $
-                                :name            "Test Database"
+                                :name            "test-data"
                                 :is_sample       false
                                 :organization_id nil
                                 :description     nil})))
@@ -145,7 +145,7 @@
        :engine          "h2"
        :id              $
        :updated_at      $
-       :name            "Test Database"
+       :name            "test-data"
        :is_sample       false
        :organization_id nil
        :description     nil

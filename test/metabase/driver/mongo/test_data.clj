@@ -5,7 +5,7 @@
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [table :refer [Table]])
-            (metabase.test.data [data :as data]
+            (metabase.test.data [dataset-definitions :as defs]
                                 [mongo :as loader])
             [metabase.util :as u]))
 
@@ -15,7 +15,7 @@
   ^{:doc "A delay that fetches or creates the Mongo test `Database`.
           If DB is created, `load-data` and `sync-database!` are called to get the DB in a state that we can use for testing."}
   mongo-test-db
-  (delay (@(resolve 'metabase.test.data/get-or-create-database!) (loader/dataset-loader) data/test-data)))
+  (delay (@(resolve 'metabase.test.data/get-or-create-database!) (loader/dataset-loader) defs/test-data)))
 
 (defonce
   ^{:doc "A Delay that returns the ID of `mongo-test-db`, forcing creation of it if needed."}

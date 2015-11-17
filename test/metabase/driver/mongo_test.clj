@@ -8,8 +8,7 @@
             [metabase.driver.mongo.test-data :refer :all]
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
-            (metabase.test.data [data :refer [test-data]]
-                                [datasets :as datasets])
+            [metabase.test.data.datasets :as datasets]
             [metabase.test.util :refer [expect-eval-actual-first resolve-private-fns]]))
 
 ;; ## Logic for selectively running mongo

@@ -10,7 +10,7 @@
             [metabase.driver.mongo.test-data :as mongo-data]
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
-            (metabase.test.data [data :as data]
+            (metabase.test.data [dataset-definitions :as defs]
                                 [h2 :as h2]
                                 [mongo :as mongo]
                                 [mysql :as mysql]
@@ -71,7 +71,7 @@
 
 (defn- generic-sql-load-data! [{:keys [dbpromise], :as this}]
   (when-not (realized? dbpromise)
-    (deliver dbpromise (@(resolve 'metabase.test.data/get-or-create-database!) (dataset-loader this) data/test-data)))
+    (deliver dbpromise (@(resolve 'metabase.test.data/get-or-create-database!) (dataset-loader this) defs/test-data)))
   @dbpromise)
 
 (def ^:private GenericSQLIDatasetMixin
