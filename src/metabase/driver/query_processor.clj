@@ -38,6 +38,12 @@
 ;; |                                     QP INTERNAL IMPLEMENTATION                                     |
 ;; +----------------------------------------------------------------------------------------------------+
 
+(defn structured-query?
+  "Predicate function which returns `true` if the given query represents a structured style query, `false` otherwise."
+  [query]
+  (= :query (keyword (:type query))))
+
+
 (defn- wrap-catch-exceptions [qp]
   (fn [query]
     (try (qp query)
@@ -55,7 +61,9 @@
 
 (defn- pre-expand [qp]
   (fn [query]
-    (qp (resolve/resolve (expand/expand query)))))
+    (if (structured-query? query)
+      (qp (resolve/resolve (expand/expand query)))
+      (qp query))))
 
 
 (defn- post-add-row-count-and-status
@@ -208,6 +216,16 @@
     (qp query)))
 
 
+(defn- wrap-guard-multiple-calls
+  "Throw an exception if a QP function accidentally calls (QP QUERY) more than once."
+  [qp]
+  (let [called? (atom false)]
+    (fn [query]
+      (assert (not @called?) "(QP QUERY) IS BEING CALLED MORE THAN ONCE!")
+      (reset! called? true)
+      (qp query))))
+
+
 ;; +------------------------------------------------------------------------------------------------------------------------+
 ;; |                                                     QUERY PROCESSOR                                                    |
 ;; +------------------------------------------------------------------------------------------------------------------------+
@@ -239,16 +257,12 @@
 ;;
 ;; Pre-processing then happens in order from bottom-to-top; i.e. POST-ANNOTATE gets to modify the results, then LIMIT, then CUMULATIVE-SUM, etc.
 
-(defn- wrap-guard-multiple-calls
-  "Throw an exception if a QP function accidentally calls (QP QUERY) more than once."
-  [qp]
-  (let [called? (atom false)]
-    (fn [query]
-      (assert (not @called?) "(QP QUERY) IS BEING CALLED MORE THAN ONCE!")
-      (reset! called? true)
-      (qp query))))
 
-(defn- process-structured [{:keys [driver], :as query}]
+(defn process
+  "Process a QUERY and return the results."
+  [driver query]
+  (when-not *disable-qp-logging*
+    (log/debug (u/format-color 'blue "\nQUERY: 😎\n%s" (u/pprint-to-str query))))
   (let [driver-process-query      (:process-query driver)
         driver-wrap-process-query (or (:process-query-in-context driver)
                                       (fn [qp] qp))]
@@ -263,26 +277,5 @@
           annotate/post-annotate
           pre-log-query
           wrap-guard-multiple-calls
-          driver-process-query) query)))
-
-(defn- process-native [{:keys [driver], :as query}]
-  (let [driver-process-query      (:process-query driver)
-        driver-wrap-process-query (or (:process-query-in-context driver)
-                                      (fn [qp] qp))]
-    ((<<- wrap-catch-exceptions
-          driver-wrap-process-query
-          post-add-row-count-and-status
-          limit
-          wrap-guard-multiple-calls
-          driver-process-query) query)))
-
-(defn process
-  "Process a QUERY and return the results."
-  [driver query]
-  (when-not *disable-qp-logging*
-    (log/debug (u/format-color 'blue "\nQUERY: 😎\n%s" (u/pprint-to-str query))))
-  ((case (keyword (:type query))
-     :native process-native
-     :query  process-structured)
-   (assoc query
-          :driver driver)))
+          driver-process-query) (assoc query
+                                       :driver driver))))
