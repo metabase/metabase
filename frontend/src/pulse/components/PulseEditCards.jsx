@@ -43,7 +43,7 @@ export default class PulseEditCards extends Component {
                 <ol className="my3">
                     {cards && pulseCards.map((card, index) =>
                         <li key={index} className="my1 flex align-top" style={{ width: "400px" }}>
-                            <span className="h3 text-bold mr1 mt1">{index + 1}.</span>
+                            <span className="h3 text-bold mr1 mt2">{index + 1}.</span>
                             { card ?
                                 <PulseCardPreview
                                     card={card}

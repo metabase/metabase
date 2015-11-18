@@ -16,7 +16,8 @@ export default class RecipientPicker extends Component {
         this.state = {
             inputValue: "",
             filteredUsers: [],
-            selectedUser: null
+            selectedUser: null,
+            focused: props.recipients.length === 0
         };
 
         _.bindAll(this, "onMouseDownCapture", "onInputChange", "onInputKeyDown", "onInputFocus", "onInputBlur");
@@ -152,9 +153,10 @@ export default class RecipientPicker extends Component {
                         ref="input"
                         type="text"
                         className="full h4 text-bold text-default no-focus borderless"
+                        style={{"backgroundColor": "transparent"}}
                         placeholder={recipients.length === 0 ? "Enter email addresses you'd like this data to go to" : null}
-                        autoFocus
                         value={this.state.inputValue}
+                        autoFocus={this.state.focused}
                         onKeyDown={this.onInputKeyDown}
                         onChange={this.onInputChange}
                         onFocus={this.onInputFocus}

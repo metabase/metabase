@@ -3,9 +3,11 @@ import React, { Component, PropTypes } from "react";
 import PulseEditName from "./PulseEditName.jsx";
 import PulseEditCards from "./PulseEditCards.jsx";
 import PulseEditChannels from "./PulseEditChannels.jsx";
+import WhatsAPulse from "./WhatsAPulse.jsx";
 
 import ActionButton from "metabase/components/ActionButton.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
+import ModalContent from "metabase/components/ModalContent.jsx";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm.jsx";
 
 import {
@@ -20,6 +22,7 @@ import {
 
 import _ from "underscore";
 import cx from "classnames";
+import { inflect } from "inflection";
 
 export default class PulseEdit extends Component {
     constructor(props) {
@@ -42,7 +45,7 @@ export default class PulseEdit extends Component {
 
     async save() {
         await this.props.dispatch(saveEditingPulse());
-        this.props.onChangeLocation("/pulse/"+this.props.pulse.id);
+        this.props.onChangeLocation("/pulse");
     }
 
     async delete() {
@@ -87,10 +90,14 @@ export default class PulseEdit extends Component {
     }
 
     getConfirmItems() {
-        return [
-            "This pulse will no longer be emailed to 2 addresses Weekly on Mondays at 8:00 am",
-            "Slack channel #general will no longer get this pulse every day at 8:00 am."
-        ];
+        return this.props.pulse.channels.map(c =>
+            c.channel_type === "email" ?
+                <span>This pulse will no longer be emailed to <strong>{c.recipients.length} {inflect("address", c.recipients.length)}</strong> <strong>{c.schedule_type}</strong>.</span>
+            : c.channel_type === "slack" ?
+                <span>Slack channel <strong>{c.details.channel}</strong> will no longer get this pulse <strong>{c.schedule_type}</strong>.</span>
+            :
+                <span>Channel <strong>{c.channel_type}</strong> will no longer receive this pulse <strong>{c.schedule_type}</strong>.</span>
+        );
     }
 
     render() {
@@ -99,14 +106,29 @@ export default class PulseEdit extends Component {
             <div className="PulseEdit">
                 <div className="PulseEdit-header flex align-center border-bottom py3">
                     <h1>{pulse && pulse.id != null ? "Edit" : "New"} pulse</h1>
-                    <a className="text-brand text-bold flex-align-right">What's a pulse?</a>
+                    <ModalWithTrigger
+                        ref="pulseInfo"
+                        className="Modal WhatsAPulseModal"
+                        triggerElement="What's a Pulse?"
+                        triggerClasses="text-brand text-bold flex-align-right"
+                    >
+                        <ModalContent
+                            closeFn={() => this.refs.pulseInfo.close()}
+                        >
+                            <div className="mx4 mb4">
+                                <WhatsAPulse
+                                    button={<button className="Button Button--primary" onClick={() => this.refs.pulseInfo.close()}>Got it</button>}
+                                />
+                            </div>
+                        </ModalContent>
+                    </ModalWithTrigger>
                 </div>
                 <div className="PulseEdit-content pt2">
                     <PulseEditName {...this.props} setPulse={this.setPulse} />
                     <PulseEditCards {...this.props} setPulse={this.setPulse} />
                     <PulseEditChannels {...this.props} setPulse={this.setPulse} />
                     { pulse && pulse.id != null &&
-                        <div className="mb2 rounded bordered p2 border-error relative">
+                        <div className="DangerZone mb2 p2 rounded bordered relative">
                             <h3 className="text-error absolute top bg-white px1" style={{ marginTop: "-12px" }}>Danger Zone</h3>
                             <div className="">
                                 <h4 className="text-bold mb1">Delete this pulse</h4>

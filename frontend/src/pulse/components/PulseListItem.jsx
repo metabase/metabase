@@ -12,13 +12,14 @@ export default class PulseListItem extends Component {
         let { pulse, formInput } = this.props;
 
         return (
-            <div className="bordered rounded mb2 pt3">
+            <div className="PulseListItem bordered rounded mb2 pt3">
                 <div className="flex px4 mb2">
                     <div>
-                        <h2 className="mb1">
-                            <a className="no-decoration" href={"/pulse/" + pulse.id}>{pulse.name}</a>
-                        </h2>
+                        <h2 className="mb1">{pulse.name}</h2>
                         <span>Pulse by <span className="text-bold">{pulse.creator && pulse.creator.common_name}</span></span>
+                    </div>
+                    <div className="flex-align-right">
+                        <a className="PulseEditButton PulseButton Button no-decoration text-bold" href={"/pulse/" + pulse.id}>Edit</a>
                     </div>
                 </div>
                 <ol className="mb2 px4 flex">
@@ -30,7 +31,7 @@ export default class PulseListItem extends Component {
                         </li>
                     )}
                 </ol>
-                <ul className="border-top px4" style={{backgroundColor: "rgb(252,252,253)"}}>
+                <ul className="border-top px4 bg-grey-0">
                     {pulse.channels.map(channel =>
                         <li className="border-row-divider">
                             <PulseListChannel

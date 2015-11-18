@@ -54,10 +54,10 @@ export default class PulseListChannel extends Component {
         let channelTarget = channel.recipients && (channel.recipients.length + " " + inflect("people", channel.recipients.length));
 
         if (channel.channel_type === "email") {
-            channelIcon = "close";
+            channelIcon = "mail";
             channelVerb = "Emailed";
         } else if (channel.channel_type === "slack") {
-            channelIcon = "close";
+            channelIcon = "slack";
             channelVerb = "Slack'd";
             channelTarget = channel.details.channel;
         }

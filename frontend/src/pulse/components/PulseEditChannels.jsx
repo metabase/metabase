@@ -5,7 +5,12 @@ import SchedulePicker from "./SchedulePicker.jsx";
 
 import Select from "metabase/components/Select.jsx";
 import Toggle from "metabase/components/Toggle.jsx";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import Icon from "metabase/components/Icon.jsx";
+
+const CHANNEL_ICONS = {
+    email: "mail",
+    slack: "slack"
+};
 
 export default class PulseEditChannels extends Component {
     constructor(props) {
@@ -92,7 +97,7 @@ export default class PulseEditChannels extends Component {
 
     renderChannel(channel, index, channelSpec) {
         return (
-            <li key={index} className="py1">
+            <li key={index} className="py2">
                 { channelSpec.recipients &&
                     <div>
                         <div className="h4 text-bold mb1">To:</div>
@@ -107,47 +112,51 @@ export default class PulseEditChannels extends Component {
                 { channelSpec.fields &&
                     this.renderFields(channel, index, channelSpec)
                 }
-                <SchedulePicker
-                    channel={channel}
-                    channelSpec={channelSpec}
-                    onPropertyChange={this.onChannelPropertyChange.bind(this, index)}
-                />
+                { channelSpec.schedules &&
+                    <SchedulePicker
+                        channel={channel}
+                        channelSpec={channelSpec}
+                        onPropertyChange={this.onChannelPropertyChange.bind(this, index)}
+                    />
+                }
             </li>
         );
     }
 
     renderChannelSection(channelSpec) {
         let { pulse } = this.props;
+        let channels = pulse.channels
+            .map((c, index) => c.channel_type === channelSpec.type ? this.renderChannel(c, index, channelSpec) : null)
+            .filter(e => !!e);
         return (
-            <li key={channelSpec.type} className="py2 border-row-divider">
-                <div className="flex align-center mb1">
+            <li key={channelSpec.type} className="border-row-divider">
+                <div className="flex align-center p3 border-row-divider">
+                    {CHANNEL_ICONS[channelSpec.type] && <Icon className="mr1 text-grey-2" name={CHANNEL_ICONS[channelSpec.type]} width={28} />}
                     <h2>{channelSpec.name}</h2>
                     <Toggle className="flex-align-right" value={pulse.channels.some(c => c.channel_type === channelSpec.type)} onChange={this.toggleChannel.bind(this, channelSpec.type)} />
                 </div>
-                <ul>
-                    {pulse.channels.map((channel, index) =>
-                        channel.channel_type === channelSpec.type &&
-                            this.renderChannel(channel, index, channelSpec)
-                    )}
-                </ul>
+                {channels.length > 0 &&
+                    <ul className="bg-grey-0 px3">{channels}</ul>
+                }
             </li>
         )
     }
 
     render() {
         let { formInput } = this.props;
+        // Default to show the default channels until full formInput is loaded
+        let channels = formInput.channels || {
+            email: { name: "Email", type: "email" },
+            slack: { name: "Slack", type: "slack" }
+        };
         return (
-            <div className="py1">
-                <h2>Where should this data go?</h2>
-                <LoadingAndErrorWrapper loading={!formInput.channels}>
-                {() =>
-                    <ul>
-                        {Object.values(formInput.channels).map(channelSpec =>
-                            this.renderChannelSection(channelSpec)
-                        )}
-                    </ul>
-                }
-                </LoadingAndErrorWrapper>
+            <div className="py1 mb4">
+                <h2 className="mb3">Where should this data go?</h2>
+                <ul className="bordered rounded">
+                    {Object.values(channels).map(channelSpec =>
+                        this.renderChannelSection(channelSpec)
+                    )}
+                </ul>
             </div>
         );
     }

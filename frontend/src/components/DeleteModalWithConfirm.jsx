@@ -35,7 +35,7 @@ export default class DeleteModalWithConfirm extends Component {
         let confirmed = confirmItems.reduce((acc, item, index) => acc && checked[index], true);
         return (
             <ModalContent
-                title={"Delete " + objectName + "?"}
+                title={"Delete \"" + objectName + "\"?"}
                 closeFn={this.props.onClose}
             >
             <div className="px4">
@@ -44,7 +44,7 @@ export default class DeleteModalWithConfirm extends Component {
                         <li className="pb2 mb2 border-row-divider flex align-center">
                             <span className="text-error">
                                 <CheckBox
-                                    checkColor="currentColor" borderColor="currentColor" size={20}
+                                    checkColor="currentColor" borderColor={checked[index] ? "currentColor" : undefined} size={20}
                                     checked={checked[index]}
                                     onChange={(e) => this.setState({ checked: { ...checked, [index]: e.target.checked } })}
                                 />

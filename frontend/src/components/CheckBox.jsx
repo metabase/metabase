@@ -1,6 +1,8 @@
 import React, { Component, PropTypes } from 'react';
 import Icon from 'metabase/components/Icon.jsx';
 
+import cx from "classnames";
+
 export default class CheckBox extends Component {
     static propTypes = {
         checked: PropTypes.bool,
@@ -33,7 +35,7 @@ export default class CheckBox extends Component {
             justifyContent: 'center',
         };
         return (
-            <div className={className} style={style} onClick={() => this.onClick()}>
+            <div className={cx("cursor-pointer", className)} style={style} onClick={() => this.onClick()}>
                 { checked ? <Icon name='check'  width={size - 4} height={size - 4} /> : null }
             </div>
         )
