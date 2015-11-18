@@ -208,8 +208,7 @@
   (verify-sql-driver driver)
   (merge
    {:features                  (set (cond-> [:foreign-keys
-                                             :standard-deviation-aggregations
-                                             :unix-timestamp-special-type-fields]
+                                             :standard-deviation-aggregations]
                                       (:set-timezone-sql driver) (conj :set-timezone)))
     :qp-clause->handler        qp/clause->handler
     :can-connect?              (partial can-connect? (:connection-details->spec driver))
