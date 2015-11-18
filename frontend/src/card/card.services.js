@@ -300,6 +300,7 @@ CardServices.service('VisualizationSettings', [function() {
             'labels_step': null
         },
         'line': {
+            'legend_enabled': true,
             'lineColor': DEFAULT_COLOR,
             'colors': DEFAULT_COLOR_HARMONY,
             'lineWidth': 2,
@@ -312,6 +313,7 @@ CardServices.service('VisualizationSettings', [function() {
             'yAxis_columns': []
         },
         'area': {
+            'legend_enabled': true,
             'fillColor': DEFAULT_COLOR,
             'fillOpacity': 0.75
         },
