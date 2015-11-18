@@ -4,14 +4,28 @@
             [compojure.core :refer [GET POST]]
             [metabase.api.common :refer :all]
             [metabase.driver :as driver]
+            [metabase.driver.query-processor :refer [structured-query?]]
             [metabase.models.database :refer [Database]]
             [metabase.util :as u]))
+
+(def ^:const api-max-results-bare-rows
+  "Maximum number of rows to return specifically on :rows type queries via the API."
+  2000)
+
+(def ^:const api-max-results
+  "General maximum number of rows to return from an API query."
+  10000)
+
 
 (defendpoint POST "/"
   "Execute an MQL query and retrieve the results as JSON."
   [:as {{:keys [database] :as body} :body}]
   (read-check Database database)
-  (driver/dataset-query body {:executed_by *current-user-id*}))
+  ;; add sensible constraints for results limits on our query
+  (let [query (assoc body :constraints {:max-results           api-max-results
+                                        :max-results-bare-rows api-max-results-bare-rows})]
+    (driver/dataset-query query {:executed_by *current-user-id*})))
+
 
 (defendpoint GET "/csv"
   "Execute an MQL query and download the result data as a CSV file."
