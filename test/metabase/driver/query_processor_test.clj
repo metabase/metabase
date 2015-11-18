@@ -1,6 +1,7 @@
 (ns metabase.driver.query-processor-test
   "Query processing tests that can be ran between any of the available drivers, and should give the same results."
   (:require [clojure.math.numeric-tower :as math]
+            [clojure.set :as set]
             [expectations :refer :all]
             [korma.core :as k]
             [metabase.db :refer :all]
@@ -20,8 +21,13 @@
 
 ;; ### Helper Fns + Macros
 
-(def ^:private ^:const sql-engines
-  #{:h2 :postgres :mysql :sqlserver})
+(defn- engines-that-support [feature]
+  (set (filter (fn [engine]
+                 (contains? (:features (driver/engine->driver engine)) feature))
+               datasets/all-valid-engines)))
+
+(defn- engines-that-dont-support [feature]
+  (set/difference datasets/all-valid-engines (engines-that-support feature)))
 
 (defmacro ^:private qp-expect-with-all-engines [data q-form & post-process-fns]
   `(datasets/expect-with-all-engines
@@ -557,7 +563,7 @@
 ;;; SQL-Only for the time being
 
 ;; ## "STDDEV" AGGREGATION
-(qp-expect-with-engines sql-engines
+(qp-expect-with-engines (engines-that-support :standard-deviation-aggregations)
   {:columns ["stddev"]
    :cols    [(aggregate-col :stddev (venues-col :latitude))]
    :rows    [[(datasets/engine-case
@@ -568,7 +574,7 @@
   (Q aggregate stddev latitude of venues))
 
 ;; Make sure standard deviation fails for the Mongo driver since its not supported
-(datasets/expect-with-engine :mongo
+(datasets/expect-with-engines (engines-that-dont-support :foreign-keys)
   {:status :failed
    :error  "standard-deviation-aggregations is not supported by this driver."}
   (select-keys (Q aggregate stddev latitude of venues) [:status :error]))
@@ -577,7 +583,7 @@
 ;;; ## order_by aggregate fields (SQL-only for the time being)
 
 ;;; ### order_by aggregate ["count"]
-(qp-expect-with-engines sql-engines
+(qp-expect-with-all-engines
   {:columns [(format-name "price")
              "count"]
    :rows    [[4 6]
@@ -592,7 +598,7 @@
 
 
 ;;; ### order_by aggregate ["sum" field-id]
-(qp-expect-with-engines sql-engines
+(qp-expect-with-all-engines
   {:columns [(format-name "price")
              "sum"]
    :rows    [[2 (->sum-type 2855)]
@@ -607,7 +613,7 @@
 
 
 ;;; ### order_by aggregate ["distinct" field-id]
-(qp-expect-with-engines sql-engines
+(qp-expect-with-all-engines
   {:columns [(format-name "price")
              "count"]
    :rows    [[4 6]
@@ -622,29 +628,33 @@
 
 
 ;;; ### order_by aggregate ["avg" field-id]
-(datasets/expect-with-engines sql-engines
+(datasets/expect-with-all-engines
   {:columns [(format-name "price")
              "avg"]
    :rows    [[3 (datasets/engine-case
                  :h2        22
                  :postgres  22.0000000000000000M
                  :mysql     22.0000M
-                 :sqlserver 22)]
+                 :sqlserver 22
+                 :mongo     22.0)]
              [2 (datasets/engine-case
                  :h2        28
                  :postgres  28.2881355932203390M
                  :mysql     28.2881M
-                 :sqlserver 28)]
+                 :sqlserver 28
+                 :mongo     28.28813559322034)]
              [1 (datasets/engine-case
                  :h2        32
                  :postgres  32.8181818181818182M
                  :mysql     32.8182M
-                 :sqlserver 32)]
+                 :sqlserver 32
+                 :mongo     32.81818181818182)]
              [4 (datasets/engine-case
                  :h2        53
                  :postgres  53.5000000000000000M
                  :mysql     53.5000M
-                 :sqlserver 53)]]
+                 :sqlserver 53
+                 :mongo     53.5)]]
    :cols    [(venues-col :price)
              (aggregate-col :avg (venues-col :category_id))]}
   (Q return :data
@@ -656,7 +666,7 @@
 ;;; ### order_by aggregate ["stddev" field-id]
 ;; MySQL has a nasty tendency to return different results on different systems so just round everything to the nearest int.
 ;; It also seems to give slightly different results than less-sucky DBs as evidenced below
-(datasets/expect-with-engines sql-engines
+(datasets/expect-with-engines (engines-that-support :standard-deviation-aggregations)
   {:columns [(format-name "price")
              "stddev"]
    :rows    [[3 (datasets/engine-case :h2 26, :postgres 26, :mysql 25, :sqlserver 26)]
@@ -733,14 +743,6 @@
      ~then
      ~else))
 
-(defmacro if-sqlserver
-  "SQLServer lacks timezone support; the groupings in sad-toucan-incidents happen in UTC rather than US/Pacfic time. This
-   macro is provided as a convenience for specifying the *slightly* different expected results in the multi-driver unit tests below."
-  [then else]
-  `(if (= :sqlserver *engine*)
-     ~then
-     ~else))
-
 ;; There were 9 "sad toucan incidents" on 2015-06-02
 (datasets/expect-with-all-engines
   (if-questionable-timezone-support
@@ -791,7 +793,7 @@
 
 ;; The top 10 cities by number of Tupac sightings
 ;; Test that we can breakout on an FK field (Note how the FK Field is returned in the results)
-(datasets/expect-with-engines sql-engines
+(datasets/expect-with-engines (engines-that-support :foreign-keys)
   [["Arlington" 16]
    ["Albany" 15]
    ["Portland" 14]
@@ -814,7 +816,7 @@
 ;; Number of Tupac sightings in the Expa office
 ;; (he was spotted here 60 times)
 ;; Test that we can filter on an FK field
-(datasets/expect-with-engines sql-engines
+(datasets/expect-with-engines (engines-that-support :foreign-keys)
   60
   (Q dataset tupac-sightings
      return first-row first
@@ -825,7 +827,7 @@
 ;; THE 10 MOST RECENT TUPAC SIGHTINGS (!)
 ;; (What he was doing when we saw him, sighting ID)
 ;; Check that we can include an FK field in the :fields clause
-(datasets/expect-with-engines sql-engines
+(datasets/expect-with-engines (engines-that-support :foreign-keys)
   [[772 "In the Park"]
    [894 "Working at a Pet Store"]
    [684 "At the Airport"]
@@ -847,7 +849,7 @@
 ;;    (this query targets sightings and orders by cities.name and categories.name)
 ;; 2. Check that we can join MULTIPLE tables in a single query
 ;;    (this query joins both cities and categories)
-(datasets/expect-with-engines sql-engines
+(datasets/expect-with-engines (engines-that-support :foreign-keys)
   ;; CITY_ID, CATEGORY_ID, ID
   ;; Cities are already alphabetized in the source data which is why CITY_ID is sorted
   [[1 12 6]
@@ -868,7 +870,7 @@
 
 
 ;; Check that trying to use a Foreign Key fails for Mongo
-(datasets/expect-with-engine :mongo
+(datasets/expect-with-engines (engines-that-dont-support :foreign-keys)
   {:status :failed
    :error "foreign-keys is not supported by this driver."}
   (select-keys (Q dataset tupac-sightings
@@ -884,7 +886,7 @@
 
 ;;; Nested Field in FILTER
 ;; Get the first 10 tips where tip.venue.name == "Kyle's Low-Carb Grill"
-(datasets/expect-when-testing-engine :mongo
+(datasets/expect-with-engines (engines-that-support :nested-fields)
     [[8   "Kyle's Low-Carb Grill"]
      [67  "Kyle's Low-Carb Grill"]
      [80  "Kyle's Low-Carb Grill"]
@@ -894,7 +896,7 @@
      [417 "Kyle's Low-Carb Grill"]
      [426 "Kyle's Low-Carb Grill"]
      [470 "Kyle's Low-Carb Grill"]]
-  (Q dataset geographical-tips use mongo
+  (Q dataset geographical-tips
      return rows (map (fn [[id _ _ _ {venue-name :name}]] [id venue-name]))
      aggregate rows of tips
      filter = venue...name "Kyle's Low-Carb Grill"
@@ -903,7 +905,7 @@
 
 ;;; Nested Field in ORDER
 ;; Let's get all the tips Kyle posted on Twitter sorted by tip.venue.name
-(datasets/expect-when-testing-engine :mongo
+(datasets/expect-with-engines (engines-that-support :nested-fields)
   [[446
     {:mentions ["@cams_mexican_gastro_pub"], :tags ["#mexican" "#gastro" "#pub"], :service "twitter", :username "kyle"}
     "Cam's Mexican Gastro Pub is a historical and underappreciated place to conduct a business meeting with friends."
@@ -932,7 +934,7 @@
      :medium "http://cloudfront.net/cedd4221-dbdb-46c3-95a9-935cce6b3fe5/med.jpg",
      :small  "http://cloudfront.net/cedd4221-dbdb-46c3-95a9-935cce6b3fe5/small.jpg"}
     {:phone "415-901-6541", :name "Pacific Heights Free-Range Eatery", :categories ["Free-Range" "Eatery"], :id "88b361c8-ce69-4b2e-b0f2-9deedd574af6"}]]
-  (Q dataset geographical-tips use mongo
+  (Q dataset geographical-tips
      return rows
      aggregate rows of tips
      filter and = source...service "twitter"
@@ -941,36 +943,36 @@
 
 ;; Nested Field in AGGREGATION
 ;; Let's see how many *distinct* venue names are mentioned
-(datasets/expect-when-testing-engine :mongo
+(datasets/expect-with-engines (engines-that-support :nested-fields)
   99
-  (Q dataset geographical-tips use mongo
+  (Q dataset geographical-tips
      return first-row first
      aggregate distinct venue...name of tips))
 
 ;; Now let's just get the regular count
-(datasets/expect-when-testing-engine :mongo
+(datasets/expect-with-engines (engines-that-support :nested-fields)
   500
-  (Q dataset geographical-tips use mongo
+  (Q dataset geographical-tips
      return first-row first
      aggregate count venue...name of tips))
 
 ;;; Nested Field in BREAKOUT
 ;; Let's see how many tips we have by source.service
-(datasets/expect-when-testing-engine :mongo
+(datasets/expect-with-engines (engines-that-support :nested-fields)
   {:rows    [["facebook" 107]
              ["flare" 105]
              ["foursquare" 100]
              ["twitter" 98]
              ["yelp" 90]]
    :columns ["source.service" "count"]}
-  (Q dataset geographical-tips use mongo
+  (Q dataset geographical-tips
      return :data (#(dissoc % :cols))
      aggregate count of tips
      breakout source...service))
 
 ;;; Nested Field in FIELDS
 ;; Return the first 10 tips with just tip.venue.name
-(datasets/expect-when-testing-engine :mongo
+(datasets/expect-with-engines (engines-that-support :nested-fields)
   {:columns ["venue.name"]
    :rows    [["Lucky's Gluten-Free Café"]
              ["Joe's Homestyle Eatery"]
@@ -982,7 +984,7 @@
              ["Kyle's Low-Carb Grill"]
              ["Mission Homestyle Churros"]
              ["Sameer's Pizza Liquor Store"]]}
-  (select-keys (Q dataset geographical-tips use mongo
+  (select-keys (Q dataset geographical-tips
                   return :data
                   aggregate rows of tips
                   order id
@@ -992,7 +994,7 @@
 
 
 ;;; Nested Field w/ ordering by aggregation
-(datasets/expect-when-testing-engine :mongo
+(datasets/expect-with-engines (engines-that-support :nested-fields)
     [["jane" 4]
      ["kyle" 5]
      ["tupac" 5]
@@ -1007,7 +1009,7 @@
      ["cam_saul" 10]
      ["rasta_toucan" 13]
      [nil 400]]
-  (Q dataset geographical-tips use mongo
+  (Q dataset geographical-tips
      return rows
      aggregate count of tips
      breakout source...mayor
@@ -1090,7 +1092,7 @@
           return rows)))
 
 (datasets/expect-with-all-engines
-  (if-sqlserver
+  (if (= *engine* :sqlserver)
    [[#inst "2015-06-01T17:31" 1]
     [#inst "2015-06-01T23:06" 1]
     [#inst "2015-06-02T00:23" 1]
@@ -1152,8 +1154,8 @@
    [9 1]]
   (sad-toucan-incidents-with-bucketing :minute-of-hour))
 
-(datasets/expect-with-engines sql-engines
-  (if-sqlserver
+(datasets/expect-with-all-engines
+  (if-questionable-timezone-support
     [[#inst "2015-06-01T17" 1]
      [#inst "2015-06-01T23" 1]
      [#inst "2015-06-02T00" 1]
