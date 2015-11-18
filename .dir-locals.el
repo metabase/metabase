@@ -37,7 +37,6 @@
                               (expect-with-engines 1)
                               (format-color 2)
                               (if-questionable-timezone-support 0)
-                              (if-sqlserver 0)
                               (ins 1)
                               (let-400 1)
                               (let-404 1)
