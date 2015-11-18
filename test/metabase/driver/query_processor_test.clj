@@ -490,13 +490,13 @@
 ;; ## LIMIT-MAX-RESULT-ROWS
 ;; Apply limit-max-result-rows to an infinite sequence and make sure it gets capped at `absolute-max-results`
 (expect absolute-max-results
-  (->> (((u/runtime-resolved-fn 'metabase.driver.query-processor 'limit) identity) {:rows (repeat [:ok])})
+  (->> ((@(ns-resolve 'metabase.driver.query-processor 'limit) identity) {:rows (repeat [:ok])})
        :rows
        count))
 
 ;; Apply an arbitrary max-results on the query and ensure our results size is appropriately constrained
 (expect 1234
-  (->> (((u/runtime-resolved-fn 'metabase.driver.query-processor 'limit) identity) {:constraints {:max-results 1234}
+  (->> ((@(ns-resolve 'metabase.driver.query-processor 'limit) identity) {:constraints {:max-results 1234}
                                                                                     :query       {:aggregation {:aggregation-type :count}}
                                                                                     :rows        (repeat [:ok])})
        :rows
@@ -504,7 +504,7 @@
 
 ;; Apply a max-results-bare-rows limit specifically on :rows type query
 (expect [46 46]
-  (let [res (((u/runtime-resolved-fn 'metabase.driver.query-processor 'limit) identity) {:constraints {:max-results 46}
+  (let [res ((@(ns-resolve 'metabase.driver.query-processor 'limit) identity) {:constraints {:max-results 46}
                                                                                          :query       {:aggregation {:aggregation-type :rows}}
                                                                                          :rows        (repeat [:ok])})]
     [(->> res :rows count)

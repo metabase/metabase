@@ -79,12 +79,10 @@
   "Wrap the results of a successfully processed query in the format expected by the frontend (add `row_count` and `status`)."
   [qp]
   (fn [{{:keys [max-results max-results-bare-rows]} :constraints, :as query}]
-    (let [results-limit (if (rows-query-without-limits? query)
-                          (or max-results-bare-rows
-                              max-results
-                              absolute-max-results)
-                          (or max-results
-                              absolute-max-results))
+    (let [results-limit (or (when (rows-query-without-limits? query)
+                              max-results-bare-rows)
+                            max-results
+                            absolute-max-results)
           results       (qp query)
           num-results   (count (:rows results))]
       (cond-> {:row_count num-results
