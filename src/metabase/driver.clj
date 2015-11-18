@@ -36,8 +36,7 @@
   {:foreign-keys                       #{:table-fks}
    :nested-fields                      #{:active-nested-field-name->type}
    :set-timezone                       nil
-   :standard-deviation-aggregations    nil
-   :unix-timestamp-special-type-fields nil})
+   :standard-deviation-aggregations    nil})
 
 (def ^:private ^:const optional-features
   (set (keys feature->required-fns)))
