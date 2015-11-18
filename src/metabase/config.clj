@@ -23,6 +23,7 @@
    ;; check here for all available options:
    ;; https://github.com/ring-clojure/ring/blob/master/ring-jetty-adapter/src/ring/adapter/jetty.clj
    :mb-jetty-port "3000"
+   :mb-jetty-join "true"
    ;; Other Application Settings
    :mb-password-complexity "normal"
    ;:mb-password-length "8"
@@ -77,8 +78,11 @@
 ;; Metabase version is of the format `GIT-TAG (GIT-SHORT-HASH GIT-BRANCH)`
 
 (defn- version-info-from-shell-script []
-  {:long  (-> (shell/sh "./version")           :out s/trim)
-   :short (-> (shell/sh "./version" "--short") :out s/trim)})
+  (let [[tag hash branch date] (-> (shell/sh "./bin/version") :out s/trim (s/split #" "))]
+    {:tag    tag
+     :hash   hash
+     :branch branch
+     :date   date}))
 
 (defn- version-info-from-properties-file []
   (with-open [reader (io/reader (io/resource "version.properties"))]
@@ -89,10 +93,16 @@
 
 (defn mb-version-info
   "Return information about the current version of Metabase.
-   This comes from `resources/version.properties` for prod builds and is fetched from `git` via the `./version` script for dev.
+   This comes from `resources/version.properties` for prod builds and is fetched from `git` via the `./bin/version` script for dev.
 
-     (mb-version) -> {:long \"v0.11.1 (6509c49 master)\", :short \"v0.11.1\"}"
+     (mb-version) -> {:tag: \"v0.11.1\", :hash: \"afdf863\", :branch: \"about_metabase\", :date: \"2015-10-05\"}"
   []
   (if (is-prod?)
     (version-info-from-properties-file)
     (version-info-from-shell-script)))
+
+(defn mb-version-string
+  "Return a formatted version string representing the currently running application."
+  []
+  (let [{:keys [tag hash branch date]} (mb-version-info)]
+    (format "%s (%s %s)" tag hash branch)))

@@ -1,12 +1,10 @@
 
-> **This guide will teach you:**  
-> How to compile your own copy of Metabase  
-> How to set up a development environment  
-> How to run the Metabase Server  
-> How to contribute back to the Metabase project  
+> **This guide will teach you:**
+> How to compile your own copy of Metabase
+> How to set up a development environment
+> How to run the Metabase Server
+> How to contribute back to the Metabase project
 
-
-[![Circle CI](https://circleci.com/gh/metabase/metabase-init.svg?style=svg&circle-token=3ccf0aa841028af027f2ac9e8df17ce603e90ef9)](https://circleci.com/gh/metabase/metabase-init)
 
 # Install Prerequisites
 
@@ -21,9 +19,13 @@ These are the set of tools which are required in order to complete any build of 
 
 The entire Metabase application is compiled and assembled into a single .jar file which can run on any modern JVM.  There is a script which will execute all steps in the process and output the final artifact for you.
 
-    ./build-uberjar
+    ./bin/build
 
 After running the build script simply look in `target/uberjar` for the output .jar file and you are ready to go.
+
+## Building the OS X App
+
+See [this guide](developers-guide-osx.md).
 
 
 # Development Environment
@@ -120,13 +122,13 @@ Run unit tests with
 
 or a specific test with
 
-    lein test metabase.api.session-test  
+    lein test metabase.api.session-test
 
-By default, the tests only run against the `h2` dataset (built-in test database). You can specify which datasets/drivers to run tests against with the env var `MB_TEST_DATASETS`:
+By default, the tests only run against the `h2` driver. You can specify which drivers to run tests against with the env var `ENGINES`:
 
-    MB_TEST_DATASETS=h2,postgres,mysql,mongo lein test
+    ENGINES=h2,postgres,mysql,mongo lein test
 
-At the time of this writing, the valid datasets are `h2`, `postgres`, `mysql`, and `mongo`.
+At the time of this writing, the valid datasets are `h2`, `postgres`, `mysql`, `mongo`, `sqlserver`, and `sqlite`.
 
 Run the linters with
 
@@ -187,7 +189,7 @@ Will give you a list of out-of-date dependencies.
 
 Once's this repo is made public, this Clojars badge will work and show the status as well:
 
-[![Dependencies Status](http://jarkeeper.com/metabase/metabase-init/status.png)](http://jarkeeper.com/metabase/metabase-init)
+[![Dependencies Status](https://jarkeeper.com/metabase/metabase-init/status.svg)](https://jarkeeper.com/metabase/metabase)
 
 
 ## Documentation
@@ -199,8 +201,6 @@ Start up an instant cheatsheet for the project + dependencies by running
     lein instant-cheatsheet
 
 #### Marginalia
-
-Available at http://metabase.github.io/metabase-init/.
 
 You can generate and view documentation with
 
@@ -222,51 +222,7 @@ In general, we like to have an open issue for every pull request as a place to d
 
 For significant feature additions, it is expected that discussion will have taken place in the attached issue. Any feature that requires a major decision to be reached will need to have an explicit design document written. The goals of this document are to make explicit the assumptions, constraints and tradeoffs any given feature implementation will contain. The point is not to generate documentation but to allow discussion to reference a specific proposed design and to allow others to consider the implications of a given design.
 
-We don't like getting sued, so for every commit we require a Linux Kernel style developer certificate. If you agree to the below terms (from http://developercertificate.org/)
-
-```
-Developer Certificate of Origin
-Version 1.1
-
-Copyright (C) 2004, 2006 The Linux Foundation and its contributors.
-660 York Street, Suite 102,
-San Francisco, CA 94110 USA
-
-Everyone is permitted to copy and distribute verbatim copies of this
-license document, but changing it is not allowed.
-
-Developer's Certificate of Origin 1.1
-
-By making a contribution to this project, I certify that:
-
-(a) The contribution was created in whole or in part by me and I
-    have the right to submit it under the open source license
-    indicated in the file; or
-
-(b) The contribution is based upon previous work that, to the best
-    of my knowledge, is covered under an appropriate open source
-    license and I have the right under that license to submit that
-    work with modifications, whether created in whole or in part
-    by me, under the same open source license (unless I am
-    permitted to submit under a different license), as indicated
-    in the file; or
-
-(c) The contribution was provided directly to me by some other
-    person who certified (a), (b) or (c) and I have not modified
-    it.
-
-(d) I understand and agree that this project and the contribution
-    are public and that a record of the contribution (including all
-    personal information I submit with it, including my sign-off) is
-    maintained indefinitely and may be redistributed consistent with
-    this project or the open source license(s) involved.
-```
-
-Then you just add a line to every git commit message:
-
-    Signed-off-by: Helpful Contributor <helpful.contributor@email.com>
-
-All contributions need to be signed with your real name.
+We don't like getting sued, so before merging any pull request, we'll need each person contributing code to sign a Contributor License Agreement [here](https://docs.google.com/a/metabase.com/forms/d/1oV38o7b9ONFSwuzwmERRMi9SYrhYeOrkbmNaq9pOJ_E/viewform)
 
 ## License
 

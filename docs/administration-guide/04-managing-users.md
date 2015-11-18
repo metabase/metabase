@@ -1,25 +1,34 @@
-##Managing User Accounts
+## Managing User Accounts
+
+To start managing users, first go to the **Admin Panel** by clicking on the dropdown menu in the top right of Metabase and selecting Admin Panel.  
+
+![Profile dropdown](images/ProfileDropdown.png)
+
+Select **People** from the menu bar at the top of the screen to see a list of all the user accounts in your organization.
+
+![Admin menu](images/AdminBar.png)
+
+### Adding a new user
+To add a new user account, click **Add person** in the upper right corner. You’ll be prompted to enter their name and email address.
+
+If you’ve already [configured Metabase to use email](02-setting-up-email.md), Metabase will send the new user an invite email. Otherwise, it’ll give you a temporary password that you’ll have to send to the person you’re inviting by hand.
+
+### Removing a user
+To delete a user's account, click on the three dots icon on the right of a user’s row and select **Remove** from the dropdown. Deleting an account will mark it as inactive and prevent it from being used in the future - but it *won’t* delete that user's saved questions or dashboards.
+
+![Remove a user](images/RemoveUser.png)
+
+### Editing a user
+You can edit a user’s name and email address by clicking the three dots icon and choosing **Edit Details**. Note: be careful when changing a user’s email address, because *this will change the address they’ll use to log in to Metabase*.
+
+### Resetting a user’s password
+A user can always reset their password using the forgot password link on the login screen, but if you want to do this for them, just click the three dots icon and choose Reset Password. If you haven’t configured your email settings yet, you’ll be given a temporary password that you’ll have to share with that user. Otherwise, they’ll receive a password reset email.
+
+### Changing a user’s role
+Right now, the only role a user can have is either User or Admin. The only difference is that Admins can access the Admin Panel and make changes there.
+
+To change a user’s role, just click on it to open a dropdown and make your selection.
+
 ---
-
-Click on your profile icon in the upper right hand corner and select **Account Settings** to access your administrative dashboard.  
-
-![profiledropdown](images/ProfileDropdown.png)
-
-Select **People** from the menu bar at the top of the screen to see a list of all user accounts in your organization.
-
-![adminbar](images/AdminBar.png)
-
-* To add a new user account, click **Add person** in the upper right corner.   
-
-![addperson](images/AddPerson.png)
-
-* Enter a user's information to create an account for them.  
-
-![createuser](images/CreateUser.png)
-
-
-* New users will receive an email welcoming them to Metabase and a link to configure their password.
-* To delete a user's account, click **Remove**.  Deleting an account will mark it as inactive and prevent it from being used in the future - but it won't delete the user's cards or dashboards.
-
-* To make an existing user an administrator, click **Grant Admin**
-* To remove administrator privileges from a user, select **Revoke Admin**
+## Next: configuring Metabase
+There are a few other settings you configure in Metabase. [Learn how](06-configuration-settings.md).

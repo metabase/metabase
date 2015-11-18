@@ -8,6 +8,7 @@
                       [db :as db]
                       [util :as u])
             (metabase.models [table :refer [Table]])
+            [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]))
 
 ;; # ---------------------------------------- EXPECTAIONS FRAMEWORK SETTINGS ------------------------------
@@ -63,17 +64,18 @@
 
 ;; # ------------------------------ FUNCTIONS THAT GET RUN ON TEST SUITE START / STOP ------------------------------
 
-(defn load-test-datasets
+(defn- load-test-data!
   "Call `load-data!` on all the datasets we're testing against."
   []
-  (doseq [dataset-name datasets/test-dataset-names]
-    (log/info (format "Loading test data: %s..." (name dataset-name)))
-    (let [dataset (datasets/dataset-name->dataset dataset-name)]
+  (doseq [engine datasets/test-engines]
+    (log/info (format "Loading test data: %s..." (name engine)))
+    (let [dataset (datasets/engine->loader engine)]
       (datasets/load-data! dataset)
 
       ;; Check that dataset is loaded and working
-      (assert (Table (datasets/table-name->id dataset :venues))
-        (format "Loading test dataset %s failed: could not find 'venues' Table!" dataset-name)))))
+      (datasets/with-engine engine
+        (assert (Table (data/id :venues))
+          (format "Loading test dataset %s failed: could not find 'venues' Table!" engine))))))
 
 (defn test-startup
   {:expectations-options :before-run}
@@ -81,8 +83,9 @@
   ;; We can shave about a second from unit test launch time by doing the various setup stages in on different threads
   (let [setup-db (future (time (do (log/info "Setting up test DB and running migrations...")
                                    (db/setup-db :auto-migrate true)
-                                   (load-test-datasets)
-                                   (metabase.models.setting/set :site-name "Metabase Test"))))]
+                                   (load-test-data!)
+                                   (metabase.models.setting/set :site-name "Metabase Test")
+                                   (core/initialization-complete!))))]
     (core/start-jetty)
     @setup-db))
 

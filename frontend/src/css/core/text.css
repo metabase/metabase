@@ -1,0 +1,97 @@
+:root {
+  --body-text-color: #8E9BA9;
+}
+
+/* center */
+.text-centered { text-align: center; }
+
+@media screen and (--breakpoint-min-sm) {
+    .sm-text-centered { text-align: center; }
+}
+
+@media screen and (--breakpoint-min-md) {
+    .md-text-centered { text-align: center; }
+}
+
+@media screen and (--breakpoint-min-lg) {
+    .lg-text-centered { text-align: center; }
+}
+
+@media screen and (--breakpoint-min-xl) {
+    .xl-text-centered { text-align: center; }
+}
+
+/* left */
+
+.text-left { text-align: left; }
+
+@media screen and (--breakpoint-min-sm) {
+    .sm-text-left { text-align: left; }
+}
+
+@media screen and (--breakpoint-min-md) {
+    .md-text-left { text-align: left; }
+}
+
+@media screen and (--breakpoint-min-lg) {
+    .lg-text-left { text-align: left; }
+}
+
+@media screen and (--breakpoint-min-xl) {
+    .xl-text-left { text-align: left; }
+}
+
+/* right */
+
+.text-right { text-align: right; }
+
+@media screen and (--breakpoint-min-sm) {
+    .sm-text-right { text-align: right; }
+}
+
+@media screen and (--breakpoint-min-md) {
+    .md-text-right { text-align: right; }
+}
+
+@media screen and (--breakpoint-min-lg) {
+    .lg-text-right { text-align: right; }
+}
+
+@media screen and (--breakpoint-min-xl) {
+    .xl-text-right { text-align: right; }
+}
+
+.text-uppercase {
+  text-transform: uppercase;
+}
+
+.text-lowercase {
+  text-transform: lowercase;
+}
+
+/* text weight */
+.text-light  { font-weight: 300; }
+.text-normal { font-weight: 400; }
+.text-strong { font-weight: 570; }
+.text-bold   { font-weight: 700; }
+
+/* text style */
+
+.text-italic {
+  font-style: italic;
+}
+
+/* larger text size used for descriptions  */
+.text-body {
+  font-size: 1.286em;
+  line-height: 1.457em;
+  color: var(--body-text-color); /* TODO - is this bad? */
+}
+
+.text-current {
+    color: currentColor;
+}
+
+.text-underline {
+    text-decoration: underline;;
+}

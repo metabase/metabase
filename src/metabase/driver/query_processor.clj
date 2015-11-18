@@ -8,7 +8,6 @@
             [medley.core :as m]
             [swiss.arrows :refer [<<-]]
             [metabase.db :refer :all]
-            [metabase.driver.interface :as i]
             (metabase.driver.query-processor [annotate :as annotate]
                                              [expand :as expand]
                                              [interface :refer :all]
@@ -39,11 +38,19 @@
 ;; |                                     QP INTERNAL IMPLEMENTATION                                     |
 ;; +----------------------------------------------------------------------------------------------------+
 
+
+(defn structured-query?
+  "Predicate function which returns `true` if the given query represents a structured style query, `false` otherwise."
+  [query]
+  (= :query (keyword (:type query))))
+
+
 (defn- wrap-catch-exceptions [qp]
   (fn [query]
     (try (qp query)
          (catch Throwable e
            {:status         :failed
+            :class          (class e)
             :error          (or (.getMessage e) (str e))
             :stacktrace     (u/filtered-stacktrace e)
             :query          (dissoc query :database :driver)
@@ -55,7 +62,9 @@
 
 (defn- pre-expand [qp]
   (fn [query]
-    (qp (resolve/resolve (expand/expand query)))))
+    (qp (if (structured-query? query)
+          (resolve/resolve (expand/expand query))
+          query))))
 
 
 (defn- post-add-row-count-and-status
@@ -80,32 +89,46 @@
   "Add an implicit `fields` clause to queries with `rows` aggregations."
   [qp]
   (fn [{{:keys [source-table], {source-table-id :id} :source-table} :query, :as query}]
-    (qp (if-not (should-add-implicit-fields? query)
-          query
-          (let [fields (->> (sel :many :fields [Field :name :display_name :base_type :special_type :preview_display :display_name :table_id :id :position :description], :table_id source-table-id,
-                                 :active true, :field_type [not= "sensitive"], :parent_id nil, (k/order :position :asc), (k/order :id :desc))
-                            (map resolve/rename-mb-field-keys)
-                            (map map->Field)
-                            (map #(resolve/resolve-table % {source-table-id source-table})))]
-            (if-not (seq fields)
-              (do (log/warn (format "Table '%s' has no Fields associated with it." (:name source-table)))
-                  query)
-              (-> query
-                  (assoc-in [:query :fields-is-implicit] true)
-                  (assoc-in [:query :fields] fields))))))))
+    (if (structured-query? query)
+      (qp (if-not (should-add-implicit-fields? query)
+            query
+            (let [fields (for [field (sel :many :fields [Field :name :display_name :base_type :special_type :preview_display :display_name :table_id :id :position :description]
+                                          :table_id   source-table-id
+                                          :active     true
+                                          :field_type [not= "sensitive"]
+                                          :parent_id  nil
+                                          (k/order :position :asc) (k/order :id :desc))]
+                           (let [field (-> (resolve/rename-mb-field-keys field)
+                                           map->Field
+                                           (resolve/resolve-table {source-table-id source-table}))]
+                             (if (or (contains? #{:DateField :DateTimeField} (:base-type field))
+                                     (contains? #{:timestamp_seconds :timestamp_milliseconds} (:special-type field)))
+                               (map->DateTimeField {:field field, :unit :day})
+                               field)))]
+              (if-not (seq fields)
+                (do (log/warn (format "Table '%s' has no Fields associated with it." (:name source-table)))
+                    query)
+                (-> query
+                    (assoc-in [:query :fields-is-implicit] true)
+                    (assoc-in [:query :fields] fields))))))
+      ;; for non-structured queries we do nothing
+      (qp query))))
 
 
 (defn- pre-add-implicit-breakout-order-by
   "`Fields` specified in `breakout` should add an implicit ascending `order-by` subclause *unless* that field is *explicitly* referenced in `order-by`."
   [qp]
   (fn [{{breakout-fields :breakout, order-by :order-by} :query, :as query}]
-    (let [order-by-fields                   (set (map :field order-by))
-          implicit-breakout-order-by-fields (filter (partial (complement contains?) order-by-fields)
-                                                    breakout-fields)]
-      (qp (cond-> query
-            (seq implicit-breakout-order-by-fields) (update-in [:query :order-by] concat (for [field implicit-breakout-order-by-fields]
-                                                                                           (map->OrderBySubclause {:field     field
-                                                                                                                   :direction :ascending}))))))))
+    (if (structured-query? query)
+      (let [order-by-fields                   (set (map :field order-by))
+            implicit-breakout-order-by-fields (filter (partial (complement contains?) order-by-fields)
+                                                      breakout-fields)]
+        (qp (cond-> query
+              (seq implicit-breakout-order-by-fields) (update-in [:query :order-by] concat (for [field implicit-breakout-order-by-fields]
+                                                                                             (map->OrderBySubclause {:field     field
+                                                                                                                     :direction :ascending}))))))
+      ;; for non-structured queries we do nothing
+      (qp query))))
 
 
 (defn- pre-cumulative-sum
@@ -165,9 +188,12 @@
 
 (defn- cumulative-sum [qp]
   (fn [query]
-    (let [[cumulative-sum-field query] (pre-cumulative-sum query)]
-      (cond->> (qp query)
-        cumulative-sum-field (post-cumulative-sum cumulative-sum-field)))))
+    (if (structured-query? query)
+      (let [[cumulative-sum-field query] (pre-cumulative-sum query)]
+        (cond->> (qp query)
+                 cumulative-sum-field (post-cumulative-sum cumulative-sum-field)))
+      ;; for non-structured queries we do nothing
+      (qp query))))
 
 
 (defn- limit
@@ -185,7 +211,8 @@
 
 (defn- pre-log-query [qp]
   (fn [query]
-    (when-not *disable-qp-logging*
+    (when (and (structured-query? query)
+               (not *disable-qp-logging*))
       (log/debug (u/format-color 'magenta "\n\nPREPROCESSED/EXPANDED: 😻\n%s"
                                  (u/pprint-to-str
                                   ;; Remove empty kv pairs because otherwise expanded query is HUGE
@@ -193,11 +220,21 @@
                                    (fn [f]
                                      (if-not (map? f) f
                                              (m/filter-vals identity (into {} f))))
-                                   ;; obscure DB details when logging. Just log the class of driver because we don't care about its properties
+                                   ;; obscure DB details when logging. Just log the name of driver because we don't care about its properties
                                    (-> query
                                        (assoc-in [:database :details] "😋 ") ; :yum:
-                                       (update :driver class)))))))
+                                       (update :driver :driver-name)))))))
     (qp query)))
+
+
+(defn- wrap-guard-multiple-calls
+  "Throw an exception if a QP function accidentally calls (QP QUERY) more than once."
+  [qp]
+  (let [called? (atom false)]
+    (fn [query]
+      (assert (not @called?) "(QP QUERY) IS BEING CALLED MORE THAN ONCE!")
+      (reset! called? true)
+      (qp query))))
 
 
 ;; +------------------------------------------------------------------------------------------------------------------------+
@@ -229,20 +266,17 @@
 ;; Pre-processing happens from top-to-bottom, i.e. the QUERY passed to the function returned by POST-ADD-ROW-COUNT-AND-STATUS is the
 ;; query as modified by PRE-EXPAND.
 ;;
-;; Pre-processing then happens in order from bottom-to-top; i.e. POST-ANNOTATE gets to modify the results, then LIMIT, then CUMULATIVE-SUM, etc.
+;; Post-processing then happens in order from bottom-to-top; i.e. POST-ANNOTATE gets to modify the results, then LIMIT, then CUMULATIVE-SUM, etc.
 
-(defn- wrap-guard-multiple-calls
-  "Throw an exception if a QP function accidentally calls (QP QUERY) more than once."
-  [qp]
-  (let [called? (atom false)]
-    (fn [query]
-      (assert (not @called?) "(QP QUERY) IS BEING CALLED MORE THAN ONCE!")
-      (reset! called? true)
-      (qp query))))
 
-(defn- process-structured [{:keys [driver], :as query}]
-  (let [driver-process-query      (partial i/process-query driver)
-        driver-wrap-process-query (partial i/wrap-process-query-middleware driver)]
+(defn process
+  "Process a QUERY and return the results."
+  [driver query]
+  (when-not *disable-qp-logging*
+    (log/debug (u/format-color 'blue "\nQUERY: 😎\n%s" (u/pprint-to-str query))))
+  (let [driver-process-query      (:process-query driver)
+        driver-wrap-process-query (or (:process-query-in-context driver)
+                                      (fn [qp] qp))]
     ((<<- wrap-catch-exceptions
           pre-expand
           driver-wrap-process-query
@@ -254,25 +288,5 @@
           annotate/post-annotate
           pre-log-query
           wrap-guard-multiple-calls
-          driver-process-query) query)))
-
-(defn- process-native [{:keys [driver], :as query}]
-  (let [driver-process-query      (partial i/process-query driver)
-        driver-wrap-process-query (partial i/wrap-process-query-middleware driver)]
-    ((<<- wrap-catch-exceptions
-          driver-wrap-process-query
-          post-add-row-count-and-status
-          limit
-          wrap-guard-multiple-calls
-          driver-process-query) query)))
-
-(defn process
-  "Process a QUERY and return the results."
-  [driver query]
-  (when-not *disable-qp-logging*
-    (log/debug (u/format-color 'blue "\nQUERY: 😎\n%s" (u/pprint-to-str query))))
-  ((case (keyword (:type query))
-     :native process-native
-     :query  process-structured)
-   (assoc query
-          :driver driver)))
+          driver-process-query) (assoc query
+                                       :driver driver))))

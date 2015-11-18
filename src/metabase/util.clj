@@ -1,18 +1,200 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:require [clojure.pprint :refer [pprint]]
+  (:require [clj-time.coerce :as coerce]
+            [clj-time.format :as time]
+            [clojure.java.jdbc :as jdbc]
+            [clojure.pprint :refer [pprint]]
             [clojure.tools.logging :as log]
             [colorize.core :as color]
-            [medley.core :as m]
-            [clj-time.format :as time]
-            [clj-time.coerce :as coerce])
+            [medley.core :as m])
   (:import (java.net Socket
                      InetSocketAddress
                      InetAddress)
            java.sql.Timestamp
-           javax.xml.bind.DatatypeConverter))
+           (java.util Calendar TimeZone)
+           javax.xml.bind.DatatypeConverter
+           org.joda.time.format.DateTimeFormatter))
 
-(set! *warn-on-reflection* true)
+;;; ### Protocols
+
+(defprotocol ITimestampCoercible
+  "Coerce object to a `java.sql.Timestamp`."
+  (->Timestamp ^java.sql.Timestamp [this]
+    "Coerce this object to a `java.sql.Timestamp`.
+     Strings are parsed as ISO-8601."))
+
+(extend-protocol ITimestampCoercible
+  nil            (->Timestamp [_]
+                   nil)
+  Timestamp      (->Timestamp [this]
+                   this)
+  java.util.Date (->Timestamp [this]
+                   (Timestamp. (.getTime this)))
+  ;; Number is assumed to be a UNIX timezone in milliseconds (UTC)
+  Number         (->Timestamp [this]
+                   (Timestamp. this))
+  Calendar       (->Timestamp [this]
+                   (->Timestamp (.getTime this)))
+  ;; Strings are expected to be in ISO-8601 format. `YYYY-MM-DD` strings *are* valid ISO-8601 dates.
+  String         (->Timestamp [this]
+                   (->Timestamp (DatatypeConverter/parseDateTime this))))
+
+
+(defprotocol IDateTimeFormatterCoercible
+  "Protocol for converting objects to `DateTimeFormatters`."
+  (->DateTimeFormatter ^org.joda.time.format.DateTimeFormatter [this]
+    "Coerce object to a `DateTimeFormatter`."))
+
+(extend-protocol IDateTimeFormatterCoercible
+  String            (->DateTimeFormatter [this] (time/formatter this))
+  DateTimeFormatter (->DateTimeFormatter [this] this))
+
+
+;;; ## Date Stuff
+
+(defn new-sql-timestamp
+  "`java.sql.Date` doesn't have an empty constructor so this is a convenience that lets you make one with the current date.
+   (Some DBs like Postgres will get snippy if you don't use a `java.sql.Timestamp`)."
+  ^java.sql.Timestamp []
+  (->Timestamp (System/currentTimeMillis)))
+
+(defn format-date
+  "Format DATE using a given FORMATTER.
+   DATE is anything that can be passed `->Timestamp`, such as a `Long` or ISO-8601 `String`.
+   DATE-FORMAT is anything that can be passed to `->DateTimeFormatter`, including a `String` or `DateTimeFormatter`."
+  ^String [date-format date]
+  (time/unparse (->DateTimeFormatter date-format) (coerce/from-long (.getTime (->Timestamp date)))))
+
+(def ^{:arglists '([date])} date->yyyy-mm-dd
+  "Format DATE as a `YYYY-MM-DD` string."
+  (partial format-date "yyyy-MM-dd"))
+
+(def ^{:arglists '([date])} date->iso-8601
+  "Format DATE a an ISO-8601 string."
+  (partial format-date (time/formatters :date-time)))
+
+(defn now-iso8601
+  "Return the current date as an ISO-8601 formatted string."
+  ^String []
+  (date->iso-8601 (System/currentTimeMillis)))
+
+(defn date-string?
+  "Is S a valid ISO 8601 date string?"
+  [^String s]
+  (boolean (when (string? s)
+             (try (->Timestamp s)
+                  (catch Throwable e)))))
+
+(defn ->Date
+  "Coerece DATE to a `java.util.Date`."
+  (^java.util.Date []
+   (java.util.Date.))
+  (^java.util.Date [date]
+   (java.util.Date. (.getTime (->Timestamp date)))))
+
+(defn ->Calendar
+  "Coerce DATE to a `java.util.Calendar`."
+  (^java.util.Calendar []
+   (doto (Calendar/getInstance)
+     (.setTimeZone (TimeZone/getTimeZone "UTC"))))
+  (^java.util.Calendar [date]
+   (doto (->Calendar)
+     (.setTime (->Timestamp date)))))
+
+(defn relative-date
+  "Return a new `Timestamp` relative to the current time using a relative date UNIT.
+
+     (relative-date :year -1) -> #inst 2014-11-12 ..."
+  (^java.sql.Timestamp [unit amount]
+   (relative-date unit amount (Calendar/getInstance)))
+  (^java.sql.Timestamp [unit amount date]
+   (let [cal               (->Calendar date)
+         [unit multiplier] (case unit
+                             :second  [Calendar/SECOND 1]
+                             :minute  [Calendar/MINUTE 1]
+                             :hour    [Calendar/HOUR   1]
+                             :day     [Calendar/DATE   1]
+                             :week    [Calendar/DATE   7]
+                             :month   [Calendar/MONTH  1]
+                             :quarter [Calendar/MONTH  3]
+                             :year    [Calendar/YEAR   1])]
+     (.set cal unit (+ (.get cal unit)
+                       (* amount multiplier)))
+     (->Timestamp cal))))
+
+
+(def ^:private ^:const date-extract-units
+  #{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year :month-of-year :quarter-of-year :year})
+
+(defn date-extract
+  "Extract UNIT from DATE. DATE defaults to now.
+
+     (date-extract :year) -> 2015"
+  ([unit]
+   (date-extract unit (System/currentTimeMillis)))
+  ([unit date]
+   (let [cal (->Calendar date)]
+     (case unit
+       :minute-of-hour  (.get cal Calendar/MINUTE)
+       :hour-of-day     (.get cal Calendar/HOUR_OF_DAY)
+       ;; 1 = Sunday <-> 6 = Saturday
+       :day-of-week     (.get cal Calendar/DAY_OF_WEEK)
+       :day-of-month    (.get cal Calendar/DAY_OF_MONTH)
+       :day-of-year     (.get cal Calendar/DAY_OF_YEAR)
+       ;; 1 = First week of year
+       :week-of-year    (.get cal Calendar/WEEK_OF_YEAR)
+       :month-of-year   (inc (.get cal Calendar/MONTH))
+       :quarter-of-year (let [month (date-extract :month-of-year date)]
+                          (int (/ (+ 2 month)
+                                  3)))
+       :year            (.get cal Calendar/YEAR)))))
+
+
+(def ^:private ^:const date-trunc-units
+  #{:minute :hour :day :week :month :quarter})
+
+(defn date-trunc
+  "Truncate DATE to UNIT. DATE defaults to now.
+
+     (date-trunc :month).
+     ;; -> #inst \"2015-11-01T00:00:00\""
+  (^java.sql.Timestamp [unit]
+   (date-trunc unit (System/currentTimeMillis)))
+  (^java.sql.Timestamp [unit date]
+   (let [trunc-with-format (fn trunc-with-format
+                             ([format-string]
+                              (trunc-with-format format-string date))
+                             ([format-string d]
+                              (->Timestamp (format-date format-string d))))]
+     (case unit
+       :minute  (trunc-with-format "yyyy-MM-dd'T'HH:mm:00+00:00")
+       :hour    (trunc-with-format "yyyy-MM-dd'T'HH:00:00+00:00")
+       :day     (trunc-with-format "yyyy-MM-dd+00:00")
+       :week    (let [day-of-week (date-extract :day-of-week date)
+                      date        (relative-date :day (- (dec day-of-week)) date)]
+                  (trunc-with-format "yyyy-MM-dd+00:00" date))
+       :month   (trunc-with-format "yyyy-MM-01+00:00")
+       :quarter (let [year    (date-extract :year date)
+                      quarter (date-extract :quarter-of-year date)]
+                  (->Timestamp (format "%d-%02d-01+00:00" year (- (* 3 quarter)
+                                                                  2))))))))
+
+(defn date-trunc-or-extract
+  "Apply date bucketing with UNIT to DATE. DATE defaults to now."
+  ([unit]
+   (date-trunc-or-extract unit (System/currentTimeMillis)))
+  ([unit date]
+   (cond
+     (= unit :default) date
+
+     (contains? date-extract-units unit)
+     (date-extract unit date)
+
+     (contains? date-trunc-units unit)
+     (date-trunc unit date))))
+
+
+;;; ## Etc
 
 (defmacro -assoc*
   "Internal. Don't use this directly; use `assoc*` instead."
@@ -32,49 +214,6 @@
   `((fn [~'<>] ; wrap in a `fn` so this can be used in `->`/`->>` forms
       (-assoc* ~@kvs))
     ~object))
-
-(defn new-sql-timestamp
-  "`java.sql.Date` doesn't have an empty constructor so this is a convenience that lets you make one with the current date.
-   (Some DBs like Postgres will get snippy if you don't use a `java.sql.Timestamp`)."
-  []
-  (Timestamp. (System/currentTimeMillis)))
-
-;; Actually this only supports [RFC 3339](https://tools.ietf.org/html/rfc3339), which is basically a subset of ISO 8601
-(defn parse-iso8601
-  "Parse a string value expected in the iso8601 format into a `java.sql.Timestamp`.
-   NOTE: `YYYY-MM-DD` dates *are* valid iso8601 dates."
-  ^java.sql.Timestamp
-  [^String datetime]
-  (some->> datetime
-           DatatypeConverter/parseDateTime
-           .getTime     ; Calendar -> Date
-           .getTime     ; Date -> ms
-           Timestamp.))
-
-(def ^:private ^java.text.SimpleDateFormat yyyy-mm-dd-simple-date-format
-  (java.text.SimpleDateFormat. "yyyy-MM-dd"))
-
-(defn date->yyyy-mm-dd
-  "Convert a date to a `YYYY-MM-DD` string."
-  ^String [^java.util.Date date]
-  (.format yyyy-mm-dd-simple-date-format date))
-
-(defn date-string?
-  "Is S a valid ISO 8601 date string?"
-  [s]
-  (boolean (when (string? s)
-             (try (parse-iso8601 s)
-                  (catch Throwable e)))))
-
-(defn now-iso8601
-  "format the current time as iso8601 date/time string."
-  []
-  (time/unparse (time/formatters :date-time) (coerce/from-long (System/currentTimeMillis))))
-
-(defn now-with-format
-  "format the current time using a custom format."
-  [format-string]
-  (time/unparse (time/formatter format-string) (coerce/from-long (System/currentTimeMillis))))
 
 (defn format-num
   "format a number into a more human readable form."
@@ -222,16 +361,6 @@
                   ~@body)
                 ~collection)))
 
-(defmacro try-apply
-  "Call F with PARAMS inside a try-catch block and log exceptions caught."
-  [f & params]
-  `(try
-     (~f ~@params)
-     (catch Throwable e#
-       (log/error (color/red ~(format "Caught exception in %s:" f)
-                             (or (.getMessage e#) e#)
-                             (with-out-str (.printStackTrace e#)))))))
-
 (defn indecies-satisfying
   "Return a set of indencies in COLL that satisfy PRED.
 
@@ -246,10 +375,13 @@
 
 (defn format-color
   "Like `format`, but uses a function in `colorize.core` to colorize the output.
-   COLOR-SYMB should be a symbol like `green`.
+   COLOR-SYMB should be a quoted symbol like `green`, `red`, `yellow`, `blue`,
+   `cyan`, `magenta`, etc. See the entire list of avaliable colors
+   [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj).
 
      (format-color 'red \"Fatal error: %s\" error-message)"
   [color-symb format-string & args]
+  {:pre [(symbol? color-symb)]}
   ((ns-resolve 'colorize.core color-symb) (apply format format-string args)))
 
 (defn pprint-to-str
@@ -276,7 +408,111 @@
   [^Throwable e]
   (when e
     (when-let [stacktrace (.getStackTrace e)]
-      (->> (map str (.getStackTrace e))
-           (filterv (partial re-find #"metabase"))))))
+      (filterv (partial re-find #"metabase")
+               (map str (.getStackTrace e))))))
+
+(defn wrap-try-catch
+  "Returns a new function that wraps F in a `try-catch`. When an exception is caught, it is logged
+   with `log/error` and returns `nil`."
+  ([f]
+   (wrap-try-catch f nil))
+  ([f f-name]
+   (let [exception-message (if f-name
+                             (format "Caught exception in %s: " f-name)
+                             "Caught exception: ")]
+     (fn [& args]
+       (try
+         (apply f args)
+         (catch java.sql.SQLException e
+           (log/error (color/red exception-message "\n"
+                                 (with-out-str (jdbc/print-sql-exception-chain e)) "\n"
+                                 (pprint-to-str (filtered-stacktrace e)))))
+         (catch Throwable e
+           (log/error (color/red exception-message (or (.getMessage e) e) "\n"
+                                 (pprint-to-str (filtered-stacktrace e))))))))))
+
+(defn try-apply
+  "Like `apply`, but wraps F inside a `try-catch` block and logs exceptions caught.
+   (This is actaully more flexible than `apply` -- the last argument doesn't have to be
+   a sequence:
+
+     (try-apply vector :a :b [:c :d]) -> [:a :b :c :d]
+     (apply vector :a :b [:c :d])     -> [:a :b :c :d]
+     (try-apply vector :a :b :c :d)   -> [:a :b :c :d]
+     (apply vector :a :b :c :d)       -> Not ok - :d is not a sequence
+
+   This allows us to use `try-apply` in more situations than we'd otherwise be able to."
+  [^clojure.lang.IFn f & args]
+  (apply (wrap-try-catch f) (concat (butlast args) (if (sequential? (last args))
+                                                     (last args)
+                                                     [(last args)]))))
+
+(defn wrap-try-catch!
+  "Re-intern FN-SYMB as a new fn that wraps the original with a `try-catch`. Intended for debugging.
+
+     (defn z [] (throw (Exception. \"!\")))
+     (z) ; -> exception
+
+     (wrap-try-catch! 'z)
+     (z) ; -> nil; exception logged with log/error"
+  [fn-symb]
+  {:pre [(symbol? fn-symb)
+         (fn? @(resolve fn-symb))]}
+  (let [varr                    (resolve fn-symb)
+        {nmspc :ns, symb :name} (meta varr)]
+    (println (format "wrap-try-catch! %s/%s" nmspc symb))
+    (intern nmspc symb (wrap-try-catch @varr fn-symb))))
+
+(defn ns-wrap-try-catch!
+  "Re-intern all functions in NAMESPACE as ones that wrap the originals with a `try-catch`.
+   Defaults to the current namespace. You may optionally exclude a set of symbols using the kwarg `:exclude`.
+
+     (ns-wrap-try-catch!)
+     (ns-wrap-try-catch! 'metabase.driver)
+     (ns-wrap-try-catch! 'metabase.driver :exclude 'query-complete)
+
+   Intended for debugging."
+  {:arglists '([namespace? :exclude & excluded-symbs])}
+  [& args]
+  (let [[nmspc args] (optional #(try-apply the-ns [%]) args *ns*)
+        excluded     (when (= (first args) :exclude)
+                       (set (rest args)))]
+    (doseq [[symb varr] (ns-interns nmspc)]
+      (when (fn? @varr)
+        (when-not (contains? excluded symb)
+          (wrap-try-catch! (symbol (str (ns-name nmspc) \/ symb))))))))
+
+(defn deref-with-timeout
+  "Call `deref` on a FUTURE and throw an exception if it takes more than TIMEOUT-MS."
+  [futur timeout-ms]
+  (let [result (deref futur timeout-ms ::timeout)]
+    (when (= result ::timeout)
+      (throw (Exception. (format "Timed out after %d milliseconds." timeout-ms))))
+    result))
+
+(defmacro with-timeout
+  "Run BODY in a `future` and throw an exception if it fails to complete after TIMEOUT-MS."
+  [timeout-ms & body]
+  `(deref-with-timeout (future ~@body) ~timeout-ms))
+
+(defmacro cond-as->
+  "Anaphoric version of `cond->`. Binds EXPR to NAME through a series
+   of pairs of TEST and FORM. NAME is successively bound to the value
+   of each FORM whose TEST succeeds.
+
+     (defn maybe-wrap-fn [before after f]
+       (as-> f <>
+         (fn? before) (fn [] (before) (<>))
+         (fn? after)  (fn [] (try (<>)
+                                  (finally (after))))))"
+  {:arglists '([expr nm tst form & more])}
+  [expr nm & clauses]
+  {:pre [(even? (count clauses))]}
+  `(let [~nm ~expr
+         ~@(apply concat (for [[tst form] (partition 2 clauses)]
+                           [nm `(if ~tst
+                                  ~form
+                                  ~nm)]))]
+     ~nm))
 
 (require-dox-in-this-namespace)

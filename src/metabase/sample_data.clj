@@ -34,4 +34,7 @@
 (defn update-sample-dataset-if-needed! []
   ;; TODO - it would be a bit nicer if we skipped this when the data hasn't changed
   (when-let [db (db/sel :one Database :is_sample true)]
-    (driver/sync-database! db)))
+    (try
+      (driver/sync-database! db)
+      (catch Throwable e
+        (log/error (format "Failed to update sample dataset: %s" (.getMessage e)))))))

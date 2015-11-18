@@ -1,56 +1,56 @@
 ### A Short Overview of Databases
 Before you jump into working with Metabase, it's helpful to know a few key database terms. 
 
-A database is a **collection of tables**.
-
 #### Tables
-Tables contain one or more **columns** and one or more **rows**. 
-A row is made up of cells and each cell has a value that corresponds to the column it falls under.  
+Fundamentally, databases are *collections of tables*. Tables contain one or more *columns* and one or more *rows*. A row is made up of *cells*, and each cell has a *value* that corresponds to the column it falls under.  
 
 Here's an example of a table:
 
-| Name| Age |
-| ---- | --- |
-| John | 25 |
-| Jenny | 31 |
+| Name  | Age |
+| ----- | --- |
+| John  | 25  |
+| Jenny | 31  |
 
-Here the columns would be `Name` and `Age`. The first row would contain two cells, one with `John` and one with `25` (John's age).
+Here, the columns are `Name` and `Age`. The first row contains two cells, one with `John` and one with `25`, corresponding to the Name and Age columns, respectively.
 
 #### Columns
-All the cells in a column contain the same type of information.  For example, in the sample table above, the `Name` column contains names in each cell, while the `Age` column lists ages.  
+All the cells in a column contain the same type of information. For example, in the sample table above, the `Name` column contains names in each cell, while the `Age` column lists ages.  
 
-Each field has a type that describes what kind of data is stored in the field.
+Columns are also sometimes interchangeably referred to as *fields*. Each field has a type that describes what kind of data is stored in the field.
 
 
-Examples of types:
+**Examples of types:**
 
-* **String Types** (TEXT, CHAR, VCHAR, etc.)  - These fields store things like names, addresses, or anything else that is text.
+* **String Types** (TEXT, CHAR, VCHAR, etc.)  - In the world of technology, snippets of text are referred to as “strings.” (You’ve probably heard of a “string of text” before.) These fields store things like names, addresses, or anything else that is text.
 
-* **Numerical Types** (Integer, Float, DoubleFloat, Decimal, etc.) - These fields store numbers. Integers are whole numbers; floats and decimals are ways to store numbers with decimals in them. Numerical types store things like age, bank account balances, costs, latitudes, and longitudes. 
+* **Numerical Types** (Integer, Float, DoubleFloat, Decimal, etc.) - These fields store numbers. Integers are whole numbers; Floats and Decimals are ways to store numbers with decimals in them. Numerical types store things like ages, bank account balances, costs, latitudes, and longitudes. 
 
-* **Time Types** (Timestamp, etc.) - These fields are a special format of a number used to store dates and times (or both). Sometimes databases store an integer timestamp which is either seconds or milliseconds, such as `00:00:00 Coordinated Universal Time (UTC), Thursday, 1 January 1970`. This convention  allows for compact storage of timestamps. 
-* **IDs** (also called **primary keys**) - This field uniquely identifies each row.  For example, imagine a car reservation app where you can book a car in advance.  The ID of the reservation could be the reservation number (no two reservations would share the same reservation number).
+* **Time Types** (Timestamp, etc.) - These fields are a special number format used to store dates and times (or both), called “timestamps.” Sometimes databases store an integer timestamp which is either seconds or milliseconds, such as `00:00:00 Coordinated Universal Time (UTC), Thursday, 1 January 1970`. This convention  allows for compact storage of timestamps.
+ 
+* **IDs** (also called **primary keys**) - This field in a table uniquely identifies each row.  For example, imagine a car reservation app where you can book a car in advance. The ID of the reservation could be the reservation number, and no two reservations would share the same reservation number, allowing each reservation to be uniquely identified by its reservation number.
 
-**Customer**
+**Example**
 
-| ID | Name| Age |  
-| ---- | --- | --- |
-| 11| John | 25 |
-| 12| Jenny | 31 |
+*Reservations Table*
 
-In the above table, the `ID` field is an ID (primary key). The `Name` field is a string type and the `Age` field is a numerical type (specifically an Integer).   
+| Reservation ID  | Name  | Age   |  
+| --------------  | ----- | ----  |
+| 11              | John  | 25    |
+| 12              | Jenny | 31    |
+
+In the above table, the `Reservation ID` field is the ID (primary key). The `Name` field is a string type and the `Age` field is a numerical type (specifically an Integer).   
 
 
 #### Relationships
-Tables can contain references to other tables. 
+Tables can contain references to other tables, which establishes a relationship between them. 
 
-For example, in our hypothetical car booking app, we would have two tables, one for reservations (let's call it **Reservation**) and one for customers, (we'll call this one **Customer**).  
+For example, in our hypothetical car booking app’s database, we could have two tables: one for reservations (let's call it **Reservations**) and one for customers, (we'll call this one **Customers**).  
 
-To connect the reservation data to the corresponding customer data, you can use a `Foreign Key`.  A **`Foreign Key`** is a field used in databases when the contents of its field are the same value as the ID value of a connected row in another table. 
+To connect the reservation data to the corresponding customer data, you can use a *foreign key*.  A foreign key is a special kind of field in a table that references the same column in a different table. Almost always, the field that the foreign key points to is the *ID* or *primary key* in the other table. 
  
-For example, in our hypothetical car booking app, we could connect each reservation to the customer that made the reservation by having the `Customer` column of the reservation contain the same value as the `ID` column of the customer who made the reservation.
+For example, in our hypothetical car booking app, we could connect each reservation in the Reservations table to the corresponding customer that made the reservation by having the `Customer` column of the reservation contain the same value as the `ID` column of the customer who made the reservation.
 
-**Reservation**
+**Reservations**
 
 | Customer | Date | Car | 
 | ---- | --- | --- | 
@@ -58,7 +58,7 @@ For example, in our hypothetical car booking app, we could connect each reservat
 | 12 | 1/2/2016 | Range Rover |
 
 
-**Customer**
+**Customers**
 
 | ID | Name| Age |  
 | ---- | --- | --- |
@@ -67,6 +67,8 @@ For example, in our hypothetical car booking app, we could connect each reservat
 
 If we wanted to analyze our hypothetical app's database with Metabase, we could ask a question, like: 
 
--- Example of a join --
+    What's the average age of all customers who made reservations in February of 2015?
+    
+To do this, we’d open up the Reservation table, add a filter to only look at reservations between February 1 and February 28, 2015, select Average for the View. For the Field, now we put our foreign key to use and select Age from the *Customers* table that our Reservations table references — each reservation will now have a corresponding customer age, matched up by the customer ID.
 
 Now that we have a shared vocabulary and a basic understanding of databases, let's learn more about [Asking Questions](03-asking-questions.md)

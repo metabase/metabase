@@ -60,22 +60,3 @@ While we will closely follow reported issues and feature requests, we aim to mak
 
 
 
-### Visitor Custom Variables
-
-| Name | Value | Why we collect this |
-| ---- | ----- | ------------------- |
-| User newb score | # sql queries written | To understand if “bad” conditions  (such as users starting queries but not executing them) are due to novice users |
-| User newb score |# non-sql queries written |To understand if “bad” conditions  (such as users starting queries but not executing them) are due to novice users|
-| User newb score | total queries written | To understand if “bad” conditions  (such as users starting queries but not executing them) are due to novice users|
-| Instance newb score |# databases |To understand how many databases are typically used by our users. If we see that a typical installation has many databases, we will prioritize |
-| Instance newb score | # admins | To know if we should provide tools that allow a group of admins to collaboratively annotate data, manage connections, or we can ignore these features. |
-| Instance newb score | # active users |To understand if problems or active usage correlate with how many users are using the instance. Are there issues that compound as more users are asking questions and creating dashboards?|
-| Instance newb score |# dashboards| How many dashboards do our instances typically have? Should we optimize our interface for companies with a few core dashboards or many special use dashboards?|
-| Instance newb score |# saved sql questions | To understand how much our user base depends on raw SQL questions vs using our query language. This determines how much we emphasis on tools for writing SQL vs improving the query lanauge.|
-| Instance newb score |# saved non-sql questions | To understand how much our user base depends on raw SQL questions vs using our query language. This determines how much we emphasis on tools for writing SQL vs improving the query lanauge.|
-| Instance newb score |% tables annotated |To understand if certain “bad” conditions (such as users starting queries but not executing them) are linked to whether there is enough metadata added by the instance administrators|
-| Instance newb score |% fields annotated |To understand if certain “bad” conditions (such as users starting queries but not executing them) are linked to whether there is enough metadata added by the instance administrators |
-
-
-
-

@@ -26,3 +26,14 @@ profiles.clj
 /resources/sample-dataset.db.trace.db
 /deploy/artifacts/*
 /resources/version.properties
+xcuserdata
+xcshareddata
+*.xcworkspacedata
+OSX/Metabase/jre
+OSX/Resources/metabase.jar
+OSX/build
+/osx-artifacts
+OSX/dsa_priv.pem
+bin/config.json
+bin/release/aws-eb/metabase-aws-eb.zip
+*.sqlite

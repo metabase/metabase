@@ -16,7 +16,7 @@
                 :cols [{:name :id, :base_type :IntegerField}]}}
   (driver/process-query {:native   {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2;"}
                          :type     :native
-                         :database (db-id)}))
+                         :database (id)}))
 
 ;; Check that column ordering is maintained
 (expect
@@ -30,14 +30,15 @@
                    {:name :category_id, :base_type :IntegerField}]}}
   (driver/process-query {:native   {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES ORDER BY ID DESC LIMIT 2;"}
                          :type     :native
-                         :database (db-id)}))
+                         :database (id)}))
 
 ;; Check that we get proper error responses for malformed SQL
 (expect {:status :failed
-         :error "Column \"ZID\" not found"}
+         :class  java.lang.Exception
+         :error  "Column \"ZID\" not found"}
   (dissoc (driver/process-query {:native   {:query "SELECT ZID FROM CHECKINS LIMIT 2;"} ; make sure people know it's to be expected
                                  :type     :native
-                                 :database (db-id)})
+                                 :database (id)})
           :stacktrace
           :query
           :expanded-query))

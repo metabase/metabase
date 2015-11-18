@@ -1,0 +1,123 @@
+/* provide flex utilities in lieu of float based layouts */
+
+.flex {
+    display: flex;
+}
+
+.flex-full {
+    flex: 1;
+}
+
+.flex-half {
+    flex: 0.5;
+}
+
+.flex-no-shrink {
+    flex-shrink: 0;
+}
+
+.align-center {
+    align-items: center;
+}
+
+.justify-center {
+    justify-content: center;
+}
+
+.justify-between {
+    justify-content: space-between;
+}
+
+.align-start {
+    align-items: flex-start;
+}
+
+.align-self-end {
+    align-self: flex-end;
+}
+
+.flex-align-right {
+    margin-left: auto;
+}
+
+@media screen and (--breakpoint-min-sm) {
+    .sm-flex-align-right { margin-left: auto; }
+}
+
+@media screen and (--breakpoint-min-md) {
+    .md-flex-align-right { margin-left: auto; }
+}
+
+@media screen and (--breakpoint-min-lg) {
+    .lg-flex-align-right { margin-left: auto; }
+}
+
+.layout-centered {
+  align-items: center;
+  justify-content: center;
+}
+
+@media screen and (--breakpoint-min-sm) {
+    .sm-layout-centered {
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+@media screen and (--breakpoint-min-md) {
+    .md-layout-centered {
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+@media screen and (--breakpoint-min-lg) {
+    .lg-layout-centered {
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+.flex-column { flex-direction: column; }
+
+@media screen and (--breakpoint-min-sm) {
+    .sm-flex-column { flex-direction: column; }
+}
+
+@media screen and (--breakpoint-min-md) {
+    .md-flex-column { flex-direction: column; }
+}
+
+.flex-row {
+  flex-direction: row;
+}
+
+.flex-wrap {
+    flex-wrap: wrap;
+}
+
+.flex-reverse { flex-direction: row-reverse; }
+
+@media screen and (--breakpoint-min-sm) {
+    .sm-flex-reverse { flex-direction: row-reverse; }
+}
+
+@media screen and (--breakpoint-min-md) {
+    .md-flex-reverse { flex-direction: row-reverse; }
+}
+
+@media screen and (--breakpoint-min-lg) {
+    .lg-flex-reverse { flex-direction: row-reverse; }
+}
+
+@media screen and (--breakpoint-min-xl) {
+    .xl-flex-reverse { flex-direction: row-reverse; }
+}
+
+.no-flex {
+    flex: 0;
+}
+
+@media screen and (--breakpoint-min-md) {
+    .md-no-flex { flex: 0 !important; }
+}

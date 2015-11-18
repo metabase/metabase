@@ -26,7 +26,8 @@
         "semi": 0,
         "no-console": 0,
         "global-strict": 0,
-        "new-cap": 0
+        "new-cap": 0,
+        "strict": [2, "never"]
     },
     "plugins": [
         "react"
@@ -35,8 +36,7 @@
         "jsx": true
     },
     "globals": {
-        "angular": false,
-        "React": false
+        "angular": false
     },
     "env": {
         "browser": true

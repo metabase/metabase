@@ -3,19 +3,11 @@
             [clojure.tools.logging :as log]
             [korma.core :as k]
             [korma.sql.utils :as utils]
-            [metabase.driver :as driver]
-            (metabase.driver [interface :refer [max-sync-lazy-seq-results IDriver ISyncDriverTableFKs ISyncDriverFieldAvgLength ISyncDriverFieldPercentUrls]]
-                             [sync :as driver-sync])
-            (metabase.driver.generic-sql [interface :as i]
-                                         [query-processor :as qp]
+            [metabase.driver :refer [max-sync-lazy-seq-results defdriver]]
+            (metabase.driver.generic-sql [query-processor :as qp]
                                          [util :refer :all])
+            [metabase.models.field :as field]
             [metabase.util :as u]))
-
-(def ^:const features
-  "Features supported by *all* Generic SQL drivers."
-  #{:foreign-keys
-    :standard-deviation-aggregations
-    :unix-timestamp-special-type-fields})
 
 (def ^:private ^:const field-values-lazy-seq-chunk-size
   "How many Field values should we fetch at a time for `field-values-lazy-seq`?"
@@ -25,53 +17,42 @@
   ;; 3. Not fetching too many results for things like mark-json-field! which will fail after the first result that isn't valid JSON
   500)
 
-(defn- can-connect-with-details? [driver details]
-  (let [connection (i/connection-details->connection-spec driver details)]
+(defn- can-connect? [connection-details->spec details]
+  (let [connection (connection-details->spec details)]
     (= 1 (-> (k/exec-raw connection "SELECT 1" :results)
              first
              vals
              first))))
 
-(defn- can-connect? [driver database]
-  (can-connect-with-details? driver (i/database->connection-details driver database)))
-
-(defn- wrap-process-query-middleware [_ qp]
-  (fn [query]
-    (qp query)))
-
-(defn- process-query [_ query]
+(defn- process-query [query]
   (qp/process-and-run query))
 
-(defn- sync-in-context [_ database do-sync-fn]
+(defn- sync-in-context [database do-sync-fn]
   (with-jdbc-metadata [_ database]
     (do-sync-fn)))
 
-(defn- active-table-names [_ database]
+(defn- active-tables [excluded-schemas database]
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md database]
-    (->> (.getTables md nil nil nil (into-array String ["TABLE", "VIEW"]))
-         jdbc/result-set-seq
-         (map :table_name)
-         set)))
+    (set (for [table (filter #(not (contains? excluded-schemas (:table_schem %)))
+                             (jdbc/result-set-seq (.getTables md nil nil nil (into-array String ["TABLE", "VIEW"]))))]
+           {:name   (:table_name table)
+            :schema (:table_schem table)}))))
 
-(defn- active-column-names->type [{:keys [column->base-type]} table]
-  {:pre [(map? column->base-type)]}
+(defn- active-column-names->type [column->base-type table]
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db table)]
-    (->> (.getColumns md nil nil (:name table) nil)
-         jdbc/result-set-seq
-         (filter #(not= (:table_schem %) "INFORMATION_SCHEMA")) ; filter out internal tables
-         (map (fn [{:keys [column_name type_name]}]
-                {column_name (or (column->base-type (keyword type_name))
-                                 :UnknownField)}))
-         (into {}))))
+    (into {} (for [{:keys [column_name type_name]} (jdbc/result-set-seq (.getColumns md nil (:schema table) (:name table) nil))]
+               {column_name (or (column->base-type (keyword type_name))
+                                (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :UnknownField." type_name))
+                                    :UnknownField))}))))
 
-(defn- table-pks [_ table]
+(defn- table-pks [table]
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db table)]
     (->> (.getPrimaryKeys md nil nil (:name table))
          jdbc/result-set-seq
          (map :column_name)
          set)))
 
-(defn- field-values-lazy-seq [_ {:keys [qualified-name-components table], :as field}]
+(defn- field-values-lazy-seq [{:keys [qualified-name-components table], :as field}]
   (assert (and (map? field)
                (delay? qualified-name-components)
                (delay? table))
@@ -96,12 +77,12 @@
     (fetch-chunk 0 field-values-lazy-seq-chunk-size
                  max-sync-lazy-seq-results)))
 
-(defn- table-rows-seq [_ database table-name]
+(defn- table-rows-seq [database table-name]
   (k/select (-> (k/create-entity table-name)
                 (k/database (db->korma-db database)))))
 
 
-(defn- table-fks [_ table]
+(defn- table-fks [table]
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db table)]
     (->> (.getImportedKeys md nil nil (:name table))
          jdbc/result-set-seq
@@ -111,10 +92,9 @@
                  :dest-column-name (:pkcolumn_name result)}))
          set)))
 
-(defn- field-avg-length [{:keys [sql-string-length-fn], :as driver} field]
-  {:pre [(keyword? sql-string-length-fn)]}
+(defn- field-avg-length [string-length-fn field]
   (or (some-> (korma-entity @(:table field))
-              (k/select (k/aggregate (avg (k/sqlfn* sql-string-length-fn
+              (k/select (k/aggregate (avg (k/sqlfn* string-length-fn
                                                     (utils/func "CAST(%s AS CHAR)"
                                                                 [(keyword (:name field))])))
                                      :len))
@@ -123,43 +103,122 @@
               int)
       0))
 
-(defn- field-percent-urls [_ field]
+(defn- field-percent-urls [field]
   (or (let [korma-table (korma-entity @(:table field))]
         (when-let [total-non-null-count (:count (first (k/select korma-table
-                                                                 (k/aggregate (count :*) :count)
+                                                                 (k/aggregate (count (k/raw "*")) :count)
                                                                  (k/where {(keyword (:name field)) [not= nil]}))))]
           (when (> total-non-null-count 0)
             (when-let [url-count (:count (first (k/select korma-table
-                                                          (k/aggregate (count :*) :count)
+                                                          (k/aggregate (count (k/raw "*")) :count)
                                                           (k/where {(keyword (:name field)) [like "http%://_%.__%"]}))))]
               (float (/ url-count total-non-null-count))))))
       0.0))
 
-(def ^:const GenericSQLIDriverMixin
-  "Generic SQL implementation of the `IDriver` protocol.
+(def ^:private ^:const required-fns
+  "Functions that concrete SQL drivers must define."
+  #{:connection-details->spec
+    :unix-timestamp->timestamp
+    :date
+    :date-interval})
 
-     (extend H2Driver
-       IDriver
-       GenericSQLIDriverMixin)"
-  {:can-connect?                  can-connect?
-   :can-connect-with-details?     can-connect-with-details?
-   :wrap-process-query-middleware wrap-process-query-middleware
-   :process-query                 process-query
-   :sync-in-context               sync-in-context
-   :active-table-names            active-table-names
-   :active-column-names->type     active-column-names->type
-   :table-pks                     table-pks
-   :field-values-lazy-seq         field-values-lazy-seq
-   :table-rows-seq                table-rows-seq})
+(defn- verify-sql-driver [{:keys [column->base-type string-length-fn], :as driver}]
+  ;; Check the :column->base-type map
+  (assert column->base-type
+    "SQL drivers must define :column->base-type.")
 
-(def ^:const GenericSQLISyncDriverTableFKsMixin
-  "Generic SQL implementation of the `ISyncDriverTableFKs` protocol."
-  {:table-fks table-fks})
+  ;; Check :string-length-fn
+  (assert string-length-fn
+    "SQL drivers must define :string-length-fn.")
+  (assert (keyword? string-length-fn)
+    ":string-length-fn must be a keyword.")
 
-(def ^:const GenericSQLISyncDriverFieldAvgLengthMixin
-  "Generic SQL implementation of the `ISyncDriverFieldAvgLengthMixin` protocol."
-  {:field-avg-length field-avg-length})
+  ;; Check required fns
+  (doseq [f required-fns]
+    (assert (f driver)
+      (format "SQL drivers must define %s." f))
+    (assert (fn? (f driver))
+      (format "%s must be a fn." f))))
 
-(def ^:const GenericSQLISyncDriverFieldPercentUrlsMixin
-  "Generic SQL implementation of the `ISyncDriverFieldPercentUrls` protocol."
-  {:field-percent-urls field-percent-urls})
+(defn sql-driver
+  "Create a Metabase DB driver using the Generic SQL functions.
+
+   A SQL driver must define the following properties / functions:
+
+   *  `column->base-type`
+
+      A map of native DB column types (as keywords) to the `Field` `base-types` they map to.
+
+   *  `string-length-fn`
+
+      Keyword name of the SQL function that should be used to get the length of a string, e.g. `:LENGTH`.
+
+   *  `stddev-fn` *(OPTIONAL)*
+
+      Keyword name of the SQL function that should be used to get the length of a string. Defaults to `:STDDEV`.
+
+   *  `current-datetime-fn` *(OPTIONAL)*
+
+      Korma form that should be used to get the current `DATETIME` (or equivalent).  Defaults to `(k/sqlfn* :NOW)`.
+
+   *  `(connection-details->spec [details-map])`
+
+      Given a `Database` DETAILS-MAP, return a JDBC connection spec.
+
+   *  `(unix-timestamp->timestamp [seconds-or-milliseconds field-or-value])`
+
+      Return a korma form appropriate for converting a Unix timestamp integer field or value to an proper SQL `Timestamp`.
+      SECONDS-OR-MILLISECONDS refers to the resolution of the int in question and with be either `:seconds` or `:milliseconds`.
+
+   *  `set-timezone-sql` *(OPTIONAL)*
+
+      This should be a prepared JDBC SQL statement string to be used to set the timezone for the current transaction.
+
+          \"SET @@session.timezone = ?;\"
+
+   *  `(date [this ^Keyword unit field-or-value])`
+
+      Return a korma form for truncating a date or timestamp field or value to a given resolution, or extracting a
+      date component.
+
+   *  `(date-interval [unit amount])`
+
+      Return a korma form for a date relative to NOW(), e.g. on that would produce SQL like `(NOW() + INTERVAL '1 month')`.
+
+   *  `excluded-schemas` *(OPTIONAL)*
+
+      Set of string names of schemas to skip syncing tables from.
+
+   * `qp-clause->handler` *(OPTIONAL)*
+
+     A map of query processor clause keywords to functions of the form `(fn [korma-query query-map])` that are used apply them.
+     By default, its value is `metabase.driver.generic-sql.query-processor/clause->handler`. These functions are exposed in this way so drivers
+     can override default clause application behavior where appropriate -- for example, SQL Server needs to override the function used to apply the
+     `:limit` clause, since T-SQL uses `TOP` rather than `LIMIT`."
+  [driver]
+  ;; Verify the driver
+  (verify-sql-driver driver)
+  (merge
+   {:features                  (set (cond-> [:foreign-keys
+                                             :standard-deviation-aggregations]
+                                      (:set-timezone-sql driver) (conj :set-timezone)))
+    :qp-clause->handler        qp/clause->handler
+    :can-connect?              (partial can-connect? (:connection-details->spec driver))
+    :process-query             process-query
+    :sync-in-context           sync-in-context
+    :active-tables             (partial active-tables (:excluded-schemas driver))
+    :active-column-names->type (partial active-column-names->type (:column->base-type driver))
+    :table-pks                 table-pks
+    :field-values-lazy-seq     field-values-lazy-seq
+    :table-rows-seq            table-rows-seq
+    :table-fks                 table-fks
+    :field-avg-length          (partial field-avg-length (:string-length-fn driver))
+    :field-percent-urls        field-percent-urls
+    :date-interval             (let [date-interval (:date-interval driver)]
+                                 (fn [unit amount]
+                                   ;; Add some extra param validation
+                                   {:pre [(contains? #{:second :minute :hour :day :week :month :quarter :year} unit)]}
+                                   (date-interval unit amount)))
+    :stddev-fn                 :STDDEV
+    :current-datetime-fn       (k/sqlfn* :NOW)}
+   driver))

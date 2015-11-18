@@ -25,7 +25,7 @@ build_uberjar() {
     $(which locale) | $(which sort) || true
 
     echo "building uberjar"
-    ${PROJECT_ROOT}/build-uberjar
+    ${PROJECT_ROOT}/bin/build
 }
 
 upload_release_artifacts() {
@@ -38,9 +38,9 @@ upload_release_artifacts() {
 }
 
 mk_release_artifacts() {
-    METABASE_JAR_NAME="metabase-standalone.jar"
+    METABASE_JAR_NAME="metabase.jar"
     RELEASE_TYPE="aws-eb-docker"
-    RELEASE_JAR_FILE_NAME=${METABASE_JAR_NAME%-standalone.jar}-$BRANCH-$DATE-$COMMITISH.jar
+    RELEASE_JAR_FILE_NAME=${METABASE_JAR_NAME%.jar}-$BRANCH-$DATE-$COMMITISH.jar
     RELEASE_ZIP_FILE_NAME="$1"
     UBERJAR_DIR="${PROJECT_ROOT}/target/uberjar"
 
@@ -56,7 +56,7 @@ mk_release_artifacts() {
     cd $RELEASE_FILES; zip -r $RELEASE_FILE * .ebextensions
 
     # add the built uberjar
-    cd $UBERJAR_DIR; cp metabase-*-SNAPSHOT-*.jar $METABASE_JAR_NAME ; zip $RELEASE_FILE $METABASE_JAR_NAME
+    cd $UBERJAR_DIR; zip $RELEASE_FILE $METABASE_JAR_NAME
 
     mkdir -p $ARTIFACTS_DIR
     rm -f $ARTIFACTS_DIR/*

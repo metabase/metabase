@@ -24,7 +24,7 @@
              activity1 (db/ins Activity
                          :topic     "install"
                          :details   {}
-                         :timestamp (u/parse-iso8601 "2015-09-09T12:13:14.888Z"))
+                         :timestamp (u/->Timestamp "2015-09-09T12:13:14.888Z"))
              activity2 (db/ins Activity
                          :topic     "dashboard-create"
                          :user_id   (user->id :crowberto)
@@ -33,13 +33,13 @@
                          :details   {:description  "Because I can!"
                                      :name         "Bwahahaha"
                                      :public_perms 2}
-                         :timestamp (u/parse-iso8601 "2015-09-10T18:53:01.632Z"))
+                         :timestamp (u/->Timestamp "2015-09-10T18:53:01.632Z"))
              activity3 (db/ins Activity
                          :topic     "user-joined"
                          :user_id   (user->id :rasta)
                          :model     "user"
                          :details   {}
-                         :timestamp (u/parse-iso8601 "2015-09-10T05:33:43.641Z"))]
+                         :timestamp (u/->Timestamp "2015-09-10T05:33:43.641Z"))]
   [(match-$ (db/sel :one Activity :id (:id activity2))
      {:id           $
       :topic        "dashboard-create"
@@ -158,8 +158,10 @@
                         :model    model
                         :model_id model-id
                         :timestamp (u/new-sql-timestamp))
-                      ;; we sleep a few milliseconds to ensure no events have the same timestamp
-                      (Thread/sleep 5))]
+                      ;; we sleep a bit to ensure no events have the same timestamp
+                      ;; sadly, MySQL doesn't support milliseconds so we have to wait a second
+                      ;; otherwise our records are out of order and this test fails :(
+                      (Thread/sleep 1000))]
     (do
       (create-view (user->id :crowberto) "card" (:id card2))
       (create-view (user->id :crowberto) "dashboard" (:id dash1))

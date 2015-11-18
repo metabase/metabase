@@ -11,13 +11,13 @@
                     [core :as mg]
                     [db :as mdb]
                     [query :as mq])
-            [metabase.driver :as driver]
-            [metabase.driver.interface :refer :all]
+            [metabase.driver :as driver, :refer [defdriver]]
             (metabase.driver.mongo [query-processor :as qp]
                                    [util :refer [*mongo-connection* with-mongo-connection values->base-type]])
             [metabase.util :as u]))
 
-(declare driver)
+(declare driver
+         field-values-lazy-seq)
 
 ;;; ### Driver Helper Fns
 
@@ -26,7 +26,7 @@
   [table]
   (with-mongo-connection [^com.mongodb.DB conn @(:db table)]
     (->> (mc/find-maps conn (:name table))
-         (take max-sync-lazy-seq-results)
+         (take driver/max-sync-lazy-seq-results)
          (map keys)
          (map set)
          (reduce set/union))))
@@ -37,87 +37,123 @@
   {:pre [(map? field)]
    :post [(keyword? %)]}
   (with-mongo-connection [_ @(:db @(:table field))]
-    (values->base-type (field-values-lazy-seq driver field))))
+    (values->base-type (field-values-lazy-seq field))))
 
 
 ;;; ## MongoDriver
 
-(defrecord MongoDriver []
-  IDriver
-;;; ### Connection
-  (can-connect? [_ database]
-    (with-mongo-connection [^com.mongodb.DB conn database]
-      (= (-> (cmd/db-stats conn)
-             (conv/from-db-object :keywordize)
-             :ok)
-         1.0)))
+(defn- can-connect? [details]
+  (with-mongo-connection [^com.mongodb.DB conn details]
+    (= (-> (cmd/db-stats conn)
+           (conv/from-db-object :keywordize)
+           :ok)
+       1.0)))
 
-  (can-connect-with-details? [this details]
-    (can-connect? this {:details details}))
+(defn- humanize-connection-error-message [message]
+  (condp re-matches message
+    #"^Timed out after \d+ ms while waiting for a server .*$"
+    (driver/connection-error-messages :cannot-connect-check-host-and-port)
 
-;;; ### QP
-  (wrap-process-query-middleware [_ qp]
-    (fn [query]
-      (with-mongo-connection [^com.mongodb.DB conn (:database query)]
-        (qp query))))
+    #"^host and port should be specified in host:port format$"
+    (driver/connection-error-messages :invalid-hostname)
 
-  (process-query [_ query]
-    (qp/process-and-run query))
+    #"^Password can not be null when the authentication mechanism is unspecified$"
+    (driver/connection-error-messages :password-required)
+
+    #".*"                               ; default
+    message))
+
+(defn- process-query-in-context [qp]
+  (fn [query]
+    (with-mongo-connection [^com.mongodb.DB conn (:database query)]
+      (qp query))))
+
+(defn- process-query [query]
+  (qp/process-and-run query))
 
 ;;; ### Syncing
-  (sync-in-context [_ database do-sync-fn]
-      (with-mongo-connection [_ database]
-        (do-sync-fn)))
+(defn- sync-in-context [database do-sync-fn]
+  (with-mongo-connection [_ database]
+    (do-sync-fn)))
 
-  (active-table-names [_ database]
-    (with-mongo-connection [^com.mongodb.DB conn database]
-      (-> (mdb/get-collection-names conn)
-          (set/difference #{"system.indexes"}))))
+(defn- active-tables [database]
+  (with-mongo-connection [^com.mongodb.DB conn database]
+    (set (for [collection (set/difference (mdb/get-collection-names conn) #{"system.indexes"})]
+           {:name collection}))))
 
-  (active-column-names->type [_ table]
-    (with-mongo-connection [_ @(:db table)]
-      (into {} (for [column-name (table->column-names table)]
-                 {(name column-name)
-                  (field->base-type {:name                      (name column-name)
-                                     :table                     (delay table)
-                                     :qualified-name-components (delay [(:name table) (name column-name)])})}))))
+(defn- active-column-names->type [table]
+  (with-mongo-connection [_ @(:db table)]
+    (into {} (for [column-name (table->column-names table)]
+               {(name column-name)
+                (field->base-type {:name                      (name column-name)
+                                   :table                     (delay table)
+                                   :qualified-name-components (delay [(:name table) (name column-name)])})}))))
 
-  (table-pks [_ _]
-    #{"_id"})
+(defn- field-values-lazy-seq [{:keys [qualified-name-components table], :as field}]
+  (assert (and (map? field)
+               (delay? qualified-name-components)
+               (delay? table))
+    (format "Field is missing required information:\n%s" (u/pprint-to-str 'red field)))
+  (lazy-seq
+   (assert *mongo-connection*
+     "You must have an open Mongo connection in order to get lazy results with field-values-lazy-seq.")
+   (let [table           @table
+         name-components (rest @qualified-name-components)]
+     (assert (seq name-components))
+     (map #(get-in % (map keyword name-components))
+          (mq/with-collection *mongo-connection* (:name table)
+            (mq/fields [(apply str (interpose "." name-components))]))))))
 
-  (field-values-lazy-seq [_ {:keys [qualified-name-components table], :as field}]
-    (assert (and (map? field)
-                 (delay? qualified-name-components)
-                 (delay? table))
-            (format "Field is missing required information:\n%s" (u/pprint-to-str 'red field)))
-    (lazy-seq
-     (assert *mongo-connection*
-             "You must have an open Mongo connection in order to get lazy results with field-values-lazy-seq.")
-     (let [table           @table
-           name-components (rest @qualified-name-components)]
-       (assert (seq name-components))
-       (map #(get-in % (map keyword name-components))
-            (mq/with-collection *mongo-connection* (:name table)
-              (mq/fields [(apply str (interpose "." name-components))]))))))
+(defn- active-nested-field-name->type [field]
+  ;; Build a map of nested-field-key -> type -> count
+  ;; TODO - using an atom isn't the *fastest* thing in the world (but is the easiest); consider alternate implementation
+  (let [field->type->count (atom {})]
+    (doseq [val (take driver/max-sync-lazy-seq-results (field-values-lazy-seq field))]
+      (when (map? val)
+        (doseq [[k v] val]
+          (swap! field->type->count update-in [k (type v)] #(if % (inc %) 1)))))
+    ;; (seq types) will give us a seq of pairs like [java.lang.String 500]
+    (->> @field->type->count
+         (m/map-vals (fn [type->count]
+                       (->> (seq type->count)             ; convert to pairs of [type count]
+                            (sort-by second)              ; source by count
+                            last                          ; take last item (highest count)
+                            first                         ; keep just the type
+                            driver/class->base-type))))))
 
-  ISyncDriverFieldNestedFields
-  (active-nested-field-name->type [this field]
-    ;; Build a map of nested-field-key -> type -> count
-    ;; TODO - using an atom isn't the *fastest* thing in the world (but is the easiest); consider alternate implementation
-    (let [field->type->count (atom {})]
-      (doseq [val (take max-sync-lazy-seq-results (field-values-lazy-seq this field))]
-        (when (map? val)
-          (doseq [[k v] val]
-            (swap! field->type->count update-in [k (type v)] #(if % (inc %) 1)))))
-      ;; (seq types) will give us a seq of pairs like [java.lang.String 500]
-      (->> @field->type->count
-           (m/map-vals (fn [type->count]
-                         (->> (seq type->count)                 ; convert to pairs of [type count]
-                              (sort-by second)                  ; source by count
-                              last                              ; take last item (highest count)
-                              first                             ; keep just the type
-                              driver/class->base-type)))))))    ; get corresponding Field base_type
-
-(def driver
-  "Concrete instance of the MongoDB driver."
-  (map->MongoDriver {:features #{:nested-fields}}))
+(defdriver mongo
+  {:driver-name                       "MongoDB"
+   :details-fields                    [{:name         "host"
+                                        :display-name "Host"
+                                        :default      "localhost"}
+                                       {:name         "port"
+                                        :display-name "Port"
+                                        :type         :integer
+                                        :default      27017}
+                                       {:name         "dbname"
+                                        :display-name "Database name"
+                                        :placeholder  "carrierPigeonDeliveries"
+                                        :required     true}
+                                       {:name         "user"
+                                        :display-name "Database username"
+                                        :placeholder  "What username do you use to login to the database?"}
+                                       {:name         "pass"
+                                        :display-name "Database password"
+                                        :type         :password
+                                        :placeholder  "******"}
+                                       {:name         "ssl"
+                                        :display-name "Use a secure connection (SSL)?"
+                                        :type         :boolean
+                                        :default      false}]
+   :features                          #{:nested-fields}
+   :can-connect?                      can-connect?
+   :active-tables                     active-tables
+   :field-values-lazy-seq             field-values-lazy-seq
+   :active-column-names->type         active-column-names->type
+   :table-pks                         (constantly #{"_id"})
+   :process-query                     process-query
+   :process-query-in-context          process-query-in-context
+   :sync-in-context                   sync-in-context
+   :date-interval                     u/relative-date
+   :humanize-connection-error-message humanize-connection-error-message
+   :active-nested-field-name->type    active-nested-field-name->type})

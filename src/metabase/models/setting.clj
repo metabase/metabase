@@ -155,16 +155,18 @@
 (defn public-settings
   "Return a simple map of key/value pairs which represent the public settings for the front-end application."
   []
-  {:ga_code               "UA-60817802-1"
-   :intercom_code         "gqfmsgf1"
+  {:engines               (deref @(ns-resolve 'metabase.driver 'available-drivers))
+   :ga_code               "UA-60817802-1"
    :password_complexity   (password/active-password-complexity)
    :setup_token           (setup/token-value)
    :timezones             common/timezones
    :version               (config/mb-version-info)
    ;; all of these values are dynamic settings controlled at runtime
-   :anon_tracking_enabled (= "true" (get :anon-tracking-enabled))
+   :anon_tracking_enabled (let [tracking? (get :anon-tracking-enabled)]
+                            (or (nil? tracking?) (= "true" tracking?)))
    :site_name             (get :site-name)
-   :email_configured      (not (s/blank? (get :email-smtp-host)))})
+   :email_configured      (not (s/blank? (or (get :email-smtp-host) (get-from-env-var :email-smtp-host))))
+   :admin_email           (get :admin-email)})
 
 ;; # IMPLEMENTATION
 

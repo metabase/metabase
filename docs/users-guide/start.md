@@ -14,6 +14,6 @@
 
 > [Tips on creating useful dashboards](06-dashboard-tips.md)
 
-> [Get help on your data model](07-data-model-reference.md)
+> [Some helpful tips on building your data model](07-data-model-reference.md)
 
-Let's get started and get an overview of [What Metabase does](01-what-is-metabase.md)
+Let's get started with an overview of [What Metabase does](01-what-is-metabase.md).

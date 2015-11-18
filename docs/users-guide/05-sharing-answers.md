@@ -1,77 +1,50 @@
 
-##Saving Questions
+## Sharing Your Questions and Answers
 ---
-###How to Save a Question
-After entering a question, click the blue **Save** Button above the query interface bar to save a question.  
+### How to Save a Question
+Whenever you’ve arrived at an answer that you want to save for later, click the **SAVE** button in the top right of the screen. This will also save the visualization option you’ve chosen for your answer.  
 
 ![savebutton](images/SaveButton.png)
 
-A pop-up box will appear asking you to input information about the question. 
+A pop-up box will appear, you to give your question a name and a description. We suggest phrasing the names for your questions in the form of a question, such as, “How many customers did we have last month?”
 
-![savecard](images/SaveCard.png)
+After saving your question, you’ll have a few options, one of which is adding your saved question to a dashboard.
 
-
-After you save a question, the query interface bar will change.  Instead of the **Save** button, you will have three new options.  Clicking the **Star** favorites the question.  Click the middle **Double Square** button to delete the saved question.  Click the **Dashboard +** icon to add your saved question to a Dashboard.  
-
-![savedquestion](images/SavedQuestion.png)
-
-##Dashboards
+## Dashboards 
 ---
-###What is a dashboard?
-A **dashboard** is a collection of saved questions that you want to refer back to regularly.  It displays groups of questions and their corresponding answers.  Questions on a dashboard are meant to be consumed together.  Each question is on its own card that you can move or resize as you see fit.  
+### What is a dashboard?
+A **dashboard** is a collection of saved questions that you want to refer back to and view regularly. It displays groups of questions and their corresponding answers. 
 
-For example, you could have a dashboard devoted to metrics about the number of reservations.  It could show the number of reservations by day of week, time of day, geographical region, and more.  
+Questions on a dashboard are meant to be viewed together, so they’re usually grouped by some kind of theme or topic, like Users, Inventory, or Reservations. A reservations dashboard could show the number of reservations by day of week, time of day, geographical region, and more.
 
-Have a few key performance indicators that you want to be able to easily check?  Make a dashboard featuring questions that show your key metrics and share it with your team.  
+Have a few key performance indicators that you want to be able to easily check? Make a dashboard featuring questions that show your key metrics and share it with your team. 
 
-You can make as many dashboards as you want.  **Public dashboards** (public only to those within your organization!) can show canonical KPIs that your whole team regularly checks in on.  Use your **personal dashboards** for projects or for keeping track of your own areas of interest.
-##How to add a Question to a Dashboard
-After saving a question, click the **"Dashboard +"** icon to add a question to a dashboard. 
+You can make as many dashboards as you want. Go nuts.
 
-![addq](images/AddQ.png)
+### How to Create a Dashboard
+Once you have a question saved, you can create a dashboard. Click the **Dashboards** dropdown at the top of the screen, then **Create a new dashboard**. Give your new dashboard a name and a description, then click **Create**, and you’ll be taken to your shiny new dashboard. You can always get to your dashboards from the dropdown at the very top of the screen.
 
-##How to Create a Dashboard
-Once you have a question saved, you can create a dashboard.  Click "Create a new dashboard" (*See Figure 5*).  Enter a name and description for your dashboard, as well as configure its privacy settings.  
+### Adding saved questions to a dashboard
+You can add a newly saved question to a dashboard directly from the window that pops up after you save the question, or you can go to one of your dashboards and click the plus icon in the top right to add any of your saved questions to the dashboard.
 
-![addnewdashboard](images/Addnewdashboard.png)
+Once you add a question to your dashboard, it’ll look something like this:
 
-Once you successfully create your dashboard, the following pop-up will appear.  
+![First Dashboard](images/FirstDashboard.png)
 
-![dashboardsuccess](images/DashboardSuccess.png)
+### Arranging cards
+Each question on a dashboard is in its own card that you can move around or resize as you see fit; just click the edit icon that looks like a pencil in the top-right of the dashboard screen.  
 
-You can view your Dashboard by clicking the link or by selecting dashboard from the dropdown menu at the top of the screen.  
-
-![dashboarddropdown](images/DashboardDropdown.png)
-
-After creating your first dashboard and adding your first question, your dashboard will look similar to this: 
-
-![dashboarddropdown](images/DashboardDropdown.png)
-
-##How to Arrange Dashboards
-To make changes to a dashboard, clicking the **Dashboard Grid** button will allow you to resize, reorder, or remove individual question cards. 
-
-![dashboardgridbutton](images/DashboardGridButton.png)
-
-The lines around the card will change from solid to dotted, signifying that you are in edit mode.  
+The lines around the card will change from solid to dotted, showing you that you’re in edit mode.  
 
 ![editmode](images/Editmode.png)
 
-* To resize a card, click on its borders.  You can also use the handle in the lower right corner, which will let you drag your cursor to resize the card.  
-* To reorder your cards, click and drag the card to where you want it to be.  Other cards will rearrange as you move the card to its new place to make room for it.  
-* To remove a question card, click the **X** icon on the card.  
+* To resize a card, hover your pointer over the lower right corner of it and click and drag.
+* To reorder your cards, click on the card and drag it to where you want it to be. The other cards will rearrange themselves as you move the card around.  
+* To remove a card, click the trashcan icon on it.
 
-##How to Delete a Dashboard
-Deleting a dashboard does not delete the individual question cards on a dashboard.  Deleting a dashboard deletes the grouping of the questions (but not the questions themselves).  
+## Deleting a dashboard
+Deleting a dashboard does not delete the individual saved questions on it — it just deletes the dashboard. Remember — dashboards are shared by everyone on your team, so think twice before you delete something that someone else might be using!
 
-To delete a dashboard, click the **Edit** button next to the title of your dashboard at the top of the screen.  
-
-![editdashboard](images/EditDashboard.png)
-
-A popup screen will appear that will allow you to choose to delete the dashboard, or change its settings.  
-
-![editdashboardinterface](images/EditDashboardInterface.png)
-
-Be careful when deleting public dashboards - make sure other users in your organization do not need the dashboard.
-
+To delete a dashboard, click the pencil-looking **Edit** icon in the top right of the dashboard, then click **Delete**.
 
 Next, we'll offer up some suggestions on how to create useful dashboards, in our [Tips on Dashboards](06-dashboard-tips.md).

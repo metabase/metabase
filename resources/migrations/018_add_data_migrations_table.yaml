@@ -1,0 +1,27 @@
+databaseChangeLog:
+  - changeSet:
+      id: 18
+      author: camsaul
+      validCheckSum: 7:07d501a6e52c14691f7f895d137e565f
+      validCheckSum: 7:329d897d44ba9893fdafc9ce7e876d73
+      changes:
+        - createTable:
+            tableName: data_migrations
+            columns:
+              - column:
+                  name: id
+                  type: VARCHAR(254)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: timestamp
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: data_migrations
+            indexName: idx_data_migrations_id
+            columns:
+              column:
+                name: id

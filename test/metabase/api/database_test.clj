@@ -2,7 +2,6 @@
   (:require [expectations :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
-            [metabase.driver.mongo.test-data :as mongo-test-data]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [table :refer [Table]])
@@ -19,24 +18,8 @@
                                                   :details {:host   "localhost"
                                                             :port   5432
                                                             :dbname "fakedb"
-                                                            :user   "cam"}}))
-
-;; # FORM INPUT
-
-;; ## GET /api/database/form_input
-(expect
-    {:engines driver/available-drivers
-     :timezones ["GMT"
-                 "UTC"
-                 "US/Alaska"
-                 "US/Arizona"
-                 "US/Central"
-                 "US/Eastern"
-                 "US/Hawaii"
-                 "US/Mountain"
-                 "US/Pacific"
-                 "America/Costa_Rica"]}
-  ((user->client :crowberto) :get 200 "database/form_input"))
+                                                            :user   "cam"
+                                                            :ssl    false}}))
 
 ;; # DB LIFECYCLE ENDPOINTS
 
@@ -48,11 +31,11 @@
        :engine          "h2"
        :id              $
        :updated_at      $
-       :name            "Test Database"
+       :name            "test-data"
        :is_sample       false
        :organization_id nil
        :description     nil})
-  ((user->client :rasta) :get 200 (format "database/%d" (db-id))))
+  ((user->client :rasta) :get 200 (format "database/%d" (id))))
 
 ;; superusers *should* see DB details
 (expect
@@ -62,11 +45,11 @@
        :id              $
        :details         $
        :updated_at      $
-       :name            "Test Database"
+       :name            "test-data"
        :is_sample       false
        :organization_id nil
        :description     nil})
-  ((user->client :crowberto) :get 200 (format "database/%d" (db-id))))
+  ((user->client :crowberto) :get 200 (format "database/%d" (id))))
 
 ;; ## POST /api/database
 ;; Check that we can create a Database
@@ -76,7 +59,7 @@
         {:created_at      $
          :engine          "postgres" ; string because it's coming back from API instead of DB
          :id              $
-         :details         {:host "localhost", :port 5432, :dbname "fakedb", :user "cam"}
+         :details         {:host "localhost", :port 5432, :dbname "fakedb", :user "cam", :ssl true}
          :updated_at      $
          :name            db-name
          :is_sample       false
@@ -100,23 +83,17 @@
 (expect-let [[old-name new-name] (repeatedly 2 random-name)
              {db-id :id} (create-db old-name)
              sel-db (fn [] (sel :one :fields [Database :name :engine :details] :id db-id))]
-  [{:details {:host "localhost", :port 5432, :dbname "fakedb", :user "cam"}
+  [{:details {:host "localhost", :port 5432, :dbname "fakedb", :user "cam", :ssl true}
     :engine  :postgres
     :name    old-name}
    {:details {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
     :engine  :h2
-    :name    new-name}
-   {:details {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
-    :engine  :h2
-    :name    old-name}]
+    :name    new-name}]
   [(sel-db)
    ;; Check that we can update all the fields
    (do ((user->client :crowberto) :put 200 (format "database/%d" db-id) {:name    new-name
-                                                                        :engine  "h2"
-                                                                        :details {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}})
-       (sel-db))
-   ;; Check that we can update just a single field
-   (do ((user->client :crowberto) :put 200 (format "database/%d" db-id) {:name old-name})
+                                                                         :engine  "h2"
+                                                                         :details {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}})
        (sel-db))])
 
 ;; # DATABASES FOR ORG
@@ -124,17 +101,17 @@
 ;; ## GET /api/database
 ;; Test that we can get all the DBs for an Org, ordered by name
 ;; Database details *should not* come back for Rasta since she's not a superuser
-(let [db-name (str "A" (random-name))] ; make sure this name comes before "Test Database"
+(let [db-name (str "A" (random-name))] ; make sure this name comes before "test-data"
   (expect-eval-actual-first
       (set (filter identity
-                   (conj (for [dataset-name datasets/all-valid-dataset-names]
-                           (datasets/when-testing-dataset dataset-name
-                             (match-$ (datasets/db (datasets/dataset-name->dataset dataset-name))
+                   (conj (for [engine datasets/all-valid-engines]
+                           (datasets/when-testing-engine engine
+                             (match-$ (datasets/db (datasets/engine->loader engine))
                                {:created_at      $
                                 :engine          (name $engine)
                                 :id              $
                                 :updated_at      $
-                                :name            "Test Database"
+                                :name            "test-data"
                                 :is_sample       false
                                 :organization_id nil
                                 :description     nil})))
@@ -150,9 +127,9 @@
     (do
       ;; Delete all the randomly created Databases we've made so far
       (cascade-delete Database :id [not-in (set (filter identity
-                                                        (for [dataset-name datasets/all-valid-dataset-names]
-                                                          (datasets/when-testing-dataset dataset-name
-                                                            (:id (datasets/db (datasets/dataset-name->dataset dataset-name)))))))])
+                                                        (for [engine datasets/all-valid-engines]
+                                                          (datasets/when-testing-engine engine
+                                                            (:id (datasets/db (datasets/engine->loader engine)))))))])
       ;; Add an extra DB so we have something to fetch besides the Test DB
       (create-db db-name)
       ;; Now hit the endpoint
@@ -162,66 +139,67 @@
 ;; ## GET /api/meta/table/:id/query_metadata
 ;; TODO - add in example with Field :values
 (expect
-  (match-$ (db)
-           {:created_at      $
-            :engine          "h2"
-            :id              $
-            :updated_at      $
-            :name            "Test Database"
-            :is_sample       false
-            :organization_id nil
-            :description     nil
-            :tables [(match-$ (Table (id :categories))
-                              {:description  nil
-                               :entity_type  nil
-                               :visibility_type nil
-                               :name         "CATEGORIES"
-                               :display_name "Categories"
-                               :fields       [(match-$ (Field (id :categories :id))
-                                                       {:description     nil
-                                                        :table_id        (id :categories)
-                                                        :special_type    "id"
-                                                        :name            "ID"
-                                                        :display_name    "Id"
-                                                        :updated_at      $
-                                                        :active          true
-                                                        :id              $
-                                                        :field_type      "info"
-                                                        :position        0
-                                                        :target          nil
-                                                        :preview_display true
-                                                        :created_at      $
-                                                        :base_type       "BigIntegerField"
-                                                        :parent_id       nil
-                                                        :parent          nil
-                                                        :values          []})
-                                              (match-$ (Field (id :categories :name))
-                                                       {:description     nil
-                                                        :table_id        (id :categories)
-                                                        :special_type    "name"
-                                                        :name            "NAME"
-                                                        :display_name    "Name"
-                                                        :updated_at      $
-                                                        :active          true
-                                                        :id              $
-                                                        :field_type      "info"
-                                                        :position        0
-                                                        :target          nil
-                                                        :preview_display true
-                                                        :created_at      $
-                                                        :base_type       "TextField"
-                                                        :parent_id       nil
-                                                        :parent          nil
-                                                        :values          []})]
-                               :rows         75
-                               :updated_at   $
-                               :entity_name  nil
-                               :active       true
-                               :id           (id :categories)
-                               :db_id        (db-id)
-                               :created_at   $})]})
-  (let [resp ((user->client :rasta) :get 200 (format "database/%d/metadata" (db-id)))]
-    (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp)))))
+    (match-$ (db)
+      {:created_at      $
+       :engine          "h2"
+       :id              $
+       :updated_at      $
+       :name            "test-data"
+       :is_sample       false
+       :organization_id nil
+       :description     nil
+       :tables [(match-$ (Table (id :categories))
+                  {:description     nil
+                   :entity_type     nil
+                   :visibility_type nil
+                   :schema          "PUBLIC"
+                   :name            "CATEGORIES"
+                   :display_name    "Categories"
+                   :fields          [(match-$ (Field (id :categories :id))
+                                       {:description     nil
+                                        :table_id        (id :categories)
+                                        :special_type    "id"
+                                        :name            "ID"
+                                        :display_name    "Id"
+                                        :updated_at      $
+                                        :active          true
+                                        :id              $
+                                        :field_type      "info"
+                                        :position        0
+                                        :target          nil
+                                        :preview_display true
+                                        :created_at      $
+                                        :base_type       "BigIntegerField"
+                                        :parent_id       nil
+                                        :parent          nil
+                                        :values          []})
+                                     (match-$ (Field (id :categories :name))
+                                       {:description     nil
+                                        :table_id        (id :categories)
+                                        :special_type    "name"
+                                        :name            "NAME"
+                                        :display_name    "Name"
+                                        :updated_at      $
+                                        :active          true
+                                        :id              $
+                                        :field_type      "info"
+                                        :position        0
+                                        :target          nil
+                                        :preview_display true
+                                        :created_at      $
+                                        :base_type       "TextField"
+                                        :parent_id       nil
+                                        :parent          nil
+                                        :values          []})]
+                   :rows            75
+                   :updated_at      $
+                   :entity_name     nil
+                   :active          true
+                   :id              (id :categories)
+                   :db_id           (id)
+                   :created_at      $})]})
+    (let [resp ((user->client :rasta) :get 200 (format "database/%d/metadata" (id)))]
+      (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp)))))
 
 
 ;; # DB TABLES ENDPOINTS
@@ -229,13 +207,13 @@
 ;; ## GET /api/database/:id/tables
 ;; These should come back in alphabetical order
 (expect
-    (let [db-id (db-id)]
+    (let [db-id (id)]
       [(match-$ (Table (id :categories))
-         {:description nil, :entity_type nil, :visibility_type nil, :name "CATEGORIES", :rows 75, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Categories"})
+         {:description nil, :entity_type nil, :visibility_type nil, :schema "PUBLIC", :name "CATEGORIES", :rows 75, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Categories"})
        (match-$ (Table (id :checkins))
-         {:description nil, :entity_type nil, :visibility_type nil, :name "CHECKINS", :rows 1000, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Checkins"})
+         {:description nil, :entity_type nil, :visibility_type nil, :schema "PUBLIC", :name "CHECKINS", :rows 1000, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Checkins"})
        (match-$ (Table (id :users))
-         {:description nil, :entity_type nil, :visibility_type nil, :name "USERS", :rows 15, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Users"})
+         {:description nil, :entity_type nil, :visibility_type nil, :schema "PUBLIC", :name "USERS", :rows 15, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Users"})
        (match-$ (Table (id :venues))
-         {:description nil, :entity_type nil, :visibility_type nil, :name "VENUES", :rows 100, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Venues"})])
-  ((user->client :rasta) :get 200 (format "database/%d/tables" (db-id))))
+         {:description nil, :entity_type nil, :visibility_type nil, :schema "PUBLIC", :name "VENUES", :rows 100, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Venues"})])
+  ((user->client :rasta) :get 200 (format "database/%d/tables" (id))))

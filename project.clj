@@ -1,7 +1,7 @@
 ;; -*- comment-column: 70; -*-
 ;; full set of options are here .. https://github.com/technomancy/leiningen/blob/master/sample.project.clj
 
-(defproject metabase "metabase-0.1.0-SNAPSHOT"
+(defproject metabase "metabase-SNAPSHOT"
   :description "Metabase Community Edition"
   :url "http://metabase.com/"
   :min-lein-version "2.5.0"
@@ -9,7 +9,6 @@
             "generate-sample-dataset" ["with-profile" "+generate-sample-dataset" "run"]}
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
-                 [org.clojure/core.logic "0.8.10"]
                  [org.clojure/core.match "0.3.0-alpha4"]              ; optimized pattern matching library for Clojure
                  [org.clojure/core.memoize "0.5.7"]                   ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
                  [org.clojure/data.csv "0.1.3"]                       ; CSV parsing / generation
@@ -17,9 +16,7 @@
                  [org.clojure/java.jdbc "0.4.2"]                      ; basic jdbc access from clojure
                  [org.clojure/math.numeric-tower "0.0.4"]             ; math functions like `ceil`
                  [org.clojure/tools.logging "0.3.1"]                  ; logging framework
-                 [org.clojure/tools.macro "0.1.5"]                    ; tools for writing macros
                  [org.clojure/tools.namespace "0.2.10"]
-                 [org.clojure/tools.reader "0.9.2"]                   ; Need to explictly specify this dep otherwise expectations doesn't seem to work right :'(
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
                  [cheshire "5.5.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
                  [clj-http-lite "0.3.0"]                              ; HTTP client; lightweight version of clj-http that uses HttpURLConnection instead of Apache
@@ -28,7 +25,7 @@
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
                  [com.cemerick/friend "0.2.1"]                        ; auth library
                  [com.draines/postal "1.11.4"]                        ; SMTP library
-                 [com.h2database/h2 "1.4.189"]                        ; embedded SQL database
+                 [com.h2database/h2 "1.4.190"]                        ; embedded SQL database
                  [com.mattbertolini/liquibase-slf4j "1.2.1"]          ; Java Migrations lib
                  [com.novemberain/monger "3.0.1"]                     ; MongoDB Driver
                  [compojure "1.4.0"]                                  ; HTTP Routing library built on Ring
@@ -41,10 +38,12 @@
                                com.sun.jdmk/jmxtools
                                com.sun.jmx/jmxri]]
                  [medley "0.7.0"]                                     ; lightweight lib of useful functions
-                 [mysql/mysql-connector-java "5.1.36"]                ; MySQL JDBC driver
+                 [mysql/mysql-connector-java "5.1.37"]                ; MySQL JDBC driver
+                 [net.sourceforge.jtds/jtds "1.3.1"]                  ; Open Source SQL Server driver
                  [org.liquibase/liquibase-core "3.4.1"]               ; migration management (Java lib)
                  [org.slf4j/slf4j-log4j12 "1.7.12"]
                  [org.yaml/snakeyaml "1.16"]                          ; YAML parser (required by liquibase)
+                 [org.xerial/sqlite-jdbc "3.8.11.2"]                  ; SQLite driver
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
                  [ring/ring-jetty-adapter "1.4.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
@@ -52,12 +51,11 @@
                  [swiss-arrows "1.0.0"]]                              ; 'Magic wand' macro -<>, etc.
   :plugins [[lein-environ "1.0.0"]                                    ; easy access to environment variables
             [lein-ring "0.9.3"]]                                      ; start the HTTP server with 'lein ring server'
-  :java-source-paths ["src/java"]
   :main ^:skip-aot metabase.core
   :manifest {"Liquibase-Package" "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"}
   :target-path "target/%s"
   :javac-options ["-target" "1.6" "-source" "1.6"]
-  ;; :jar-exclusions [#"\.java"] Circle CI doesn't like regexes because it's using the EDN reader and is retarded
+  :uberjar-name "metabase.jar"
   :ring {:handler metabase.core/app
          :init metabase.core/init
          :destroy metabase.core/destroy}
@@ -67,8 +65,8 @@
                                :suspicious-expression                 ; core.match macros generate some forms like (and expr) which is "suspicious"
                                :unused-ret-vals]}                     ; gives too many false positives for functions with side-effects like conj!
   :profiles {:dev {:dependencies [[org.clojure/tools.nrepl "0.2.11"]  ; REPL <3
+                                  [org.clojure/tools.reader "0.10.0"] ; Need to explictly specify this dep otherwise expectations doesn't seem to work right :'(
                                   [expectations "2.1.3"]              ; unit tests
-                                  [marginalia "0.8.0"]                ; for documentation
                                   [ring/ring-mock "0.3.0"]]
                    :plugins [[cider/cider-nrepl "0.10.0-SNAPSHOT"]    ; Interactive development w/ cider NREPL in Emacs
                              [jonase/eastwood "0.2.1"]                ; Linting
@@ -77,7 +75,7 @@
                              [lein-environ "1.0.0"]                   ; Specify env-vars in project.clj
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'
                              [lein-instant-cheatsheet "2.1.4"]        ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
-                             [lein-marginalia "0.8.0"]                ; generate documentation with 'lein marg'
+                             [michaelblume/lein-marginalia "0.9.0"]   ; generate documentation with 'lein marg'
                              [refactor-nrepl "2.0.0-SNAPSHOT"]]       ; support for advanced refactoring in Emacs/LightTable
                    :global-vars {*warn-on-reflection* true}           ; Emit warnings on all reflection calls
                    :env {:mb-run-mode "dev"}

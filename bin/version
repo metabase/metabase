@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+# Return the version string used to describe this version of Metabase.
+
+TAG=$(git describe origin/master --tags --abbrev=0)
+HASH=$(git show-ref --head --hash=7 head)            # first 7 letters of hash should be enough; that's what GitHub uses
+BRANCH=$(git symbolic-ref --short HEAD)
+DATE=$(git log -1 --pretty=%ad --date=short)
+
+echo "$TAG $HASH $BRANCH $DATE"

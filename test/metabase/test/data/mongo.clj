@@ -3,37 +3,23 @@
   (:require (monger [collection :as mc]
                     [core :as mg])
             [metabase.driver.mongo.util :refer [with-mongo-connection]]
-            [metabase.test.data.interface :refer :all])
-  (:import (metabase.test.data.interface DatabaseDefinition
-                                         FieldDefinition
-                                         TableDefinition)))
+            [metabase.test.data.interface :as i]))
 
-(defrecord MongoDatasetLoader [])
-(extend-protocol IDatasetLoader
-  MongoDatasetLoader
-  (engine [_]
-    :mongo)
+(defn- database->connection-details
+  ([dbdef]
+   {:dbname (i/escaped-name dbdef)
+    :host   "localhost"})
+  ([_ _ dbdef]
+   (database->connection-details dbdef)))
 
-  (database->connection-details [_ database-definition]
-    {:dbname (escaped-name database-definition)
-     :host   "localhost"})
+(defn- destroy-db! [_ dbdef]
+  (with-open [mongo-connection (mg/connect (database->connection-details dbdef))]
+    (mg/drop-db mongo-connection (i/escaped-name dbdef))))
 
-  ;; Nothing to do here ! DB created when we connect to it
-  (create-physical-db! [_ _])
-
-  (drop-physical-db! [this database-definition]
-    (with-open [mongo-connection (mg/connect (database->connection-details this database-definition))]
-      (mg/drop-db mongo-connection (escaped-name database-definition))))
-
-  ;; Nothing to do here, collection is created when we add documents to it
-  (create-physical-table! [_ _ _])
-
-  (drop-physical-table! [this database-definition {:keys [table-name]}]
-    (with-mongo-connection [^com.mongodb.DB mongo-db (database->connection-details this database-definition)]
-      (mc/drop mongo-db (name table-name))))
-
-  (load-table-data! [this database-definition {:keys [field-definitions table-name rows]}]
-    (with-mongo-connection [^com.mongodb.DB mongo-db (database->connection-details this database-definition)]
+(defn- create-db! [this {:keys [table-definitions], :as dbdef}]
+  (destroy-db! this dbdef)
+  (with-mongo-connection [^com.mongodb.DB mongo-db (database->connection-details dbdef)]
+    (doseq [{:keys [field-definitions table-name rows]} table-definitions]
       (let [field-names (->> field-definitions
                              (map :field-name)
                              (map keyword))]
@@ -52,5 +38,12 @@
               ;; If row already exists then nothing to do
               (catch com.mongodb.MongoException _))))))))
 
-(defn ^MongoDatasetLoader dataset-loader []
-  (->MongoDatasetLoader))
+
+(defrecord MongoDatasetLoader [dbpromise])
+
+(extend MongoDatasetLoader
+  i/IDatasetLoader
+  {:create-db!                   create-db!
+   :destroy-db!                  destroy-db!
+   :database->connection-details database->connection-details
+   :engine                       (constantly :mongo)})
