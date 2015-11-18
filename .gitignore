@@ -36,3 +36,4 @@ OSX/build
 OSX/dsa_priv.pem
 bin/config.json
 bin/release/aws-eb/metabase-aws-eb.zip
+*.sqlite

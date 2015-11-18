@@ -30,19 +30,12 @@
 (defn- quote-name [_ nm]
   (str \` nm \`))
 
-;; MySQL's JDBC driver doesn't support executing multiple SQL statements at once
-;; so split them up and execute them one-at-a-time
-(defn- execute-sql! [loader context dbdef sql]
-  (doseq [statement (map s/trim (s/split sql #";+"))]
-    (when (seq statement)
-      (generic/default-execute-sql! loader context dbdef statement))))
-
 (defrecord MySQLDatasetLoader [dbpromise])
 
 (extend MySQLDatasetLoader
   generic/IGenericSQLDatasetLoader
   (merge generic/DefaultsMixin
-         {:execute-sql!              execute-sql!
+         {:execute-sql!              generic/sequentially-execute-sql!
           :pk-sql-type               (constantly "INTEGER NOT NULL AUTO_INCREMENT")
           :quote-name                quote-name
           :field-base-type->sql-type (fn [_ base-type]

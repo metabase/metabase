@@ -138,7 +138,7 @@
                                                 :placeholder  "*******"}]
                    :string-length-fn          :LEN
                    :stddev-fn                 :STDEV
-                   :current-datetime-fn       :GETUTCDATE
+                   :current-datetime-fn       (k/sqlfn* :GETUTCDATE)
                    :excluded-schemas          #{"sys" "INFORMATION_SCHEMA"}
                    :column->base-type         column->base-type
                    :connection-details->spec  connection-details->spec
