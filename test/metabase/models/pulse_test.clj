@@ -5,7 +5,7 @@
             [metabase.db :refer :all]
             (metabase.models [pulse :refer :all]
                              [pulse-card :refer :all])
-            [metabase.test-data :refer :all]
+            [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
             [metabase.test.util :as tu]))
 
