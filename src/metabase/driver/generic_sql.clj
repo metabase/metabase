@@ -39,7 +39,6 @@
             :schema (:table_schem table)}))))
 
 (defn- active-column-names->type [column->base-type table]
-  {:pre [(map? column->base-type)]}
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db table)]
     (into {} (for [{:keys [column_name type_name]} (jdbc/result-set-seq (.getColumns md nil (:schema table) (:name table) nil))]
                {column_name (or (column->base-type (keyword type_name))
@@ -127,13 +126,6 @@
   ;; Check the :column->base-type map
   (assert column->base-type
     "SQL drivers must define :column->base-type.")
-  (assert (map? column->base-type)
-    ":column->base-type should be a map")
-  (doseq [[k v] column->base-type]
-    (assert (keyword? k)
-      (format "Not a keyword: %s" k))
-    (assert (contains? field/base-types v)
-      (format "Invalid field base-type: %s" v)))
 
   ;; Check :string-length-fn
   (assert string-length-fn
@@ -165,9 +157,9 @@
 
       Keyword name of the SQL function that should be used to get the length of a string. Defaults to `:STDDEV`.
 
-   *  `current-timestamp-fn` *(OPTIONAL)*
+   *  `current-datetime-fn` *(OPTIONAL)*
 
-      Keyword name of the SQL function that should be used to get the current `DATETIME` (or equivalent).  Defaults to `:NOW`.
+      Korma form that should be used to get the current `DATETIME` (or equivalent).  Defaults to `(k/sqlfn* :NOW)`.
 
    *  `(connection-details->spec [details-map])`
 
@@ -228,5 +220,5 @@
                                    {:pre [(contains? #{:second :minute :hour :day :week :month :quarter :year} unit)]}
                                    (date-interval unit amount)))
     :stddev-fn                 :STDDEV
-    :current-datetime-fn       :NOW}
+    :current-datetime-fn       (k/sqlfn* :NOW)}
    driver))

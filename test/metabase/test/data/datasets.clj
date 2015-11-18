@@ -14,12 +14,14 @@
                                 [mongo :as mongo]
                                 [mysql :as mysql]
                                 [postgres :as postgres]
+                                [sqlite :as sqlite]
                                 [sqlserver :as sqlserver])
             [metabase.util :as u])
   (:import metabase.test.data.h2.H2DatasetLoader
            metabase.test.data.mongo.MongoDatasetLoader
            metabase.test.data.mysql.MySQLDatasetLoader
            metabase.test.data.postgres.PostgresDatasetLoader
+           metabase.test.data.sqlite.SQLiteDatasetLoader
            metabase.test.data.sqlserver.SQLServerDatasetLoader))
 
 ;; # IDataset
@@ -45,37 +47,36 @@
 
 ;; # Implementations
 
-;; ## Mongo
-
 (defn- generic-load-data! [{:keys [dbpromise], :as this}]
   (when-not (realized? dbpromise)
     (deliver dbpromise (@(resolve 'metabase.test.data/get-or-create-database!) this defs/test-data)))
   @dbpromise)
 
+(def ^:private IDatasetDefaultsMixin
+  {:load-data!     generic-load-data!
+   :db             generic-load-data!
+   :id-field-type  (constantly :IntegerField)
+   :sum-field-type (constantly :IntegerField)
+   :default-schema (constantly nil)})
+
+;; ## Mongo
+
 (extend MongoDatasetLoader
   IDataset
-  {:load-data!           generic-load-data!
-   :db                   generic-load-data!
-   :format-name          (fn [_ table-or-field-name]
-                           (if (= table-or-field-name "id") "_id"
-                               table-or-field-name))
-   :default-schema       (constantly nil)
-   :id-field-type        (constantly :IntegerField)
-   :sum-field-type       (constantly :IntegerField)
-   :timestamp-field-type (constantly :DateField)})
+  (merge IDatasetDefaultsMixin
+         {:format-name          (fn [_ table-or-field-name]
+                                  (if (= table-or-field-name "id") "_id"
+                                      table-or-field-name))
+          :timestamp-field-type (constantly :DateField)}))
 
 
 ;; ## Generic SQL
 
 (def ^:private GenericSQLIDatasetMixin
-  {:load-data!           generic-load-data!
-   :db                   generic-load-data!
-   :format-name          (fn [_ table-or-field-name]
-                           table-or-field-name)
-   :timestamp-field-type (constantly :DateTimeField)
-   :id-field-type        (constantly :IntegerField)
-   :sum-field-type       (constantly :BigIntegerField)
-   :default-schema       (constantly nil)})
+  (merge IDatasetDefaultsMixin
+         {:format-name          (fn [_ table-or-field-name]
+                                  table-or-field-name)
+          :timestamp-field-type (constantly :DateTimeField)}))
 
 
 ;;; ### H2
@@ -83,10 +84,11 @@
 (extend H2DatasetLoader
   IDataset
   (merge GenericSQLIDatasetMixin
-         {:default-schema    (constantly "PUBLIC")
-          :format-name       (fn [_ table-or-field-name]
-                               (s/upper-case table-or-field-name))
-          :id-field-type     (constantly :BigIntegerField)}))
+         {:default-schema (constantly "PUBLIC")
+          :format-name    (fn [_ table-or-field-name]
+                            (s/upper-case table-or-field-name))
+          :id-field-type  (constantly :BigIntegerField)
+          :sum-field-type (constantly :BigIntegerField)}))
 
 
 ;;; ### Postgres
@@ -94,13 +96,20 @@
 (extend PostgresDatasetLoader
   IDataset
   (merge GenericSQLIDatasetMixin
-         {:default-schema (constantly "public")
-          :sum-field-type (constantly :IntegerField)}))
+         {:default-schema (constantly "public")}))
 
 
 ;;; ### MySQL
 
 (extend MySQLDatasetLoader
+  IDataset
+  (merge GenericSQLIDatasetMixin
+         {:sum-field-type (constantly :BigIntegerField)}))
+
+
+;;; ### SQLite
+
+(extend SQLiteDatasetLoader
   IDataset
   GenericSQLIDatasetMixin)
 
@@ -122,6 +131,7 @@
    :h2        (H2DatasetLoader.        (promise))
    :postgres  (PostgresDatasetLoader.  (promise))
    :mysql     (MySQLDatasetLoader.     (promise))
+   :sqlite    (SQLiteDatasetLoader.    (promise))
    :sqlserver (SQLServerDatasetLoader. (promise))})
 
 (def ^:const all-valid-engines

@@ -141,6 +141,7 @@
        :day-of-week     (.get cal Calendar/DAY_OF_WEEK)
        :day-of-month    (.get cal Calendar/DAY_OF_MONTH)
        :day-of-year     (.get cal Calendar/DAY_OF_YEAR)
+       ;; 1 = First week of year
        :week-of-year    (.get cal Calendar/WEEK_OF_YEAR)
        :month-of-year   (inc (.get cal Calendar/MONTH))
        :quarter-of-year (let [month (date-extract :month-of-year date)]
