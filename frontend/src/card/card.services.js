@@ -323,6 +323,7 @@ CardServices.service('VisualizationSettings', [function() {
             'colors': EXPANDED_COLOR_HARMONY
         },
         'bar': {
+            'legend_enabled': true,
             'colors': DEFAULT_COLOR_HARMONY,
             'color': DEFAULT_COLOR
         },

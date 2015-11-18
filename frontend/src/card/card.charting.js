@@ -165,6 +165,8 @@ function applyChartLegend(dcjsChart, card) {
 
     if (card.display === "pie" && settings.pie) {
         legendEnabled = settings.pie.legend_enabled;
+    } else if (card.display === "bar" && settings.bar) {
+        legendEnabled = settings.bar.legend_enabled;
     } else if (settings.chart) {
         legendEnabled = settings.chart.legend_enabled;
     }
@@ -888,7 +890,7 @@ export var CardRenderer = {
                         }),
             chart = initializeChart(card, id, DEFAULT_CARD_WIDTH, DEFAULT_CARD_HEIGHT)
                         .dimension(dimension)
-                        .group(group)
+                        .group(group, result.cols[1]["name"])
                         .valueAccessor(function(d) {
                             return d.value;
                         });
@@ -897,14 +899,14 @@ export var CardRenderer = {
         if (isMultiSeries) {
             chart.stack(dimension.group().reduceSum(function(d) {
                 return d[2];
-            }));
+            }), result.cols[2]["name"]);
 
             // to keep things sane, draw the line at 2 stacked series
             // putting more than 3 series total on the same chart is a lot
             if (result.cols.length > 3) {
                 chart.stack(dimension.group().reduceSum(function(d) {
                     return d[3];
-                }));
+                }), result.cols[3]["name"]);
             }
         }
 
