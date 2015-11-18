@@ -72,7 +72,7 @@
 ;;; ## USE
 
 (defmacro use [query db]
-  (assoc-in query [:context :driver] (keyword db)))
+  (assoc-in query [:context :engine] (keyword db)))
 
 
 ;;; ## OF
@@ -240,17 +240,17 @@
     `(data/with-temp-db [~'_ (resolve-dataset ~dataset)]
        ~query)))
 
-(defmacro with-driver [driver query]
-  (if-not driver
+(defmacro with-engine [engine query]
+  (if-not engine
     query
-    `(datasets/with-dataset ~driver
+    `(datasets/with-engine ~engine
        ~query)))
 
-(defmacro Q*** [f {:keys [driver dataset return table-name]} query]
+(defmacro Q*** [f {:keys [engine dataset return table-name]} query]
   (assert table-name
     "Table name not specified in query, did you include an 'of' clause?")
   `(do (db/setup-db-if-needed)
-       (->> (with-driver ~driver
+       (->> (with-engine ~engine
               (binding [*table-name* ~table-name]
                 (with-temp-db ~dataset
                   (~f ~query))))
@@ -263,10 +263,10 @@
 
 (defmacro Q* [f & args]
   `(Q** ~f
-        {:database (data/db-id)
+        {:database (data/id)
          :type     "query"
          :query    {}
-         :context  {:driver  nil
+         :context  {:engine  nil
                     :dataset nil}}
         ~@(split-with-tokens top-level-tokens args)))
 

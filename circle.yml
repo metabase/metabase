@@ -8,6 +8,12 @@ machine:
     version: 2.7.3
 dependencies:
   override:
+    - sudo apt-get purge mongodb-org*
+    - sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
+    - echo "deb http://repo.mongodb.org/apt/ubuntu precise/mongodb-org/3.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.0.list
+    - sudo apt-get update
+    - sudo apt-get install -y mongodb-org
+    - sudo service mongod restart
     - lein deps
     - pip install awscli==1.7.3
 database:
@@ -23,7 +29,7 @@ test:
     # 4) Bikeshed linter
     # 5) runs JS linter + JS test
     # 6) runs lein uberjar. (We don't run bin/build because we're not really concerned about `npm install` (etc) in this test, which runs elsewhere)
-    - case $CIRCLE_NODE_INDEX in 0) MB_TEST_DATASETS=h2,mongo,mysql lein test ;; 1) MB_TEST_DATASETS=h2,sqlserver MB_DB_TYPE=postgres MB_DB_DBNAME=circle_test MB_DB_PORT=5432 MB_DB_USER=ubuntu MB_DB_HOST=localhost lein test ;; 2) MB_TEST_DATASETS=h2,postgres MB_DB_TYPE=mysql MB_DB_DBNAME=circle_test MB_DB_PORT=3306 MB_DB_USER=ubuntu MB_DB_HOST=localhost lein test ;; 3) lein eastwood ;; 4) lein bikeshed --max-line-length 240 ;; 5) npm install && npm run lint && npm run build && npm run test ;; 6) lein uberjar ;; esac:
+    - case $CIRCLE_NODE_INDEX in 0) ENGINES=h2,mongo,mysql lein test ;; 1) ENGINES=h2,sqlserver MB_DB_TYPE=postgres MB_DB_DBNAME=circle_test MB_DB_PORT=5432 MB_DB_USER=ubuntu MB_DB_HOST=localhost lein test ;; 2) ENGINES=h2,postgres MB_DB_TYPE=mysql MB_DB_DBNAME=circle_test MB_DB_PORT=3306 MB_DB_USER=ubuntu MB_DB_HOST=localhost lein test ;; 3) lein eastwood ;; 4) lein bikeshed --max-line-length 240 ;; 5) npm install && npm run lint && npm run build && npm run test ;; 6) lein uberjar ;; esac:
         parallel: true
 deployment:
   master:

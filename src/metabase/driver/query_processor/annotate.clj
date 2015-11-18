@@ -34,21 +34,28 @@
 
 ;;; ## Field Resolution
 
-(defn- collect-fields
+(defn collect-fields
   "Return a sequence of all the `Fields` inside THIS, recursing as needed for collections.
    For maps, add or `conj` to property `:path`, recording the keypath used to reach each `Field.`
 
      (collect-fields {:name \"id\", ...})     -> [{:name \"id\", ...}]
      (collect-fields [{:name \"id\", ...}])   -> [{:name \"id\", ...}]
      (collect-fields {:a {:name \"id\", ...}) -> [{:name \"id\", :path [:a], ...}]"
-  [this]
-  {:post [(every? (partial instance? metabase.driver.query_processor.interface.Field) %)]}
+  [this & [keep-date-time-fields?]]
+  {:post [(every? (fn [f]
+                    (or (instance? metabase.driver.query_processor.interface.Field f)
+                        (when keep-date-time-fields?
+                          (instance? metabase.driver.query_processor.interface.DateTimeField f)))) %)]}
   (condp instance? this
     ;; For a DateTimeField we'll flatten it back into regular Field but include the :unit info for the frontend.
     ;; Recurse so it is otherwise handled normally
     metabase.driver.query_processor.interface.DateTimeField
-    (let [{:keys [field unit]} this]
-      (collect-fields (assoc field :unit unit)))
+    (let [{:keys [field unit]} this
+          fields               (collect-fields (assoc field :unit unit) keep-date-time-fields?)]
+      (if keep-date-time-fields?
+        (for [field fields]
+          (i/map->DateTimeField {:field field, :unit unit}))
+        fields))
 
     metabase.driver.query_processor.interface.Field
     (if-let [parent (:parent this)]
@@ -61,12 +68,12 @@
 
     clojure.lang.IPersistentMap
     (for [[k v] (seq this)
-          field (collect-fields v)
+          field (collect-fields v keep-date-time-fields?)
           :when field]
       (assoc field :source k))
 
     clojure.lang.Sequential
-    (for [[i field] (m/indexed (mapcat collect-fields this))]
+    (for [[i field] (m/indexed (mapcat (u/rpartial collect-fields keep-date-time-fields?) this))]
       (assoc field :clause-position i))
 
     nil))
@@ -107,8 +114,8 @@
         _             (assert (every? keyword? expected-keys))
         missing-keys  (set/difference actual-keys expected-keys)]
     (when (seq missing-keys)
-      (log/error (u/format-color 'red "Unknown fields - returned by results but not present in expanded query: %s\nExpected: %s\nActual: %s"
-                   missing-keys expected-keys actual-keys)))
+      (log/warn (u/format-color 'yellow "There are fields we weren't expecting in the results: %s\nExpected: %s\nActual: %s"
+                  missing-keys expected-keys actual-keys)))
     (concat fields (for [k missing-keys]
                      {:base-type          :UnknownField
                       :special-type       nil
@@ -198,7 +205,7 @@
                                            :destination_id [not= nil]))))
   ;; Fetch the destination Fields referenced by the ForeignKeys
   ([fields fk-ids id->dest-id]
-   (when (seq (vals id->dest-id))
+   (when (seq id->dest-id)
      (fk-field->dest-fn fields fk-ids id->dest-id (sel :many :id->fields [Field :id :name :display_name :table_id :description :base_type :special_type :preview_display]
                                                        :id [in (vals id->dest-id)]))))
   ;; Return a function that will return the corresponding destination Field for a given Field
@@ -241,12 +248,15 @@
       expected by the frontend."
   [qp]
   (fn [query]
-    (let [results     (qp query)
-          result-keys (set (keys (first results)))
-          cols        (resolve-sort-and-format-columns (:query query) result-keys)
-          columns     (mapv :name cols)]
-      {:cols    (vec (for [col cols]
-                       (update col :name name)))
-       :columns (mapv name columns)
-       :rows    (for [row results]
-                  (mapv row columns))})))
+    (if (= :query (keyword (:type query)))
+      (let [results     (qp query)
+            result-keys (set (keys (first results)))
+            cols        (resolve-sort-and-format-columns (:query query) result-keys)
+            columns     (mapv :name cols)]
+        {:cols    (vec (for [col cols]
+                         (update col :name name)))
+         :columns (mapv name columns)
+         :rows    (for [row results]
+                    (mapv row columns))})
+      ;; for non-structured queries we do nothing
+      (qp query))))

@@ -298,7 +298,7 @@
   "Parse param string as an [ISO 8601 date](http://en.wikipedia.org/wiki/ISO_8601), e.g.
    `2015-03-24T06:57:23+00:00`"
   [symb value :nillable]
-  (try (u/parse-iso8601 value)
+  (try (u/->Timestamp value)
        (catch Throwable _
          (throw (invalid-param-exception (name symb) (format "'%s' is not a valid date." value))))))
 

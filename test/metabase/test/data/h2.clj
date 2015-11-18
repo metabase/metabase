@@ -64,7 +64,7 @@
    (format "GRANT ALL ON %s TO GUEST;" (quote-name this table-name))))
 
 
-(defrecord H2DatasetLoader [])
+(defrecord H2DatasetLoader [dbpromise])
 
 (extend H2DatasetLoader
   generic/IGenericSQLDatasetLoader
@@ -91,6 +91,3 @@
   (merge generic/IDatasetLoaderMixin
          {:database->connection-details database->connection-details
           :engine                       (constantly :h2)}))
-
-(defn dataset-loader []
-  (->H2DatasetLoader))

@@ -131,11 +131,6 @@
 (def auto-deserialize-dates-keys
   #{:created_at :updated_at :last_login :date_joined :started_at :finished_at})
 
-(defn- deserialize-date [date]
-  (some->> (u/parse-iso8601 date)
-           .getTime
-           java.sql.Timestamp.))
-
 (defn- auto-deserialize-dates
   "Automatically recurse over RESPONSE and look for keys that are known to correspond to dates.
    Parse their values and convert to `java.sql.Timestamps`."
@@ -144,7 +139,7 @@
         (map? response) (->> response
                              (map (fn [[k v]]
                                     {k (cond
-                                         (contains? auto-deserialize-dates-keys k) (deserialize-date v)
+                                         (contains? auto-deserialize-dates-keys k) (u/->Timestamp v)
                                          (coll? v) (auto-deserialize-dates v)
                                          :else v)}))
                              (into {}))

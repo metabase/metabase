@@ -259,8 +259,379 @@ MetabaseServices.service('MetabaseCore', ['User', function(User) {
 }]);
 
 
-// User Services
+// API Services
 var CoreServices = angular.module('metabase.core.services', ['ngResource', 'ngCookies']);
+
+CoreServices.factory('Activity', ['$resource', '$cookies', function($resource, $cookies) {
+    return $resource('/api/activity', {}, {
+        list: {
+            method: 'GET',
+            isArray: true
+        },
+        recent_views: {
+            url: '/api/activity/recent_views',
+            method: 'GET',
+            isArray: true
+        }
+    });
+}]);
+
+CoreServices.factory('Card', ['$resource', '$cookies', function($resource, $cookies) {
+    return $resource('/api/card/:cardId', {}, {
+        list: {
+            url: '/api/card/?f=:filterMode',
+            method: 'GET',
+            isArray: true
+        },
+        create: {
+            url: '/api/card',
+            method: 'POST'
+        },
+        get: {
+            method: 'GET',
+            params: {
+                cardId: '@cardId'
+            }
+        },
+        update: {
+            method: 'PUT',
+            params: {
+                cardId: '@id'
+            }
+        },
+        delete: {
+            method: 'DELETE',
+            params: {
+                cardId: '@cardId'
+            }
+        },
+        isfavorite: {
+            url: '/api/card/:cardId/favorite',
+            method: 'GET',
+            params: {
+                cardId: '@cardId'
+            }
+        },
+        favorite: {
+            url: '/api/card/:cardId/favorite',
+            method: 'POST',
+            params: {
+                cardId: '@cardId'
+            }
+        },
+        unfavorite: {
+            url: '/api/card/:cardId/favorite',
+            method: 'DELETE',
+            params: {
+                cardId: '@cardId'
+            }
+        }
+    });
+}]);
+
+CoreServices.factory('Dashboard', ['$resource', '$cookies', function($resource, $cookies) {
+    return $resource('/api/dashboard/:dashId', {}, {
+        list: {
+            url:'/api/dashboard?org=:orgId&f=:filterMode',
+            method:'GET',
+            isArray:true
+        },
+        create: {
+            url:'/api/dashboard',
+            method:'POST'
+        },
+        get: {
+            method:'GET',
+            params:{dashId:'@dashId'},
+        },
+        update: {
+            method:'PUT',
+            params:{dashId:'@id'}
+        },
+        delete: {
+            method:'DELETE',
+            params:{dashId:'@dashId'}
+        },
+        addcard: {
+            url:'/api/dashboard/:dashId/cards',
+            method:'POST',
+            params:{dashId:'@dashId'}
+        },
+        removecard: {
+            url:'/api/dashboard/:dashId/cards',
+            method:'DELETE',
+            params:{dashId:'@dashId'}
+        },
+        reposition_cards: {
+            url:'/api/dashboard/:dashId/reposition',
+            method:'POST',
+            params:{dashId:'@dashId'}
+        }
+    });
+}]);
+
+CoreServices.factory('ForeignKey', ['$resource', '$cookies', function($resource, $cookies) {
+    return $resource('/api/foreignkey/:fkID', {}, {
+        delete: {
+            method: 'DELETE',
+            params: {
+                fkID: '@fkID'
+            }
+        }
+    });
+}]);
+
+CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', function($resource, $cookies, MetabaseCore) {
+    return $resource('/api/meta', {}, {
+        db_list: {
+            url: '/api/database/?org=:orgId',
+            method: 'GET',
+            isArray: true
+        },
+        db_create: {
+            url: '/api/database/',
+            method: 'POST'
+        },
+        db_add_sample_dataset: {
+            url: '/api/database/sample_dataset',
+            method: 'POST'
+        },
+        db_get: {
+            url: '/api/database/:dbId',
+            method: 'GET',
+            params: {
+                dbId: '@dbId'
+            }
+        },
+        db_update: {
+            url: '/api/database/:dbId',
+            method: 'PUT',
+            params: {
+                dbId: '@id'
+            }
+        },
+        db_delete: {
+            url: '/api/database/:dbId',
+            method: 'DELETE',
+            params: {
+                dbId: '@dbId'
+            }
+        },
+        db_metadata: {
+            url: '/api/database/:dbId/metadata',
+            method: 'GET',
+            params: {
+                dbId: '@dbId'
+            }
+        },
+        db_tables: {
+            url: '/api/database/:dbId/tables',
+            method: 'GET',
+            params: {
+                dbId: '@dbId'
+            },
+            isArray: true
+        },
+        db_idfields: {
+            url: '/api/database/:dbId/idfields',
+            method: 'GET',
+            params: {
+                dbId: '@dbId'
+            },
+            isArray: true
+        },
+        db_autocomplete_suggestions: {
+            url: '/api/database/:dbId/autocomplete_suggestions?prefix=:prefix',
+            method: 'GET',
+            params: {
+                dbId: '@dbId'
+            },
+            isArray: true
+        },
+        db_sync_metadata: {
+            url: '/api/database/:dbId/sync',
+            method: 'POST',
+            params: {
+                dbId: '@dbId'
+            }
+        },
+        table_list: {
+            url: '/api/table/',
+            method: 'GET',
+            params: {
+                tableId: '@tableId'
+            },
+            isArray: true
+        },
+        table_get: {
+            url: '/api/table/:tableId',
+            method: 'GET',
+            params: {
+                tableId: '@tableId'
+            }
+        },
+        table_update: {
+            url: '/api/table/:tableId',
+            method: 'PUT',
+            params: {
+                tableId: '@id'
+            }
+        },
+        table_fields: {
+            url: '/api/table/:tableId/fields',
+            method: 'GET',
+            params: {
+                tableId: '@tableId'
+            },
+            isArray: true
+        },
+        table_fks: {
+            url: '/api/table/:tableId/fks',
+            method: 'GET',
+            params: {
+                tableId: '@tableId'
+            },
+            isArray: true
+        },
+        table_reorder_fields: {
+            url: '/api/table/:tableId/reorder',
+            method: 'POST',
+            params: {
+                tableId: '@tableId'
+            }
+        },
+        table_query_metadata: {
+            url: '/api/table/:tableId/query_metadata',
+            method: 'GET',
+            params: {
+                dbId: '@tableId'
+            }
+        },
+        table_sync_metadata: {
+            url: '/api/table/:tableId/sync',
+            method: 'POST',
+            params: {
+                tableId: '@tableId'
+            }
+        },
+        field_get: {
+            url: '/api/field/:fieldId',
+            method: 'GET',
+            params: {
+                fieldId: '@fieldId'
+            }
+        },
+        field_summary: {
+            url: '/api/field/:fieldId/summary',
+            method: 'GET',
+            params: {
+                fieldId: '@fieldId'
+            },
+            isArray: true
+        },
+        field_values: {
+            url: '/api/field/:fieldId/values',
+            method: 'GET',
+            params: {
+                fieldId: '@fieldId'
+            }
+        },
+        field_value_map_update: {
+            url: '/api/field/:fieldId/value_map_update',
+            method: 'POST',
+            params: {
+                fieldId: '@fieldId'
+            }
+        },
+        field_update: {
+            url: '/api/field/:fieldId',
+            method: 'PUT',
+            params: {
+                fieldId: '@id'
+            }
+        },
+        field_foreignkeys: {
+            url: '/api/field/:fieldId/foreignkeys',
+            method: 'GET',
+            params: {
+                fieldId: '@fieldId'
+            },
+            isArray: true
+        },
+        field_addfk: {
+            url: '/api/field/:fieldId/foreignkeys',
+            method: 'POST',
+            params: {
+                fieldId: '@fieldId'
+            }
+        },
+        dataset: {
+            url: '/api/dataset',
+            method: 'POST'
+        }
+    });
+}]);
+
+CoreServices.factory('Pulse', ['$resource', '$cookies', function($resource, $cookies) {
+    return $resource('/api/pulse/:pulseId', {}, {
+        list: {
+            url: '/api/pulse',
+            method: 'GET',
+            isArray: true
+        },
+        create: {
+            url: '/api/pulse',
+            method: 'POST',
+            headers: { 'X-CSRFToken': () => $cookies.csrftoken },
+        },
+        get: {
+            method: 'GET',
+            params: { pulseId: '@pulseId' },
+        },
+        update: {
+            method: 'PUT',
+            params: { pulseId: '@id' },
+            headers: { 'X-CSRFToken': () => $cookies.csrftoken },
+        },
+        delete: {
+            method: 'DELETE',
+            params: { pulseId: '@pulseId' },
+            headers: { 'X-CSRFToken': () => $cookies.csrftoken },
+        },
+        form_input: {
+            url: '/api/pulse/form_input',
+            method: 'GET',
+        },
+        preview_card: {
+            url: '/api/pulse/preview_card_info/:id',
+            params: { id: '@id' },
+            method: 'GET',
+        }
+    });
+}]);
+
+CoreServices.factory('Revision', ['$resource', function($resource) {
+    return $resource('/api/revision', {}, {
+        list: {
+            url: '/api/revision',
+            method: 'GET',
+            isArray: true,
+            params: {
+                'entity': '@entity',
+                'id': '@id'
+            }
+        },
+        revert: {
+            url: '/api/revision/revert',
+            method: 'POST',
+            params: {
+                'entity': '@entity',
+                'id': '@id',
+                'revision_id': '@revision_id'
+            }
+        }
+    });
+}]);
 
 CoreServices.factory('Session', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/session/', {}, {
@@ -286,6 +657,43 @@ CoreServices.factory('Session', ['$resource', '$cookies', function($resource, $c
         password_reset_token_valid: {
             url: '/api/session/password_reset_token_valid',
             method: 'GET'
+        }
+    });
+}]);
+
+CoreServices.factory('Settings', ['$resource', function($resource) {
+    return $resource('/api/setting', {}, {
+        list: {
+            url: '/api/setting',
+            method: 'GET',
+            isArray: true,
+        },
+        // POST endpoint handles create + update in this case
+        put: {
+            url: '/api/setting/:key',
+            method: 'PUT',
+            params: {
+                key: '@key'
+            }
+        },
+        delete: {
+            url: '/api/setting/:key',
+            method: 'DELETE',
+            params: {
+                key: '@key'
+            }
+        }
+    });
+}]);
+
+CoreServices.factory('Setup', ['$resource', '$cookies', function($resource, $cookies) {
+    return $resource('/api/setup/', {}, {
+        create: {
+            method: 'POST'
+        },
+        validate_db: {
+            url: '/api/setup/validate',
+            method: 'POST'
         }
     });
 }]);
@@ -339,95 +747,6 @@ CoreServices.factory('User', ['$resource', '$cookies', function($resource, $cook
             params: {
                 'userId': '@id'
             }
-        }
-    });
-}]);
-
-CoreServices.factory('Settings', ['$resource', function($resource) {
-    return $resource('/api/setting', {}, {
-        list: {
-            url: '/api/setting',
-            method: 'GET',
-            isArray: true,
-        },
-
-        // POST endpoint handles create + update in this case
-        put: {
-            url: '/api/setting/:key',
-            method: 'PUT',
-            params: {
-                key: '@key'
-            }
-        },
-
-        delete: {
-            url: '/api/setting/:key',
-            method: 'DELETE',
-            params: {
-                key: '@key'
-            }
-        }
-    });
-}]);
-
-CoreServices.factory('Revision', ['$resource', function($resource) {
-    return $resource('/api/revision', {}, {
-        list: {
-            url: '/api/revision',
-            method: 'GET',
-            isArray: true,
-            params: {
-                'entity': '@entity',
-                'id': '@id'
-            }
-        },
-
-        revert: {
-            url: '/api/revision/revert',
-            method: 'POST',
-            params: {
-                'entity': '@entity',
-                'id': '@id',
-                'revision_id': '@revision_id'
-            }
-        }
-    });
-}]);
-
-CoreServices.factory('Pulse', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/pulse/:pulseId', {}, {
-        list: {
-            url: '/api/pulse',
-            method: 'GET',
-            isArray: true
-        },
-        create: {
-            url: '/api/pulse',
-            method: 'POST',
-            headers: { 'X-CSRFToken': () => $cookies.csrftoken },
-        },
-        get: {
-            method: 'GET',
-            params: { pulseId: '@pulseId' },
-        },
-        update: {
-            method: 'PUT',
-            params: { pulseId: '@id' },
-            headers: { 'X-CSRFToken': () => $cookies.csrftoken },
-        },
-        delete: {
-            method: 'DELETE',
-            params: { pulseId: '@pulseId' },
-            headers: { 'X-CSRFToken': () => $cookies.csrftoken },
-        },
-        form_input: {
-            url: '/api/pulse/form_input',
-            method: 'GET',
-        },
-        preview_card: {
-            url: '/api/pulse/preview_card_info/:id',
-            params: { id: '@id' },
-            method: 'GET',
         }
     });
 }]);

@@ -41,6 +41,6 @@
      :running_time $
      :id $
      :uuid $})
-  ((user->client :rasta) :post 200 "dataset" {:database (db-id)
+  ((user->client :rasta) :post 200 "dataset" {:database (id)
                                                    :type "native"
                                                    :native {:query "foobar"}}))

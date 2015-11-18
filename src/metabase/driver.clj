@@ -36,8 +36,7 @@
   {:foreign-keys                       #{:table-fks}
    :nested-fields                      #{:active-nested-field-name->type}
    :set-timezone                       nil
-   :standard-deviation-aggregations    nil
-   :unix-timestamp-special-type-fields nil})
+   :standard-deviation-aggregations    nil})
 
 (def ^:private ^:const optional-features
   (set (keys feature->required-fns)))
@@ -115,6 +114,10 @@
     (when (f driver)
       (assert (fn? (f driver))
         (format "Not a fn: %s" f)))))
+
+(def ^:const driver-defaults
+  "Default implementations of methods for drivers."
+  {:date-interval u/relative-date})
 
 (defmacro defdriver
   "Define and validate a new Metabase DB driver.
@@ -252,7 +255,8 @@
    As with the other Field syncing functions in `metabase.driver.sync`, this method should return the modified FIELD, if any, or `nil`."
   [driver-name driver-map]
   `(def ~(vary-meta driver-name assoc :metabase.driver/driver (keyword driver-name))
-     (let [m# ~driver-map]
+     (let [m# (merge driver-defaults
+                     ~driver-map)]
        (verify-driver m#)
        m#)))
 

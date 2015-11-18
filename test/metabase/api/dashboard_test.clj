@@ -127,7 +127,7 @@
                      :visualization_settings {:global {:title nil}}
                      :public_perms 0
                      :created_at $
-                     :database_id (db-id)
+                     :database_id (id)
                      :table_id (id :categories)
                      :query_type "query"})
             :updated_at $

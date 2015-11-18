@@ -8,7 +8,8 @@
                        [utils :as utils])
             [metabase.driver :as driver, :refer [defdriver]]
             [metabase.driver.generic-sql :refer [sql-driver]]
-            [metabase.driver.generic-sql.util :refer [funcs]]))
+            [metabase.driver.generic-sql.util :refer [funcs]]
+            [metabase.util :as u]))
 
 ;;; # Korma 0.4.2 Bug Workaround
 ;; (Buggy code @ https://github.com/korma/Korma/blob/684178c386df529558bbf82097635df6e75fb339/src/korma/mysql.clj)
@@ -61,7 +62,10 @@
 (defn- connection-details->spec [details]
   (-> details
       (set/rename-keys {:dbname :db})
-      kdb/mysql))
+      kdb/mysql
+      ;; 0000-00-00 dates are valid in MySQL, but JDBC barfs when queries return them because java.sql.Date doesn't allow it.
+      ;; Add a param to the end of the connection string that tells MySQL to convert 0000-00-00 dates to NULL when returning them.
+      (update :subname (u/rpartial str "?zeroDateTimeBehavior=convertToNull"))))
 
 (defn- unix-timestamp->timestamp [field-or-value seconds-or-milliseconds]
   (utils/func (case seconds-or-milliseconds

@@ -2,14 +2,13 @@
   "Tests for /api/table endpoints."
   (:require [expectations :refer :all]
             [metabase.db :refer :all]
-            [metabase.driver.mongo.test-data :as mongo-data :refer [mongo-test-db-id]]
             (metabase [http-client :as http]
                       [middleware :as middleware])
             (metabase.models [field :refer [Field]]
                              [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])
             [metabase.test.data :refer :all]
-            (metabase.test.data [data :as data]
+            (metabase.test.data [dataset-definitions :as defs]
                                 [datasets :as datasets]
                                 [users :refer :all])
             [metabase.test.util :refer [match-$ expect-eval-actual-first]]))
@@ -25,29 +24,29 @@
 
 ;; ## GET /api/table?org
 ;; These should come back in alphabetical order and include relevant metadata
-(expect (set (reduce concat (for [dataset-name datasets/test-dataset-names]
-                              (datasets/with-dataset-when-testing dataset-name
+(expect (set (reduce concat (for [engine datasets/test-engines]
+                              (datasets/with-engine-when-testing engine
                                 [{:name                (format-name "categories")
                                   :display_name        "Categories"
-                                  :db_id               (db-id)
+                                  :db_id               (id)
                                   :active              true
                                   :rows                75
                                   :id                  (id :categories)}
                                  {:name                (format-name "checkins")
                                   :display_name        "Checkins"
-                                  :db_id               (db-id)
+                                  :db_id               (id)
                                   :active              true
                                   :rows                1000
                                   :id                  (id :checkins)}
                                  {:name                (format-name "users")
                                   :display_name        "Users"
-                                  :db_id               (db-id)
+                                  :db_id               (id)
                                   :active              true
                                   :rows                15
                                   :id                  (id :users)}
                                  {:name                (format-name "venues")
                                   :display_name        "Venues"
-                                  :db_id               (db-id)
+                                  :db_id               (id)
                                   :active              true
                                   :rows                100
                                   :id                  (id :venues)}]))))
@@ -66,7 +65,7 @@
                            :engine          "h2"
                            :id              $
                            :updated_at      $
-                           :name            "Test Database"
+                           :name            "test-data"
                            :is_sample       false
                            :organization_id nil
                            :description     nil})
@@ -79,7 +78,7 @@
        :active          true
        :pk_field        (deref $pk_field)
        :id              (id :venues)
-       :db_id           (db-id)
+       :db_id           (id)
        :created_at      $})
     ((user->client :rasta) :get 200 (format "table/%d" (id :venues))))
 
@@ -129,7 +128,7 @@
                            :engine          "h2"
                            :id              $
                            :updated_at      $
-                           :name            "Test Database"
+                           :name            "test-data"
                            :is_sample       false
                            :organization_id nil
                            :description     nil})
@@ -176,7 +175,7 @@
        :entity_name     nil
        :active          true
        :id              (id :categories)
-       :db_id           (db-id)
+       :db_id           (id)
        :created_at      $})
     ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :categories))))
 
@@ -189,7 +188,7 @@
                               (+ (.getYear inst) 1900)
                               (+ (.getMonth inst) 1)
                               (.getDate inst)))]
-    (->> data/test-data
+    (->> defs/test-data
          :table-definitions
          first
          :rows
@@ -211,7 +210,7 @@
                            :engine          "h2"
                            :id              $
                            :updated_at      $
-                           :name            "Test Database"
+                           :name            "test-data"
                            :is_sample       false
                            :organization_id nil
                            :description     nil})
@@ -291,11 +290,8 @@
        :entity_name     nil
        :active          true
        :id              (id :users)
-       :db_id           (db-id)
-       :field_values    {(keyword (str (id :users :last_login)))
-                         user-last-login-date-strs
-
-                         (keyword (str (id :users :name)))
+       :db_id           (id)
+       :field_values    {(keyword (str (id :users :name)))
                          ["Broen Olujimi"
                           "Conchúr Tihomir"
                           "Dwight Gresham"
@@ -326,7 +322,7 @@
                            :engine          "h2"
                            :id              $
                            :updated_at      $
-                           :name            "Test Database"
+                           :name            "test-data"
                            :is_sample       false
                            :organization_id nil
                            :description     nil})
@@ -389,11 +385,8 @@
        :entity_name     nil
        :active          true
        :id              (id :users)
-       :db_id           (db-id)
-       :field_values    {(keyword (str (id :users :last_login)))
-                         user-last-login-date-strs
-
-                         (keyword (str (id :users :name)))
+       :db_id           (id)
+       :field_values    {(keyword (str (id :users :name)))
                          ["Broen Olujimi"
                           "Conchúr Tihomir"
                           "Dwight Gresham"
@@ -425,7 +418,7 @@
        :db              (match-$ (db)
                           {:description     nil
                            :organization_id $
-                           :name            "Test Database"
+                           :name            "test-data"
                            :is_sample       false
                            :updated_at      $
                            :details         $
@@ -441,7 +434,7 @@
        :active          true
        :pk_field        (deref $pk_field)
        :id              $
-       :db_id           (db-id)
+       :db_id           (id)
        :created_at      $})
     (do ((user->client :crowberto) :put 200 (format "table/%d" (id :users)) {:display_name "Userz"
                                                                              :entity_type "person"
@@ -494,7 +487,7 @@
                                              :db              (match-$ (db)
                                                                 {:description     nil,
                                                                  :organization_id nil,
-                                                                 :name            "Test Database",
+                                                                 :name            "test-data",
                                                                  :is_sample       false,
                                                                  :updated_at      $,
                                                                  :id              $,

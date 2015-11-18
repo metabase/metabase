@@ -20,7 +20,7 @@
       :description            rand-name
       :public_perms           2
       :display                "table"
-      :dataset_query          {:database (db-id)
+      :dataset_query          {:database (id)
                                :type     "query"
                                :query    {:aggregation ["rows"]
                                           :source_table (id :categories)}}
@@ -30,7 +30,7 @@
 (defn- test-card-object [card]
   {:description (:name card),
    :table_id (id :categories),
-   :database_id (db-id),
+   :database_id (id),
    :organization_id nil,
    :query_type "query",
    :name (:name card),
