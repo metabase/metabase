@@ -1,4 +1,4 @@
-(ns metabase.middleware
+ (ns metabase.middleware
   "Metabase-specific middleware functions & configuration."
   (:require [clojure.math.numeric-tower :as math]
             [clojure.tools.logging :as log]
@@ -25,7 +25,7 @@
        (= (.substring uri 0 4) "/api")))
 
 (defn- index?
-  "Is this ring request one that will serve `index.html`?"
+  "Is this ring request one that will serve `index.html` or `init.html`?"
   [{:keys [uri]}]
   (or (zero? (count uri))
       (not (or (re-matches #"^/app/.*$" uri)
@@ -39,8 +39,8 @@
 (def ^:const metabase-session-header "x-metabase-session")
 (def ^:const metabase-api-key-header "x-metabase-apikey")
 
-(def ^:const response-unauthentic {:status 401 :body "Unauthenticated"})
-(def ^:const response-forbidden   {:status 403 :body "Forbidden"})
+(def ^:const response-unauthentic {:status 401, :body "Unauthenticated"})
+(def ^:const response-forbidden   {:status 403, :body "Forbidden"})
 
 
 (defn wrap-session-id
@@ -125,11 +125,12 @@
 
 ;;; # ------------------------------------------------------------ SECURITY HEADERS ------------------------------------------------------------
 
-(def ^:private ^:const cache-prevention-headers
+(defn- cache-prevention-headers
   "Headers that tell browsers not to cache a response."
+  []
   {"Cache-Control" "max-age=0, no-cache, must-revalidate, proxy-revalidate"
    "Expires"        "Tue, 03 Jul 2001 06:00:00 GMT"
-   "Last-Modified"  "{now} GMT"})
+   "Last-Modified"  (u/format-date :rfc822)})
 
 (def ^:private ^:const strict-transport-security-header
   "Tell browsers to only access this resource over HTTPS for the next year (prevent MTM attacks).
@@ -166,22 +167,13 @@
   (when-let [k (ssl-certificate-public-key)]
     {"Public-Key-Pins" (format "pin-sha256=\"base64==%s\"; max-age=31536000" k)}))
 
-;; TODO - Should we send the Access-Control-Allow-Origin header?
-;; We could prevent access to the API from malicious 3rd-party websites, for example.
-;; e.g. If someone shady hosts a fake instance of Metabase that tries to use the backend of the a different instance browsers would prevent that if we configure CORS
-;; But if this is ever set improperly it would be impossible to unset because you won't be able to make API requests to change it
-;; See https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS for more information.
-#_(defn- access-control-allow-origin-header []
-    (when-let [url (metabase.core/-site-url)]
-        {"Access-Control-Allow-Origin" url}))
-
 (defn- api-security-headers [] ; don't need to include all the nonsense we include with index.html
-  (merge cache-prevention-headers
+  (merge (cache-prevention-headers)
          strict-transport-security-header
          (public-key-pins-header)))
 
 (defn- index-page-security-headers []
-  (merge cache-prevention-headers
+  (merge (cache-prevention-headers)
          strict-transport-security-header
          content-security-policy-header
          (public-key-pins-header)
