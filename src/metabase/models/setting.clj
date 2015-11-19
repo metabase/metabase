@@ -47,9 +47,11 @@
          restore-cache-if-needed
          settings-list)
 
-;; # PUBLIC
+;;; # PUBLIC
 
-;; ## ACCESSORS
+;;; ## ACCESSORS
+
+;;; ### GET
 
 (defn get
   "Fetch value of `Setting`, first trying our cache, or fetching the value
@@ -63,6 +65,21 @@
       (when-let [v (sel :one :field [Setting :value] :key (name k))]
         (swap! cached-setting->value assoc k v)
         v)))
+
+(defn- get-from-env-var
+  "Given a `Setting` like `:mandrill-api-key`, return the value of the corresponding env var,
+   e.g. `MB_MANDRILL_API_KEY`."
+  [setting-key]
+  (env/env (keyword (str "mb-" (name setting-key)))))
+
+(defn get*
+  "Get the value of a `Setting`. Unlike `get`, this also includes values from env vars."
+  [setting-key]
+  (or (get setting-key)
+      (get-from-env-var setting-key)))
+
+
+;;; ### SET / DELETE
 
 (defn set
   "Set the value of a `Setting`.
@@ -89,13 +106,17 @@
   (swap! cached-setting->value dissoc k)
   (del Setting :key (name k)))
 
-;; ## DEFSETTING
+(defn set*
+  "Set the value of a `Setting`, deleting it if VALUE is `nil` or an empty string."
+  [setting-key value]
+  (if (or (not value)
+          (and (string? value)
+               (not (seq value))))
+    (delete setting-key)
+    (set setting-key value)))
 
-(defn get-from-env-var
-  "Given a `Setting` like `:mandrill-api-key`, return the value of the corresponding env var,
-   e.g. `MB_MANDRILL_API_KEY`."
-  [setting-key]
-  (env/env (keyword (str "mb-" (name setting-key)))))
+
+;;; ## DEFSETTING
 
 (defmacro defsetting
   "Defines a new `Setting` that will be added to the DB at some point in the future.
@@ -122,17 +143,12 @@
        {::is-setting?   true
         ::default-value ~default-value
         ::options       ~options}
-       ([]
-        (or (get ~setting-key)
-            (get-from-env-var ~setting-key)
-            ~default-value))
-       ([value#]
-        (if-not value#
-          (delete ~setting-key)
-          (set ~setting-key value#))))))
+       ([]       (or (get* ~setting-key)
+                     ~default-value))
+       ([value#] (set* ~setting-key value#)))))
 
 
-;; ## ALL SETTINGS (ETC)
+;;; ## ALL SETTINGS (ETC)
 
 (defn all
   "Return a map of all *defined* `Settings`.
@@ -168,7 +184,7 @@
    :email_configured      (not (s/blank? (or (get :email-smtp-host) (get-from-env-var :email-smtp-host))))
    :admin_email           (get :admin-email)})
 
-;; # IMPLEMENTATION
+;;; # IMPLEMENTATION
 
 (defn- restore-cache-if-needed []
   (when-not @cached-setting->value
