@@ -73,7 +73,7 @@
 (defn fks-supported?
   "Does the current engine support foreign keys?"
   []
-  (contains? (:features *data-loader*) :foreign-keys))
+  (contains? (driver/features *data-loader*) :foreign-keys))
 
 (defn default-schema []       (datasets/default-schema *data-loader*))
 (defn id-field-type []        (datasets/id-field-type *data-loader*))

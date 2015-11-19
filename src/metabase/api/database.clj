@@ -38,12 +38,13 @@
         (catch Throwable e
           (response-invalid :dbname (.getMessage e)))))))
 
+;; TODO - Just make `:ssl` a `feature`
 (defn supports-ssl?
   "Predicate function which determines if a given `engine` supports the `:ssl` setting."
   [engine]
   {:pre [(driver/is-engine? engine)]}
   (let [driver-props (->> (driver/engine->driver engine)
-                          :details-fields
+                          driver/details-fields
                           (map :name)
                           set)]
     (contains? driver-props "ssl")))
