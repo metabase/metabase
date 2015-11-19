@@ -236,8 +236,8 @@
 
 (defn render-img-data-uri
   "Takes a PNG byte array and returns a Base64 encoded URI"
-  [bytes]
-  (str "data:image/png;base64," (new String (org.fit.cssbox.misc.Base64Coder/encode bytes))))
+  [img-bytes]
+  (str "data:image/png;base64," (new String (org.fit.cssbox.misc.Base64Coder/encode img-bytes))))
 
 (defn- render-pulse-section
   [render-img {:keys [card result]}]
@@ -246,11 +246,11 @@
 
 ;; HACK: temporary workaround to postal requiring a file as the attachment
 (defn- write-byte-array-to-temp-file
-  [bytes]
+  [img-bytes]
   (let [file (java.io.File/createTempFile "metabase_pulse_image_" ".png")
         fos (new java.io.FileOutputStream file)]
     (.deleteOnExit file)
-    (.write fos bytes)
+    (.write fos img-bytes)
     (.close fos)
     file))
 

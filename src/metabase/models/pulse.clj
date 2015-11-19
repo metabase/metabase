@@ -145,8 +145,8 @@
   `PulseCards`, `PulseChannels`, and `PulseChannelRecipients`.
 
    Returns the newly created `Pulse` or throws an Exception."
-  [name creator-id cards channels]
-  {:pre [(string? name)
+  [pulse-name creator-id cards channels]
+  {:pre [(string? pulse-name)
          (integer? creator-id)
          (sequential? cards)
          (> (count cards) 0)
@@ -156,7 +156,7 @@
   (kdb/transaction
     (let [{:keys [id] :as pulse} (db/ins Pulse
                                    :creator_id creator-id
-                                   :name name)]
+                                   :name pulse-name)]
       ;; add cards to the Pulse
       (update-pulse-cards pulse cards)
       ;; add channels to the Pulse
