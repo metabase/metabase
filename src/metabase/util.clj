@@ -7,13 +7,16 @@
             [clojure.tools.logging :as log]
             [colorize.core :as color]
             [medley.core :as m])
-  (:import (java.net Socket
+  (:import clojure.lang.Keyword
+           (java.net Socket
                      InetSocketAddress
                      InetAddress)
            java.sql.Timestamp
            (java.util Calendar TimeZone)
            javax.xml.bind.DatatypeConverter
            org.joda.time.format.DateTimeFormatter))
+
+(declare pprint-to-str)
 
 ;;; ### Protocols
 
@@ -46,8 +49,13 @@
     "Coerce object to a `DateTimeFormatter`."))
 
 (extend-protocol IDateTimeFormatterCoercible
+  ;; Specify a format string like "yyyy-MM-dd"
   String            (->DateTimeFormatter [this] (time/formatter this))
-  DateTimeFormatter (->DateTimeFormatter [this] this))
+  DateTimeFormatter (->DateTimeFormatter [this] this)
+  ;; Keyword will be used to get matching formatter from time/formatters
+  Keyword           (->DateTimeFormatter [this] (or (time/formatters this)
+                                                    (throw (Exception. (format "Invalid formatter name, must be one of:\n%s"
+                                                                               (pprint-to-str (sort (keys time/formatters)))))))))
 
 
 ;;; ## Date Stuff
@@ -59,24 +67,29 @@
   (->Timestamp (System/currentTimeMillis)))
 
 (defn format-date
-  "Format DATE using a given FORMATTER.
-   DATE is anything that can be passed `->Timestamp`, such as a `Long` or ISO-8601 `String`.
-   DATE-FORMAT is anything that can be passed to `->DateTimeFormatter`, including a `String` or `DateTimeFormatter`."
-  ^String [date-format date]
-  (time/unparse (->DateTimeFormatter date-format) (coerce/from-long (.getTime (->Timestamp date)))))
+  "Format DATE using a given DATE-FORMAT.
 
-(def ^{:arglists '([date])} date->yyyy-mm-dd
+   DATE is anything that can coerced to a `Timestamp` via `->Timestamp`, such as a `Date`, `Timestamp`,
+   `Long` (ms since the epoch), or an ISO-8601 `String`. DATE defaults to the current moment in time.
+
+   DATE-FORMAT is anything that can be passed to `->DateTimeFormatter`, such as `String`, `Keyword`, or `DateTimeFormatter`.
+
+
+     (format-date \"yyyy-MM-dd\")                        -> \"2015-11-18\"
+     (format-date :year (java.util.Date.))               -> \"2015\"
+     (format-date :date-time (System/currentTimeMillis)) -> \"2015-11-18T23:55:03.841Z\""
+  (^String [date-format]
+   (format-date date-format (System/currentTimeMillis)))
+  (^String [date-format date]
+   (time/unparse (->DateTimeFormatter date-format) (coerce/from-long (.getTime (->Timestamp date))))))
+
+(def ^{:arglists '([] [date])} date->yyyy-mm-dd
   "Format DATE as a `YYYY-MM-DD` string."
   (partial format-date "yyyy-MM-dd"))
 
-(def ^{:arglists '([date])} date->iso-8601
+(def ^{:arglists '([] [date])} date->iso-8601
   "Format DATE a an ISO-8601 string."
-  (partial format-date (time/formatters :date-time)))
-
-(defn now-iso8601
-  "Return the current date as an ISO-8601 formatted string."
-  ^String []
-  (date->iso-8601 (System/currentTimeMillis)))
+  (partial format-date :date-time))
 
 (defn date-string?
   "Is S a valid ISO 8601 date string?"
