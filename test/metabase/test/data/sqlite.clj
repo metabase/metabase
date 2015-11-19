@@ -3,7 +3,8 @@
             [korma.core :as k]
             (metabase.test.data [generic-sql :as generic]
                                 [interface :as i])
-            [metabase.util :as u]))
+            [metabase.util :as u])
+  (:import metabase.driver.sqlite.SQLiteDriver))
 
 (defn- database->connection-details
   [_ context {:keys [short-lived?], :as dbdef}]
@@ -31,9 +32,7 @@
                                                                                 (k/raw (format "DATETIME('%s')" (u/date->iso-8601 v)))
                                                                                 v)))))))
 
-(defrecord SQLiteDatasetLoader [dbpromise])
-
-(extend SQLiteDatasetLoader
+(extend SQLiteDriver
   generic/IGenericSQLDatasetLoader
   (merge generic/DefaultsMixin
          {:add-fk-sql                (constantly nil) ; TODO - fix me

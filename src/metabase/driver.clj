@@ -119,7 +119,7 @@
   "Default implementations of methods for drivers."
   {:date-interval u/relative-date})
 
-(defmacro defdriver
+(defn driver
   "Define and validate a new Metabase DB driver.
 
    All drivers must include the following keys:
@@ -253,12 +253,11 @@
    This is a chance for drivers to do custom `Field` syncing specific to their database.
    For example, the Postgres driver can mark Postgres JSON fields as `special_type = json`.
    As with the other Field syncing functions in `metabase.driver.sync`, this method should return the modified FIELD, if any, or `nil`."
-  [driver-name driver-map]
-  `(def ~(vary-meta driver-name assoc :metabase.driver/driver (keyword driver-name))
-     (let [m# (merge driver-defaults
-                     ~driver-map)]
-       (verify-driver m#)
-       m#)))
+  [driver-map]
+  (let [m (merge driver-defaults
+                 driver-map)]
+    (verify-driver m)
+    m))
 
 
 ;;; ## CONFIG

@@ -3,7 +3,7 @@
             [clojure.tools.logging :as log]
             [korma.core :as k]
             [korma.sql.utils :as utils]
-            [metabase.driver :refer [max-sync-lazy-seq-results defdriver]]
+            [metabase.driver :as driver]
             (metabase.driver.generic-sql [query-processor :as qp]
                                          [util :refer :all])
             [metabase.models.field :as field]
@@ -75,7 +75,7 @@
                                                         (= (count results) step))
                                                (-fetch-chunk (+ start step) step limit))))))]
     (fetch-chunk 0 field-values-lazy-seq-chunk-size
-                 max-sync-lazy-seq-results)))
+                 driver/max-sync-lazy-seq-results)))
 
 (defn- table-rows-seq [database table-name]
   (k/select (-> (k/create-entity table-name)
@@ -198,27 +198,28 @@
   [driver]
   ;; Verify the driver
   (verify-sql-driver driver)
-  (merge
-   {:features                  (set (cond-> [:foreign-keys
-                                             :standard-deviation-aggregations]
-                                      (:set-timezone-sql driver) (conj :set-timezone)))
-    :qp-clause->handler        qp/clause->handler
-    :can-connect?              (partial can-connect? (:connection-details->spec driver))
-    :process-query             process-query
-    :sync-in-context           sync-in-context
-    :active-tables             (partial active-tables (:excluded-schemas driver))
-    :active-column-names->type (partial active-column-names->type (:column->base-type driver))
-    :table-pks                 table-pks
-    :field-values-lazy-seq     field-values-lazy-seq
-    :table-rows-seq            table-rows-seq
-    :table-fks                 table-fks
-    :field-avg-length          (partial field-avg-length (:string-length-fn driver))
-    :field-percent-urls        field-percent-urls
-    :date-interval             (let [date-interval (:date-interval driver)]
-                                 (fn [unit amount]
-                                   ;; Add some extra param validation
-                                   {:pre [(contains? #{:second :minute :hour :day :week :month :quarter :year} unit)]}
-                                   (date-interval unit amount)))
-    :stddev-fn                 :STDDEV
-    :current-datetime-fn       (k/sqlfn* :NOW)}
-   driver))
+  (driver/driver
+   (merge
+    {:features                  (set (cond-> [:foreign-keys
+                                              :standard-deviation-aggregations]
+                                       (:set-timezone-sql driver) (conj :set-timezone)))
+     :qp-clause->handler        qp/clause->handler
+     :can-connect?              (partial can-connect? (:connection-details->spec driver))
+     :process-query             process-query
+     :sync-in-context           sync-in-context
+     :active-tables             (partial active-tables (:excluded-schemas driver))
+     :active-column-names->type (partial active-column-names->type (:column->base-type driver))
+     :table-pks                 table-pks
+     :field-values-lazy-seq     field-values-lazy-seq
+     :table-rows-seq            table-rows-seq
+     :table-fks                 table-fks
+     :field-avg-length          (partial field-avg-length (:string-length-fn driver))
+     :field-percent-urls        field-percent-urls
+     :date-interval             (let [date-interval (:date-interval driver)]
+                                  (fn [unit amount]
+                                    ;; Add some extra param validation
+                                    {:pre [(contains? #{:second :minute :hour :day :week :month :quarter :year} unit)]}
+                                    (date-interval unit amount)))
+     :stddev-fn                 :STDDEV
+     :current-datetime-fn       (k/sqlfn* :NOW)}
+    driver)))

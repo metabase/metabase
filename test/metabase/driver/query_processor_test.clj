@@ -1360,7 +1360,7 @@
 
 ;; RELATIVE DATES
 (defn- database-def-with-timestamps [interval-seconds]
-  (let [{:keys [date-interval]} (driver)]
+  (let [{:keys [date-interval]} *data-loader*]
     (create-database-definition "DB"
       ["checkins"
        [{:field-name "timestamp"
