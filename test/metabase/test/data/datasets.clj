@@ -7,6 +7,12 @@
             [expectations :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
+            (metabase.driver [h2 :refer [h2]]
+                             [mongo :refer [mongo]]
+                             [mysql :refer [mysql]]
+                             [postgres :refer [postgres]]
+                             [sqlite :refer [sqlite]]
+                             [sqlserver :refer [sqlserver]])
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
             (metabase.test.data [dataset-definitions :as defs]
@@ -17,12 +23,12 @@
                                 [sqlite :as sqlite]
                                 [sqlserver :as sqlserver])
             [metabase.util :as u])
-  (:import metabase.test.data.h2.H2DatasetLoader
-           metabase.test.data.mongo.MongoDatasetLoader
-           metabase.test.data.mysql.MySQLDatasetLoader
-           metabase.test.data.postgres.PostgresDatasetLoader
-           metabase.test.data.sqlite.SQLiteDatasetLoader
-           metabase.test.data.sqlserver.SQLServerDatasetLoader))
+  (:import metabase.driver.h2.H2Driver
+           metabase.driver.mongo.MongoDriver
+           metabase.driver.mysql.MySQLDriver
+           metabase.driver.postgres.PostgresDriver
+           metabase.driver.sqlite.SQLiteDriver
+           metabase.driver.sqlserver.SQLServerDriver))
 
 ;; # IDataset
 
@@ -61,7 +67,7 @@
 
 ;; ## Mongo
 
-(extend MongoDatasetLoader
+(extend MongoDriver
   IDataset
   (merge IDatasetDefaultsMixin
          {:format-name          (fn [_ table-or-field-name]
@@ -81,7 +87,7 @@
 
 ;;; ### H2
 
-(extend H2DatasetLoader
+(extend H2Driver
   IDataset
   (merge GenericSQLIDatasetMixin
          {:default-schema (constantly "PUBLIC")
@@ -93,7 +99,7 @@
 
 ;;; ### Postgres
 
-(extend PostgresDatasetLoader
+(extend PostgresDriver
   IDataset
   (merge GenericSQLIDatasetMixin
          {:default-schema (constantly "public")}))
@@ -101,7 +107,7 @@
 
 ;;; ### MySQL
 
-(extend MySQLDatasetLoader
+(extend MySQLDriver
   IDataset
   (merge GenericSQLIDatasetMixin
          {:sum-field-type (constantly :BigIntegerField)}))
@@ -109,14 +115,14 @@
 
 ;;; ### SQLite
 
-(extend SQLiteDatasetLoader
+(extend SQLiteDriver
   IDataset
   GenericSQLIDatasetMixin)
 
 
 ;;; ### SQLServer
 
-(extend SQLServerDatasetLoader
+(extend SQLServerDriver
   IDataset
   (merge GenericSQLIDatasetMixin
          {:default-schema (constantly "dbo")
@@ -127,12 +133,12 @@
 
 (def ^:private engine->loader*
   "Map of dataset keyword name -> dataset instance (i.e., an object that implements `IDataset`)."
-  {:mongo     (MongoDatasetLoader.     (promise))
-   :h2        (H2DatasetLoader.        (promise))
-   :postgres  (PostgresDatasetLoader.  (promise))
-   :mysql     (MySQLDatasetLoader.     (promise))
-   :sqlite    (SQLiteDatasetLoader.    (promise))
-   :sqlserver (SQLServerDatasetLoader. (promise))})
+  {:mongo     (assoc mongo     :dbpromise (promise))
+   :h2        (assoc h2        :dbpromise (promise))
+   :postgres  (assoc postgres  :dbpromise (promise))
+   :mysql     (assoc mysql     :dbpromise (promise))
+   :sqlite    (assoc sqlite    :dbpromise (promise))
+   :sqlserver (assoc sqlserver :dbpromise (promise))})
 
 (def ^:const all-valid-engines
   "Set of names of all valid datasets."

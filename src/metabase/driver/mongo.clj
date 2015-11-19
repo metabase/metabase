@@ -11,7 +11,7 @@
                     [core :as mg]
                     [db :as mdb]
                     [query :as mq])
-            [metabase.driver :as driver, :refer [defdriver]]
+            [metabase.driver :as driver]
             (metabase.driver.mongo [query-processor :as qp]
                                    [util :refer [*mongo-connection* with-mongo-connection values->base-type]])
             [metabase.util :as u]))
@@ -121,39 +121,43 @@
                             first                         ; keep just the type
                             driver/class->base-type))))))
 
-(defdriver mongo
-  {:driver-name                       "MongoDB"
-   :details-fields                    [{:name         "host"
-                                        :display-name "Host"
-                                        :default      "localhost"}
-                                       {:name         "port"
-                                        :display-name "Port"
-                                        :type         :integer
-                                        :default      27017}
-                                       {:name         "dbname"
-                                        :display-name "Database name"
-                                        :placeholder  "carrierPigeonDeliveries"
-                                        :required     true}
-                                       {:name         "user"
-                                        :display-name "Database username"
-                                        :placeholder  "What username do you use to login to the database?"}
-                                       {:name         "pass"
-                                        :display-name "Database password"
-                                        :type         :password
-                                        :placeholder  "******"}
-                                       {:name         "ssl"
-                                        :display-name "Use a secure connection (SSL)?"
-                                        :type         :boolean
-                                        :default      false}]
-   :features                          #{:nested-fields}
-   :can-connect?                      can-connect?
-   :active-tables                     active-tables
-   :field-values-lazy-seq             field-values-lazy-seq
-   :active-column-names->type         active-column-names->type
-   :table-pks                         (constantly #{"_id"})
-   :process-query                     process-query
-   :process-query-in-context          process-query-in-context
-   :sync-in-context                   sync-in-context
-   :date-interval                     u/relative-date
-   :humanize-connection-error-message humanize-connection-error-message
-   :active-nested-field-name->type    active-nested-field-name->type})
+(defrecord MongoDriver [])
+
+(def ^:metabase.driver/driver mongo
+  (map->MongoDriver
+   (driver/driver
+    {:driver-name                       "MongoDB"
+     :details-fields                    [{:name         "host"
+                                          :display-name "Host"
+                                          :default      "localhost"}
+                                         {:name         "port"
+                                          :display-name "Port"
+                                          :type         :integer
+                                          :default      27017}
+                                         {:name         "dbname"
+                                          :display-name "Database name"
+                                          :placeholder  "carrierPigeonDeliveries"
+                                          :required     true}
+                                         {:name         "user"
+                                          :display-name "Database username"
+                                          :placeholder  "What username do you use to login to the database?"}
+                                         {:name         "pass"
+                                          :display-name "Database password"
+                                          :type         :password
+                                          :placeholder  "******"}
+                                         {:name         "ssl"
+                                          :display-name "Use a secure connection (SSL)?"
+                                          :type         :boolean
+                                          :default      false}]
+     :features                          #{:nested-fields}
+     :can-connect?                      can-connect?
+     :active-tables                     active-tables
+     :field-values-lazy-seq             field-values-lazy-seq
+     :active-column-names->type         active-column-names->type
+     :table-pks                         (constantly #{"_id"})
+     :process-query                     process-query
+     :process-query-in-context          process-query-in-context
+     :sync-in-context                   sync-in-context
+     :date-interval                     u/relative-date
+     :humanize-connection-error-message humanize-connection-error-message
+     :active-nested-field-name->type    active-nested-field-name->type})))
