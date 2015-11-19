@@ -5,7 +5,8 @@
             [environ.core :refer [env]]
             [metabase.driver.sqlserver :refer [sqlserver]]
             (metabase.test.data [generic-sql :as generic]
-                                [interface :as i])))
+                                [interface :as i]))
+  (:import metabase.driver.sqlserver.SQLServerDriver))
 
 (def ^:private ^:const field-base-type->sql-type
   {:BigIntegerField "BIGINT"
@@ -78,9 +79,7 @@
    [(+suffix db-name) "dbo" table-name field-name]))
 
 
-(defrecord SQLServerDatasetLoader [dbpromise])
-
-(extend SQLServerDatasetLoader
+(extend SQLServerDriver
   generic/IGenericSQLDatasetLoader
   (merge generic/DefaultsMixin
          {:drop-db-if-exists-sql     drop-db-if-exists-sql
@@ -104,7 +103,7 @@
   {:expectations-options :before-run}
   []
   (when (contains? @(resolve 'metabase.test.data.datasets/test-engines) :sqlserver)
-    (let [connection-spec ((sqlserver :connection-details->spec) (database->connection-details nil :server nil))
+    (let [connection-spec ((:connection-details->spec sqlserver) (database->connection-details nil :server nil))
           leftover-dbs    (mapv :name (jdbc/query connection-spec "SELECT name
                                                                    FROM   master.dbo.sysdatabases
                                                                    WHERE  name NOT IN ('tempdb', 'master', 'model', 'msdb', 'rdsadmin');"))]

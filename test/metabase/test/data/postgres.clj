@@ -2,7 +2,8 @@
   "Code for creating / destroying a Postgres database from a `DatabaseDefinition`."
   (:require [environ.core :refer [env]]
             (metabase.test.data [generic-sql :as generic]
-                                [interface :as i])))
+                                [interface :as i]))
+  (:import metabase.driver.postgres.PostgresDriver))
 
 (def ^:private ^:const field-base-type->sql-type
   {:BigIntegerField "BIGINT"
@@ -31,9 +32,7 @@
   (format "DROP TABLE IF EXISTS \"%s\" CASCADE;" table-name))
 
 
-(defrecord PostgresDatasetLoader [dbpromise])
-
-(extend PostgresDatasetLoader
+(extend PostgresDriver
   generic/IGenericSQLDatasetLoader
   (merge generic/DefaultsMixin
          {:drop-table-if-exists-sql  drop-table-if-exists-sql

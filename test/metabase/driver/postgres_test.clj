@@ -35,7 +35,7 @@
                                            :dbname "bird_sightings"
                                            :user   "camsaul"}))
 ;;; # UUID Support
-(def-database-definition ^:private with-uuid
+(def-database-definition ^:const ^:private with-uuid
   ["users"
    [{:field-name "user_id", :base-type :UUIDField}]
    [[#uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]

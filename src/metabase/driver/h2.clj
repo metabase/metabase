@@ -3,7 +3,7 @@
             [korma.db :as kdb]
             [korma.sql.utils :as utils]
             [metabase.db :as db]
-            [metabase.driver :as driver, :refer [defdriver]]
+            [metabase.driver :as driver]
             [metabase.driver.generic-sql :refer [sql-driver]]
             [metabase.driver.generic-sql.util :refer [funcs]]
             [metabase.models.database :refer [Database]]))
@@ -188,17 +188,23 @@
     #".*" ; default
     message))
 
-(defdriver h2
-  (sql-driver {:driver-name                       "H2"
-               :details-fields                    [{:name         "db"
-                                                    :display-name "Connection String"
-                                                    :placeholder  "file:/Users/camsaul/bird_sightings/toucans;AUTO_SERVER=TRUE"
-                                                    :required     true}]
-               :column->base-type                 column->base-type
-               :string-length-fn                  :LENGTH
-               :connection-details->spec          connection-details->spec
-               :date                              date
-               :date-interval                     date-interval
-               :unix-timestamp->timestamp         unix-timestamp->timestamp
-               :humanize-connection-error-message humanize-connection-error-message
-               :process-query-in-context          process-query-in-context}))
+(defrecord H2Driver [])
+
+(def h2
+  (map->H2Driver
+   (sql-driver
+    {:driver-name                       "H2"
+     :details-fields                    [{:name         "db"
+                                          :display-name "Connection String"
+                                          :placeholder  "file:/Users/camsaul/bird_sightings/toucans;AUTO_SERVER=TRUE"
+                                          :required     true}]
+     :column->base-type                 column->base-type
+     :string-length-fn                  :LENGTH
+     :connection-details->spec          connection-details->spec
+     :date                              date
+     :date-interval                     date-interval
+     :unix-timestamp->timestamp         unix-timestamp->timestamp
+     :humanize-connection-error-message humanize-connection-error-message
+     :process-query-in-context          process-query-in-context})))
+
+(driver/register-driver! :h2 h2)

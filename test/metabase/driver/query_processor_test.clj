@@ -1,6 +1,7 @@
 (ns metabase.driver.query-processor-test
   "Query processing tests that can be ran between any of the available drivers, and should give the same results."
   (:require [clojure.math.numeric-tower :as math]
+            [clojure.set :as set]
             [expectations :refer :all]
             [korma.core :as k]
             [metabase.db :refer :all]
@@ -20,8 +21,18 @@
 
 ;; ### Helper Fns + Macros
 
-(def ^:private ^:const sql-engines
-  #{:h2 :postgres :mysql :sqlserver})
+(defn- engines-that-support [feature]
+  (set (filter (fn [engine]
+                 (contains? (:features (driver/engine->driver engine)) feature))
+               datasets/all-valid-engines)))
+
+(defn- engines-that-dont-support [feature]
+  (set/difference datasets/all-valid-engines (engines-that-support feature)))
+
+(defmacro if-questionable-timezone-support [then else]
+  `(if (contains? #{:sqlserver :mongo :sqlite} *engine*)
+     ~then
+     ~else))
 
 (defmacro ^:private qp-expect-with-all-engines [data q-form & post-process-fns]
   `(datasets/expect-with-all-engines
@@ -490,13 +501,13 @@
 ;; ## LIMIT-MAX-RESULT-ROWS
 ;; Apply limit-max-result-rows to an infinite sequence and make sure it gets capped at `absolute-max-results`
 (expect absolute-max-results
-  (->> ((@(ns-resolve 'metabase.driver.query-processor 'limit) identity) {:rows (repeat [:ok])})
+  (->> ((@(resolve 'metabase.driver.query-processor/limit) identity) {:rows (repeat [:ok])})
        :rows
        count))
 
 ;; Apply an arbitrary max-results on the query and ensure our results size is appropriately constrained
 (expect 1234
-  (->> ((@(ns-resolve 'metabase.driver.query-processor 'limit) identity) {:constraints {:max-results 1234}
+  (->> ((@(resolve 'metabase.driver.query-processor/limit) identity) {:constraints {:max-results 1234}
                                                                                     :query       {:aggregation {:aggregation-type :count}}
                                                                                     :rows        (repeat [:ok])})
        :rows
@@ -504,7 +515,7 @@
 
 ;; Apply a max-results-bare-rows limit specifically on :rows type query
 (expect [46 46]
-  (let [res ((@(ns-resolve 'metabase.driver.query-processor 'limit) identity) {:constraints {:max-results 46}
+  (let [res ((@(resolve 'metabase.driver.query-processor/limit) identity) {:constraints {:max-results 46}
                                                                                          :query       {:aggregation {:aggregation-type :rows}}
                                                                                          :rows        (repeat [:ok])})]
     [(->> res :rows count)
@@ -580,7 +591,7 @@
 ;;; SQL-Only for the time being
 
 ;; ## "STDDEV" AGGREGATION
-(qp-expect-with-engines sql-engines
+(qp-expect-with-engines (engines-that-support :standard-deviation-aggregations)
   {:columns ["stddev"]
    :cols    [(aggregate-col :stddev (venues-col :latitude))]
    :rows    [[(datasets/engine-case
@@ -591,7 +602,7 @@
   (Q aggregate stddev latitude of venues))
 
 ;; Make sure standard deviation fails for the Mongo driver since its not supported
-(datasets/expect-with-engine :mongo
+(datasets/expect-with-engines (engines-that-dont-support :foreign-keys)
   {:status :failed
    :error  "standard-deviation-aggregations is not supported by this driver."}
   (select-keys (Q aggregate stddev latitude of venues) [:status :error]))
@@ -600,7 +611,7 @@
 ;;; ## order_by aggregate fields (SQL-only for the time being)
 
 ;;; ### order_by aggregate ["count"]
-(qp-expect-with-engines sql-engines
+(qp-expect-with-all-engines
   {:columns [(format-name "price")
              "count"]
    :rows    [[4 6]
@@ -615,7 +626,7 @@
 
 
 ;;; ### order_by aggregate ["sum" field-id]
-(qp-expect-with-engines sql-engines
+(qp-expect-with-all-engines
   {:columns [(format-name "price")
              "sum"]
    :rows    [[2 (->sum-type 2855)]
@@ -630,7 +641,7 @@
 
 
 ;;; ### order_by aggregate ["distinct" field-id]
-(qp-expect-with-engines sql-engines
+(qp-expect-with-all-engines
   {:columns [(format-name "price")
              "count"]
    :rows    [[4 6]
@@ -645,29 +656,37 @@
 
 
 ;;; ### order_by aggregate ["avg" field-id]
-(datasets/expect-with-engines sql-engines
+(datasets/expect-with-all-engines
   {:columns [(format-name "price")
              "avg"]
    :rows    [[3 (datasets/engine-case
-                 :h2        22
-                 :postgres  22.0000000000000000M
-                 :mysql     22.0000M
-                 :sqlserver 22)]
+                  :h2        22
+                  :postgres  22.0000000000000000M
+                  :mysql     22.0000M
+                  :sqlserver 22
+                  :mongo     22.0
+                  :sqlite    22.0)]
              [2 (datasets/engine-case
-                 :h2        28
-                 :postgres  28.2881355932203390M
-                 :mysql     28.2881M
-                 :sqlserver 28)]
+                  :h2        28
+                  :postgres  28.2881355932203390M
+                  :mysql     28.2881M
+                  :sqlserver 28
+                  :mongo     28.28813559322034
+                  :sqlite    28.28813559322034)]
              [1 (datasets/engine-case
-                 :h2        32
-                 :postgres  32.8181818181818182M
-                 :mysql     32.8182M
-                 :sqlserver 32)]
+                  :h2        32
+                  :postgres  32.8181818181818182M
+                  :mysql     32.8182M
+                  :sqlserver 32
+                  :mongo     32.81818181818182
+                  :sqlite    32.81818181818182)]
              [4 (datasets/engine-case
-                 :h2        53
-                 :postgres  53.5000000000000000M
-                 :mysql     53.5000M
-                 :sqlserver 53)]]
+                  :h2        53
+                  :postgres  53.5000000000000000M
+                  :mysql     53.5000M
+                  :sqlserver 53
+                  :mongo     53.5
+                  :sqlite    53.5)]]
    :cols    [(venues-col :price)
              (aggregate-col :avg (venues-col :category_id))]}
   (Q return :data
@@ -679,7 +698,7 @@
 ;;; ### order_by aggregate ["stddev" field-id]
 ;; MySQL has a nasty tendency to return different results on different systems so just round everything to the nearest int.
 ;; It also seems to give slightly different results than less-sucky DBs as evidenced below
-(datasets/expect-with-engines sql-engines
+(datasets/expect-with-engines (engines-that-support :standard-deviation-aggregations)
   {:columns [(format-name "price")
              "stddev"]
    :rows    [[3 (datasets/engine-case :h2 26, :postgres 26, :mysql 25, :sqlserver 26)]
@@ -751,19 +770,6 @@
 ;; |                                           UNIX TIMESTAMP SPECIAL_TYPE FIELDS                                           |
 ;; +------------------------------------------------------------------------------------------------------------------------+
 
-(defmacro if-questionable-timezone-support [then else]
-  `(if (contains? #{:sqlserver :mongo} *engine*)
-     ~then
-     ~else))
-
-(defmacro if-sqlserver
-  "SQLServer lacks timezone support; the groupings in sad-toucan-incidents happen in UTC rather than US/Pacfic time. This
-   macro is provided as a convenience for specifying the *slightly* different expected results in the multi-driver unit tests below."
-  [then else]
-  `(if (= :sqlserver *engine*)
-     ~then
-     ~else))
-
 ;; There were 9 "sad toucan incidents" on 2015-06-02
 (datasets/expect-with-all-engines
   (if-questionable-timezone-support
@@ -777,9 +783,9 @@
      return rows count))
 
 (datasets/expect-with-all-engines
-  (if-questionable-timezone-support
-    ;; SQL Server doesn't have a concept of timezone so results are all grouped by UTC
-    ;; This is technically correct but the results differ from less-wack DBs
+  (cond
+    ;; SQL Server and Mongo don't have a concept of timezone so results are all grouped by UTC
+    (contains? #{:sqlserver :mongo} *engine*)
     [[#inst "2015-06-01T07" 6]
      [#inst "2015-06-02T07" 10]
      [#inst "2015-06-03T07" 4]
@@ -790,7 +796,21 @@
      [#inst "2015-06-08T07" 9]
      [#inst "2015-06-09T07" 7]
      [#inst "2015-06-10T07" 9]]
+
+    (= *engine* :sqlite)
+    [["2015-06-01" 6]
+     ["2015-06-02" 10]
+     ["2015-06-03" 4]
+     ["2015-06-04" 9]
+     ["2015-06-05" 9]
+     ["2015-06-06" 8]
+     ["2015-06-07" 8]
+     ["2015-06-08" 9]
+     ["2015-06-09" 7]
+     ["2015-06-10" 9]]
+
     ;; Postgres, MySQL, and H2 -- grouped by DB timezone, US/Pacific in this case
+    :else
     [[#inst "2015-06-01T07" 8]
      [#inst "2015-06-02T07" 9]
      [#inst "2015-06-03T07" 9]
@@ -814,7 +834,7 @@
 
 ;; The top 10 cities by number of Tupac sightings
 ;; Test that we can breakout on an FK field (Note how the FK Field is returned in the results)
-(datasets/expect-with-engines sql-engines
+(datasets/expect-with-engines (engines-that-support :foreign-keys)
   [["Arlington" 16]
    ["Albany" 15]
    ["Portland" 14]
@@ -837,7 +857,7 @@
 ;; Number of Tupac sightings in the Expa office
 ;; (he was spotted here 60 times)
 ;; Test that we can filter on an FK field
-(datasets/expect-with-engines sql-engines
+(datasets/expect-with-engines (engines-that-support :foreign-keys)
   60
   (Q dataset tupac-sightings
      return first-row first
@@ -848,7 +868,7 @@
 ;; THE 10 MOST RECENT TUPAC SIGHTINGS (!)
 ;; (What he was doing when we saw him, sighting ID)
 ;; Check that we can include an FK field in the :fields clause
-(datasets/expect-with-engines sql-engines
+(datasets/expect-with-engines (engines-that-support :foreign-keys)
   [[772 "In the Park"]
    [894 "Working at a Pet Store"]
    [684 "At the Airport"]
@@ -870,7 +890,7 @@
 ;;    (this query targets sightings and orders by cities.name and categories.name)
 ;; 2. Check that we can join MULTIPLE tables in a single query
 ;;    (this query joins both cities and categories)
-(datasets/expect-with-engines sql-engines
+(datasets/expect-with-engines (engines-that-support :foreign-keys)
   ;; CITY_ID, CATEGORY_ID, ID
   ;; Cities are already alphabetized in the source data which is why CITY_ID is sorted
   [[1 12 6]
@@ -891,7 +911,7 @@
 
 
 ;; Check that trying to use a Foreign Key fails for Mongo
-(datasets/expect-with-engine :mongo
+(datasets/expect-with-engines (engines-that-dont-support :foreign-keys)
   {:status :failed
    :error "foreign-keys is not supported by this driver."}
   (select-keys (Q dataset tupac-sightings
@@ -907,7 +927,7 @@
 
 ;;; Nested Field in FILTER
 ;; Get the first 10 tips where tip.venue.name == "Kyle's Low-Carb Grill"
-(datasets/expect-when-testing-engine :mongo
+(datasets/expect-with-engines (engines-that-support :nested-fields)
     [[8   "Kyle's Low-Carb Grill"]
      [67  "Kyle's Low-Carb Grill"]
      [80  "Kyle's Low-Carb Grill"]
@@ -917,7 +937,7 @@
      [417 "Kyle's Low-Carb Grill"]
      [426 "Kyle's Low-Carb Grill"]
      [470 "Kyle's Low-Carb Grill"]]
-  (Q dataset geographical-tips use mongo
+  (Q dataset geographical-tips
      return rows (map (fn [[id _ _ _ {venue-name :name}]] [id venue-name]))
      aggregate rows of tips
      filter = venue...name "Kyle's Low-Carb Grill"
@@ -926,7 +946,7 @@
 
 ;;; Nested Field in ORDER
 ;; Let's get all the tips Kyle posted on Twitter sorted by tip.venue.name
-(datasets/expect-when-testing-engine :mongo
+(datasets/expect-with-engines (engines-that-support :nested-fields)
   [[446
     {:mentions ["@cams_mexican_gastro_pub"], :tags ["#mexican" "#gastro" "#pub"], :service "twitter", :username "kyle"}
     "Cam's Mexican Gastro Pub is a historical and underappreciated place to conduct a business meeting with friends."
@@ -955,7 +975,7 @@
      :medium "http://cloudfront.net/cedd4221-dbdb-46c3-95a9-935cce6b3fe5/med.jpg",
      :small  "http://cloudfront.net/cedd4221-dbdb-46c3-95a9-935cce6b3fe5/small.jpg"}
     {:phone "415-901-6541", :name "Pacific Heights Free-Range Eatery", :categories ["Free-Range" "Eatery"], :id "88b361c8-ce69-4b2e-b0f2-9deedd574af6"}]]
-  (Q dataset geographical-tips use mongo
+  (Q dataset geographical-tips
      return rows
      aggregate rows of tips
      filter and = source...service "twitter"
@@ -964,36 +984,36 @@
 
 ;; Nested Field in AGGREGATION
 ;; Let's see how many *distinct* venue names are mentioned
-(datasets/expect-when-testing-engine :mongo
+(datasets/expect-with-engines (engines-that-support :nested-fields)
   99
-  (Q dataset geographical-tips use mongo
+  (Q dataset geographical-tips
      return first-row first
      aggregate distinct venue...name of tips))
 
 ;; Now let's just get the regular count
-(datasets/expect-when-testing-engine :mongo
+(datasets/expect-with-engines (engines-that-support :nested-fields)
   500
-  (Q dataset geographical-tips use mongo
+  (Q dataset geographical-tips
      return first-row first
      aggregate count venue...name of tips))
 
 ;;; Nested Field in BREAKOUT
 ;; Let's see how many tips we have by source.service
-(datasets/expect-when-testing-engine :mongo
+(datasets/expect-with-engines (engines-that-support :nested-fields)
   {:rows    [["facebook" 107]
              ["flare" 105]
              ["foursquare" 100]
              ["twitter" 98]
              ["yelp" 90]]
    :columns ["source.service" "count"]}
-  (Q dataset geographical-tips use mongo
+  (Q dataset geographical-tips
      return :data (#(dissoc % :cols))
      aggregate count of tips
      breakout source...service))
 
 ;;; Nested Field in FIELDS
 ;; Return the first 10 tips with just tip.venue.name
-(datasets/expect-when-testing-engine :mongo
+(datasets/expect-with-engines (engines-that-support :nested-fields)
   {:columns ["venue.name"]
    :rows    [["Lucky's Gluten-Free Café"]
              ["Joe's Homestyle Eatery"]
@@ -1005,7 +1025,7 @@
              ["Kyle's Low-Carb Grill"]
              ["Mission Homestyle Churros"]
              ["Sameer's Pizza Liquor Store"]]}
-  (select-keys (Q dataset geographical-tips use mongo
+  (select-keys (Q dataset geographical-tips
                   return :data
                   aggregate rows of tips
                   order id
@@ -1015,7 +1035,7 @@
 
 
 ;;; Nested Field w/ ordering by aggregation
-(datasets/expect-when-testing-engine :mongo
+(datasets/expect-with-engines (engines-that-support :nested-fields)
     [["jane" 4]
      ["kyle" 5]
      ["tupac" 5]
@@ -1030,7 +1050,7 @@
      ["cam_saul" 10]
      ["rasta_toucan" 13]
      [nil 400]]
-  (Q dataset geographical-tips use mongo
+  (Q dataset geographical-tips
      return rows
      aggregate count of tips
      breakout source...mayor
@@ -1113,53 +1133,81 @@
           return rows)))
 
 (datasets/expect-with-all-engines
-  (if-sqlserver
-   [[#inst "2015-06-01T17:31" 1]
-    [#inst "2015-06-01T23:06" 1]
-    [#inst "2015-06-02T00:23" 1]
-    [#inst "2015-06-02T01:55" 1]
-    [#inst "2015-06-02T04:04" 1]
-    [#inst "2015-06-02T04:19" 1]
-    [#inst "2015-06-02T09:13" 1]
-    [#inst "2015-06-02T12:37" 1]
-    [#inst "2015-06-02T15:20" 1]
-    [#inst "2015-06-02T18:11" 1]]
+  (cond
+    (= *engine* :sqlserver)
+    [[#inst "2015-06-01T17:31" 1]
+     [#inst "2015-06-01T23:06" 1]
+     [#inst "2015-06-02T00:23" 1]
+     [#inst "2015-06-02T01:55" 1]
+     [#inst "2015-06-02T04:04" 1]
+     [#inst "2015-06-02T04:19" 1]
+     [#inst "2015-06-02T09:13" 1]
+     [#inst "2015-06-02T12:37" 1]
+     [#inst "2015-06-02T15:20" 1]
+     [#inst "2015-06-02T18:11" 1]]
 
-   [[#inst "2015-06-01T10:31" 1]
-    [#inst "2015-06-01T16:06" 1]
-    [#inst "2015-06-01T17:23" 1]
-    [#inst "2015-06-01T18:55" 1]
-    [#inst "2015-06-01T21:04" 1]
-    [#inst "2015-06-01T21:19" 1]
-    [#inst "2015-06-02T02:13" 1]
-    [#inst "2015-06-02T05:37" 1]
-    [#inst "2015-06-02T08:20" 1]
-    [#inst "2015-06-02T11:11" 1]])
+    (= *engine* :sqlite)
+    [["2015-06-01 10:31:00" 1]
+     ["2015-06-01 16:06:00" 1]
+     ["2015-06-01 17:23:00" 1]
+     ["2015-06-01 18:55:00" 1]
+     ["2015-06-01 21:04:00" 1]
+     ["2015-06-01 21:19:00" 1]
+     ["2015-06-02 02:13:00" 1]
+     ["2015-06-02 05:37:00" 1]
+     ["2015-06-02 08:20:00" 1]
+     ["2015-06-02 11:11:00" 1]]
+
+    :else
+    [[#inst "2015-06-01T10:31" 1]
+     [#inst "2015-06-01T16:06" 1]
+     [#inst "2015-06-01T17:23" 1]
+     [#inst "2015-06-01T18:55" 1]
+     [#inst "2015-06-01T21:04" 1]
+     [#inst "2015-06-01T21:19" 1]
+     [#inst "2015-06-02T02:13" 1]
+     [#inst "2015-06-02T05:37" 1]
+     [#inst "2015-06-02T08:20" 1]
+     [#inst "2015-06-02T11:11" 1]])
   (sad-toucan-incidents-with-bucketing :default))
 
 (datasets/expect-with-all-engines
-  (if-questionable-timezone-support
-   [[#inst "2015-06-01T17:31" 1]
-    [#inst "2015-06-01T23:06" 1]
-    [#inst "2015-06-02T00:23" 1]
-    [#inst "2015-06-02T01:55" 1]
-    [#inst "2015-06-02T04:04" 1]
-    [#inst "2015-06-02T04:19" 1]
-    [#inst "2015-06-02T09:13" 1]
-    [#inst "2015-06-02T12:37" 1]
-    [#inst "2015-06-02T15:20" 1]
-    [#inst "2015-06-02T18:11" 1]]
+  (cond
+    (contains? #{:sqlserver :mongo} *engine*)
+    [[#inst "2015-06-01T17:31" 1]
+     [#inst "2015-06-01T23:06" 1]
+     [#inst "2015-06-02T00:23" 1]
+     [#inst "2015-06-02T01:55" 1]
+     [#inst "2015-06-02T04:04" 1]
+     [#inst "2015-06-02T04:19" 1]
+     [#inst "2015-06-02T09:13" 1]
+     [#inst "2015-06-02T12:37" 1]
+     [#inst "2015-06-02T15:20" 1]
+     [#inst "2015-06-02T18:11" 1]]
 
-   [[#inst "2015-06-01T10:31" 1]
-    [#inst "2015-06-01T16:06" 1]
-    [#inst "2015-06-01T17:23" 1]
-    [#inst "2015-06-01T18:55" 1]
-    [#inst "2015-06-01T21:04" 1]
-    [#inst "2015-06-01T21:19" 1]
-    [#inst "2015-06-02T02:13" 1]
-    [#inst "2015-06-02T05:37" 1]
-    [#inst "2015-06-02T08:20" 1]
-    [#inst "2015-06-02T11:11" 1]])
+    (= *engine* :sqlite)
+    [["2015-06-01 10:31:00" 1]
+     ["2015-06-01 16:06:00" 1]
+     ["2015-06-01 17:23:00" 1]
+     ["2015-06-01 18:55:00" 1]
+     ["2015-06-01 21:04:00" 1]
+     ["2015-06-01 21:19:00" 1]
+     ["2015-06-02 02:13:00" 1]
+     ["2015-06-02 05:37:00" 1]
+     ["2015-06-02 08:20:00" 1]
+     ["2015-06-02 11:11:00" 1]]
+
+    :else
+    [[#inst "2015-06-01T10:31" 1]
+     [#inst "2015-06-01T16:06" 1]
+     [#inst "2015-06-01T17:23" 1]
+     [#inst "2015-06-01T18:55" 1]
+     [#inst "2015-06-01T21:04" 1]
+     [#inst "2015-06-01T21:19" 1]
+     [#inst "2015-06-02T02:13" 1]
+     [#inst "2015-06-02T05:37" 1]
+     [#inst "2015-06-02T08:20" 1]
+     [#inst "2015-06-02T11:11" 1]])
   (sad-toucan-incidents-with-bucketing :minute))
 
 (datasets/expect-with-all-engines
@@ -1175,8 +1223,9 @@
    [9 1]]
   (sad-toucan-incidents-with-bucketing :minute-of-hour))
 
-(datasets/expect-with-engines sql-engines
-  (if-sqlserver
+(datasets/expect-with-all-engines
+  (cond
+    (contains? #{:sqlserver :mongo} *engine*)
     [[#inst "2015-06-01T17" 1]
      [#inst "2015-06-01T23" 1]
      [#inst "2015-06-02T00" 1]
@@ -1188,6 +1237,19 @@
      [#inst "2015-06-02T18" 1]
      [#inst "2015-06-02T20" 1]]
 
+    (= *engine* :sqlite)
+    [["2015-06-01 10:00:00" 1]
+     ["2015-06-01 16:00:00" 1]
+     ["2015-06-01 17:00:00" 1]
+     ["2015-06-01 18:00:00" 1]
+     ["2015-06-01 21:00:00" 2]
+     ["2015-06-02 02:00:00" 1]
+     ["2015-06-02 05:00:00" 1]
+     ["2015-06-02 08:00:00" 1]
+     ["2015-06-02 11:00:00" 1]
+     ["2015-06-02 13:00:00" 1]]
+
+    :else
     [[#inst "2015-06-01T10" 1]
      [#inst "2015-06-01T16" 1]
      [#inst "2015-06-01T17" 1]
@@ -1207,28 +1269,42 @@
   (sad-toucan-incidents-with-bucketing :hour-of-day))
 
 (datasets/expect-with-all-engines
-  (if-questionable-timezone-support
-   [[#inst "2015-06-01T07" 6]
-    [#inst "2015-06-02T07" 10]
-    [#inst "2015-06-03T07" 4]
-    [#inst "2015-06-04T07" 9]
-    [#inst "2015-06-05T07" 9]
-    [#inst "2015-06-06T07" 8]
-    [#inst "2015-06-07T07" 8]
-    [#inst "2015-06-08T07" 9]
-    [#inst "2015-06-09T07" 7]
-    [#inst "2015-06-10T07" 9]]
+  (cond
+    (contains? #{:sqlserver :mongo} *engine*)
+    [[#inst "2015-06-01T07" 6]
+     [#inst "2015-06-02T07" 10]
+     [#inst "2015-06-03T07" 4]
+     [#inst "2015-06-04T07" 9]
+     [#inst "2015-06-05T07" 9]
+     [#inst "2015-06-06T07" 8]
+     [#inst "2015-06-07T07" 8]
+     [#inst "2015-06-08T07" 9]
+     [#inst "2015-06-09T07" 7]
+     [#inst "2015-06-10T07" 9]]
 
-   [[#inst "2015-06-01T07" 8]
-    [#inst "2015-06-02T07" 9]
-    [#inst "2015-06-03T07" 9]
-    [#inst "2015-06-04T07" 4]
-    [#inst "2015-06-05T07" 11]
-    [#inst "2015-06-06T07" 8]
-    [#inst "2015-06-07T07" 6]
-    [#inst "2015-06-08T07" 10]
-    [#inst "2015-06-09T07" 6]
-    [#inst "2015-06-10T07" 10]])
+    (= *engine* :sqlite)
+    [["2015-06-01" 6]
+     ["2015-06-02" 10]
+     ["2015-06-03" 4]
+     ["2015-06-04" 9]
+     ["2015-06-05" 9]
+     ["2015-06-06" 8]
+     ["2015-06-07" 8]
+     ["2015-06-08" 9]
+     ["2015-06-09" 7]
+     ["2015-06-10" 9]]
+
+    :else
+    [[#inst "2015-06-01T07" 8]
+     [#inst "2015-06-02T07" 9]
+     [#inst "2015-06-03T07" 9]
+     [#inst "2015-06-04T07" 4]
+     [#inst "2015-06-05T07" 11]
+     [#inst "2015-06-06T07" 8]
+     [#inst "2015-06-07T07" 6]
+     [#inst "2015-06-08T07" 10]
+     [#inst "2015-06-09T07" 6]
+     [#inst "2015-06-10T07" 10]])
   (sad-toucan-incidents-with-bucketing :day))
 
 (datasets/expect-with-all-engines
@@ -1250,31 +1326,43 @@
   (sad-toucan-incidents-with-bucketing :day-of-year))
 
 (datasets/expect-with-all-engines
-  (if-questionable-timezone-support
-   [[#inst "2015-05-31T07" 46]
-    [#inst "2015-06-07T07" 47]
-    [#inst "2015-06-14T07" 40]
-    [#inst "2015-06-21T07" 60]
-    [#inst "2015-06-28T07" 7]]
+  (cond
+    (contains? #{:sqlserver :mongo} *engine*)
+    [[#inst "2015-05-31T07" 46]
+     [#inst "2015-06-07T07" 47]
+     [#inst "2015-06-14T07" 40]
+     [#inst "2015-06-21T07" 60]
+     [#inst "2015-06-28T07" 7]]
 
-   [[#inst "2015-05-31T07" 49]
-    [#inst "2015-06-07T07" 47]
-    [#inst "2015-06-14T07" 39]
-    [#inst "2015-06-21T07" 58]
-    [#inst "2015-06-28T07" 7]])
+    (= *engine* :sqlite)
+    [["2015-05-31" 46]
+     ["2015-06-07" 47]
+     ["2015-06-14" 40]
+     ["2015-06-21" 60]
+     ["2015-06-28" 7]]
+
+    :else
+    [[#inst "2015-05-31T07" 49]
+     [#inst "2015-06-07T07" 47]
+     [#inst "2015-06-14T07" 39]
+     [#inst "2015-06-21T07" 58]
+     [#inst "2015-06-28T07" 7]])
   (sad-toucan-incidents-with-bucketing :week))
 
 (datasets/expect-with-all-engines
- (datasets/engine-case
-   :sqlserver [[23 54] [24 46] [25 39] [26 61]]
-   :mongo     [[23 46] [24 47] [25 40] [26 60] [27 7]] ; why are these different then ?
-   :h2        [[23 49] [24 47] [25 39] [26 58] [27 7]]
-   :postgres  [[23 49] [24 47] [25 39] [26 58] [27 7]]
-   :mysql     [[23 49] [24 47] [25 39] [26 58] [27 7]])
- (sad-toucan-incidents-with-bucketing :week-of-year))
+  (cond
+    (contains? #{:sqlserver :sqlite} *engine*)
+    [[23 54] [24 46] [25 39] [26 61]]
+
+    (= *engine* :mongo)
+    [[23 46] [24 47] [25 40] [26 60] [27 7]]
+
+    :else
+    [[23 49] [24 47] [25 39] [26 58] [27 7]])
+  (sad-toucan-incidents-with-bucketing :week-of-year))
 
 (datasets/expect-with-all-engines
-  [[#inst "2015-06-01T07" 200]]
+  [[(if (= *engine* :sqlite) "2015-06-01", #inst "2015-06-01T07") 200]]
   (sad-toucan-incidents-with-bucketing :month))
 
 (datasets/expect-with-all-engines
@@ -1282,13 +1370,12 @@
   (sad-toucan-incidents-with-bucketing :month-of-year))
 
 (datasets/expect-with-all-engines
-  [[#inst "2015-04-01T07" 200]]
+  [[(if (= *engine* :sqlite) "2015-04-01", #inst "2015-04-01T07") 200]]
   (sad-toucan-incidents-with-bucketing :quarter))
 
 (datasets/expect-with-all-engines
- [[(datasets/engine-case :h2 2, :postgres 2, :mysql 2, :sqlserver 2, :mongo 2.0)
-   200]]
- (sad-toucan-incidents-with-bucketing :quarter-of-year))
+  [[(if (= *engine* :mongo) 2.0 2) 200]]
+  (sad-toucan-incidents-with-bucketing :quarter-of-year))
 
 (datasets/expect-with-all-engines
   [[2015 200]]
@@ -1296,7 +1383,7 @@
 
 ;; RELATIVE DATES
 (defn- database-def-with-timestamps [interval-seconds]
-  (let [{:keys [date-interval]} (driver)]
+  (let [{:keys [date-interval]} *data-loader*]
     (create-database-definition "DB"
       ["checkins"
        [{:field-name "timestamp"

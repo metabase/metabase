@@ -90,7 +90,7 @@
     ([{:keys [amount unit], {field-unit :unit} :field} _]
      (let [{:keys [date date-interval]} (:driver *query*)]
        (date field-unit (if (zero? amount)
-                          (k/sqlfn* (-> *query* :driver :current-datetime-fn))
+                          (-> *query* :driver :current-datetime-fn)
                           (date-interval unit amount)))))))
 
 

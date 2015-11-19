@@ -40,7 +40,7 @@
        :body (with-out-str
                (csv/write-csv *out* (into [columns] rows)))
        :headers {"Content-Type" "text/csv"
-                 "Content-Disposition" (str "attachment; filename=\"query_result_" (u/now-iso8601) ".csv\"")}}
+                 "Content-Disposition" (str "attachment; filename=\"query_result_" (u/date->iso-8601) ".csv\"")}}
       ;; failed query, send error message
       {:status 500
        :body response})))

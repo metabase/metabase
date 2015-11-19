@@ -167,7 +167,8 @@
   "Sort FIELDS by their \"importance\" vectors."
   [query fields]
   (let [field-importance (field-importance-fn query)]
-    (log/debug (u/format-color 'yellow "Sorted fields:\n%s" (u/pprint-to-str (sort (map field-importance fields)))))
+    (when-not @(resolve 'metabase.driver.query-processor/*disable-qp-logging*)
+      (log/debug (u/format-color 'yellow "Sorted fields:\n%s" (u/pprint-to-str (sort (map field-importance fields))))))
     (sort-by field-importance fields)))
 
 (defn- convert-field-to-expected-format

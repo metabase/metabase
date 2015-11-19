@@ -143,7 +143,7 @@
 
 (defn- db-can-connect? [details]
   (binding [*allow-potentailly-unsafe-connections* true]
-    ((u/runtime-resolved-fn 'metabase.driver 'can-connect?) details)))
+    (@(resolve 'metabase.driver/can-connect?) details)))
 
 (defn setup-db
   "Do general perparation of database by validating that we can connect.
@@ -180,7 +180,8 @@
 
   ;; Do any custom code-based migrations now that the db structure is up to date
   ;; NOTE: we use dynamic resolution to prevent circular dependencies
-  ((u/runtime-resolved-fn 'metabase.db.migrations 'run-all)))
+  (require 'metabase.db.migrations)
+  (@(resolve 'metabase.db.migrations/run-all)))
 
 (defn setup-db-if-needed [& args]
   (when-not @setup-db-has-been-called?
