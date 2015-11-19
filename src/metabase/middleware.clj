@@ -1,4 +1,4 @@
- (ns metabase.middleware
+(ns metabase.middleware
   "Metabase-specific middleware functions & configuration."
   (:require [clojure.math.numeric-tower :as math]
             [clojure.tools.logging :as log]

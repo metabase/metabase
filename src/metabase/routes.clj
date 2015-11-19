@@ -9,10 +9,12 @@
             [metabase.models.setting :as setting]))
 
 (defn- index [_]
-  (resp/response (if (@(resolve 'metabase.core/initialized?))
-                   (stencil/render-string (slurp (io/resource "frontend_client/index.html"))
-                                          {:bootstrap_json (json/generate-string (setting/public-settings))})
-                   (slurp (io/resource "frontend_client/init.html")))))
+  (-> (if (@(resolve 'metabase.core/initialized?))
+        (stencil/render-string (slurp (io/resource "frontend_client/index.html"))
+                               {:bootstrap_json (json/generate-string (setting/public-settings))})
+        (slurp (io/resource "frontend_client/init.html")))
+      resp/response
+      (resp/content-type "text/html")))
 
 ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
 (defroutes routes
