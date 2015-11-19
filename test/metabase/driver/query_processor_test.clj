@@ -23,7 +23,7 @@
 
 (defn- engines-that-support [feature]
   (set (filter (fn [engine]
-                 (contains? (:features (driver/engine->driver engine)) feature))
+                 (contains? (driver/features (driver/engine->driver engine)) feature))
                datasets/all-valid-engines)))
 
 (defn- engines-that-dont-support [feature]

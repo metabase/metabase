@@ -4,7 +4,7 @@
             [korma.sql.utils :as utils]
             [metabase.db :as db]
             [metabase.driver :as driver]
-            [metabase.driver.generic-sql :refer [sql-driver]]
+            [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.util :refer [funcs]]
             [metabase.models.database :refer [Database]]))
 
@@ -111,7 +111,7 @@
                                                                                     :milliseconds "MILLISECOND"))
               [field-or-value]))
 
-(defn- process-query-in-context [qp]
+(defn- process-query-in-context [_ qp]
   (fn [{query-type :type, :as query}]
     {:pre [query-type]}
     ;; For :native queries check to make sure the DB in question has a (non-default) NAME property specified in the connection string.
@@ -174,7 +174,7 @@
                      (format "DATEADD('MONTH', (%d * 3), NOW())" amount)
                      (format "DATEADD('%s', %d, NOW())" (s/upper-case (name unit)) amount))))
 
-(defn- humanize-connection-error-message [message]
+(defn- humanize-connection-error-message [_ message]
   (condp re-matches message
     #"^A file path that is implicitly relative to the current working directory is not allowed in the database URL .*$"
     (driver/connection-error-messages :cannot-connect-check-host-and-port)
@@ -192,20 +192,24 @@
   clojure.lang.Named
   (getName [_] "H2"))
 
+(extend H2Driver
+  driver/IDriver
+  (merge sql/IDriverSQLDefaultsMixin
+         {:details-fields                    (constantly [{:name         "db"
+                                                           :display-name "Connection String"
+                                                           :placeholder  "file:/Users/camsaul/bird_sightings/toucans;AUTO_SERVER=TRUE"
+                                                           :required     true}])
+          :humanize-connection-error-message humanize-connection-error-message
+          :process-query-in-context          process-query-in-context}))
+
 (def h2
   (map->H2Driver
-   (sql-driver
-    {:details-fields                    [{:name         "db"
-                                          :display-name "Connection String"
-                                          :placeholder  "file:/Users/camsaul/bird_sightings/toucans;AUTO_SERVER=TRUE"
-                                          :required     true}]
-     :column->base-type                 column->base-type
-     :string-length-fn                  :LENGTH
-     :connection-details->spec          connection-details->spec
-     :date                              date
-     :date-interval                     date-interval
-     :unix-timestamp->timestamp         unix-timestamp->timestamp
-     :humanize-connection-error-message humanize-connection-error-message
-     :process-query-in-context          process-query-in-context})))
+   (sql/sql-driver
+    {:column->base-type         column->base-type
+     :connection-details->spec  connection-details->spec
+     :date                      date
+     :date-interval             date-interval
+     :string-length-fn          :LENGTH
+     :unix-timestamp->timestamp unix-timestamp->timestamp})))
 
 (driver/register-driver! :h2 h2)

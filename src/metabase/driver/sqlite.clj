@@ -6,7 +6,7 @@
             [korma.sql.utils :as kutils]
             [metabase.config :as config]
             [metabase.driver :as driver]
-            [metabase.driver.generic-sql :refer [sql-driver]]
+            [metabase.driver.generic-sql :as sql]
             [metabase.util :as u]))
 
 ;; We'll do regex pattern matching here for determining Field types
@@ -111,23 +111,31 @@
   clojure.lang.Named
   (getName [_] "SQLite"))
 
+(extend SQLiteDriver
+  driver/IDriver
+  (merge sql/IDriverSQLDefaultsMixin
+         {:details-fields (constantly [{:name         "db"
+                                        :display-name "Filename"
+                                        :placeholder  "/home/camsaul/toucan_sightings.sqlite 😋"
+                                        :required     true}])
+          :features       (fn [this]
+                            (set/difference (sql/features this)
+                                            ;; SQLite doesn't have a standard deviation function
+                                            #{:standard-deviation-aggregations}
+                                            ;; HACK SQLite doesn't support ALTER TABLE ADD CONSTRAINT FOREIGN KEY and I don't have all day to work around this
+                                            ;; so for now we'll just skip the foreign key stuff in the tests.
+                                            (when (config/is-test?)
+                                              #{:foreign-keys})))}))
+
 (def sqlite
   (map->SQLiteDriver
-   (cond-> (-> (sql-driver {:details-fields            [{:name         "db"
-                                                         :display-name "Filename"
-                                                         :placeholder  "/home/camsaul/toucan_sightings.sqlite 😋"
-                                                         :required     true}]
-                            :column->base-type         column->base-type
-                            :string-length-fn          :LENGTH
-                            :current-datetime-fn       (k/raw "DATETIME('now')")
-                            :connection-details->spec  kdb/sqlite3
-                            :date                      date
-                            :date-interval             date-interval
-                            :unix-timestamp->timestamp unix-timestamp->timestamp})
-               ;; SQLite doesn't have a standard deviation function
-               (update :features set/difference #{:standard-deviation-aggregations}))
-     ;; HACK SQLite doesn't support ALTER TABLE ADD CONSTRAINT FOREIGN KEY and I don't have all day to work around this
-     ;; so for now we'll just skip the foreign key stuff in the tests.
-     (config/is-test?) (update :features set/difference #{:foreign-keys}))))
+   (sql/sql-driver
+    {:column->base-type         column->base-type
+     :connection-details->spec  kdb/sqlite3
+     :current-datetime-fn       (k/raw "DATETIME('now')")
+     :date                      date
+     :date-interval             date-interval
+     :string-length-fn          :LENGTH
+     :unix-timestamp->timestamp unix-timestamp->timestamp})))
 
 (driver/register-driver! :sqlite sqlite)
