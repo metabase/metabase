@@ -58,6 +58,7 @@
                                                           :dashboards)))))
 
   (pre-cascade-delete [_ {:keys [id]}]
+    (cascade-delete 'PulseCard :card_id id)
     (cascade-delete 'Revision :model "Card" :model_id id)
     (cascade-delete 'DashboardCard :card_id id)
     (cascade-delete 'CardFavorite :card_id id)))

@@ -26,6 +26,8 @@
   {name     [Required NonEmptyString]
    cards    [Required ArrayOfMaps]
    channels [Required ArrayOfMaps]}
+  ;; prevent more than 5 cards
+  ;; limit channel types to :email and :slack
   (->500 (pulse/create-pulse name *current-user-id* (filter identity (map :id cards)) channels)))
 
 
@@ -42,6 +44,8 @@
    cards    [Required ArrayOfMaps]
    channels [Required ArrayOfMaps]}
   (check-404 (db/exists? Pulse :id id))
+  ;; prevent more than 5 cards
+  ;; limit channel types to :email and :slack
   (pulse/update-pulse {:id       id
                        :name     name
                        :cards    (filter identity (map :id cards))
