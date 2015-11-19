@@ -36,6 +36,15 @@
 (def ^:private bar-td-style  (str font-style "font-size: 16px; font-weight: 400; text-align: left; padding-right: 1em; padding-top: 8px;"))
 (def ^:private button-style  (str font-style "display: inline-block; box-sizing: border-box; padding: 8px; color: " color-brand "; border: 1px solid " color-brand "; border-radius: 4px; text-decoration: none; "))
 
+(defn datetime-field?
+  [field]
+  (or (contains? #{:DateTimeField :TimeField :DateField} (:base_type field))
+      (contains? #{:timestamp_seconds :timestamp_milliseconds} (:special_type field))))
+
+(defn number-field?
+  [field]
+  (or (contains? #{:IntegerField :DecimalField :FloatField :BigIntegerField} (:base_type field))
+      (contains? #{:number} (:special_type field))))
 
 (defn- format-number
   [n]
@@ -202,16 +211,6 @@
           ]]]
       [:div {:style "margin-top: 20px; margin-left: 30px;"}
         (render-table card [(last rows) (first rows)] cols render-img [0 1] nil)]]))
-
-(defn datetime-field?
-  [field]
-  (or (contains? #{:DateTimeField :TimeField :DateField} (:base_type field))
-      (contains? #{:timestamp_seconds :timestamp_milliseconds} (:special_type field))))
-
-(defn number-field?
-  [field]
-  (or (contains? #{:IntegerField :DecimalField :FloatField :BigIntegerField} (:base_type field))
-      (contains? #{:number} (:special_type field))))
 
 (defn detect-pulse-card-type
   [card data]
