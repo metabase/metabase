@@ -50,7 +50,7 @@
 
 ;; ## Persistence Functions
 
-(defn- update-pulse-cards
+(defn update-pulse-cards
   "Update the `PulseCards` for a given PULSE.
    CARD-IDS should be a definitive collection of *all* IDs of cards for the pulse in the desired order.
 
@@ -65,8 +65,9 @@
   ;; first off, just delete any cards associated with this pulse (we add them again below)
   (db/cascade-delete PulseCard :pulse_id id)
   ;; now just insert all of the cards that were given to us
-  (let [cards (map-indexed (fn [idx itm] {:pulse_id id :card_id itm :position idx}) card-ids)]
-    (k/insert PulseCard (k/values cards))))
+  (when-not (empty? card-ids)
+    (let [cards (map-indexed (fn [idx itm] {:pulse_id id :card_id itm :position idx}) card-ids)]
+      (k/insert PulseCard (k/values cards)))))
 
 (defn- create-update-delete-channel
   "Utility function which determines how to properly update a single pulse channel."
@@ -88,7 +89,7 @@
       ;; 4. NOT in channels, NOT in db-channels = NO-OP
       :else nil)))
 
-(defn- update-pulse-channels
+(defn update-pulse-channels
   "Update the `PulseChannels` for a given PULSE.
    CHANNELS should be a definitive collection of *all* of the channels for the the pulse.
 

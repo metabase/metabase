@@ -84,6 +84,12 @@
         (hydrate :recipients)
         (dissoc :id :pulse_id :created_at :updated_at))))
 
+(defn update-channel-then-select
+  [{:keys [id] :as channel}]
+  (update-pulse-channel channel)
+  (-> (db/sel :one PulseChannel :id id)
+      (hydrate :recipients)
+      (dissoc :id :pulse_id :created_at :updated_at)))
 
 ;; create-pulse-channel
 (expect
@@ -118,35 +124,14 @@
 
 
 ;; update-pulse-channel
+;; simple starting case where we modify the schedule hour and add a recipient
 (expect
-  ;; simple starting case where we modify the schedule hour and add a recipient
-  [{:channel_type  :email
-    :schedule_type schedule-type-daily
-    :schedule_hour 18
-    :schedule_day  nil
-    :recipients    [{:email "foo@bar.com"}]
-    :details       {}}
-   ;; weekly schedule should have a day in it, show that we can get full users
-   {:channel_type  :email
-    :schedule_type schedule-type-weekly
-    :schedule_hour 8
-    :schedule_day  "mon"
-    :recipients    [{:email "foo@bar.com"} (user-details :rasta)]
-    :details       {}}
-   ;; hourly schedules don't require day/hour settings (should be nil), fully change recipients
-   {:channel_type  :email
-    :schedule_type schedule-type-hourly
-    :schedule_hour nil
-    :schedule_day  nil
-    :recipients    [(user-details :crowberto)]
-    :details       {}}
-   ;; custom details for channels that need it
-   {:channel_type  :email
-    :schedule_type schedule-type-daily
-    :schedule_hour 12
-    :schedule_day  nil
-    :recipients    [{:email "foo@bar.com"} {:email "blah@bar.com"}]
-    :details       {:channel "#metabaserocks"}}]
+  {:channel_type  :email
+   :schedule_type schedule-type-daily
+   :schedule_hour 18
+   :schedule_day  nil
+   :recipients    [{:email "foo@bar.com"}]
+   :details       {}}
   (tu/with-temp Pulse [{:keys [id]} {:creator_id (user->id :rasta)
                                      :name       (tu/random-name)}]
     (tu/with-temp PulseChannel [{channel-id :id :as channel} {:pulse_id      id
@@ -154,36 +139,80 @@
                                                               :details       {}
                                                               :schedule_type schedule-type-daily
                                                               :schedule_hour 15}]
-      (let [upd-channel (fn [chan]
-                             (update-pulse-channel chan)
-                             (-> (db/sel :one PulseChannel :id channel-id)
-                                 (hydrate :recipients)
-                                 (dissoc :id :pulse_id :created_at :updated_at)))]
-        [(upd-channel {:id            channel-id
-                       :channel_type  :email
-                       :schedule_type schedule-type-daily
-                       :schedule_hour 18
-                       :recipients    [{:email "foo@bar.com"}]})
-         (upd-channel {:id            channel-id
-                       :channel_type  :email
-                       :schedule_type schedule-type-weekly
-                       :schedule_hour 8
-                       :schedule_day  "mon"
-                       :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)}]})
-         (upd-channel {:id            channel-id
-                       :channel_type  :email
-                       :schedule_type schedule-type-hourly
-                       :schedule_hour 12
-                       :schedule_day  "tue"
-                       :recipients    [{:id (user->id :crowberto)}]})
-         (upd-channel {:id            channel-id
-                       :channel_type  :email
-                       :schedule_type schedule-type-daily
-                       :schedule_hour 12
-                       :schedule_day  "tue"
-                       :recipients    [{:email "foo@bar.com"} {:email "blah@bar.com"}]
-                       :details       {:channel "#metabaserocks"}})]))))
+      (update-channel-then-select {:id            channel-id
+                                   :channel_type  :email
+                                   :schedule_type schedule-type-daily
+                                   :schedule_hour 18
+                                   :recipients    [{:email "foo@bar.com"}]}))))
 
+;; weekly schedule should have a day in it, show that we can get full users
+(expect
+  {:channel_type  :email
+   :schedule_type schedule-type-weekly
+   :schedule_hour 8
+   :schedule_day  "mon"
+   :recipients    [{:email "foo@bar.com"} (user-details :rasta)]
+   :details       {}}
+  (tu/with-temp Pulse [{:keys [id]} {:creator_id (user->id :rasta)
+                                     :name       (tu/random-name)}]
+    (tu/with-temp PulseChannel [{channel-id :id :as channel} {:pulse_id      id
+                                                              :channel_type  :email
+                                                              :details       {}
+                                                              :schedule_type schedule-type-daily
+                                                              :schedule_hour 15}]
+      (update-channel-then-select {:id            channel-id
+                                   :channel_type  :email
+                                   :schedule_type schedule-type-weekly
+                                   :schedule_hour 8
+                                   :schedule_day  "mon"
+                                   :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)}]}))))
+
+;; hourly schedules don't require day/hour settings (should be nil), fully change recipients
+(expect
+  {:channel_type  :email
+   :schedule_type schedule-type-hourly
+   :schedule_hour nil
+   :schedule_day  nil
+   :recipients    [(user-details :crowberto)]
+   :details       {}}
+  (tu/with-temp Pulse [{:keys [id]} {:creator_id (user->id :rasta)
+                                     :name       (tu/random-name)}]
+    (tu/with-temp PulseChannel [{channel-id :id :as channel} {:pulse_id      id
+                                                              :channel_type  :email
+                                                              :details       {:emails ["foo@bar.com"]}
+                                                              :schedule_type schedule-type-daily
+                                                              :schedule_hour 15}]
+      (do
+        (update-recipients! channel-id [(user->id :rasta)])
+        (update-channel-then-select {:id            channel-id
+                                     :channel_type  :email
+                                     :schedule_type schedule-type-hourly
+                                     :schedule_hour 12
+                                     :schedule_day  "tue"
+                                     :recipients    [{:id (user->id :crowberto)}]})))))
+
+;; custom details for channels that need it
+(expect
+  {:channel_type  :email
+   :schedule_type schedule-type-daily
+   :schedule_hour 12
+   :schedule_day  nil
+   :recipients    [{:email "foo@bar.com"} {:email "blah@bar.com"}]
+   :details       {:channel "#metabaserocks"}}
+  (tu/with-temp Pulse [{:keys [id]} {:creator_id (user->id :rasta)
+                                     :name       (tu/random-name)}]
+    (tu/with-temp PulseChannel [{channel-id :id :as channel} {:pulse_id      id
+                                                              :channel_type  :email
+                                                              :details       {}
+                                                              :schedule_type schedule-type-daily
+                                                              :schedule_hour 15}]
+      (update-channel-then-select {:id            channel-id
+                                   :channel_type  :email
+                                   :schedule_type schedule-type-daily
+                                   :schedule_hour 12
+                                   :schedule_day  "tue"
+                                   :recipients    [{:email "foo@bar.com"} {:email "blah@bar.com"}]
+                                   :details       {:channel "#metabaserocks"}}))))
 
 ;; update-recipients!
 (expect
@@ -210,3 +239,73 @@
 
 
 ;; retrieve-scheduled-channels
+;; test a simple scenario with a single Pulse and 2 channels on hourly/daily schedules
+(expect
+  [[{:schedule_type "hourly", :channel_type "slack"}]
+   [{:schedule_type "hourly", :channel_type "slack"}]
+   [{:schedule_type "daily", :channel_type "email"}
+    {:schedule_type "hourly", :channel_type "slack"}]
+   [{:schedule_type "daily", :channel_type "email"}
+    {:schedule_type "hourly", :channel_type "slack"}]]
+  (tu/with-temp Pulse [{:keys [id]} {:creator_id (user->id :rasta)
+                                     :name       (tu/random-name)}]
+    (tu/with-temp PulseChannel [_ {:pulse_id      id
+                                   :channel_type  :email
+                                   :details       {}
+                                   :schedule_type schedule-type-daily
+                                   :schedule_hour 15}]
+      (tu/with-temp PulseChannel [_ {:pulse_id      id
+                                     :channel_type  :slack
+                                     :details       {}
+                                     :schedule_type schedule-type-hourly
+                                     :schedule_hour nil}]
+        (let [retrieve-channels (fn [hour day]
+                                  (->> (retrieve-scheduled-channels hour day)
+                                       (mapv #(dissoc % :id :pulse_id))))]
+          [(retrieve-channels nil nil)
+           (retrieve-channels 12 nil)
+           (retrieve-channels 15 nil)
+           (retrieve-channels 15 "wed")])))))
+
+;; more complex scenario with 2 Pulses, including weekly scheduling
+(expect
+  [[{:schedule_type "hourly", :channel_type "slack"}]
+   [{:schedule_type "hourly", :channel_type "slack"}
+    {:schedule_type "daily", :channel_type "slack"}]
+   [{:schedule_type "daily", :channel_type "email"}
+    {:schedule_type "hourly", :channel_type "slack"}]
+   [{:schedule_type "hourly", :channel_type "slack"}
+    {:schedule_type "weekly", :channel_type "email"}]]
+  (tu/with-temp Pulse [{pulse1 :id} {:creator_id (user->id :rasta)
+                                     :name       (tu/random-name)}]
+    (tu/with-temp Pulse [{pulse2 :id} {:creator_id (user->id :crowberto)
+                                       :name       (tu/random-name)}]
+      (tu/with-temp PulseChannel [_ {:pulse_id      pulse1
+                                     :channel_type  :email
+                                     :details       {}
+                                     :schedule_type schedule-type-daily
+                                     :schedule_hour 15}]
+        (tu/with-temp PulseChannel [_ {:pulse_id      pulse1
+                                       :channel_type  :slack
+                                       :details       {}
+                                       :schedule_type schedule-type-hourly
+                                       :schedule_hour nil}]
+          (tu/with-temp PulseChannel [_ {:pulse_id      pulse2
+                                         :channel_type  :slack
+                                         :details       {}
+                                         :schedule_type schedule-type-daily
+                                         :schedule_hour 10
+                                         :schedule_day  "wed"}]
+            (tu/with-temp PulseChannel [_ {:pulse_id      pulse2
+                                           :channel_type  :email
+                                           :details       {}
+                                           :schedule_type schedule-type-weekly
+                                           :schedule_hour 8
+                                           :schedule_day  "mon"}]
+              (let [retrieve-channels (fn [hour day]
+                                        (->> (retrieve-scheduled-channels hour day)
+                                             (mapv #(dissoc % :id :pulse_id))))]
+                [(retrieve-channels nil nil)
+                 (retrieve-channels 10 nil)
+                 (retrieve-channels 15 nil)
+                 (retrieve-channels 8 "mon")]))))))))

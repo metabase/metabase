@@ -147,7 +147,7 @@
   [:pre [(integer? hour)
          (day-of-week? day)]]
   (k/select PulseChannel
-    (k/fields :id :pulse_id :schedule_type)
+    (k/fields :id :pulse_id :schedule_type :channel_type)
     (k/where (or (= :schedule_type (name schedule-type-hourly))
                  (and (= :schedule_type (name schedule-type-daily))
                       (= :schedule_hour hour))
