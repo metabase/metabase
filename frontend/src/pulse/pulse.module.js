@@ -25,7 +25,11 @@ Pulse.config(['$routeProvider', function ($routeProvider) {
         controller: ['$scope', '$location', '$route', '$routeParams',
             function($scope, $location, $route, $routeParams) {
                 $scope.Component = PulseListApp;
-                $scope.props = {};
+                $scope.props = {
+                    onChangeLocation: function(url) {
+                        $scope.$apply(() => $location.url(url));
+                    }
+                };
                 $scope.store = finalCreateStore(reducer, {});
             }
         ]
