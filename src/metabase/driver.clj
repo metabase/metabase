@@ -378,19 +378,17 @@
             (throw (Exception. message))))
         false))))
 
-(def ^{:arglists '([database])} sync-database!
+(defn sync-database!
   "Sync a `Database`, its `Tables`, and `Fields`."
-  (let [-sync-database! (u/runtime-resolved-fn 'metabase.driver.sync 'sync-database!)] ; these need to be resolved at runtime to avoid circular deps
-    (fn [database]
-      {:pre [(map? database)]}
-      (-sync-database! (engine->driver (:engine database)) database))))
+  [database]
+  {:pre [(map? database)]}
+  (@(resolve 'metabase.driver.sync/sync-database!) (engine->driver (:engine database)) database))
 
-(def ^{:arglists '([table])} sync-table!
+(defn sync-table!
   "Sync a `Table` and its `Fields`."
-  (let [-sync-table! (u/runtime-resolved-fn 'metabase.driver.sync 'sync-table!)]
-    (fn [table]
-      {:pre [(map? table)]}
-      (-sync-table! (database-id->driver (:db_id table)) table))))
+  [table]
+  {:pre [(map? table)]}
+  (@(resolve 'metabase.driver.sync/sync-table!) (database-id->driver (:db_id table)) table))
 
 (defn process-query
   "Process a structured or native query, and return the result."
