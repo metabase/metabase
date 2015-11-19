@@ -4,7 +4,8 @@
             [korma.core :as k]
             [korma.sql.utils :as utils]
             [metabase.driver :as driver]
-            (metabase.driver.generic-sql [query-processor :as qp]
+            (metabase.driver.generic-sql [native :as native]
+                                         [query-processor :as qp]
                                          [util :refer :all])
             [metabase.models.field :as field]
             [metabase.util :as u]))
@@ -17,42 +18,39 @@
   ;; 3. Not fetching too many results for things like mark-json-field! which will fail after the first result that isn't valid JSON
   500)
 
-(defn- can-connect? [connection-details->spec details]
+(defn- can-connect? [{:keys [connection-details->spec]} details]
   (let [connection (connection-details->spec details)]
     (= 1 (-> (k/exec-raw connection "SELECT 1" :results)
              first
              vals
              first))))
 
-(defn- process-query [query]
-  (qp/process-and-run query))
-
-(defn- sync-in-context [database do-sync-fn]
+(defn- sync-in-context [_ database do-sync-fn]
   (with-jdbc-metadata [_ database]
     (do-sync-fn)))
 
-(defn- active-tables [excluded-schemas database]
+(defn- active-tables [{:keys [excluded-schemas]} database]
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md database]
     (set (for [table (filter #(not (contains? excluded-schemas (:table_schem %)))
                              (jdbc/result-set-seq (.getTables md nil nil nil (into-array String ["TABLE", "VIEW"]))))]
            {:name   (:table_name table)
             :schema (:table_schem table)}))))
 
-(defn- active-column-names->type [column->base-type table]
+(defn- active-column-names->type [{:keys [column->base-type]} table]
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db table)]
     (into {} (for [{:keys [column_name type_name]} (jdbc/result-set-seq (.getColumns md nil (:schema table) (:name table) nil))]
                {column_name (or (column->base-type (keyword type_name))
                                 (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :UnknownField." type_name))
                                     :UnknownField))}))))
 
-(defn- table-pks [table]
+(defn- table-pks [_ table]
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db table)]
     (->> (.getPrimaryKeys md nil nil (:name table))
          jdbc/result-set-seq
          (map :column_name)
          set)))
 
-(defn- field-values-lazy-seq [{:keys [qualified-name-components table], :as field}]
+(defn- field-values-lazy-seq [_ {:keys [qualified-name-components table], :as field}]
   (assert (and (map? field)
                (delay? qualified-name-components)
                (delay? table))
@@ -77,12 +75,12 @@
     (fetch-chunk 0 field-values-lazy-seq-chunk-size
                  driver/max-sync-lazy-seq-results)))
 
-(defn- table-rows-seq [database table-name]
+(defn- table-rows-seq [_ database table-name]
   (k/select (-> (k/create-entity table-name)
                 (k/database (db->korma-db database)))))
 
 
-(defn- table-fks [table]
+(defn- table-fks [_ table]
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db table)]
     (->> (.getImportedKeys md nil nil (:name table))
          jdbc/result-set-seq
@@ -92,7 +90,7 @@
                  :dest-column-name (:pkcolumn_name result)}))
          set)))
 
-(defn- field-avg-length [string-length-fn field]
+(defn- field-avg-length [{:keys [string-length-fn]} field]
   (or (some-> (korma-entity @(:table field))
               (k/select (k/aggregate (avg (k/sqlfn* string-length-fn
                                                     (utils/func "CAST(%s AS CHAR)"
@@ -103,7 +101,7 @@
               int)
       0))
 
-(defn- field-percent-urls [field]
+(defn- field-percent-urls [_ field]
   (or (let [korma-table (korma-entity @(:table field))]
         (when-let [total-non-null-count (:count (first (k/select korma-table
                                                                  (k/aggregate (count (k/raw "*")) :count)
@@ -139,6 +137,41 @@
       (format "SQL drivers must define %s." f))
     (assert (fn? (f driver))
       (format "%s must be a fn." f))))
+
+(defn features [driver]
+  (set (cond-> [:foreign-keys
+                :standard-deviation-aggregations]
+         (:set-timezone-sql driver) (conj :set-timezone))))
+
+;; TODO - just define this method directly
+(defn- date-interval [driver unit amount]
+  ((:date-interval driver) unit amount))
+
+(def IDriverSQLDefaultsMixin
+  "Default implementations of methods in `IDriver` for SQL drivers."
+  (merge driver/IDriverDefaultsMixin
+         {:active-column-names->type active-column-names->type
+          :active-tables             active-tables
+          :can-connect?              can-connect?
+          :date-interval             date-interval
+          :features                  features
+          :field-avg-length          field-avg-length
+          :field-percent-urls        field-percent-urls
+          :field-values-lazy-seq     field-values-lazy-seq
+          :process-native            (fn [_ query]
+                                       (native/process-and-run query))
+          :process-structured        (fn [_ query]
+                                       (qp/process-structured query))
+          :sync-in-context           sync-in-context
+          :table-fks                 table-fks
+          :table-pks                 table-pks
+          :table-rows-seq            table-rows-seq}))
+
+(def ^:private sql-driver-defaults
+  "Default implementations of SQL driver internal methods."
+  {:qp-clause->handler  qp/clause->handler
+   :stddev-fn           :STDDEV
+   :current-datetime-fn (k/sqlfn* :NOW)})
 
 (defn sql-driver
   "Create a Metabase DB driver using the Generic SQL functions.
@@ -181,10 +214,6 @@
       Return a korma form for truncating a date or timestamp field or value to a given resolution, or extracting a
       date component.
 
-   *  `(date-interval [unit amount])`
-
-      Return a korma form for a date relative to NOW(), e.g. on that would produce SQL like `(NOW() + INTERVAL '1 month')`.
-
    *  `excluded-schemas` *(OPTIONAL)*
 
       Set of string names of schemas to skip syncing tables from.
@@ -198,28 +227,4 @@
   [driver]
   ;; Verify the driver
   (verify-sql-driver driver)
-  (driver/driver
-   (merge
-    {:features                  (set (cond-> [:foreign-keys
-                                              :standard-deviation-aggregations]
-                                       (:set-timezone-sql driver) (conj :set-timezone)))
-     :qp-clause->handler        qp/clause->handler
-     :can-connect?              (partial can-connect? (:connection-details->spec driver))
-     :process-query             process-query
-     :sync-in-context           sync-in-context
-     :active-tables             (partial active-tables (:excluded-schemas driver))
-     :active-column-names->type (partial active-column-names->type (:column->base-type driver))
-     :table-pks                 table-pks
-     :field-values-lazy-seq     field-values-lazy-seq
-     :table-rows-seq            table-rows-seq
-     :table-fks                 table-fks
-     :field-avg-length          (partial field-avg-length (:string-length-fn driver))
-     :field-percent-urls        field-percent-urls
-     :date-interval             (let [date-interval (:date-interval driver)]
-                                  (fn [unit amount]
-                                    ;; Add some extra param validation
-                                    {:pre [(contains? #{:second :minute :hour :day :week :month :quarter :year} unit)]}
-                                    (date-interval unit amount)))
-     :stddev-fn                 :STDDEV
-     :current-datetime-fn       (k/sqlfn* :NOW)}
-    driver)))
+  (merge sql-driver-defaults driver))
