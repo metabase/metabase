@@ -221,7 +221,7 @@
   (try
     [:div {:style (str section-style "margin: 16px;")}
       (if include-title [:div {:style "margin-bottom: 16px;"}
-        [:a {:style header-style :href (get-card-href card)}
+        [:a {:style header-style :href (card-href card)}
           (-> card :name h)]])
       (case (detect-pulse-card-type card data)
         :scalar    (render-card-scalar    card data render-img)
