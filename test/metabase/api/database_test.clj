@@ -2,7 +2,6 @@
   (:require [expectations :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
-            [metabase.driver.mongo.test-data :as mongo-test-data]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [table :refer [Table]])
@@ -32,7 +31,7 @@
        :engine          "h2"
        :id              $
        :updated_at      $
-       :name            "Test Database"
+       :name            "test-data"
        :is_sample       false
        :organization_id nil
        :description     nil})
@@ -46,7 +45,7 @@
        :id              $
        :details         $
        :updated_at      $
-       :name            "Test Database"
+       :name            "test-data"
        :is_sample       false
        :organization_id nil
        :description     nil})
@@ -102,17 +101,17 @@
 ;; ## GET /api/database
 ;; Test that we can get all the DBs for an Org, ordered by name
 ;; Database details *should not* come back for Rasta since she's not a superuser
-(let [db-name (str "A" (random-name))] ; make sure this name comes before "Test Database"
+(let [db-name (str "A" (random-name))] ; make sure this name comes before "test-data"
   (expect-eval-actual-first
       (set (filter identity
-                   (conj (for [dataset-name datasets/all-valid-dataset-names]
-                           (datasets/when-testing-dataset dataset-name
-                             (match-$ (datasets/db (datasets/dataset-name->dataset dataset-name))
+                   (conj (for [engine datasets/all-valid-engines]
+                           (datasets/when-testing-engine engine
+                             (match-$ (datasets/db (datasets/engine->loader engine))
                                {:created_at      $
                                 :engine          (name $engine)
                                 :id              $
                                 :updated_at      $
-                                :name            "Test Database"
+                                :name            "test-data"
                                 :is_sample       false
                                 :organization_id nil
                                 :description     nil})))
@@ -128,9 +127,9 @@
     (do
       ;; Delete all the randomly created Databases we've made so far
       (cascade-delete Database :id [not-in (set (filter identity
-                                                        (for [dataset-name datasets/all-valid-dataset-names]
-                                                          (datasets/when-testing-dataset dataset-name
-                                                            (:id (datasets/db (datasets/dataset-name->dataset dataset-name)))))))])
+                                                        (for [engine datasets/all-valid-engines]
+                                                          (datasets/when-testing-engine engine
+                                                            (:id (datasets/db (datasets/engine->loader engine)))))))])
       ;; Add an extra DB so we have something to fetch besides the Test DB
       (create-db db-name)
       ;; Now hit the endpoint
@@ -145,7 +144,7 @@
        :engine          "h2"
        :id              $
        :updated_at      $
-       :name            "Test Database"
+       :name            "test-data"
        :is_sample       false
        :organization_id nil
        :description     nil

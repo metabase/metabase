@@ -24,7 +24,7 @@
                                                :engine          "h2"
                                                :id              $
                                                :updated_at      $
-                                               :name            "Test Database"
+                                               :name            "test-data"
                                                :is_sample       false
                                                :organization_id nil
                                                :description     nil})

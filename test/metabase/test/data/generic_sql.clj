@@ -1,6 +1,7 @@
 (ns metabase.test.data.generic-sql
   "Common functionality for various Generic SQL dataset loaders."
   (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as s]
             [clojure.tools.logging :as log]
             (korma [core :as k]
                    [db :as kdb])
@@ -144,7 +145,7 @@
                             (apply str)))  ; korma will split on the periods and re-qualify the individual parts for us
       (k/database (kdb/create-db (database->spec loader :db dbdef)))))
 
-(defn- default-load-table-data! [loader dbdef tabledef]
+(defn default-load-table-data! [loader dbdef tabledef]
   (let [rows              (:rows tabledef)
         fields-for-insert (mapv :field-name (:field-definitions tabledef))
         entity            (korma-entity loader dbdef tabledef)]
@@ -158,19 +159,20 @@
                                                v)))))))))
 
 (defn default-execute-sql! [loader context dbdef sql]
-  (when (seq sql)
-    (try
-      (jdbc/execute! (database->spec loader context dbdef) [sql] :transaction? false, :multi? true)
-      (catch java.sql.SQLException e
-        (println "Error executing SQL:" sql)
-        (println (format "Caught SQLException:\n%s"
-                         (with-out-str (jdbc/print-sql-exception-chain e))))
-        (throw e))
-      (catch Throwable e
-        (println "Error executing SQL:" sql)
-        (println (format "Caught Exception: %s %s\n%s" (class e) (.getMessage e)
-                         (with-out-str (.printStackTrace e))))
-        (throw e)))))
+  (let [sql (some-> sql s/trim)]
+    (when (seq sql)
+      (try
+        (jdbc/execute! (database->spec loader context dbdef) [sql] :transaction? false, :multi? true)
+        (catch java.sql.SQLException e
+          (println "Error executing SQL:" sql)
+          (println (format "Caught SQLException:\n%s"
+                           (with-out-str (jdbc/print-sql-exception-chain e))))
+          (throw e))
+        (catch Throwable e
+          (println "Error executing SQL:" sql)
+          (println (format "Caught Exception: %s %s\n%s" (class e) (.getMessage e)
+                           (with-out-str (.printStackTrace e))))
+          (throw e))))))
 
 
 (def DefaultsMixin
@@ -192,6 +194,15 @@
 
 
 ;; ## ------------------------------------------------------------ IDatasetLoader impl ------------------------------------------------------------
+
+(defn sequentially-execute-sql!
+  "Alternative implementation of `execute-sql!` that executes statements one at a time for drivers
+   that don't support executing multiple statements at once."
+  [loader context dbdef sql]
+  (when sql
+    (doseq [statement (map s/trim (s/split sql #";+"))]
+      (when (seq statement)
+        (default-execute-sql! loader context dbdef statement)))))
 
 (defn- create-db! [loader {:keys [table-definitions], :as dbdef}]
   ;; Exec SQL for creating the DB
@@ -222,7 +233,7 @@
 (defn- destroy-db! [loader dbdef]
   (execute-sql! loader :server dbdef (drop-db-if-exists-sql loader dbdef)))
 
-(def ^:const IDatasetLoaderMixin
+(def IDatasetLoaderMixin
   "Mixin for `IGenericSQLDatasetLoader` types to implemnt `create-db!` and `destroy-db!` from `IDatasetLoader`."
   {:create-db!  create-db!
    :destroy-db! destroy-db!})

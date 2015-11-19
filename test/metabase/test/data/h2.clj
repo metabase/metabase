@@ -5,7 +5,8 @@
             (korma [core :as k]
                    [db :as kdb])
             (metabase.test.data [generic-sql :as generic]
-                                [interface :as i])))
+                                [interface :as i]))
+  (:import metabase.driver.h2.H2Driver))
 
 (def ^:private ^:const field-base-type->sql-type
   {:BigIntegerField "BIGINT"
@@ -64,9 +65,7 @@
    (format "GRANT ALL ON %s TO GUEST;" (quote-name this table-name))))
 
 
-(defrecord H2DatasetLoader [])
-
-(extend H2DatasetLoader
+(extend H2Driver
   generic/IGenericSQLDatasetLoader
   (let [{:keys [execute-sql!], :as mixin} generic/DefaultsMixin]
     (merge mixin
@@ -91,6 +90,3 @@
   (merge generic/IDatasetLoaderMixin
          {:database->connection-details database->connection-details
           :engine                       (constantly :h2)}))
-
-(defn dataset-loader []
-  (->H2DatasetLoader))

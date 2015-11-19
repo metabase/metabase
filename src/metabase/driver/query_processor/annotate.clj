@@ -167,7 +167,8 @@
   "Sort FIELDS by their \"importance\" vectors."
   [query fields]
   (let [field-importance (field-importance-fn query)]
-    (log/debug (u/format-color 'yellow "Sorted fields:\n%s" (u/pprint-to-str (sort (map field-importance fields)))))
+    (when-not @(resolve 'metabase.driver.query-processor/*disable-qp-logging*)
+      (log/debug (u/format-color 'yellow "Sorted fields:\n%s" (u/pprint-to-str (sort (map field-importance fields))))))
     (sort-by field-importance fields)))
 
 (defn- convert-field-to-expected-format
@@ -248,12 +249,15 @@
       expected by the frontend."
   [qp]
   (fn [query]
-    (let [results     (qp query)
-          result-keys (set (keys (first results)))
-          cols        (resolve-sort-and-format-columns (:query query) result-keys)
-          columns     (mapv :name cols)]
-      {:cols    (vec (for [col cols]
-                       (update col :name name)))
-       :columns (mapv name columns)
-       :rows    (for [row results]
-                  (mapv row columns))})))
+    (if (= :query (keyword (:type query)))
+      (let [results     (qp query)
+            result-keys (set (keys (first results)))
+            cols        (resolve-sort-and-format-columns (:query query) result-keys)
+            columns     (mapv :name cols)]
+        {:cols    (vec (for [col cols]
+                         (update col :name name)))
+         :columns (mapv name columns)
+         :rows    (for [row results]
+                    (mapv row columns))})
+      ;; for non-structured queries we do nothing
+      (qp query))))

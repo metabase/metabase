@@ -3,7 +3,7 @@
             [clojure.tools.logging :as log]
             [korma.core :as k]
             [korma.sql.utils :as utils]
-            [metabase.driver :refer [max-sync-lazy-seq-results defdriver]]
+            [metabase.driver :as driver]
             (metabase.driver.generic-sql [query-processor :as qp]
                                          [util :refer :all])
             [metabase.models.field :as field]
@@ -39,7 +39,6 @@
             :schema (:table_schem table)}))))
 
 (defn- active-column-names->type [column->base-type table]
-  {:pre [(map? column->base-type)]}
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db table)]
     (into {} (for [{:keys [column_name type_name]} (jdbc/result-set-seq (.getColumns md nil (:schema table) (:name table) nil))]
                {column_name (or (column->base-type (keyword type_name))
@@ -76,7 +75,7 @@
                                                         (= (count results) step))
                                                (-fetch-chunk (+ start step) step limit))))))]
     (fetch-chunk 0 field-values-lazy-seq-chunk-size
-                 max-sync-lazy-seq-results)))
+                 driver/max-sync-lazy-seq-results)))
 
 (defn- table-rows-seq [database table-name]
   (k/select (-> (k/create-entity table-name)
@@ -127,13 +126,6 @@
   ;; Check the :column->base-type map
   (assert column->base-type
     "SQL drivers must define :column->base-type.")
-  (assert (map? column->base-type)
-    ":column->base-type should be a map")
-  (doseq [[k v] column->base-type]
-    (assert (keyword? k)
-      (format "Not a keyword: %s" k))
-    (assert (contains? field/base-types v)
-      (format "Invalid field base-type: %s" v)))
 
   ;; Check :string-length-fn
   (assert string-length-fn
@@ -165,9 +157,9 @@
 
       Keyword name of the SQL function that should be used to get the length of a string. Defaults to `:STDDEV`.
 
-   *  `current-timestamp-fn` *(OPTIONAL)*
+   *  `current-datetime-fn` *(OPTIONAL)*
 
-      Keyword name of the SQL function that should be used to get the current `DATETIME` (or equivalent).  Defaults to `:NOW`.
+      Korma form that should be used to get the current `DATETIME` (or equivalent).  Defaults to `(k/sqlfn* :NOW)`.
 
    *  `(connection-details->spec [details-map])`
 
@@ -206,28 +198,28 @@
   [driver]
   ;; Verify the driver
   (verify-sql-driver driver)
-  (merge
-   {:features                  (set (cond-> [:foreign-keys
-                                             :standard-deviation-aggregations
-                                             :unix-timestamp-special-type-fields]
-                                      (:set-timezone-sql driver) (conj :set-timezone)))
-    :qp-clause->handler        qp/clause->handler
-    :can-connect?              (partial can-connect? (:connection-details->spec driver))
-    :process-query             process-query
-    :sync-in-context           sync-in-context
-    :active-tables             (partial active-tables (:excluded-schemas driver))
-    :active-column-names->type (partial active-column-names->type (:column->base-type driver))
-    :table-pks                 table-pks
-    :field-values-lazy-seq     field-values-lazy-seq
-    :table-rows-seq            table-rows-seq
-    :table-fks                 table-fks
-    :field-avg-length          (partial field-avg-length (:string-length-fn driver))
-    :field-percent-urls        field-percent-urls
-    :date-interval             (let [date-interval (:date-interval driver)]
-                                 (fn [unit amount]
-                                   ;; Add some extra param validation
-                                   {:pre [(contains? #{:second :minute :hour :day :week :month :quarter :year} unit)]}
-                                   (date-interval unit amount)))
-    :stddev-fn                 :STDDEV
-    :current-datetime-fn       :NOW}
-   driver))
+  (driver/driver
+   (merge
+    {:features                  (set (cond-> [:foreign-keys
+                                              :standard-deviation-aggregations]
+                                       (:set-timezone-sql driver) (conj :set-timezone)))
+     :qp-clause->handler        qp/clause->handler
+     :can-connect?              (partial can-connect? (:connection-details->spec driver))
+     :process-query             process-query
+     :sync-in-context           sync-in-context
+     :active-tables             (partial active-tables (:excluded-schemas driver))
+     :active-column-names->type (partial active-column-names->type (:column->base-type driver))
+     :table-pks                 table-pks
+     :field-values-lazy-seq     field-values-lazy-seq
+     :table-rows-seq            table-rows-seq
+     :table-fks                 table-fks
+     :field-avg-length          (partial field-avg-length (:string-length-fn driver))
+     :field-percent-urls        field-percent-urls
+     :date-interval             (let [date-interval (:date-interval driver)]
+                                  (fn [unit amount]
+                                    ;; Add some extra param validation
+                                    {:pre [(contains? #{:second :minute :hour :day :week :month :quarter :year} unit)]}
+                                    (date-interval unit amount)))
+     :stddev-fn                 :STDDEV
+     :current-datetime-fn       (k/sqlfn* :NOW)}
+    driver)))

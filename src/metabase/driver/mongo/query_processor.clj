@@ -297,7 +297,7 @@
       :distinct {$addToSet (->rvalue field)}
       :sum      {$sum (->rvalue field)})))
 
-(defn- handle-breakout+aggregation [{breakout-fields :breakout, {ag-type :aggregation-type, :as aggregation} :aggregation} pipeline]
+(defn- handle-breakout+aggregation [{breakout-fields :breakout, {ag-type :aggregation-type, ag-field :field, :as aggregation} :aggregation} pipeline]
   (let [aggregation? (and ag-type
                           (not= ag-type :rows))
         breakout?    (seq breakout-fields)]
@@ -306,9 +306,12 @@
         (filter identity
                 [ ;; create a totally sweet made-up column called __group to store the fields we'd like to group by
                  (when breakout?
-                   {$project {"_id"      "$_id"
-                              "___group" (into {} (for [field breakout-fields]
-                                                    {(->lvalue field) (->rvalue field)}))}})
+                   {$project (merge
+                              {"_id"      "$_id"
+                               "___group" (into {} (for [field breakout-fields]
+                                                     {(->lvalue field) (->rvalue field)}))}
+                              (when ag-field
+                                {(->lvalue ag-field) (->rvalue ag-field)}))})
                  ;; Now project onto the __group and the aggregation rvalue
                  {$group (merge {"_id" (when breakout?
                                          "$___group")}

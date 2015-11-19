@@ -6,9 +6,10 @@
                    mysql)
             (korma.sql [engine :refer [sql-func]]
                        [utils :as utils])
-            [metabase.driver :as driver, :refer [defdriver]]
+            [metabase.driver :as driver]
             [metabase.driver.generic-sql :refer [sql-driver]]
-            [metabase.driver.generic-sql.util :refer [funcs]]))
+            [metabase.driver.generic-sql.util :refer [funcs]]
+            [metabase.util :as u]))
 
 ;;; # Korma 0.4.2 Bug Workaround
 ;; (Buggy code @ https://github.com/korma/Korma/blob/684178c386df529558bbf82097635df6e75fb339/src/korma/mysql.clj)
@@ -61,7 +62,10 @@
 (defn- connection-details->spec [details]
   (-> details
       (set/rename-keys {:dbname :db})
-      kdb/mysql))
+      kdb/mysql
+      ;; 0000-00-00 dates are valid in MySQL, but JDBC barfs when queries return them because java.sql.Date doesn't allow it.
+      ;; Add a param to the end of the connection string that tells MySQL to convert 0000-00-00 dates to NULL when returning them.
+      (update :subname (u/rpartial str "?zeroDateTimeBehavior=convertToNull"))))
 
 (defn- unix-timestamp->timestamp [field-or-value seconds-or-milliseconds]
   (utils/func (case seconds-or-milliseconds
@@ -129,37 +133,42 @@
         #".*" ; default
         message))
 
-(defdriver mysql
-  (sql-driver
-   {:driver-name                       "MySQL"
-    :details-fields                    [{:name         "host"
-                                         :display-name "Host"
-                                         :default      "localhost"}
-                                        {:name         "port"
-                                         :display-name "Port"
-                                         :type         :integer
-                                         :default      3306}
-                                        {:name         "dbname"
-                                         :display-name "Database name"
-                                         :placeholder  "birds_of_the_word"
-                                         :required     true}
-                                        {:name         "user"
-                                         :display-name "Database username"
-                                         :placeholder  "What username do you use to login to the database?"
-                                         :required     true}
-                                        {:name         "password"
-                                         :display-name "Database password"
-                                         :type         :password
-                                         :placeholder  "*******"}]
-    :column->base-type                 column->base-type
-    :string-length-fn                  :CHAR_LENGTH
-    :excluded-schemas                  #{"INFORMATION_SCHEMA"}
-    :connection-details->spec          connection-details->spec
-    :unix-timestamp->timestamp         unix-timestamp->timestamp
-    :date                              date
-    :date-interval                     date-interval
-    ;; If this fails you need to load the timezone definitions from your system into MySQL;
-    ;; run the command `mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql`
-    ;; See https://dev.mysql.com/doc/refman/5.7/en/time-zone-support.html for details
-    :set-timezone-sql                  "SET @@session.time_zone = ?;"
-    :humanize-connection-error-message humanize-connection-error-message}))
+(defrecord MySQLDriver [])
+
+(def mysql
+  (map->MySQLDriver
+   (sql-driver
+    {:driver-name                       "MySQL"
+     :details-fields                    [{:name         "host"
+                                          :display-name "Host"
+                                          :default      "localhost"}
+                                         {:name         "port"
+                                          :display-name "Port"
+                                          :type         :integer
+                                          :default      3306}
+                                         {:name         "dbname"
+                                          :display-name "Database name"
+                                          :placeholder  "birds_of_the_word"
+                                          :required     true}
+                                         {:name         "user"
+                                          :display-name "Database username"
+                                          :placeholder  "What username do you use to login to the database?"
+                                          :required     true}
+                                         {:name         "password"
+                                          :display-name "Database password"
+                                          :type         :password
+                                          :placeholder  "*******"}]
+     :column->base-type                 column->base-type
+     :string-length-fn                  :CHAR_LENGTH
+     :excluded-schemas                  #{"INFORMATION_SCHEMA"}
+     :connection-details->spec          connection-details->spec
+     :unix-timestamp->timestamp         unix-timestamp->timestamp
+     :date                              date
+     :date-interval                     date-interval
+     ;; If this fails you need to load the timezone definitions from your system into MySQL;
+     ;; run the command `mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql`
+     ;; See https://dev.mysql.com/doc/refman/5.7/en/time-zone-support.html for details
+     :set-timezone-sql                  "SET @@session.time_zone = ?;"
+     :humanize-connection-error-message humanize-connection-error-message})))
+
+(driver/register-driver! :mysql mysql)

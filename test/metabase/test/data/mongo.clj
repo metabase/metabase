@@ -1,9 +1,9 @@
 (ns metabase.test.data.mongo
-  "MongoDB Dataset Loader."
   (:require (monger [collection :as mc]
                     [core :as mg])
             [metabase.driver.mongo.util :refer [with-mongo-connection]]
-            [metabase.test.data.interface :as i]))
+            [metabase.test.data.interface :as i])
+  (:import metabase.driver.mongo.MongoDriver))
 
 (defn- database->connection-details
   ([dbdef]
@@ -39,14 +39,9 @@
               (catch com.mongodb.MongoException _))))))))
 
 
-(defrecord MongoDatasetLoader [])
-
-(extend MongoDatasetLoader
+(extend MongoDriver
   i/IDatasetLoader
   {:create-db!                   create-db!
    :destroy-db!                  destroy-db!
    :database->connection-details database->connection-details
    :engine                       (constantly :mongo)})
-
-(defn ^MongoDatasetLoader dataset-loader []
-  (->MongoDatasetLoader))

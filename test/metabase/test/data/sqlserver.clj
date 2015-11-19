@@ -5,7 +5,8 @@
             [environ.core :refer [env]]
             [metabase.driver.sqlserver :refer [sqlserver]]
             (metabase.test.data [generic-sql :as generic]
-                                [interface :as i])))
+                                [interface :as i]))
+  (:import metabase.driver.sqlserver.SQLServerDriver))
 
 (def ^:private ^:const field-base-type->sql-type
   {:BigIntegerField "BIGINT"
@@ -78,9 +79,7 @@
    [(+suffix db-name) "dbo" table-name field-name]))
 
 
-(defrecord SQLServerDatasetLoader [])
-
-(extend SQLServerDatasetLoader
+(extend SQLServerDriver
   generic/IGenericSQLDatasetLoader
   (merge generic/DefaultsMixin
          {:drop-db-if-exists-sql     drop-db-if-exists-sql
@@ -97,17 +96,14 @@
             :database->connection-details database->connection-details
             :engine                       (constantly :sqlserver)})))
 
-(defn dataset-loader []
-  (->SQLServerDatasetLoader))
-
 
 (defn- cleanup-leftover-dbs
   "Clean up any leftover DBs that weren't destroyed by the last test run (eg, if it failed for some reason).
    This is important because we're limited to a quota of 30 DBs on RDS."
   {:expectations-options :before-run}
   []
-  (when (contains? @(resolve 'metabase.test.data.datasets/test-dataset-names) :sqlserver)
-    (let [connection-spec ((sqlserver :connection-details->spec) (database->connection-details nil :server nil))
+  (when (contains? @(resolve 'metabase.test.data.datasets/test-engines) :sqlserver)
+    (let [connection-spec ((:connection-details->spec sqlserver) (database->connection-details nil :server nil))
           leftover-dbs    (mapv :name (jdbc/query connection-spec "SELECT name
                                                                    FROM   master.dbo.sysdatabases
                                                                    WHERE  name NOT IN ('tempdb', 'master', 'model', 'msdb', 'rdsadmin');"))]

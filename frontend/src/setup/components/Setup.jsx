@@ -1,6 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
 import LogoIcon from 'metabase/components/LogoIcon.jsx';
+import NewsletterForm from 'metabase/components/NewsletterForm.jsx';
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -40,7 +41,7 @@ export default class Setup extends Component {
     }
 
     render() {
-        let { activeStep, setupComplete } = this.props;
+        let { activeStep, setupComplete, userDetails } = this.props;
 
         if (activeStep === WELCOME_STEP_NUMBER) {
             return (
@@ -76,7 +77,10 @@ export default class Setup extends Component {
 
                             { setupComplete ?
                                 <section className="SetupStep rounded SetupStep--active flex flex-column layout-centered p4">
-                                    <h1 style={{fontSize: "xx-large"}} className="text-normal pt2">You're all set up!</h1>
+                                    <h1 style={{fontSize: "xx-large"}} className="text-light pt2 pb2">You're all set up!</h1>
+                                    <div className="pt4">
+                                        <NewsletterForm initialEmail={userDetails.email} />
+                                    </div>
                                     <div className="pt4 pb2">
                                         <a className="Button Button--primary" href="/?new" onClick={this.completeSetup.bind(this)}>Take me to Metabase</a>
                                     </div>
