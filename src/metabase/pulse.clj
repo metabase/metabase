@@ -7,35 +7,49 @@
             [clojure.tools.logging :as log]
             [clojure.pprint :refer [cl-format]]
             [clojure.string :refer [upper-case]]
-            (metabase.models [setting :refer [defsetting] :as setting])
-            [metabase.util :as u]))
+            [metabase.models.setting :as setting]))
 
 ;; NOTE: hiccup does not escape content by default so be sure to use "h" to escape any user-controlled content :-/
 
 ;;; ## CONFIG
 
-(def ^:private card-width 400)
-
-(def ^:private rows-limit 10)
-(def ^:private cols-limit 3)
+(def ^:const card-width 400)
+(def ^:const rows-limit 10)
+(def ^:const cols-limit 3)
+(def ^:const sparkline-dot-radius 6)
+(def ^:const sparkline-thickness 4)
+(def ^:const sparkline-pad 10)
 
 ;;; ## STYLES
 
-(def ^:private color-brand  "rgb(80,158,227)")
-(def ^:private color-purple "rgb(135,93,175)")
-(def ^:private color-grey-1 "rgb(248,248,248)")
-(def ^:private color-grey-2 "rgb(189,193,191)")
-(def ^:private color-grey-3 "rgb(124,131,129)")
-(def ^:private color-grey-4 "rgb(57,67,64)")
+(def ^:const color-brand  "rgb(80,158,227)")
+(def ^:const color-purple "rgb(135,93,175)")
+(def ^:const color-grey-1 "rgb(248,248,248)")
+(def ^:const color-grey-2 "rgb(189,193,191)")
+(def ^:const color-grey-3 "rgb(124,131,129)")
+(def ^:const color-grey-4 "rgb(57,67,64)")
 
-(def ^:private font-style    "font-family: Lato, \"Helvetica Neue\", Helvetica, Arial, sans-serif;")
-(def ^:private section-style (str font-style))
-(def ^:private header-style  (str font-style "font-size: 16px; font-weight: 700; color: " color-grey-4 "; text-decoration: none;"))
-(def ^:private scalar-style  (str font-style "font-size: 32px; font-weight: 400; color: " color-brand ";"))
-(def ^:private bar-th-style  (str font-style "font-size: 10px; font-weight: 400; color: " color-grey-4 "; border-bottom: 4px solid " color-grey-1 "; padding-top: 0px; padding-bottom: 10px;"))
-(def ^:private bar-td-style  (str font-style "font-size: 16px; font-weight: 400; text-align: left; padding-right: 1em; padding-top: 8px;"))
-(def ^:private button-style  (str font-style "display: inline-block; box-sizing: border-box; padding: 8px; color: " color-brand "; border: 1px solid " color-brand "; border-radius: 4px; text-decoration: none; "))
+(def ^:const font-style    "font-family: Lato, \"Helvetica Neue\", Helvetica, Arial, sans-serif;")
+(def ^:const section-style (str font-style))
+(def ^:const header-style  (str font-style "font-size: 16px; font-weight: 700; color: " color-grey-4 "; text-decoration: none;"))
+(def ^:const scalar-style  (str font-style "font-size: 32px; font-weight: 400; color: " color-brand ";"))
+(def ^:const bar-th-style  (str font-style "font-size: 10px; font-weight: 400; color: " color-grey-4 "; border-bottom: 4px solid " color-grey-1 "; padding-top: 0px; padding-bottom: 10px;"))
+(def ^:const bar-td-style  (str font-style "font-size: 16px; font-weight: 400; text-align: left; padding-right: 1em; padding-top: 8px;"))
+(def ^:const button-style  (str font-style "display: inline-block; box-sizing: border-box; padding: 8px; color: " color-brand "; border: 1px solid " color-brand "; border-radius: 4px; text-decoration: none; "))
 
+;;; ## HELPER FNS
+
+(defn datetime-field?
+  [field]
+  (or (contains? #{:DateTimeField :TimeField :DateField} (:base_type field))
+      (contains? #{:timestamp_seconds :timestamp_milliseconds} (:special_type field))))
+
+(defn number-field?
+  [field]
+  (or (contains? #{:IntegerField :DecimalField :FloatField :BigIntegerField} (:base_type field))
+      (contains? #{:number} (:special_type field))))
+
+;;; ## FORMATTING
 
 (defn- format-number
   [n]
@@ -64,6 +78,8 @@
     (instance? java.util.Date value) (format-timestamp (.getTime value))
     (number? value) (format-number value)
     :else (str value)))
+
+;;; ## RENDERING
 
 (defn card-href
   [card]
@@ -138,10 +154,6 @@
   [:div {:style scalar-style}
     (-> data :rows first first format-cell h)])
 
-(def ^:private sparkline-dot-radius 6)
-(def ^:private sparkline-thickness 4)
-(def ^:private sparkline-pad 10)
-
 (defn render-sparkline-to-png
   "Takes two arrays of numbers between 0 and 1 and plots them as a sparkline"
   [xs ys width height]
@@ -190,16 +202,6 @@
           ]]]
       [:div {:style "margin-top: 20px; margin-left: 30px;"}
         (render-table card [(last rows) (first rows)] cols render-img [0 1] nil)]]))
-
-(defn datetime-field?
-  [field]
-  (or (contains? #{:DateTimeField :TimeField :DateField} (:base_type field))
-      (contains? #{:timestamp_seconds :timestamp_milliseconds} (:special_type field))))
-
-(defn number-field?
-  [field]
-  (or (contains? #{:IntegerField :DecimalField :FloatField :BigIntegerField} (:base_type field))
-      (contains? #{:number} (:special_type field))))
 
 (defn detect-pulse-card-type
   [card data]
