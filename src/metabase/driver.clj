@@ -306,7 +306,6 @@
      (can-connect-with-details? :postgres {:host \"localhost\", :port 5432, ...})"
   [engine details-map & [rethrow-exceptions]]
   {:pre [(keyword? engine)
-         (is-engine? engine)
          (map? details-map)]}
   (let [driver (engine->driver engine)]
     (try

@@ -239,6 +239,13 @@
 (expect false (structured-query? {:type "native"}))
 (expect true (structured-query? {:type "query"}))
 
+;; rows-query-without-limits?
+(expect false (rows-query-without-limits? {:query {:aggregation {:aggregation-type :count}}}))
+(expect true (rows-query-without-limits? {:query {:aggregation {:aggregation-type :rows}}}))
+(expect false (rows-query-without-limits? {:query {:aggregation {:aggregation-type :count}
+                                                   :limit       10}}))
+(expect false (rows-query-without-limits? {:query {:aggregation {:aggregation-type :count}
+                                                   :page        1}}))
 
 ;; ### "COUNT" AGGREGATION
 (qp-expect-with-all-engines
@@ -492,11 +499,27 @@
 ;; # POST PROCESSING TESTS
 
 ;; ## LIMIT-MAX-RESULT-ROWS
-;; Apply limit-max-result-rows to an infinite sequence and make sure it gets capped at `max-result-rows`
-(expect max-result-rows
+;; Apply limit-max-result-rows to an infinite sequence and make sure it gets capped at `absolute-max-results`
+(expect absolute-max-results
   (->> ((@(resolve 'metabase.driver.query-processor/limit) identity) {:rows (repeat [:ok])})
        :rows
        count))
+
+;; Apply an arbitrary max-results on the query and ensure our results size is appropriately constrained
+(expect 1234
+  (->> ((@(resolve 'metabase.driver.query-processor/limit) identity) {:constraints {:max-results 1234}
+                                                                                    :query       {:aggregation {:aggregation-type :count}}
+                                                                                    :rows        (repeat [:ok])})
+       :rows
+       count))
+
+;; Apply a max-results-bare-rows limit specifically on :rows type query
+(expect [46 46]
+  (let [res ((@(resolve 'metabase.driver.query-processor/limit) identity) {:constraints {:max-results 46}
+                                                                                         :query       {:aggregation {:aggregation-type :rows}}
+                                                                                         :rows        (repeat [:ok])})]
+    [(->> res :rows count)
+     (->> res :query :limit)]))
 
 
 ;; ## CUMULATIVE SUM

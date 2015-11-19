@@ -1,36 +1,7 @@
 (ns metabase.email.messages-test
   (:require [expectations :refer :all]
-            [metabase.email :as email]
+            [metabase.email-test :refer [with-fake-inbox inbox]]
             [metabase.email.messages :refer :all]))
-
-(def ^:private inbox
-  "Map of email addresses -> sequence of messages they've recieved."
-  (atom {}))
-
-(defn- reset-inbox!
-  "Clear all messages from `inbox`."
-  []
-  (reset! inbox {}))
-
-(defn- fake-inbox-email-fn
-  "A function that can be used in place of `*send-email-fn*`.
-   Put all messages into `inbox` instead of actually sending them."
-  [_ email]
-  (doseq [recipient (:to email)]
-    (swap! inbox assoc recipient (-> (get @inbox recipient [])
-                                     (conj email)))))
-
-(defmacro with-fake-inbox
-  "Clear `inbox`, bind `*send-email-fn*` to `fake-inbox-email-fn`, set temporary settings for `email-smtp-username`
-   and `email-smtp-password`, and execute BODY."
-  [& body]
-  `(binding [email/*send-email-fn* fake-inbox-email-fn]
-     (reset-inbox!)
-     ;; Push some fake settings for SMTP username + password, and restore originals when done
-     (let [orig-hostname# (email/email-smtp-host)]
-       (email/email-smtp-host "fake_smtp_host")
-       (try ~@body
-            (finally (email/email-smtp-host orig-hostname#))))))
 
 ;; new user email
 ;; NOTE: we are not validating the content of the email body namely because it's got randomized elements and thus

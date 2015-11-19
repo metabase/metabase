@@ -2,7 +2,6 @@ import _ from "underscore";
 
 import SettingsEditor from './components/SettingsEditor.jsx';
 
-import Humanize from "humanize";
 
 var SettingsAdminControllers = angular.module('metabaseadmin.settings.controllers', ['metabase.services']);
 
@@ -21,46 +20,129 @@ var TIMEZONES = [
     "America/Costa_Rica",
 ];
 
-// temporary hardcoded metadata
-var EXTRA_SETTINGS_METADATA = {
-    "site-name":            { display_name: "Site Name",          section: "General", index: 0, type: "string" },
-    "-site-url":            { display_name: "Site URL",           section: "General", index: 1, type: "string" },
-    "admin-email":          { display_name: "Email Address for Help Requests", section: "General", index: 2, type: "string" },
-    "report-timezone":      { display_name: "Report Timezone",    section: "General", index: 3, type: "select", options: TIMEZONES, placeholder: "Select a timezone" },
-    "anon-tracking-enabled":{ display_name: "Anonymous Tracking", section: "General", index: 4, type: "boolean" },
-    "email-smtp-host":      { display_name: "SMTP Host",          section: "Email",   index: 0, type: "string" },
-    "email-smtp-port":      { display_name: "SMTP Port",          section: "Email",   index: 1, type: "string" },
-    "email-smtp-security":  { display_name: "SMTP Security",      section: "Email",   index: 2, type: "radio", options: { none: "None", tls: "TLS", ssl: "SSL" } },
-    "email-smtp-username":  { display_name: "SMTP Username",      section: "Email",   index: 3, type: "string" },
-    "email-smtp-password":  { display_name: "SMTP Password",      section: "Email",   index: 4, type: "password" },
-    "email-from-address":   { display_name: "From Address",       section: "Email",   index: 5, type: "string" },
-};
+const SECTIONS = [
+    {
+        name: "General",
+        settings: [
+            {
+                key: "site-name",
+                display_name: "Site Name",
+                type: "string"
+            },
+            {
+                key: "-site-url",
+                display_name: "Site URL",
+                type: "string"
+            },
+            {
+                key: "admin-email",
+                display_name: "Email Address for Help Requests",
+                type: "string"
+            },
+            {
+                key: "report-timezone",
+                display_name: "Report Timezone",
+                type: "select",
+                options: TIMEZONES,
+                placeholder: "Select a timezone"
+            },
+            {
+                key: "anon-tracking-enabled",
+                display_name: "Anonymous Tracking",
+                type: "boolean"
+            }
+        ]
+    },
+    {
+        name: "Email",
+        settings: [
+            {
+                key: "email-smtp-host",
+                display_name: "SMTP Host",
+                placeholder: "smtp.yourservice.com",
+                type: "string",
+                required: true,
+                autoFocus: true
+            },
+            {
+                key: "email-smtp-port",
+                display_name: "SMTP Port",
+                placeholder: "587",
+                type: "string",
+                required: true,
+                validations: [["integer", "That's not a valid port number"]]
+            },
+            {
+                key: "email-smtp-security",
+                display_name: "SMTP Security",
+                description: null,
+                type: "radio",
+                options: { none: "None", ssl: "SSL", tls: "TLS" },
+                defaultValue: 'none'
+            },
+            {
+                key: "email-smtp-username",
+                display_name: "SMTP Username",
+                description: null,
+                placeholder: "youlooknicetoday",
+                type: "string"
+            },
+            {
+                key: "email-smtp-password",
+                display_name: "SMTP Password",
+                description: null,
+                placeholder: "Shh...",
+                type: "password"
+            },
+            {
+                key: "email-from-address",
+                display_name: "From Address",
+                placeholder: "metabase@yourcompany.com",
+                type: "string",
+                required: true,
+                validations: [["email", "That's not a valid email address"]]
+            }
+        ]
+    }
+];
 
-SettingsAdminControllers.controller('SettingsEditor', ['$scope', '$location', 'Settings', 'AppState', 'settings',
-    function($scope, $location, Settings, AppState, settings) {
+SettingsAdminControllers.controller('SettingsEditor', ['$scope', '$location', 'Settings', 'Email', 'AppState', 'settings',
+    function($scope, $location, Settings, Email, AppState, settings) {
         $scope.SettingsEditor = SettingsEditor;
 
         if ('section' in $location.search()) {
-            $scope.initialSection = $location.search().section;
+            $scope.initialSection = _.findIndex(SECTIONS, function(v) {
+                return v.name === $location.search().section;
+            });
         }
 
         $scope.updateSetting = async function(setting) {
             await Settings.put({ key: setting.key }, setting).$promise;
             AppState.refreshSiteSettings();
+        };
+
+        $scope.updateEmailSettings = async function(settings) {
+            await Email.updateSettings(settings).$promise;
+            AppState.refreshSiteSettings();
         }
 
-        $scope.sections = {};
-        settings.forEach(function(setting) {
-            var defaults = { display_name: keyToDisplayName(setting.key), placeholder: setting.default };
-            setting = _.extend(defaults, EXTRA_SETTINGS_METADATA[setting.key], setting);
-            var sectionName = setting.section || "Other";
-            $scope.sections[sectionName] = $scope.sections[sectionName] || [];
-            $scope.sections[sectionName].push(setting);
+        $scope.sendTestEmail = async function(settings) {
+            await Email.sendTest().$promise;
+        }
+
+        let settingsByKey = _.groupBy(settings, 'key');
+        $scope.sections = SECTIONS.map(function(section) {
+            let sectionSettings = section.settings.map(function(setting) {
+                const apiSetting = settingsByKey[setting.key][0];
+                if (apiSetting) {
+                    apiSetting.placeholder = apiSetting.default;
+                    return _.extend(apiSetting, setting);
+                }
+            });
+
+            let updatedSection = _.clone(section);
+            updatedSection.settings = sectionSettings;
+            return updatedSection;
         });
-        _.each($scope.sections, (section) => section.sort((a, b) => a.index - b.index))
-
-        function keyToDisplayName(key) {
-            return Humanize.capitalizeAll(key.replace(/-/g, " ")).trim();
-        }
     }
 ]);
