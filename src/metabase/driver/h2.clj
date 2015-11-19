@@ -190,7 +190,7 @@
 
 (defrecord H2Driver [])
 
-(def ^:metabase.driver/driver h2
+(def h2
   (map->H2Driver
    (sql-driver
     {:driver-name                       "H2"
@@ -206,3 +206,5 @@
      :unix-timestamp->timestamp         unix-timestamp->timestamp
      :humanize-connection-error-message humanize-connection-error-message
      :process-query-in-context          process-query-in-context})))
+
+(driver/register-driver! :h2 h2)

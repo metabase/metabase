@@ -159,7 +159,7 @@
 
 (defrecord PostgresDriver [])
 
-(def ^:metabase.driver/driver postgres
+(def postgres
   (map->PostgresDriver
    (sql-driver
     {:driver-name                       "PostgreSQL"
@@ -195,3 +195,6 @@
      :set-timezone-sql                  "UPDATE pg_settings SET setting = ? WHERE name ILIKE 'timezone';"
      :driver-specific-sync-field!       driver-specific-sync-field!
      :humanize-connection-error-message humanize-connection-error-message})))
+
+
+(driver/register-driver! :postgres postgres)

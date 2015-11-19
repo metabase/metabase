@@ -123,7 +123,7 @@
 
 (defrecord MongoDriver [])
 
-(def ^:metabase.driver/driver mongo
+(def mongo
   (map->MongoDriver
    (driver/driver
     {:driver-name                       "MongoDB"
@@ -161,3 +161,5 @@
      :date-interval                     u/relative-date
      :humanize-connection-error-message humanize-connection-error-message
      :active-nested-field-name->type    active-nested-field-name->type})))
+
+(driver/register-driver! :mongo mongo)
