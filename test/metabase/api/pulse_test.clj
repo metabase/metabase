@@ -146,6 +146,80 @@
       (update :channels (fn [chans]
                           (mapv #(dissoc % :id :pulse_id :created_at :updated_at) chans)))))
 
+
+;; ## PUT /api/pulse
+
+(expect {:errors {:name "field is a required param."}}
+  ((user->client :rasta) :put 400 "pulse/1" {}))
+
+(expect {:errors {:cards "field is a required param."}}
+  ((user->client :rasta) :put 400 "pulse/1" {:name "abc"}))
+
+(expect {:errors {:cards "Invalid value 'foobar' for 'cards': value must be an array."}}
+  ((user->client :rasta) :put 400 "pulse/1" {:name  "abc"
+                                             :cards "foobar"}))
+
+(expect {:errors {:cards "Invalid value 'abc' for 'cards': array value must be a map."}}
+  ((user->client :rasta) :put 400 "pulse/1" {:name  "abc"
+                                             :cards ["abc"]}))
+
+(expect {:errors {:channels "field is a required param."}}
+  ((user->client :rasta) :put 400 "pulse/1" {:name "abc"
+                                             :cards [{:id 100} {:id 200}]}))
+
+(expect {:errors {:channels "Invalid value 'foobar' for 'channels': value must be an array."}}
+  ((user->client :rasta) :put 400 "pulse/1" {:name    "abc"
+                                             :cards   [{:id 100} {:id 200}]
+                                             :channels "foobar"}))
+
+(expect {:errors {:channels "Invalid value 'abc' for 'channels': array value must be a map."}}
+  ((user->client :rasta) :put 400 "pulse/1" {:name     "abc"
+                                             :cards    [{:id 100} {:id 200}]
+                                             :channels ["abc"]}))
+
+(expect-let [pulse (new-pulse :channels [{:channel_type  "email"
+                                          :schedule_type "daily"
+                                          :schedule_hour 12
+                                          :schedule_day  nil
+                                          :recipients    []}])
+             card  (new-card)]
+  {:name         "Updated Pulse"
+   :public_perms common/perms-readwrite
+   :creator_id   (user->id :crowberto)
+   :creator      (user-details (fetch-user :crowberto))
+   :created_at   true
+   :updated_at   true
+   :cards        [(pulse-card-details card)]
+   :channels     [{:channel_type  "slack"
+                   :schedule_type "hourly"
+                   :schedule_hour nil
+                   :schedule_day  nil
+                   :details       {:channels "#general"}
+                   :recipients    []}]}
+  (-> (pulse-response ((user->client :rasta) :put 200 (format "pulse/%d" (:id pulse)) {:name     "Updated Pulse"
+                                                                                       :cards    [{:id (:id card)}]
+                                                                                       :channels [{:channel_type  "slack"
+                                                                                                   :schedule_type "hourly"
+                                                                                                   :schedule_hour 12
+                                                                                                   :schedule_day  "mon"
+                                                                                                   :recipients    []
+                                                                                                   :details       {:channels "#general"}}]}))
+      (update :channels (fn [chans]
+                          (mapv #(dissoc % :id :pulse_id :created_at :updated_at) chans)))))
+
+
+;; ## DELETE /api/pulse/:id
+(expect-let [pulse (new-pulse :channels [{:channel_type  "email"
+                                          :schedule_type "daily"
+                                          :schedule_hour 12
+                                          :schedule_day  nil
+                                          :recipients    [{:id (user->id :rasta)}]}])]
+  nil
+  (do
+    ((user->client :rasta) :delete 204 (format "pulse/%d" (:id pulse)))
+    (pulse/retrieve-pulse (:id pulse))))
+
+
 ;; ## GET /api/pulse
 
 (expect-let [_      (delete-existing-pulses)
@@ -161,144 +235,3 @@
 (expect-let [pulse1 (new-pulse)]
   (pulse-details pulse1)
   ((user->client :rasta) :get 200 (format "pulse/%d" (:id pulse1))))
-
-;(expect-eval-actual-first
-;    (match-$ (sel :one EmailReport (order :id :DESC))
-;      {:description nil
-;       :email_addresses ""
-;       :schedule {:days_of_week {:mon true
-;                                 :tue true
-;                                 :wed true
-;                                 :thu true
-;                                 :fri true
-;                                 :sat true
-;                                 :sun true}
-;                  :timezone ""
-;                  :time_of_day "morning"}
-;       :recipients [(match-$ (fetch-user :lucky)
-;                      {:email "lucky@metabase.com"
-;                       :first_name "Lucky"
-;                       :last_login $
-;                       :is_superuser false
-;                       :id $
-;                       :last_name "Pigeon"
-;                       :date_joined $
-;                       :common_name "Lucky Pigeon"})]
-;       :organization_id @org-id
-;       :name "My Cool Email Report"
-;       :mode (emailreport/mode->id :active)
-;       :creator_id (user->id :rasta)
-;       :updated_at $
-;       :dataset_query {:database (:id @test-db)
-;                       :query {:limit nil
-;                               :breakout [nil]
-;                               :aggregation ["rows"]
-;                               :filter [nil nil]
-;                               :source_table (table->id :venues)}
-;                       :type "query"}
-;       :id $
-;       :version 1
-;       :public_perms common/perms-readwrite
-;       :created_at $})
-;  (create-email-report))
-
-;;; ## GET /api/emailreport/:id
-;(expect-eval-actual-first
-;    (match-$ (sel :one EmailReport (order :id :DESC))
-;      {:description nil
-;       :email_addresses ""
-;       :can_read true
-;       :schedule {:days_of_week {:mon true
-;                                 :tue true
-;                                 :wed true
-;                                 :thu true
-;                                 :fri true
-;                                 :sat true
-;                                 :sun true}
-;                  :timezone ""
-;                  :time_of_day "morning"}
-;       :creator (match-$ (fetch-user :rasta)
-;                  {:common_name "Rasta Toucan"
-;                   :date_joined $
-;                   :last_name "Toucan"
-;                   :id $
-;                   :is_superuser false
-;                   :last_login $
-;                   :first_name "Rasta"
-;                   :email "rasta@metabase.com"})
-;       :recipients [(match-$ (fetch-user :lucky)
-;                      {:email "lucky@metabase.com"
-;                       :first_name "Lucky"
-;                       :last_login $
-;                       :is_superuser false
-;                       :id $
-;                       :last_name "Pigeon"
-;                       :date_joined $
-;                       :common_name "Lucky Pigeon"})]
-;       :can_write true
-;       :organization_id @org-id
-;       :name "My Cool Email Report"
-;       :mode (emailreport/mode->id :active)
-;       :organization {:id @org-id
-;                      :slug "test"
-;                      :name "Test Organization"
-;                      :description nil
-;                      :logo_url nil
-;                      :report_timezone nil
-;                      :inherits true}
-;       :creator_id (user->id :rasta)
-;       :updated_at $
-;       :dataset_query {:database (:id @test-db)
-;                       :query {:limit nil
-;                               :breakout [nil]
-;                               :aggregation ["rows"]
-;                               :filter [nil nil]
-;                               :source_table (table->id :venues)}
-;                       :type "query"}
-;       :id $
-;       :version 1
-;       :public_perms common/perms-readwrite
-;       :created_at $})
-;  (let [{id :id} (create-email-report)]
-;    ((user->client :rasta) :get 200 (format "emailreport/%d" id))))
-;
-;;; ## DELETE /api/emailreport/:id
-;(let [er-name (random-name)
-;      er-exists? (fn [] (exists? EmailReport :name er-name))]
-;  (expect-eval-actual-first
-;      [false
-;       true
-;       false]
-;    [(er-exists?)
-;     (do (create-email-report :name er-name)
-;         (er-exists?))
-;     (let [{id :id} (sel :one EmailReport :name er-name)]
-;       ((user->client :rasta) :delete 204 (format "emailreport/%d" id))
-;       (er-exists?))]))
-;
-;
-;;; ## RECPIENTS-RELATED TESTS
-;;; *  Check that recipients are returned by GET /api/emailreport/:id
-;;; *  Check that we can set them via PUT /api/emailreport/:id
-;(expect
-;    [#{}
-;     #{:rasta}
-;     #{:crowberto :lucky}
-;     #{}]
-;  (with-temp EmailReport [{:keys [id]} {:creator_id      (user->id :rasta)
-;                                        :name            (random-name)
-;                                        :organization_id @org-id
-;                                        :dataset_query   {}
-;                                        :schedule        {}}]
-;    (symbol-macrolet [get-recipients (->> ((user->client :rasta) :get 200 (format "emailreport/%d" id))
-;                                          :recipients
-;                                          (map :id)
-;                                          (map id->user)
-;                                          set)]
-;      (let [put-recipients (fn [& user-kws]
-;                             ((user->client :rasta) :put 200 (format "emailreport/%d" id) {:recipients (map user->id user-kws)})
-;                             get-recipients)]
-;        [get-recipients
-;         (put-recipients :rasta)
-;         (put-recipients :lucky :crowberto)
-;         (put-recipients)]))))
