@@ -135,7 +135,7 @@
 
 (defrecord MySQLDriver [])
 
-(def ^:metabase.driver/driver mysql
+(def mysql
   (map->MySQLDriver
    (sql-driver
     {:driver-name                       "MySQL"
@@ -170,3 +170,5 @@
      ;; See https://dev.mysql.com/doc/refman/5.7/en/time-zone-support.html for details
      :set-timezone-sql                  "SET @@session.time_zone = ?;"
      :humanize-connection-error-message humanize-connection-error-message})))
+
+(driver/register-driver! :mysql mysql)

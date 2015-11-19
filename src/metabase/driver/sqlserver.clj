@@ -3,6 +3,7 @@
             (korma [core :as k]
                    [db :as kdb])
             [korma.sql.utils :as utils]
+            [metabase.driver :as driver]
             [metabase.driver.generic-sql :refer [sql-driver]]
             [metabase.driver.generic-sql.util :refer [funcs]])
   (:import net.sourceforge.jtds.jdbc.Driver)) ; need to import this in order to load JDBC driver
@@ -113,7 +114,7 @@
 
 (defrecord SQLServerDriver [])
 
-(def ^:metabase.driver/driver sqlserver
+(def sqlserver
   (map->SQLServerDriver
    (-> (sql-driver {:driver-name               "SQL Server"
                     :details-fields            [{:name         "host"
@@ -149,3 +150,5 @@
                     :unix-timestamp->timestamp unix-timestamp->timestamp})
        (update :qp-clause->handler merge {:limit apply-limit
                                           :page  apply-page}))))
+
+(driver/register-driver! :sqlserver sqlserver)

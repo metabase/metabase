@@ -171,7 +171,7 @@
 (defn public-settings
   "Return a simple map of key/value pairs which represent the public settings for the front-end application."
   []
-  {:engines               (deref @(ns-resolve 'metabase.driver 'available-drivers))
+  {:engines               (@(resolve 'metabase.driver/available-drivers))
    :ga_code               "UA-60817802-1"
    :password_complexity   (password/active-password-complexity)
    :setup_token           (setup/token-value)

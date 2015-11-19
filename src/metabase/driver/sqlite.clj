@@ -5,6 +5,7 @@
                    [db :as kdb])
             [korma.sql.utils :as kutils]
             [metabase.config :as config]
+            [metabase.driver :as driver]
             [metabase.driver.generic-sql :refer [sql-driver]]
             [metabase.util :as u]))
 
@@ -108,7 +109,7 @@
 
 (defrecord SQLiteDriver [])
 
-(def ^:metabase.driver/driver sqlite
+(def sqlite
   (map->SQLiteDriver
    (cond-> (-> (sql-driver {:driver-name               "SQLite"
                             :details-fields            [{:name         "db"
@@ -127,3 +128,5 @@
      ;; HACK SQLite doesn't support ALTER TABLE ADD CONSTRAINT FOREIGN KEY and I don't have all day to work around this
      ;; so for now we'll just skip the foreign key stuff in the tests.
      (config/is-test?) (update :features set/difference #{:foreign-keys}))))
+
+(driver/register-driver! :sqlite sqlite)

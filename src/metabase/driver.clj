@@ -1,15 +1,14 @@
 (ns metabase.driver
-  (:require [clojure.java.classpath :as classpath]
-            [clojure.string :as s]
+  (:require [clojure.string :as s]
             [clojure.tools.logging :as log]
-            [clojure.tools.namespace.find :as ns-find]
             [medley.core :as m]
             [metabase.db :refer [ins sel upd]]
             [metabase.driver.query-processor :as qp]
             (metabase.models [database :refer [Database]]
                              [query-execution :refer [QueryExecution]])
             [metabase.models.setting :refer [defsetting]]
-            [metabase.util :as u]))
+            [metabase.util :as u])
+  (:import clojure.lang.Keyword))
 
 (declare -dataset-query query-fail query-complete save-query-execution)
 
@@ -264,29 +263,32 @@
 
 (defsetting report-timezone "Connection timezone to use when executing queries. Defaults to system timezone.")
 
-(defn- -available-drivers []
-  (->> (for [namespace (->> (ns-find/find-namespaces (classpath/classpath))
-                            (filter (fn [ns-symb]
-                                      (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb)))))]
-         (do (require namespace)
-             (->> (ns-publics namespace)
-                  (map (fn [[symb varr]]
-                         (when (::driver (meta varr))
-                           {(keyword symb) (select-keys @varr [:details-fields
-                                                               :driver-name
-                                                               :features])})))
-                  (into {}))))
-       (into {})))
+(defonce ^:private registered-drivers
+  (atom {}))
 
-(def available-drivers
-  "Delay to a map of info about available drivers."
-  (delay (-available-drivers)))
+(defn register-driver!
+  "Register a DRIVER, an instance of a class that implements `IDriver`, for ENGINE.
+
+     (register-driver! :postgres (PostgresDriver.))"
+  [^Keyword engine, driver-instance]
+  {:pre [(keyword? engine) (map? driver-instance)]}
+  (swap! registered-drivers assoc engine driver-instance)
+  (log/debug (format "Registered driver %s." engine)))
+
+(defn available-drivers
+  "Info about available drivers."
+  []
+  (m/map-vals (fn [driver]
+                {:details-fields (:details-fields driver)
+                 :driver-name    (:driver-name driver)
+                 :features       (:features driver)})
+              @registered-drivers))
 
 (defn is-engine?
   "Is ENGINE a valid driver name?"
   [engine]
   (when engine
-    (contains? (set (keys @available-drivers)) (keyword engine))))
+    (contains? (set (keys (available-drivers))) (keyword engine))))
 
 (defn class->base-type
   "Return the `Field.base_type` that corresponds to a given class returned by the DB."
@@ -318,9 +320,11 @@
      metabase.driver.<engine>/<engine>"
   [engine]
   {:pre [engine]}
-  (let [nmspc (symbol (format "metabase.driver.%s" (name engine)))]
-    (require nmspc)
-    @(ns-resolve nmspc (symbol (name engine)))))
+  (or ((keyword engine) @registered-drivers)
+      (let [namespce (symbol (format "metabase.driver.%s" (name engine)))]
+        (log/debug (format "Loading driver '%s'..." engine))
+        (require namespce)
+        ((keyword engine) @registered-drivers))))
 
 
 ;; Can the type of a DB change?
@@ -329,9 +333,7 @@
    (Databases aren't expected to change their types, and this optimization makes things a lot faster).
 
    This loads the corresponding driver if needed."
-  (let [db-id->engine (memoize
-                       (fn [db-id]
-                         (sel :one :field [Database :engine] :id db-id)))]
+  (let [db-id->engine (memoize (fn [db-id] (sel :one :field [Database :engine] :id db-id)))]
     (fn [db-id]
       (engine->driver (db-id->engine db-id)))))
 
