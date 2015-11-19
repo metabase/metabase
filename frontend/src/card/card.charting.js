@@ -182,6 +182,12 @@ function applyChartLegend(dcjsChart, card) {
     }
 }
 
+function addLegendMarginsForCharts(dcjsChart, card, legendCount) {
+    if (card.display === "bar" || card.display === "line" || card.display === "area") {
+        dcjsChart.margins().top = dcjsChart.margins().top + legendCount*(dcjsChart.legend().itemHeight() + dcjsChart.legend().gap())
+    } 
+}
+
 function setCardTitle(card, elementId) {
     // SET THE CARD TITLE if applicable (probably not, since there's no UI to set this AFAIK)
     var settings = card.visualization_settings,
@@ -899,11 +905,14 @@ export var CardRenderer = {
                             return d.value;
                         });
 
+        var legendCount = 1;
+
         // apply any stacked series if applicable
         if (isMultiSeries) {
             chart.stack(dimension.group().reduceSum(function(d) {
                 return d[2];
             }), result.cols[2].name);
+            legendCount++;
 
             // to keep things sane, draw the line at 2 stacked series
             // putting more than 3 series total on the same chart is a lot
@@ -911,6 +920,7 @@ export var CardRenderer = {
                 chart.stack(dimension.group().reduceSum(function(d) {
                     return d[3];
                 }), result.cols[3].name);
+                legendCount++;
             }
         }
 
@@ -928,6 +938,7 @@ export var CardRenderer = {
 
         applyChartTooltips(chart, id, card, result.cols);
         applyChartColors(chart, card);
+        addLegendMarginsForCharts(chart, card, legendCount);
 
         // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
         if (chart.brushOn) chart.brushOn(false);
@@ -976,11 +987,13 @@ export var CardRenderer = {
                         })
                         .renderArea(isAreaChart);
 
+        var legendCount = 1;
         // apply any stacked series if applicable
         if (isMultiSeries) {
             chart.stack(dimension.group().reduceSum(function(d) {
                 return d[2];
             }), result.cols[2].name);
+            legendCount++;
 
             // to keep things sane, draw the line at 2 stacked series
             // putting more than 3 series total on the same chart is a lot
@@ -988,6 +1001,7 @@ export var CardRenderer = {
                 chart.stack(dimension.group().reduceSum(function(d) {
                     return d[3];
                 }), result.cols[3].name);
+                legendCount++;
             }
         }
 
@@ -1005,6 +1019,7 @@ export var CardRenderer = {
 
         applyChartTooltips(chart, id, card, result.cols);
         applyChartColors(chart, card);
+        addLegendMarginsForCharts(chart, card, legendCount);
 
         // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
         if (chart.brushOn) chart.brushOn(false);
