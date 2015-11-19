@@ -64,19 +64,31 @@
     :else (str (cl-format nil "~,1f" n))))
 
 (defn- format-timestamp
-  [timestamp]
-  (let [date (c/from-long timestamp)
-        today (t/today-at 0 00)]
-    (cond
-      (t/within? (t/interval today (t/plus today (t/days 1))) date) "Today"
-      (t/within? (t/interval (t/minus today (t/days 1)) today) date) "Yesterday"
-      :else (f/unparse (f/formatter "MMM d, YYYY") date))))
+  [timestamp col]
+  (log/info timestamp)
+  (case (:unit col)
+    :hour (f/unparse (f/formatter "h a - MMM YYYY") (c/from-long timestamp))
+    :week (f/unparse (f/formatter "w - YYYY") (c/from-long timestamp))
+    :month (f/unparse (f/formatter "MMMM YYYY") (c/from-long timestamp))
+    :quarter (str "Q" (+ 1 (int (/ (t/month (c/from-long timestamp)) 3))) " - " (t/year (c/from-long timestamp)))
+    :year (str timestamp)
+    :hour-of-day (str timestamp) ; TODO: probably shouldn't even be showing sparkline for x-of-y groupings?
+    :day-of-week (str timestamp)
+    :week-of-year (str timestamp)
+    :month-of-year (str timestamp)
+    (let [date (c/from-long timestamp)
+          today (t/today-at 0 00)]
+      (cond
+        (t/within? (t/interval today (t/plus today (t/days 1))) date) "Today"
+        (t/within? (t/interval (t/minus today (t/days 1)) today) date) "Yesterday"
+        :else (f/unparse (f/formatter "MMM d, YYYY") date)))))
 
 (defn- format-cell
-  [value]
+  [value col]
+  (log/info value)
   (cond
-    (instance? java.util.Date value) (format-timestamp (.getTime value))
-    (number? value) (format-number value)
+    (instance? java.util.Date value) (format-timestamp (.getTime value) col)
+    (and (number? value) (not (datetime-field? col))) (format-number value)
     :else (str value)))
 
 ;;; ## RENDERING
@@ -110,7 +122,7 @@
           [:tr {:style (str "color: " (if (odd? row-idx) color-grey-2 color-grey-3) ";")}
             (map (fn [col-idx]
                   [:td {:style (str bar-td-style (if (and bar-column (= col-idx 1)) "font-weight: 700;"))}
-                    (-> row (nth col-idx) format-cell h)])
+                    (-> row (nth col-idx) (format-cell (nth cols col-idx )) h)])
                   col-indexes)
             (if bar-column [:td {:style (str bar-td-style "width: 99%;")}
               [:div {:style (str "background-color: " color-purple "; height: 20px; width: " (float (* 100 (/ (bar-column row) max-value))) "%")} "&#160;"]])])
@@ -150,9 +162,9 @@
       (render-truncation-warning card data render-img rows-limit 2)]))
 
 (defn render-card-scalar
-  [card data render-img]
+  [card {:keys [cols rows] :as data} render-img]
   [:div {:style scalar-style}
-    (-> data :rows first first format-cell h)])
+    (-> rows first first (format-cell (first cols)) h)])
 
 (defn render-sparkline-to-png
   "Takes two arrays of numbers between 0 and 1 and plots them as a sparkline"
@@ -175,7 +187,7 @@
 
 (defn render-card-sparkline
   [card {:keys [rows cols] :as data} render-img]
-  (let [xs (map #(-> % first .getTime) rows)
+  (let [xs (for [row rows :let [x (first row)]] (if (instance? java.util.Date x) (.getTime x) x))
         xmin (apply min xs)
         xmax (apply max xs)
         xrange (- xmax xmin)
@@ -197,8 +209,8 @@
           [:div
             [:div {:style (str "height: 15px; margin-left: 10px; margin-right: 10px; border: 4px solid " color-grey-1 "; border-top: none; border-bottom: none;")} "&#160;"]
             [:div {:style "height: 15px; margin-left: 10px; margin-right: 10px;"}
-              [:div {:style "float: left;"} (format-timestamp xmin)]
-              [:div {:style "float: right;"} (format-timestamp xmax)]]
+              [:div {:style "float: left;"} (format-timestamp xmin (first cols))]
+              [:div {:style "float: right;"} (format-timestamp xmax (first cols))]]
           ]]]
       [:div {:style "margin-top: 20px; margin-left: 30px;"}
         (render-table card [(last rows) (first rows)] cols render-img [0 1] nil)]]))
