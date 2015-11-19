@@ -112,12 +112,13 @@
                                 (* items (dec page))
                                 items)))
 
-(defrecord SQLServerDriver [])
+(defrecord SQLServerDriver []
+  clojure.lang.Named
+  (getName [_] "SQL Server"))
 
 (def sqlserver
   (map->SQLServerDriver
-   (-> (sql-driver {:driver-name               "SQL Server"
-                    :details-fields            [{:name         "host"
+   (-> (sql-driver {:details-fields            [{:name         "host"
                                                  :display-name "Host"
                                                  :default      "localhost"}
                                                 {:name         "port"

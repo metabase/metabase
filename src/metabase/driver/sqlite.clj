@@ -107,12 +107,13 @@
                  :milliseconds "DATETIME(%s / 1000, 'unixepoch')")
                [field-or-value]))
 
-(defrecord SQLiteDriver [])
+(defrecord SQLiteDriver []
+  clojure.lang.Named
+  (getName [_] "SQLite"))
 
 (def sqlite
   (map->SQLiteDriver
-   (cond-> (-> (sql-driver {:driver-name               "SQLite"
-                            :details-fields            [{:name         "db"
+   (cond-> (-> (sql-driver {:details-fields            [{:name         "db"
                                                          :display-name "Filename"
                                                          :placeholder  "/home/camsaul/toucan_sightings.sqlite 😋"
                                                          :required     true}]

@@ -223,7 +223,7 @@
                                    ;; obscure DB details when logging. Just log the name of driver because we don't care about its properties
                                    (-> query
                                        (assoc-in [:database :details] "😋 ") ; :yum:
-                                       (update :driver :driver-name)))))))
+                                       (update :driver name)))))))
     (qp query)))
 
 

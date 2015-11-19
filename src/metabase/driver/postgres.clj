@@ -157,13 +157,14 @@
     #".*" ; default
     message))
 
-(defrecord PostgresDriver [])
+(defrecord PostgresDriver []
+  clojure.lang.Named
+  (getName [_] "PostgreSQL"))
 
 (def postgres
   (map->PostgresDriver
    (sql-driver
-    {:driver-name                       "PostgreSQL"
-     :details-fields                    [{:name         "host"
+    {:details-fields                    [{:name         "host"
                                           :display-name "Host"
                                           :default "localhost"}
                                          {:name         "port"

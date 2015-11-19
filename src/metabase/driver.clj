@@ -59,13 +59,7 @@
 
 (defn verify-driver
   "Verify that a Metabase DB driver contains the expected properties and that they are the correct type."
-  [{:keys [driver-name details-fields features], :as driver}]
-  ;; Check :driver-name is a string
-  (assert driver-name
-    "Missing property :driver-name.")
-  (assert (string? driver-name)
-    ":driver-name must be a string.")
-
+  [{:keys [details-fields features], :as driver}]
   ;; Check the :details-fields
   (assert details-fields
     "Driver is missing property :details-fields.")
@@ -121,13 +115,15 @@
 (defn driver
   "Define and validate a new Metabase DB driver.
 
-   All drivers must include the following keys:
+   Drivers should implement `getName` from `clojure.lang.Named`, so we can call `name` on them:
+
+     (name (PostgresDriver.)) -> \"PostgreSQL\"
+
+   This name should be a \"nice-name\" that we'll display to the user.
+
+   Drivers must include the following keys:
 
 #### PROPERTIES
-
-*  `:driver-name`
-
-    A human-readable string naming the DB this driver works with, e.g. `\"PostgreSQL\"`.
 
 *  `:details-fields`
 
@@ -280,7 +276,7 @@
   []
   (m/map-vals (fn [driver]
                 {:details-fields (:details-fields driver)
-                 :driver-name    (:driver-name driver)
+                 :driver-name    (name driver)
                  :features       (:features driver)})
               @registered-drivers))
 

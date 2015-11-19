@@ -188,13 +188,14 @@
     #".*" ; default
     message))
 
-(defrecord H2Driver [])
+(defrecord H2Driver []
+  clojure.lang.Named
+  (getName [_] "H2"))
 
 (def h2
   (map->H2Driver
    (sql-driver
-    {:driver-name                       "H2"
-     :details-fields                    [{:name         "db"
+    {:details-fields                    [{:name         "db"
                                           :display-name "Connection String"
                                           :placeholder  "file:/Users/camsaul/bird_sightings/toucans;AUTO_SERVER=TRUE"
                                           :required     true}]
