@@ -67,9 +67,9 @@
 ;; ## Tests for connection functions
 
 (expect-when-testing-mongo false
-  (driver/can-connect? :mongo {:host   "localhost"
-                               :port   3000
-                               :dbname "bad-db-name"}))
+  (driver/can-connect-with-details? :mongo {:host   "localhost"
+                                            :port   3000
+                                            :dbname "bad-db-name"}))
 
 (expect-when-testing-mongo false
   (driver/can-connect-with-details? :mongo {}))

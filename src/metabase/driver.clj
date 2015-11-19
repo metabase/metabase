@@ -127,17 +127,21 @@
     "Process a native or structured QUERY. This function is called by `metabase.driver/process-query` after performing various driver-unspecific
      steps like Query Expansion and other preprocessing.")
 
-  (process-query-in-context [this, ^IFn f]
+  (process-query-in-context [this, ^IFn qp]
     "*OPTIONAL*. Similar to `sync-in-context`, but for running queries rather than syncing. This should be used to do things like open DB connections
      that need to remain open for the duration of post-processing. This function follows a middleware pattern and is injected into the QP
      middleware stack immediately after the Query Expander; in other words, it will receive the expanded query.
-     See the Mongo and H2 drivers for examples of how this is intended to be used.")
+     See the Mongo and H2 drivers for examples of how this is intended to be used.
+
+       (defn process-query-in-context [driver qp]
+         (fn [query]
+           (qp query)))")
 
   (sync-in-context [this, ^DatabaseInstance database, ^IFn f]
     "*OPTIONAL*. Drivers may provide this function if they need to do special setup before a sync operation such as `sync-database!`. The sync
      operation itself is encapsulated as the lambda F, which must be called with no arguments.
 
-       (defn sync-in-context [database f]
+       (defn sync-in-context [driver database f]
          (with-jdbc-metadata [_ database]
            (f)))")
 
@@ -202,7 +206,7 @@
    :field-avg-length                  default-field-avg-length
    :field-percent-urls                default-field-percent-urls
    :humanize-connection-error-message (fn [_ message] message)
-   :process-query-in-context          (fn [_ f] (f))
+   :process-query-in-context          (fn [_ qp]      qp)
    :sync-in-context                   (fn [_ _ f] (f))
    :table-fks                         (constantly nil)
    :table-rows-seq                    (constantly nil)})

@@ -16,8 +16,7 @@
                                    [util :refer [*mongo-connection* with-mongo-connection values->base-type]])
             [metabase.util :as u]))
 
-(declare driver
-         field-values-lazy-seq)
+(declare driver field-values-lazy-seq)
 
 ;;; ### Driver Helper Fns
 
@@ -37,7 +36,7 @@
   {:pre [(map? field)]
    :post [(keyword? %)]}
   (with-mongo-connection [_ @(:db @(:table field))]
-    (values->base-type (field-values-lazy-seq field))))
+    (values->base-type (field-values-lazy-seq nil field))))
 
 
 ;;; ## MongoDriver
@@ -107,7 +106,7 @@
   ;; Build a map of nested-field-key -> type -> count
   ;; TODO - using an atom isn't the *fastest* thing in the world (but is the easiest); consider alternate implementation
   (let [field->type->count (atom {})]
-    (doseq [val (take driver/max-sync-lazy-seq-results (field-values-lazy-seq field))]
+    (doseq [val (take driver/max-sync-lazy-seq-results (field-values-lazy-seq nil field))]
       (when (map? val)
         (doseq [[k v] val]
           (swap! field->type->count update-in [k (type v)] #(if % (inc %) 1)))))
