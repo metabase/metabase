@@ -19,13 +19,12 @@
 
 ;; # CONSTANTS
 
-(def ^:const max-result-rows
-  "Maximum number of rows the QP should ever return."
-  10000)
+(def ^:const absolute-max-results
+  "Maximum number of rows the QP should ever return.
 
-(def ^:const max-result-bare-rows
-  "Maximum number of rows the QP should ever return specifically for `rows` type aggregations."
-  2000)
+   This is coming directly from the max rows allowed by Excel for now ...
+   https://support.office.com/en-nz/article/Excel-specifications-and-limits-1672b34d-7043-467e-8e27-269d656771c3"
+  1048576)
 
 
 ;; # DYNAMIC VARS
@@ -44,6 +43,15 @@
   "Predicate function which returns `true` if the given query represents a structured style query, `false` otherwise."
   [query]
   (= :query (keyword (:type query))))
+
+(defn rows-query-without-limits?
+  "Predicate function which returns `true` if the given query is a :rows type aggregated structured query
+   without a `:limit` or `:page` clause which constrains its resulting rows, `false` otherwise."
+  [{{{ag-type :aggregation-type} :aggregation, :keys [limit page]} :query}]
+  (and (not limit)
+       (not page)
+       (or (not ag-type)
+           (= ag-type :rows))))
 
 
 (defn- wrap-catch-exceptions [qp]
@@ -71,14 +79,18 @@
 (defn- post-add-row-count-and-status
   "Wrap the results of a successfully processed query in the format expected by the frontend (add `row_count` and `status`)."
   [qp]
-  (fn [query]
-    (let [results     (qp query)
-          num-results (count (:rows results))]
+  (fn [{{:keys [max-results max-results-bare-rows]} :constraints, :as query}]
+    (let [results-limit (or (when (rows-query-without-limits? query)
+                              max-results-bare-rows)
+                            max-results
+                            absolute-max-results)
+          results       (qp query)
+          num-results   (count (:rows results))]
       (cond-> {:row_count num-results
                :status    :completed
                :data      results}
         ;; Add :rows_truncated if we've hit the limit so the UI can let the user know
-        (= num-results max-result-rows) (assoc-in [:data :rows_truncated] max-result-rows)))))
+        (= num-results results-limit) (assoc-in [:data :rows_truncated] results-limit)))))
 
 (defn- should-add-implicit-fields? [{{:keys [fields breakout], {ag-type :aggregation-type} :aggregation} :query}]
   (and (or (not ag-type)
@@ -199,14 +211,14 @@
 (defn- limit
   "Add an implicit `limit` clause to queries with `rows` aggregations, and limit the maximum number of rows that can be returned in post-processing."
   [qp]
-  (fn [{{{ag-type :aggregation-type} :aggregation, :keys [limit page]} :query, :as query}]
+  (fn [{{:keys [max-results max-results-bare-rows]} :constraints, :as query}]
     (let [query   (cond-> query
-                    (and (not limit)
-                         (not page)
-                         (or (not ag-type)
-                             (= ag-type :rows))) (assoc-in [:query :limit] max-result-bare-rows))
+                    (rows-query-without-limits? query) (assoc-in [:query :limit] (or max-results-bare-rows
+                                                                                     max-results
+                                                                                     absolute-max-results)))
           results (qp query)]
-      (update results :rows (partial take max-result-rows)))))
+      (update results :rows (partial take (or max-results
+                                              absolute-max-results))))))
 
 
 (defn- pre-log-query [qp]
