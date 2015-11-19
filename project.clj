@@ -67,15 +67,13 @@
                                   [org.clojure/tools.reader "0.10.0"] ; Need to explictly specify this dep otherwise expectations doesn't seem to work right :'(
                                   [expectations "2.1.3"]              ; unit tests
                                   [ring/ring-mock "0.3.0"]]
-                   :plugins [[cider/cider-nrepl "0.10.0-SNAPSHOT"]    ; Interactive development w/ cider NREPL in Emacs
-                             [jonase/eastwood "0.2.1"]                ; Linting
+                   :plugins [[jonase/eastwood "0.2.1"]                ; Linting
                              [lein-ancient "0.6.7"]                   ; Check project for outdated dependencies + plugins w/ 'lein ancient'
                              [lein-bikeshed "0.2.0"]                  ; Linting
                              [lein-environ "1.0.0"]                   ; Specify env-vars in project.clj
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'
                              [lein-instant-cheatsheet "2.1.4"]        ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
-                             [michaelblume/lein-marginalia "0.9.0"]   ; generate documentation with 'lein marg'
-                             [refactor-nrepl "2.0.0-SNAPSHOT"]]       ; support for advanced refactoring in Emacs/LightTable
+                             [michaelblume/lein-marginalia "0.9.0"]]  ; generate documentation with 'lein marg'
                    :global-vars {*warn-on-reflection* true}           ; Emit warnings on all reflection calls
                    :env {:mb-run-mode "dev"}
                    :jvm-opts ["-Dlogfile.path=target/log"
