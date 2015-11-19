@@ -94,13 +94,13 @@
 (defn- -sync-database-with-tracking! [driver database]
   (let [start-time    (System/currentTimeMillis)
         tracking-hash (str (java.util.UUID/randomUUID))]
-    (log/info (u/format-color 'magenta "Syncing %s database '%s'..." (name (:engine database)) (:name database)))
+    (log/info (u/format-color 'magenta "Syncing %s database '%s'..." (name driver) (:name database)))
     (events/publish-event :database-sync-begin {:database_id (:id database) :custom_id tracking-hash})
 
     (-sync-database! driver database)
 
     (events/publish-event :database-sync-end {:database_id (:id database) :custom_id tracking-hash :running_time (- (System/currentTimeMillis) start-time)})
-    (log/info (u/format-color 'magenta "Finished syncing %s database %s. (%d ms)" (name (:engine database)) (:name database)
+    (log/info (u/format-color 'magenta "Finished syncing %s database %s. (%d ms)" (name driver) (:name database)
                               (- (System/currentTimeMillis) start-time)))))
 
 (defn sync-database!

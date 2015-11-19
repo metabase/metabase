@@ -133,13 +133,14 @@
         #".*" ; default
         message))
 
-(defrecord MySQLDriver [])
+(defrecord MySQLDriver []
+  clojure.lang.Named
+  (getName [_] "MySQL"))
 
 (def mysql
   (map->MySQLDriver
    (sql-driver
-    {:driver-name                       "MySQL"
-     :details-fields                    [{:name         "host"
+    {:details-fields                    [{:name         "host"
                                           :display-name "Host"
                                           :default      "localhost"}
                                          {:name         "port"

@@ -121,13 +121,14 @@
                             first                         ; keep just the type
                             driver/class->base-type))))))
 
-(defrecord MongoDriver [])
+(defrecord MongoDriver []
+  clojure.lang.Named
+  (getName [_] "MongoDB"))
 
 (def mongo
   (map->MongoDriver
    (driver/driver
-    {:driver-name                       "MongoDB"
-     :details-fields                    [{:name         "host"
+    {:details-fields                    [{:name         "host"
                                           :display-name "Host"
                                           :default      "localhost"}
                                          {:name         "port"
