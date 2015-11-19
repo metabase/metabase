@@ -3,6 +3,7 @@
             [clj-time.core :as t]
             [clj-time.coerce :as c]
             [clj-time.format :as f]
+            [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [clojure.pprint :refer [cl-format]]
             [clojure.string :refer [upper-case]]
@@ -15,12 +16,26 @@
 
 (def ^:private card-width 400)
 
-(def ^:private font-style "font-family: Lato, \"Helvetica Neue\", Helvetica, Arial, sans-serif;")
-(def ^:private section-style font-style)
-(def ^:private header-style  (str font-style "font-size: 16px; font-weight: 700; color: rgb(57,67,64); text-decoration: none;"))
-(def ^:private scalar-style  (str font-style "font-size: 32px; font-weight: 400; color: rgb(45,134,212);"))
-(def ^:private bar-th-style  (str font-style "font-size: 10px; font-weight: 400; color: rgb(57,67,64); border-bottom: 4px solid rgb(248, 248, 248); padding-top: 0px; padding-bottom: 10px;"))
+(def ^:private rows-limit 10)
+(def ^:private cols-limit 3)
+
+;;; ## STYLES
+
+(def ^:private color-brand  "rgb(80,158,227)")
+(def ^:private color-purple "rgb(135,93,175)")
+(def ^:private color-grey-1 "rgb(248,248,248)")
+(def ^:private color-grey-2 "rgb(189,193,191)")
+(def ^:private color-grey-3 "rgb(124,131,129)")
+(def ^:private color-grey-4 "rgb(57,67,64)")
+
+(def ^:private font-style    "font-family: Lato, \"Helvetica Neue\", Helvetica, Arial, sans-serif;")
+(def ^:private section-style (str font-style))
+(def ^:private header-style  (str font-style "font-size: 16px; font-weight: 700; color: " color-grey-4 "; text-decoration: none;"))
+(def ^:private scalar-style  (str font-style "font-size: 32px; font-weight: 400; color: " color-brand ";"))
+(def ^:private bar-th-style  (str font-style "font-size: 10px; font-weight: 400; color: " color-grey-4 "; border-bottom: 4px solid " color-grey-1 "; padding-top: 0px; padding-bottom: 10px;"))
 (def ^:private bar-td-style  (str font-style "font-size: 16px; font-weight: 400; text-align: left; padding-right: 1em; padding-top: 8px;"))
+(def ^:private button-style  (str font-style "display: inline-block; box-sizing: border-box; padding: 8px; color: " color-brand "; border: 1px solid " color-brand "; border-radius: 4px; text-decoration: none; "))
+
 
 (defn- format-number
   [n]
@@ -50,36 +65,76 @@
     (number? value) (format-number value)
     :else (str value)))
 
-(defn render-table-row
-  [index row bar-column max-value]
-  [:tr {:style (if (odd? index) "color: rgb(189,193,191);" "color: rgb(124,131,129);")}
-    [:td {:style bar-td-style} (-> row first format-cell h)]
-    [:td {:style (str bar-td-style "font-weight: 700;")} (-> row second format-cell h)]
-    (if bar-column [:td {:style (str bar-td-style "width: 99%;")}
-      [:div {:style (str "background-color: rgb(135, 93, 175); height: 20px; width: " (float (* 100 (/ (bar-column row) max-value))) "%")} "&#160;"]])])
+(defn card-href
+  [card]
+  (h (str (setting/get :-site-url) "/card/" (:id card) "?clone")))
+
+(defn render-button
+  [text href icon render-img]
+  [:a {:style button-style :href href}
+    [:span (h text)]
+    (if icon [:img {:style "margin-left: 4px;"
+                    :width 16
+                    :src (-> (str "frontend_client/app/img/" icon "@2x.png") io/resource io/input-stream org.apache.commons.io.IOUtils/toByteArray render-img)}])])
+
 
 (defn render-table
-  [{:keys [cols rows]} bar-column]
-  (let [max-value (if bar-column (apply max (map bar-column rows)))
-        truncated-rows (take 10 rows)]
-    [:table {:style "border-collapse: collapse;"}
+  [card rows cols render-img col-indexes bar-column]
+  (let [max-value (if bar-column (apply max (map bar-column rows)))]
+    [:table {:style (str "padding-bottom: 8px; border-bottom: 4px solid " color-grey-1 ";")}
       [:thead
         [:tr
-          [:th {:style (str bar-td-style bar-th-style "min-width: 60px;")}
-            (-> cols first :display_name upper-case h)]
-          [:th {:style (str bar-td-style bar-th-style "min-width: 60px;")}
-            (-> cols second :display_name upper-case h)]
+          (map (fn [col-idx]
+                [:th {:style (str bar-td-style bar-th-style "min-width: 60px;")}
+                  (-> cols (nth col-idx) :display_name upper-case h)])
+                col-indexes)
           (if bar-column [:th {:style (str bar-td-style bar-th-style "width: 99%;")}])]]
       [:tbody
-        (map-indexed #(render-table-row %1 %2 bar-column max-value) truncated-rows)]]))
+        (map-indexed (fn [row-idx row]
+          [:tr {:style (str "color: " (if (odd? row-idx) color-grey-2 color-grey-3) ";")}
+            (map (fn [col-idx]
+                  [:td {:style (str bar-td-style (if (and bar-column (= col-idx 1)) "font-weight: 700;"))}
+                    (-> row (nth col-idx) format-cell h)])
+                  col-indexes)
+            (if bar-column [:td {:style (str bar-td-style "width: 99%;")}
+              [:div {:style (str "background-color: " color-purple "; height: 20px; width: " (float (* 100 (/ (bar-column row) max-value))) "%")} "&#160;"]])])
+          rows)]]))
 
-(defn render-bar-chart
-  [data]
-  [:div
-    (render-table data second)])
+(defn render-truncation-warning
+  [card {:keys [cols rows] :as data} render-img rows-limit cols-limit]
+  (if (or (> (count rows) rows-limit)
+          (> (count cols) cols-limit))
+    [:div {:style "padding-top: 16px;"}
+      (if (> (count rows) rows-limit)
+        [:div {:style (str "color: " color-grey-2 "; padding-bottom: 10px;")}
+          "Showing " [:strong {:style (str "color: " color-grey-3 ";")} (format-number rows-limit)]
+          " of "     [:strong {:style (str "color: " color-grey-3 ";")} (format-number (count rows))]
+          " rows."])
+      (if (> (count cols) cols-limit)
+        [:div {:style (str "color: " color-grey-2 "; padding-bottom: 10px;")}
+          "Showing " [:strong {:style (str "color: " color-grey-3 ";")} (format-number cols-limit)]
+          " of "     [:strong {:style (str "color: " color-grey-3 ";")} (format-number (count cols))]
+          " columns."])
+      [:div (render-button "View all" (card-href card) "external_link" render-img)]]))
 
-(defn render-scalar
-  [data]
+(defn render-card-table
+  [card {:keys [cols rows] :as data} render-img]
+  (let [truncated-rows (take rows-limit rows)
+        truncated-cols (take cols-limit cols)
+        col-indexes (map-indexed (fn [i _] i) truncated-cols)]
+    [:div
+      (render-table card truncated-rows truncated-cols render-img col-indexes nil)
+      (render-truncation-warning card data render-img rows-limit cols-limit)]))
+
+(defn render-card-bar
+  [card {:keys [cols rows] :as data} render-img]
+  (let [truncated-rows (take rows-limit rows)]
+    [:div
+      (render-table card truncated-rows cols render-img [0 1] second)
+      (render-truncation-warning card data render-img rows-limit 2)]))
+
+(defn render-card-scalar
+  [card data render-img]
   [:div {:style scalar-style}
     (-> data :rows first first format-cell h)])
 
@@ -106,8 +161,8 @@
     (javax.imageio.ImageIO/write image "png" os)
     (.toByteArray os)))
 
-(defn render-sparkline
-  [{:keys [rows cols] :as data} render-img]
+(defn render-card-sparkline
+  [card {:keys [rows cols] :as data} render-img]
   (let [xs (map #(-> % first .getTime) rows)
         xmin (apply min xs)
         xmax (apply max xs)
@@ -119,7 +174,7 @@
         yrange (- ymax ymin)
         ys' (map #(/ (- % ymin) yrange) ys)]
     [:div
-      [:div {:style "color: rgb(214,214,214);" }
+      [:div {:style (str "color: " color-grey-2 ";") }
         [:div {:style "display: inline-block; position: relative; margin-left: 30px;" }
           [:div {:style "position: relative;"}
             [:div {:style "position: absolute; height: 100%; text-align: right; background-color: red;"}
@@ -128,13 +183,13 @@
             [:img {:style "display: block; left: 20px;" :src (render-img (render-sparkline-to-png xs' ys' 285 150))}]
           ]
           [:div
-            [:div {:style "height: 15px; margin-left: 10px; margin-right: 10px; border: 4px solid rgb(233,233,233); border-top: none; border-bottom: none;"} "&#160;"]
+            [:div {:style (str "height: 15px; margin-left: 10px; margin-right: 10px; border: 4px solid " color-grey-1 "; border-top: none; border-bottom: none;")} "&#160;"]
             [:div {:style "height: 15px; margin-left: 10px; margin-right: 10px;"}
               [:div {:style "float: left;"} (format-timestamp xmin)]
               [:div {:style "float: right;"} (format-timestamp xmax)]]
           ]]]
       [:div {:style "margin-top: 20px; margin-left: 30px;"}
-        (render-table {:cols cols :rows [(last rows) (first rows)]} nil)]]))
+        (render-table card [(last rows) (first rows)] cols render-img [0 1] nil)]]))
 
 (defn datetime-field?
   [field]
@@ -166,16 +221,17 @@
   (try
     [:div {:style (str section-style "margin: 16px;")}
       (if include-title [:div {:style "margin-bottom: 16px;"}
-        [:a {:style header-style :href (h (str (setting/get :-site-url) "/card/" (:id card) "?clone"))}
+        [:a {:style header-style :href (card-href card)}
           (-> card :name h)]])
       (case (detect-pulse-card-type card data)
-        :scalar    (render-scalar data)
-        :sparkline (render-sparkline data render-img)
-        :bar       (render-bar-chart data)
-        :table     (render-table data nil)
+        :scalar    (render-card-scalar    card data render-img)
+        :sparkline (render-card-sparkline card data render-img)
+        :bar       (render-card-bar       card data render-img)
+        :table     (render-card-table     card data render-img)
         [:div {:style (str font-style "color: #F9D45C; font-weight: 700;")}
           "We were unable to display this card." [:br] "Please view this card in Metabase."])]
   (catch Throwable e
+    (log/warn (str "Pulse card render error:" e))
     [:div {:style (str font-style "color: #EF8C8C; font-weight: 700;")} "An error occurred while displaying this card."])))
 
 (defn render-img-data-uri
@@ -203,7 +259,7 @@
   [pulse results]
   (let [images (atom [])
         render-img (fn [bytes] (reset! images (conj @images bytes)) (str "cid:IMAGE_" (-> @images count dec)))
-        header [:h1 {:style (str section-style "margin: 16px; color: rgb(57,67,64);")} (-> pulse :name h)]
+        header [:h1 {:style (str section-style "margin: 16px; color: " color-grey-4 ";")} (-> pulse :name h)]
         body (apply vector :div (mapv (partial render-pulse-section render-img) results))
         content (html [:html [:body [:div header body]]])]
     (apply vector {:type "text/html" :content content}

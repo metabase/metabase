@@ -133,7 +133,7 @@ export default class PulseEdit extends Component {
                             <div className="">
                                 <h4 className="text-bold mb1">Delete this pulse</h4>
                                 <div className="flex">
-                                    <p className="h4 pr2">Stop deliver and delete this pulse. There's no undo, so be careful.</p>
+                                    <p className="h4 pr2">Stop delivery and delete this pulse. There's no undo, so be careful.</p>
                                     <ModalWithTrigger
                                         ref={"deleteModal"+pulse.id}
                                         triggerClasses="Button Button--danger flex-align-right flex-no-shrink"

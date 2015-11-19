@@ -3,6 +3,8 @@ import React, { Component, PropTypes } from "react";
 import PulseListItem from "./PulseListItem.jsx";
 import WhatsAPulse from "./WhatsAPulse.jsx";
 
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+
 import { fetchPulses, fetchPulseFormInput } from "../actions";
 
 export default class PulseList extends Component {
@@ -28,7 +30,8 @@ export default class PulseList extends Component {
                         <a href="/pulse/create" className="PulseButton Button flex-align-right">Create a pulse</a>
                     </div>
                 </div>
-                { pulses && pulses.length > 0 ?
+                <LoadingAndErrorWrapper loading={!pulses}>
+                { () => pulses.length > 0 ?
                     <ul className="wrapper wrapper--trim">
                         {pulses.map(pulse =>
                             <li key={pulse.id}>
@@ -47,6 +50,7 @@ export default class PulseList extends Component {
                         />
                     </div>
                 }
+                </LoadingAndErrorWrapper>
             </div>
         );
     }

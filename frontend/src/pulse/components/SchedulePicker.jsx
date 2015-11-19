@@ -2,6 +2,7 @@ import React, { Component, PropTypes } from "react";
 
 import Select from "metabase/components/Select.jsx";
 
+import Settings from "metabase/lib/settings";
 import { capitalize } from "metabase/lib/formatting";
 
 import _ from "underscore";
@@ -25,6 +26,11 @@ const DAY_OF_WEEK_OPTIONS = [
     { name: "Saturday", value: "sat" }
 ];
 
+const CHANNEL_NOUN_PLURAL = {
+    "email": "Emails",
+    "slack": "Slack messages"
+};
+
 export default class SchedulePicker extends Component {
     static propTypes = {
         channel: PropTypes.object.isRequired,
@@ -47,10 +53,11 @@ export default class SchedulePicker extends Component {
         );
     }
 
-    renderHourPicker(c) {
+    renderHourPicker(c, cs) {
         let hourOfDay = isNaN(c.schedule_hour) ? 8 : c.schedule_hour;
         let hour = hourOfDay % 12;
         let amPm = hourOfDay >= 12 ? 1 : 0;
+        let timezone = Settings.get("timezone_short");
         return (
             <div className="mt1">
                 <span className="h4 text-bold mr1">at</span>
@@ -69,6 +76,9 @@ export default class SchedulePicker extends Component {
                     optionValueFn={o => o.value}
                     onChange={(o) => this.props.onPropertyChange("schedule_hour", hour + o * 12) }
                 />
+                <div className="mt2 h4 text-bold text-grey-3">
+                    {CHANNEL_NOUN_PLURAL[cs && cs.type] || "Messages"} will be sent at {hour}:00 {amPm ? "PM" : "AM"} {timezone}, your Metabase timezone.
+                </div>
             </div>
         );
     }
@@ -87,10 +97,10 @@ export default class SchedulePicker extends Component {
                     onChange={(o) => this.props.onPropertyChange("schedule_type", o)}
                 />
                 { channel.schedule_type === "weekly" &&
-                    this.renderDayPicker(channel)
+                    this.renderDayPicker(channel, channelSpec)
                 }
                 { (channel.schedule_type === "daily" || channel.schedule_type === "weekly") &&
-                    this.renderHourPicker(channel)
+                    this.renderHourPicker(channel, channelSpec)
                 }
             </div>
         );

@@ -152,6 +152,15 @@
                        :value (k settings))))
          (sort-by :key))))
 
+(defn short-timezone-name
+  [tz]
+  (.getDisplayName tz (.inDaylightTime tz (new java.util.Date)) java.util.TimeZone/SHORT))
+
+(defn get-instance-timezone
+  []
+  (let [tz (metabase.models.setting/get :report-timezone)]
+    (if (s/blank? tz) (java.util.TimeZone/getDefault) (java.util.TimeZone/getTimeZone tz))))
+
 (defn public-settings
   "Return a simple map of key/value pairs which represent the public settings for the front-end application."
   []
@@ -166,7 +175,10 @@
                             (or (nil? tracking?) (= "true" tracking?)))
    :site_name             (get :site-name)
    :email_configured      (not (s/blank? (or (get :email-smtp-host) (get-from-env-var :email-smtp-host))))
-   :admin_email           (get :admin-email)})
+   :admin_email           (get :admin-email)
+   :report_timezone       (get :report-timezone)
+   :timezone_short        (short-timezone-name (get-instance-timezone))
+  })
 
 ;; # IMPLEMENTATION
 
