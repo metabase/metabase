@@ -90,6 +90,45 @@
   [card]
   (h (str (setting/get :-site-url) "/card/" (:id card) "?clone")))
 
+; ported from https://github.com/radkovo/CSSBox/blob/cssbox-4.10/src/main/java/org/fit/cssbox/demo/ImageRenderer.java
+(defn render-to-png
+  [html, os, width]
+  (let [is (new java.io.ByteArrayInputStream (.getBytes html java.nio.charset.StandardCharsets/UTF_8))
+        docSource (new org.fit.cssbox.io.StreamDocumentSource is nil "text/html")
+        parser (new org.fit.cssbox.io.DefaultDOMSource docSource)
+        doc (-> parser .parse)
+        windowSize (new java.awt.Dimension width 1)
+        media (new cz.vutbr.web.css.MediaSpec "screen")]
+    (.setDimensions media (.width windowSize) (.height windowSize))
+    (.setDeviceDimensions media (.width windowSize) (.height windowSize))
+    (let [da (new org.fit.cssbox.css.DOMAnalyzer doc (.getURL docSource))]
+      (.setMediaSpec da media)
+      (.attributesToStyles da)
+      (.addStyleSheet da nil (org.fit.cssbox.css.CSSNorm/stdStyleSheet) org.fit.cssbox.css.DOMAnalyzer$Origin/AGENT)
+      (.addStyleSheet da nil (org.fit.cssbox.css.CSSNorm/userStyleSheet) org.fit.cssbox.css.DOMAnalyzer$Origin/AGENT)
+      (.addStyleSheet da nil (org.fit.cssbox.css.CSSNorm/formsStyleSheet) org.fit.cssbox.css.DOMAnalyzer$Origin/AGENT)
+      (.getStyleSheets da)
+      (let [contentCanvas (new org.fit.cssbox.layout.BrowserCanvas (.getRoot da) da (.getURL docSource))]
+        (-> contentCanvas (.setAutoMediaUpdate false))
+        (-> contentCanvas (.setAutoSizeUpdate true))
+        (-> contentCanvas .getConfig (.setClipViewport false))
+        (-> contentCanvas .getConfig (.setLoadImages true))
+        (-> contentCanvas .getConfig (.setLoadBackgroundImages true))
+        (-> contentCanvas (.createLayout windowSize))
+        (javax.imageio.ImageIO/write (.getImage contentCanvas) "png" os)))))
+
+(defn render-html-to-png
+  [html-body width]
+  (let [html (html [:html [:body {:style "margin: 0; padding: 0; background-color: white;"} html-body]])
+        os (new java.io.ByteArrayOutputStream)]
+    (render-to-png html os width)
+    (.toByteArray os)))
+
+(defn render-img-data-uri
+  "Takes a PNG byte array and returns a Base64 encoded URI"
+  [img-bytes]
+  (str "data:image/png;base64," (new String (org.fit.cssbox.misc.Base64Coder/encode img-bytes))))
+
 (defn render-button
   [text href icon render-img]
   [:a {:style button-style :href href}
@@ -182,8 +221,8 @@
     (javax.imageio.ImageIO/write image "png" os)
     (.toByteArray os)))
 
-(defn render-card-sparkline
-  [card {:keys [rows cols] :as data} render-img]
+(defn render-sparkline-with-axis-to-png
+  [card {:keys [rows cols] :as data}]
   (let [xs (for [row rows :let [x (first row)]] (if (instance? java.util.Date x) (.getTime x) x))
         xmin (apply min xs)
         xmax (apply max xs)
@@ -194,14 +233,14 @@
         ymax (apply max ys)
         yrange (- ymax ymin)
         ys' (map #(/ (- % ymin) yrange) ys)]
-    [:div
-      [:div {:style (str "color: " color-grey-2 ";") }
-        [:div {:style "display: inline-block; position: relative; margin-left: 30px;" }
+    (render-html-to-png
+      [:div {:style (str font-style "color: " color-grey-2 ";") }
+        [:div {:style "display: inline-block; position: relative; margin-left: 40px;" }
           [:div {:style "position: relative;"}
             [:div {:style "position: absolute; height: 100%; text-align: right; background-color: red;"}
-              [:div {:style "position: absolute; top: 0; right: 0;"} (format-number-short ymax)]
+              [:div {:style "position: absolute; right: 0;"} (format-number-short ymax)]
               [:div {:style "position: absolute; top: 150px; right: 0;"} (format-number-short ymin)]]
-            [:img {:style "display: block; left: 20px;" :src (render-img (render-sparkline-to-png xs' ys' 285 150))}]
+            [:img {:style "display: block; left: 20px;" :src (render-img-data-uri (render-sparkline-to-png xs' ys' 275 150))}]
           ]
           [:div
             [:div {:style (str "height: 15px; margin-left: 10px; margin-right: 10px; border: 4px solid " color-grey-1 "; border-top: none; border-bottom: none;")} "&#160;"]
@@ -209,8 +248,14 @@
               [:div {:style "float: left;"} (format-timestamp xmin (first cols))]
               [:div {:style "float: right;"} (format-timestamp xmax (first cols))]]
           ]]]
-      [:div {:style "margin-top: 20px; margin-left: 30px;"}
-        (render-table card [(last rows) (first rows)] cols render-img [0 1] nil)]]))
+        300)))
+
+(defn render-card-sparkline
+  [card {:keys [rows cols] :as data} render-img]
+  [:div
+    [:img {:style "display: block" :src (render-img (render-sparkline-with-axis-to-png card data))}]
+    [:div {:style "margin-top: 20px; margin-left: 30px;"}
+      (render-table card [(last rows) (first rows)] cols render-img [0 1] nil)]])
 
 (defn detect-pulse-card-type
   [card data]
@@ -245,11 +290,6 @@
     (log/warn (str "Pulse card render error:" e))
     [:div {:style (str font-style "color: #EF8C8C; font-weight: 700;")} "An error occurred while displaying this card."])))
 
-(defn render-img-data-uri
-  "Takes a PNG byte array and returns a Base64 encoded URI"
-  [img-bytes]
-  (str "data:image/png;base64," (new String (org.fit.cssbox.misc.Base64Coder/encode img-bytes))))
-
 (defn- render-pulse-section
   [render-img {:keys [card result]}]
   [:div {:style "margin-top: 10px; margin-bottom: 20px;"}
@@ -280,36 +320,6 @@
                                                 :content (write-byte-array-to-temp-file bytes)})
                                @images))))
 
-; ported from https://github.com/radkovo/CSSBox/blob/cssbox-4.10/src/main/java/org/fit/cssbox/demo/ImageRenderer.java
-(defn render-to-png
-  [html, os]
-  (let [is (new java.io.ByteArrayInputStream (.getBytes html java.nio.charset.StandardCharsets/UTF_8))
-        docSource (new org.fit.cssbox.io.StreamDocumentSource is nil "text/html")
-        parser (new org.fit.cssbox.io.DefaultDOMSource docSource)
-        doc (-> parser .parse)
-        windowSize (new java.awt.Dimension card-width 1)
-        media (new cz.vutbr.web.css.MediaSpec "screen")]
-    (.setDimensions media (.width windowSize) (.height windowSize))
-    (.setDeviceDimensions media (.width windowSize) (.height windowSize))
-    (let [da (new org.fit.cssbox.css.DOMAnalyzer doc (.getURL docSource))]
-      (.setMediaSpec da media)
-      (.attributesToStyles da)
-      (.addStyleSheet da nil (org.fit.cssbox.css.CSSNorm/stdStyleSheet) org.fit.cssbox.css.DOMAnalyzer$Origin/AGENT)
-      (.addStyleSheet da nil (org.fit.cssbox.css.CSSNorm/userStyleSheet) org.fit.cssbox.css.DOMAnalyzer$Origin/AGENT)
-      (.addStyleSheet da nil (org.fit.cssbox.css.CSSNorm/formsStyleSheet) org.fit.cssbox.css.DOMAnalyzer$Origin/AGENT)
-      (.getStyleSheets da)
-      (let [contentCanvas (new org.fit.cssbox.layout.BrowserCanvas (.getRoot da) da (.getURL docSource))]
-        (-> contentCanvas (.setAutoMediaUpdate false))
-        (-> contentCanvas (.setAutoSizeUpdate true))
-        (-> contentCanvas .getConfig (.setClipViewport false))
-        (-> contentCanvas .getConfig (.setLoadImages true))
-        (-> contentCanvas .getConfig (.setLoadBackgroundImages true))
-        (-> contentCanvas (.createLayout windowSize))
-        (javax.imageio.ImageIO/write (.getImage contentCanvas) "png" os)))))
-
 (defn render-pulse-card-to-png
   [card data include-title]
-  (let [html (html [:html [:body {:style "margin: 0; background-color: white;"} (render-pulse-card card data include-title render-img-data-uri)]])
-        os (new java.io.ByteArrayOutputStream)]
-    (render-to-png html os)
-    (.toByteArray os)))
+  (render-html-to-png (render-pulse-card card data include-title render-img-data-uri) card-width))
