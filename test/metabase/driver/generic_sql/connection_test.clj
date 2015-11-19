@@ -8,19 +8,21 @@
 ;; ## TESTS FOR CAN-CONNECT?
 
 ;; Check that we can connect to the Test DB
-(expect true
-  (driver/can-connect? (db)))
+(expect
+  true
+  (driver/can-connect-with-details? :h2 (:details (db))))
 
 ;; Lie and say Test DB is Postgres. CAN-CONNECT? should fail
-(expect false
-  (driver/can-connect? (assoc (db) :engine :postgres)))
+(expect
+  false
+  (driver/can-connect-with-details? :postgres (:details (db))))
 
 ;; Random made-up DBs should fail
-(expect false
-  (driver/can-connect? {:engine  :postgres
-                        :details {:host "localhost", :port 5432, :dbname "ABCDEFGHIJKLMNOP", :user "rasta"}}))
+(expect
+  false
+  (driver/can-connect-with-details? :postgres {:host "localhost", :port 5432, :dbname "ABCDEFGHIJKLMNOP", :user "rasta"}))
 
 ;; Things that you can connect to, but are not DBs, should fail
-(expect false
-  (driver/can-connect? {:engine  :postgres
-                        :details {:host "google.com", :port 80}}))
+(expect
+  false
+  (driver/can-connect-with-details? :postgres {:host "google.com", :port 80}))

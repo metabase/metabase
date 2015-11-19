@@ -1,15 +1,15 @@
 (ns metabase.driver
-  (:require [clojure.java.classpath :as classpath]
+  (:require [clojure.math.numeric-tower :as math]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
-            [clojure.tools.namespace.find :as ns-find]
+            [korma.core :as k]
             [medley.core :as m]
             [metabase.db :refer [ins sel upd]]
-            [metabase.driver.query-processor :as qp]
             (metabase.models [database :refer [Database]]
                              [query-execution :refer [QueryExecution]])
             [metabase.models.setting :refer [defsetting]]
-            [metabase.util :as u]))
+            [metabase.util :as u])
+  (:import clojure.lang.Keyword))
 
 (declare -dataset-query query-fail query-complete save-query-execution)
 
@@ -31,263 +31,214 @@
    :username-incorrect                 "Looks like your username is incorrect."
    :username-or-password-incorrect     "Looks like the username or password is incorrect."})
 
-(def ^:private ^:const feature->required-fns
-  "Map of optional driver features (as keywords) to a set of functions drivers that support that feature must define."
-  {:foreign-keys                       #{:table-fks}
-   :nested-fields                      #{:active-nested-field-name->type}
-   :set-timezone                       nil
-   :standard-deviation-aggregations    nil})
+(defprotocol IDriver
+  "Methods that Metabase drivers must implement. Methods marked *OPTIONAL* have default implementations in `IDriverDefaultsMixin`.
+   Drivers should also implement `getName` form `clojure.lang.Named`, so we can call `name` on them:
 
-(def ^:private ^:const optional-features
-  (set (keys feature->required-fns)))
+     (name (PostgresDriver.)) -> \"PostgreSQL\"
 
-(def ^:private ^:const required-fns
-  #{:can-connect?
-    :active-tables
-    :active-column-names->type
-    :table-pks
-    :field-values-lazy-seq
-    :process-query})
+   This name should be a \"nice-name\" that we'll display to the user."
+  (active-column-names->type ^java.util.Map [this, ^TableInstance table]
+    "Return a map of string names of active columns (or equivalent) -> `Field` `base_type` for TABLE (or equivalent).")
 
-(def ^:private ^:const optional-fns
-  #{:humanize-connection-error-message
-    :sync-in-context
-    :process-query-in-context
-    :table-rows-seq
-    :field-avg-length
-    :field-percent-urls
-    :driver-specific-sync-field!})
+  (active-nested-field-name->type ^java.util.Map [this, ^FieldInstance field]
+    "*OPTIONAL, BUT REQUIRED FOR DRIVERS THAT SUPPORT `:nested-fields`*
 
-(defn verify-driver
-  "Verify that a Metabase DB driver contains the expected properties and that they are the correct type."
-  [{:keys [driver-name details-fields features], :as driver}]
-  ;; Check :driver-name is a string
-  (assert driver-name
-    "Missing property :driver-name.")
-  (assert (string? driver-name)
-    ":driver-name must be a string.")
+     Return a map of string names of active child `Fields` of FIELD -> `Field.base_type`.")
 
-  ;; Check the :details-fields
-  (assert details-fields
-    "Driver is missing property :details-fields.")
-  (assert (vector? details-fields)
-    ":details-fields should be a vector.")
-  (doseq [f details-fields]
-    (assert (map? f)
-      (format "Details fields must be maps: %s" f))
-    (assert (:name f)
-      (format "Details field %s is missing a :name property." f))
-    (assert (:display-name f)
-      (format "Details field %s is missing a :display-name property." f))
-    (when (:type f)
-      (assert (contains? #{:string :integer :password :boolean} (:type f))
-        (format "Invalid type %s in details field %s." (:type f) f)))
-    (when (:default f)
-      (assert (not (:placeholder f))
-        (format "Fields should not define both :default and :placeholder: %s" f))
-      (assert (not (:required f))
-        (format "Fields that define a :default cannot be :required: %s" f))))
+  (active-tables ^java.util.Set [this, ^DatabaseInstance database]
+    "Return a set of maps containing information about the active tables/views, collections, or equivalent that currently exist in DATABASE.
+     Each map should contain the key `:name`, which is the string name of the table. For databases that have a concept of schemas,
+     this map should also include the string name of the table's `:schema`.")
 
-  ;; Check that all required functions are defined
-  (doseq [f required-fns]
-    (assert (f driver)
-      (format "Missing fn: %s" f))
-    (assert (fn? (f driver))
-      (format "Not a fn: %s" (f driver))))
+  (can-connect? ^Boolean [this, ^Map details-map]
+    "Check whether we can connect to a `Database` with DETAILS-MAP and perform a simple query. For example, a SQL database might
+     try running a query like `SELECT 1;`. This function should return `true` or `false`.")
 
-  ;; Check that all features declared are valid
-  (when features
-    (assert (and (set? features)
-                 (every? keyword? features))
-      ":features must be a set of keywords.")
-    (doseq [feature features]
-      (assert (contains? optional-features feature)
-        (format "Not a valid feature: %s" feature))
-      (doseq [f (feature->required-fns feature)]
-        (assert (f driver)
-          (format "Drivers that support feature %s must have fn %s." feature f))
-        (assert (fn? (f driver))
-          (format "Not a fn: %s" f)))))
+  (date-interval [this, ^Keyword unit, ^Number amount]
+    "*OPTIONAL* Return an driver-appropriate representation of a moment relative to the current moment in time. By default, this returns an `Timestamp` by calling
+     `metabase.util/relative-date`; but when possible drivers should return a native form so we can be sure the correct timezone is applied. For example, SQL drivers should
+     return a Korma form to call the appropriate SQL fns:
 
-  ;; Check that the optional fns, if included, are actually fns
-  (doseq [f optional-fns]
-    (when (f driver)
-      (assert (fn? (f driver))
-        (format "Not a fn: %s" f)))))
+       (date-interval (PostgresDriver.) :month 1) -> (k/raw* \"(NOW() + INTERVAL '1 month')\")")
 
-(def ^:const driver-defaults
-  "Default implementations of methods for drivers."
-  {:date-interval u/relative-date})
+  (details-fields ^clojure.lang.Sequential [this]
+    "A vector of maps that contain information about connection properties that should
+     be exposed to the user for databases that will use this driver. This information is used to build the UI for editing
+     a `Database` `details` map, and for validating it on the Backend. It should include things like `host`,
+     `port`, and other driver-specific parameters. Each field information map should have the following properties:
 
-(defmacro defdriver
-  "Define and validate a new Metabase DB driver.
+       *  `:name`
 
-   All drivers must include the following keys:
+           The key that should be used to store this property in the `details` map.
 
-#### PROPERTIES
+       *  `:display-name`
 
-*  `:driver-name`
+           Human-readable name that should be displayed to the User in UI for editing this field.
 
-    A human-readable string naming the DB this driver works with, e.g. `\"PostgreSQL\"`.
+       *  `:type` *(OPTIONAL)*
 
-*  `:details-fields`
+          `:string`, `:integer`, `:boolean`, or `:password`. Defaults to `:string`.
 
-    A vector of maps that contain information about connection properties that should
-    be exposed to the user for databases that will use this driver. This information is used to build the UI for editing
-    a `Database` `details` map, and for validating it on the Backend. It should include things like `host`,
-    `port`, and other driver-specific parameters. Each field information map should have the following properties:
+       *  `:default` *(OPTIONAL)*
 
-    *  `:name`
+           A default value for this field if the user hasn't set an explicit value. This is shown in the UI as a placeholder.
 
-        The key that should be used to store this property in the `details` map.
+       *  `:placeholder` *(OPTIONAL)*
 
-    *  `:display-name`
+          Placeholder value to show in the UI if user hasn't set an explicit value. Similar to `:default`, but this value is
+          *not* saved to `:details` if no explicit value is set. Since `:default` values are also shown as placeholders, you
+          cannot specify both `:default` and `:placeholder`.
 
-        Human-readable name that should be displayed to the User in UI for editing this field.
+       *  `:required` *(OPTIONAL)*
 
-    *  `:type` *(OPTIONAL)*
+          Is this property required? Defaults to `false`.")
 
-       `:string`, `:integer`, `:boolean`, or `:password`. Defaults to `:string`.
+  (driver-specific-sync-field! ^metabase.models.field.FieldInstance [this, ^FieldInstance field]
+    "*OPTIONAL*. This is a chance for drivers to do custom `Field` syncing specific to their database.
+     For example, the Postgres driver can mark Postgres JSON fields as `special_type = json`.
+     As with the other Field syncing functions in `metabase.driver.sync`, this method should return the modified FIELD, if any, or `nil`.")
 
-    *  `:default` *(OPTIONAL)*
+  (features ^java.util.Set [this]
+    "*OPTIONAL*. A set of keyword names of optional features supported by this driver, such as `:foreign-keys`.
+     Valid features are: `:foreign-keys :nested-fields :set-timezone :standard-deviation-aggregations`")
 
-        A default value for this field if the user hasn't set an explicit value. This is shown in the UI as a placeholder.
+  (field-avg-length ^Float [this, ^FieldInstance field]
+    "*OPTIONAL*. If possible, provide an efficent DB-level function to calculate the average length of non-nil values of textual FIELD, which is used to determine whether a `Field`
+     should be marked as a `:category`. If this function is not provided, a fallback implementation that iterates over results in Clojure-land is used instead.")
 
-    *  `:placeholder` *(OPTIONAL)*
+  (field-percent-urls ^Float [this, ^FieldInstance field]
+    "*OPTIONAL*. If possible, provide an efficent DB-level function to calculate what percentage of non-nil values of textual FIELD are valid URLs, which is used to determine
+     whether a `Field` should be marked as a `:url`. If this function is not provided, a fallback implementation that iterates over results in Clojure-land is used instead.")
 
-       Placeholder value to show in the UI if user hasn't set an explicit value. Similar to `:default`, but this value is
-       *not* saved to `:details` if no explicit value is set. Since `:default` values are also shown as placeholders, you
-       cannot specify both `:default` and `:placeholder`.
+  (field-values-lazy-seq ^clojure.lang.Sequential [this, ^FieldInstance field]
+    "Return a lazy sequence of all values of FIELD.
+     This is used to implement `mark-json-field!`, and fallback implentations of `mark-no-preview-display-field!` and `mark-url-field!`
+     if drivers *don't* implement `field-avg-length` and `field-percent-urls`, respectively.")
 
-    *  `:required` *(OPTIONAL)*
+  (humanize-connection-error-message ^String [this, ^String message]
+    "*OPTIONAL*. Return a humanized (user-facing) version of an connection error message string.
+     Generic error messages are provided in the constant `connection-error-messages`; return one of these whenever possible.")
 
-       Is this property required? Defaults to `false`.
+  (process-native [this, ^Map query]
+    "Process a native QUERY. This function is called by `metabase.driver/process-query`.")
 
-*  `:features` *(OPTIONAL)*
+  (process-structured [this, ^Map query]
+    "Process a native or structured QUERY. This function is called by `metabase.driver/process-query` after performing various driver-unspecific
+     steps like Query Expansion and other preprocessing.")
 
-    A set of keyword names of optional features supported by this driver, such as `:foreign-keys`.
+  (process-query-in-context [this, ^IFn f]
+    "*OPTIONAL*. Similar to `sync-in-context`, but for running queries rather than syncing. This should be used to do things like open DB connections
+     that need to remain open for the duration of post-processing. This function follows a middleware pattern and is injected into the QP
+     middleware stack immediately after the Query Expander; in other words, it will receive the expanded query.
+     See the Mongo and H2 drivers for examples of how this is intended to be used.")
 
-#### FUNCTIONS
-
-*  `(can-connect? [details-map])`
-
-   Check whether we can connect to a `Database` with DETAILS-MAP and perform a simple query. For example, a SQL database might
-   try running a query like `SELECT 1;`. This function should return `true` or `false`.
-
-*  `(active-tables [database])`
-
-   Return a set of maps containing information about the active tables/views, collections, or equivalent that currently exist in DATABASE.
-   Each map should contain the key `:name`, which is the string name of the table. For databases that have a concept of schemas,
-   this map should also include the string name of the table's `:schema`.
-
-*  `(active-column-names->type [table])`
-
-   Return a map of string names of active columns (or equivalent) -> `Field` `base_type` for TABLE (or equivalent).
-
-*  `(table-pks [table])`
-
-   Return a set of string names of active Fields that are primary keys for TABLE (or equivalent).
-
-*  `(field-values-lazy-seq [field])`
-
-   Return a lazy sequence of all values of FIELD.
-   This is used to implement `mark-json-field!`, and fallback implentations of `mark-no-preview-display-field!` and `mark-url-field!`
-   if drivers *don't* implement `field-avg-length` and `field-percent-urls`, respectively.
-
-*  `(process-query [query])`
-
-   Process a native or structured QUERY. This function is called by `metabase.driver/process-query` after performing various driver-unspecific
-   steps like Query Expansion and other preprocessing.
-
-*  `(table-fks [table])` *(REQUIRED FOR DRIVERS THAT SUPPORT `:foreign-keys`)*
-
-   Return a set of maps containing info about FK columns for TABLE.
-   Each map should contain the following keys:
-
-     *  `fk-column-name`
-     *  `dest-table-name`
-     *  `dest-column-name`
-
-*  `(active-nested-field-name->type [field])` *(REQUIRED FOR DRIVERS THAT SUPPORT `:nested-fields`)*
-
-   Return a map of string names of active child `Fields` of FIELD -> `Field.base_type`.
-
-*  `(humanize-connection-error-message [message])` *(OPTIONAL)*
-
-   Return a humanized (user-facing) version of an connection error message string.
-   Generic error messages are provided in the constant `connection-error-messages`; return one of these whenever possible.
-
-*  `(sync-in-context [database f])` *(OPTIONAL)*
-
-   Drivers may provide this function if they need to do special setup before a sync operation such as `sync-database!`. The sync
-   operation itself is encapsulated as the lambda F, which must be called with no arguments.
+  (sync-in-context [this, ^DatabaseInstance database, ^IFn f]
+    "*OPTIONAL*. Drivers may provide this function if they need to do special setup before a sync operation such as `sync-database!`. The sync
+     operation itself is encapsulated as the lambda F, which must be called with no arguments.
 
        (defn sync-in-context [database f]
          (with-jdbc-metadata [_ database]
-           (f)))
+           (f)))")
 
-*  `(process-query-in-context [f])` *(OPTIONAL)*
+  (table-fks ^java.util.Set [this, ^TableInstance table]
+    "*OPTIONAL*, BUT REQUIRED FOR DRIVERS THAT SUPPORT `:foreign-keys`*
 
-   Similar to `sync-in-context`, but for running queries rather than syncing. This should be used to do things like open DB connections
-   that need to remain open for the duration of post-processing. This function follows a middleware pattern and is injected into the QP
-   middleware stack immediately after the Query Expander; in other words, it will receive the expanded query.
-   See the Mongo and H2 drivers for examples of how this is intended to be used.
+     Return a set of maps containing info about FK columns for TABLE.
+     Each map should contain the following keys:
 
-*  `(table-rows-seq [database table-name])` *(OPTIONAL)*
+       *  `fk-column-name`
+       *  `dest-table-name`
+       *  `dest-column-name`")
 
-   Return a sequence of all the rows in a table with a given TABLE-NAME.
-   Currently, this is only used for iterating over the values in a `_metabase_metadata` table. As such, the results are not expected to be returned lazily.
+  (table-pks ^java.util.Set [this, ^TableInstance table]
+    "Return a set of string names of active Fields that are primary keys for TABLE (or equivalent).")
 
-*  `(field-avg-length [field])` *(OPTIONAL)*
+  (table-rows-seq ^clojure.lang.Sequential [this, ^DatabaseInstance database, ^String table-name]
+    "*OPTIONAL*. Return a sequence of all the rows in a table with a given TABLE-NAME.
+     Currently, this is only used for iterating over the values in a `_metabase_metadata` table. As such, the results are not expected to be returned lazily."))
 
-   If possible, provide an efficent DB-level function to calculate the average length of non-nil values of textual FIELD, which is used to determine whether a `Field`
-   should be marked as a `:category`. If this function is not provided, a fallback implementation that iterates over results in Clojure-land is used instead.
+(defn- percent-valid-urls
+  "Recursively count the values of non-nil values in VS that are valid URLs, and return it as a percentage."
+  [vs]
+  (loop [valid-count 0, non-nil-count 0, [v & more :as vs] vs]
+    (cond (not (seq vs)) (if (zero? non-nil-count) 0.0
+                             (float (/ valid-count non-nil-count)))
+          (nil? v)       (recur valid-count non-nil-count more)
+          :else          (let [valid? (and (string? v)
+                                           (u/is-url? v))]
+                           (recur (if valid? (inc valid-count) valid-count)
+                                  (inc non-nil-count)
+                                  more)))))
 
-*  `(field-percent-urls [field])` *(OPTIONAL)*
 
-   If possible, provide an efficent DB-level function to calculate what percentage of non-nil values of textual FIELD are valid URLs, which is used to determine
-   whether a `Field` should be marked as a `:url`. If this function is not provided, a fallback implementation that iterates over results in Clojure-land is used instead.
+(defn- default-field-percent-urls
+  "Default implementation for optional driver fn `:field-percent-urls` that calculates percentage in Clojure-land."
+  [driver field]
+  (->> (field-values-lazy-seq driver field)
+       (filter identity)
+       (take max-sync-lazy-seq-results)
+       percent-valid-urls))
 
-*  `(driver-specific-sync-field! [field])` *(OPTIONAL)*
+(defn- default-field-avg-length [driver field]
+  (let [field-values        (->> (field-values-lazy-seq driver field)
+                                 (filter identity)
+                                 (take max-sync-lazy-seq-results))
+        field-values-count (count field-values)]
+    (if (= field-values-count 0) 0
+        (int (math/round (/ (->> field-values
+                                 (map str)
+                                 (map count)
+                                 (reduce +))
+                            field-values-count))))))
 
-   This is a chance for drivers to do custom `Field` syncing specific to their database.
-   For example, the Postgres driver can mark Postgres JSON fields as `special_type = json`.
-   As with the other Field syncing functions in `metabase.driver.sync`, this method should return the modified FIELD, if any, or `nil`."
-  [driver-name driver-map]
-  `(def ~(vary-meta driver-name assoc :metabase.driver/driver (keyword driver-name))
-     (let [m# (merge driver-defaults
-                     ~driver-map)]
-       (verify-driver m#)
-       m#)))
+
+(def IDriverDefaultsMixin
+  "Default implementations of `IDriver` methods marked *OPTIONAL*."
+  {:active-nested-field-name->type    (constantly nil)
+   :date-interval                     (fn [_ unit amount] (u/relative-date unit amount))
+   :driver-specific-sync-field!       (constantly nil)
+   :features                          (constantly nil)
+   :field-avg-length                  default-field-avg-length
+   :field-percent-urls                default-field-percent-urls
+   :humanize-connection-error-message (fn [_ message] message)
+   :process-query-in-context          (fn [_ f] (f))
+   :sync-in-context                   (fn [_ _ f] (f))
+   :table-fks                         (constantly nil)
+   :table-rows-seq                    (constantly nil)})
+
 
 
 ;;; ## CONFIG
 
 (defsetting report-timezone "Connection timezone to use when executing queries. Defaults to system timezone.")
 
-(defn- -available-drivers []
-  (->> (for [namespace (->> (ns-find/find-namespaces (classpath/classpath))
-                            (filter (fn [ns-symb]
-                                      (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb)))))]
-         (do (require namespace)
-             (->> (ns-publics namespace)
-                  (map (fn [[symb varr]]
-                         (when (::driver (meta varr))
-                           {(keyword symb) (select-keys @varr [:details-fields
-                                                               :driver-name
-                                                               :features])})))
-                  (into {}))))
-       (into {})))
+(defonce ^:private registered-drivers
+  (atom {}))
 
-(def available-drivers
-  "Delay to a map of info about available drivers."
-  (delay (-available-drivers)))
+(defn register-driver!
+  "Register a DRIVER, an instance of a class that implements `IDriver`, for ENGINE.
+
+     (register-driver! :postgres (PostgresDriver.))"
+  [^Keyword engine, driver-instance]
+  {:pre [(keyword? engine) (map? driver-instance)]}
+  (swap! registered-drivers assoc engine driver-instance)
+  (log/debug (format "Registered driver %s." engine)))
+
+(defn available-drivers
+  "Info about available drivers."
+  []
+  (m/map-vals (fn [driver]
+                {:details-fields (details-fields driver)
+                 :driver-name    (name driver)
+                 :features       (features driver)})
+              @registered-drivers))
 
 (defn is-engine?
   "Is ENGINE a valid driver name?"
   [engine]
   (when engine
-    (contains? (set (keys @available-drivers)) (keyword engine))))
+    (contains? (set (keys (available-drivers))) (keyword engine))))
 
 (defn class->base-type
   "Return the `Field.base_type` that corresponds to a given class returned by the DB."
@@ -319,9 +270,11 @@
      metabase.driver.<engine>/<engine>"
   [engine]
   {:pre [engine]}
-  (let [nmspc (symbol (format "metabase.driver.%s" (name engine)))]
-    (require nmspc)
-    @(ns-resolve nmspc (symbol (name engine)))))
+  (or ((keyword engine) @registered-drivers)
+      (let [namespce (symbol (format "metabase.driver.%s" (name engine)))]
+        (log/debug (format "Loading driver '%s'..." engine))
+        (require namespce)
+        ((keyword engine) @registered-drivers))))
 
 
 ;; Can the type of a DB change?
@@ -330,9 +283,7 @@
    (Databases aren't expected to change their types, and this optimization makes things a lot faster).
 
    This loads the corresponding driver if needed."
-  (let [db-id->engine (memoize
-                       (fn [db-id]
-                         (sel :one :field [Database :engine] :id db-id)))]
+  (let [db-id->engine (memoize (fn [db-id] (sel :one :field [Database :engine] :id db-id)))]
     (fn [db-id]
       (engine->driver (db-id->engine db-id)))))
 
@@ -343,59 +294,42 @@
   "Consider `can-connect?`/`can-connect-with-details?` to have failed after this many milliseconds."
   5000)
 
-(defn can-connect?
-  "Check whether we can connect to DATABASE and perform a basic query (such as `SELECT 1`)."
-  [database]
-  {:pre [(map? database)]}
-  (let [driver (engine->driver (:engine database))]
-    (try
-      (u/with-timeout can-connect-timeout-ms
-        ((:can-connect? driver) (:details database)))
-      (catch Throwable e
-        (log/error "Failed to connect to database:" (.getMessage e))
-        false))))
-
 (defn can-connect-with-details?
-  "Check whether we can connect to a database with ENGINE and DETAILS-MAP and perform a basic query.
-   Specify optional param RETHROW-EXCEPTIONS if you want to handle any exceptions thrown yourself
-   (e.g., so you can pass the exception message along to the user).
+  "Check whether we can connect to a database with ENGINE and DETAILS-MAP and perform a basic query
+   such as `SELECT 1`. Specify optional param RETHROW-EXCEPTIONS if you want to handle any exceptions
+   thrown yourself (e.g., so you can pass the exception message along to the user).
 
      (can-connect-with-details? :postgres {:host \"localhost\", :port 5432, ...})"
   [engine details-map & [rethrow-exceptions]]
   {:pre [(keyword? engine)
          (is-engine? engine)
          (map? details-map)]}
-  (let [{:keys [humanize-connection-error-message], :as driver} (engine->driver engine)]
+  (let [driver (engine->driver engine)]
     (try
       (u/with-timeout can-connect-timeout-ms
-        ((:can-connect? driver) details-map))
+        (can-connect? driver details-map))
       (catch Throwable e
         (log/error "Failed to connect to database:" (.getMessage e))
         (when rethrow-exceptions
-          (let [^String message ((or humanize-connection-error-message
-                                     identity)
-                                 (.getMessage e))]
-            (throw (Exception. message))))
+          (throw (Exception. (humanize-connection-error-message driver (.getMessage e)))))
         false))))
 
-(def ^{:arglists '([database])} sync-database!
+(defn sync-database!
   "Sync a `Database`, its `Tables`, and `Fields`."
-  (let [-sync-database! (u/runtime-resolved-fn 'metabase.driver.sync 'sync-database!)] ; these need to be resolved at runtime to avoid circular deps
-    (fn [database]
-      {:pre [(map? database)]}
-      (-sync-database! (engine->driver (:engine database)) database))))
+  [database]
+  {:pre [(map? database)]}
+  (@(resolve 'metabase.driver.sync/sync-database!) (engine->driver (:engine database)) database))
 
-(def ^{:arglists '([table])} sync-table!
+(defn sync-table!
   "Sync a `Table` and its `Fields`."
-  (let [-sync-table! (u/runtime-resolved-fn 'metabase.driver.sync 'sync-table!)]
-    (fn [table]
-      {:pre [(map? table)]}
-      (-sync-table! (database-id->driver (:db_id table)) table))))
+  [table]
+  {:pre [(map? table)]}
+  (@(resolve 'metabase.driver.sync/sync-table!) (database-id->driver (:db_id table)) table))
 
 (defn process-query
   "Process a structured or native query, and return the result."
   [query]
-  (qp/process (database-id->driver (:database query)) query))
+  (@(resolve 'metabase.driver.query-processor/process) (database-id->driver (:database query)) query))
 
 
 ;; ## Query Execution Stuff

@@ -13,13 +13,13 @@
 ;; HELPER FNS
 
 (defn create-db [db-name]
-  ((user->client :crowberto) :post 200 "database" {:engine  :postgres
-                                                  :name    db-name
-                                                  :details {:host   "localhost"
-                                                            :port   5432
-                                                            :dbname "fakedb"
-                                                            :user   "cam"
-                                                            :ssl    false}}))
+  ((user->client :crowberto) :post 200 "database" {:engine :postgres
+                                                   :name    db-name
+                                                   :details {:host   "localhost"
+                                                             :port   5432
+                                                             :dbname "fakedb"
+                                                             :user   "cam"
+                                                             :ssl    false}}))
 
 ;; # DB LIFECYCLE ENDPOINTS
 

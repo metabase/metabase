@@ -86,7 +86,8 @@
 
 ;; ## Tests for DETERMINE-FK-TYPE
 ;; Since COUNT(category_id) > COUNT(DISTINCT(category_id)) the FK relationship should be Mt1
-(def determine-fk-type (u/runtime-resolved-fn 'metabase.driver.sync 'determine-fk-type))
+(def determine-fk-type @(resolve 'metabase.driver.sync/determine-fk-type))
+
 (expect :Mt1
   (determine-fk-type (Field (id :venues :category_id))))
 

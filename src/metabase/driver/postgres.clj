@@ -9,8 +9,8 @@
             [swiss.arrows :refer :all]
             [metabase.db :refer [upd]]
             [metabase.models.field :refer [Field]]
-            [metabase.driver :as driver, :refer [defdriver]]
-            [metabase.driver.generic-sql :refer [sql-driver]]
+            [metabase.driver :as driver]
+            [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.util :refer [with-jdbc-metadata]])
   ;; This is necessary for when NonValidatingFactory is passed in the sslfactory connection string argument,
   ;; e.x. when connecting to a Heroku Postgres database from outside of Heroku.
@@ -100,7 +100,7 @@
                 :milliseconds "TO_TIMESTAMP(%s / 1000)")
               [field-or-value]))
 
-(defn- driver-specific-sync-field! [{:keys [table], :as field}]
+(defn- driver-specific-sync-field! [_ {:keys [table], :as field}]
   (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db @table)]
     (let [[{:keys [type_name]}] (->> (.getColumns md nil nil (:name @table) (:name field))
                                      jdbc/result-set-seq)]
@@ -133,7 +133,7 @@
 (defn- date-interval [unit amount]
   (utils/generated (format "(NOW() + INTERVAL '%d %s')" amount (name unit))))
 
-(defn- humanize-connection-error-message [message]
+(defn- humanize-connection-error-message [_ message]
   (condp re-matches message
     #"^FATAL: database \".*\" does not exist$"
     (driver/connection-error-messages :database-name-incorrect)
@@ -157,38 +157,48 @@
     #".*" ; default
     message))
 
-(defdriver postgres
-  (sql-driver
-   {:driver-name                       "PostgreSQL"
-    :details-fields                    [{:name         "host"
-                                         :display-name "Host"
-                                         :default "localhost"}
-                                        {:name         "port"
-                                         :display-name "Port"
-                                         :type         :integer
-                                         :default      5432}
-                                        {:name         "dbname"
-                                         :display-name "Database name"
-                                         :placeholder  "birds_of_the_word"
-                                         :required     true}
-                                        {:name         "user"
-                                         :display-name "Database username"
-                                         :placeholder  "What username do you use to login to the database?"
-                                         :required     true}
-                                        {:name         "password"
-                                         :display-name "Database password"
-                                         :type         :password
-                                         :placeholder  "*******"}
-                                        {:name         "ssl"
-                                         :display-name "Use a secure connection (SSL)?"
-                                         :type         :boolean
-                                         :default      false}]
-    :string-length-fn                  :CHAR_LENGTH
-    :column->base-type                 column->base-type
-    :connection-details->spec          connection-details->spec
-    :unix-timestamp->timestamp         unix-timestamp->timestamp
-    :date                              date
-    :date-interval                     date-interval
-    :set-timezone-sql                  "UPDATE pg_settings SET setting = ? WHERE name ILIKE 'timezone';"
-    :driver-specific-sync-field!       driver-specific-sync-field!
-    :humanize-connection-error-message humanize-connection-error-message}))
+(defrecord PostgresDriver []
+  clojure.lang.Named
+  (getName [_] "PostgreSQL"))
+
+(extend PostgresDriver
+  driver/IDriver
+  (merge sql/IDriverSQLDefaultsMixin
+         {:details-fields                    (constantly [{:name         "host"
+                                                           :display-name "Host"
+                                                           :default "localhost"}
+                                                          {:name         "port"
+                                                           :display-name "Port"
+                                                           :type         :integer
+                                                           :default      5432}
+                                                          {:name         "dbname"
+                                                           :display-name "Database name"
+                                                           :placeholder  "birds_of_the_word"
+                                                           :required     true}
+                                                          {:name         "user"
+                                                           :display-name "Database username"
+                                                           :placeholder  "What username do you use to login to the database?"
+                                                           :required     true}
+                                                          {:name         "password"
+                                                           :display-name "Database password"
+                                                           :type         :password
+                                                           :placeholder  "*******"}
+                                                          {:name         "ssl"
+                                                           :display-name "Use a secure connection (SSL)?"
+                                                           :type         :boolean
+                                                           :default      false}])
+          :driver-specific-sync-field!       driver-specific-sync-field!
+          :humanize-connection-error-message humanize-connection-error-message}))
+
+(def postgres
+  (map->PostgresDriver
+   (sql/sql-driver
+    {:column->base-type         column->base-type
+     :connection-details->spec  connection-details->spec
+     :date                      date
+     :date-interval             date-interval
+     :set-timezone-sql          "UPDATE pg_settings SET setting = ? WHERE name ILIKE 'timezone';"
+     :string-length-fn          :CHAR_LENGTH
+     :unix-timestamp->timestamp unix-timestamp->timestamp})))
+
+(driver/register-driver! :postgres postgres)

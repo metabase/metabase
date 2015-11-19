@@ -8,6 +8,7 @@
             [medley.core :as m]
             [swiss.arrows :refer [<<-]]
             [metabase.db :refer :all]
+            [metabase.driver :as driver]
             (metabase.driver.query-processor [annotate :as annotate]
                                              [expand :as expand]
                                              [interface :refer :all]
@@ -156,8 +157,7 @@
                                                                                   :fields      [ag-field])))]
 
       ;; Otherwise if we're breaking out on different fields, rewrite the query as a "sum" aggregation
-      cum-sum-with-breakout? [ag-field (-> query
-                                           (assoc-in [:query :aggregation] (map->Aggregation {:aggregation-type :sum, :field ag-field})))]
+      cum-sum-with-breakout? [ag-field (assoc-in query [:query :aggregation] (map->Aggregation {:aggregation-type :sum, :field ag-field}))]
 
       ;; Cumulative sum without any breakout fields should just be treated the same way as "sum". Rewrite query as such
       cum-sum? [false (assoc-in query [:query :aggregation] (map->Aggregation {:aggregation-type :sum, :field ag-field}))]
@@ -223,7 +223,7 @@
                                    ;; obscure DB details when logging. Just log the name of driver because we don't care about its properties
                                    (-> query
                                        (assoc-in [:database :details] "😋 ") ; :yum:
-                                       (update :driver :driver-name)))))))
+                                       (update :driver name)))))))
     (qp query)))
 
 
@@ -255,7 +255,7 @@
 ;;
 ;; Many functions do both pre and post-processing; this middleware pattern allows them to return closures that maintain some sort of
 ;; internal state. For example, cumulative-sum can determine if it needs to perform cumulative summing, and, if so, modify the query
-;; before passing it to QP, and modify the results of that call.
+;; before passing it to QP; once the query is processed, it can use modify the results as needed.
 ;;
 ;; For the sake of clarity, functions are named with the following convention:
 ;; *  Ones that only do pre-processing are prefixed with pre-
@@ -263,23 +263,22 @@
 ;; *  Ones that do both aren't prefixed
 ;;
 ;; The <<- (reverse-threading macro) is used below for clarity.
-;; Pre-processing happens from top-to-bottom, i.e. the QUERY passed to the function returned by POST-ADD-ROW-COUNT-AND-STATUS is the
-;; query as modified by PRE-EXPAND.
+;; Pre-processing happens from top-to-bottom, i.e. the QUERY passed to the function returned by PRE-ADD-IMPLICIT-BREAKOUT-ORDER-BY is the
+;; query as modified by PRE-ADD-IMPLICIT-FIELDS.
 ;;
 ;; Post-processing then happens in order from bottom-to-top; i.e. POST-ANNOTATE gets to modify the results, then LIMIT, then CUMULATIVE-SUM, etc.
-
 
 (defn process
   "Process a QUERY and return the results."
   [driver query]
   (when-not *disable-qp-logging*
     (log/debug (u/format-color 'blue "\nQUERY: 😎\n%s" (u/pprint-to-str query))))
-  (let [driver-process-query      (:process-query driver)
-        driver-wrap-process-query (or (:process-query-in-context driver)
-                                      (fn [qp] qp))]
+  (let [driver-process-query (partial (if (structured-query? query)
+                                        driver/process-structured
+                                        driver/process-native) driver)]
     ((<<- wrap-catch-exceptions
           pre-expand
-          driver-wrap-process-query
+          (driver/process-query-in-context driver)
           post-add-row-count-and-status
           pre-add-implicit-fields
           pre-add-implicit-breakout-order-by
@@ -288,5 +287,4 @@
           annotate/post-annotate
           pre-log-query
           wrap-guard-multiple-calls
-          driver-process-query) (assoc query
-                                       :driver driver))))
+          driver-process-query) (assoc query :driver driver))))

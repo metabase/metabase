@@ -32,9 +32,6 @@
                                                       RelativeDateTimeValue
                                                       Value)))
 
-(declare process-and-run-native
-         process-and-run-structured)
-
 (def ^:private ^:const $subtract :$subtract)
 
 
@@ -48,15 +45,6 @@
                  (->> form
                       (walk/postwalk #(if (symbol? %) (symbol (name %)) %)) ; strip namespace qualifiers from Monger form
                       u/pprint-to-str) "\n"))))
-
-(defn process-and-run
-  "Process and run a MongoDB QUERY."
-  [{query-type :type, :as query}]
-  {:pre [query-type]}
-  (case (keyword query-type)
-    :query  (process-and-run-structured query)
-    :native (process-and-run-native query)))
-
 
 ;; # NATIVE QUERY PROCESSOR
 
@@ -74,7 +62,9 @@
       (let [{result "retval"} (PersistentArrayMap/create (.toMap result))]
         result)))
 
-(defn- process-and-run-native [query]
+(defn process-and-run-native
+  "Process and run a native MongoDB query."
+  [_ query]
   (let [results (eval-raw-command (:query (:native query)))]
     (if (sequential? results) results
         [results])))
@@ -415,7 +405,9 @@
                     (u/->Timestamp (:___date v))
                     v)}))))
 
-(defn- process-and-run-structured [{database :database, {{source-table-name :name} :source-table} :query, :as query}]
+(defn process-and-run-structured
+  "Process and run a structured MongoDB query."
+  [_ {database :database, {{source-table-name :name} :source-table} :query, :as query}]
   {:pre [(map? database)
          (string? source-table-name)]}
   (binding [*query* query]

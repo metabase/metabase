@@ -66,22 +66,10 @@
 
 ;; ## Tests for connection functions
 
-(expect-when-testing-mongo true
-  (driver/can-connect? {:engine  :mongo
-                        :details {:host   "localhost"
-                                  :dbname "metabase-test"
-                                  :port   27017}}))
-
 (expect-when-testing-mongo false
-  (driver/can-connect? {:engine :mongo
-                        :details {:host   "123.4.5.6"
-                                  :dbname "bad-db-name"}}))
-
-(expect-when-testing-mongo false
-  (driver/can-connect? {:engine :mongo
-                        :details {:host   "localhost"
-                                  :port   3000
-                                  :dbname "bad-db-name"}}))
+  (driver/can-connect? :mongo {:host   "localhost"
+                               :port   3000
+                               :dbname "bad-db-name"}))
 
 (expect-when-testing-mongo false
   (driver/can-connect-with-details? :mongo {}))
@@ -116,7 +104,7 @@
       {:name "categories"}
       {:name "users"}
       {:name "venues"}}
-    ((:active-tables mongo) (mongo-db)))
+    (driver/active-tables mongo (mongo-db)))
 
 ;; ### table->column-names
 (expect-when-testing-mongo
@@ -157,14 +145,14 @@
      {"_id" :IntegerField, "name" :TextField, "longitude" :FloatField, "latitude" :FloatField, "price" :IntegerField, "category_id" :IntegerField}] ; venues
   (->> table-names
        (map table-name->fake-table)
-       (mapv (:active-column-names->type mongo))))
+       (mapv (partial driver/active-column-names->type mongo))))
 
 ;; ### table-pks
 (expect-when-testing-mongo
     [#{"_id"} #{"_id"} #{"_id"} #{"_id"}] ; _id for every table
   (->> table-names
        (map table-name->fake-table)
-       (mapv (:table-pks mongo))))
+       (mapv (partial driver/table-pks mongo))))
 
 
 ;; ## Big-picture tests for the way data should look post-sync

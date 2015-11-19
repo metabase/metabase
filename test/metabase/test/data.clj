@@ -70,16 +70,10 @@
          parent-id
          (recur (get-field-id-or-explode table-id nested-field-name, :parent-id parent-id) more))))))
 
-(defn driver
-  "Get the driver used by the current enigne."
-  []
-  {:post [(map? %)]}
-  (driver/engine->driver datasets/*engine*))
-
 (defn fks-supported?
   "Does the current engine support foreign keys?"
   []
-  (contains? (:features (driver)) :foreign-keys))
+  (contains? (driver/features *data-loader*) :foreign-keys))
 
 (defn default-schema []       (datasets/default-schema *data-loader*))
 (defn id-field-type []        (datasets/id-field-type *data-loader*))

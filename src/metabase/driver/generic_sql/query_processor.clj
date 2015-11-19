@@ -10,8 +10,7 @@
                        [utils :as utils])
             [metabase.config :as config]
             [metabase.driver :as driver]
-            (metabase.driver.generic-sql [native :as native]
-                                         [util :refer :all])
+            [metabase.driver.generic-sql.util :refer :all]
             [metabase.driver.query-processor :as qp]
             [metabase.util :as u])
   (:import java.sql.Timestamp
@@ -90,7 +89,7 @@
     ([{:keys [amount unit], {field-unit :unit} :field} _]
      (let [{:keys [date date-interval]} (:driver *query*)]
        (date field-unit (if (zero? amount)
-                          (k/sqlfn* (-> *query* :driver :current-datetime-fn))
+                          (-> *query* :driver :current-datetime-fn)
                           (date-interval unit amount)))))))
 
 
@@ -259,10 +258,3 @@
                                        second)                               ; (?s) = Pattern.DOTALL - tell regex `.` to match newline characters as well
                                   (.getMessage e))]
           (throw (Exception. message)))))))
-
-(defn process-and-run
-  "Process and run a query and return results."
-  [{:keys [type] :as query}]
-  (case (keyword type)
-    :native (native/process-and-run query)
-    :query  (process-structured query)))
