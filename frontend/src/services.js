@@ -370,6 +370,21 @@ CoreServices.factory('Dashboard', ['$resource', '$cookies', function($resource, 
     });
 }]);
 
+CoreServices.factory('Email', ['$resource', function($resource) {
+    return $resource('/api/email', {}, {
+
+        updateSettings: {
+            url: '/api/email/',
+            method: 'PUT'
+        },
+
+        sendTest: {
+            url: '/api/email/test',
+            method: 'POST'
+        }
+    });
+}]);
+
 CoreServices.factory('ForeignKey', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/foreignkey/:fkID', {}, {
         delete: {
@@ -637,6 +652,12 @@ CoreServices.factory('Settings', ['$resource', function($resource) {
             params: {
                 key: '@key'
             }
+        },
+        // set multiple values at once
+        setAll: {
+            url: '/api/setting/',
+            method: 'PUT',
+            isArray: true
         },
         delete: {
             url: '/api/setting/:key',

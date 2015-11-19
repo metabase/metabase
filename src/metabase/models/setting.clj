@@ -106,6 +106,18 @@
   (swap! cached-setting->value dissoc k)
   (del Setting :key (name k)))
 
+(defn set-all
+  "Set the value of a `Setting`.
+
+    (set :mandrill-api-key \"xyz123\")"
+  [settings]
+  {:pre [(map? settings)]}
+  (doseq [k (keys settings)]
+    (if-let [v (clojure.core/get settings k)]
+      (set k v)
+      (delete k)))
+  settings)
+
 (defn set*
   "Set the value of a `Setting`, deleting it if VALUE is `nil` or an empty string."
   [setting-key value]
