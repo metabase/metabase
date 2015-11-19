@@ -1360,15 +1360,14 @@
 
 ;; RELATIVE DATES
 (defn- database-def-with-timestamps [interval-seconds]
-  (let [{:keys [date-interval]} *data-loader*]
-    (create-database-definition "DB"
-      ["checkins"
-       [{:field-name "timestamp"
-         :base-type  :DateTimeField}]
-       (vec (for [i (range -15 15)]
-              ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of generating `java.sql.Timestamps` here so
-              ;; they'll be in the DB's native timezone. Some DBs refuse to use the same timezone we're running the tests from *cough* SQL Server *cough*
-              [(date-interval :second (* i interval-seconds))]))])))
+  (create-database-definition "DB"
+    ["checkins"
+     [{:field-name "timestamp"
+       :base-type  :DateTimeField}]
+     (vec (for [i (range -15 15)]
+            ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of generating `java.sql.Timestamps` here so
+            ;; they'll be in the DB's native timezone. Some DBs refuse to use the same timezone we're running the tests from *cough* SQL Server *cough*
+            [(driver/date-interval *data-loader* :second (* i interval-seconds))]))]))
 
 (def ^:private checkins:4-per-minute (partial database-def-with-timestamps 15))
 (def ^:private checkins:4-per-hour   (partial database-def-with-timestamps (* 60 15)))
