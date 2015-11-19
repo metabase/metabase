@@ -5,12 +5,12 @@
             [metabase.api.common :refer :all]
             [metabase.db :as db]
             [metabase.driver :as driver]
+            [metabase.email :as email]
             [metabase.integrations.slack :as slack]
             (metabase.models [card :refer [Card]]
                              [database :refer [Database]]
                              [pulse :refer [Pulse] :as pulse]
-                             [pulse-channel :refer [channel-types]]
-                             [setting :as setting])
+                             [pulse-channel :refer [channel-types]])
             [metabase.pulse :as p]))
 
 
@@ -62,11 +62,16 @@
 (defendpoint GET "/form_input"
   "Provides relevant configuration information and user choices for creating/updating `Pulses`."
   []
-  (if (empty? (setting/get :slack-token))
-    {:channels channel-types}
-    (let [slack-channels (mapv (fn [ch] (str "#" (get ch "name"))) (get (slack/channels-list) "channels"))
-          slack-users    (mapv (fn [u] (str "@" (get u "name"))) (get (slack/users-list) "members"))]
-      {:channels (assoc-in channel-types [:slack :fields 0 :options] (concat slack-channels slack-users))})))
+  (let [chan-types (-> channel-types
+                       (assoc-in [:slack :configured?] (slack/slack-configured?))
+                       (assoc-in [:email :configured?] (email/email-configured?)))]
+    {:channels (if-not (get-in chan-types [:slack :configured])
+                 ;; no Slack integration, so we are g2g
+                 chan-types
+                 ;; if we have Slack enabled build a dynamic list of channels/users
+                 (let [slack-channels (mapv (fn [ch] (str "#" (get ch "name"))) (get (slack/channels-list) "channels"))
+                       slack-users    (mapv (fn [u] (str "@" (get u "name"))) (get (slack/users-list) "members"))]
+                   (assoc-in chan-types [:slack :fields 0 :options] (concat slack-channels slack-users))))}))
 
 
 (defendpoint GET "/preview_card/:id"

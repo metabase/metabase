@@ -12,6 +12,12 @@
 (def ^:const slack-api-baseurl "https://slack.com/api")
 
 
+(defn slack-configured?
+  "Predicate function which returns `true` if the application has a valid integration with Slack, `false` otherwise."
+  []
+  (not (empty? (slack-token))))
+
+
 (defn slack-api-get
   "Generic function which calls a given method on the Slack api via HTTP GET."
   ([token method]

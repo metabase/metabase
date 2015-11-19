@@ -1,7 +1,8 @@
 (ns metabase.email
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as s]
+            [clojure.tools.logging :as log]
             [postal.core :as postal]
-            [metabase.models.setting :refer [defsetting]]
+            [metabase.models.setting :refer [defsetting] :as setting]
             [metabase.util :as u]))
 
 ;; ## CONFIG
@@ -19,6 +20,11 @@
   "Internal function used to send messages. Should take 2 args - a map of SMTP credentials, and a map of email details.
    Provided so you can swap this out with an \"inbox\" for test purposes."
   postal/send-message)
+
+(defn email-configured?
+  "Predicate function which returns `true` if we have a viable email configuration for the app, `false` otherwise."
+  []
+  (not (s/blank? (setting/get* :email-smtp-host))))
 
 (defn send-message
   "Send an email to one or more RECIPIENTS.

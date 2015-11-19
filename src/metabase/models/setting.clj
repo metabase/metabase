@@ -190,11 +190,10 @@
    :anon_tracking_enabled (let [tracking? (get :anon-tracking-enabled)]
                             (or (nil? tracking?) (= "true" tracking?)))
    :site_name             (get :site-name)
-   :email_configured      (not (s/blank? (or (get :email-smtp-host) (get-from-env-var :email-smtp-host))))
+   :email_configured      (@(resolve 'metabase.email/email-configured?))
    :admin_email           (get :admin-email)
    :report_timezone       (get :report-timezone)
-   :timezone_short        (short-timezone-name (get-instance-timezone))
-  })
+   :timezone_short        (short-timezone-name (get-instance-timezone))})
 
 ;;; # IMPLEMENTATION
 
