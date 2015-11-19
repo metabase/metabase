@@ -70,13 +70,12 @@
     border-color: var(--error-color) !important;
 }
 
-<<<<<<< HEAD
 .border-gold {
     border-color: var(--gold-color) !important;
-=======
+}
+
 .border-success {
     border-color: var(--success-color) !important;
->>>>>>> master
 }
 
 .border-hover:hover {
