@@ -6,11 +6,16 @@ import Settings from "metabase/lib/settings";
 
 export default class SetupMessage extends Component {
     static propTypes = {
-        user: PropTypes.object.isRequired
+        user: PropTypes.object.isRequired,
+        channels: PropTypes.array.isRequired
     };
 
+    static defaultProps = {
+        channels: ["Email", "Slack"]
+    }
+
     render() {
-        let { user } = this.props;
+        let { user, channels } = this.props;
         let heading, content;
         if (user.is_superuser) {
             heading = (
@@ -24,7 +29,9 @@ export default class SetupMessage extends Component {
                         You're an admin, so you can set up integrations
                     </div>
                     <div className="mt2">
-                        <a className="Button Button--primary" href="/admin/settings">Configure</a>
+                        {channels.map(c =>
+                            <a className="Button Button--primary mr1" href={"/admin/settings?section="+c}>Configure {c}</a>
+                        )}
                     </div>
                 </div>
             );

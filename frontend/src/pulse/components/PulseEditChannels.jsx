@@ -141,7 +141,7 @@ export default class PulseEditChannels extends Component {
                 : channels.length > 0 && !channelSpec.configured ?
                     <div className="p4 text-centered">
                         <h3>{channelSpec.name} needs to be set up by an administrator.</h3>
-                        <SetupMessage user={user}/>
+                        <SetupMessage user={user} channels={[channelSpec.name]} />
                     </div>
                 : null
                 }
