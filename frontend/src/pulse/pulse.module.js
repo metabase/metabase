@@ -32,7 +32,12 @@ Pulse.config(['$routeProvider', function ($routeProvider) {
                 };
                 $scope.store = finalCreateStore(reducer, {});
             }
-        ]
+        ],
+        resolve: {
+            appState: ["AppState", function(AppState) {
+                return AppState.init();
+            }]
+        }
     });
 
     $routeProvider.when('/pulse/create', {
@@ -47,7 +52,12 @@ Pulse.config(['$routeProvider', function ($routeProvider) {
                 };
                 $scope.store = finalCreateStore(reducer, {});
             }
-        ]
+        ],
+        resolve: {
+            appState: ["AppState", function(AppState) {
+                return AppState.init();
+            }]
+        }
     });
 
     $routeProvider.when('/pulse/:pulseId', {
@@ -63,6 +73,11 @@ Pulse.config(['$routeProvider', function ($routeProvider) {
                 };
                 $scope.store = finalCreateStore(reducer, {});
             }
-        ]
+        ],
+        resolve: {
+            appState: ["AppState", function(AppState) {
+                return AppState.init();
+            }]
+        }
     });
 }]);
