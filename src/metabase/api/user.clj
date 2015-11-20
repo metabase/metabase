@@ -18,7 +18,6 @@
 (defendpoint GET "/"
   "Fetch a list of all active `Users`. You must be a superuser to do this."
   []
-  (check-superuser)
   (sel :many User :is_active true))
 
 
@@ -93,6 +92,7 @@
 (defendpoint POST "/:id/send_invite"
   "Resend the user invite email for a given user."
   [id]
+  (check-superuser)
   (when-let [user (sel :one User :id id :is_active true)]
     (let [reset-token (set-user-password-reset-token id)
           ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
