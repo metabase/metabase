@@ -610,6 +610,10 @@
     border-right: 1px solid color(var(--base-grey) shade(40%));
 }
 
+.List {
+  padding: var(--padding-1);
+}
+
 .List-section-header .Icon,
 .List-item .Icon {
     color: #DFE8EA;

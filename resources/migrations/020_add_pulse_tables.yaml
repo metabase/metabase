@@ -1,0 +1,194 @@
+databaseChangeLog:
+  - changeSet:
+      id: 20
+      author: agilliland
+      changes:
+        - createTable:
+            tableName: pulse
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_pulse_ref_creator_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: public_perms
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: pulse
+            indexName: idx_pulse_creator_id
+            columns:
+              column:
+                name: creator_id
+        - createTable:
+            tableName: pulse_card
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: pulse_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: pulse(id)
+                    foreignKeyName: fk_pulse_card_ref_pulse_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: card_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: report_card(id)
+                    foreignKeyName: fk_pulse_card_ref_card_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: position
+                  type: int
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: pulse_card
+            indexName: idx_pulse_card_pulse_id
+            columns:
+              column:
+                name: pulse_id
+        - createIndex:
+            tableName: pulse_card
+            indexName: idx_pulse_card_card_id
+            columns:
+              column:
+                name: card_id
+        - createTable:
+            tableName: pulse_channel
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: pulse_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: pulse(id)
+                    foreignKeyName: fk_pulse_channel_ref_pulse_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: channel_type
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: details
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: schedule_type
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: schedule_hour
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: schedule_day
+                  type: varchar(64)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: pulse_channel
+            indexName: idx_pulse_channel_pulse_id
+            columns:
+              column:
+                name: pulse_id
+        - createIndex:
+            tableName: pulse_channel
+            indexName: idx_pulse_channel_schedule_type
+            columns:
+              column:
+                name: schedule_type
+        - createTable:
+            tableName: pulse_channel_recipient
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: pulse_channel_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: pulse_channel(id)
+                    foreignKeyName: fk_pulse_channel_recipient_ref_pulse_channel_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_pulse_channel_recipient_ref_user_id
+                    deferrable: false
+                    initiallyDeferred: false
+        - modifySql:
+            dbms: postgresql
+            replace:
+              replace: WITHOUT
+              with: WITH

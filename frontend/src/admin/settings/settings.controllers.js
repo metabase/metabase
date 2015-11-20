@@ -103,6 +103,20 @@ const SECTIONS = [
                 validations: [["email", "That's not a valid email address"]]
             }
         ]
+    },
+    {
+        name: "Slack",
+        settings: [
+            {
+                key: "slack-token",
+                display_name: "Slack API Token",
+                description: "Slack API bearer token obtained from https://api.slack.com/web#authentication",
+                placeholder: "a-bunch-of-crazy-letters-and-numbers",
+                type: "string",
+                required: true,
+                autoFocus: true
+            }
+        ]
     }
 ];
 

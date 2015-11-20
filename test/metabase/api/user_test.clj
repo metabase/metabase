@@ -26,7 +26,7 @@
                                                :email      (str user-name "@metabase.com")}))
 
 ;; ## GET /api/user
-;; Check that superusers can get a list of all active Users
+;; Check that anyone can get a list of all active Users
 (expect
     #{(match-$ (fetch-user :crowberto)
         {:common_name "Crowberto Corv"
@@ -60,11 +60,7 @@
     (let [user-ids (set (map user->id [:crowberto :rasta :lucky :trashbird]))]
       (cascade-delete User :id [not-in user-ids]))
     ;; Now do the request
-    (set ((user->client :crowberto) :get 200 "user")))) ; as a set since we don't know what order the results will come back in
-
-;; Check that non-superusers are denied access
-(expect "You don't have permissions to do that."
-  ((user->client :rasta) :get 403 "user"))
+    (set ((user->client :rasta) :get 200 "user")))) ; as a set since we don't know what order the results will come back in
 
 
 ;; ## POST /api/user
@@ -255,3 +251,9 @@
 ;; Check that a non-superuser CANNOT update someone else's password
 (expect "You don't have permissions to do that."
   ((user->client :rasta) :delete 403 (format "user/%d" (user->id :rasta)) {}))
+
+
+;; ## POST /api/user/:id/send_invite
+;; Check that non-superusers are denied access to resending invites
+(expect "You don't have permissions to do that."
+  ((user->client :rasta) :post 403 (format "user/%d/send_invite" (user->id :crowberto))))

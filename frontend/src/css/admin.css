@@ -338,6 +338,8 @@
 }
 
 .Toggle {
+    position: relative;
+    display: inline-block;
     color: var(--brand-color);
     box-sizing: border-box;
     width: 48px;
@@ -345,7 +347,6 @@
     border-radius: 99px;
     border: 1px solid #EAEAEA;
     background-color: #F7F7F7;
-    position: relative;
     transition: all 0.3s;
 }
 

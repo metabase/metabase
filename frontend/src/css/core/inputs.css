@@ -11,6 +11,7 @@
   border-radius: var(--input-border-radius);
 }
 
+.input--focus,
 .input:focus {
   outline: none;
   border: 1px solid var(--input-border-active-color);
@@ -20,4 +21,8 @@
 .input:disabled {
   opacity: .5;
   cursor: not-allowed;
+}
+
+.no-focus:focus {
+  outline: 0;
 }

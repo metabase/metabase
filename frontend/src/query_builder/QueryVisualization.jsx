@@ -129,9 +129,10 @@ export default class QueryVisualization extends Component {
     }
 
     renderDownloadButton() {
+        const { downloadLink } = this.props;
 
         // NOTE: we expect our component provider set this to something falsey if download not available
-        if (this.props.downloadLink) {
+        if (downloadLink) {
             const { result } = this.props;
 
             if (result && result.data && result.data.rows_truncated) {
@@ -143,7 +144,7 @@ export default class QueryVisualization extends Component {
                             this.refs.downloadModal.toggle()
                         }}>Download CSV</button>);
                 } else {
-                    downloadButton = (<a className="Button Button--primary" href={this.props.downloadLink} target="_blank" onClick={() => this.refs.downloadModal.toggle()}>Download CSV</a>);
+                    downloadButton = (<a className="Button Button--primary" href={downloadLink} target="_blank" onClick={() => this.refs.downloadModal.toggle()}>Download CSV</a>);
                 }
 
                 return (
@@ -169,7 +170,6 @@ export default class QueryVisualization extends Component {
                 );
             } else {
                 if (window.OSX) {
-                    const downloadLink = this.props.downloadLink;
                     return (
                         <a classname="mx1" href="#" title="Download this data" onClick={function() {
                             window.OSX.saveCSV(downloadLink);
@@ -179,7 +179,7 @@ export default class QueryVisualization extends Component {
                     );
                 } else {
                     return (
-                        <a className="mx1" href={this.props.downloadLink} title="Download this data" target="_blank">
+                        <a className="mx1" href={downloadLink} title="Download this data" target="_blank">
                             <Icon name='download' width="16px" height="16px" />
                         </a>
                     );

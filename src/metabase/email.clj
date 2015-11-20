@@ -1,8 +1,9 @@
 (ns metabase.email
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as s]
+            [clojure.tools.logging :as log]
             [postal.core :as postal]
             [postal.support :refer [make-props]]
-            [metabase.models.setting :refer [defsetting]]
+            [metabase.models.setting :refer [defsetting] :as setting]
             [metabase.util :as u])
   (:import [javax.mail Session]))
 
@@ -22,6 +23,10 @@
    Provided so you can swap this out with an \"inbox\" for test purposes."
   postal/send-message)
 
+(defn email-configured?
+  "Predicate function which returns `true` if we have a viable email configuration for the app, `false` otherwise."
+  []
+  (not (s/blank? (setting/get* :email-smtp-host))))
 
 (defn send-message
   "Send an email to one or more RECIPIENTS.
@@ -36,8 +41,8 @@
   {:pre [(string? subject)
          (sequential? recipients)
          (every? u/is-email? recipients)
-         (contains? #{:text :html} message-type)
-         (string? message)]}
+         (contains? #{:text :html :attachments} message-type)
+         (if (= message-type :attachments) (sequential? message) (string? message))]}
   (try
     ;; Check to make sure all valid settings are set!
     (when-not (email-smtp-host)
@@ -55,6 +60,7 @@
                       :to      recipients
                       :subject subject
                       :body    (case message-type
+                                 :attachments message
                                  :text message
                                  :html [{:type    "text/html; charset=utf-8"
                                          :content message}])})

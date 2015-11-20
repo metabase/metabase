@@ -17,6 +17,7 @@
       {"include": {"file": "migrations/016_user_last_login_allow_null.yaml"}},
       {"include": {"file": "migrations/017_add_database_is_sample_field.yaml"}},
       {"include": {"file": "migrations/018_add_data_migrations_table.yaml"}},
-      {"include": {"file": "migrations/019_add_schema_column_to_table.yaml"}}
+      {"include": {"file": "migrations/019_add_schema_column_to_table.yaml"}},
+      {"include": {"file": "migrations/020_add_pulse_tables.yaml"}}
   ]
 }

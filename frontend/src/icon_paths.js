@@ -147,6 +147,9 @@ export var ICON_PATHS = {
         svg: '<g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><path d="M12.8678801,11.1665983 C13.5821802,10.122879 14,8.86023303 14,7.5 C14,3.91014913 11.0898509,1 7.5,1 C3.91014913,1 1,3.91014913 1,7.5 C1,9.28845014 1.72229748,10.9081987 2.89109309,12.0834462 C4.35646231,14.0019965 7.48681642,16.4470748 7.48681641,22.2058556 C7.48681641,22.2058558 7.67883301,22.2058561 7.67883301,22.2058556 C7.67883301,17.6712018 10.736804,14.1476306 12.313368,11.998698 C12.5464391,11.681011 12.7265514,11.4132341 12.8678801,11.1665983 Z" id="Oval-1" stroke="#4C9DE6" fill="#78B5EC" ></path><ellipse id="Oval-3" fill="#3875AC" cx="7.55925926" cy="7.82743961" rx="2.18641975" ry="2.10434783"></ellipse></g>',
         attrs: { viewBox: '0 0 13 21' }
     },
+    "slack": {
+        img: "/app/img/slack.png"
+    }
 };
 
 ICON_PATHS["illustration-line"] = ICON_PATHS['illustration-area'];
@@ -155,6 +158,10 @@ export function loadIcon(name) {
     var def = ICON_PATHS[name];
     if (name && def == undefined) {
         console.warn('Icon "' + name + '" does not exist.');
+    }
+
+    if (def.img) {
+        return def;
     }
 
     var icon = {
