@@ -31,6 +31,10 @@ export const FETCH_PULSE_CARD_PREVIEW = 'FETCH_PULSE_CARD_PREVIEW';
 export const fetchPulses = createThunkAction(FETCH_PULSES, function() {
     return async function(dispatch, getState) {
         let pulses = await Pulse.list();
+        for (var p of pulses) {
+            p.updated_at = moment(p.updated_at);
+            p.created_at = moment(p.created_at);
+        }
         return normalize(pulses, arrayOf(pulse));
     };
 });
