@@ -2,6 +2,7 @@ import React, { Component, PropTypes } from "react";
 
 import RecipientPicker from "./RecipientPicker.jsx";
 import SchedulePicker from "./SchedulePicker.jsx";
+import SetupMessage from "./SetupMessage.jsx";
 
 import Select from "metabase/components/Select.jsx";
 import Toggle from "metabase/components/Toggle.jsx";
@@ -124,7 +125,7 @@ export default class PulseEditChannels extends Component {
     }
 
     renderChannelSection(channelSpec) {
-        let { pulse } = this.props;
+        let { pulse, user } = this.props;
         let channels = pulse.channels
             .map((c, index) => c.channel_type === channelSpec.type ? this.renderChannel(c, index, channelSpec) : null)
             .filter(e => !!e);
@@ -135,8 +136,14 @@ export default class PulseEditChannels extends Component {
                     <h2>{channelSpec.name}</h2>
                     <Toggle className="flex-align-right" value={pulse.channels.some(c => c.channel_type === channelSpec.type)} onChange={this.toggleChannel.bind(this, channelSpec.type)} />
                 </div>
-                {channels.length > 0 &&
+                {channels.length > 0 && channelSpec.configured ?
                     <ul className="bg-grey-0 px3">{channels}</ul>
+                : channels.length > 0 && !channelSpec.configured ?
+                    <div className="p4 text-centered">
+                        <h3>{channelSpec.name} needs to be set up by an administrator.</h3>
+                        <SetupMessage user={user}/>
+                    </div>
+                : null
                 }
             </li>
         )

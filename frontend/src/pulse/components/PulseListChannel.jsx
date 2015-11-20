@@ -21,10 +21,6 @@ export default class PulseListChannel extends Component {
         user: PropTypes.object.isRequired
     };
 
-    static defaultProps = {
-        user: { id: 1 }
-    };
-
     subscribe() {
         let { pulse, channel, user } = this.props;
         this.props.dispatch(savePulse({

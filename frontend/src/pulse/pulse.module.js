@@ -22,10 +22,11 @@ var Pulse = angular.module('metabase.pulse', []);
 Pulse.config(['$routeProvider', function ($routeProvider) {
     $routeProvider.when('/pulse', {
         template: '<div mb-redux-component class="flex flex-column flex-full" />',
-        controller: ['$scope', '$location', '$route', '$routeParams',
-            function($scope, $location, $route, $routeParams) {
+        controller: ['$scope', '$location', '$route', '$routeParams', 'AppState',
+            function($scope, $location, $route, $routeParams, AppState) {
                 $scope.Component = PulseListApp;
                 $scope.props = {
+                    user: AppState.model.currentUser,
                     onChangeLocation: function(url) {
                         $scope.$apply(() => $location.url(url));
                     }
@@ -42,10 +43,11 @@ Pulse.config(['$routeProvider', function ($routeProvider) {
 
     $routeProvider.when('/pulse/create', {
         template: '<div mb-redux-component class="flex flex-column flex-full" />',
-        controller: ['$scope', '$location', '$route', '$routeParams',
-            function($scope, $location, $route, $routeParams) {
+        controller: ['$scope', '$location', '$route', '$routeParams', 'AppState',
+            function($scope, $location, $route, $routeParams, AppState) {
                 $scope.Component = PulseEditApp;
                 $scope.props = {
+                    user: AppState.model.currentUser,
                     onChangeLocation: function(url) {
                         $scope.$apply(() => $location.url(url));
                     }
@@ -62,10 +64,11 @@ Pulse.config(['$routeProvider', function ($routeProvider) {
 
     $routeProvider.when('/pulse/:pulseId', {
         template: '<div mb-redux-component class="flex flex-column flex-full" />',
-        controller: ['$scope', '$location', '$route', '$routeParams',
-            function($scope, $location, $route, $routeParams) {
+        controller: ['$scope', '$location', '$route', '$routeParams', 'AppState',
+            function($scope, $location, $route, $routeParams, AppState) {
                 $scope.Component = PulseEditApp;
                 $scope.props = {
+                    user: AppState.model.currentUser,
                     pulseId: parseInt($routeParams.pulseId),
                     onChangeLocation: function(url) {
                         $scope.$apply(() => $location.url(url));
