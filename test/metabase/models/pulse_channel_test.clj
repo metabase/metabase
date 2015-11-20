@@ -82,6 +82,7 @@
   (when-let [new-channel-id (create-pulse-channel channel)]
     (-> (db/sel :one PulseChannel :id new-channel-id)
         (hydrate :recipients)
+        (update :recipients #(sort-by :email %))
         (dissoc :id :pulse_id :created_at :updated_at))))
 
 (defn update-channel-then-select
@@ -97,7 +98,9 @@
    :schedule_type schedule-type-daily
    :schedule_hour 18
    :schedule_day  nil
-   :recipients    [{:email "foo@bar.com"} (user-details :rasta) (user-details :crowberto)]
+   :recipients    [(user-details :crowberto)
+                   {:email "foo@bar.com"}
+                   (user-details :rasta)]
    :details       {}}
   (tu/with-temp Pulse [{:keys [id]} {:creator_id (user->id :rasta)
                                      :name       (tu/random-name)}]
