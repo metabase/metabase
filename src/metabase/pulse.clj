@@ -65,7 +65,6 @@
 
 (defn- format-timestamp
   [timestamp col]
-  (log/info timestamp)
   (case (:unit col)
     :hour (f/unparse (f/formatter "h a - MMM YYYY") (c/from-long timestamp))
     :week (f/unparse (f/formatter "w - YYYY") (c/from-long timestamp))
@@ -80,7 +79,6 @@
 
 (defn- format-cell
   [value col]
-  (log/info value)
   (cond
     (instance? java.util.Date value) (format-timestamp (.getTime value) col)
     (and (number? value) (not (datetime-field? col))) (format-number value)
