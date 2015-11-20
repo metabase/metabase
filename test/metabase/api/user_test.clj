@@ -251,3 +251,9 @@
 ;; Check that a non-superuser CANNOT update someone else's password
 (expect "You don't have permissions to do that."
   ((user->client :rasta) :delete 403 (format "user/%d" (user->id :rasta)) {}))
+
+
+;; ## POST /api/user/:id/send_invite
+;; Check that non-superusers are denied access to resending invites
+(expect "You don't have permissions to do that."
+  ((user->client :rasta) :post 403 (format "user/%d/send_invite" (user->id :crowberto))))
