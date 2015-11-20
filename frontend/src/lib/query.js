@@ -22,7 +22,10 @@ var Query = {
         // it's possible the user left some half-done parts of the query on screen when they hit the run button, so find those
         // things now and clear them out so that we have a nice clean set of valid clauses in our query
 
-        // TODO: breakouts
+        // breakouts
+        if (query.breakout) {
+            query.breakout = query.breakout.filter(b => b != null);
+        }
 
         // filters
         var queryFilters = Query.getFilters(query);
