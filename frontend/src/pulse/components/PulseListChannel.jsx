@@ -77,7 +77,7 @@ export default class PulseListChannel extends Component {
     render() {
         let { channel, channelSpec, user } = this.props;
 
-        let subscribable = channelSpec && channelSpec["recipients?"];
+        let subscribable = channelSpec && channelSpec.allows_recipients;
         let subscribed = false;
         if (subscribable) {
             subscribed = _.any(channel.recipients, r => r.id === user.id);

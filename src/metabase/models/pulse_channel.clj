@@ -73,20 +73,20 @@
 
    {:email {:name \"Email\", :recipients? true}
     :slack {:name \"Slack\", :recipients? false}}"
-  {:email {:type        "email"
-           :name        "Email"
-           :recipients? true
-           :recipients  ["user", "email"]
-           :schedules   [schedule-type-daily schedule-type-weekly]}
-   :slack {:type        "slack"
-           :name        "Slack"
-           :recipients? false
-           :schedules   [schedule-type-hourly schedule-type-daily schedule-type-weekly]
-           :fields      [{:name "channel"
-                          :type "select"
-                          :displayName "Post to"
-                          :options ["#general"]
-                          :required true}]}})
+  {:email {:type              "email"
+           :name              "Email"
+           :allows_recipients true
+           :recipients        ["user", "email"]
+           :schedules         [schedule-type-daily schedule-type-weekly]}
+   :slack {:type              "slack"
+           :name              "Slack"
+           :allows_recipients false
+           :schedules         [schedule-type-hourly schedule-type-daily schedule-type-weekly]
+           :fields            [{:name "channel"
+                                :type "select"
+                                :displayName "Post to"
+                                :options ["#general"]
+                                :required true}]}})
 
 (defn channel-type?
   "Predicate function which returns `true` if the given argument is a valid value as a channel-type, `false` otherwise."
@@ -96,7 +96,7 @@
 (defn supports-recipients?
   "Predicate function which returns `true` if the given channel type supports a list of recipients, `false` otherwise."
   [channel]
-  (boolean (:recipients? (get channel-types channel))))
+  (boolean (:allows_recipients (get channel-types channel))))
 
 
 ;; ## Entity
