@@ -76,12 +76,7 @@
     :day-of-week (str timestamp)
     :week-of-year (str timestamp)
     :month-of-year (str timestamp)
-    (let [date (c/from-long timestamp)
-          today (t/today-at 0 00)]
-      (cond
-        (t/within? (t/interval today (t/plus today (t/days 1))) date) "Today"
-        (t/within? (t/interval (t/minus today (t/days 1)) today) date) "Yesterday"
-        :else (f/unparse (f/formatter "MMM d, YYYY") date)))))
+    (f/unparse (f/formatter "MMM d, YYYY") (c/from-long timestamp))))
 
 (defn- format-cell
   [value col]
@@ -258,7 +253,7 @@
   [:div
     [:img {:style "display: block" :src (render-img (render-sparkline-with-axis-to-png card data))}]
     [:div {:style "margin-top: 20px; margin-left: 30px;"}
-      (render-table card [(last rows) (first rows)] cols render-img [0 1] nil)]])
+      (render-table card (reverse (take-last 2 rows)) cols render-img [0 1] nil)]])
 
 (defn detect-pulse-card-type
   [card data]
