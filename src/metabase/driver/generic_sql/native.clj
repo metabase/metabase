@@ -6,6 +6,7 @@
                    db)
             [metabase.db :refer [sel]]
             [metabase.driver :as driver]
+            [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.util :refer :all]
             [metabase.models.database :refer [Database]]
             [metabase.util :as u]))
@@ -17,12 +18,11 @@
 
 (defn process-and-run
   "Process and run a native (raw SQL) QUERY."
-  [{{sql :query} :native, database-id :database, :as query}]
-  (try (let [database                               (sel :one :fields [Database :engine :details] :id database-id)
-             db-conn                                (-> database
-                                                        db->korma-db
-                                                        korma.db/get-connection)
-             {:keys [set-timezone-sql], :as driver} (driver/engine->driver (:engine database))]
+  [driver {{sql :query} :native, database-id :database, :as query}]
+  (try (let [database (sel :one :fields [Database :engine :details] :id database-id)
+             db-conn  (-> database
+                          db->korma-db
+                          korma.db/get-connection)]
 
          (jdbc/with-db-transaction [t-conn db-conn]
            (let [^java.sql.Connection jdbc-connection (:connection t-conn)]
@@ -33,8 +33,8 @@
                (when-let [timezone (driver/report-timezone)]
                  (when (and (seq timezone)
                             (contains? (driver/features driver) :set-timezone))
-                   (log/debug (u/format-color 'green "%s" set-timezone-sql))
-                   (try (jdbc/db-do-prepared t-conn set-timezone-sql [timezone])
+                   (log/debug (u/format-color 'green "%s" (sql/set-timezone-sql driver)))
+                   (try (jdbc/db-do-prepared t-conn (sql/set-timezone-sql driver) [timezone])
                         (catch Throwable e
                           (log/error (u/format-color 'red "Failed to set timezone: %s" (.getMessage e)))))))
 

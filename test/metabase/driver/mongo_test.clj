@@ -4,11 +4,11 @@
             [korma.core :as k]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
-            [metabase.driver.mongo :refer [mongo]]
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
             [metabase.test.data.datasets :as datasets]
-            [metabase.test.util :refer [expect-eval-actual-first resolve-private-fns]]))
+            [metabase.test.util :refer [expect-eval-actual-first resolve-private-fns]])
+  (:import metabase.driver.mongo.MongoDriver))
 
 ;; ## Logic for selectively running mongo
 
@@ -104,7 +104,7 @@
       {:name "categories"}
       {:name "users"}
       {:name "venues"}}
-    (driver/active-tables mongo (mongo-db)))
+    (driver/active-tables (MongoDriver.) (mongo-db)))
 
 ;; ### table->column-names
 (expect-when-testing-mongo
@@ -145,14 +145,14 @@
      {"_id" :IntegerField, "name" :TextField, "longitude" :FloatField, "latitude" :FloatField, "price" :IntegerField, "category_id" :IntegerField}] ; venues
   (->> table-names
        (map table-name->fake-table)
-       (mapv (partial driver/active-column-names->type mongo))))
+       (mapv (partial driver/active-column-names->type (MongoDriver.)))))
 
 ;; ### table-pks
 (expect-when-testing-mongo
     [#{"_id"} #{"_id"} #{"_id"} #{"_id"}] ; _id for every table
   (->> table-names
        (map table-name->fake-table)
-       (mapv (partial driver/table-pks mongo))))
+       (mapv (partial driver/table-pks (MongoDriver.)))))
 
 
 ;; ## Big-picture tests for the way data should look post-sync

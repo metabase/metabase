@@ -3,7 +3,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as s]
             [environ.core :refer [env]]
-            [metabase.driver.sqlserver :refer [sqlserver]]
+            [metabase.driver.generic-sql :as sql]
             (metabase.test.data [generic-sql :as generic]
                                 [interface :as i]))
   (:import metabase.driver.sqlserver.SQLServerDriver))
@@ -103,7 +103,7 @@
   {:expectations-options :before-run}
   []
   (when (contains? @(resolve 'metabase.test.data.datasets/test-engines) :sqlserver)
-    (let [connection-spec ((:connection-details->spec sqlserver) (database->connection-details nil :server nil))
+    (let [connection-spec (sql/connection-details->spec (SQLServerDriver.) (database->connection-details nil :server nil))
           leftover-dbs    (mapv :name (jdbc/query connection-spec "SELECT name
                                                                    FROM   master.dbo.sysdatabases
                                                                    WHERE  name NOT IN ('tempdb', 'master', 'model', 'msdb', 'rdsadmin');"))]

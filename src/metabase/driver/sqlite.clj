@@ -29,7 +29,7 @@
    [#"DATETIME" :DateTimeField]
    [#"DATE"     :DateField]])
 
-(defn- column->base-type [column-type]
+(defn- column->base-type [_ column-type]
   (let [column-type (name column-type)]
     (loop [[[pattern base-type] & more] pattern->type]
       (cond
@@ -51,7 +51,7 @@
 (defn- date
   "Apply truncation / extraction to a date field or value for SQLite.
    See also the [SQLite Date and Time Functions Reference](http://www.sqlite.org/lang_datefunc.html)."
-  [unit field-or-value]
+  [_ unit field-or-value]
   ;; Convert Timestamps to ISO 8601 strings before passing to SQLite, otherwise they don't seem to work correctly
   (let [v (if (instance? java.sql.Timestamp field-or-value)
             (literal (u/date->iso-8601 field-or-value))
@@ -88,7 +88,7 @@
                                     [(strftime "%m" v)])
       :year            (->integer (strftime "%Y" v)))))
 
-(defn- date-interval [unit amount]
+(defn- date-interval [_ unit amount]
   (let [[multiplier unit] (case unit
                             :second  [1 "seconds"]
                             :minute  [1 "minutes"]
@@ -101,7 +101,7 @@
     ;; Make a string like DATE('now', '+7 days')
     (k/raw (format "DATETIME('now', '%+d %s')" (* amount multiplier) unit))))
 
-(defn- unix-timestamp->timestamp [field-or-value seconds-or-milliseconds]
+(defn- unix-timestamp->timestamp [_ field-or-value seconds-or-milliseconds]
   (kutils/func (case seconds-or-milliseconds
                  :seconds      "DATETIME(%s, 'unixepoch')"
                  :milliseconds "DATETIME(%s / 1000, 'unixepoch')")
@@ -113,8 +113,9 @@
 
 (extend SQLiteDriver
   driver/IDriver
-  (merge sql/IDriverSQLDefaultsMixin
-         {:details-fields (constantly [{:name         "db"
+  (merge (sql/IDriverSQLDefaultsMixin)
+         {:date-interval  date-interval
+          :details-fields (constantly [{:name         "db"
                                         :display-name "Filename"
                                         :placeholder  "/home/camsaul/toucan_sightings.sqlite 😋"
                                         :required     true}])
@@ -125,17 +126,15 @@
                                             ;; HACK SQLite doesn't support ALTER TABLE ADD CONSTRAINT FOREIGN KEY and I don't have all day to work around this
                                             ;; so for now we'll just skip the foreign key stuff in the tests.
                                             (when (config/is-test?)
-                                              #{:foreign-keys})))}))
+                                              #{:foreign-keys})))})
+  sql/ISQLDriver
+  (merge (sql/ISQLDriverDefaultsMixin)
+         {:column->base-type         column->base-type
+          :connection-details->spec  (fn [_ details]
+                                       (kdb/sqlite3 details))
+          :current-datetime-fn       (constantly (k/raw "DATETIME('now')"))
+          :date                      date
+          :string-length-fn          (constantly :LENGTH)
+          :unix-timestamp->timestamp unix-timestamp->timestamp}))
 
-(def sqlite
-  (map->SQLiteDriver
-   (sql/sql-driver
-    {:column->base-type         column->base-type
-     :connection-details->spec  kdb/sqlite3
-     :current-datetime-fn       (k/raw "DATETIME('now')")
-     :date                      date
-     :date-interval             date-interval
-     :string-length-fn          :LENGTH
-     :unix-timestamp->timestamp unix-timestamp->timestamp})))
-
-(driver/register-driver! :sqlite sqlite)
+(driver/register-driver! :sqlite (SQLiteDriver.))

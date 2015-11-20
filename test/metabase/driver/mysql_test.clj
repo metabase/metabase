@@ -1,6 +1,5 @@
 (ns metabase.driver.mysql-test
   (:require [expectations :refer :all]
-            [metabase.driver.mysql :refer [mysql]]
             (metabase.test.data [datasets :refer [expect-with-engine]]
                                 [interface :refer [def-database-definition]])
             [metabase.test.util.q :refer [Q]]))

@@ -8,70 +8,70 @@
             [metabase.driver.generic-sql.util :refer [funcs]]
             [metabase.models.database :refer [Database]]))
 
-(def ^:private ^:const column->base-type
-  "Map of H2 Column types -> Field base types. (Add more mappings here as needed)"
-  {:ARRAY                       :UnknownField
-   :BIGINT                      :BigIntegerField
-   :BINARY                      :UnknownField
-   :BIT                         :BooleanField
-   :BLOB                        :UnknownField
-   :BOOL                        :BooleanField
-   :BOOLEAN                     :BooleanField
-   :BYTEA                       :UnknownField
-   :CHAR                        :CharField
-   :CHARACTER                   :CharField
-   :CLOB                        :TextField
-   :DATE                        :DateField
-   :DATETIME                    :DateTimeField
-   :DEC                         :DecimalField
-   :DECIMAL                     :DecimalField
-   :DOUBLE                      :FloatField
-   :FLOAT                       :FloatField
-   :FLOAT4                      :FloatField
-   :FLOAT8                      :FloatField
-   :GEOMETRY                    :UnknownField
-   :IDENTITY                    :IntegerField
-   :IMAGE                       :UnknownField
-   :INT                         :IntegerField
-   :INT2                        :IntegerField
-   :INT4                        :IntegerField
-   :INT8                        :BigIntegerField
-   :INTEGER                     :IntegerField
-   :LONGBLOB                    :UnknownField
-   :LONGTEXT                    :TextField
-   :LONGVARBINARY               :UnknownField
-   :LONGVARCHAR                 :TextField
-   :MEDIUMBLOB                  :UnknownField
-   :MEDIUMINT                   :IntegerField
-   :MEDIUMTEXT                  :TextField
-   :NCHAR                       :CharField
-   :NCLOB                       :TextField
-   :NTEXT                       :TextField
-   :NUMBER                      :DecimalField
-   :NUMERIC                     :DecimalField
-   :NVARCHAR                    :TextField
-   :NVARCHAR2                   :TextField
-   :OID                         :UnknownField
-   :OTHER                       :UnknownField
-   :RAW                         :UnknownField
-   :REAL                        :FloatField
-   :SIGNED                      :IntegerField
-   :SMALLDATETIME               :DateTimeField
-   :SMALLINT                    :IntegerField
-   :TEXT                        :TextField
-   :TIME                        :TimeField
-   :TIMESTAMP                   :DateTimeField
-   :TINYBLOB                    :UnknownField
-   :TINYINT                     :IntegerField
-   :TINYTEXT                    :TextField
-   :UUID                        :TextField
-   :VARBINARY                   :UnknownField
-   :VARCHAR                     :TextField
-   :VARCHAR2                    :TextField
-   :VARCHAR_CASESENSITIVE       :TextField
-   :VARCHAR_IGNORECASE          :TextField
-   :YEAR                        :IntegerField
-   (keyword "DOUBLE PRECISION") :FloatField})
+(defn- column->base-type [_ column-type]
+  ({:ARRAY                       :UnknownField
+     :BIGINT                      :BigIntegerField
+     :BINARY                      :UnknownField
+     :BIT                         :BooleanField
+     :BLOB                        :UnknownField
+     :BOOL                        :BooleanField
+     :BOOLEAN                     :BooleanField
+     :BYTEA                       :UnknownField
+     :CHAR                        :CharField
+     :CHARACTER                   :CharField
+     :CLOB                        :TextField
+     :DATE                        :DateField
+     :DATETIME                    :DateTimeField
+     :DEC                         :DecimalField
+     :DECIMAL                     :DecimalField
+     :DOUBLE                      :FloatField
+     :FLOAT                       :FloatField
+     :FLOAT4                      :FloatField
+     :FLOAT8                      :FloatField
+     :GEOMETRY                    :UnknownField
+     :IDENTITY                    :IntegerField
+     :IMAGE                       :UnknownField
+     :INT                         :IntegerField
+     :INT2                        :IntegerField
+     :INT4                        :IntegerField
+     :INT8                        :BigIntegerField
+     :INTEGER                     :IntegerField
+     :LONGBLOB                    :UnknownField
+     :LONGTEXT                    :TextField
+     :LONGVARBINARY               :UnknownField
+     :LONGVARCHAR                 :TextField
+     :MEDIUMBLOB                  :UnknownField
+     :MEDIUMINT                   :IntegerField
+     :MEDIUMTEXT                  :TextField
+     :NCHAR                       :CharField
+     :NCLOB                       :TextField
+     :NTEXT                       :TextField
+     :NUMBER                      :DecimalField
+     :NUMERIC                     :DecimalField
+     :NVARCHAR                    :TextField
+     :NVARCHAR2                   :TextField
+     :OID                         :UnknownField
+     :OTHER                       :UnknownField
+     :RAW                         :UnknownField
+     :REAL                        :FloatField
+     :SIGNED                      :IntegerField
+     :SMALLDATETIME               :DateTimeField
+     :SMALLINT                    :IntegerField
+     :TEXT                        :TextField
+     :TIME                        :TimeField
+     :TIMESTAMP                   :DateTimeField
+     :TINYBLOB                    :UnknownField
+     :TINYINT                     :IntegerField
+     :TINYTEXT                    :TextField
+     :UUID                        :TextField
+     :VARBINARY                   :UnknownField
+     :VARCHAR                     :TextField
+     :VARCHAR2                    :TextField
+     :VARCHAR_CASESENSITIVE       :TextField
+     :VARCHAR_IGNORECASE          :TextField
+     :YEAR                        :IntegerField
+    (keyword "DOUBLE PRECISION") :FloatField} column-type))
+
 
 ;; These functions for exploding / imploding the options in the connection strings are here so we can override shady options
 ;; users might try to put in their connection string. e.g. if someone sets `ACCESS_MODE_DATA` to `rws` we can replace that
@@ -101,15 +101,17 @@
     (file+options->connection-string file (merge options {"IFEXISTS"         "TRUE"
                                                           "ACCESS_MODE_DATA" "r"}))))
 
-(defn- connection-details->spec [details]
+(defn- connection-details->spec [_ details]
   (kdb/h2 (if db/*allow-potentailly-unsafe-connections* details
               (update details :db connection-string-set-safe-options))))
 
-(defn- unix-timestamp->timestamp [field-or-value seconds-or-milliseconds]
+
+(defn- unix-timestamp->timestamp [_ field-or-value seconds-or-milliseconds]
   (utils/func (format "TIMESTAMPADD('%s', %%s, TIMESTAMP '1970-01-01T00:00:00Z')" (case seconds-or-milliseconds
                                                                                     :seconds      "SECOND"
                                                                                     :milliseconds "MILLISECOND"))
               [field-or-value]))
+
 
 (defn- process-query-in-context [_ qp]
   (fn [{query-type :type, :as query}]
@@ -125,6 +127,7 @@
                   (= USER "sa")) ; "sa" is the default USER
           (throw (Exception. "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")))))
     (qp query)))
+
 
 ;; H2 doesn't have date_trunc() we fake it by formatting a date to an appropriate string
 ;; and then converting back to a date.
@@ -147,7 +150,7 @@
           ["YEAR(%s)" field-or-value]
           ["((QUARTER(%s) * 3) - 2)" field-or-value]]))
 
-(defn- date [unit field-or-value]
+(defn- date [_ unit field-or-value]
   (if (= unit :quarter)
     (trunc-to-quarter field-or-value)
     (utils/func (case unit
@@ -168,11 +171,13 @@
                   :year            "YEAR(%s)")
                 [field-or-value])))
 
+
 ;; TODO - maybe rename this relative-date ?
-(defn- date-interval [unit amount]
+(defn- date-interval [_ unit amount]
   (utils/generated (if (= unit :quarter)
                      (format "DATEADD('MONTH', (%d * 3), NOW())" amount)
                      (format "DATEADD('%s', %d, NOW())" (s/upper-case (name unit)) amount))))
+
 
 (defn- humanize-connection-error-message [_ message]
   (condp re-matches message
@@ -194,22 +199,22 @@
 
 (extend H2Driver
   driver/IDriver
-  (merge sql/IDriverSQLDefaultsMixin
-         {:details-fields                    (constantly [{:name         "db"
+  (merge (sql/IDriverSQLDefaultsMixin)
+         {:date-interval                     date-interval
+          :details-fields                    (constantly [{:name         "db"
                                                            :display-name "Connection String"
                                                            :placeholder  "file:/Users/camsaul/bird_sightings/toucans;AUTO_SERVER=TRUE"
                                                            :required     true}])
           :humanize-connection-error-message humanize-connection-error-message
-          :process-query-in-context          process-query-in-context}))
+          :process-query-in-context          process-query-in-context})
 
-(def h2
-  (map->H2Driver
-   (sql/sql-driver
-    {:column->base-type         column->base-type
-     :connection-details->spec  connection-details->spec
-     :date                      date
-     :date-interval             date-interval
-     :string-length-fn          :LENGTH
-     :unix-timestamp->timestamp unix-timestamp->timestamp})))
+  sql/ISQLDriver
+  (merge (sql/ISQLDriverDefaultsMixin)
+         {:column->base-type         column->base-type
+          :connection-details->spec  connection-details->spec
+          :date                      date
+          :date-interval             date-interval
+          :string-length-fn          (constantly :LENGTH)
+          :unix-timestamp->timestamp unix-timestamp->timestamp}))
 
-(driver/register-driver! :h2 h2)
+(driver/register-driver! :h2 (H2Driver.))

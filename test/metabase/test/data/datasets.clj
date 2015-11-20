@@ -7,12 +7,12 @@
             [expectations :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
-            (metabase.driver [h2 :refer [h2]]
-                             [mongo :refer [mongo]]
-                             [mysql :refer [mysql]]
-                             [postgres :refer [postgres]]
-                             [sqlite :refer [sqlite]]
-                             [sqlserver :refer [sqlserver]])
+            (metabase.driver [h2 :refer [map->H2Driver]]
+                             [mongo :refer [map->MongoDriver]]
+                             [mysql :refer [map->MySQLDriver]]
+                             [postgres :refer [map->PostgresDriver]]
+                             [sqlite :refer [map->SQLiteDriver]]
+                             [sqlserver :refer [map->SQLServerDriver]])
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
             (metabase.test.data [dataset-definitions :as defs]
@@ -133,12 +133,12 @@
 
 (def ^:private engine->loader*
   "Map of dataset keyword name -> dataset instance (i.e., an object that implements `IDataset`)."
-  {:mongo     (assoc mongo     :dbpromise (promise))
-   :h2        (assoc h2        :dbpromise (promise))
-   :postgres  (assoc postgres  :dbpromise (promise))
-   :mysql     (assoc mysql     :dbpromise (promise))
-   :sqlite    (assoc sqlite    :dbpromise (promise))
-   :sqlserver (assoc sqlserver :dbpromise (promise))})
+  {:h2        (map->H2Driver        {:dbpromise (promise)})
+   :mongo     (map->MongoDriver     {:dbpromise (promise)})
+   :mysql     (map->MySQLDriver     {:dbpromise (promise)})
+   :postgres  (map->PostgresDriver  {:dbpromise (promise)})
+   :sqlite    (map->SQLiteDriver    {:dbpromise (promise)})
+   :sqlserver (map->SQLServerDriver {:dbpromise (promise)})})
 
 (def ^:const all-valid-engines
   "Set of names of all valid datasets."
@@ -194,7 +194,8 @@
 
 (def ^:dynamic *data-loader*
   "The dataset we're currently testing against, bound by `with-engine`.
-   Defaults to `(engine->loader :h2)`."
+   This is just a regular driver, e.g. `MySQLDriver`, with an extra promise keyed by `:dbpromise`
+   that is used to store the `test-data` dataset when you call `load-data!`."
   (engine->loader default-engine))
 
 
