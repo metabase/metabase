@@ -139,7 +139,7 @@ export default class QueryVisualization extends Component {
                 let downloadButton;
                 if (window.OSX) {
                     downloadButton = (<button className="Button Button--primary" onClick={() => {
-                            window.OSX.saveCSV(downloadLink);
+                            window.OSX.saveCSV(this.props.downloadLink);
                             this.refs.downloadModal.toggle()
                         }}>Download CSV</button>);
                 } else {
