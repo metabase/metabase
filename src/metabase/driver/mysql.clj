@@ -27,39 +27,39 @@
 
 ;;; # IMPLEMENTATION
 
-(def ^:private ^:const column->base-type
-  {:BIGINT     :BigIntegerField
-   :BINARY     :UnknownField
-   :BIT        :UnknownField
-   :BLOB       :UnknownField
-   :CHAR       :CharField
-   :DATE       :DateField
-   :DATETIME   :DateTimeField
-   :DECIMAL    :DecimalField
-   :DOUBLE     :FloatField
-   :ENUM       :UnknownField
-   :FLOAT      :FloatField
-   :INT        :IntegerField
-   :INTEGER    :IntegerField
-   :LONGBLOB   :UnknownField
-   :LONGTEXT   :TextField
-   :MEDIUMBLOB :UnknownField
-   :MEDIUMINT  :IntegerField
-   :MEDIUMTEXT :TextField
-   :NUMERIC    :DecimalField
-   :REAL       :FloatField
-   :SET        :UnknownField
-   :TEXT       :TextField
-   :TIME       :TimeField
-   :TIMESTAMP  :DateTimeField
-   :TINYBLOB   :UnknownField
-   :TINYINT    :IntegerField
-   :TINYTEXT   :TextField
-   :VARBINARY  :UnknownField
-   :VARCHAR    :TextField
-   :YEAR       :IntegerField})
+(defn- column->base-type [_ column-type]
+  ({:BIGINT     :BigIntegerField
+     :BINARY     :UnknownField
+     :BIT        :UnknownField
+     :BLOB       :UnknownField
+     :CHAR       :CharField
+     :DATE       :DateField
+     :DATETIME   :DateTimeField
+     :DECIMAL    :DecimalField
+     :DOUBLE     :FloatField
+     :ENUM       :UnknownField
+     :FLOAT      :FloatField
+     :INT        :IntegerField
+     :INTEGER    :IntegerField
+     :LONGBLOB   :UnknownField
+     :LONGTEXT   :TextField
+     :MEDIUMBLOB :UnknownField
+     :MEDIUMINT  :IntegerField
+     :MEDIUMTEXT :TextField
+     :NUMERIC    :DecimalField
+     :REAL       :FloatField
+     :SET        :UnknownField
+     :TEXT       :TextField
+     :TIME       :TimeField
+     :TIMESTAMP  :DateTimeField
+     :TINYBLOB   :UnknownField
+     :TINYINT    :IntegerField
+     :TINYTEXT   :TextField
+     :VARBINARY  :UnknownField
+     :VARCHAR    :TextField
+     :YEAR       :IntegerField} column-type))
 
-(defn- connection-details->spec [details]
+(defn- connection-details->spec [_ details]
   (-> details
       (set/rename-keys {:dbname :db})
       kdb/mysql
@@ -67,7 +67,7 @@
       ;; Add a param to the end of the connection string that tells MySQL to convert 0000-00-00 dates to NULL when returning them.
       (update :subname (u/rpartial str "?zeroDateTimeBehavior=convertToNull"))))
 
-(defn- unix-timestamp->timestamp [field-or-value seconds-or-milliseconds]
+(defn- unix-timestamp->timestamp [_ field-or-value seconds-or-milliseconds]
   (utils/func (case seconds-or-milliseconds
                 :seconds      "FROM_UNIXTIME(%s)"
                 :milliseconds "FROM_UNIXTIME(%s / 1000)")
@@ -89,7 +89,7 @@
           ["((QUARTER(%s) * 3) - 2)" field-or-value]
           (k/raw "'-01'")]))
 
-(defn- date [unit field-or-value]
+(defn- date [_ unit field-or-value]
   (if (= unit :quarter)
     (trunc-to-quarter field-or-value)
     (utils/func (case unit
@@ -113,7 +113,7 @@
                   :year            "YEAR(%s)")
                 [field-or-value])))
 
-(defn- date-interval [unit amount]
+(defn- date-interval [_ unit amount]
   (utils/generated (format "DATE_ADD(NOW(), INTERVAL %d %s)" amount (s/upper-case (name unit)))))
 
 (defn- humanize-connection-error-message [_ message]
@@ -139,8 +139,9 @@
 
 (extend MySQLDriver
   driver/IDriver
-  (merge sql/IDriverSQLDefaultsMixin
-         {:details-fields                    (constantly [{:name         "host"
+  (merge (sql/IDriverSQLDefaultsMixin)
+         {:date-interval                     date-interval
+          :details-fields                    (constantly [{:name         "host"
                                                            :display-name "Host"
                                                            :default      "localhost"}
                                                           {:name         "port"
@@ -159,21 +160,19 @@
                                                            :display-name "Database password"
                                                            :type         :password
                                                            :placeholder  "*******"}])
-          :humanize-connection-error-message humanize-connection-error-message}))
+          :humanize-connection-error-message humanize-connection-error-message})
 
-(def mysql
-  (map->MySQLDriver
-   (sql/sql-driver
-    {:column->base-type         column->base-type
-     :connection-details->spec  connection-details->spec
-     :date                      date
-     :date-interval             date-interval
-     :excluded-schemas          #{"INFORMATION_SCHEMA"}
-     :string-length-fn          :CHAR_LENGTH
-     ;; If this fails you need to load the timezone definitions from your system into MySQL;
-     ;; run the command `mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql`
-     ;; See https://dev.mysql.com/doc/refman/5.7/en/time-zone-support.html for details
-     :set-timezone-sql          "SET @@session.time_zone = ?;"
-     :unix-timestamp->timestamp unix-timestamp->timestamp})))
+  sql/ISQLDriver
+  (merge (sql/ISQLDriverDefaultsMixin)
+         {:column->base-type         column->base-type
+          :connection-details->spec  connection-details->spec
+          :date                      date
+          :excluded-schemas          (constantly #{"INFORMATION_SCHEMA"})
+          :string-length-fn          (constantly :CHAR_LENGTH)
+          ;; If this fails you need to load the timezone definitions from your system into MySQL;
+          ;; run the command `mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql`
+          ;; See https://dev.mysql.com/doc/refman/5.7/en/time-zone-support.html for details
+          :set-timezone-sql          (constantly "SET @@session.time_zone = ?;")
+          :unix-timestamp->timestamp unix-timestamp->timestamp}))
 
-(driver/register-driver! :mysql mysql)
+(driver/register-driver! :mysql (MySQLDriver.))

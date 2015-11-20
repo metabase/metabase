@@ -8,46 +8,47 @@
             [metabase.driver.generic-sql.util :refer [funcs]])
   (:import net.sourceforge.jtds.jdbc.Driver)) ; need to import this in order to load JDBC driver
 
-(def ^:private ^:const column->base-type
+(defn- column->base-type
   "See [this page](https://msdn.microsoft.com/en-us/library/ms187752.aspx) for details."
-  {:bigint           :BigIntegerField
-   :binary           :UnknownField
-   :bit              :BooleanField     ; actually this is 1 / 0 instead of true / false ...
-   :char             :CharField
-   :cursor           :UnknownField
-   :date             :DateField
-   :datetime         :DateTimeField
-   :datetime2        :DateTimeField
-   :datetimeoffset   :DateTimeField
-   :decimal          :DecimalField
-   :float            :FloatField
-   :geography        :UnknownField
-   :geometry         :UnknownField
-   :hierarchyid      :UnknownField
-   :image            :UnknownField
-   :int              :IntegerField
-   :money            :DecimalField
-   :nchar            :CharField
-   :ntext            :TextField
-   :numeric          :DecimalField
-   :nvarchar         :TextField
-   :real             :FloatField
-   :smalldatetime    :DateTimeField
-   :smallint         :IntegerField
-   :smallmoney       :DecimalField
-   :sql_variant      :UnknownField
-   :table            :UnknownField
-   :text             :TextField
-   :time             :TimeField
-   :timestamp        :UnknownField          ; not a standard SQL timestamp, see https://msdn.microsoft.com/en-us/library/ms182776.aspx
-   :tinyint          :IntegerField
-   :uniqueidentifier :UUIDField
-   :varbinary        :UnknownField
-   :varchar          :TextField
-   :xml              :UnknownField
-   (keyword "int identity") :IntegerField}) ; auto-incrementing integer (ie pk) field
+  [_ column-type]
+  ({:bigint           :BigIntegerField
+     :binary           :UnknownField
+     :bit              :BooleanField ; actually this is 1 / 0 instead of true / false ...
+     :char             :CharField
+     :cursor           :UnknownField
+     :date             :DateField
+     :datetime         :DateTimeField
+     :datetime2        :DateTimeField
+     :datetimeoffset   :DateTimeField
+     :decimal          :DecimalField
+     :float            :FloatField
+     :geography        :UnknownField
+     :geometry         :UnknownField
+     :hierarchyid      :UnknownField
+     :image            :UnknownField
+     :int              :IntegerField
+     :money            :DecimalField
+     :nchar            :CharField
+     :ntext            :TextField
+     :numeric          :DecimalField
+     :nvarchar         :TextField
+     :real             :FloatField
+     :smalldatetime    :DateTimeField
+     :smallint         :IntegerField
+     :smallmoney       :DecimalField
+     :sql_variant      :UnknownField
+     :table            :UnknownField
+     :text             :TextField
+     :time             :TimeField
+     :timestamp        :UnknownField ; not a standard SQL timestamp, see https://msdn.microsoft.com/en-us/library/ms182776.aspx
+     :tinyint          :IntegerField
+     :uniqueidentifier :UUIDField
+     :varbinary        :UnknownField
+     :varchar          :TextField
+     :xml              :UnknownField
+     (keyword "int identity") :IntegerField} column-type)) ; auto-incrementing integer (ie pk) field
 
-(defn- connection-details->spec [{:keys [instance], :as details}]
+(defn- connection-details->spec [_ {:keys [instance], :as details}]
   (-> (kdb/mssql details)
       ;; swap out Microsoft Driver details for jTDS ones
       (assoc :classname   "net.sourceforge.jtds.jdbc.Driver"
@@ -57,8 +58,9 @@
       (update :subname #(cond-> (s/replace % #";database=" "/")
                           (seq instance) (str ";instance=" instance)))))
 
-;; See also the [jTDS SQL <-> Java types table](http://jtds.sourceforge.net/typemap.html)
-(defn- date [unit field-or-value]
+(defn- date
+  "See also the [jTDS SQL <-> Java types table](http://jtds.sourceforge.net/typemap.html)"
+  [_ unit field-or-value]
   (case unit
     :default         (utils/func "CAST(%s AS DATETIME)" [field-or-value])
     :minute          (utils/func "CAST(%s AS SMALLDATETIME)" [field-or-value])
@@ -92,10 +94,10 @@
     :quarter-of-year (utils/func "DATEPART(quarter, %s)" [field-or-value])
     :year            (utils/func "DATEPART(year, %s)" [field-or-value])))
 
-(defn- date-interval [unit amount]
+(defn- date-interval [_ unit amount]
   (utils/generated (format "DATEADD(%s, %d, GETUTCDATE())" (name unit) amount)))
 
-(defn- unix-timestamp->timestamp [field-or-value seconds-or-milliseconds]
+(defn- unix-timestamp->timestamp [_ field-or-value seconds-or-milliseconds]
   (utils/func (case seconds-or-milliseconds
                 ;; The second argument to DATEADD() gets casted to a 32-bit integer. BIGINT is 64 bites, so we tend to run into
                 ;; integer overflow errors (especially for millisecond timestamps).
@@ -104,10 +106,10 @@
                 :milliseconds "DATEADD(minute, (%s / 60000), '1970-01-01')")
               [field-or-value]))
 
-(defn- apply-limit [korma-query {value :limit}]
+(defn- apply-limit [_ korma-query {value :limit}]
   (k/modifier korma-query (format "TOP %d" value)))
 
-(defn- apply-page [korma-query {{:keys [items page]} :page}]
+(defn- apply-page [_ korma-query {{:keys [items page]} :page}]
   (k/offset korma-query (format "%d ROWS FETCH NEXT %d ROWS ONLY"
                                 (* items (dec page))
                                 items)))
@@ -118,8 +120,9 @@
 
 (extend SQLServerDriver
   driver/IDriver
-  (merge sql/IDriverSQLDefaultsMixin
-         {:details-fields (constantly [{:name         "host"
+  (merge (sql/IDriverSQLDefaultsMixin)
+         {:date-interval  date-interval
+          :details-fields (constantly [{:name         "host"
                                         :display-name "Host"
                                         :default      "localhost"}
                                        {:name         "port"
@@ -140,21 +143,19 @@
                                        {:name         "password"
                                         :display-name "Database password"
                                         :type         :password
-                                        :placeholder  "*******"}])}))
+                                        :placeholder  "*******"}])})
 
-(def sqlserver
-  (map->SQLServerDriver
-   (-> (sql/sql-driver
-        {:column->base-type         column->base-type
-         :connection-details->spec  connection-details->spec
-         :current-datetime-fn       (k/sqlfn* :GETUTCDATE)
-         :date                      date
-         :date-interval             date-interval
-         :excluded-schemas          #{"sys" "INFORMATION_SCHEMA"}
-         :stddev-fn                 :STDEV
-         :string-length-fn          :LEN
-         :unix-timestamp->timestamp unix-timestamp->timestamp})
-       (update :qp-clause->handler merge {:limit apply-limit
-                                          :page  apply-page}))))
+  sql/ISQLDriver
+  (merge (sql/ISQLDriverDefaultsMixin)
+         {:apply-limit               apply-limit
+          :apply-page                apply-page
+          :column->base-type         column->base-type
+          :connection-details->spec  connection-details->spec
+          :current-datetime-fn       (constantly (k/sqlfn* :GETUTCDATE))
+          :date                      date
+          :excluded-schemas          (constantly #{"sys" "INFORMATION_SCHEMA"})
+          :stddev-fn                 (constantly :STDEV)
+          :string-length-fn          (constantly :LEN)
+          :unix-timestamp->timestamp unix-timestamp->timestamp}))
 
-(driver/register-driver! :sqlserver sqlserver)
+(driver/register-driver! :sqlserver (SQLServerDriver.))

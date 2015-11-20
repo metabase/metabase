@@ -6,6 +6,7 @@
             (korma [core :as k]
                    [db :as kdb])
             [metabase.driver :as driver]
+            [metabase.driver.generic-sql :as sql]
             [metabase.test.data.interface :as i]
             [metabase.util :as u])
   (:import clojure.lang.Keyword
@@ -23,26 +24,33 @@
    Methods marked *Optional* below have a default implementation specified in `DefaultsMixin`."
   (field-base-type->sql-type [this ^Keyword base-type]
     "Return a native SQL type that should be used for fields of BASE-TYPE.")
+
   (pk-sql-type ^String [this]
     "SQL type of a primary key field.")
 
   ;; *Optional* SQL Statements
   (create-db-sql ^String [this ^DatabaseDefinition dbdef]
     "*Optional* Return a `CREATE DATABASE` statement.")
+
   (drop-db-if-exists-sql ^String [this ^DatabaseDefinition dbdef]
     "*Optional* Return a `DROP DATABASE` statement.")
+
   (create-table-sql ^String [this ^DatabaseDefinition dbdef, ^TableDefinition tabledef]
-     "*Optional* Return a `CREATE TABLE` statement.")
+    "*Optional* Return a `CREATE TABLE` statement.")
+
   (drop-table-if-exists-sql ^String [this ^DatabaseDefinition dbdef, ^TableDefinition tabledef]
      "*Optional* Return a `DROP TABLE IF EXISTS` statement.")
+
   (add-fk-sql ^String [this ^DatabaseDefinition dbdef, ^TableDefinition tabledef, ^FieldDefinition fielddef]
-     "*Optional* Return a `ALTER TABLE ADD CONSTRAINT FOREIGN KEY` statement.")
+    "*Optional* Return a `ALTER TABLE ADD CONSTRAINT FOREIGN KEY` statement.")
 
   ;; Other optional methods
   (korma-entity [this ^DatabaseDefinition dbdef, ^TableDefinition tabledef]
     "*Optional* Return a korma-entity for TABLEDEF.")
+
   (pk-field-name ^String [this]
     "*Optional* Name of a PK field. Defaults to `\"id\"`.")
+
   (qualified-name-components [this ^String database-name]
                              [this ^String database-name, ^String table-name]
                              [this ^String database-name, ^String table-name, ^String field-name]
@@ -52,8 +60,10 @@
        (qualified-name-components [loader \"my-db\" \"my-table\"]) -> [\"my-db\" \"dbo\" \"my-table\"]
 
      By default, this qualifies field names with their table name, but otherwise does no other specific qualification.")
+
   (quote-name ^String [this ^String nm]
     "*Optional*. Quote a name. Defaults to using double quotes.")
+
   (qualify+quote-name ^String [this ^String database-name]
                       ^String [this ^String database-name, ^String table-name]
                       ^String [this ^String database-name, ^String table-name, ^String field-name]
@@ -61,13 +71,14 @@
      and `quote-name`.
 
        (qualify+quote-name [loader \"my-db\" \"my-table\"]) -> \"my-db\".\"dbo\".\"my-table\"")
-  (driver [this]
-    "*Optional*. Return the driver associated with this dataset loader.")
+
   (database->spec [this ^Keyword context, ^DatabaseDefinition dbdef]
     "*Optional*. Return a JDBC spec that should be used to connect to DBDEF.
-     Uses `connection-details->spec` from `driver` by default.")
+     Uses `sql/connection-details->spec` by default.")
+
   (load-table-data! [this ^DatabaseDefinition dbdef, ^TableDefinition tabledef]
     "*Optional*. Load the rows for a specific table into a DB.")
+
   (execute-sql! [loader ^Keyword context, ^DatabaseDefinition dbdef, ^String sql]
     "Execute a string of raw SQL. Context is either `:server` or `:db`."))
 
@@ -131,11 +142,8 @@
   ([loader db-name table-name field-name]
    (quote+combine-names loader (qualified-name-components loader db-name table-name field-name))))
 
-(defn- default-driver [loader]
-  (driver/engine->driver (i/engine loader)))
-
 (defn- default-database->spec [loader context {:keys [short-lived?], :as dbdef}]
-  (assoc ((:connection-details->spec (driver loader)) (i/database->connection-details loader context dbdef))
+  (assoc (sql/connection-details->spec loader (i/database->connection-details loader context dbdef))
          :short-lived? short-lived?
          :make-pool?   false))
 
@@ -181,7 +189,6 @@
    :create-db-sql             default-create-db-sql
    :create-table-sql          default-create-table-sql
    :database->spec            default-database->spec
-   :driver                    default-driver
    :drop-db-if-exists-sql     default-drop-db-if-exists-sql
    :drop-table-if-exists-sql  default-drop-table-if-exists-sql
    :execute-sql!              default-execute-sql!

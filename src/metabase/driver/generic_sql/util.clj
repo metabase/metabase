@@ -12,8 +12,8 @@
 (defn- db->connection-spec
   "Return a JDBC connection spec for a Metabase `Database`."
   [{{:keys [short-lived?]} :details, :as database}]
-  (let [{:keys [connection-details->spec]} (driver/engine->driver (:engine database))]
-    (assoc (connection-details->spec (:details database))
+  (let [driver (driver/engine->driver (:engine database))]
+    (assoc (@(resolve 'metabase.driver.generic-sql/connection-details->spec) driver (:details database))
            ;; unless this is a temp DB, we need to make a pool or the connection will be closed before we get a chance to unCLOB-er the results during JSON serialization
            ;; TODO - what will we do once we have CLOBS in temp DBs?
            :make-pool? (not short-lived?))))
