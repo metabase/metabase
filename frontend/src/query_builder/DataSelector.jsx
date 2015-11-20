@@ -82,7 +82,7 @@ export default class DataSelector extends Component {
         var content;
         if (this.props.includeTables) {
             if (table) {
-                content = <span className="text-grey no-decoration">{table.display_name}</span>;
+                content = <span className="text-grey no-decoration">{table.display_name || table.name}</span>;
             } else {
                 content = <span className="text-grey-4 no-decoration">Select a table</span>;
             }
@@ -106,7 +106,7 @@ export default class DataSelector extends Component {
             sections = this.props.databases.map(database => ({
                 name: database.name,
                 items: database.tables.filter(isQueryable).map(table => ({
-                    name: table.display_name,
+                    name: table.display_name || table.name,
                     database: database,
                     table: table
                 })).sort(function(a, b) {
