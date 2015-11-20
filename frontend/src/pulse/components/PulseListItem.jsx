@@ -5,11 +5,12 @@ import PulseListChannel from "./PulseListChannel.jsx";
 export default class PulseListItem extends Component {
     static propTypes = {
         pulse: PropTypes.object.isRequired,
-        formInput: PropTypes.object.isRequired
+        formInput: PropTypes.object.isRequired,
+        user: PropTypes.object.isRequired
     };
 
     render() {
-        let { pulse, formInput } = this.props;
+        let { pulse, formInput, user } = this.props;
 
         return (
             <div className="PulseListItem bordered rounded mb2 pt3">
@@ -39,6 +40,7 @@ export default class PulseListItem extends Component {
                                 channel={channel}
                                 channelSpec={formInput.channels && formInput.channels[channel.channel_type]}
                                 dispatch={this.props.dispatch}
+                                user={user}
                             />
                         </li>
                     )}

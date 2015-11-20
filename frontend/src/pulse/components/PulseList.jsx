@@ -40,7 +40,7 @@ export default class PulseList extends Component {
     }
 
     render() {
-        let { pulses } = this.props;
+        let { pulses, user } = this.props;
         return (
             <div className="PulseList pt3">
                 <div className="border-bottom mb2">
@@ -56,6 +56,7 @@ export default class PulseList extends Component {
                             <li key={pulse.id}>
                                 <PulseListItem
                                     pulse={pulse}
+                                    user={user}
                                     formInput={this.props.formInput}
                                     dispatch={this.props.dispatch}
                                 />
@@ -72,7 +73,7 @@ export default class PulseList extends Component {
                 </LoadingAndErrorWrapper>
                 <Modal isOpen={this.state.showSetupModal}>
                     <SetupModal
-                        isAdmin={false /*FIXME*/}
+                        user={user}
                         onClose={() => this.setState({ showSetupModal: false })}
                         onChangeLocation={this.props.onChangeLocation}
                     />
