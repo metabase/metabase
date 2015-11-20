@@ -144,20 +144,20 @@
     [:table {:style (str "padding-bottom: 8px; border-bottom: 4px solid " color-grey-1 ";")}
       [:thead
         [:tr
-          (map (fn [col-idx]
-                [:th {:style (str bar-td-style bar-th-style "min-width: 60px;")}
-                  (-> cols (nth col-idx) :display_name upper-case h)])
-                col-indexes)
-          (if bar-column [:th {:style (str bar-td-style bar-th-style "width: 99%;")}])]]
+          (for [col-idx col-indexes :let [col (-> cols (nth col-idx))]]
+            [:th {:style (str bar-td-style bar-th-style "min-width: 60px;")}
+              (h (upper-case (name (or (:display_name col) (:name col)))))])
+          (if bar-column
+            [:th {:style (str bar-td-style bar-th-style "width: 99%;")}])]]
       [:tbody
         (map-indexed (fn [row-idx row]
           [:tr {:style (str "color: " (if (odd? row-idx) color-grey-2 color-grey-3) ";")}
-            (map (fn [col-idx]
-                  [:td {:style (str bar-td-style (if (and bar-column (= col-idx 1)) "font-weight: 700;"))}
-                    (-> row (nth col-idx) (format-cell (nth cols col-idx )) h)])
-                  col-indexes)
-            (if bar-column [:td {:style (str bar-td-style "width: 99%;")}
-              [:div {:style (str "background-color: " color-purple "; height: 20px; width: " (float (* 100 (/ (bar-column row) max-value))) "%")} "&#160;"]])])
+            (for [col-idx col-indexes :let [col (-> cols (nth col-idx))]]
+              [:td {:style (str bar-td-style (if (and bar-column (= col-idx 1)) "font-weight: 700;"))}
+                (-> row (nth col-idx) (format-cell col) h)])
+            (if bar-column
+              [:td {:style (str bar-td-style "width: 99%;")}
+                [:div {:style (str "background-color: " color-purple "; height: 20px; width: " (float (* 100 (/ (bar-column row) max-value))) "%")} "&#160;"]])])
           rows)]]))
 
 (defn render-truncation-warning
