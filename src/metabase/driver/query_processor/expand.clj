@@ -9,6 +9,7 @@
             [korma.core :as k]
             [swiss.arrows :refer [-<>]]
             [metabase.db :refer [sel]]
+            [metabase.driver :as driver]
             [metabase.driver.query-processor.interface :refer :all]
             [metabase.util :as u])
   (:import (clojure.lang Keyword)))
@@ -29,7 +30,7 @@
 
 (defn- assert-driver-supports [^Keyword feature]
   {:pre [(:driver *original-query-dict*)]}
-  (when-not (contains? (:features (:driver *original-query-dict*)) feature)
+  (when-not (contains? (driver/features (:driver *original-query-dict*)) feature)
     (throw (Exception. (format "%s is not supported by this driver." (name feature))))))
 
 (defn- non-empty-clause? [clause]

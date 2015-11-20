@@ -3,7 +3,8 @@
   (:require [clojure.string :as s]
             [environ.core :refer [env]]
             (metabase.test.data [generic-sql :as generic]
-                                [interface :as i])))
+                                [interface :as i]))
+  (:import metabase.driver.mysql.MySQLDriver))
 
 (def ^:private ^:const field-base-type->sql-type
   {:BigIntegerField "BIGINT"
@@ -30,9 +31,7 @@
 (defn- quote-name [_ nm]
   (str \` nm \`))
 
-(defrecord MySQLDatasetLoader [dbpromise])
-
-(extend MySQLDatasetLoader
+(extend MySQLDriver
   generic/IGenericSQLDatasetLoader
   (merge generic/DefaultsMixin
          {:execute-sql!              generic/sequentially-execute-sql!

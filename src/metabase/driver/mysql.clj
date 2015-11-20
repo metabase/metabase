@@ -6,8 +6,8 @@
                    mysql)
             (korma.sql [engine :refer [sql-func]]
                        [utils :as utils])
-            [metabase.driver :as driver, :refer [defdriver]]
-            [metabase.driver.generic-sql :refer [sql-driver]]
+            [metabase.driver :as driver]
+            [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.util :refer [funcs]]
             [metabase.util :as u]))
 
@@ -116,7 +116,7 @@
 (defn- date-interval [unit amount]
   (utils/generated (format "DATE_ADD(NOW(), INTERVAL %d %s)" amount (s/upper-case (name unit)))))
 
-(defn- humanize-connection-error-message [message]
+(defn- humanize-connection-error-message [_ message]
   (condp re-matches message
         #"^Communications link failure\s+The last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.$"
         (driver/connection-error-messages :cannot-connect-check-host-and-port)
@@ -133,37 +133,47 @@
         #".*" ; default
         message))
 
-(defdriver mysql
-  (sql-driver
-   {:driver-name                       "MySQL"
-    :details-fields                    [{:name         "host"
-                                         :display-name "Host"
-                                         :default      "localhost"}
-                                        {:name         "port"
-                                         :display-name "Port"
-                                         :type         :integer
-                                         :default      3306}
-                                        {:name         "dbname"
-                                         :display-name "Database name"
-                                         :placeholder  "birds_of_the_word"
-                                         :required     true}
-                                        {:name         "user"
-                                         :display-name "Database username"
-                                         :placeholder  "What username do you use to login to the database?"
-                                         :required     true}
-                                        {:name         "password"
-                                         :display-name "Database password"
-                                         :type         :password
-                                         :placeholder  "*******"}]
-    :column->base-type                 column->base-type
-    :string-length-fn                  :CHAR_LENGTH
-    :excluded-schemas                  #{"INFORMATION_SCHEMA"}
-    :connection-details->spec          connection-details->spec
-    :unix-timestamp->timestamp         unix-timestamp->timestamp
-    :date                              date
-    :date-interval                     date-interval
-    ;; If this fails you need to load the timezone definitions from your system into MySQL;
-    ;; run the command `mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql`
-    ;; See https://dev.mysql.com/doc/refman/5.7/en/time-zone-support.html for details
-    :set-timezone-sql                  "SET @@session.time_zone = ?;"
-    :humanize-connection-error-message humanize-connection-error-message}))
+(defrecord MySQLDriver []
+  clojure.lang.Named
+  (getName [_] "MySQL"))
+
+(extend MySQLDriver
+  driver/IDriver
+  (merge sql/IDriverSQLDefaultsMixin
+         {:details-fields                    (constantly [{:name         "host"
+                                                           :display-name "Host"
+                                                           :default      "localhost"}
+                                                          {:name         "port"
+                                                           :display-name "Port"
+                                                           :type         :integer
+                                                           :default      3306}
+                                                          {:name         "dbname"
+                                                           :display-name "Database name"
+                                                           :placeholder  "birds_of_the_word"
+                                                           :required     true}
+                                                          {:name         "user"
+                                                           :display-name "Database username"
+                                                           :placeholder  "What username do you use to login to the database?"
+                                                           :required     true}
+                                                          {:name         "password"
+                                                           :display-name "Database password"
+                                                           :type         :password
+                                                           :placeholder  "*******"}])
+          :humanize-connection-error-message humanize-connection-error-message}))
+
+(def mysql
+  (map->MySQLDriver
+   (sql/sql-driver
+    {:column->base-type         column->base-type
+     :connection-details->spec  connection-details->spec
+     :date                      date
+     :date-interval             date-interval
+     :excluded-schemas          #{"INFORMATION_SCHEMA"}
+     :string-length-fn          :CHAR_LENGTH
+     ;; If this fails you need to load the timezone definitions from your system into MySQL;
+     ;; run the command `mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql`
+     ;; See https://dev.mysql.com/doc/refman/5.7/en/time-zone-support.html for details
+     :set-timezone-sql          "SET @@session.time_zone = ?;"
+     :unix-timestamp->timestamp unix-timestamp->timestamp})))
+
+(driver/register-driver! :mysql mysql)

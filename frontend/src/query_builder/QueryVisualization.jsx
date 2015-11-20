@@ -9,6 +9,8 @@ import RunButton from './RunButton.jsx';
 import VisualizationSettings from './VisualizationSettings.jsx';
 
 import MetabaseSettings from "metabase/lib/settings";
+import Modal from "metabase/components/Modal.jsx";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import Query from "metabase/lib/query";
 
 import cx from "classnames";
@@ -127,23 +129,61 @@ export default class QueryVisualization extends Component {
     }
 
     renderDownloadButton() {
+
         // NOTE: we expect our component provider set this to something falsey if download not available
         if (this.props.downloadLink) {
-            if (window.OSX) {
-                const downloadLink = this.props.downloadLink;
+            const { result } = this.props;
+
+            if (result && result.data && result.data.rows_truncated) {
+                // this is a "large" dataset, so show a modal to inform users about this and make them click again to d/l
+                let downloadButton;
+                if (window.OSX) {
+                    downloadButton = (<button className="Button Button--primary" onClick={() => {
+                            window.OSX.saveCSV(this.props.downloadLink);
+                            this.refs.downloadModal.toggle()
+                        }}>Download CSV</button>);
+                } else {
+                    downloadButton = (<a className="Button Button--primary" href={this.props.downloadLink} target="_blank" onClick={() => this.refs.downloadModal.toggle()}>Download CSV</a>);
+                }
+
                 return (
-                    <a classname="mx1" href="#" title="Download this data" onClick={function() {
-                        window.OSX.saveCSV(downloadLink);
-                    }}>
-                        <Icon name='download' width="16px" height="16px" />
-                    </a>
+                    <ModalWithTrigger
+                        key="download"
+                        ref="downloadModal"
+                        triggerElement={<Icon className="mx1" title="Download this data" name='download' width="16px" height="16px" />}
+                    >
+                        <Modal className="Modal Modal--small">
+                            <div className="p4 text-centered relative">
+                                <span className="absolute top right p4 text-normal text-grey-3 cursor-pointer" onClick={() => this.refs.downloadModal.toggle()}>
+                                    <Icon name={'close'} width={16} height={16} />
+                                </span>
+                                <div className="p3 text-strong">
+                                    <h2 className="text-bold">Download large data set</h2>
+                                    <div className="pt2">Your answer has a large amount of data so we wanted to let you know it could take a while to download.</div>
+                                    <div className="py4">The maximum download amount is 1 million rows.</div>
+                                    {downloadButton}
+                                </div>
+                            </div>
+                        </Modal>
+                    </ModalWithTrigger>
                 );
             } else {
-                return (
-                    <a className="mx1" href={this.props.downloadLink} title="Download this data" target="_blank">
-                        <Icon name='download' width="16px" height="16px" />
-                    </a>
-                );
+                if (window.OSX) {
+                    const downloadLink = this.props.downloadLink;
+                    return (
+                        <a classname="mx1" href="#" title="Download this data" onClick={function() {
+                            window.OSX.saveCSV(downloadLink);
+                        }}>
+                            <Icon name='download' width="16px" height="16px" />
+                        </a>
+                    );
+                } else {
+                    return (
+                        <a className="mx1" href={this.props.downloadLink} title="Download this data" target="_blank">
+                            <Icon name='download' width="16px" height="16px" />
+                        </a>
+                    );
+                }
             }
         }
     }

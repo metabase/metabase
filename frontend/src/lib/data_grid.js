@@ -27,7 +27,8 @@ var DataGrid = {
         return {
             cols: _.filter(data.cols, function(col) { return col.preview_display; }),
             columns: _.map(data.cols, function(col) { return col.display_name; }),
-            rows: filteredRows
+            rows: filteredRows,
+            rows_truncated: data.rows_truncated
         };
     },
 

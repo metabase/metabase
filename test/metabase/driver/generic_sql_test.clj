@@ -1,6 +1,7 @@
 (ns metabase.driver.generic-sql-test
   (:require [expectations :refer :all]
             [metabase.db :refer :all]
+            [metabase.driver :as driver]
             [metabase.driver.h2 :refer [h2]]
             [metabase.driver.generic-sql.util :refer [korma-entity]]
             (metabase.models [field :refer [Field]]
@@ -27,7 +28,7 @@
       {:name "VENUES",     :schema "PUBLIC"}
       {:name "CHECKINS",   :schema "PUBLIC"}
       {:name "USERS",      :schema "PUBLIC"}}
-    ((:active-tables h2) (db)))
+    (driver/active-tables h2 (db)))
 
 ;; ACTIVE-COLUMN-NAMES->TYPE
 (expect
@@ -37,15 +38,15 @@
      "PRICE"       :IntegerField
      "CATEGORY_ID" :IntegerField
      "ID"          :BigIntegerField}
-  ((:active-column-names->type h2) @venues-table))
+  (driver/active-column-names->type h2 @venues-table))
 
 
 ;; ## TEST TABLE-PK-NAMES
 ;; Pretty straightforward
 (expect #{"ID"}
-  ((:table-pks h2) @venues-table))
+  (driver/table-pks h2 @venues-table))
 
 
 ;; ## TEST FIELD-AVG-LENGTH
 (expect 13
-  ((:field-avg-length h2) @users-name-field))
+  (driver/field-avg-length h2 @users-name-field))

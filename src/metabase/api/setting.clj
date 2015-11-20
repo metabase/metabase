@@ -5,9 +5,17 @@
             (metabase.models [setting :as setting])))
 
 (defendpoint GET "/"
-  "Get all `Settings` and their values. Superusers get all settings, normal users get public settings only."
+  "Get all `Settings` and their values. You must be a superuser to do this."
   []
   (check-superuser)
+  (setting/all-with-descriptions))
+
+(defendpoint PUT "/"
+  "Update multiple `Settings` values.  You must be a superuser to do this."
+  [:as {settings :body}]
+  {settings [Required Dict]}
+  (check-superuser)
+  (setting/set-all settings)
   (setting/all-with-descriptions))
 
 (defendpoint GET "/:key"
@@ -19,7 +27,7 @@
 
 (defendpoint PUT "/:key"
   "Create/update a `Setting`. You must be a superuser to do this."
-  [key  :as {{:keys [value]} :body}]
+  [key :as {{:keys [value]} :body}]
   {key Required, value Required}
   (check-superuser)
   (setting/set (keyword key) value))

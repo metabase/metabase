@@ -23,7 +23,7 @@
 
 (defn- engines-that-support [feature]
   (set (filter (fn [engine]
-                 (contains? (:features (driver/engine->driver engine)) feature))
+                 (contains? (driver/features (driver/engine->driver engine)) feature))
                datasets/all-valid-engines)))
 
 (defn- engines-that-dont-support [feature]
@@ -239,6 +239,13 @@
 (expect false (structured-query? {:type "native"}))
 (expect true (structured-query? {:type "query"}))
 
+;; rows-query-without-limits?
+(expect false (rows-query-without-limits? {:query {:aggregation {:aggregation-type :count}}}))
+(expect true (rows-query-without-limits? {:query {:aggregation {:aggregation-type :rows}}}))
+(expect false (rows-query-without-limits? {:query {:aggregation {:aggregation-type :count}
+                                                   :limit       10}}))
+(expect false (rows-query-without-limits? {:query {:aggregation {:aggregation-type :count}
+                                                   :page        1}}))
 
 ;; ### "COUNT" AGGREGATION
 (qp-expect-with-all-engines
@@ -492,11 +499,27 @@
 ;; # POST PROCESSING TESTS
 
 ;; ## LIMIT-MAX-RESULT-ROWS
-;; Apply limit-max-result-rows to an infinite sequence and make sure it gets capped at `max-result-rows`
-(expect max-result-rows
-  (->> (((u/runtime-resolved-fn 'metabase.driver.query-processor 'limit) identity) {:rows (repeat [:ok])})
+;; Apply limit-max-result-rows to an infinite sequence and make sure it gets capped at `absolute-max-results`
+(expect absolute-max-results
+  (->> ((@(resolve 'metabase.driver.query-processor/limit) identity) {:rows (repeat [:ok])})
        :rows
        count))
+
+;; Apply an arbitrary max-results on the query and ensure our results size is appropriately constrained
+(expect 1234
+  (->> ((@(resolve 'metabase.driver.query-processor/limit) identity) {:constraints {:max-results 1234}
+                                                                                    :query       {:aggregation {:aggregation-type :count}}
+                                                                                    :rows        (repeat [:ok])})
+       :rows
+       count))
+
+;; Apply a max-results-bare-rows limit specifically on :rows type query
+(expect [46 46]
+  (let [res ((@(resolve 'metabase.driver.query-processor/limit) identity) {:constraints {:max-results 46}
+                                                                                         :query       {:aggregation {:aggregation-type :rows}}
+                                                                                         :rows        (repeat [:ok])})]
+    [(->> res :rows count)
+     (->> res :query :limit)]))
 
 
 ;; ## CUMULATIVE SUM
@@ -1360,15 +1383,14 @@
 
 ;; RELATIVE DATES
 (defn- database-def-with-timestamps [interval-seconds]
-  (let [{:keys [date-interval]} (driver)]
-    (create-database-definition "DB"
-      ["checkins"
-       [{:field-name "timestamp"
-         :base-type  :DateTimeField}]
-       (vec (for [i (range -15 15)]
-              ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of generating `java.sql.Timestamps` here so
-              ;; they'll be in the DB's native timezone. Some DBs refuse to use the same timezone we're running the tests from *cough* SQL Server *cough*
-              [(date-interval :second (* i interval-seconds))]))])))
+  (create-database-definition "DB"
+    ["checkins"
+     [{:field-name "timestamp"
+       :base-type  :DateTimeField}]
+     (vec (for [i (range -15 15)]
+            ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of generating `java.sql.Timestamps` here so
+            ;; they'll be in the DB's native timezone. Some DBs refuse to use the same timezone we're running the tests from *cough* SQL Server *cough*
+            [(driver/date-interval *data-loader* :second (* i interval-seconds))]))]))
 
 (def ^:private checkins:4-per-minute (partial database-def-with-timestamps 15))
 (def ^:private checkins:4-per-hour   (partial database-def-with-timestamps (* 60 15)))

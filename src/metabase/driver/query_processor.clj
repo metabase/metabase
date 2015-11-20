@@ -8,6 +8,7 @@
             [medley.core :as m]
             [swiss.arrows :refer [<<-]]
             [metabase.db :refer :all]
+            [metabase.driver :as driver]
             (metabase.driver.query-processor [annotate :as annotate]
                                              [expand :as expand]
                                              [interface :refer :all]
@@ -18,13 +19,12 @@
 
 ;; # CONSTANTS
 
-(def ^:const max-result-rows
-  "Maximum number of rows the QP should ever return."
-  10000)
+(def ^:const absolute-max-results
+  "Maximum number of rows the QP should ever return.
 
-(def ^:const max-result-bare-rows
-  "Maximum number of rows the QP should ever return specifically for `rows` type aggregations."
-  2000)
+   This is coming directly from the max rows allowed by Excel for now ...
+   https://support.office.com/en-nz/article/Excel-specifications-and-limits-1672b34d-7043-467e-8e27-269d656771c3"
+  1048576)
 
 
 ;; # DYNAMIC VARS
@@ -43,6 +43,15 @@
   "Predicate function which returns `true` if the given query represents a structured style query, `false` otherwise."
   [query]
   (= :query (keyword (:type query))))
+
+(defn rows-query-without-limits?
+  "Predicate function which returns `true` if the given query is a :rows type aggregated structured query
+   without a `:limit` or `:page` clause which constrains its resulting rows, `false` otherwise."
+  [{{{ag-type :aggregation-type} :aggregation, :keys [limit page]} :query}]
+  (and (not limit)
+       (not page)
+       (or (not ag-type)
+           (= ag-type :rows))))
 
 
 (defn- wrap-catch-exceptions [qp]
@@ -70,14 +79,18 @@
 (defn- post-add-row-count-and-status
   "Wrap the results of a successfully processed query in the format expected by the frontend (add `row_count` and `status`)."
   [qp]
-  (fn [query]
-    (let [results     (qp query)
-          num-results (count (:rows results))]
+  (fn [{{:keys [max-results max-results-bare-rows]} :constraints, :as query}]
+    (let [results-limit (or (when (rows-query-without-limits? query)
+                              max-results-bare-rows)
+                            max-results
+                            absolute-max-results)
+          results       (qp query)
+          num-results   (count (:rows results))]
       (cond-> {:row_count num-results
                :status    :completed
                :data      results}
         ;; Add :rows_truncated if we've hit the limit so the UI can let the user know
-        (= num-results max-result-rows) (assoc-in [:data :rows_truncated] max-result-rows)))))
+        (= num-results results-limit) (assoc-in [:data :rows_truncated] results-limit)))))
 
 (defn- should-add-implicit-fields? [{{:keys [fields breakout], {ag-type :aggregation-type} :aggregation} :query}]
   (and (or (not ag-type)
@@ -156,8 +169,7 @@
                                                                                   :fields      [ag-field])))]
 
       ;; Otherwise if we're breaking out on different fields, rewrite the query as a "sum" aggregation
-      cum-sum-with-breakout? [ag-field (-> query
-                                           (assoc-in [:query :aggregation] (map->Aggregation {:aggregation-type :sum, :field ag-field})))]
+      cum-sum-with-breakout? [ag-field (assoc-in query [:query :aggregation] (map->Aggregation {:aggregation-type :sum, :field ag-field}))]
 
       ;; Cumulative sum without any breakout fields should just be treated the same way as "sum". Rewrite query as such
       cum-sum? [false (assoc-in query [:query :aggregation] (map->Aggregation {:aggregation-type :sum, :field ag-field}))]
@@ -199,14 +211,14 @@
 (defn- limit
   "Add an implicit `limit` clause to queries with `rows` aggregations, and limit the maximum number of rows that can be returned in post-processing."
   [qp]
-  (fn [{{{ag-type :aggregation-type} :aggregation, :keys [limit page]} :query, :as query}]
+  (fn [{{:keys [max-results max-results-bare-rows]} :constraints, :as query}]
     (let [query   (cond-> query
-                    (and (not limit)
-                         (not page)
-                         (or (not ag-type)
-                             (= ag-type :rows))) (assoc-in [:query :limit] max-result-bare-rows))
+                    (rows-query-without-limits? query) (assoc-in [:query :limit] (or max-results-bare-rows
+                                                                                     max-results
+                                                                                     absolute-max-results)))
           results (qp query)]
-      (update results :rows (partial take max-result-rows)))))
+      (update results :rows (partial take (or max-results
+                                              absolute-max-results))))))
 
 
 (defn- pre-log-query [qp]
@@ -223,7 +235,7 @@
                                    ;; obscure DB details when logging. Just log the name of driver because we don't care about its properties
                                    (-> query
                                        (assoc-in [:database :details] "😋 ") ; :yum:
-                                       (update :driver :driver-name)))))))
+                                       (update :driver name)))))))
     (qp query)))
 
 
@@ -255,7 +267,7 @@
 ;;
 ;; Many functions do both pre and post-processing; this middleware pattern allows them to return closures that maintain some sort of
 ;; internal state. For example, cumulative-sum can determine if it needs to perform cumulative summing, and, if so, modify the query
-;; before passing it to QP, and modify the results of that call.
+;; before passing it to QP; once the query is processed, it can use modify the results as needed.
 ;;
 ;; For the sake of clarity, functions are named with the following convention:
 ;; *  Ones that only do pre-processing are prefixed with pre-
@@ -263,23 +275,22 @@
 ;; *  Ones that do both aren't prefixed
 ;;
 ;; The <<- (reverse-threading macro) is used below for clarity.
-;; Pre-processing happens from top-to-bottom, i.e. the QUERY passed to the function returned by POST-ADD-ROW-COUNT-AND-STATUS is the
-;; query as modified by PRE-EXPAND.
+;; Pre-processing happens from top-to-bottom, i.e. the QUERY passed to the function returned by PRE-ADD-IMPLICIT-BREAKOUT-ORDER-BY is the
+;; query as modified by PRE-ADD-IMPLICIT-FIELDS.
 ;;
 ;; Post-processing then happens in order from bottom-to-top; i.e. POST-ANNOTATE gets to modify the results, then LIMIT, then CUMULATIVE-SUM, etc.
-
 
 (defn process
   "Process a QUERY and return the results."
   [driver query]
   (when-not *disable-qp-logging*
     (log/debug (u/format-color 'blue "\nQUERY: 😎\n%s" (u/pprint-to-str query))))
-  (let [driver-process-query      (:process-query driver)
-        driver-wrap-process-query (or (:process-query-in-context driver)
-                                      (fn [qp] qp))]
+  (let [driver-process-query (partial (if (structured-query? query)
+                                        driver/process-structured
+                                        driver/process-native) driver)]
     ((<<- wrap-catch-exceptions
           pre-expand
-          driver-wrap-process-query
+          (driver/process-query-in-context driver)
           post-add-row-count-and-status
           pre-add-implicit-fields
           pre-add-implicit-breakout-order-by
@@ -288,5 +299,4 @@
           annotate/post-annotate
           pre-log-query
           wrap-guard-multiple-calls
-          driver-process-query) (assoc query
-                                       :driver driver))))
+          driver-process-query) (assoc query :driver driver))))

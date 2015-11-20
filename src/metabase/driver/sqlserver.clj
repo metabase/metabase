@@ -3,8 +3,8 @@
             (korma [core :as k]
                    [db :as kdb])
             [korma.sql.utils :as utils]
-            [metabase.driver :refer [defdriver]]
-            [metabase.driver.generic-sql :refer [sql-driver]]
+            [metabase.driver :as driver]
+            [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.util :refer [funcs]])
   (:import net.sourceforge.jtds.jdbc.Driver)) ; need to import this in order to load JDBC driver
 
@@ -112,38 +112,49 @@
                                 (* items (dec page))
                                 items)))
 
-(defdriver sqlserver
-  (-> (sql-driver {:driver-name               "SQL Server"
-                   :details-fields            [{:name         "host"
-                                                :display-name "Host"
-                                                :default      "localhost"}
-                                               {:name         "port"
-                                                :display-name "Port"
-                                                :type         :integer
-                                                :default      1433}
-                                               {:name         "db"
-                                                :display-name "Database name"
-                                                :placeholder  "BirdsOfTheWorld"
-                                                :required     true}
-                                               {:name         "instance"
-                                                :display-name "Database instance name"
-                                                :placeholder  "N/A"}
-                                               {:name         "user"
-                                                :display-name "Database username"
-                                                :placeholder  "What username do you use to login to the database?"
-                                                :required     true}
-                                               {:name         "password"
-                                                :display-name "Database password"
-                                                :type         :password
-                                                :placeholder  "*******"}]
-                   :string-length-fn          :LEN
-                   :stddev-fn                 :STDEV
-                   :current-datetime-fn       (k/sqlfn* :GETUTCDATE)
-                   :excluded-schemas          #{"sys" "INFORMATION_SCHEMA"}
-                   :column->base-type         column->base-type
-                   :connection-details->spec  connection-details->spec
-                   :date                      date
-                   :date-interval             date-interval
-                   :unix-timestamp->timestamp unix-timestamp->timestamp})
-      (update :qp-clause->handler merge {:limit apply-limit
-                                         :page  apply-page})))
+(defrecord SQLServerDriver []
+  clojure.lang.Named
+  (getName [_] "SQL Server"))
+
+(extend SQLServerDriver
+  driver/IDriver
+  (merge sql/IDriverSQLDefaultsMixin
+         {:details-fields (constantly [{:name         "host"
+                                        :display-name "Host"
+                                        :default      "localhost"}
+                                       {:name         "port"
+                                        :display-name "Port"
+                                        :type         :integer
+                                        :default      1433}
+                                       {:name         "db"
+                                        :display-name "Database name"
+                                        :placeholder  "BirdsOfTheWorld"
+                                        :required     true}
+                                       {:name         "instance"
+                                        :display-name "Database instance name"
+                                        :placeholder  "N/A"}
+                                       {:name         "user"
+                                        :display-name "Database username"
+                                        :placeholder  "What username do you use to login to the database?"
+                                        :required     true}
+                                       {:name         "password"
+                                        :display-name "Database password"
+                                        :type         :password
+                                        :placeholder  "*******"}])}))
+
+(def sqlserver
+  (map->SQLServerDriver
+   (-> (sql/sql-driver
+        {:column->base-type         column->base-type
+         :connection-details->spec  connection-details->spec
+         :current-datetime-fn       (k/sqlfn* :GETUTCDATE)
+         :date                      date
+         :date-interval             date-interval
+         :excluded-schemas          #{"sys" "INFORMATION_SCHEMA"}
+         :stddev-fn                 :STDEV
+         :string-length-fn          :LEN
+         :unix-timestamp->timestamp unix-timestamp->timestamp})
+       (update :qp-clause->handler merge {:limit apply-limit
+                                          :page  apply-page}))))
+
+(driver/register-driver! :sqlserver sqlserver)

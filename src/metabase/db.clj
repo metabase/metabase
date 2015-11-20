@@ -75,7 +75,7 @@
                           :user     (config/config-str :mb-db-user)
                           :password (config/config-str :mb-db-pass)}))))
 
-(defn jdbc-details
+(defn- jdbc-details
   "Takes our own MB details map and formats them properly for connection details for Korma / JDBC."
   [db-details]
   {:pre [(map? db-details)]}
@@ -127,8 +127,8 @@
 
 (def ^:dynamic *allow-potentailly-unsafe-connections*
   "We want to make *every* database connection made by the drivers safe -- read-only, only connect if DB file exists, etc.
-   At the same time, we'd like to be able to use driver functionality like `can-connect?` to check whether we can connect
-   to the Metabase database, in which case we'd like to allow connections to databases that don't exist.
+   At the same time, we'd like to be able to use driver functionality like `can-connect-with-details?` to check whether we can
+   connect to the Metabase database, in which case we'd like to allow connections to databases that don't exist.
 
    So we need some way to distinguish the Metabase database from other databases. We could add a key to the details map
    specifying that it's the Metabase DB, but what if some shady user added that key to another database?
@@ -141,9 +141,15 @@
    forever after, making all other connnections \"safe\"."
   false)
 
-(defn- db-can-connect? [details]
-  (binding [*allow-potentailly-unsafe-connections* true]
-    ((u/runtime-resolved-fn 'metabase.driver 'can-connect?) details)))
+(defn- verify-db-connection
+  "Test connection to database with DETAILS and throw an exception if we have any troubles connecting."
+  [engine details]
+  {:pre [(keyword? engine) (map? details)]}
+  (log/info "Verifying Database Connection ...")
+  (assert (binding [*allow-potentailly-unsafe-connections* true]
+            (@(resolve 'metabase.driver/can-connect-with-details?) engine details))
+    "Unable to connect to Metabase DB.")
+  (log/info "Verify Database Connection ... CHECK"))
 
 (defn setup-db
   "Do general perparation of database by validating that we can connect.
@@ -153,12 +159,7 @@
              auto-migrate true}}]
   (reset! setup-db-has-been-called? true)
 
-  ;; Test DB connection and throw exception if we have any troubles connecting
-  (log/info "Verifying Database Connection ...")
-  (assert (db-can-connect? {:engine  (:type db-details)
-                            :details db-details})
-    "Unable to connect to Metabase DB.")
-  (log/info "Verify Database Connection ... CHECK")
+  (verify-db-connection (:type db-details) db-details)
 
   ;; Run through our DB migration process and make sure DB is fully prepared
   (if auto-migrate
@@ -180,7 +181,8 @@
 
   ;; Do any custom code-based migrations now that the db structure is up to date
   ;; NOTE: we use dynamic resolution to prevent circular dependencies
-  ((u/runtime-resolved-fn 'metabase.db.migrations 'run-all)))
+  (require 'metabase.db.migrations)
+  (@(resolve 'metabase.db.migrations/run-all)))
 
 (defn setup-db-if-needed [& args]
   (when-not @setup-db-has-been-called?

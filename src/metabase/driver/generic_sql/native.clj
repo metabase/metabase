@@ -18,11 +18,11 @@
 (defn process-and-run
   "Process and run a native (raw SQL) QUERY."
   [{{sql :query} :native, database-id :database, :as query}]
-  (try (let [database                            (sel :one :fields [Database :engine :details] :id database-id)
-             db-conn                             (-> database
-                                                     db->korma-db
-                                                     korma.db/get-connection)
-             {:keys [features set-timezone-sql]} (driver/engine->driver (:engine database))]
+  (try (let [database                               (sel :one :fields [Database :engine :details] :id database-id)
+             db-conn                                (-> database
+                                                        db->korma-db
+                                                        korma.db/get-connection)
+             {:keys [set-timezone-sql], :as driver} (driver/engine->driver (:engine database))]
 
          (jdbc/with-db-transaction [t-conn db-conn]
            (let [^java.sql.Connection jdbc-connection (:connection t-conn)]
@@ -32,7 +32,7 @@
                ;; Set the timezone if applicable
                (when-let [timezone (driver/report-timezone)]
                  (when (and (seq timezone)
-                            (contains? features :set-timezone))
+                            (contains? (driver/features driver) :set-timezone))
                    (log/debug (u/format-color 'green "%s" set-timezone-sql))
                    (try (jdbc/db-do-prepared t-conn set-timezone-sql [timezone])
                         (catch Throwable e

@@ -6,6 +6,7 @@
                           [dashboard :as dashboard]
                           [database :as database]
                           [dataset :as dataset]
+                          [email :as email]
                           [field :as field]
                           [foreignkey :as fk]
                           [notify :as notify]
@@ -33,6 +34,7 @@
   (context "/dashboard"    [] (+auth dashboard/routes))
   (context "/database"     [] (+auth database/routes))
   (context "/dataset"      [] (+auth dataset/routes))
+  (context "/email"        [] (+auth email/routes))
   (context "/field"        [] (+auth field/routes))
   (context "/foreignkey"   [] (+auth fk/routes))
   (GET     "/health"       [] (if ((resolve 'metabase.core/initialized?))

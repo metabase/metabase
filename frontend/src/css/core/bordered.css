@@ -70,6 +70,10 @@
     border-color: var(--error-color) !important;
 }
 
+.border-success {
+    border-color: var(--success-color) !important;
+}
+
 .border-hover:hover {
   border-color: color(var(--border-color) shade(20%));
 }

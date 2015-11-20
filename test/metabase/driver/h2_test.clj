@@ -1,6 +1,7 @@
 (ns metabase.driver.h2-test
   (:require [expectations :refer :all]
             [metabase.db :as db]
+            [metabase.driver :as driver]
             [metabase.driver.h2 :refer :all]
             [metabase.test.util :refer [resolve-private-fns]]))
 
@@ -26,7 +27,7 @@
 
 ;; Make sure we *cannot* connect to a non-existent database
 (expect :exception-thrown
-  (try ((:can-connect? h2) {:db (str (System/getProperty "user.dir") "/toucan_sightings")})
+  (try (driver/can-connect? h2 {:db (str (System/getProperty "user.dir") "/toucan_sightings")})
        (catch org.h2.jdbc.JdbcSQLException e
          (and (re-matches #"Database .+ not found .+" (.getMessage e))
               :exception-thrown))))
@@ -34,4 +35,4 @@
 ;; Check that we can connect to a non-existent Database when we enable potentailly unsafe connections (e.g. to the Metabase database)
 (expect true
   (binding [db/*allow-potentailly-unsafe-connections* true]
-    ((:can-connect? h2) {:db (str (System/getProperty "user.dir") "/pigeon_sightings")})))
+    (driver/can-connect? h2 {:db (str (System/getProperty "user.dir") "/pigeon_sightings")})))
