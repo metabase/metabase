@@ -201,4 +201,6 @@
           :string-length-fn          (constantly :CHAR_LENGTH)
           :unix-timestamp->timestamp unix-timestamp->timestamp}))
 
-(driver/register-driver! :postgres (PostgresDriver.))
+(defn driver-init
+  []
+  (driver/register-driver! :postgres (PostgresDriver.)))

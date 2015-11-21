@@ -231,22 +231,29 @@
   (swap! registered-drivers assoc engine driver-instance)
   (log/debug (format "Registered driver %s." engine)))
 
-(def ^:private load-driver-namespaces!
-  "Search the classpath for metabase driver namespaces and `require` them, so they are \"registered\" and can be used :heart_eyes_cat:"
-  (delay (doseq [namespce (filter (fn [ns-symb]
-                                    (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb)))
-                                  (ns-find/find-namespaces (classpath/classpath)))]
-           (require namespce))))
-
 (defn available-drivers
   "Info about available drivers."
   []
-  @load-driver-namespaces!
   (m/map-vals (fn [driver]
                 {:details-fields (details-fields driver)
                  :driver-name    (name driver)
                  :features       (features driver)})
               @registered-drivers))
+
+(defn find-and-load-drivers!
+  "Search Classpath for namespaces that start with `metabase.driver.`, then `require` them and look for the `driver-init`
+   function which provides a uniform way for Driver initialization to be done."
+  []
+  ;; TODO: at some point if we want to allow true 3rd party drivers we should provide a way for this loading to
+  ;;       include drivers defined in other namespace patterns, probabaly via some kind of config which is passed to us
+  (doseq [namespce (filter (fn [ns-symb]
+                             (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb)))
+                           (ns-find/find-namespaces (classpath/classpath)))]
+    (log/info "\tloading driver namespace: " namespce)
+    (require namespce)
+    ;; look for `driver-init` function in the namespace and call it if it exists
+    (when-let [init-fn (ns-resolve namespce 'driver-init)]
+      (init-fn))))
 
 (defn is-engine?
   "Is ENGINE a valid driver name?"

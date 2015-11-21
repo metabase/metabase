@@ -217,4 +217,6 @@
           :string-length-fn          (constantly :LENGTH)
           :unix-timestamp->timestamp unix-timestamp->timestamp}))
 
-(driver/register-driver! :h2 (H2Driver.))
+(defn driver-init
+  []
+  (driver/register-driver! :h2 (H2Driver.)))
