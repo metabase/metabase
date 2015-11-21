@@ -1,7 +1,9 @@
 (ns metabase.driver
-  (:require [clojure.math.numeric-tower :as math]
+  (:require [clojure.java.classpath :as classpath]
+            [clojure.math.numeric-tower :as math]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
+            [clojure.tools.namespace.find :as ns-find]
             [korma.core :as k]
             [medley.core :as m]
             [metabase.db :refer [ins sel upd]]
@@ -229,9 +231,17 @@
   (swap! registered-drivers assoc engine driver-instance)
   (log/debug (format "Registered driver %s." engine)))
 
+(def ^:private load-driver-namespaces!
+  "Search the classpath for metabase driver namespaces and `require` them, so they are \"registered\" and can be used :heart_eyes_cat:"
+  (delay (doseq [namespce (filter (fn [ns-symb]
+                                    (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb)))
+                                  (ns-find/find-namespaces (classpath/classpath)))]
+           (require namespce))))
+
 (defn available-drivers
   "Info about available drivers."
   []
+  @load-driver-namespaces!
   (m/map-vals (fn [driver]
                 {:details-fields (details-fields driver)
                  :driver-name    (name driver)
