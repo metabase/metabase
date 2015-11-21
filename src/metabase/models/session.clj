@@ -20,8 +20,10 @@
   "Retrieves the first Session `:id` for a given user (if available), or nil otherwise."
   [user-id]
   {:pre [(integer? user-id)]}
-  (k/select Session
-    (k/fields :id)
-    (k/where {:user_id user-id})
-    (k/order :created_at :ASC)
-    (k/limit 1)))
+  (-> (k/select Session
+        (k/fields :id)
+        (k/where {:user_id user-id})
+        (k/order :created_at :ASC)
+        (k/limit 1))
+      first
+      :id))
