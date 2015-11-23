@@ -62,7 +62,7 @@ export default class SchedulePicker extends Component {
             <div className="mt1">
                 <span className="h4 text-bold mr1">at</span>
                 <Select
-                    className="mr1"
+                    className="mr1 bg-white"
                     value={_.find(HOUR_OPTIONS, (o) => o.value === hour)}
                     options={HOUR_OPTIONS}
                     optionNameFn={o => o.name}
@@ -75,6 +75,7 @@ export default class SchedulePicker extends Component {
                     optionNameFn={o => o.name}
                     optionValueFn={o => o.value}
                     onChange={(o) => this.props.onPropertyChange("schedule_hour", hour + o * 12) }
+                    className="bg-white"
                 />
                 <div className="mt2 h4 text-bold text-grey-3">
                     {CHANNEL_NOUN_PLURAL[cs && cs.type] || "Messages"} will be sent at {hour}:00 {amPm ? "PM" : "AM"} {timezone}, your Metabase timezone.
@@ -89,7 +90,7 @@ export default class SchedulePicker extends Component {
             <div className="mt1">
                 <span className="h4 text-bold mr1">Sent</span>
                 <Select
-                    className="h4 text-bold"
+                    className="h4 text-bold bg-white"
                     value={channel.schedule_type}
                     options={channelSpec.schedules}
                     optionNameFn={o => capitalize(o)}
