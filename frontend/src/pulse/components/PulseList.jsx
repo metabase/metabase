@@ -52,7 +52,7 @@ export default class PulseList extends Component {
                 <LoadingAndErrorWrapper loading={!pulses}>
                 { () => pulses.length > 0 ?
                     <ul className="wrapper wrapper--trim">
-                        {pulses.slice().reverse().map(pulse =>
+                        {pulses.slice().sort((a,b) => b.created_at - a.created_at).map(pulse =>
                             <li key={pulse.id}>
                                 <PulseListItem
                                     pulse={pulse}
