@@ -38,6 +38,10 @@
   border-color: rgb(97,167,229) !important;
 }
 
+.PulseListItem button {
+  font-family: "Lato", Helvetica, sans-serif;
+}
+
 .bg-grey-0 {
   background-color: rgb(252,252,253);
 }
