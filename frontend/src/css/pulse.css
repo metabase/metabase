@@ -7,7 +7,7 @@
 }
 
 .PulseEdit-content {
-    max-width: 450px;
+    max-width: 510px;
     margin-left: 180px;
 }
 
@@ -57,6 +57,7 @@
 
 .DangerZone:hover {
   border-color: var(--error-color);
+  transition: border .3s ease-in;
 }
 
 .DangerZone .Button--danger {

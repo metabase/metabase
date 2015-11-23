@@ -123,14 +123,14 @@ export default class PulseEdit extends Component {
                         </ModalContent>
                     </ModalWithTrigger>
                 </div>
-                <div className="PulseEdit-content pt2">
+                <div className="PulseEdit-content pt2 pb4">
                     <PulseEditName {...this.props} setPulse={this.setPulse} />
                     <PulseEditCards {...this.props} setPulse={this.setPulse} />
                     <PulseEditChannels {...this.props} setPulse={this.setPulse} />
                     { pulse && pulse.id != null &&
-                        <div className="DangerZone mb2 p2 rounded bordered relative">
+                        <div className="DangerZone mb2 p3 rounded bordered relative">
                             <h3 className="text-error absolute top bg-white px1" style={{ marginTop: "-12px" }}>Danger Zone</h3>
-                            <div className="">
+                            <div className="ml1">
                                 <h4 className="text-bold mb1">Delete this pulse</h4>
                                 <div className="flex">
                                     <p className="h4 pr2">Stop delivery and delete this pulse. There's no undo, so be careful.</p>
