@@ -158,6 +158,4 @@
           :string-length-fn          (constantly :LEN)
           :unix-timestamp->timestamp unix-timestamp->timestamp}))
 
-(defn driver-init
-  []
-  (driver/register-driver! :sqlserver (SQLServerDriver.)))
+(driver/register-driver! :sqlserver (SQLServerDriver.))

@@ -137,6 +137,4 @@
           :string-length-fn          (constantly :LENGTH)
           :unix-timestamp->timestamp unix-timestamp->timestamp}))
 
-(defn driver-init
-  []
-  (driver/register-driver! :sqlite (SQLiteDriver.)))
+(driver/register-driver! :sqlite (SQLiteDriver.))

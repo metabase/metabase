@@ -161,6 +161,4 @@
           :sync-in-context                   sync-in-context
           :table-pks                         (constantly #{"_id"})}))
 
-(defn driver-init
-  []
-  (driver/register-driver! :mongo (MongoDriver.)))
+(driver/register-driver! :mongo (MongoDriver.))

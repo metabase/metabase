@@ -175,6 +175,4 @@
           :set-timezone-sql          (constantly "SET @@session.time_zone = ?;")
           :unix-timestamp->timestamp unix-timestamp->timestamp}))
 
-(defn driver-init
-  []
-  (driver/register-driver! :mysql (MySQLDriver.)))
+(driver/register-driver! :mysql (MySQLDriver.))
