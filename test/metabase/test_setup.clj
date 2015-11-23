@@ -67,7 +67,7 @@
 ;; # ------------------------------ FUNCTIONS THAT GET RUN ON TEST SUITE START / STOP ------------------------------
 
 ;; this is a little odd, but our normal `test-startup` function won't work for loading the drivers because
-;; they need to be loaded at compile time for some of the unit tests work work properly, so we put this here
+;; they need to be available at evaluation time for some of the unit tests work work properly, so we put this here
 (defonce ^:private loaded-drivers (driver/find-and-load-drivers!))
 
 (defn- load-test-data!
