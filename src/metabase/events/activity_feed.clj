@@ -7,7 +7,7 @@
             (metabase.models [activity :refer [Activity]]
                              [dashboard :refer [Dashboard]]
                              [database :refer [Database]]
-                             [session :refer [Session]])))
+                             [session :refer [Session first-session-for-user]])))
 
 
 (def activity-feed-topics
@@ -99,7 +99,7 @@
 (defn- process-user-activity [topic object]
   ;; we only care about login activity when its the users first session (a.k.a. new user!)
   (when (and (= :user-login topic)
-             (= (:session_id object) (db/sel :one :field [Session :id] :user_id (:user_id object))))
+             (= (:session_id object) (first-session-for-user (:user_id object))))
     (db/ins Activity
       :topic    :user-joined
       :user_id  (:user_id object)
