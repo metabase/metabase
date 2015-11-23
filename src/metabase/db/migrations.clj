@@ -3,7 +3,9 @@
   (:require [clojure.tools.logging :as log]
             [korma.core :as k]
             [metabase.db :as db]
-            (metabase.models [card :refer [Card]]
+            [metabase.events.activity-feed :refer [activity-feed-topics]]
+            (metabase.models [activity :refer [Activity]]
+                             [card :refer [Card]]
                              [database :refer [Database]]
                              [table :refer [Table]]
                              [setting :as setting])
@@ -87,3 +89,10 @@
   (when-not (setting/get :admin-email)
     (when-let [email (db/sel :one :field ['User :email] (k/where {:is_superuser true :is_active true}))]
       (setting/set :admin-email email))))
+
+
+;; Remove old `database-sync` activity feed entries
+(defmigration remove-database-sync-activity-entries
+  (when-not (contains? activity-feed-topics :database-sync-begin)
+    (k/delete Activity
+      (k/where {:topic "database-sync"}))))
