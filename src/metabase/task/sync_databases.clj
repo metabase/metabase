@@ -19,7 +19,7 @@
 (jobs/defjob SyncDatabases
   [ctx]
   (dorun
-   (for [database (db/sel :many Database :is_sample false)] ; skip Sample Dataset DB
+    (for [database (db/sel :many Database :is_sample false)] ; skip Sample Dataset DB
       (try
         ;; NOTE: this happens synchronously for now to avoid excessive load if there are lots of databases
         (driver/sync-database! database)
