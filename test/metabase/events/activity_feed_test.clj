@@ -184,44 +184,44 @@
         (select-keys [:topic :user_id :model :model_id :details]))))
 
 ;; `:database-sync-*` events
-(expect
-  [1
-   {:topic       :database-sync
-    :user_id     nil
-    :model       "database"
-    :model_id    (id)
-    :database_id (id)
-    :custom_id   "abc"
-    :details     {:status      "started"
-                  :name        (:name (db))
-                  :description (:description (db))
-                  :engine      (name (:engine (db)))}}
-   {:topic       :database-sync
-    :user_id     nil
-    :model       "database"
-    :model_id    (id)
-    :database_id (id)
-    :custom_id   "abc"
-    :details     {:status       "completed"
-                  :running_time 0
-                  :name         (:name (db))
-                  :description  (:description (db))
-                  :engine       (name (:engine (db)))}}]
-  (do
-    (k/delete Activity)
-    (let [_            (process-activity-event {:topic :database-sync-begin
-                                                :item  {:database_id (id) :custom_id "abc"}})
-          activity1    (-> (db/sel :one Activity :topic "database-sync")
-                           (select-keys [:topic :user_id :model :model_id :database_id :custom_id :details]))
-          _            (process-activity-event {:topic :database-sync-end
-                                                :item  {:database_id (id) :custom_id "abc"}})
-          activity2    (-> (db/sel :one Activity :topic "database-sync")
-                           (select-keys [:topic :user_id :model :model_id :database_id :custom_id :details])
-                           (assoc-in [:details :running_time] 0))
-          activity-cnt (:cnt (first (k/select Activity (k/aggregate (count :*) :cnt) (k/where {:topic "database-sync"}))))]
-      [activity-cnt
-       activity1
-       activity2])))
+;(expect
+;  [1
+;   {:topic       :database-sync
+;    :user_id     nil
+;    :model       "database"
+;    :model_id    (id)
+;    :database_id (id)
+;    :custom_id   "abc"
+;    :details     {:status      "started"
+;                  :name        (:name (db))
+;                  :description (:description (db))
+;                  :engine      (name (:engine (db)))}}
+;   {:topic       :database-sync
+;    :user_id     nil
+;    :model       "database"
+;    :model_id    (id)
+;    :database_id (id)
+;    :custom_id   "abc"
+;    :details     {:status       "completed"
+;                  :running_time 0
+;                  :name         (:name (db))
+;                  :description  (:description (db))
+;                  :engine       (name (:engine (db)))}}]
+;  (do
+;    (k/delete Activity)
+;    (let [_            (process-activity-event {:topic :database-sync-begin
+;                                                :item  {:database_id (id) :custom_id "abc"}})
+;          activity1    (-> (db/sel :one Activity :topic "database-sync")
+;                           (select-keys [:topic :user_id :model :model_id :database_id :custom_id :details]))
+;          _            (process-activity-event {:topic :database-sync-end
+;                                                :item  {:database_id (id) :custom_id "abc"}})
+;          activity2    (-> (db/sel :one Activity :topic "database-sync")
+;                           (select-keys [:topic :user_id :model :model_id :database_id :custom_id :details])
+;                           (assoc-in [:details :running_time] 0))
+;          activity-cnt (:cnt (first (k/select Activity (k/aggregate (count :*) :cnt) (k/where {:topic "database-sync"}))))]
+;      [activity-cnt
+;       activity1
+;       activity2])))
 
 ;; `:install` event
 (expect
