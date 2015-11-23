@@ -247,7 +247,7 @@
   (doseq [namespce (filter (fn [ns-symb]
                              (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb)))
                            (ns-find/find-namespaces (classpath/classpath)))]
-    (log/info "\tloading driver namespace: " namespce)
+    (log/info "loading driver namespace: " namespce)
     (require namespce)))
 
 (defn is-engine?
