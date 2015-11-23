@@ -55,7 +55,7 @@ export default class MetadataTable extends Component {
                 <span className="border-left mx2">
                     <span className="mx2 text-uppercase text-grey-3">Why Hide?</span>
                     {this.renderVisibilityType("Technical Data", "technical")}
-                    {this.renderVisibilityType("Irrellevant/Cruft", "cruft")}
+                    {this.renderVisibilityType("Irrelevant/Cruft", "cruft")}
                 </span>
             );
         }
