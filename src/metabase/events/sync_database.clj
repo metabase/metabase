@@ -10,7 +10,8 @@
 
 (def sync-database-topics
   "The `Set` of event topics which are subscribed to for use in database syncing."
-  #{:database-create})
+  #{:database-create
+    :database-trigger-sync})
 
 (def ^:private sync-database-channel
   "Channel for receiving event notifications we want to subscribe to for database sync events."
@@ -28,7 +29,10 @@
     (when-let [{topic :topic object :item} sync-database-event]
       (when-let [database (db/sel :one Database :id (events/object->model-id topic object))]
         ;; just kick off a sync on another thread
-        (future (driver/sync-database! database))))
+        (future (try
+                  (driver/sync-database! database)
+                  (catch Throwable t
+                    (log/error (format "Error syncing Database: %d" (:id database)) t))))))
     (catch Throwable e
       (log/warn (format "Failed to process sync-database event. %s" (:topic sync-database-event)) e))))
 
