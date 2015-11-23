@@ -87,7 +87,7 @@ export default class PulseListChannel extends Component {
                         { subscribed ?
                             <button className="rounded bg-green text-white text-bold flex align-center">
                                 <span className="pl2">You get this {channel.channel_type}</span>
-                                <Icon className="p2 text-grey-1 text-hover-white cursor-pointer" name="close" width={12} height={12} onClick={this.unsubscribe}/>
+                                <Icon className="p2 text-grey-1 text-white-hover cursor-pointer" name="close" width={12} height={12} onClick={this.unsubscribe}/>
                             </button>
                         :
                             <button className="rounded bordered bg-white text-default text-bold flex align-center cursor-pointer" onClick={this.subscribe}>

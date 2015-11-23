@@ -7,7 +7,7 @@
 }
 
 .PulseEdit-content {
-    max-width: 450px;
+    max-width: 510px;
     margin-left: 180px;
 }
 
@@ -38,6 +38,10 @@
   border-color: rgb(97,167,229) !important;
 }
 
+.PulseListItem button {
+  font-family: "Lato", Helvetica, sans-serif;
+}
+
 .bg-grey-0 {
   background-color: rgb(252,252,253);
 }
@@ -53,6 +57,7 @@
 
 .DangerZone:hover {
   border-color: var(--error-color);
+  transition: border .3s ease-in;
 }
 
 .DangerZone .Button--danger {
