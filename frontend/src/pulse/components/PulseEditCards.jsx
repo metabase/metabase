@@ -3,6 +3,9 @@ import React, { Component, PropTypes } from "react";
 import CardPicker from "./CardPicker.jsx";
 import PulseCardPreview from "./PulseCardPreview.jsx";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
+
 export default class PulseEditCards extends Component {
     constructor(props) {
         super(props);
@@ -18,6 +21,8 @@ export default class PulseEditCards extends Component {
             ...pulse,
             cards: [...pulse.cards.slice(0, index), { id: cardId }, ...pulse.cards.slice(index + 1)]
         });
+
+        MetabaseAnalytics.trackEvent((this.props.pulseId) ? "PulseEdit" : "PulseCreate", "AddCard", index);
     }
 
     removeCard(index) {
@@ -26,6 +31,8 @@ export default class PulseEditCards extends Component {
             ...pulse,
             cards: [...pulse.cards.slice(0, index), ...pulse.cards.slice(index + 1)]
         });
+
+        MetabaseAnalytics.trackEvent((this.props.pulseId) ? "PulseEdit" : "PulseCreate", "RemoveCard", index);
     }
 
     render() {
