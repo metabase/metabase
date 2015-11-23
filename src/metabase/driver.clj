@@ -231,22 +231,24 @@
   (swap! registered-drivers assoc engine driver-instance)
   (log/debug (format "Registered driver %s." engine)))
 
-(def ^:private load-driver-namespaces!
-  "Search the classpath for metabase driver namespaces and `require` them, so they are \"registered\" and can be used :heart_eyes_cat:"
-  (delay (doseq [namespce (filter (fn [ns-symb]
-                                    (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb)))
-                                  (ns-find/find-namespaces (classpath/classpath)))]
-           (require namespce))))
-
 (defn available-drivers
   "Info about available drivers."
   []
-  @load-driver-namespaces!
   (m/map-vals (fn [driver]
                 {:details-fields (details-fields driver)
                  :driver-name    (name driver)
                  :features       (features driver)})
               @registered-drivers))
+
+(defn find-and-load-drivers!
+  "Search Classpath for namespaces that start with `metabase.driver.`, then `require` them and look for the `driver-init`
+   function which provides a uniform way for Driver initialization to be done."
+  []
+  (doseq [namespce (filter (fn [ns-symb]
+                             (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb)))
+                           (ns-find/find-namespaces (classpath/classpath)))]
+    (log/info "loading driver namespace: " namespce)
+    (require namespce)))
 
 (defn is-engine?
   "Is ENGINE a valid driver name?"

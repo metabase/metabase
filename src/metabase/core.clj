@@ -15,6 +15,7 @@
             [medley.core :as m]
             (metabase [config :as config]
                       [db :as db]
+                      [driver :as driver]
                       [events :as events]
                       [middleware :as mb-middleware]
                       [routes :as routes]
@@ -121,6 +122,9 @@
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
   (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable destroy))
   (reset! metabase-initialization-progress 0.3)
+
+  ;; Load up all of our Database drivers, which are used for app db work
+  (driver/find-and-load-drivers!)
 
   ;; startup database.  validates connection & runs any necessary migrations
   (db/setup-db :auto-migrate (config/config-bool :mb-db-automigrate))
