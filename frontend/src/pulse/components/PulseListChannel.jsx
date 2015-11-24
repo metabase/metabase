@@ -59,7 +59,7 @@ export default class PulseListChannel extends Component {
         }
 
         return (
-            <div className="h4 text-grey-4 flex align-center">
+            <div className="h4 text-grey-4 py2 flex align-center">
                 { channelIcon && <Icon className="mr1" name={channelIcon} width={24} height={24}/> }
                 <span>
                     {channelVerb + " "}
@@ -85,15 +85,15 @@ export default class PulseListChannel extends Component {
                 { subscribable &&
                     <div className="flex-align-right">
                         { subscribed ?
-                            <button className="rounded bg-green text-white text-bold flex align-center">
-                                <span className="pl2">You get this {channel.channel_type}</span>
-                                <Icon className="p2 text-grey-1 text-white-hover cursor-pointer" name="close" width={12} height={12} onClick={this.unsubscribe}/>
-                            </button>
+                            <div className="inline-block rounded clearfix bg-green text-white text-bold">
+                                <div className="float-left py2 pl2">You get this {channel.channel_type}</div>
+                                <Icon className="float-right p2 text-grey-1 text-white-hover cursor-pointer" name="close" width={12} height={12} onClick={this.unsubscribe}/>
+                            </div>
                         :
-                            <button className="rounded bordered bg-white text-default text-bold flex align-center cursor-pointer" onClick={this.subscribe}>
-                                <Icon className="p2" name="add" width={12} height={12}/>
-                                <span className="pr2">Get this {channel.channel_type}</span>
-                            </button>
+                            <div className="inline-block clearfix rounded bordered bg-white text-default text-bold cursor-pointer" onClick={this.subscribe}>
+                                <Icon className="p2 float-left" name="add" width={12} height={12}/>
+                                <div className="py1 pr2 float-right">Get this {channel.channel_type}</div>
+                            </div>
                         }
                     </div>
                 }

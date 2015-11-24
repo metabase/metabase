@@ -21,7 +21,7 @@ var Pulse = angular.module('metabase.pulse', []);
 
 Pulse.config(['$routeProvider', function ($routeProvider) {
     $routeProvider.when('/pulse', {
-        template: '<div mb-redux-component class="flex flex-column flex-full" />',
+        template: '<div mb-redux-component />',
         controller: ['$scope', '$location', '$route', '$routeParams', 'AppState',
             function($scope, $location, $route, $routeParams, AppState) {
                 $scope.Component = PulseListApp;
