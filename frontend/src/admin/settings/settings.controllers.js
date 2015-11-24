@@ -110,8 +110,8 @@ const SECTIONS = [
             {
                 key: "slack-token",
                 display_name: "Slack API Token",
-                description: "Slack API bearer token obtained from https://api.slack.com/web#authentication",
-                placeholder: "a-bunch-of-crazy-letters-and-numbers",
+                description: "",
+                placeholder: "Enter the token you recieved from Slack",
                 type: "string",
                 required: true,
                 autoFocus: true

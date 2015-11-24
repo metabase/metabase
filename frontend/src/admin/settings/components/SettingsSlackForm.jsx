@@ -1,11 +1,14 @@
 import React, { Component, PropTypes } from "react";
-import cx from "classnames";
-import _ from "underscore";
 
 import MetabaseUtils from "metabase/lib/utils";
 import SettingsEmailFormElement from "./SettingsEmailFormElement.jsx";
 
 import Icon from "metabase/components/Icon.jsx";
+
+import RetinaImage from "react-retina-image";
+
+import cx from "classnames";
+import _ from "underscore";
 
 export default class SettingsSlackForm extends Component {
 
@@ -168,13 +171,23 @@ export default class SettingsSlackForm extends Component {
 
         return (
             <form noValidate>
-                <div className="px2">
-                    <h1>Metabase 👍 😸 Slack</h1>
+                <div className="px2" style={{maxWidth: "585px"}}>
+                    <h1>
+                        Metabase
+                        <RetinaImage
+                            className="mx1"
+                            src="/app/img/slack_emoji.png"
+                            width={79}
+                            forceOriginalDimensions={false /* broken in React v0.13 */}
+                        />
+                        Slack
+                    </h1>
                     <h3 className="text-grey-1">Answers sent right to your Slack #channels</h3>
 
                     <div className="pt3">
-                        <a href="https://api.slack.com/web#authentication" target="_blank" className="Button Button--primary inline">
-                            Get an API token from Slack
+                        <a href="https://api.slack.com/web#authentication" target="_blank" className="Button Button--primary" style={{padding:0}}>
+                            <div className="float-left py2 pl2">Get an API token from Slack</div>
+                            <Icon className="float-right p2 text-white cursor-pointer" style={{opacity:0.6}} name="external" width={18} height={18}/>
                         </a>
                     </div>
                     <div className="py2">
