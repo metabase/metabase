@@ -178,7 +178,8 @@
   [id]
   (let-404 [db (Database id)]
     (write-check db)
-    (future (driver/sync-database! db))) ; run sync-tables asynchronously
+    ;; just publish a message and let someone else deal with the logistics
+    (events/publish-event :database-trigger-sync db))
   {:status :ok})
 
 

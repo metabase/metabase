@@ -47,8 +47,8 @@
 (defn- mark-inactive-tables!
   "Mark any `Tables` that are no longer active as such. These are ones that exist in the DB but didn't come back from `active-tables`."
   [database active-tables existing-table->id]
-  (doseq [[[{table :name, schema :schema, :as table}] table-id] existing-table->id]
-    (when-not (contains? active-tables table)
+  (doseq [[{table :name, schema :schema, :as table} table-id] existing-table->id]
+    (when-not (contains? (set (map :name active-tables)) table)
       (upd Table table-id :active false)
       (log/info (u/format-color 'cyan "Marked table %s.%s%s as inactive." (:name database) (if schema (str schema \.) "") table))
 
