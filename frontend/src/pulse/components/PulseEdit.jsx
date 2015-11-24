@@ -6,6 +6,7 @@ import PulseEditChannels from "./PulseEditChannels.jsx";
 import WhatsAPulse from "./WhatsAPulse.jsx";
 
 import ActionButton from "metabase/components/ActionButton.jsx";
+import MetabaseAnalytics from "metabase/lib/analytics";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm.jsx";
@@ -41,15 +42,23 @@ export default class PulseEdit extends Component {
         this.props.dispatch(fetchCards());
         this.props.dispatch(fetchUsers());
         this.props.dispatch(fetchPulseFormInput());
+
+        MetabaseAnalytics.trackEvent((this.props.pulseId) ? "PulseEdit" : "PulseCreate", "Start");
     }
 
     async save() {
         await this.props.dispatch(saveEditingPulse());
+
+        MetabaseAnalytics.trackEvent((this.props.pulseId) ? "PulseEdit" : "PulseCreate", "Complete", this.props.pulse.cards.length);
+
         this.props.onChangeLocation("/pulse");
     }
 
     async delete() {
         await this.props.dispatch(deletePulse(this.props.pulse.id));
+
+        MetabaseAnalytics.trackEvent("PulseDelete", "Complete");
+
         this.props.onChangeLocation("/pulse");
     }
 

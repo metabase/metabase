@@ -1,5 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
+import _ from "underscore";
+
 import RecipientPicker from "./RecipientPicker.jsx";
 import SchedulePicker from "./SchedulePicker.jsx";
 import SetupMessage from "./SetupMessage.jsx";
@@ -7,6 +9,9 @@ import SetupMessage from "./SetupMessage.jsx";
 import Select from "metabase/components/Select.jsx";
 import Toggle from "metabase/components/Toggle.jsx";
 import Icon from "metabase/components/Icon.jsx";
+
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 
 const CHANNEL_ICONS = {
     email: "mail",
@@ -51,6 +56,8 @@ export default class PulseEditChannels extends Component {
         };
 
         this.props.setPulse({ ...pulse, channels: pulse.channels.concat(channel) });
+
+        MetabaseAnalytics.trackEvent((this.props.pulseId) ? "PulseEdit" : "PulseCreate", "AddChannel", type);
     }
 
     removeChannel(index) {
@@ -61,6 +68,11 @@ export default class PulseEditChannels extends Component {
     onChannelPropertyChange(index, name, value) {
         let { pulse } = this.props;
         let channels = [...pulse.channels];
+
+        if (_.contains(['schedule_type', 'schedule_day', 'schedule_hour'], name)) {
+            MetabaseAnalytics.trackEvent((this.props.pulseId) ? "PulseEdit" : "PulseCreate", channels[index].channel_type+":"+name, value);
+        }
+
         channels[index] = { ...channels[index], [name]: value };
         this.props.setPulse({ ...pulse, channels });
     }
@@ -71,6 +83,8 @@ export default class PulseEditChannels extends Component {
         } else {
             let { pulse } = this.props;
             this.props.setPulse({ ...pulse, channels: pulse.channels.filter((c) => c.channel_type !== type) });
+
+            MetabaseAnalytics.trackEvent((this.props.pulseId) ? "PulseEdit" : "PulseCreate", "RemoveChannel", type);
         }
     }
 
@@ -103,6 +117,7 @@ export default class PulseEditChannels extends Component {
                     <div>
                         <div className="h4 text-bold mb1">To:</div>
                         <RecipientPicker
+                            isNewPulse={this.props.pulseId === undefined}
                             recipients={channel.recipients}
                             recipientTypes={channelSpec.recipients}
                             users={this.props.userList}

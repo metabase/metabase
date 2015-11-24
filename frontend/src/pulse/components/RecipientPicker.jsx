@@ -4,6 +4,8 @@ import Icon from "metabase/components/Icon.jsx";
 import Popover from "metabase/components/Popover.jsx";
 import UserAvatar from "metabase/components/UserAvatar.jsx";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 import _ from "underscore";
 import cx from "classnames";
 
@@ -128,10 +130,14 @@ export default class RecipientPicker extends Component {
         // recipient is a user object, or plain object containing "email" key
         this.props.onRecipientsChange(this.props.recipients.concat(recipient));
         this.setInputValue("");
+
+        MetabaseAnalytics.trackEvent((this.props.isNewPulse) ? "PulseCreate" : "PulseEdit", "AddRecipient", (recipient.id) ? "user" : "email");
     }
 
     removeRecipient(recipient) {
         this.props.onRecipientsChange(this.props.recipients.filter(r => recipient.id != null ? recipient.id !== r.id : recipient.email !== r.email));
+
+        MetabaseAnalytics.trackEvent((this.props.isNewPulse) ? "PulseCreate" : "PulseEdit", "RemoveRecipient", (recipient.id) ? "user" : "email");
     }
 
     render() {
