@@ -139,7 +139,7 @@
 
 
 (defn render-table
-  [card rows cols render-img col-indexes bar-column]
+  [card rows cols render-img include-buttons col-indexes bar-column]
   (let [max-value (if bar-column (apply max (map bar-column rows)))]
     [:table {:style (str "padding-bottom: 8px; border-bottom: 4px solid " color-grey-1 ";")}
       [:thead
@@ -161,7 +161,7 @@
           rows)]]))
 
 (defn render-truncation-warning
-  [card {:keys [cols rows] :as data} render-img rows-limit cols-limit]
+  [card {:keys [cols rows] :as data} render-img include-buttons rows-limit cols-limit]
   (if (or (> (count rows) rows-limit)
           (> (count cols) cols-limit))
     [:div {:style "padding-top: 16px;"}
@@ -175,26 +175,27 @@
           "Showing " [:strong {:style (str "color: " color-grey-3 ";")} (format-number cols-limit)]
           " of "     [:strong {:style (str "color: " color-grey-3 ";")} (format-number (count cols))]
           " columns."])
-      [:div (render-button "View all" (card-href card) "external_link" render-img)]]))
+      (if include-buttons
+        [:div (render-button "View all" (card-href card) "external_link" render-img)])]))
 
 (defn render-card-table
-  [card {:keys [cols rows] :as data} render-img]
+  [card {:keys [cols rows] :as data} render-img include-buttons]
   (let [truncated-rows (take rows-limit rows)
         truncated-cols (take cols-limit cols)
         col-indexes (map-indexed (fn [i _] i) truncated-cols)]
     [:div
-      (render-table card truncated-rows truncated-cols render-img col-indexes nil)
-      (render-truncation-warning card data render-img rows-limit cols-limit)]))
+      (render-table card truncated-rows truncated-cols render-img include-buttons col-indexes nil)
+      (render-truncation-warning card data render-img include-buttons rows-limit cols-limit)]))
 
 (defn render-card-bar
-  [card {:keys [cols rows] :as data} render-img]
+  [card {:keys [cols rows] :as data} render-img include-buttons]
   (let [truncated-rows (take rows-limit rows)]
     [:div
-      (render-table card truncated-rows cols render-img [0 1] second)
-      (render-truncation-warning card data render-img rows-limit 2)]))
+      (render-table card truncated-rows cols render-img include-buttons [0 1] second)
+      (render-truncation-warning card data render-img include-buttons rows-limit 2)]))
 
 (defn render-card-scalar
-  [card {:keys [cols rows] :as data} render-img]
+  [card {:keys [cols rows] :as data} render-img include-buttons]
   [:div {:style scalar-style}
     (-> rows first first (format-cell (first cols)) h)])
 
@@ -247,11 +248,11 @@
         300)))
 
 (defn render-card-sparkline
-  [card {:keys [rows cols] :as data} render-img]
+  [card {:keys [rows cols] :as data} render-img include-buttons]
   [:div
     [:img {:style "display: block" :src (render-img (render-sparkline-with-axis-to-png card data))}]
     [:div {:style "margin-top: 20px; margin-left: 60px;"}
-      (render-table card (reverse (take-last 2 rows)) cols render-img [0 1] nil)]])
+      (render-table card (reverse (take-last 2 rows)) cols render-img include-buttons [0 1] nil)]])
 
 (defn detect-pulse-card-type
   [card data]
@@ -269,17 +270,17 @@
       :else                                                               :table)))
 
 (defn render-pulse-card
-  [card data include-title render-img]
+  [card data render-img include-title include-buttons]
   (try
     [:div {:style (str section-style "margin: 16px;")}
       (if include-title [:div {:style "margin-bottom: 16px;"}
         [:a {:style header-style :href (card-href card)}
           (-> card :name h)]])
       (case (detect-pulse-card-type card data)
-        :scalar    (render-card-scalar    card data render-img)
-        :sparkline (render-card-sparkline card data render-img)
-        :bar       (render-card-bar       card data render-img)
-        :table     (render-card-table     card data render-img)
+        :scalar    (render-card-scalar    card data render-img include-buttons)
+        :sparkline (render-card-sparkline card data render-img include-buttons)
+        :bar       (render-card-bar       card data render-img include-buttons)
+        :table     (render-card-table     card data render-img include-buttons)
         [:div {:style (str font-style "color: #F9D45C; font-weight: 700;")}
           "We were unable to display this card." [:br] "Please view this card in Metabase."])]
   (catch Throwable e
@@ -287,9 +288,9 @@
     [:div {:style (str font-style "color: #EF8C8C; font-weight: 700;")} "An error occurred while displaying this card."])))
 
 (defn- render-pulse-section
-  [render-img {:keys [card result]}]
+  [render-img include-buttons {:keys [card result]}]
   [:div {:style "margin-top: 10px; margin-bottom: 20px;"}
-    (render-pulse-card card (:data result) true render-img)])
+    (render-pulse-card card (:data result) render-img true include-buttons)])
 
 ;; HACK: temporary workaround to postal requiring a file as the attachment
 (defn- write-byte-array-to-temp-file
@@ -307,7 +308,7 @@
   (let [images (atom [])
         render-img (fn [bytes] (reset! images (conj @images bytes)) (str "cid:IMAGE_" (-> @images count dec)))
         header [:h1 {:style (str section-style "margin: 16px; color: " color-grey-4 ";")} (-> pulse :name h)]
-        body (apply vector :div (mapv (partial render-pulse-section render-img) results))
+        body (apply vector :div (mapv (partial render-pulse-section render-img true) results))
         content (html [:html [:body [:div header body]]])]
     (apply vector {:type "text/html" :content content}
                   (map-indexed (fn [idx bytes] {:type :inline
@@ -318,4 +319,4 @@
 
 (defn render-pulse-card-to-png
   [card data include-title]
-  (render-html-to-png (render-pulse-card card data include-title render-img-data-uri) card-width))
+  (render-html-to-png (render-pulse-card card data render-img-data-uri include-title false) card-width))
