@@ -104,7 +104,7 @@ export default class Navbar extends Component {
                     </li>
                     <li className="pl3">
                         <DashboardsDropdown {...this.props}>
-                            <a style={this.styles.navButton} className="NavDropdown-button NavItem text-white text-bold cursor-pointer px2 flex align-center transition-background">
+                            <a style={this.styles.navButton} className={cx("NavDropdown-button NavItem text-white text-bold cursor-pointer px2 flex align-center transition-background", {"NavItem--selected": this.isActive("/dash/")})}>
                                 <span className="NavDropdown-button-layer">
                                     Dashboards
                                     <Icon className="ml1" name={'chevrondown'} width={8} height={8}></Icon>
@@ -113,10 +113,10 @@ export default class Navbar extends Component {
                         </DashboardsDropdown>
                     </li>
                     <li className="pl1">
-                        <a style={this.styles.navButton} className="NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2 transition-background" href="/card/">Questions</a>
+                        <a style={this.styles.navButton} className={cx("NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2 transition-background", {"NavItem--selected": this.props.location.path() === "/card/"})} href="/card/">Questions</a>
                     </li>
                     <li className="pl1">
-                        <a style={this.styles.navButton} className="NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2 transition-background" href="/pulse/">Pulses</a>
+                        <a style={this.styles.navButton} className={cx("NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2 transition-background", {"NavItem--selected": this.props.location.path() === "/pulse/"})} href="/pulse/">Pulses</a>
                     </li>
                     <li className="pl3">
                         <a style={this.styles.newQuestion} className="NavNewQuestion rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration transition-all" href="/q">New <span className="hide sm-show">Question</span></a>
