@@ -157,7 +157,7 @@
     (fn [{:keys [position clause-position field-name source], :as field}]
       [(source-importance field)
        (or position
-           (when (= source :fields)
+           (when (contains? #{:fields :breakout} source)
              clause-position)
            Integer/MAX_VALUE)
        (special-type-importance field)
