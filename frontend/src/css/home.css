@@ -19,10 +19,10 @@
 .NavItem {
     border-radius: 8px;
 }
-
-.NavItem:hover {
+.NavItem:hover, .NavItem.NavItem--selected {
     background-color: rgba(255, 255, 255, 0.08);
 }
+
 .NavNewQuestion {
     box-shadow: 0px 2px 2px 0px rgba(77, 136, 189, 0.69);
 }

@@ -20,7 +20,7 @@ const reducer = combineReducers(reducers);
 var Pulse = angular.module('metabase.pulse', []);
 
 Pulse.config(['$routeProvider', function ($routeProvider) {
-    $routeProvider.when('/pulse', {
+    $routeProvider.when('/pulse/', {
         template: '<div mb-redux-component />',
         controller: ['$scope', '$location', '$route', '$routeParams', 'AppState',
             function($scope, $location, $route, $routeParams, AppState) {
