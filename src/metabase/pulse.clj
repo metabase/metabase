@@ -231,7 +231,7 @@
         ys' (map #(/ (- % ymin) yrange) ys)]
     (render-html-to-png
       [:div {:style (str font-style "color: " color-grey-2 ";") }
-        [:div {:style "display: inline-block; position: relative; margin-left: 40px;" }
+        [:div {:style "display: inline-block; position: relative; margin-left: 50px;" }
           [:div {:style "position: relative;"}
             [:div {:style "position: absolute; height: 100%; text-align: right; background-color: red;"}
               [:div {:style "position: absolute; right: 0;"} (format-number-short ymax)]
@@ -250,7 +250,7 @@
   [card {:keys [rows cols] :as data} render-img]
   [:div
     [:img {:style "display: block" :src (render-img (render-sparkline-with-axis-to-png card data))}]
-    [:div {:style "margin-top: 20px; margin-left: 30px;"}
+    [:div {:style "margin-top: 20px; margin-left: 60px;"}
       (render-table card (reverse (take-last 2 rows)) cols render-img [0 1] nil)]])
 
 (defn detect-pulse-card-type
