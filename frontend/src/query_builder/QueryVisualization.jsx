@@ -194,7 +194,7 @@ export default class QueryVisualization extends Component {
 
         if(this.props.isRunning) {
             loading = (
-                <div className="Loading absolute top left bottom right flex flex-column layout-centered text-brand">
+                <div className="Loading absolute top left bottom right flex flex-column layout-centered text-brand z2">
                     <LoadingSpinner />
                     <h2 className="Loading-message text-brand text-uppercase mt3">Doing science...</h2>
                 </div>
@@ -348,21 +348,14 @@ export default class QueryVisualization extends Component {
             }
         }
 
-        var wrapperClasses = cx({
-            'wrapper': true,
-            'full': true,
-            'relative': true,
-            'mb2': true,
+        var wrapperClasses = cx('wrapper full relative mb2 z1', {
             'flex': !this.props.isObjectDetail,
             'flex-column': !this.props.isObjectDetail
         });
 
-        var visualizationClasses = cx({
-            'flex': true,
-            'flex-full': true,
-            'Visualization': true,
+        var visualizationClasses = cx('flex flex-full Visualization z1', {
             'Visualization--errors': (this.props.result && this.props.result.error),
-            'Visualization--loading': this.props.isRunning,
+            'Visualization--loading': this.props.isRunning
         });
 
         return (
