@@ -120,8 +120,8 @@ const SECTIONS = [
     }
 ];
 
-SettingsAdminControllers.controller('SettingsEditor', ['$scope', '$location', 'Settings', 'Email', 'AppState', 'settings',
-    function($scope, $location, Settings, Email, AppState, settings) {
+SettingsAdminControllers.controller('SettingsEditor', ['$scope', '$location', 'Settings', 'Email', 'Slack', 'AppState', 'settings',
+    function($scope, $location, Settings, Email, Slack, AppState, settings) {
         $scope.SettingsEditor = SettingsEditor;
 
         if ('section' in $location.search()) {
@@ -137,6 +137,11 @@ SettingsAdminControllers.controller('SettingsEditor', ['$scope', '$location', 'S
 
         $scope.updateEmailSettings = async function(settings) {
             await Email.updateSettings(settings).$promise;
+            AppState.refreshSiteSettings();
+        }
+
+        $scope.updateSlackSettings = async function(settings) {
+            await Slack.updateSettings(settings).$promise;
             AppState.refreshSiteSettings();
         }
 
