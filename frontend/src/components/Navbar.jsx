@@ -104,7 +104,7 @@ export default class Navbar extends Component {
                     </li>
                     <li className="pl3">
                         <DashboardsDropdown {...this.props}>
-                            <a style={this.styles.navButton} className="NavDropdown-button NavItem text-white text-bold cursor-pointer px2 flex align-center transition-background">
+                            <a style={this.styles.navButton} className={cx("NavDropdown-button NavItem text-white text-bold cursor-pointer px2 flex align-center transition-background", {"NavItem--selected": this.isActive("/dash/")})}>
                                 <span className="NavDropdown-button-layer">
                                     Dashboards
                                     <Icon className="ml1" name={'chevrondown'} width={8} height={8}></Icon>
