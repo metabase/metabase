@@ -27,9 +27,13 @@ RUN ln -s /usr/bin/nodejs /usr/bin/node
 # add the application source to the image
 ADD . /app/source
 
+# build the app
+WORKDIR /app/source
+RUN bin/build
+
 # expose our default runtime port
 EXPOSE 3000
 
 # build and then run it
 WORKDIR /app/source
-ENTRYPOINT ["bash", "-c", "./bin/build && ./bin/start"]
+ENTRYPOINT ["./bin/start"]
