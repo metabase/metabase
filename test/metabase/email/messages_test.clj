@@ -23,10 +23,8 @@
     [{:from "notifications@metabase.com",
       :to ["test@test.com"],
       :subject "[Metabase] Password Reset Request",
-      :body [{:type "text/html; charset=utf-8",
-              :content (str "<html><body><p>You're receiving this e-mail because you or someone else has requested a password for your user account at test.domain.com. "
-                            "It can be safely ignored if you did not request a password reset. Click the link below to reset your password.</p>"
-                            "<p><a href=\"http://localhost/some/url\">http://localhost/some/url</a></p></body></html>")}]}]
+      :body [{:type "text/html; charset=utf-8"}]}]
   (with-fake-inbox
     (send-password-reset-email "test@test.com" "test.domain.com" "http://localhost/some/url")
-    (@inbox "test@test.com")))
+    (-> (@inbox "test@test.com")
+        (update-in [0 :body 0] dissoc :content))))
