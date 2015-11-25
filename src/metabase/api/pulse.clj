@@ -6,6 +6,7 @@
             [metabase.db :as db]
             [metabase.driver :as driver]
             [metabase.email :as email]
+            [metabase.events :as events]
             [metabase.integrations.slack :as slack]
             (metabase.models [card :refer [Card]]
                              [database :refer [Database]]
@@ -58,7 +59,10 @@
 (defendpoint DELETE "/:id"
   "Delete a `Pulse`."
   [id]
-  (db/cascade-delete Pulse :id id))
+  (let [pulse  (db/sel :one Pulse :id id)
+        result (db/cascade-delete Pulse :id id)]
+    (events/publish-event :pulse-delete (assoc pulse :actor_id *current-user-id*))
+    result))
 
 
 (defendpoint GET "/form_input"
