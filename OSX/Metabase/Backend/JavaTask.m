@@ -30,43 +30,14 @@ NSString *DBPath() {
 
 
 @interface JavaTask ()
-@property (strong, nonatomic, readwrite) NSPipe *pipe;
-@property (strong, nonatomic, readwrite) NSFileHandle *readHandle;
+@property (nonatomic, strong) NSPipe *pipe;
+@property (nonatomic, strong) NSFileHandle *readHandle;
 @end
 
 @implementation JavaTask
 
-#pragma mark - Lifecycle
-
-- (instancetype)init {
-	if (self = [super init]) {
-		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(fileHandleCompletedRead:) name:NSFileHandleReadCompletionNotification object:nil];
-	}
-	return self;
-}
-
 - (void)dealloc {
-	[[NSNotificationCenter defaultCenter] removeObserver:self];
 	[self terminate];
-}
-
-
-#pragma mark - Notifications
-
-- (void)fileHandleCompletedRead:(NSNotification *)notification {
-	if (!self.readHandle || notification.object != self.readHandle) return;
-	
-	__weak JavaTask *weakSelf = self;
-	dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
-		if (!weakSelf) return;
-		
-		NSData *data = notification.userInfo[NSFileHandleNotificationDataItem];
-		if (data.length) [weakSelf readHandleDidReadData:data];
-		
-		dispatch_async(dispatch_get_main_queue(), ^{
-			[weakSelf.readHandle readInBackgroundAndNotify];
-		});
-	});
 }
 
 
@@ -99,39 +70,38 @@ NSString *DBPath() {
 	_task = task;
 	
 	if (task) {
-		self.pipe					= [NSPipe pipe];
-		self.task.standardOutput	= self.pipe;
-		self.task.standardError		= self.pipe;
+		self.pipe			= [NSPipe pipe];
+		task.standardOutput = self.pipe;
+		task.standardError	= self.pipe;
 	}
 }
 
 - (void)setPipe:(NSPipe *)pipe {
 	self.readHandle = nil;
+	
 	_pipe = pipe;
 	
 	if (pipe) {
 		self.readHandle = pipe.fileHandleForReading;
-		__weak JavaTask *weakSelf = self;
-		dispatch_async(dispatch_get_main_queue(), ^{
-			if (weakSelf) [weakSelf.readHandle readInBackgroundAndNotify];
-		});
 	}
 }
 
 - (void)setReadHandle:(NSFileHandle *)readHandle {
-	// handle any remaining data in the read handle before closing, if applicable
-	if (_readHandle) {
-		NSData *data;
-		@try {
-			data = [_readHandle availableData];
-		}
-		@catch (NSException *exception) {}
-		
-		if (data.length) [self readHandleDidReadData:data];
-	}
-	
 	[_readHandle closeFile];
+	
 	_readHandle = readHandle;
+	
+	if (readHandle) {
+		__weak JavaTask *weakSelf = self;
+		dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
+			while (readHandle == weakSelf.readHandle) {
+				NSData *data = readHandle.availableData;
+				if (!data.length) return;
+				
+				[weakSelf readHandleDidReadData:data];
+			}
+		});
+	}
 }
 
 @end

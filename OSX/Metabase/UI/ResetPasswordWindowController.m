@@ -64,6 +64,7 @@
 #pragma mark - NSTextFieldDelegate
 
 - (void)controlTextDidChange:(NSNotification *)obj {
+	self.resetPasswordButton.title = @"Reset Password";
 	self.resetPasswordButton.enabled = self.emailAddressTextField.stringValue.length > 5;
 }
 

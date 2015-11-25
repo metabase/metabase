@@ -33,6 +33,7 @@ NSString *BaseURL() {
 @property (weak) IBOutlet NSButtonCell *refreshButtonCell;
 @property (weak) IBOutlet NSButtonCell *linkButtonCell;
 
+@property (nonatomic, strong) ResetPasswordWindowController *resetPasswordWindowController;
 @property (weak) LoadingView *loadingView;
 
 @property (nonatomic) BOOL loading;
@@ -181,6 +182,15 @@ NSString *BaseURL() {
 	self.loadingView.animate = loading;
 }
 
+- (void)setResetPasswordWindowController:(ResetPasswordWindowController *)resetPasswordWindowController {
+	[_resetPasswordWindowController.window close];
+	
+	_resetPasswordWindowController = resetPasswordWindowController;
+	
+	resetPasswordWindowController.delegate = self;
+	[resetPasswordWindowController.window makeKeyWindow];
+}
+
 
 #pragma mark - Actions
 
@@ -204,17 +214,17 @@ NSString *BaseURL() {
 }
 
 - (IBAction)resetPassword:(id)sender {
-	ResetPasswordWindowController *resetPasswordWindowController = [[ResetPasswordWindowController alloc] init];
-	resetPasswordWindowController.delegate = self;
-	[[NSApplication sharedApplication] runModalForWindow:resetPasswordWindowController.window];
+	self.resetPasswordWindowController = [[ResetPasswordWindowController alloc] init];
 }
 
 
 #pragma mark - ResetPasswordWindowControllerDelegate
 
 - (void)resetPasswordWindowController:(ResetPasswordWindowController *)resetPasswordWindowController didFinishWithResetToken:(NSString *)resetToken {
+	self.resetPasswordWindowController = nil;
+	
 	NSString *passwordResetURLString = [NSString stringWithFormat:@"%@/auth/reset_password/%@", BaseURL(), resetToken];
-	NSLog(@"Navigating to password reset URL: %@...", passwordResetURLString);
+	NSLog(@"Navigating to password reset URL '%@'...", passwordResetURLString);
 	
 	NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:passwordResetURLString]];
 	[self.webView.mainFrame loadRequest:request];

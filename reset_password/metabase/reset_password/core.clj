@@ -1,23 +1,22 @@
 (ns metabase.reset-password.core
   (:gen-class)
-  (:require [clojure.java.jdbc :as jdbc]))
+  (:require [metabase.db :as db]
+            [metabase.models.user :as user]))
 
-(defn- db-filepath->connection-details [filepath]
-  {:classname   "org.h2.Driver"
-   :subprotocol "h2"
-   :subname     (str "file:" filepath ";MV_STORE=FALSE;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1")})
-
-(defn- set-reset-token! [dbpath email-address reset-token]
-  (let [rows-affected (jdbc/execute! (db-filepath->connection-details dbpath) ["UPDATE CORE_USER SET RESET_TOKEN = ?, RESET_TRIGGERED = ? WHERE EMAIL = ?;" reset-token (System/currentTimeMillis) email-address])]
-    (when (not= rows-affected [1])
-      (throw (Exception. (format "No user found with email address '%s'. Please check the spelling and try again." email-address))))))
+(defn- set-reset-token!
+  "Set and return a new `reset_token` for the user with EMAIL-ADDRESS."
+  [email-address]
+  (let [user-id (or (db/sel :one :id 'User, :email email-address)
+                    (throw (Exception. (format "No user found with email address '%s'. Please check the spelling and try again." email-address))))]
+    (user/set-user-password-reset-token user-id)))
 
 (defn -main
-  [dbpath email-address]
+  [email-address]
+  (db/setup-db)
+  (println (format "Resetting password for %s..." email-address))
   (try
-    (let [reset-token (str (java.util.UUID/randomUUID))]
-      (set-reset-token! dbpath email-address reset-token)
-      (println (format "OK [[[%s]]]" reset-token)))
+    (println (format "OK [[[%s]]]" (set-reset-token! email-address)))
+    (System/exit 0)
     (catch Throwable e
       (println (format "FAIL [[[%s]]]" (.getMessage e)))
       (System/exit -1))))
