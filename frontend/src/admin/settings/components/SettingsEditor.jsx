@@ -59,7 +59,7 @@ export default class SettingsEditor extends Component {
 
         if (section.name === "Email") {
             return (
-                <div className="MetadataTable px2 flex-full">
+                <div className="px2">
                     <SettingsEmailForm
                         ref="emailForm"
                         elements={section.settings}
@@ -70,7 +70,7 @@ export default class SettingsEditor extends Component {
             );
         } else if (section.name === "Slack") {
             return (
-                <div className="MetadataTable px2 flex-full">
+                <div className="px2">
                     <SettingsSlackForm
                         ref="slackForm"
                         elements={section.settings}
@@ -84,7 +84,7 @@ export default class SettingsEditor extends Component {
             });
 
             return (
-                <div className="MetadataTable px2 flex-full">
+                <div className="px2">
                     <ul>{settings}</ul>
                 </div>
             );
