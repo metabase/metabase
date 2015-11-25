@@ -20,6 +20,8 @@
     :dashboard-add-cards
     :dashboard-remove-cards
     :install
+    :pulse-create
+    :pulse-delete
     :user-login})
 
 (def ^:private activity-feed-channel
@@ -37,16 +39,16 @@
    (let [{:keys [table-id database-id]} (when (fn? database-table-fn)
                                           (database-table-fn object))]
      (db/ins Activity
-          :topic topic
-          :user_id (events/object->user-id object)
-          :model (events/topic->model topic)
-          :model_id (events/object->model-id topic object)
+          :topic       topic
+          :user_id     (events/object->user-id object)
+          :model       (events/topic->model topic)
+          :model_id    (events/object->model-id topic object)
           :database_id database-id
-          :table_id table-id
-          :custom_id (:custom_id object)
-          :details (if (fn? details-fn)
-                     (details-fn object)
-                     object))))
+          :table_id    table-id
+          :custom_id   (:custom_id object)
+          :details     (if (fn? details-fn)
+                         (details-fn object)
+                         object))))
   ([topic object details-fn]
    (record-activity topic object details-fn nil))
   ([topic object]
@@ -95,6 +97,10 @@
 ;                                              (assoc :status "completed")
 ;                                              (dissoc :database_id :custom_id))))))))
 
+(defn- process-pulse-activity [topic object]
+  (let [details-fn #(select-keys % [:name :public_perms])]
+    (record-activity topic object details-fn)))
+
 (defn- process-user-activity [topic object]
   ;; we only care about login activity when its the users first session (a.k.a. new user!)
   (when (and (= :user-login topic)
@@ -116,6 +122,7 @@
         "dashboard" (process-dashboard-activity topic object)
         "install"   (when-not (db/sel :one :fields [Activity :id])
                       (db/ins Activity :topic "install" :model "install"))
+        "pulse"     (process-pulse-activity topic object)
         "user"      (process-user-activity topic object)))
     (catch Throwable e
       (log/warn (format "Failed to process activity event. %s" (:topic activity-event)) e))))

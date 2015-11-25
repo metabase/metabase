@@ -1,5 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
+import cx from "classnames";
+
 import PulseListChannel from "./PulseListChannel.jsx";
 
 export default class PulseListItem extends Component {
@@ -9,11 +11,18 @@ export default class PulseListItem extends Component {
         user: PropTypes.object.isRequired
     };
 
+    componentDidMount() {
+        if (this.props.scrollTo) {
+            const element = React.findDOMNode(this.refs.pulseListItem);
+            element.scrollIntoView(true);
+        }
+    }
+
     render() {
         let { pulse, formInput, user } = this.props;
 
         return (
-            <div className="PulseListItem bordered rounded mb2 pt3">
+            <div ref="pulseListItem" className={cx("PulseListItem bordered rounded mb2 pt3", {"PulseListItem--focused": this.props.scrollTo})}>
                 <div className="flex px4 mb2">
                     <div>
                         <h2 className="mb1">{pulse.name}</h2>

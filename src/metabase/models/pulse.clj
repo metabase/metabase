@@ -3,6 +3,7 @@
             [korma.core :as k]
             [korma.db :as kdb]
             [metabase.db :as db]
+            [metabase.events :as events]
             (metabase.models [card :refer [Card]]
                              [common :refer [perms-readwrite]]
                              [hydrate :refer :all]
@@ -134,11 +135,16 @@
          (coll? channels)
          (every? map? channels)]}
   (kdb/transaction
+    ;; update the pulse itself
     (db/upd Pulse id :name name)
+    ;; update cards (only if they changed)
     (when (not= cards (db/sel :many :field [PulseCard :card_id] :pulse_id id (k/order :position :asc)))
       (update-pulse-cards pulse cards))
+    ;; update channels
     (update-pulse-channels pulse channels)
-    (retrieve-pulse id)))
+    ;; fetch the fully updated pulse and return it (and fire off an event)
+    (->> (retrieve-pulse id)
+         (events/publish-event :pulse-update))))
 
 (defn create-pulse
   "Create a new `Pulse` by inserting it into the database along with all associated pieces of data such as:
@@ -161,4 +167,6 @@
       (update-pulse-cards pulse cards)
       ;; add channels to the Pulse
       (update-pulse-channels pulse channels)
-      (retrieve-pulse id))))
+      ;; return the full Pulse (and record our create event)
+      (->> (retrieve-pulse id)
+           (events/publish-event :pulse-create)))))
