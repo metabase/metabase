@@ -49,7 +49,7 @@
     (cascade-delete 'Session :user_id id)
     (cascade-delete 'Dashboard :creator_id id)
     (cascade-delete 'Card :creator_id id)
-    (cascade-delete 'Pulse :creator_id)
+    (cascade-delete 'Pulse :creator_id id)
     (cascade-delete 'Activity :user_id id)
     (cascade-delete 'ViewLog :user_id id)))
 
