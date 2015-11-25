@@ -8,6 +8,7 @@
                              [dashboard :refer [Dashboard]]
                              [dashboard-card :refer [DashboardCard]]
                              [database :refer [Database]]
+                             [pulse :refer [Pulse]]
                              [session :refer [Session]]
                              [user :refer [User]])
             [metabase.test.data :refer :all]
@@ -47,10 +48,15 @@
                     :visualization_settings {})
         dashcard  (db/ins DashboardCard
                     :card_id      (:id card)
-                    :dashboard_id (:id dashboard))]
+                    :dashboard_id (:id dashboard))
+        pulse     (db/ins Pulse
+                    :creator_id   (:id user)
+                    :name         rand-name
+                    :public_perms 2)]
     {:card      card
      :dashboard dashboard
      :dashcard  dashcard
+     :pulse     pulse
      :session   {:id rand-name}
      :user      user}))
 
@@ -236,6 +242,40 @@
                              :item  {}})
     (-> (db/sel :one Activity :topic "install")
         (select-keys [:topic :user_id :model :model_id :details]))))
+
+;; `:pulse-create` event
+(expect-let [{:keys [pulse user]} (create-test-objects)]
+  {:topic       :pulse-create
+   :user_id     (:id user)
+   :model       "pulse"
+   :model_id    (:id pulse)
+   :database_id nil
+   :table_id    nil
+   :details     {:name         (:name pulse)
+                 :public_perms (:public_perms pulse)}}
+  (do
+    (k/delete Activity)
+    (process-activity-event {:topic :pulse-create
+                             :item  pulse})
+    (-> (db/sel :one Activity :topic "pulse-create")
+        (select-keys [:topic :user_id :model :model_id :database_id :table_id :details]))))
+
+;; `:pulse-delete` event
+(expect-let [{:keys [pulse user]} (create-test-objects)]
+  {:topic       :pulse-delete
+   :user_id     (:id user)
+   :model       "pulse"
+   :model_id    (:id pulse)
+   :database_id nil
+   :table_id    nil
+   :details     {:name         (:name pulse)
+                 :public_perms (:public_perms pulse)}}
+  (do
+    (k/delete Activity)
+    (process-activity-event {:topic :pulse-delete
+                             :item  pulse})
+    (-> (db/sel :one Activity :topic "pulse-delete")
+        (select-keys [:topic :user_id :model :model_id :database_id :table_id :details]))))
 
 ;; `:user-login` event
 (expect-let [{{user-id :id} :user {session-id :id :as session} :session} (create-test-objects)]

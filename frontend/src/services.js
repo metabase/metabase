@@ -385,6 +385,16 @@ CoreServices.factory('Email', ['$resource', function($resource) {
     });
 }]);
 
+CoreServices.factory('Slack', ['$resource', function($resource) {
+    return $resource('/api/slack', {}, {
+
+        updateSettings: {
+            url: '/api/slack/settings',
+            method: 'PUT'
+        }
+    });
+}]);
+
 CoreServices.factory('ForeignKey', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/foreignkey/:fkID', {}, {
         delete: {

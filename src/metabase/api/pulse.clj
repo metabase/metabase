@@ -6,6 +6,7 @@
             [metabase.db :as db]
             [metabase.driver :as driver]
             [metabase.email :as email]
+            [metabase.events :as events]
             [metabase.integrations.slack :as slack]
             (metabase.models [card :refer [Card]]
                              [database :refer [Database]]
@@ -58,7 +59,10 @@
 (defendpoint DELETE "/:id"
   "Delete a `Pulse`."
   [id]
-  (db/cascade-delete Pulse :id id))
+  (let [pulse  (db/sel :one Pulse :id id)
+        result (db/cascade-delete Pulse :id id)]
+    (events/publish-event :pulse-delete (assoc pulse :actor_id *current-user-id*))
+    result))
 
 
 (defendpoint GET "/form_input"
@@ -82,7 +86,7 @@
   (let [card (Card id)]
     (read-check Database (:database (:dataset_query card)))
     (let [data (:data (driver/dataset-query (:dataset_query card) {:executed_by *current-user-id*}))]
-      {:status 200 :body (html [:html [:body {:style "margin: 0;"} (p/render-pulse-card card data true p/render-img-data-uri)]])})))
+      {:status 200 :body (html [:html [:body {:style "margin: 0;"} (p/render-pulse-card card data p/render-img-data-uri true true)]])})))
 
 (defendpoint GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a `Card` with ID and other information."
@@ -92,7 +96,7 @@
     (let [result (driver/dataset-query (:dataset_query card) {:executed_by *current-user-id*})
           data (:data result)
           card-type (p/detect-pulse-card-type card data)
-          card-html (html (p/render-pulse-card card data true p/render-img-data-uri))]
+          card-html (html (p/render-pulse-card card data p/render-img-data-uri true true))]
       {:status 200 :body {:id id
                           :pulse_card_type card-type
                           :pulse_card_html card-html

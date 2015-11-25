@@ -13,8 +13,13 @@ var Urls = {
         switch (model) {
             case "card":      return Urls.card(model_id);
             case "dashboard": return Urls.dashboard(model_id);
+            case "pulse":     return Urls.pulse(model_id);
             default:          return null;
         }
+    },
+
+    pulse: function(pulse_id) {
+        return "/pulse/#"+pulse_id;
     },
 
     tableRowsQuery: function(database_id, table_id) {

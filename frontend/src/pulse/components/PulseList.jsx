@@ -55,6 +55,7 @@ export default class PulseList extends Component {
                         {pulses.slice().sort((a,b) => b.created_at - a.created_at).map(pulse =>
                             <li key={pulse.id}>
                                 <PulseListItem
+                                    scrollTo={pulse.id === this.props.pulseId}
                                     pulse={pulse}
                                     user={user}
                                     formInput={this.props.formInput}

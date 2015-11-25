@@ -3,6 +3,7 @@ import React, { Component, PropTypes } from "react";
 import SettingsHeader from "./SettingsHeader.jsx";
 import SettingsSetting from "./SettingsSetting.jsx";
 import SettingsEmailForm from "./SettingsEmailForm.jsx";
+import SettingsSlackForm from "./SettingsSlackForm.jsx";
 
 import _ from "underscore";
 import cx from 'classnames';
@@ -58,12 +59,23 @@ export default class SettingsEditor extends Component {
 
         if (section.name === "Email") {
             return (
-                <div className="MetadataTable px2 flex-full">
+                <div className="px2">
                     <SettingsEmailForm
                         ref="emailForm"
                         elements={section.settings}
                         updateEmailSettings={this.props.updateEmailSettings}
-                        sendTestEmail={this.props.sendTestEmail} />
+                        sendTestEmail={this.props.sendTestEmail}
+                    />
+                </div>
+            );
+        } else if (section.name === "Slack") {
+            return (
+                <div className="px2">
+                    <SettingsSlackForm
+                        ref="slackForm"
+                        elements={section.settings}
+                        updateSlackSettings={this.props.updateSlackSettings}
+                    />
                 </div>
             );
         } else {
@@ -72,7 +84,7 @@ export default class SettingsEditor extends Component {
             });
 
             return (
-                <div className="MetadataTable px2 flex-full">
+                <div className="px2">
                     <ul>{settings}</ul>
                 </div>
             );

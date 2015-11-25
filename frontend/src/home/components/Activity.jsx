@@ -151,6 +151,15 @@ export default class Activity extends Component {
                 description.userName = "Hello World!";
                 description.subject = "Metabase is up and running.";
                 break;
+            case "pulse-create":
+                description.subject = "created a pulse";
+                description.body = item.details.name;
+                description.bodyLink = (item.model_exists) ? Urls.modelToUrl(item.model, item.model_id) : null;
+                break;
+            case "pulse-delete":
+                description.subject = "deleted a pulse";
+                description.body = item.details.name;
+                break;
             case "user-joined":
                 description.subject = "joined!";
                 break;

@@ -11,6 +11,10 @@
   border-radius: var(--input-border-radius);
 }
 
+.input--small {
+  padding: 0.3rem 0.4rem;
+}
+
 .input--focus,
 .input:focus {
   outline: none;

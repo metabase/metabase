@@ -6,6 +6,7 @@
                              [dashboard :refer [Dashboard]]
                              [database :refer [Database]]
                              [interface :refer :all]
+                             [pulse :refer [Pulse]]
                              [table :refer [Table]]
                              [user :refer [User]])
             [metabase.util :as u]))
@@ -36,8 +37,9 @@
                             (assoc :table (delay (-> (Table table_id)
                                                      (select-keys [:id :name :display_name :description]))))
                             (assoc :model_exists (delay (case model
-                                                          "card" (exists? Card :id model_id)
+                                                          "card"      (exists? Card :id model_id)
                                                           "dashboard" (exists? Dashboard :id model_id)
+                                                          "pulse"     (exists? Pulse :id model_id)
                                                           nil))))))
 
 (extend-ICanReadWrite ActivityEntity :read :public-perms, :write :public-perms)

@@ -66,7 +66,7 @@
   [pulse results]
   (let [images       (atom [])
         render-img   (fn [bytes] (reset! images (conj @images bytes)) (str "cid:IMAGE_" (-> @images count dec)))
-        body         (apply vector :div (mapv (partial render-pulse-section render-img) results))
+        body         (apply vector :div (mapv (partial render-pulse-section render-img true) results))
         data-quote   (rand-nth q/quotations)
         message-body (stencil/render-file "metabase/email/pulse"
                                           {:pulse (html body)

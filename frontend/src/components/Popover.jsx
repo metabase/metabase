@@ -21,7 +21,11 @@ export default class Popover extends Component {
 
     static defaultProps = {
         isOpen: true,
-        hasArrow: true
+        hasArrow: true,
+        verticalAttachments: ["top", "bottom"],
+        horizontalAttachments: ["center", "left", "right"],
+        targetOffsetX: 24,
+        targetOffsetY: 5
     };
 
     componentWillMount() {
@@ -120,11 +124,7 @@ export default class Popover extends Component {
     _renderPopover() {
         if (this.props.isOpen) {
             // popover is open, lets do this!
-            React.render(
-                <div className="Popover-backdrop">
-                    {this._popoverComponent()}
-                </div>
-            , this._popoverElement);
+            React.render(this._popoverComponent(), this._popoverElement);
 
             var tetherOptions = {};
 
@@ -154,23 +154,23 @@ export default class Popover extends Component {
 
                 // horizontal
                 best = this._getBestAttachmentOptions(
-                    tetherOptions, best, ["center", "left", "right"], ["left", "right"],
+                    tetherOptions, best, this.props.horizontalAttachments, ["left", "right"],
                     (best, attachmentX) => ({
                         ...best,
                         attachmentX: attachmentX,
                         targetAttachmentX: "center",
-                        offsetX: ({ "center": 0, "left": -24, "right": 24 })[attachmentX]
+                        offsetX: ({ "center": 0, "left": -(this.props.targetOffsetX), "right": this.props.targetOffsetX })[attachmentX]
                     })
                 );
 
                 // vertical
                 best = this._getBestAttachmentOptions(
-                    tetherOptions, best, ["top", "bottom"], ["top", "bottom"],
+                    tetherOptions, best, this.props.verticalAttachments, ["top", "bottom"],
                     (best, attachmentY) => ({
                         ...best,
                         attachmentY: attachmentY,
                         targetAttachmentY: (attachmentY === "top" ? "bottom" : "top"),
-                        offsetY: ({ "top": 5, "bottom": -5 })[attachmentY]
+                        offsetY: ({ "top": this.props.targetOffsetY, "bottom": -(this.props.targetOffsetY) })[attachmentY]
                     })
                 );
 

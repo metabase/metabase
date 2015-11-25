@@ -51,8 +51,17 @@
   transition: opacity 0.3s linear;
 }
 
+.PulseListItem {
+  overflow: hidden;
+}
+
 .PulseListItem:hover .PulseEditButton {
   opacity: 1;
+}
+
+.PulseListItem.PulseListItem--focused {
+  border-color: #509EE3;
+  box-shadow: 0 0 3px #509EE3;
 }
 
 .DangerZone:hover {

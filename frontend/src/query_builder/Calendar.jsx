@@ -3,6 +3,7 @@ import cx from 'classnames';
 import moment from "moment";
 
 import Icon from 'metabase/components/Icon.jsx';
+import Tooltip from 'metabase/components/Tooltip.jsx';
 
 const MODES = ['month', 'year', 'decade'];
 
@@ -24,8 +25,26 @@ export default class Calendar extends Component {
     static propTypes = {
         selected: PropTypes.object,
         selectedEnd: PropTypes.object,
-        onChange: PropTypes.func.isRequired
+        onChange: PropTypes.func.isRequired,
+        onAfterClick: PropTypes.func,
+        onBeforeClick: PropTypes.func,
     };
+
+    componentWillReceiveProps(nextProps) {
+        let resetCurrent = false;
+        if (nextProps.selected && nextProps.selectedEnd) {
+            resetCurrent =
+                nextProps.selected.isAfter(this.state.current, "month") &&
+                nextProps.selectedEnd.isBefore(this.state.current, "month");
+        } else if (nextProps.selected) {
+            resetCurrent =
+                nextProps.selected.isAfter(this.state.current, "month") ||
+                nextProps.selected.isBefore(this.state.current, "month");
+        }
+        if (resetCurrent) {
+            this.setState({ current: nextProps.selected });
+        }
+    }
 
     onClickDay(date, e) {
         let { selected, selectedEnd } = this.props;
@@ -110,7 +129,25 @@ export default class Calendar extends Component {
         }
 
         return (
-            <div className="Calendar-weeks">{weeks}</div>
+            <div className="relative">
+                <div className="Calendar-weeks">
+                    {weeks}
+                </div>
+                {this.props.onBeforeClick &&
+                    <div className="absolute top left z2" style={{marginTop: "-12px", marginLeft: "-12px"}}>
+                        <Tooltip tooltipElement={"Everything before " + this.props.selected.format("MMMM Do, YYYY")}>
+                            <a className="circle-button" onClick={this.props.onBeforeClick}>«</a>
+                        </Tooltip>
+                    </div>
+                }
+                {this.props.onAfterClick &&
+                    <div className="absolute bottom right z2" style={{marginBottom: "-12px", marginRight: "-12px"}}>
+                        <Tooltip tooltipElement={"Everything after " + this.props.selected.format("MMMM Do, YYYY")}>
+                            <a className="circle-button" onClick={this.props.onAfterClick}>»</a>
+                        </Tooltip>
+                    </div>
+                }
+            </div>
         );
     }
     render() {
