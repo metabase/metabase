@@ -24,8 +24,26 @@ export default class Calendar extends Component {
     static propTypes = {
         selected: PropTypes.object,
         selectedEnd: PropTypes.object,
-        onChange: PropTypes.func.isRequired
+        onChange: PropTypes.func.isRequired,
+        onAfterClick: PropTypes.func,
+        onBeforeClick: PropTypes.func,
     };
+
+    componentWillReceiveProps(nextProps) {
+        let resetCurrent = false;
+        if (nextProps.selected && nextProps.selectedEnd) {
+            resetCurrent =
+                nextProps.selected.isAfter(this.state.current, "month") &&
+                nextProps.selectedEnd.isBefore(this.state.current, "month");
+        } else if (nextProps.selected) {
+            resetCurrent =
+                nextProps.selected.isAfter(this.state.current, "month") ||
+                nextProps.selected.isBefore(this.state.current, "month");
+        }
+        if (resetCurrent) {
+            this.setState({ current: nextProps.selected });
+        }
+    }
 
     onClickDay(date, e) {
         let { selected, selectedEnd } = this.props;
@@ -110,7 +128,17 @@ export default class Calendar extends Component {
         }
 
         return (
-            <div className="Calendar-weeks">{weeks}</div>
+            <div className="relative">
+                <div className="Calendar-weeks">
+                    {weeks}
+                </div>
+                {this.props.onBeforeClick &&
+                    <a className="circle-button circle-button--top circle-button--left" onClick={this.props.onBeforeClick}>«</a>
+                }
+                {this.props.onAfterClick &&
+                    <a className="circle-button circle-button--bottom circle-button--right" onClick={this.props.onAfterClick}>»</a>
+                }
+            </div>
         );
     }
     render() {
