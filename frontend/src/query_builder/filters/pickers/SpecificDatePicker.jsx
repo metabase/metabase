@@ -1,6 +1,9 @@
 import React, { Component, PropTypes } from 'react';
 
 import Calendar from '../../Calendar.jsx';
+
+import Input from "metabase/components/Input.jsx";
+
 import { computeFilterTimeRange } from "metabase/lib/query_time";
 
 import _ from "underscore";
@@ -30,11 +33,10 @@ export default class SpecificDatePicker extends Component {
 
     onChange(start, end) {
         let { filter } = this.props;
-        if (end) {
+        if (start && end && !moment(start).isSame(end)) {
             this.props.onFilterChange(["BETWEEN", filter[1], start, end]);
         } else {
-            let operator = _.contains(["=", "<", ">"], filter[0]) ? filter[0] : "=";
-            this.props.onFilterChange([operator, filter[1], start]);
+            this.props.onFilterChange(["=", filter[1], start || end]);
         }
     }
 
@@ -49,22 +51,53 @@ export default class SpecificDatePicker extends Component {
             initial = start;
         }
 
-        if (start && start.isSame(end, "day")) {
+        let singleDay = start && start.isSame(end, "day");
+        if (singleDay) {
             end = null;
+        }
+
+        let startValue, startPlaceholder, endValue, endPlaceholder;
+        if (filter[0] === "<") {
+            startPlaceholder = "∞";
+            endValue = filter[2];
+        } else if (filter[0] === ">") {
+            startValue = filter[2];
+            endPlaceholder = "∞";
+        } else if (filter[0] === "BETWEEN") {
+            startValue = filter[2];
+            endValue = filter[3];
+        } else {
+            startValue = filter[2];
+            endValue = filter[2];
         }
 
         return (
             <div>
-                <div className="mx1 mt1">
+                <div className="mx2 mt2">
                     <Calendar
                         initial={initial}
                         selected={start}
                         selectedEnd={end}
                         onChange={this.onChange}
+                        onBeforeClick={singleDay && this.toggleOperator.bind(this, "<")}
+                        onAfterClick={singleDay && this.toggleOperator.bind(this, ">")}
                     />
-                    <div className={cx("py1", { "disabled": filter[2] == null })}>
-                        <span className={cx("inline-block text-centered text-purple-hover half py1 border-right", { "text-purple": filter[0] === "<" })} onClick={this.toggleOperator.bind(this, "<")}>&lt;&lt; All before</span>
-                        <span className={cx("inline-block text-centered text-purple-hover half py1", { "text-purple": filter[0] === ">" })} onClick={this.toggleOperator.bind(this, ">")}>All after &gt;&gt;</span>
+                    <div className="py2 text-centered">
+                        <Input
+                            className="input input--small text-bold text-grey-4"
+                            style={{width: "100px"}}
+                            value={startValue && moment(startValue).format("MM/DD/YYYY")}
+                            placeholder={startPlaceholder}
+                            onBlurChange={(e) => this.onChange(moment(e.target.value).format("YYYY-MM-DD"), singleDay ? null : endValue)}
+                        />
+                        <span className="px1">–</span>
+                        <Input
+                            className="input input--small text-bold text-grey-4"
+                            style={{width: "100px"}}
+                            value={endValue && moment(endValue).format("MM/DD/YYYY")}
+                            placeholder={endPlaceholder}
+                            onBlurChange={(e) => this.onChange(startValue, moment(e.target.value).format("YYYY-MM-DD"))}
+                        />
                     </div>
                 </div>
             </div>
