@@ -10,6 +10,7 @@ static NSString * const MetabaseTaskBecameHealthyNotification	= @"MetabaseTaskBe
 static NSString * const MetabaseTaskBecameUnhealthyNotification = @"MetabaseTaskBecameUnhealthyNotification";
 static NSString * const MetabaseTaskTimedOutNotification		= @"MetabaseTaskTimedOutNotification";
 
+/// Manages the MetabaseTask (server) and restarts it if it gets unresponsive
 @interface TaskHealthChecker : NSObject
 
 @property () NSUInteger port;

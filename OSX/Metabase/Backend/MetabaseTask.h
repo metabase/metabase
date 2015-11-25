@@ -6,13 +6,15 @@
 //  Copyright (c) 2015 Metabase. All rights reserved.
 //
 
-@interface MetabaseTask : NSObject
+#import "JavaTask.h"
+
+/// Task for running the MetabaseServer
+@interface MetabaseTask : JavaTask
 
 /// Create (and launch) a task to run the Metabase backend server.
 + (MetabaseTask *)task;
 
 - (void)launch;
-- (void)terminate;
 
 - (NSUInteger)port;
 

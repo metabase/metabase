@@ -100,4 +100,14 @@
                                                       [incanter/incanter-core "1.9.0"]] ; Satistical functions like normal distibutions}})
                                        :source-paths ["sample_dataset"]
                                        :global-vars {*warn-on-reflection* false}
-                                       :main ^:skip-aot metabase.sample-dataset.generate}})
+                                       :main ^:skip-aot metabase.sample-dataset.generate}
+             ;; Run reset password from source: lein with-profile reset-password run /path/to/metabase.db email@address.com
+             ;; Create the reset password JAR:  lein with-profile reset-password jar
+             ;;                                   -> ./reset-password-artifacts/reset-password/reset-password.jar
+             ;; Run the reset password JAR:     java -classpath /path/to/metabase-uberjar.jar:/path/to/reset-password.jar \
+             ;;                                   metabase.reset_password.core /path/to/metabase.db email@address.com
+             :reset-password {:source-paths ["reset_password"]
+                              :global-vars {*warn-on-reflection* false}
+                              :main metabase.reset-password.core
+                              :jar-name "reset-password.jar"
+                              :target-path "reset-password-artifacts/%s"}}) ; different than ./target because otherwise lein uberjar will delete our artifacts and vice versa

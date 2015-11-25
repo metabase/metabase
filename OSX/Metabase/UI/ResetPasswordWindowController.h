@@ -8,6 +8,15 @@
 
 @import Cocoa;
 
-@interface ResetPasswordWindowController : NSWindowController
 
+@class ResetPasswordWindowController;
+
+
+@protocol ResetPasswordWindowControllerDelegate <NSObject>
+- (void)resetPasswordWindowController:(ResetPasswordWindowController *)resetPasswordWindowController didFinishWithResetToken:(NSString *)resetToken;
+@end
+
+
+@interface ResetPasswordWindowController : NSWindowController
+@property (weak) id<ResetPasswordWindowControllerDelegate> delegate;
 @end

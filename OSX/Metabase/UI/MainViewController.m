@@ -17,7 +17,14 @@
 #import "SettingsManager.h"
 #import "TaskHealthChecker.h"
 
-@interface MainViewController ()
+
+
+NSString *BaseURL() {
+	return SettingsManager.instance.baseURL.length ? SettingsManager.instance.baseURL : LocalHostBaseURL();
+}
+
+
+@interface MainViewController () <ResetPasswordWindowControllerDelegate>
 @property (weak) IBOutlet WebView *webView;
 @property (strong) IBOutlet NSView *titleBarView;
 
@@ -27,8 +34,6 @@
 @property (weak) IBOutlet NSButtonCell *linkButtonCell;
 
 @property (weak) LoadingView *loadingView;
-
-@property (strong, readonly) NSString *baseURL;
 
 @property (nonatomic) BOOL loading;
 
@@ -102,9 +107,9 @@
 #pragma mark - Local Methods
 
 - (void)loadMainPage {
-	NSLog(@"Connecting to Metabase instance at: %@", self.baseURL);
+	NSLog(@"Connecting to Metabase instance at: %@", BaseURL());
 	
-	NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:self.baseURL]];
+	NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:BaseURL()]];
 	request.cachePolicy = NSURLCacheStorageAllowedInMemoryOnly;
 	[self.webView.mainFrame loadRequest:request];
 }
@@ -127,7 +132,7 @@
 	if ([savePanel runModal] == NSFileHandlingPanelOKButton) {
 		NSLog(@"Will save CSV at: %@", savePanel.URL);
 		
-		NSURL *url = [NSURL URLWithString:apiURL relativeToURL:[NSURL URLWithString:self.baseURL]];
+		NSURL *url = [NSURL URLWithString:apiURL relativeToURL:[NSURL URLWithString:BaseURL()]];
 		NSURLRequest *csvRequest = [NSURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringCacheData timeoutInterval:10.0f];
 		[NSURLConnection sendAsynchronousRequest:csvRequest queue:[[NSOperationQueue alloc] init] completionHandler:^(NSURLResponse *response, NSData *data, NSError *connectionError) {
 			NSError *writeError = nil;
@@ -160,10 +165,6 @@
 
 
 #pragma mark - Getters / Setters
-
-- (NSString *)baseURL {
-	return SettingsManager.instance.baseURL.length ? SettingsManager.instance.baseURL : LocalHostBaseURL();
-}
 
 - (void)setLoading:(BOOL)loading {
 	_loading = loading;
@@ -204,7 +205,19 @@
 
 - (IBAction)resetPassword:(id)sender {
 	ResetPasswordWindowController *resetPasswordWindowController = [[ResetPasswordWindowController alloc] init];
+	resetPasswordWindowController.delegate = self;
 	[[NSApplication sharedApplication] runModalForWindow:resetPasswordWindowController.window];
+}
+
+
+#pragma mark - ResetPasswordWindowControllerDelegate
+
+- (void)resetPasswordWindowController:(ResetPasswordWindowController *)resetPasswordWindowController didFinishWithResetToken:(NSString *)resetToken {
+	NSString *passwordResetURLString = [NSString stringWithFormat:@"%@/auth/reset_password/%@", BaseURL(), resetToken];
+	NSLog(@"Navigating to password reset URL: %@...", passwordResetURLString);
+	
+	NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:passwordResetURLString]];
+	[self.webView.mainFrame loadRequest:request];
 }
 
 

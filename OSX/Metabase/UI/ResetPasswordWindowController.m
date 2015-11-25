@@ -6,12 +6,16 @@
 //  Copyright (c) 2015 Metabase. All rights reserved.
 //
 
+#import <objc/runtime.h>
+
+#import "ResetPasswordTask.h"
 #import "ResetPasswordWindowController.h"
 
 @interface ResetPasswordWindowController () <NSTextFieldDelegate>
 @property (weak) IBOutlet NSButton *resetPasswordButton;
 @property (weak) IBOutlet NSTextField *emailAddressTextField;
 
+@property (nonatomic, strong) ResetPasswordTask *resetPasswordTask;
 @end
 
 
@@ -31,7 +35,29 @@
 #pragma mark - Actions
 
 - (IBAction)resetPasswordButtonPressed:(NSButton *)sender {
-	NSLog(@"RESET PASSWORD!");
+	self.resetPasswordButton.enabled = NO;
+	self.resetPasswordButton.title = @"One moment...";
+	self.emailAddressTextField.enabled = NO;
+	
+	self.resetPasswordTask = [[ResetPasswordTask alloc] init];
+	[self.resetPasswordTask resetPasswordForEmailAddress:self.emailAddressTextField.stringValue success:^(NSString *resetToken) {
+		self.emailAddressTextField.enabled = YES;
+		self.resetPasswordButton.title = @"Success!";
+		
+		NSLog(@"Got reset token: '%@'", resetToken);
+		[self.delegate resetPasswordWindowController:self didFinishWithResetToken:resetToken];
+		
+	} error:^(NSString *errorMessage) {
+		self.emailAddressTextField.enabled = YES;
+		self.resetPasswordButton.enabled = YES;
+		self.resetPasswordButton.title = @"Reset Password";
+		
+		[[NSAlert alertWithMessageText:@"Password Reset Failed" defaultButton:@"Done" alternateButton:nil otherButton:nil informativeTextWithFormat:@"%@", errorMessage] runModal];
+	}];
+}
+
+- (IBAction)emailAddressTextFieldDidReturn:(id)sender {
+	if (self.resetPasswordButton.isEnabled) [self resetPasswordButtonPressed:self.resetPasswordButton];
 }
 
 

@@ -18,6 +18,9 @@ use constant JRE_HOME => trim(`/usr/libexec/java_home`) . '/jre';
 use constant UBERJAR_SRC => getcwd() . '/target/uberjar/metabase.jar';
 use constant UBERJAR_DEST => getcwd() . '/OSX/Resources/metabase.jar';
 
+use constant RESET_PW_SRC => getcwd() . '/reset-password-artifacts/reset-password/reset-password.jar';
+use constant RESET_PW_DEST => getcwd() . '/OSX/Resources/reset-password.jar';
+
 use constant ENABLE_JAR_PACKING => 0;
 use constant ENABLE_JAR_OPTIONAL_FILE_STRIPPING => 0;
 
@@ -76,11 +79,17 @@ remove_jre_optional_files() if ENABLE_JAR_OPTIONAL_FILE_STRIPPING;
 # Pack JARs in JRE if applicable
 pack_jar() if ENABLE_JAR_PACKING;
 
-# Build uberjar if needed
+# Build jars if needed
 (system('./bin/build') or die $!) unless -f UBERJAR_SRC;
+(system('lein', 'with-profile', 'reset-password', 'jar') or die $!) unless -f RESET_PW_SRC;
 
-# Copy uberjar over
-announce 'Copying uberjar ' . UBERJAR_SRC . ' -> ' . UBERJAR_DEST;
-copy(get_file_or_die(UBERJAR_SRC), UBERJAR_DEST) or die $!;
+# Copy jars over
+sub copy_jar {
+  my ($src, $dest) = @_;
+  announce 'Copying jar ' . $src . ' -> ' . $dest;
+  copy(get_file_or_die($src), $dest) or die $!;
+}
+copy_jar(UBERJAR_SRC, UBERJAR_DEST);
+copy_jar(RESET_PW_SRC, RESET_PW_DEST);
 
 print_giant_success_banner();
