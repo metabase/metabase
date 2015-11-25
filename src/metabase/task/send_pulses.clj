@@ -9,6 +9,7 @@
             [metabase.db :as db]
             [metabase.driver :as driver]
             [metabase.email :as email]
+            [metabase.email.messages :as messages]
             [metabase.integrations.slack :as slack]
             (metabase.models [card :refer [Card]]
                              [hydrate :refer :all]
@@ -84,7 +85,7 @@
       :subject      email-subject
       :recipients   email-recipients
       :message-type :attachments
-      :message      (p/render-pulse-email pulse results))))
+      :message      (messages/render-pulse-email pulse results))))
 
 (defn- create-slack-attachment
   "Create an attachment in Slack for a given Card by rendering its result into an image and uploading it."
