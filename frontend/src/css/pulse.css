@@ -55,6 +55,10 @@
   opacity: 1;
 }
 
+.PulseListItem.PulseListItem--focused {
+
+}
+
 .DangerZone:hover {
   border-color: var(--error-color);
   transition: border .3s ease-in;
