@@ -50,12 +50,8 @@
 .Calendar-day--selected,
 .Calendar-day--selected-end {
     color: white !important;
-    background-color: var(--purple-light-color);
-}
-
-.Calendar-day--selected,
-.Calendar-day--selected-end {
     background-color: var(--purple-color);
+    z-index: 1;
 }
 
 .Calendar-day--in-range {
@@ -106,6 +102,7 @@
   text-align: center;
   vertical-align: middle;
   line-height: 20px;
+  z-index: 2;
 }
 
 .circle-button:hover {

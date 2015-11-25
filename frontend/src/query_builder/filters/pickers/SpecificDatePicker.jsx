@@ -84,7 +84,7 @@ export default class SpecificDatePicker extends Component {
                     />
                     <div className="py2 text-centered">
                         <Input
-                            className="input input--small text-bold text-grey-4"
+                            className="input input--small text-bold text-grey-4 text-centered"
                             style={{width: "100px"}}
                             value={startValue && moment(startValue).format("MM/DD/YYYY")}
                             placeholder={startPlaceholder}
@@ -92,7 +92,7 @@ export default class SpecificDatePicker extends Component {
                         />
                         <span className="px1">–</span>
                         <Input
-                            className="input input--small text-bold text-grey-4"
+                            className="input input--small text-bold text-grey-4 text-centered"
                             style={{width: "100px"}}
                             value={endValue && moment(endValue).format("MM/DD/YYYY")}
                             placeholder={endPlaceholder}
