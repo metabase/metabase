@@ -1,3 +1,5 @@
+import moment from "moment";
+import _ from "underscore";
 
 // HACK: just use our Angular resources for now
 export function AngularResourceProxy(serviceName, methods) {
@@ -24,4 +26,19 @@ export function createThunkAction(actionType, actionThunkCreator) {
             }
         }
     }
+}
+
+// turns string timestamps into moment objects
+export function momentifyTimestamps(object, keys = ["created_at", "updated_at"]) {
+    object = { ...object };
+    for (let timestamp of keys) {
+        if (timestamp in object) {
+            object[timestamp] = moment(object[timestamp]);
+        }
+    }
+    return object;
+}
+
+export function momentifyObjectsTimestamps(objects, keys) {
+    return _.mapObject(objects, o => momentifyTimestamps(o, keys));
 }
