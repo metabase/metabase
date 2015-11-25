@@ -27,6 +27,7 @@ Pulse.config(['$routeProvider', function ($routeProvider) {
                 $scope.Component = PulseListApp;
                 $scope.props = {
                     user: AppState.model.currentUser,
+                    pulseId: parseInt($location.hash()),
                     onChangeLocation: function(url) {
                         $scope.$apply(() => $location.url(url));
                     }

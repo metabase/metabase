@@ -9,11 +9,18 @@ export default class PulseListItem extends Component {
         user: PropTypes.object.isRequired
     };
 
+    componentDidMount() {
+        if (this.props.scrollTo) {
+            const element = React.findDOMNode(this.refs.pulseListItem);
+            element.scrollIntoView(true);
+        }
+    }
+
     render() {
         let { pulse, formInput, user } = this.props;
 
         return (
-            <div className="PulseListItem bordered rounded mb2 pt3">
+            <div ref="pulseListItem" className="PulseListItem bordered rounded mb2 pt3">
                 <div className="flex px4 mb2">
                     <div>
                         <h2 className="mb1">{pulse.name}</h2>
