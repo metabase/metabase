@@ -3,6 +3,7 @@ import cx from 'classnames';
 import moment from "moment";
 
 import Icon from 'metabase/components/Icon.jsx';
+import Tooltip from 'metabase/components/Tooltip.jsx';
 
 const MODES = ['month', 'year', 'decade'];
 
@@ -133,10 +134,18 @@ export default class Calendar extends Component {
                     {weeks}
                 </div>
                 {this.props.onBeforeClick &&
-                    <a className="circle-button circle-button--top circle-button--left" onClick={this.props.onBeforeClick}>«</a>
+                    <div className="absolute top left z2" style={{marginTop: "-12px", marginLeft: "-12px"}}>
+                        <Tooltip tooltipElement={"Everything before " + this.props.selected.format("MMMM Do, YYYY")}>
+                            <a className="circle-button" onClick={this.props.onBeforeClick}>«</a>
+                        </Tooltip>
+                    </div>
                 }
                 {this.props.onAfterClick &&
-                    <a className="circle-button circle-button--bottom circle-button--right" onClick={this.props.onAfterClick}>»</a>
+                    <div className="absolute bottom right z2" style={{marginBottom: "-12px", marginRight: "-12px"}}>
+                        <Tooltip tooltipElement={"Everything after " + this.props.selected.format("MMMM Do, YYYY")}>
+                            <a className="circle-button" onClick={this.props.onAfterClick}>»</a>
+                        </Tooltip>
+                    </div>
                 }
             </div>
         );
