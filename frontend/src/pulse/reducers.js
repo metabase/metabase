@@ -1,6 +1,8 @@
 
 import { handleActions } from 'redux-actions';
 
+import { momentifyTimestamps, momentifyObjectsTimestamps } from "metabase/lib/redux";
+
 import {
     FETCH_PULSES,
     SET_EDITING_PULSE,
@@ -14,9 +16,9 @@ import {
 } from "./actions";
 
 export const pulses = handleActions({
-    [FETCH_PULSES]: { next: (state, { payload }) => ({ ...payload.entities.pulse }) },
-    [SAVE_PULSE]: { next: (state, { payload }) =>  ({ ...state, [payload.id]: payload }) },
-    [SAVE_EDITING_PULSE]: { next: (state, { payload }) =>  ({ ...state, [payload.id]: payload }) }
+    [FETCH_PULSES]:       { next: (state, { payload }) => ({ ...momentifyObjectsTimestamps(payload.entities.pulse) }) },
+    [SAVE_PULSE]:         { next: (state, { payload }) => ({ ...state, [payload.id]: momentifyTimestamps(payload) }) },
+    [SAVE_EDITING_PULSE]: { next: (state, { payload }) => ({ ...state, [payload.id]: momentifyTimestamps(payload) }) }
 }, {});
 
 export const pulseList = handleActions({
@@ -33,7 +35,7 @@ export const editingPulse = handleActions({
 
 // NOTE: duplicated from dashboards/reducers.js
 export const cards = handleActions({
-    [FETCH_CARDS]: { next: (state, { payload }) => ({ ...payload.entities.card }) }
+    [FETCH_CARDS]: { next: (state, { payload }) => ({ ...momentifyObjectsTimestamps(payload.entities.card) }) }
 }, {});
 export const cardList = handleActions({
     [FETCH_CARDS]: { next: (state, { payload }) => payload.result }
@@ -41,7 +43,7 @@ export const cardList = handleActions({
 
 // NOTE: duplicated from admin/people/reducers.js
 export const users = handleActions({
-    [FETCH_USERS]: { next: (state, { payload }) => ({ ...payload.entities.user }) }
+    [FETCH_USERS]: { next: (state, { payload }) => ({ ...momentifyObjectsTimestamps(payload.entities.user) }) }
 }, []);
 
 export const formInput = handleActions({

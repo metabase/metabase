@@ -272,7 +272,7 @@
 (defn render-pulse-card
   [card data render-img include-title include-buttons]
   (try
-    [:div {:style (str section-style "margin: 16px;")}
+    [:div {:style (str section-style "margin: 16px; margin-bottom: 32px;")}
       (if include-title [:div {:style "margin-bottom: 16px;"}
         [:a {:style header-style :href (card-href card)}
           (-> card :name h)]])
@@ -287,35 +287,11 @@
     (log/warn (str "Pulse card render error:" e))
     [:div {:style (str font-style "color: #EF8C8C; font-weight: 700;")} "An error occurred while displaying this card."])))
 
-(defn- render-pulse-section
+
+(defn render-pulse-section
   [render-img include-buttons {:keys [card result]}]
   [:div {:style "margin-top: 10px; margin-bottom: 20px;"}
     (render-pulse-card card (:data result) render-img true include-buttons)])
-
-;; HACK: temporary workaround to postal requiring a file as the attachment
-(defn- write-byte-array-to-temp-file
-  [img-bytes]
-  (let [file (java.io.File/createTempFile "metabase_pulse_image_" ".png")
-        fos (new java.io.FileOutputStream file)]
-    (.deleteOnExit file)
-    (.write fos img-bytes)
-    (.close fos)
-    file))
-
-(defn render-pulse-email
-  "Take a pulse object and list of results, returns an array of attachment objects for an email"
-  [pulse results]
-  (let [images (atom [])
-        render-img (fn [bytes] (reset! images (conj @images bytes)) (str "cid:IMAGE_" (-> @images count dec)))
-        header [:h1 {:style (str section-style "margin: 16px; color: " color-grey-4 ";")} (-> pulse :name h)]
-        body (apply vector :div (mapv (partial render-pulse-section render-img true) results))
-        content (html [:html [:body [:div header body]]])]
-    (apply vector {:type "text/html" :content content}
-                  (map-indexed (fn [idx bytes] {:type :inline
-                                                :content-id (str "IMAGE_" idx)
-                                                :content-type "image/png"
-                                                :content (write-byte-array-to-temp-file bytes)})
-                               @images))))
 
 (defn render-pulse-card-to-png
   [card data include-title]

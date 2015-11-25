@@ -3,8 +3,6 @@ import { createAction } from "redux-actions";
 import { AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
 import { normalize, Schema, arrayOf } from "normalizr";
 
-import moment from "moment";
-
 const card = new Schema('card');
 const pulse = new Schema('pulse');
 const user = new Schema('user');
@@ -31,10 +29,6 @@ export const FETCH_PULSE_CARD_PREVIEW = 'FETCH_PULSE_CARD_PREVIEW';
 export const fetchPulses = createThunkAction(FETCH_PULSES, function() {
     return async function(dispatch, getState) {
         let pulses = await Pulse.list();
-        for (var p of pulses) {
-            p.updated_at = moment(p.updated_at);
-            p.created_at = moment(p.created_at);
-        }
         return normalize(pulses, arrayOf(pulse));
     };
 });
@@ -84,9 +78,6 @@ export const deletePulse = createThunkAction(DELETE_PULSE, function(id) {
 export const fetchCards = createThunkAction(FETCH_CARDS, function(filterMode = "all") {
     return async function(dispatch, getState) {
         let cards = await Card.list({ filterMode });
-        for (var c of cards) {
-            c.updated_at = moment(c.updated_at);
-        }
         return normalize(cards, arrayOf(card));
     };
 });
@@ -95,12 +86,6 @@ export const fetchCards = createThunkAction(FETCH_CARDS, function(filterMode = "
 export const fetchUsers = createThunkAction(FETCH_USERS, function() {
     return async function(dispatch, getState) {
         let users = await User.list();
-
-        for (var u of users) {
-            u.date_joined = (u.date_joined) ? moment(u.date_joined) : null;
-            u.last_login = (u.last_login) ? moment(u.last_login) : null;
-        }
-
         return normalize(users, arrayOf(user));
     };
 });
