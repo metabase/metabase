@@ -46,8 +46,8 @@
 		self.outerImageView.layer.anchorPoint = CGPointMake(0.5f, 0.5f);
 		
 		CABasicAnimation *rotation	= [CABasicAnimation animationWithKeyPath:@"transform.rotation.z"];
-		rotation.fromValue			= @0.0f;
-		rotation.toValue			= @(M_PI * 2.0f);
+		rotation.fromValue			= @(M_PI * 2.0f);
+		rotation.toValue			= @0.0f; 
 		rotation.duration			= 2.0f;
 		rotation.repeatCount		= HUGE_VALF;
 		
