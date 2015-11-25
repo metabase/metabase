@@ -13,6 +13,7 @@
 
 #import "LoadingView.h"
 #import "MainViewController.h"
+#import "ResetPasswordWindowController.h"
 #import "SettingsManager.h"
 #import "TaskHealthChecker.h"
 
@@ -199,6 +200,11 @@
 	[NSPasteboard.generalPasteboard setString:self.webView.mainFrameURL forType:NSStringPboardType];
 	
 	[[NSAlert alertWithMessageText:@"Link Copied" defaultButton:@"Ok" alternateButton:nil otherButton:nil informativeTextWithFormat:@"A link to this page has been copied to your clipboard."] runModal];
+}
+
+- (IBAction)resetPassword:(id)sender {
+	ResetPasswordWindowController *resetPasswordWindowController = [[ResetPasswordWindowController alloc] init];
+	[[NSApplication sharedApplication] runModalForWindow:resetPasswordWindowController.window];
 }
 
 

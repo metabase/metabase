@@ -39,6 +39,8 @@
 		D18853F91BB0D37C00D89803 /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D18853F81BB0D37B00D89803 /* WebKit.framework */; };
 		D18854041BB0DC2600D89803 /* metabase.jar in Resources */ = {isa = PBXBuildFile; fileRef = D18854021BB0DB6000D89803 /* metabase.jar */; };
 		D18855611BB1C8D700D89803 /* jre in Resources */ = {isa = PBXBuildFile; fileRef = D188555E1BB1C86F00D89803 /* jre */; };
+		D1BDAC681C053E0A0075D3AC /* ResetPasswordWindowController.m in Sources */ = {isa = PBXBuildFile; fileRef = D1BDAC671C053E0A0075D3AC /* ResetPasswordWindowController.m */; };
+		D1BDAC6A1C053E220075D3AC /* ResetPasswordWindowController.xib in Resources */ = {isa = PBXBuildFile; fileRef = D1BDAC691C053E220075D3AC /* ResetPasswordWindowController.xib */; };
 		D1CB9FE81BCEDE9A009A61FB /* LoadingView.m in Sources */ = {isa = PBXBuildFile; fileRef = D1CB9FE71BCEDE9A009A61FB /* LoadingView.m */; };
 		D1CB9FEA1BCEDEA5009A61FB /* LoadingView.xib in Resources */ = {isa = PBXBuildFile; fileRef = D1CB9FE91BCEDEA5009A61FB /* LoadingView.xib */; };
 		D1CB9FED1BCEDF02009A61FB /* Loading_View_Inner.png in Resources */ = {isa = PBXBuildFile; fileRef = D1CB9FEB1BCEDF02009A61FB /* Loading_View_Inner.png */; };
@@ -119,6 +121,9 @@
 		D18853F81BB0D37B00D89803 /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
 		D18854021BB0DB6000D89803 /* metabase.jar */ = {isa = PBXFileReference; lastKnownFileType = archive.jar; path = metabase.jar; sourceTree = "<group>"; };
 		D188555E1BB1C86F00D89803 /* jre */ = {isa = PBXFileReference; lastKnownFileType = folder; name = jre; path = Metabase/jre; sourceTree = "<group>"; };
+		D1BDAC661C053E0A0075D3AC /* ResetPasswordWindowController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ResetPasswordWindowController.h; sourceTree = "<group>"; };
+		D1BDAC671C053E0A0075D3AC /* ResetPasswordWindowController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ResetPasswordWindowController.m; sourceTree = "<group>"; };
+		D1BDAC691C053E220075D3AC /* ResetPasswordWindowController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = ResetPasswordWindowController.xib; sourceTree = "<group>"; };
 		D1CB9FE61BCEDE9A009A61FB /* LoadingView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LoadingView.h; sourceTree = "<group>"; };
 		D1CB9FE71BCEDE9A009A61FB /* LoadingView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = LoadingView.m; sourceTree = "<group>"; };
 		D1CB9FE91BCEDEA5009A61FB /* LoadingView.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = LoadingView.xib; sourceTree = "<group>"; };
@@ -245,6 +250,9 @@
 				D1CB9FE61BCEDE9A009A61FB /* LoadingView.h */,
 				D1CB9FE71BCEDE9A009A61FB /* LoadingView.m */,
 				D1CB9FE91BCEDEA5009A61FB /* LoadingView.xib */,
+				D1BDAC661C053E0A0075D3AC /* ResetPasswordWindowController.h */,
+				D1BDAC671C053E0A0075D3AC /* ResetPasswordWindowController.m */,
+				D1BDAC691C053E220075D3AC /* ResetPasswordWindowController.xib */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -409,6 +417,7 @@
 				D1CB9FEE1BCEDF02009A61FB /* Loading_View_Outer.png in Resources */,
 				D105B23D1BB5BE4A00A5D850 /* back_icon@2x.png in Resources */,
 				D121FD691BC5B4E7002101B0 /* dsa_pub.pem in Resources */,
+				D1BDAC6A1C053E220075D3AC /* ResetPasswordWindowController.xib in Resources */,
 				D18855611BB1C8D700D89803 /* jre in Resources */,
 				D162C4AE1BC87D2B009F678F /* MainMenu.xib in Resources */,
 				D105B2401BB5BE4A00A5D850 /* link_icon@1x.png in Resources */,
@@ -471,6 +480,7 @@
 				D105B2271BB378C100A5D850 /* INAppStoreWindow.m in Sources */,
 				D162C4A91BC87D2B009F678F /* MetabaseTask.m in Sources */,
 				D162C4A81BC87D2B009F678F /* AppDelegate.m in Sources */,
+				D1BDAC681C053E0A0075D3AC /* ResetPasswordWindowController.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
