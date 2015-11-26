@@ -1,13 +1,17 @@
 import React, { Component, PropTypes } from "react";
 
 import _ from "underscore";
+import cx from "classnames";
 
 export default class PulseEditName extends Component {
     constructor(props) {
         super(props);
-        this.state = {};
 
-        _.bindAll(this, "setName");
+        this.state = {
+            valid: true
+        };
+
+        _.bindAll(this, "setName", "validate");
     }
 
     static propTypes = {};
@@ -18,6 +22,10 @@ export default class PulseEditName extends Component {
         this.props.setPulse({ ...pulse, name: e.target.value });
     }
 
+    validate() {
+        this.setState({ valid: !!React.findDOMNode(this.refs.name).value });
+    }
+
     render() {
         let { pulse } = this.props;
         return (
@@ -26,10 +34,12 @@ export default class PulseEditName extends Component {
                 <p className="mt1 h4 text-bold text-grey-3">Give your pulse a name to help others understand what it's about.</p>
                 <div className="my3">
                     <input
-                        className="input h4 text-bold text-default"
+                        ref="name"
+                        className={cx("input h4 text-bold text-default", { "border-error": !this.state.valid })}
                         style={{"width":"400px"}}
                         value={pulse.name}
                         onChange={this.setName}
+                        onBlur={this.validate}
                         placeholder="Important metrics"
                         autoFocus
                     />
