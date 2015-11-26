@@ -12,20 +12,28 @@ export function serializeCardForUrl(card) {
         display: card.display,
         visualization_settings: card.visualization_settings
     };
-    return utf8_to_b64(JSON.stringify(cardCopy));
+    return utf8_to_b64url(JSON.stringify(cardCopy));
 }
 
 export function deserializeCardFromUrl(serialized) {
-    return JSON.parse(b64_to_utf8(serialized));
+    return JSON.parse(b64url_to_utf8(serialized));
 }
 
 // escaping before base64 encoding is necessary for non-ASCII characters
 // https://developer.mozilla.org/en-US/docs/Web/API/WindowBase64/btoa
-function utf8_to_b64(str) {
+export function utf8_to_b64(str) {
     return window.btoa(unescape(encodeURIComponent(str)));
 }
-function b64_to_utf8(str) {
-    return decodeURIComponent(escape(window.atob(str)));
+export function b64_to_utf8(b64) {
+    return decodeURIComponent(escape(window.atob(b64)));
+}
+
+// for "URL safe" base64, replace "+" with "-" and "/" with "_" as per RFC 4648
+export function utf8_to_b64url(str) {
+    return utf8_to_b64(str).replace(/\+/g, "-").replace(/\//g, "_");
+}
+export function b64url_to_utf8(b64url) {
+    return b64_to_utf8(b64url.replace(/-/g, "+").replace(/_/g, "/"))
 }
 
 export function urlForCardState(state, dirty) {
