@@ -18,7 +18,7 @@ import DataGrid from "metabase/lib/data_grid";
 import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
 
 import Query from "metabase/lib/query";
-import { serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from './card.util';
+import { serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
 
 import * as reducers from './reducers';
 
