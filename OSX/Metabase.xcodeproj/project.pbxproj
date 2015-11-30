@@ -39,6 +39,11 @@
 		D18853F91BB0D37C00D89803 /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D18853F81BB0D37B00D89803 /* WebKit.framework */; };
 		D18854041BB0DC2600D89803 /* metabase.jar in Resources */ = {isa = PBXBuildFile; fileRef = D18854021BB0DB6000D89803 /* metabase.jar */; };
 		D18855611BB1C8D700D89803 /* jre in Resources */ = {isa = PBXBuildFile; fileRef = D188555E1BB1C86F00D89803 /* jre */; };
+		D1BDAC681C053E0A0075D3AC /* ResetPasswordWindowController.m in Sources */ = {isa = PBXBuildFile; fileRef = D1BDAC671C053E0A0075D3AC /* ResetPasswordWindowController.m */; };
+		D1BDAC6A1C053E220075D3AC /* ResetPasswordWindowController.xib in Resources */ = {isa = PBXBuildFile; fileRef = D1BDAC691C053E220075D3AC /* ResetPasswordWindowController.xib */; };
+		D1BDAC6D1C0565640075D3AC /* JavaTask.m in Sources */ = {isa = PBXBuildFile; fileRef = D1BDAC6C1C0565640075D3AC /* JavaTask.m */; };
+		D1BDAC721C05695B0075D3AC /* ResetPasswordTask.m in Sources */ = {isa = PBXBuildFile; fileRef = D1BDAC711C05695B0075D3AC /* ResetPasswordTask.m */; };
+		D1BDAC731C056C7C0075D3AC /* reset-password.jar in Resources */ = {isa = PBXBuildFile; fileRef = D1BDAC6E1C0566490075D3AC /* reset-password.jar */; };
 		D1CB9FE81BCEDE9A009A61FB /* LoadingView.m in Sources */ = {isa = PBXBuildFile; fileRef = D1CB9FE71BCEDE9A009A61FB /* LoadingView.m */; };
 		D1CB9FEA1BCEDEA5009A61FB /* LoadingView.xib in Resources */ = {isa = PBXBuildFile; fileRef = D1CB9FE91BCEDEA5009A61FB /* LoadingView.xib */; };
 		D1CB9FED1BCEDF02009A61FB /* Loading_View_Inner.png in Resources */ = {isa = PBXBuildFile; fileRef = D1CB9FEB1BCEDF02009A61FB /* Loading_View_Inner.png */; };
@@ -119,6 +124,14 @@
 		D18853F81BB0D37B00D89803 /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
 		D18854021BB0DB6000D89803 /* metabase.jar */ = {isa = PBXFileReference; lastKnownFileType = archive.jar; path = metabase.jar; sourceTree = "<group>"; };
 		D188555E1BB1C86F00D89803 /* jre */ = {isa = PBXFileReference; lastKnownFileType = folder; name = jre; path = Metabase/jre; sourceTree = "<group>"; };
+		D1BDAC661C053E0A0075D3AC /* ResetPasswordWindowController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ResetPasswordWindowController.h; sourceTree = "<group>"; };
+		D1BDAC671C053E0A0075D3AC /* ResetPasswordWindowController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ResetPasswordWindowController.m; sourceTree = "<group>"; };
+		D1BDAC691C053E220075D3AC /* ResetPasswordWindowController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = ResetPasswordWindowController.xib; sourceTree = "<group>"; };
+		D1BDAC6B1C0565640075D3AC /* JavaTask.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JavaTask.h; sourceTree = "<group>"; };
+		D1BDAC6C1C0565640075D3AC /* JavaTask.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = JavaTask.m; sourceTree = "<group>"; };
+		D1BDAC6E1C0566490075D3AC /* reset-password.jar */ = {isa = PBXFileReference; lastKnownFileType = archive.jar; path = "reset-password.jar"; sourceTree = "<group>"; };
+		D1BDAC701C05695B0075D3AC /* ResetPasswordTask.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ResetPasswordTask.h; sourceTree = "<group>"; };
+		D1BDAC711C05695B0075D3AC /* ResetPasswordTask.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ResetPasswordTask.m; sourceTree = "<group>"; };
 		D1CB9FE61BCEDE9A009A61FB /* LoadingView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LoadingView.h; sourceTree = "<group>"; };
 		D1CB9FE71BCEDE9A009A61FB /* LoadingView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = LoadingView.m; sourceTree = "<group>"; };
 		D1CB9FE91BCEDEA5009A61FB /* LoadingView.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = LoadingView.xib; sourceTree = "<group>"; };
@@ -226,12 +239,16 @@
 			children = (
 				D162C4991BC87D2B009F678F /* AppDelegate.h */,
 				D162C49A1BC87D2B009F678F /* AppDelegate.m */,
-				D162C49B1BC87D2B009F678F /* MetabaseTask.h */,
-				D162C49C1BC87D2B009F678F /* MetabaseTask.m */,
 				D162C49D1BC87D2B009F678F /* SettingsManager.h */,
 				D162C49E1BC87D2B009F678F /* SettingsManager.m */,
 				D162C49F1BC87D2B009F678F /* TaskHealthChecker.h */,
 				D162C4A01BC87D2B009F678F /* TaskHealthChecker.m */,
+				D1BDAC6B1C0565640075D3AC /* JavaTask.h */,
+				D1BDAC6C1C0565640075D3AC /* JavaTask.m */,
+				D162C49B1BC87D2B009F678F /* MetabaseTask.h */,
+				D162C49C1BC87D2B009F678F /* MetabaseTask.m */,
+				D1BDAC701C05695B0075D3AC /* ResetPasswordTask.h */,
+				D1BDAC711C05695B0075D3AC /* ResetPasswordTask.m */,
 			);
 			path = Backend;
 			sourceTree = "<group>";
@@ -245,6 +262,9 @@
 				D1CB9FE61BCEDE9A009A61FB /* LoadingView.h */,
 				D1CB9FE71BCEDE9A009A61FB /* LoadingView.m */,
 				D1CB9FE91BCEDEA5009A61FB /* LoadingView.xib */,
+				D1BDAC661C053E0A0075D3AC /* ResetPasswordWindowController.h */,
+				D1BDAC671C053E0A0075D3AC /* ResetPasswordWindowController.m */,
+				D1BDAC691C053E220075D3AC /* ResetPasswordWindowController.xib */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -318,6 +338,7 @@
 			children = (
 				D18853D61BB0CEC600D89803 /* Images.xcassets */,
 				D105B2321BB5BE4A00A5D850 /* Images */,
+				D1BDAC6E1C0566490075D3AC /* reset-password.jar */,
 				D18854021BB0DB6000D89803 /* metabase.jar */,
 				D121FD681BC5B4E7002101B0 /* dsa_pub.pem */,
 			);
@@ -405,10 +426,12 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D1BDAC731C056C7C0075D3AC /* reset-password.jar in Resources */,
 				D1DFF6C31BCEF9E700ECC7B6 /* Loading_View_Inner@2x.png in Resources */,
 				D1CB9FEE1BCEDF02009A61FB /* Loading_View_Outer.png in Resources */,
 				D105B23D1BB5BE4A00A5D850 /* back_icon@2x.png in Resources */,
 				D121FD691BC5B4E7002101B0 /* dsa_pub.pem in Resources */,
+				D1BDAC6A1C053E220075D3AC /* ResetPasswordWindowController.xib in Resources */,
 				D18855611BB1C8D700D89803 /* jre in Resources */,
 				D162C4AE1BC87D2B009F678F /* MainMenu.xib in Resources */,
 				D105B2401BB5BE4A00A5D850 /* link_icon@1x.png in Resources */,
@@ -469,8 +492,11 @@
 				D162C4AF1BC87D2B009F678F /* MainViewController.m in Sources */,
 				D105B2281BB378C100A5D850 /* INWindowButton.m in Sources */,
 				D105B2271BB378C100A5D850 /* INAppStoreWindow.m in Sources */,
+				D1BDAC6D1C0565640075D3AC /* JavaTask.m in Sources */,
+				D1BDAC721C05695B0075D3AC /* ResetPasswordTask.m in Sources */,
 				D162C4A91BC87D2B009F678F /* MetabaseTask.m in Sources */,
 				D162C4A81BC87D2B009F678F /* AppDelegate.m in Sources */,
+				D1BDAC681C053E0A0075D3AC /* ResetPasswordWindowController.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

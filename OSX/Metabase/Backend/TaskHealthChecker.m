@@ -15,7 +15,7 @@ static const CGFloat HealthCheckIntervalSeconds = 1.2f;
 static const CGFloat HealthCheckRequestTimeout = 0.25f;
 
 /// After this many seconds of being unhealthy, consider the task timed out so it can be killed
-static const CFTimeInterval TimeoutIntervalSeconds = 10.0f;
+static const CFTimeInterval TimeoutIntervalSeconds = 15.0f;
 
 @interface TaskHealthChecker ()
 @property (strong, nonatomic) NSOperationQueue *healthCheckOperationQueue;
@@ -54,10 +54,8 @@ static const CFTimeInterval TimeoutIntervalSeconds = 10.0f;
 		self.healthCheckTimer = [NSTimer timerWithTimeInterval:HealthCheckIntervalSeconds target:self selector:@selector(checkHealth) userInfo:nil repeats:YES];
 		self.healthCheckTimer.tolerance = HealthCheckIntervalSeconds / 2.0f;
 		[[NSRunLoop mainRunLoop] addTimer:self.healthCheckTimer forMode:NSRunLoopCommonModes];
-
-//		self.healthCheckTimer = [NSTimer scheduledTimerWithTimeInterval:HealthCheckIntervalSeconds target:self selector:@selector(checkHealth) userInfo:nil repeats:YES];
-//		self.healthCheckTimer.tolerance = HealthCheckIntervalSeconds / 2.0f; // the timer doesn't need to fire exactly on the intervals, so give it a loose tolerance which will improve power savings, etc.
-	});}
+	});
+}
 
 
 - (void)stop {

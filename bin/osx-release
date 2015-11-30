@@ -297,7 +297,7 @@ sub announce_on_slack {
     Readonly my $slack_url => config('slackWebhookURL') or return;
     Readonly my $version   => version();
     Readonly my $awsURL    => 'https://s3.amazonaws.com/' . config('awsBucket') . '/' . upload_subdir() . '/Metabase.dmg';
-    my $text = "Metabase OS X $version 'Turbulent Toucan' Is Now Available!\n\n" .
+    my $text = "Metabase OS X $version 'Tumultuous Toucan' Is Now Available!\n\n" .
                "Get it here: $awsURL\n\n";
 
     open(my $file, get_file_or_die($release_notes)) or die $!;

@@ -99,7 +99,7 @@
   "Updates a given `User` and generates a password reset token for them to use.  Returns the url for password reset."
   [user-id]
   {:pre [(integer? user-id)]}
-  (let [reset-token (str user-id "_" (java.util.UUID/randomUUID))]
+  (let [reset-token (str user-id \_ (java.util.UUID/randomUUID))]
     (upd User user-id, :reset_token reset-token, :reset_triggered (System/currentTimeMillis))
     ;; return the token
     reset-token))

@@ -59,6 +59,7 @@
   :target-path "target/%s"
   :javac-options ["-target" "1.6" "-source" "1.6"]
   :uberjar-name "metabase.jar"
+  :omit-source true
   :ring {:handler metabase.core/app
          :init metabase.core/init
          :destroy metabase.core/destroy}
@@ -100,4 +101,16 @@
                                                       [incanter/incanter-core "1.9.0"]] ; Satistical functions like normal distibutions}})
                                        :source-paths ["sample_dataset"]
                                        :global-vars {*warn-on-reflection* false}
-                                       :main ^:skip-aot metabase.sample-dataset.generate}})
+                                       :main ^:skip-aot metabase.sample-dataset.generate}
+             ;; Run reset password from source: MB_DB_PATH=/path/to/metabase.db lein with-profile reset-password run email@address.com
+             ;; Create the reset password JAR:  lein with-profile reset-password jar
+             ;;                                   -> ./reset-password-artifacts/reset-password/reset-password.jar
+             ;; Run the reset password JAR:     MB_DB_PATH=/path/to/metabase.db java -classpath /path/to/metabase-uberjar.jar:/path/to/reset-password.jar \
+             ;;                                   metabase.reset_password.core email@address.com
+             :reset-password {:source-paths ["reset_password"]
+                              :global-vars {*warn-on-reflection* false}
+                              :main metabase.reset-password.core
+                              :jar-name "reset-password.jar"
+                              ;; Exclude everything except for reset-password specific code in the created jar
+                              :jar-exclusions [#"^(?!metabase/reset_password).*$"]
+                              :target-path "reset-password-artifacts/%s"}}) ; different than ./target because otherwise lein uberjar will delete our artifacts and vice versa
