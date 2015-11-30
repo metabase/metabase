@@ -59,7 +59,6 @@
   :target-path "target/%s"
   :javac-options ["-target" "1.6" "-source" "1.6"]
   :uberjar-name "metabase.jar"
-  :omit-source true
   :ring {:handler metabase.core/app
          :init metabase.core/init
          :destroy metabase.core/destroy}

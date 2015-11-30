@@ -26,7 +26,7 @@
   (doseq [events-ns (->> (ns-find/find-namespaces (clojure.java.classpath/classpath))
                          (filter (fn [ns-symb]
                                    (re-find #"^metabase\.events\." (name ns-symb)))))]
-    (log/info "\tloading events namespace: " events-ns)
+    (log/info "loading events namespace: " events-ns)
     (require events-ns)
     ;; look for `events-init` function in the namespace and call it if it exists
     (when-let [init-fn (ns-resolve events-ns 'events-init)]
