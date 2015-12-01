@@ -5,7 +5,7 @@ Once you connect your database to Metabase, you'll want to configure an email ac
 
 ### Configuring your Email Account
 
-For Metabase to send and receive messages to your organization's users, you'll need to set up an email account to send emails via *SMTP* (simple mail transfer protocol), which is an email standard that secures emails with SSL security protection.
+For Metabase to send messages to your organization's users, you'll need to set up an email account to send emails via *SMTP* (simple mail transfer protocol), which is an email standard that secures emails with SSL security protection.
 
 To start, go to the Admin Panel from the dropdown menu in the top right of Metabase, then from the Settings page, click on **Email** in the left menu.
 
@@ -22,9 +22,9 @@ You should see this form:
 * Enter the email address you would like to be used as the sender of system notifications in the **From Address* field.
 
 **If you use Amazon SES:**
-* Log on to [https://console.aws.amazon.com/ses](https://console.aws.amazon.com/ses). 
+* Log on to [https://console.aws.amazon.com/ses](https://console.aws.amazon.com/ses).
 * Click **SMTP Settings** from the navigation pane.  
-* Select **Create My SMTP Credentials** in the content pane. 
+* Select **Create My SMTP Credentials** in the content pane.
 * Create a user in the **Create User for SMTP** dialog box and then click **Create**.  
 * Next, select **Show User SMTP Credentials** to view the user's SMTP credentials.
 * Go back to the Metabase Admin Panel form and enter the info there.

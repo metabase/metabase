@@ -15,3 +15,8 @@ The **report timezone** sets the default time zone for displaying times. The tim
 
 ### Anonymous Tracking
 This option turns determines whether or not you allow anonymous data about your usage of Metabase to be sent back to us to help us improve the product. *Your database’s data is never tracked or sent*.
+
+
+---
+## Next: Setting up Slack
+If you want to use Slack to enhance the Metabase experience then lets do that now. Let’s learn [how to setup Slack](07-setting-up-slack.md).
