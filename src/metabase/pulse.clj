@@ -64,6 +64,7 @@
     :else (str (cl-format nil "~,1f" n))))
 
 (defn- format-timestamp
+  "Formats timestamps with human friendly absolute dates based on the column :unit"
   [timestamp col]
   (case (:unit col)
     :hour (f/unparse (f/formatter "h a - MMM YYYY") (c/from-long timestamp))
@@ -76,6 +77,39 @@
     :week-of-year (str timestamp)
     :month-of-year (str timestamp)
     (f/unparse (f/formatter "MMM d, YYYY") (c/from-long timestamp))))
+
+(defn- format-timestamp-relative
+  "Formats timestamps with relative names (today, yesterday, this *, last *) based on column :unit, if possible, otherwie returns nil"
+  [timestamp col]
+  (case (:unit col)
+    :day      (let [date    (c/from-long timestamp)
+                    d-start (t/date-midnight (t/year (t/now)) (t/month (t/now)) (t/day (t/now)))]
+                (cond (t/within? (t/interval d-start (t/plus d-start (t/days 1))) date) "Today"
+                      (t/within? (t/interval (t/minus d-start (t/days 1)) d-start) date) "Yesterday"))
+    :week     (let [date    (c/from-long timestamp)
+                    w-start (-> (new org.joda.time.LocalDate) .weekOfWeekyear .roundFloorCopy .toDateMidnight)]
+                (cond (t/within? (t/interval w-start (t/plus w-start (t/weeks 1))) date) "This week"
+                      (t/within? (t/interval (t/minus w-start (t/weeks 1)) w-start) date) "Last week"))
+    :month    (let [date    (c/from-long timestamp)
+                    m-start  (t/date-midnight (t/year (t/now)) (t/month (t/now)))]
+                (cond (t/within? (t/interval m-start (t/plus m-start (t/months 1))) date) "This month"
+                      (t/within? (t/interval (t/minus m-start (t/months 1)) m-start) date) "Last month"))
+    :quarter  (let [date    (c/from-long timestamp)
+                    q-start (t/date-midnight (t/year (t/now)) (+ 1 (* 3 (Math/floor (/ (- (t/month (t/now)) 1) 3)))))]
+                (cond (t/within? (t/interval q-start (t/plus q-start (t/months 3))) date) "This quarter"
+                      (t/within? (t/interval (t/minus q-start (t/months 3)) q-start) date) "Last quarter"))
+    :year     (let [date    (t/date-midnight timestamp)
+                    y-start (t/date-midnight (t/year (t/now)))]
+                (cond (t/within? (t/interval y-start (t/plus y-start (t/years 1))) date) "This year"
+                      (t/within? (t/interval (t/minus y-start (t/years 1)) y-start) date) "Last year"))
+    nil))
+
+(defn format-timestamp-pair
+  "Formats a pair of timestamps, using relative formatting for the first timestamps if possible and 'Previous :unit' for the second, otherwise absolute timestamps for both"
+  [[a b] col]
+  (if-let [a' (format-timestamp-relative a col)]
+    [a' (str "Previous " (-> col :unit name))]
+    [(format-timestamp a col) (format-timestamp b col)]))
 
 (defn- format-cell
   [value col]
@@ -227,18 +261,20 @@
         ys (map second rows)
         ymin (apply min ys)
         ymax (apply max ys)
-        yrange (- ymax ymin)
+        yrange (max 1 (- ymax ymin)) ; `(max 1 ...)` so we don't divide by zero
         ys' (map #(/ (- % ymin) yrange) ys)
-        values (take-last 2 rows)]
+        rows' (->> rows (take-last 2) (reverse))
+        values (map #(format-number (second %)) rows')
+        labels (format-timestamp-pair (map first rows') (first cols))]
   [:div
     [:img {:style "display: block; width: 100%;" :src (render-img (render-sparkline-to-png xs' ys' 524 130))}]
     [:table
       [:tr
-        [:td {:style (str "color: " color-brand "; font-size: 24px; font-weight: 700; padding-right: 16px;")} (-> values second second format-number)]
-        [:td {:style (str "color: " color-grey-3 "; font-size: 24px; font-weight: 700;")} (-> values first second format-number)]]
+        [:td {:style (str "color: " color-brand "; font-size: 24px; font-weight: 700; padding-right: 16px;")} (first values)]
+        [:td {:style (str "color: " color-grey-3 "; font-size: 24px; font-weight: 700;")} (second values)]]
       [:tr
-        [:td {:style (str "color: " color-brand "; font-size: 16px; font-weight: 700; padding-right: 16px;")} (-> values second first (format-timestamp (first cols)))]
-        [:td {:style (str "color: " color-grey-3 "; font-size: 16px;")}  (-> values first first (format-timestamp (first cols)))]]]]))
+        [:td {:style (str "color: " color-brand "; font-size: 16px; font-weight: 700; padding-right: 16px;")} (first labels)]
+        [:td {:style (str "color: " color-grey-3 "; font-size: 16px;")} (second labels)]]]]))
 
 (defn detect-pulse-card-type
   [card data]
