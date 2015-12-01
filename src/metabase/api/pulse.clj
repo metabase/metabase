@@ -96,7 +96,7 @@
     (let [result (driver/dataset-query (:dataset_query card) {:executed_by *current-user-id*})
           data (:data result)
           card-type (p/detect-pulse-card-type card data)
-          card-html (html (p/render-pulse-card card data p/render-img-data-uri true true))]
+          card-html (html (p/render-pulse-card card data p/render-img-data-uri true false))]
       {:status 200 :body {:id id
                           :pulse_card_type card-type
                           :pulse_card_html card-html

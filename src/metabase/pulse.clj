@@ -133,7 +133,7 @@
   [text href icon render-img]
   [:a {:style button-style :href href}
     [:span (h text)]
-    (if icon [:img {:style "margin-left: 4px;"
+    (if icon [:img {:style "margin-left: 4px; width: 16px;"
                     :width 16
                     :src (-> (str "frontend_client/app/img/" icon "@2x.png") io/resource io/input-stream org.apache.commons.io.IOUtils/toByteArray render-img)}])])
 
@@ -174,9 +174,7 @@
         [:div {:style (str "color: " color-grey-2 "; padding-bottom: 10px;")}
           "Showing " [:strong {:style (str "color: " color-grey-3 ";")} (format-number cols-limit)]
           " of "     [:strong {:style (str "color: " color-grey-3 ";")} (format-number (count cols))]
-          " columns."])
-      (if include-buttons
-        [:div (render-button "View all" (card-href card) "external_link" render-img)])]))
+          " columns."])]))
 
 (defn render-card-table
   [card {:keys [cols rows] :as data} render-img include-buttons]
@@ -260,10 +258,14 @@
 (defn render-pulse-card
   [card data render-img include-title include-buttons]
   (try
-    [:div {:style (str section-style "margin: 16px; margin-bottom: 16px;")}
-      (if include-title [:div {:style "margin-bottom: 16px;"}
-        [:a {:style header-style :href (card-href card)}
-          (-> card :name h)]])
+    [:a {:href (card-href card) :style (str section-style "margin: 16px; margin-bottom: 16px; display: block; text-decoration: none;")}
+      (if include-title
+          [:div {:style "margin-bottom: 8px;"}
+            [:span {:style header-style}
+              (-> card :name h)]
+            (if include-buttons [:img {:style "float: right; width: 16px;"
+                                       :width 16
+                                       :src (-> (str "frontend_client/app/img/external_link@2x.png") io/resource io/input-stream org.apache.commons.io.IOUtils/toByteArray render-img)}])])
       (case (detect-pulse-card-type card data)
         :scalar    (render-card-scalar    card data render-img include-buttons)
         :sparkline (render-card-sparkline card data render-img include-buttons)
