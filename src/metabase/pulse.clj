@@ -55,14 +55,6 @@
   [n]
   (if (integer? n) (cl-format nil "~:d" n) (cl-format nil "~,2f" n)))
 
-(defn- format-number-short
-  [n]
-  (cond
-    (>= n 1000000000) (str (cl-format nil "~,1f" (/ n 1000000000.0)) "B")
-    (>= n 1000000) (str (cl-format nil "~,1f" (/ n 1000000.0)) "M")
-    (>= n 1000) (str (cl-format nil "~,1f" (/ n 1000.0)) "K")
-    :else (str (cl-format nil "~,1f" n))))
-
 (defn- format-timestamp
   "Formats timestamps with human friendly absolute dates based on the column :unit"
   [timestamp col]
