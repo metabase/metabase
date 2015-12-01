@@ -159,11 +159,17 @@
 (defn apply-filter [_ korma-query {clause :filter}]
   (k/where korma-query (filter-clause->predicate clause)))
 
-(defn apply-join-tables [_ korma-query {join-tables :join-tables, {source-table-name :name} :source-table}]
-  (loop [korma-query korma-query, [{:keys [table-name pk-field source-field]} & more] join-tables]
-    (let [korma-query (k/join korma-query table-name
-                              (= (keyword (format "%s.%s" source-table-name (:field-name source-field)))
-                                 (keyword (format "%s.%s" table-name        (:field-name pk-field)))))]
+(defn apply-join-tables [_ korma-query {join-tables :join-tables, {source-table-name :name, source-schema :schema} :source-table}]
+  (loop [korma-query korma-query, [{:keys [table-name pk-field source-field schema]} & more] join-tables]
+    (let [table-name        (if (seq schema)
+                              (str schema \. table-name)
+                              table-name)
+          source-table-name (if (seq source-schema)
+                              (str source-schema \. source-table-name)
+                              source-table-name)
+          korma-query       (k/join korma-query table-name
+                                    (= (keyword (str source-table-name \. (:field-name source-field)))
+                                       (keyword (str table-name        \. (:field-name pk-field)))))]
       (if (seq more)
         (recur korma-query more)
         korma-query))))
