@@ -45,7 +45,7 @@ One last quick thing that you’ll have to decide is if it’s okay for us to co
 If you’re ready to start using Metabase, go ahead and click **Next**
 
 ## Staying in touch
-At this point you are all set and ready to use Metabase.  Since we like keeping in touch with our friends we made it easy to sign-up to our newsletter (infrequent emails) with a single click!
+At this point you are all set and ready to use Metabase.  Since we like keeping in touch with our friends we made it easy to sign up for our newsletter (infrequent emails) with a single click!
 
 ![Metabase Newsletter](images/NewsletterSignup.png)
 
