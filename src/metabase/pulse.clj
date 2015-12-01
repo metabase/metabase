@@ -276,6 +276,13 @@
         [:td {:style (str "color: " color-brand "; font-size: 16px; font-weight: 700; padding-right: 16px;")} (first labels)]
         [:td {:style (str "color: " color-grey-3 "; font-size: 16px;")} (second labels)]]]]))
 
+(defn render-card-empty
+  [card {:keys [rows cols] :as data} render-img include-buttons]
+  [:div {:style "text-align: center;"}
+    [:img {:style "width: 104px;"
+             :src (-> (str "frontend_client/app/img/pulse_no_results@2x.png") io/resource io/input-stream org.apache.commons.io.IOUtils/toByteArray render-img)}]
+    [:div {:style (str "margin-top: 8px; color: " color-grey-4 ";")} "No results"]])
+
 (defn detect-pulse-card-type
   [card data]
   (let [col-count (-> data :cols count)
@@ -286,6 +293,7 @@
     (cond
       (or (= aggregation :rows)
           (contains? #{:pin_map :state :country} (:display card)))        nil
+      (= row-count 0)                                                     :empty
       (and (= col-count 1) (= row-count 1))                               :scalar
       (and (= col-count 2) (datetime-field? col-1) (number-field? col-2)) :sparkline
       (and (= col-count 2) (number-field? col-2))                         :bar
@@ -305,6 +313,7 @@
                                        :width 16
                                        :src (-> (str "frontend_client/app/img/external_link@2x.png") io/resource io/input-stream org.apache.commons.io.IOUtils/toByteArray render-img)}])])
       (case (detect-pulse-card-type card data)
+        :empty     (render-card-empty     card data render-img include-buttons)
         :scalar    (render-card-scalar    card data render-img include-buttons)
         :sparkline (render-card-sparkline card data render-img include-buttons)
         :bar       (render-card-bar       card data render-img include-buttons)
