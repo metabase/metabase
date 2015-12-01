@@ -43,7 +43,7 @@
                (let [[columns & [first-row :as rows]] (jdbc/query t-conn sql, :as-arrays? true)]
                  {:rows    rows
                   :columns columns
-                  :cols    (for [[column first-value] (zipmap columns first-row)]
+                  :cols    (for [[column first-value] (partition 2 (interleave columns first-row))]
                              {:name      column
                               :base_type (value->base-type first-value)})})
 
