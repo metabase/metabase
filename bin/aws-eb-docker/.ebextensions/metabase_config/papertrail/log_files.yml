@@ -1,6 +1,9 @@
 # /etc/log_files.yml - Papertrail
 files:
   - /var/log/nginx/access.log
+  - /var/log/nginx/error.log
+  - /var/log/eb-*
+  - /var/log/eb-docker/containers/*/*.log
 hostname:
 destination:
   host:
