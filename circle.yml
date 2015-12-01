@@ -25,11 +25,11 @@ test:
     # 0) runs unit tests w/ H2 local DB. Runs against H2, Mongo, MySQL
     # 1) runs unit tests w/ Postgres local DB. Runs against H2, SQL Server
     # 2) runs unit tests w/ MySQL local DB. Runs against H2, Postgres, SQLite
-    # 3) runs Eastwood linter
-    # 4) Bikeshed linter
+    # 3) runs unit tests w/ H2 local DB. Runs against H2, Redshift
+    # 4) runs Eastwood linter & Bikeshed linter
     # 5) runs JS linter + JS test
     # 6) runs lein uberjar. (We don't run bin/build because we're not really concerned about `npm install` (etc) in this test, which runs elsewhere)
-    - case $CIRCLE_NODE_INDEX in 0) ENGINES=h2,mongo,mysql lein test ;; 1) ENGINES=h2,sqlserver MB_DB_TYPE=postgres MB_DB_DBNAME=circle_test MB_DB_PORT=5432 MB_DB_USER=ubuntu MB_DB_HOST=localhost lein test ;; 2) ENGINES=h2,postgres,sqlite MB_DB_TYPE=mysql MB_DB_DBNAME=circle_test MB_DB_PORT=3306 MB_DB_USER=ubuntu MB_DB_HOST=localhost lein test ;; 3) lein eastwood ;; 4) lein bikeshed --max-line-length 240 ;; 5) npm install && npm run lint && npm run build && npm run test ;; 6) lein uberjar ;; esac:
+    - case $CIRCLE_NODE_INDEX in 0) ENGINES=h2,mongo,mysql lein test ;; 1) ENGINES=h2,sqlserver MB_DB_TYPE=postgres MB_DB_DBNAME=circle_test MB_DB_PORT=5432 MB_DB_USER=ubuntu MB_DB_HOST=localhost lein test ;; 2) ENGINES=h2,postgres,sqlite MB_DB_TYPE=mysql MB_DB_DBNAME=circle_test MB_DB_PORT=3306 MB_DB_USER=ubuntu MB_DB_HOST=localhost lein test ;; 3) ENGINES=h2,redshift lein test ;; 4) lein eastwood && lein bikeshed --max-line-length 240 ;; 5) npm install && npm run lint && npm run build && npm run test ;; 6) lein uberjar ;; esac:
         parallel: true
 deployment:
   master:

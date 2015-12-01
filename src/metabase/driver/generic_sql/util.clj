@@ -9,7 +9,7 @@
             [metabase.driver :as driver]
             [metabase.driver.query-processor :as qp]))
 
-(defn- db->connection-spec
+(defn db->connection-spec
   "Return a JDBC connection spec for a Metabase `Database`."
   [{{:keys [short-lived?]} :details, :as database}]
   (let [driver (driver/engine->driver (:engine database))]
