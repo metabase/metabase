@@ -38,7 +38,7 @@
     "Return a korma form for truncating a date or timestamp field or value to a given resolution, or extracting a date component.")
 
   (excluded-schemas ^java.util.Set [this]
-                    "*OPTIONAL*. Set of string names of schemas to skip syncing tables from.")
+    "*OPTIONAL*. Set of string names of schemas to skip syncing tables from.")
 
   (set-timezone-sql ^String [this]
     "*OPTIONAL*. This should be a prepared JDBC SQL statement string to be used to set the timezone for the current transaction.

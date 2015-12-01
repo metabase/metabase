@@ -4,7 +4,6 @@
   (:require (clojure [set :as set]
                      [walk :as walk])
             [medley.core :as m]
-            [swiss.arrows :refer [-<>]]
             [metabase.db :refer [sel]]
             (metabase.driver.query-processor [interface :refer :all]
                                              [parse :as parse])
@@ -182,10 +181,11 @@
                                          (zipmap (map :table_id pk-fields) pk-fields))]
 
       ;; Now build the :join-tables clause
-      (vec (for [{table-id :id, table-name :name} join-tables]
+      (vec (for [{table-id :id, table-name :name, schema :schema} join-tables]
              (let [{pk-field-id :id, pk-field-name :name} (join-table-id->pk-field table-id)]
                (map->JoinTable {:table-id     table-id
                                 :table-name   table-name
+                                :schema       schema
                                 :pk-field     (map->JoinTableField {:field-id   pk-field-id
                                                                     :field-name pk-field-name})
                                 :source-field (let [fk-id (pk-field-id->fk-field-id pk-field-id)]
@@ -197,14 +197,13 @@
   [{{source-table-id :source-table} :query, database-id :database, :keys [table-ids fk-field-ids], :as expanded-query-dict}]
   {:pre [(integer? source-table-id)]}
   (let [table-ids       (conj table-ids source-table-id)
-        table-id->table (sel :many :id->fields [Table :schema :name :id] :id [in table-ids])
+        table-id->table (sel :many :id->fields [Table :schema :name :id], :id [in table-ids])
         join-tables     (vals (dissoc table-id->table source-table-id))]
-
-    (-<> expanded-query-dict
-         (assoc-in [:query :source-table] (or (table-id->table source-table-id)
+    (as-> expanded-query-dict <>
+      (assoc-in <> [:query :source-table] (or (table-id->table source-table-id)
                                               (throw (Exception. (format "Query expansion failed: could not find source table %d." source-table-id)))))
-         (assoc-in [:query :join-tables]  (join-tables-fetch-field-info source-table-id join-tables fk-field-ids))
-         (walk/postwalk #(resolve-table % table-id->table) <>))))
+      (assoc-in <> [:query :join-tables]  (join-tables-fetch-field-info source-table-id join-tables fk-field-ids))
+      (walk/postwalk #(resolve-table % table-id->table) <>))))
 
 
 ;;; # ------------------------------------------------------------ PUBLIC INTERFACE ------------------------------------------------------------
