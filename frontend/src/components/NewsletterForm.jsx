@@ -67,7 +67,7 @@ export default class NewsletterForm extends Component {
                             <div>
                                 { !submitted ?
                                     <div className="">
-                                        <input ref="email" style={this.styles.input} className="AdminInput bordered rounded h3 inline-block" type="email" value={initialEmail} placeholder="Email address" />
+                                        <input ref="email" style={this.styles.input} className="AdminInput bordered rounded h3 inline-block" type="email" defaultValue={initialEmail} placeholder="Email address" />
                                         <input className="Button float-right inline-block ml1" type="submit" value="Subscribe" name="subscribe" />
                                     </div>
                                 :
