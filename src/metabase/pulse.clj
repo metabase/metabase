@@ -294,7 +294,9 @@
 (defn render-pulse-card
   [card data render-img include-title include-buttons]
   (try
-    [:a {:href (card-href card) :style (str section-style "margin: 16px; margin-bottom: 16px; display: block; text-decoration: none;")}
+    [:a {:href (card-href card)
+         :target "_blank"
+         :style (str section-style "margin: 16px; margin-bottom: 16px; display: block; text-decoration: none;")}
       (if include-title
           [:div {:style "margin-bottom: 8px;"}
             [:span {:style header-style}
