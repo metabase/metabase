@@ -70,6 +70,7 @@
    :apply-page          (resolve 'metabase.driver.generic-sql.query-processor/apply-page)
    :current-datetime-fn (constantly (k/sqlfn* :NOW))
    :excluded-schemas    (constantly nil)
+   :set-timezone-sql    (constantly nil)
    :stddev-fn           (constantly :STDDEV)})
 
 
@@ -185,7 +186,7 @@
 (defn features [driver]
   (set (cond-> [:foreign-keys
                 :standard-deviation-aggregations]
-         (:set-timezone-sql driver) (conj :set-timezone))))
+         (set-timezone-sql driver) (conj :set-timezone))))
 
 (defn IDriverSQLDefaultsMixin
   "Default implementations of methods in `IDriver` for SQL drivers."
