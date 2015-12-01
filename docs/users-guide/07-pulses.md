@@ -26,7 +26,7 @@ Currently, there are a few restrictions on what kinds of saved questions you can
 * Bar charts (and pie charts which get turned into bar charts) will be cropped to one column for the labels, one column for the values, and 10 total rows
 
 ### Choose How and When to Deliver Your Data
-Each pulse you create can be delivered by email, Slack, or both. You can also set a different delivery schedule for email versus Slack. To delivery by email, just enter in the names of Metabase users, or any email addresses, separated by commas. Then choose to either send it daily or weekly, and at which hour of the day.
+Each pulse you create can be delivered by email, Slack, or both. You can also set a different delivery schedule for email versus Slack. To deliver by email, just enter in the names of Metabase users, or any email addresses, separated by commas. Then choose to either send it daily or weekly, and at which hour of the day.
 
 ![Setting the email schedule](images/pulses/05-email-schedul.png)
 
