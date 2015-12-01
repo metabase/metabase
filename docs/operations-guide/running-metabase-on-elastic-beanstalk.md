@@ -1,3 +1,12 @@
+> **Covered in this guide:**  
+> [Installing Metabase on AWS Elastic Beanstalk](#running-metabase-on-aws-elastic-beanstalk)  
+> [Upgrading to new versions of Metabase](#deploying-new-versions-of-metabase)  
+> [Retaining Metabase logs on S3](#retaining-metabase-logs)  
+> [Running Metabase over HTTPS](#running-metabase-over-https)  
+> [Using Papertrail for logging](#running-metabase-with-papertrail-on-aws)  
+> [Protecting invalid hostname access](#protecting-against-invalid-hostname-access)
+
+
 # Running Metabase on AWS Elastic Beanstalk
 
 The Metabase team runs a number of production installations on AWS using Elastic Beanstalk and currently recommend it as the preferred choice for production deployments.  Below is a detailed guide to installing Metabase on Elastic Beanstalk.
@@ -7,7 +16,7 @@ The Metabase team runs a number of production installations on AWS using Elastic
 
 Metabase provides an Elastic Beanstalk pre-configured launch url to help new installations getting started.  If you are starting fresh we recommend you follow this link to begin creating the Elastic Beanstalk deployment with a few choices pre-filled.
 
-[Launch Metabase on Elastic Beanstalk](http://downloads.metabase.com/v0.12.0/launch-aws-eb.html)
+[Launch Metabase on Elastic Beanstalk](http://downloads.metabase.com/v0.13.0/launch-aws-eb.html)
 
 The rest of this guide will follow each phase of the Elastic Beanstalk setup step-by-step.
 
@@ -44,7 +53,7 @@ When your environment type settings look like the above then go ahead and click 
 
 The application version describes the exact binary you wish to deploy to your Elastic Beanstalk application.  Metabase provides a pre-built AWS Elastic Beanstalk application version which can be linked to directly.  Simply enter the following url in the `S3 URL` textbox:
 
-https://s3.amazonaws.com/downloads.metabase.com/v0.12.0/metabase-aws-eb.zip
+https://s3.amazonaws.com/downloads.metabase.com/v0.13.0/metabase-aws-eb.zip
 
 Leave all the settings under Deployment Limits on their defaults.  These settings won't impact Metabase.
 
@@ -177,7 +186,7 @@ Here's each step:
 1. Go to Elastic Beanstalk and select your `Metabase` application
 * Click on `Application Versions` on the left nav (you can also choose `Application Versions` from the dropdown at the top of the page)
 * Download the latest Metabase Elastic Beanstalk deployment file
-  * https://s3.amazonaws.com/downloads.metabase.com/v0.12.0/aws-elastic-beanstalk.zip
+  * https://s3.amazonaws.com/downloads.metabase.com/v0.13.0/aws-elastic-beanstalk.zip
 * Upload a new Application Version
 	* Click the `Upload` button on the upper right side of the listing
 		* Give the new version a name, ideally including the Metabase version number (e.g. v0.13.0)
@@ -233,14 +242,47 @@ This will create a new certificate inside your AWS environment which can be reus
 
 ### Modify Metabase to enforce HTTPS
 
-* Https Support (optional: if you are just doing a trial or don’t have an ssl certificate you can skip this)
-  * Prerequisites
-    * Before trying to enable Https support you must **Upload a Server Certificate** to your AWS account
-  * Click on the box labeled **Load Balancing** under the heading **Network Tier**
-  * Set the value of **Listener port**: to *OFF*
-  * Set the value of **Secure listener port**: to *443*
-  * In the dropdown for **SSL certificate ID**: choose the certificate that you would like to use for this Environment
-    * NOTE: the certificate MUST match the domain you plan to use for your Metabase install
-  * Scroll to the bottom of the page and click **Save** in the lower right
-    * NOTE: your Environment will begin updating with your new change.  you will have to wait for this to complete before making additional updates
-    * IMPORTANT: once this change is made you will no longer be able to access your Metabase instance at the *.elasticbeanstalk.com url provided by Amazon because it will result in a certificate mismatch.  To  continue accessing your secure Metabase instance you must **Setup DNS CNAME**
+Before trying to enable Https support you must upload a server certificate to your AWS account.  Instructions above.
+
+1. Go to Elastic Beanstalk and select your `Metabase` application
+* Click on Environment that you would like to update
+* Click on `Configuration` on the left hand sidebar
+* Scroll down to `Load Balancing` under the _Network Tier_ section and click the gear icon to edit those settings.
+* Set the value for `Secure listener port` to *443*
+* Then, a little bit lower on the dropdown for `SSL certificate ID`, choose the name of the certificate that you uploaded to your account.
+  * NOTE: the certificate MUST match the domain you plan to use for your Metabase install
+* Scroll to the bottom of the page and click `Save` in the lower right
+  * NOTE: your Environment will begin updating with your new change.  you will have to wait for this to complete before making additional updates
+  * IMPORTANT: once this change is made you will no longer be able to access your Metabase instance at the \*.elasticbeanstalk.com url provided by Amazon because it will result in a certificate mismatch.  To  continue accessing your secure Metabase instance you must [Setup a DNS CNAME](#setup-dns-cname)
+
+Once your application is working properly over HTTPS we recommend setting an additional property to force non-https clients to use the HTTPS endpoint
+
+1. Click on `Configuration` on the left hand sidebar
+* Scroll down to `Software Configuration` under the _Web Tier_ section and click the gear icon to edit those settings.
+* Under `Environment Properties` add an entry for `NGINX_FORCE_SSL` with a value of `1`
+* Scroll to the bottom of the page and click `Apply` in the lower right, then wait for your application to update.
+
+
+# Using Papertrail for logging on AWS
+
+This provides a simple way to use the Papertrail logging service for collecting the logs for you Metabase instance in an easy to read location.
+
+1. Click on `Configuration` on the left hand sidebar
+* Scroll down to `Software Configuration` under the _Web Tier_ section and click the gear icon to edit those settings.
+* Under `Environment Properties` add the following entries
+   * `PAPERTRAIL_HOST` - provided by Papertrail
+   * `PAPERTRAIL_PORT` - provided by Papertrail
+   * `PAPERTRAIL_HOSTNAME` - the name you want to see showing up in Papertrail for this server
+* Scroll to the bottom of the page and click `Apply` in the lower right, then wait for your application to update.
+
+*NOTE:* sometimes these settings will not apply until you restart your application server, which you can do by either choosing `Restart App Server(s)` from the Actions dropdown or by deploying the same version again.
+
+
+# Protecting against invalid hostname access
+
+For the truly paranoid, we provide a setting in the AWS EB deployment which enforces an nginx check of the hostname of the incoming request and terminates the request if the client is not requesting the exact hostname that we expect.  This is nice for preventing random internet traffic from stumbling upon your Metabase instance.
+
+1. Click on `Configuration` on the left hand sidebar
+* Scroll down to `Software Configuration` under the _Web Tier_ section and click the gear icon to edit those settings.
+* Under `Environment Properties` add an entry for `NGINX_SERVER_NAME` with a value corresponding to the exact domain name you are using for your Metabase instance.
+* Scroll to the bottom of the page and click `Apply` in the lower right, then wait for your application to update.
