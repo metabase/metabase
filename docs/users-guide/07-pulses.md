@@ -20,19 +20,19 @@ When you select a saved question, Metabase will show you a preview of how it’l
 
 ![Behold! The metamorphosis.](images/pulses/04-transformation.png)
 
-Currently, there are a few restrictions on what kinds of saved questions you can put in a pulse:
+Currently, there are a few restrictions on what kinds of saved questions you can put into a pulse:
 * Raw data can’t be put in a pulse
 * Tables will be cropped to a maximum of three columns and 10 rows
 * Bar charts (and pie charts which get turned into bar charts) will be cropped to one column for the labels, one column for the values, and 10 total rows
 
 ### Choose How and When to Deliver Your Data
-Each pulse you create can be delivered by email, Slack, or both. You can also set a different delivery schedule for email versus Slack. To deliver by email, just enter in the names of Metabase users, or any email addresses, separated by commas. Then choose to either send it daily or weekly, and at which hour of the day.
+Each pulse you create can be delivered by email, Slack, or both. You can also set a different delivery schedule for email versus Slack. To deliver by email, just type in the email addresses you want to send the pulse to, separated by commas. Then, choose to either send it daily or weekly, and the time you want it to be sent.
 
-![Setting the email schedule](images/pulses/05-email-schedul.png)
+![Setting the email schedule](images/pulses/05-email-schedule.png)
 
-To send via Slack, you’ll need to choose which channel you want to post the pulse in, daily or weekly, and at what time. Again, the schedule for Slack can be different from the schedule for email.
+To send via Slack, you’ll need to choose which channel you want to post the pulse in, whether you want it to post hourly or daily, and at what time. Again, the schedule for Slack can be different from the schedule for email.
 
-Once you’re done, just click `Create pulse`. You’ll see your new pulse, along with its recipients, and the saved questions that are included in the pulse. If anyone else on your team wants to subscribe to a pulse that’s delivered by email, they can click the button that says `Get this email` from the Pulses screen now.
+Once you’re done, just click `Create pulse`. You’ll see your new pulse, along with its recipients, and the saved questions that are included in the pulse. If anyone else on your team wants to subscribe to a pulse that’s delivered by email, they can click the button that says `Get this email` from the Pulses screen.
 
 ![A beautiful, completed pulse](images/pulses/06-created.png)
 
