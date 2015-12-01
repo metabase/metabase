@@ -28,7 +28,8 @@
                                            :joinUrl join-url
                                            :quotation (:quote data-quote)
                                            :quotationAuthor (:author data-quote)
-                                           :today (u/format-date "MMM'&nbsp;'dd,'&nbsp;'yyyy" (System/currentTimeMillis))})]
+                                           :today (u/format-date "MMM'&nbsp;'dd,'&nbsp;'yyyy" (System/currentTimeMillis))
+                                           :logoHeader true})]
     (email/send-message
       :subject     (str "You're invited to join " company "'s Metabase")
       :recipients   [(:email invited)]
@@ -44,7 +45,8 @@
          (string? password-reset-url)]}
   (let [message-body (stencil/render-file "metabase/email/password_reset"
                                           {:hostname hostname
-                                           :passwordResetUrl password-reset-url})]
+                                           :passwordResetUrl password-reset-url
+                                           :logoHeader true})]
     (email/send-message
      :subject      "[Metabase] Password Reset Request"
      :recipients   [email]
@@ -70,11 +72,12 @@
         data-quote   (rand-nth q/quotations)
         message-body (stencil/render-file "metabase/email/pulse"
                                           {:pulse (html body)
-                                           :pulseName (:name pulse)
+                                          ;  :pulseName (:name pulse)
                                            :sectionStype p/section-style
                                            :colorGrey4 p/color-grey-4
                                            :quotation (:quote data-quote)
-                                           :quotationAuthor (:author data-quote)})]
+                                           :quotationAuthor (:author data-quote)
+                                           :logoFooter true})]
     (apply vector {:type "text/html" :content message-body}
                   (map-indexed (fn [idx bytes] {:type :inline
                                                 :content-id (str "IMAGE_" idx)

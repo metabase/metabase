@@ -79,7 +79,7 @@
   "Send a `Pulse` email given a list of card results to render and a list of recipients to send to."
   [{:keys [id name] :as pulse} results recipients]
   (log/debug (format "Sending Pulse (%d: %s) via Channel :email" id name))
-  (let [email-subject    (str "Pulse Email: " name)
+  (let [email-subject    (str "Pulse: " name)
         email-recipients (filterv u/is-email? (map :email recipients))]
     (email/send-message
       :subject      email-subject

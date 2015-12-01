@@ -17,12 +17,12 @@
 (def ^:const rows-limit 10)
 (def ^:const cols-limit 3)
 (def ^:const sparkline-dot-radius 6)
-(def ^:const sparkline-thickness 4)
-(def ^:const sparkline-pad 10)
+(def ^:const sparkline-thickness 3)
+(def ^:const sparkline-pad 8)
 
 ;;; ## STYLES
 
-(def ^:const color-brand  "rgb(80,158,227)")
+(def ^:const color-brand  "rgb(45,134,212)")
 (def ^:const color-purple "rgb(135,93,175)")
 (def ^:const color-grey-1 "rgb(248,248,248)")
 (def ^:const color-grey-2 "rgb(189,193,191)")
@@ -32,7 +32,7 @@
 (def ^:const font-style    "font-family: Lato, \"Helvetica Neue\", Helvetica, Arial, sans-serif;")
 (def ^:const section-style (str font-style))
 (def ^:const header-style  (str font-style "font-size: 16px; font-weight: 700; color: " color-grey-4 "; text-decoration: none;"))
-(def ^:const scalar-style  (str font-style "font-size: 32px; font-weight: 400; color: " color-brand ";"))
+(def ^:const scalar-style  (str font-style "font-size: 24px; font-weight: 700; color: " color-brand ";"))
 (def ^:const bar-th-style  (str font-style "font-size: 10px; font-weight: 400; color: " color-grey-4 "; border-bottom: 4px solid " color-grey-1 "; padding-top: 0px; padding-bottom: 10px;"))
 (def ^:const bar-td-style  (str font-style "font-size: 16px; font-weight: 400; text-align: left; padding-right: 1em; padding-top: 8px;"))
 (def ^:const button-style  (str font-style "display: inline-block; box-sizing: border-box; padding: 8px; color: " color-brand "; border: 1px solid " color-brand "; border-radius: 4px; text-decoration: none; "))
@@ -67,7 +67,7 @@
   [timestamp col]
   (case (:unit col)
     :hour (f/unparse (f/formatter "h a - MMM YYYY") (c/from-long timestamp))
-    :week (f/unparse (f/formatter "w - YYYY") (c/from-long timestamp))
+    :week (str "Week " (f/unparse (f/formatter "w - YYYY") (c/from-long timestamp)))
     :month (f/unparse (f/formatter "MMMM YYYY") (c/from-long timestamp))
     :quarter (str "Q" (+ 1 (int (/ (t/month (c/from-long timestamp)) 3))) " - " (t/year (c/from-long timestamp)))
     :year (str timestamp)
@@ -208,9 +208,10 @@
         xt (map #(+ sparkline-pad (* width %)) xs)
         yt (map #(+ sparkline-pad (- height (* height %))) ys)]
     (.setRenderingHints g2 (new java.awt.RenderingHints java.awt.RenderingHints/KEY_ANTIALIASING java.awt.RenderingHints/VALUE_ANTIALIAS_ON))
-    (.setColor g2 (new java.awt.Color 45 134 212))
+    (.setColor g2 (new java.awt.Color 211 227 241))
     (.setStroke g2 (new java.awt.BasicStroke sparkline-thickness java.awt.BasicStroke/CAP_ROUND java.awt.BasicStroke/JOIN_ROUND))
     (.drawPolyline g2 (int-array (count xt) xt) (int-array (count yt) yt) (count xt))
+    (.setColor g2 (new java.awt.Color 45 134 212))
     (.fillOval g2 (- (last xt) sparkline-dot-radius) (- (last yt) sparkline-dot-radius) (* 2 sparkline-dot-radius) (* 2 sparkline-dot-radius))
     (.setColor g2 java.awt.Color/white)
     (.setStroke g2 (new java.awt.BasicStroke 2))
@@ -218,8 +219,8 @@
     (javax.imageio.ImageIO/write image "png" os)
     (.toByteArray os)))
 
-(defn render-sparkline-with-axis-to-png
-  [card {:keys [rows cols] :as data}]
+(defn render-card-sparkline
+  [card {:keys [rows cols] :as data} render-img include-buttons]
   (let [xs (for [row rows :let [x (first row)]] (if (instance? java.util.Date x) (.getTime x) x))
         xmin (apply min xs)
         xmax (apply max xs)
@@ -229,30 +230,17 @@
         ymin (apply min ys)
         ymax (apply max ys)
         yrange (- ymax ymin)
-        ys' (map #(/ (- % ymin) yrange) ys)]
-    (render-html-to-png
-      [:div {:style (str font-style "color: " color-grey-2 ";") }
-        [:div {:style "display: inline-block; position: relative; margin-left: 50px;" }
-          [:div {:style "position: relative;"}
-            [:div {:style "position: absolute; height: 100%; text-align: right; background-color: red;"}
-              [:div {:style "position: absolute; right: 0;"} (format-number-short ymax)]
-              [:div {:style "position: absolute; top: 150px; right: 0;"} (format-number-short ymin)]]
-            [:img {:style "display: block; left: 20px;" :src (render-img-data-uri (render-sparkline-to-png xs' ys' 275 150))}]
-          ]
-          [:div
-            [:div {:style (str "height: 15px; margin-left: 10px; margin-right: 10px; border: 4px solid " color-grey-1 "; border-top: none; border-bottom: none;")} "&#160;"]
-            [:div {:style "height: 15px; margin-left: 10px; margin-right: 10px;"}
-              [:div {:style "float: left;"} (format-timestamp xmin (first cols))]
-              [:div {:style "float: right;"} (format-timestamp xmax (first cols))]]
-          ]]]
-        300)))
-
-(defn render-card-sparkline
-  [card {:keys [rows cols] :as data} render-img include-buttons]
+        ys' (map #(/ (- % ymin) yrange) ys)
+        values (take-last 2 rows)]
   [:div
-    [:img {:style "display: block" :src (render-img (render-sparkline-with-axis-to-png card data))}]
-    [:div {:style "margin-top: 20px; margin-left: 60px;"}
-      (render-table card (reverse (take-last 2 rows)) cols render-img include-buttons [0 1] nil)]])
+    [:img {:style "display: block; width: 100%;" :src (render-img (render-sparkline-to-png xs' ys' 524 130))}]
+    [:table
+      [:tr
+        [:td {:style (str "color: " color-brand "; font-size: 24px; font-weight: 700; padding-right: 16px;")} (-> values second second format-number)]
+        [:td {:style (str "color: " color-grey-3 "; font-size: 24px; font-weight: 700;")} (-> values first second format-number)]]
+      [:tr
+        [:td {:style (str "color: " color-brand "; font-size: 16px; font-weight: 700; padding-right: 16px;")} (-> values second first (format-timestamp (first cols)))]
+        [:td {:style (str "color: " color-grey-3 "; font-size: 16px;")}  (-> values first first (format-timestamp (first cols)))]]]]))
 
 (defn detect-pulse-card-type
   [card data]
@@ -272,7 +260,7 @@
 (defn render-pulse-card
   [card data render-img include-title include-buttons]
   (try
-    [:div {:style (str section-style "margin: 16px; margin-bottom: 32px;")}
+    [:div {:style (str section-style "margin: 16px; margin-bottom: 16px;")}
       (if include-title [:div {:style "margin-bottom: 16px;"}
         [:a {:style header-style :href (card-href card)}
           (-> card :name h)]])
@@ -290,7 +278,7 @@
 
 (defn render-pulse-section
   [render-img include-buttons {:keys [card result]}]
-  [:div {:style "margin-top: 10px; margin-bottom: 20px;"}
+  [:div {:style (str "margin-top: 10px; margin-bottom: 20px; border: 2px solid " color-grey-1 "; border-radius: 2px;")}
     (render-pulse-card card (:data result) render-img true include-buttons)])
 
 (defn render-pulse-card-to-png
