@@ -1383,7 +1383,7 @@
 
 ;; RELATIVE DATES
 (defn- database-def-with-timestamps [interval-seconds]
-  (create-database-definition "DB"
+  (create-database-definition (str "a-checkin-every-" interval-seconds "-seconds")
     ["checkins"
      [{:field-name "timestamp"
        :base-type  :DateTimeField}]
