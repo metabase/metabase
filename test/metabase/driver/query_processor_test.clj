@@ -30,7 +30,7 @@
   (set/difference datasets/all-valid-engines (engines-that-support feature)))
 
 (defmacro if-questionable-timezone-support [then else]
-  `(if (contains? #{:sqlserver :mongo :sqlite} *engine*)
+  `(if (contains? #{:mongo :redshift :sqlite :sqlserver} *engine*)
      ~then
      ~else))
 
@@ -269,7 +269,9 @@
 
 ;; ## "AVG" AGGREGATION
 (qp-expect-with-all-engines
-    {:rows    [[35.50589199999998]]
+    {:rows    [[(if (= *engine* :redshift)
+                  35.505892
+                  35.50589199999998)]]
      :columns ["avg"]
      :cols    [(aggregate-col :avg (venues-col :latitude))]}
   (Q aggregate avg latitude of venues))
@@ -389,7 +391,8 @@
      :columns (venues-columns)
      :cols    (venues-cols)}
   (Q aggregate rows of venues
-     filter between id 21 22))
+     filter between id 21 22
+     order id+))
 
 ;; ### FILTER -- "BETWEEN" with dates
 (qp-expect-with-all-engines
@@ -408,7 +411,8 @@
      :columns (venues-columns)
      :cols    (venues-cols)}
   (Q aggregate rows of venues
-     filter or <= id 3 = id 5))
+     filter or <= id 3 = id 5
+     order id+))
 
 ;; ### FILTER -- "INSIDE"
 (qp-expect-with-all-engines
@@ -596,13 +600,14 @@
    :cols    [(aggregate-col :stddev (venues-col :latitude))]
    :rows    [[(datasets/engine-case
                 :h2        3.43467255295115      ; annoying :/
-                :postgres  3.4346725529512736
                 :mysql     3.417456040761316
+                :postgres  3.4346725529512736
+                :redshift  3.43467255295115
                 :sqlserver 3.43467255295126)]]}
   (Q aggregate stddev latitude of venues))
 
 ;; Make sure standard deviation fails for the Mongo driver since its not supported
-(datasets/expect-with-engines (engines-that-dont-support :foreign-keys)
+(datasets/expect-with-engines (engines-that-dont-support :standard-deviation-aggregations)
   {:status :failed
    :error  "standard-deviation-aggregations is not supported by this driver."}
   (select-keys (Q aggregate stddev latitude of venues) [:status :error]))
@@ -661,32 +666,36 @@
              "avg"]
    :rows    [[3 (datasets/engine-case
                   :h2        22
-                  :postgres  22.0000000000000000M
-                  :mysql     22.0000M
-                  :sqlserver 22
                   :mongo     22.0
-                  :sqlite    22.0)]
+                  :mysql     22.0000M
+                  :postgres  22.0000000000000000M
+                  :redshift  22
+                  :sqlite    22.0
+                  :sqlserver 22)]
              [2 (datasets/engine-case
                   :h2        28
-                  :postgres  28.2881355932203390M
-                  :mysql     28.2881M
-                  :sqlserver 28
                   :mongo     28.28813559322034
-                  :sqlite    28.28813559322034)]
+                  :mysql     28.2881M
+                  :postgres  28.2881355932203390M
+                  :redshift  28
+                  :sqlite    28.28813559322034
+                  :sqlserver 28)]
              [1 (datasets/engine-case
                   :h2        32
-                  :postgres  32.8181818181818182M
-                  :mysql     32.8182M
-                  :sqlserver 32
                   :mongo     32.81818181818182
-                  :sqlite    32.81818181818182)]
+                  :mysql     32.8182M
+                  :postgres  32.8181818181818182M
+                  :redshift  32
+                  :sqlite    32.81818181818182
+                  :sqlserver 32)]
              [4 (datasets/engine-case
                   :h2        53
-                  :postgres  53.5000000000000000M
-                  :mysql     53.5000M
-                  :sqlserver 53
                   :mongo     53.5
-                  :sqlite    53.5)]]
+                  :mysql     53.5000M
+                  :postgres  53.5000000000000000M
+                  :redshift  53
+                  :sqlite    53.5
+                  :sqlserver 53)]]
    :cols    [(venues-col :price)
              (aggregate-col :avg (venues-col :category_id))]}
   (Q return :data
@@ -701,10 +710,10 @@
 (datasets/expect-with-engines (engines-that-support :standard-deviation-aggregations)
   {:columns [(format-name "price")
              "stddev"]
-   :rows    [[3 (datasets/engine-case :h2 26, :postgres 26, :mysql 25, :sqlserver 26)]
+   :rows    [[3 (datasets/engine-case :h2 26, :mysql 25, :postgres 26, :redshift 26, :sqlserver 26)]
              [1 24]
              [2 21]
-             [4 (datasets/engine-case :h2 15, :postgres 15, :mysql 14, :sqlserver 15)]]
+             [4 (datasets/engine-case :h2 15, :mysql 14, :postgres 15, :redshift 15, :sqlserver 15)]]
    :cols    [(venues-col :price)
              (aggregate-col :stddev (venues-col :category_id))]}
   (-> (Q return :data
@@ -784,8 +793,8 @@
 
 (datasets/expect-with-all-engines
   (cond
-    ;; SQL Server and Mongo don't have a concept of timezone so results are all grouped by UTC
-    (contains? #{:sqlserver :mongo} *engine*)
+    ;; SQL Server, Mongo, and Redshift don't have a concept of timezone so results are all grouped by UTC
+    (contains? #{:mongo :redshift :sqlserver} *engine*)
     [[#inst "2015-06-01T07" 6]
      [#inst "2015-06-02T07" 10]
      [#inst "2015-06-03T07" 4]
@@ -809,7 +818,7 @@
      ["2015-06-09" 7]
      ["2015-06-10" 9]]
 
-    ;; Postgres, MySQL, and H2 -- grouped by DB timezone, US/Pacific in this case
+    ;; Postgres, Redshift, MySQL, and H2 -- grouped by DB timezone, US/Pacific in this case
     :else
     [[#inst "2015-06-01T07" 8]
      [#inst "2015-06-02T07" 9]
@@ -1134,7 +1143,7 @@
 
 (datasets/expect-with-all-engines
   (cond
-    (= *engine* :sqlserver)
+    (contains? #{:redshift :sqlserver} *engine*)
     [[#inst "2015-06-01T17:31" 1]
      [#inst "2015-06-01T23:06" 1]
      [#inst "2015-06-02T00:23" 1]
@@ -1173,7 +1182,7 @@
 
 (datasets/expect-with-all-engines
   (cond
-    (contains? #{:sqlserver :mongo} *engine*)
+    (contains? #{:mongo :redshift :sqlserver} *engine*)
     [[#inst "2015-06-01T17:31" 1]
      [#inst "2015-06-01T23:06" 1]
      [#inst "2015-06-02T00:23" 1]
@@ -1225,7 +1234,7 @@
 
 (datasets/expect-with-all-engines
   (cond
-    (contains? #{:sqlserver :mongo} *engine*)
+    (contains? #{:mongo :redshift :sqlserver} *engine*)
     [[#inst "2015-06-01T17" 1]
      [#inst "2015-06-01T23" 1]
      [#inst "2015-06-02T00" 1]
@@ -1270,7 +1279,7 @@
 
 (datasets/expect-with-all-engines
   (cond
-    (contains? #{:sqlserver :mongo} *engine*)
+    (contains? #{:mongo :redshift :sqlserver} *engine*)
     [[#inst "2015-06-01T07" 6]
      [#inst "2015-06-02T07" 10]
      [#inst "2015-06-03T07" 4]
@@ -1327,7 +1336,7 @@
 
 (datasets/expect-with-all-engines
   (cond
-    (contains? #{:sqlserver :mongo} *engine*)
+    (contains? #{:mongo :redshift :sqlserver} *engine*)
     [[#inst "2015-05-31T07" 46]
      [#inst "2015-06-07T07" 47]
      [#inst "2015-06-14T07" 40]
@@ -1354,7 +1363,7 @@
     (contains? #{:sqlserver :sqlite} *engine*)
     [[23 54] [24 46] [25 39] [26 61]]
 
-    (= *engine* :mongo)
+    (contains? #{:mongo :redshift} *engine*)
     [[23 46] [24 47] [25 40] [26 60] [27 7]]
 
     :else

@@ -173,7 +173,9 @@
 
 (defn default-execute-sql! [loader context dbdef sql]
   (let [sql (some-> sql s/trim)]
-    (when (seq sql)
+    (when (and (seq sql)
+               ;; make sure SQL isn't just semicolons
+               (not (s/blank? (s/replace sql #";" ""))))
       (try
         (jdbc/execute! (database->spec loader context dbdef) [sql] :transaction? false, :multi? true)
         (catch java.sql.SQLException e
