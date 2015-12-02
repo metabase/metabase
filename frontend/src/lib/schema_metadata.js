@@ -120,15 +120,15 @@ function numberArgument(field, table) {
 
 
 function comparableArgument(field, table) {
-    if (isNumeric(field)) {
-        return {
-            type: "number"
-        };
-    }
-
     if (isDate(field)) {
         return {
             type: "date"
+        };
+    }
+
+    if (isNumeric(field)) {
+        return {
+            type: "number"
         };
     }
 
