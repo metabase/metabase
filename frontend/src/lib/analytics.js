@@ -11,6 +11,9 @@ var MetabaseAnalytics = {
             // scrub query builder urls to remove serialized json queries from path
             url = (url.lastIndexOf('/q/', 0) === 0) ? '/q/' : url;
 
+            const { tag } = MetabaseSettings.get('version');
+
+            ga('set', 'dimension1', tag);
             ga('set', 'page', url);
             ga('send', 'pageview', url);
         }
