@@ -298,12 +298,14 @@
          :target "_blank"
          :style (str section-style "margin: 16px; margin-bottom: 16px; display: block; text-decoration: none;")}
       (if include-title
-          [:div {:style "margin-bottom: 8px;"}
-            [:span {:style header-style}
-              (-> card :name h)]
-            (if include-buttons [:img {:style "float: right; width: 16px;"
-                                       :width 16
-                                       :src (-> (str "frontend_client/app/img/external_link@2x.png") io/resource io/input-stream org.apache.commons.io.IOUtils/toByteArray render-img)}])])
+          [:table {:style "margin-bottom: 8px; width: 100%;"}
+            [:tbody
+              [:tr
+                [:td [:span {:style header-style} (-> card :name h)]]
+                [:td {:style "text-align: right;"}
+                  (if include-buttons [:img {:style "width: 16px;"
+                                             :width 16
+                                             :src (-> (str "frontend_client/app/img/external_link.png") io/resource io/input-stream org.apache.commons.io.IOUtils/toByteArray render-img)}])]]]])
       (case (detect-pulse-card-type card data)
         :empty     (render-card-empty     card data render-img include-buttons)
         :scalar    (render-card-scalar    card data render-img include-buttons)
@@ -319,7 +321,7 @@
 
 (defn render-pulse-section
   [render-img include-buttons {:keys [card result]}]
-  [:div {:style (str "margin-top: 10px; margin-bottom: 20px; border: 2px solid " color-grey-1 "; border-radius: 2px;")}
+  [:div {:style (str "margin-top: 10px; margin-bottom: 20px; border: 2px solid " color-grey-1 "; border-radius: 2px; background-color: white;")}
     (render-pulse-card card (:data result) render-img true include-buttons)])
 
 (defn render-pulse-card-to-png
