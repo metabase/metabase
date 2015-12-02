@@ -3,7 +3,8 @@
             [clojure.tools.logging :as log]
             [clojure.string :as s]
             [environ.core :refer [env]]
-            [metabase.driver.generic-sql :as sql]
+            (metabase.driver [generic-sql :as sql]
+                             redshift)
             (metabase.test.data [generic-sql :as generic]
                                 [interface :as i]
                                 [postgres :as postgres])
@@ -72,17 +73,16 @@
   (merge generic/IDatasetLoaderMixin
          {:database->connection-details (fn [& _]
                                           @db-connection-details)
+          :default-schema               (constantly session-schema-name)
           :engine                       (constantly :redshift)}))
 
 
 ;;; Create + destroy the schema used for this test session
 
 (defn- execute-when-testing-redshift! [format-str & args]
-  (when (contains? @(resolve 'metabase.test.data.datasets/test-engines) :redshift)
-    (let [sql (apply format format-str args)]
-      (log/info (u/format-color 'blue "[Redshift] %s" sql))
-      (jdbc/execute! (sql/connection-details->spec (RedshiftDriver.) @db-connection-details)
-                     [sql]))))
+  (generic/execute-when-testing! :redshift
+    (fn [] (sql/connection-details->spec (RedshiftDriver.) @db-connection-details))
+    (apply format format-str args)))
 
 (defn- create-session-schema!
   {:expectations-options :before-run}
