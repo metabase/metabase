@@ -187,11 +187,6 @@ You'll probably want to tell Emacs to store customizations in a different file. 
 
 Will give you a list of out-of-date dependencies.
 
-Once's this repo is made public, this Clojars badge will work and show the status as well:
-
-[![Dependencies Status](https://jarkeeper.com/metabase/metabase-init/status.svg)](https://jarkeeper.com/metabase/metabase)
-
-
 ## Documentation
 
 #### Instant Cheatsheet

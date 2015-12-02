@@ -78,7 +78,7 @@
     (keyword "timestamp with timezone")    :DateTimeField
     (keyword "timestamp without timezone") :DateTimeField} column-type))
 
-(def ^:private ^:const ssl-params
+(def ^:const ssl-params
   "Params to include in the JDBC connection spec for an SSL connection."
   {:ssl        true
    :sslmode    "require"
@@ -162,13 +162,23 @@
   clojure.lang.Named
   (getName [_] "PostgreSQL"))
 
+(def PostgresISQLDriverMixin
+  "Implementations of `ISQLDriver` methods for `PostgresDriver`."
+  (merge (sql/ISQLDriverDefaultsMixin)
+         {:column->base-type         column->base-type
+          :connection-details->spec  connection-details->spec
+          :date                      date
+          :set-timezone-sql          (constantly "UPDATE pg_settings SET setting = ? WHERE name ILIKE 'timezone';")
+          :string-length-fn          (constantly :CHAR_LENGTH)
+          :unix-timestamp->timestamp unix-timestamp->timestamp}))
+
 (extend PostgresDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
          {:date-interval                     date-interval
           :details-fields                    (constantly [{:name         "host"
                                                            :display-name "Host"
-                                                           :default "localhost"}
+                                                           :default      "localhost"}
                                                           {:name         "port"
                                                            :display-name "Port"
                                                            :type         :integer
@@ -192,13 +202,6 @@
           :driver-specific-sync-field!       driver-specific-sync-field!
           :humanize-connection-error-message humanize-connection-error-message})
 
-  sql/ISQLDriver
-  (merge (sql/ISQLDriverDefaultsMixin)
-         {:column->base-type         column->base-type
-          :connection-details->spec  connection-details->spec
-          :date                      date
-          :set-timezone-sql          (constantly "UPDATE pg_settings SET setting = ? WHERE name ILIKE 'timezone';")
-          :string-length-fn          (constantly :CHAR_LENGTH)
-          :unix-timestamp->timestamp unix-timestamp->timestamp}))
+  sql/ISQLDriver PostgresISQLDriverMixin)
 
 (driver/register-driver! :postgres (PostgresDriver.))

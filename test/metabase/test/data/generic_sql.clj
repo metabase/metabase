@@ -104,8 +104,13 @@
             pk-field-name (pk-sql-type loader)
             pk-field-name)))
 
-(defn- default-drop-table-if-exists-sql [loader {:keys [databse-name]} {:keys [table-name]}]
-  (format "DROP TABLE IF EXISTS %s;" (qualify+quote-name loader databse-name table-name)))
+(defn- default-drop-table-if-exists-sql [loader {:keys [database-name]} {:keys [table-name]}]
+  (format "DROP TABLE IF EXISTS %s;" (qualify+quote-name loader database-name table-name)))
+
+(defn drop-table-if-exists-cascade-sql
+  "Alternate implementation of `drop-table-if-exists-sql` that adds `CASCADE` to the statement for DBs that support it."
+  [loader {:keys [database-name]} {:keys [table-name]}]
+  (format "DROP TABLE IF EXISTS %s CASCADE;" (qualify+quote-name loader database-name table-name)))
 
 (defn default-add-fk-sql [loader {:keys [database-name]} {:keys [table-name]} {dest-table-name :fk, field-name :field-name}]
   (let [quot            (partial quote-name loader)
@@ -168,7 +173,9 @@
 
 (defn default-execute-sql! [loader context dbdef sql]
   (let [sql (some-> sql s/trim)]
-    (when (seq sql)
+    (when (and (seq sql)
+               ;; make sure SQL isn't just semicolons
+               (not (s/blank? (s/replace sql #";" ""))))
       (try
         (jdbc/execute! (database->spec loader context dbdef) [sql] :transaction? false, :multi? true)
         (catch java.sql.SQLException e

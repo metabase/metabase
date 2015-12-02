@@ -12,6 +12,7 @@
             [metabase.db :refer [sel]]
             (metabase.models [interface :refer [api-serialize]]
                              [session :refer [Session]]
+                             [setting :refer [defsetting]]
                              [user :refer [User]])
             [metabase.util :as u]))
 
@@ -23,6 +24,14 @@
   (and (>= (count uri) 4)
        (= (.substring uri 0 4) "/api")))
 
+(defn- index?
+  "Is this ring request one that will serve `index.html` or `init.html`?"
+  [{:keys [uri]}]
+  (or (zero? (count uri))
+      (not (or (re-matches #"^/app/.*$" uri)
+               (re-matches #"^/api/.*$" uri)
+               (re-matches #"^/favicon.ico$" uri)))))
+
 
 ;;; # ------------------------------------------------------------ AUTH & SESSION MANAGEMENT ------------------------------------------------------------
 
@@ -30,8 +39,8 @@
 (def ^:const metabase-session-header "x-metabase-session")
 (def ^:const metabase-api-key-header "x-metabase-apikey")
 
-(def ^:const response-unauthentic {:status 401 :body "Unauthenticated"})
-(def ^:const response-forbidden   {:status 403 :body "Forbidden"})
+(def ^:const response-unauthentic {:status 401, :body "Unauthenticated"})
+(def ^:const response-forbidden   {:status 403, :body "Forbidden"})
 
 
 (defn wrap-session-id
@@ -116,15 +125,71 @@
 
 ;;; # ------------------------------------------------------------ SECURITY HEADERS ------------------------------------------------------------
 
+(defn- cache-prevention-headers
+  "Headers that tell browsers not to cache a response."
+  []
+  {"Cache-Control" "max-age=0, no-cache, must-revalidate, proxy-revalidate"
+   "Expires"        "Tue, 03 Jul 2001 06:00:00 GMT"
+   "Last-Modified"  (u/format-date :rfc822)})
+
+(def ^:private ^:const strict-transport-security-header
+  "Tell browsers to only access this resource over HTTPS for the next year (prevent MTM attacks).
+   (This only applies if the original request was HTTPS; if sent in response to an HTTP request, this is simply ignored)"
+  {"Strict-Transport-Security" "max-age=31536000"})
+
+(def ^:private ^:const content-security-policy-header
+  "`Content-Security-Policy` header. See [http://content-security-policy.com](http://content-security-policy.com) for more details."
+  {"Content-Security-Policy" (apply str (for [[k vs] {:default-src ["'none'"]
+                                                      :script-src  ["'unsafe-inline'"
+                                                                    "'unsafe-eval'"
+                                                                    "'self'"
+                                                                    "www.google-analytics.com"
+                                                                    "*.googleapis.com"
+                                                                    "*.gstatic.com"
+                                                                    "js.intercomcdn.com"
+                                                                    "*.intercom.io"]
+                                                      :style-src   ["'unsafe-inline'"
+                                                                    "'self'"
+                                                                    "fonts.googleapis.com"]
+                                                      :font-src    ["fonts.gstatic.com"
+                                                                    "themes.googleusercontent.com"]
+                                                      :img-src     ["*"]
+                                                      :connect-src ["'self'"
+                                                                    "*.intercom.io"
+                                                                    "wss://*.intercom.io"]}] ; allow websockets as well
+                                          (format "%s %s; " (name k) (apply str (interpose " " vs)))))})
+
+(defsetting ssl-certificate-public-key
+  "Base-64 encoded public key for this site's SSL certificate. Specify this to enable HTTP Public Key Pinning.
+   See http://mzl.la/1EnfqBf for more information.") ; TODO - it would be nice if we could make this a proper link in the UI; consider enabling markdown parsing
+
+(defn- public-key-pins-header []
+  (when-let [k (ssl-certificate-public-key)]
+    {"Public-Key-Pins" (format "pin-sha256=\"base64==%s\"; max-age=31536000" k)}))
+
+(defn- api-security-headers [] ; don't need to include all the nonsense we include with index.html
+  (merge (cache-prevention-headers)
+         strict-transport-security-header
+         (public-key-pins-header)))
+
+(defn- index-page-security-headers []
+  (merge (cache-prevention-headers)
+         strict-transport-security-header
+         content-security-policy-header
+         (public-key-pins-header)
+         {"X-Frame-Options"                   "DENY"          ; Tell browsers not to render our site as an iframe (prevent clickjacking)
+          "X-XSS-Protection"                  "1; mode=block" ; Tell browser to block suspected XSS attacks
+          "X-Permitted-Cross-Domain-Policies" "none"          ; Prevent Flash / PDF files from including content from site.
+          "X-Content-Type-Options"            "nosniff"}))    ; Tell browser not to use MIME sniffing to guess types of files -- protect against MIME type confusion attacks
+
 (defn add-security-headers
   "Add HTTP headers to tell browsers not to cache API responses."
   [handler]
   (fn [request]
     (let [response (handler request)]
-      (update response :headers merge (when (api-call? request)
-                                        {"Cache-Control" "max-age=0, no-cache, must-revalidate, proxy-revalidate"
-                                         "Expires"       "Tue, 03 Jul 2001 06:00:00 GMT" ; rando date in the past
-                                         "Last-Modified" "{now} GMT"})))))
+      (update response :headers merge (cond
+                                        (api-call? request) (api-security-headers)
+                                        (index? request)    (index-page-security-headers))))))
 
 
 ;;; # ------------------------------------------------------------ JSON SERIALIZATION CONFIG ------------------------------------------------------------

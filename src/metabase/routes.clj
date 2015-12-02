@@ -6,8 +6,7 @@
             [ring.util.response :as resp]
             [stencil.core :as stencil]
             [metabase.api.routes :as api]
-            [metabase.models.setting :as setting]
-            [metabase.util :as u]))
+            [metabase.models.setting :as setting]))
 
 (defn- index [_]
   (-> (if (@(resolve 'metabase.core/initialized?))
@@ -15,8 +14,7 @@
                                {:bootstrap_json (json/generate-string (setting/public-settings))})
         (slurp (io/resource "frontend_client/init.html")))
       resp/response
-      (resp/content-type "text/html")
-      (resp/header "Last-Modified" (u/format-date :rfc822))))
+      (resp/content-type "text/html")))
 
 ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
 (defroutes routes

@@ -38,7 +38,7 @@
     "Return a korma form for truncating a date or timestamp field or value to a given resolution, or extracting a date component.")
 
   (excluded-schemas ^java.util.Set [this]
-                    "*OPTIONAL*. Set of string names of schemas to skip syncing tables from.")
+    "*OPTIONAL*. Set of string names of schemas to skip syncing tables from.")
 
   (set-timezone-sql ^String [this]
     "*OPTIONAL*. This should be a prepared JDBC SQL statement string to be used to set the timezone for the current transaction.
@@ -70,6 +70,7 @@
    :apply-page          (resolve 'metabase.driver.generic-sql.query-processor/apply-page)
    :current-datetime-fn (constantly (k/sqlfn* :NOW))
    :excluded-schemas    (constantly nil)
+   :set-timezone-sql    (constantly nil)
    :stddev-fn           (constantly :STDDEV)})
 
 
@@ -185,7 +186,7 @@
 (defn features [driver]
   (set (cond-> [:foreign-keys
                 :standard-deviation-aggregations]
-         (:set-timezone-sql driver) (conj :set-timezone))))
+         (set-timezone-sql driver) (conj :set-timezone))))
 
 (defn IDriverSQLDefaultsMixin
   "Default implementations of methods in `IDriver` for SQL drivers."

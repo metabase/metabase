@@ -11,6 +11,7 @@
                              [mongo :refer [map->MongoDriver]]
                              [mysql :refer [map->MySQLDriver]]
                              [postgres :refer [map->PostgresDriver]]
+                             [redshift :refer [map->RedshiftDriver]]
                              [sqlite :refer [map->SQLiteDriver]]
                              [sqlserver :refer [map->SQLServerDriver]])
             (metabase.models [field :refer [Field]]
@@ -20,6 +21,7 @@
                                 [mongo :as mongo]
                                 [mysql :as mysql]
                                 [postgres :as postgres]
+                                [redshift :as redshift]
                                 [sqlite :as sqlite]
                                 [sqlserver :as sqlserver])
             [metabase.util :as u])
@@ -27,6 +29,7 @@
            metabase.driver.mongo.MongoDriver
            metabase.driver.mysql.MySQLDriver
            metabase.driver.postgres.PostgresDriver
+           metabase.driver.redshift.RedshiftDriver
            metabase.driver.sqlite.SQLiteDriver
            metabase.driver.sqlserver.SQLServerDriver))
 
@@ -76,7 +79,7 @@
           :timestamp-field-type (constantly :DateField)}))
 
 
-;; ## Generic SQL
+;; ## SQL Drivers
 
 (def ^:private GenericSQLIDatasetMixin
   (merge IDatasetDefaultsMixin
@@ -84,8 +87,6 @@
                                   table-or-field-name)
           :timestamp-field-type (constantly :DateTimeField)}))
 
-
-;;; ### H2
 
 (extend H2Driver
   IDataset
@@ -97,7 +98,11 @@
           :sum-field-type (constantly :BigIntegerField)}))
 
 
-;;; ### Postgres
+(extend MySQLDriver
+  IDataset
+  (merge GenericSQLIDatasetMixin
+         {:sum-field-type (constantly :BigIntegerField)}))
+
 
 (extend PostgresDriver
   IDataset
@@ -105,22 +110,16 @@
          {:default-schema (constantly "public")}))
 
 
-;;; ### MySQL
-
-(extend MySQLDriver
+(extend RedshiftDriver
   IDataset
   (merge GenericSQLIDatasetMixin
-         {:sum-field-type (constantly :BigIntegerField)}))
+         {:default-schema (constantly redshift/session-schema-name)}))
 
-
-;;; ### SQLite
 
 (extend SQLiteDriver
   IDataset
   GenericSQLIDatasetMixin)
 
-
-;;; ### SQLServer
 
 (extend SQLServerDriver
   IDataset
@@ -137,6 +136,7 @@
    :mongo     (map->MongoDriver     {:dbpromise (promise)})
    :mysql     (map->MySQLDriver     {:dbpromise (promise)})
    :postgres  (map->PostgresDriver  {:dbpromise (promise)})
+   :redshift  (map->RedshiftDriver  {:dbpromise (promise)})
    :sqlite    (map->SQLiteDriver    {:dbpromise (promise)})
    :sqlserver (map->SQLServerDriver {:dbpromise (promise)})})
 

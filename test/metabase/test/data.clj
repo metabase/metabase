@@ -140,25 +140,39 @@
    (destroy-db! dataset-loader database-definition)))
 
 
+(def ^:private loader->loaded-db-def
+  (atom #{}))
+
+(defn destroy-loaded-temp-dbs!
+  "Destroy all temporary databases created by `with-temp-db`."
+  {:expectations-options :after-run}
+  []
+  (binding [*sel-disable-logging* true]
+    (doseq [[loader dbdef] @loader->loaded-db-def]
+      (try
+        (remove-database! loader dbdef)
+        (catch Throwable e
+          (println "Error destroying database:" e)))))
+  (reset! loader->loaded-db-def #{}))
+
+
 (defn -with-temp-db [^DatabaseDefinition dbdef f]
   (let [loader *data-loader*
         dbdef  (map->DatabaseDefinition (assoc dbdef :short-lived? true))]
-    (try
-      (with-db (binding [*sel-disable-logging* true]
-                 (let [db (get-or-create-database! loader dbdef)]
-                   (assert db)
-                   (assert (exists? Database :id (:id db)))
-                   db))
-        (f db))
-      (finally
-        (binding [*sel-disable-logging* true]
-          (remove-database! loader dbdef))))))
+    (swap! loader->loaded-db-def conj [loader dbdef])
+    (with-db (binding [*sel-disable-logging* true]
+               (let [db (get-or-create-database! loader dbdef)]
+                 (assert db)
+                 (assert (exists? Database :id (:id db)))
+                 db))
+      (f db))))
 
 
 (defmacro with-temp-db
   "Load and sync DATABASE-DEFINITION with DATASET-LOADER and execute BODY with
    the newly created `Database` bound to DB-BINDING.
-   Remove `Database` and destroy data afterward.
+   Add `Database` to `loader->loaded-db-def`, which can be destroyed with `destroy-loaded-temp-dbs!`,
+   which is automatically ran at the end of the test suite.
 
      (with-temp-db [db tupac-sightings]
        (driver/process-quiery {:database (:id db)
