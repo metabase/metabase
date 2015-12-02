@@ -321,7 +321,7 @@
 
 (defn render-pulse-section
   [render-img include-buttons {:keys [card result]}]
-  [:div {:style (str "margin-top: 10px; margin-bottom: 20px; border: 2px solid " color-grey-1 "; border-radius: 2px; background-color: white;")}
+  [:div {:style (str "margin-top: 10px; margin-bottom: 20px; border: 1px solid #dddddd; border-radius: 2px; background-color: white; box-shadow: 0 1px 2px rgba(0, 0, 0, .08);")}
     (render-pulse-card card (:data result) render-img true include-buttons)])
 
 (defn render-pulse-card-to-png
