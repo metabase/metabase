@@ -75,10 +75,12 @@
   []
   (contains? (driver/features *data-loader*) :foreign-keys))
 
-(defn default-schema []       (datasets/default-schema *data-loader*))
-(defn id-field-type []        (datasets/id-field-type *data-loader*))
-(defn sum-field-type []       (datasets/sum-field-type *data-loader*))
-(defn timestamp-field-type [] (datasets/timestamp-field-type *data-loader*))
+(defn default-schema        [] (datasets/default-schema *data-loader*))
+(defn id-field-type         [] (datasets/id-field-type *data-loader*))
+(defn timestamp-field-type  [] (datasets/timestamp-field-type *data-loader*))
+
+(defn expected-base-type->actual [base-type]
+  (datasets/expected-base-type->actual *data-loader* base-type))
 
 
 ;; ## Loading / Deleting Test Datasets

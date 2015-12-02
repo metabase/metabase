@@ -29,13 +29,6 @@
    [#"DATETIME" :DateTimeField]
    [#"DATE"     :DateField]])
 
-(defn- column->base-type [_ column-type]
-  (let [column-type (name column-type)]
-    (loop [[[pattern base-type] & more] pattern->type]
-      (cond
-        (re-find pattern column-type) base-type
-        (seq more)                    (recur more)))))
-
 (def ^:private ->date     (comp (partial kutils/func "DATE(%s)") vector))
 (def ^:private ->datetime (comp (partial kutils/func "DATETIME(%s)") vector))
 (def ^:private ->integer  (comp (partial kutils/func "CAST(%s AS INTEGER)") vector))
@@ -129,7 +122,7 @@
                                               #{:foreign-keys})))})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
-         {:column->base-type         column->base-type
+         {:column->base-type         (sql/pattern-based-column->base-type pattern->type)
           :connection-details->spec  (fn [_ details]
                                        (kdb/sqlite3 details))
           :current-datetime-fn       (constantly (k/raw "DATETIME('now')"))

@@ -5,7 +5,7 @@
             [korma.sql.utils :as utils]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
-            [metabase.driver.generic-sql.util :refer [funcs]])
+            [metabase.util.korma-extensions :as kx])
   (:import net.sourceforge.jtds.jdbc.Driver)) ; need to import this in order to load JDBC driver
 
 (defn- column->base-type
@@ -78,19 +78,19 @@
     ;;     CAST(DATEADD(day, 1 - DATEPART(weekday, %s), CAST(%s AS DATE)) AS DATETIME)
     ;; But we have to use this ridiculous 'funcs' function in order to generate the korma form we want (AFAIK)
     ;; utils/func only handles multiple arguments if they are comma separated and injected into a single `%s` format placeholder
-    :week            (funcs "CAST(%s AS DATETIME)"
-                            ["DATEADD(day, %s)"
-                             ["1 - DATEPART(weekday, %s)" field-or-value]
-                             ["CAST(%s AS DATE)" field-or-value]])
+    :week            (kx/funcs "CAST(%s AS DATETIME)"
+                               ["DATEADD(day, %s)"
+                                ["1 - DATEPART(weekday, %s)" field-or-value]
+                                ["CAST(%s AS DATE)" field-or-value]])
     :week-of-year    (utils/func "DATEPART(iso_week, %s)" [field-or-value])
     :month           (utils/func "CAST(FORMAT(%s, 'yyyy-MM-01') AS DATETIME)" [field-or-value])
     :month-of-year   (utils/func "DATEPART(month, %s)" [field-or-value])
     ;; Format date as yyyy-01-01 then add the appropriate number of quarter
     ;; Equivalent SQL:
     ;;     DATEADD(quarter, DATEPART(quarter, %s) - 1, FORMAT(%s, 'yyyy-01-01'))
-    :quarter         (funcs "DATEADD(quarter, %s)"
-                            ["DATEPART(quarter, %s) - 1" field-or-value]
-                            ["FORMAT(%s, 'yyyy-01-01')" field-or-value])
+    :quarter         (kx/funcs "DATEADD(quarter, %s)"
+                               ["DATEPART(quarter, %s) - 1" field-or-value]
+                               ["FORMAT(%s, 'yyyy-01-01')" field-or-value])
     :quarter-of-year (utils/func "DATEPART(quarter, %s)" [field-or-value])
     :year            (utils/func "DATEPART(year, %s)" [field-or-value])))
 

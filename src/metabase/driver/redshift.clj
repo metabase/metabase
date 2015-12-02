@@ -7,7 +7,6 @@
             (metabase [config :as config]
                       [driver :as driver])
             [metabase.driver.generic-sql :as sql]
-            [metabase.driver.generic-sql.util :as sqlutil]
             [metabase.driver.postgres :as postgres]))
 
 (defn- connection-details->spec [_ details]
@@ -27,7 +26,7 @@
 ;; See also: [Related Postgres JDBC driver issue on GitHub](https://github.com/pgjdbc/pgjdbc/issues/79)
 ;;           [How to access the equivalent of information_schema.constraint_column_usage in Redshift](https://forums.aws.amazon.com/thread.jspa?threadID=133514)
 (defn- table-fks [_ table]
-  (set (jdbc/query (sqlutil/db->connection-spec @(:db table))
+  (set (jdbc/query (sql/db->jdbc-connection-spec @(:db table))
                    ["SELECT source_column.attname AS \"fk-column-name\",
                        dest_table.relname  AS \"dest-table-name\",
                        dest_column.attname AS \"dest-column-name\"

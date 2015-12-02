@@ -8,8 +8,8 @@
                        [utils :as utils])
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
-            [metabase.driver.generic-sql.util :refer [funcs]]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.util.korma-extensions :as kx]))
 
 ;;; # Korma 0.4.2 Bug Workaround
 ;; (Buggy code @ https://github.com/korma/Korma/blob/684178c386df529558bbf82097635df6e75fb339/src/korma/mysql.clj)
@@ -68,10 +68,9 @@
       (update :subname (u/rpartial str "?zeroDateTimeBehavior=convertToNull"))))
 
 (defn- unix-timestamp->timestamp [_ field-or-value seconds-or-milliseconds]
-  (utils/func (case seconds-or-milliseconds
-                :seconds      "FROM_UNIXTIME(%s)"
-                :milliseconds "FROM_UNIXTIME(%s / 1000)")
-                [field-or-value]))
+  (k/sqlfn :FROM_UNIXTIME (case seconds-or-milliseconds
+                            :seconds      field-or-value
+                            :milliseconds (kx// field-or-value (k/raw 1000)))))
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting back to a date.
 ;; See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an explanation of format specifiers
@@ -82,12 +81,12 @@
 ;; Truncating to a quarter is trickier since there aren't any format strings.
 ;; See the explanation in the H2 driver, which does the same thing but with slightly different syntax.
 (defn- trunc-to-quarter [field-or-value]
-  (funcs "STR_TO_DATE(%s, '%%Y-%%m-%%d')"
-         ["CONCAT(%s)"
-          ["YEAR(%s)" field-or-value]
-          (k/raw "'-'")
-          ["((QUARTER(%s) * 3) - 2)" field-or-value]
-          (k/raw "'-01'")]))
+  (kx/funcs "STR_TO_DATE(%s, '%%Y-%%m-%%d')"
+            ["CONCAT(%s)"
+             ["YEAR(%s)" field-or-value]
+             (k/raw "'-'")
+             ["((QUARTER(%s) * 3) - 2)" field-or-value]
+             (k/raw "'-01'")]))
 
 (defn- date [_ unit field-or-value]
   (if (= unit :quarter)

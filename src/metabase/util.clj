@@ -1,16 +1,19 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:require [clj-time.coerce :as coerce]
-            [clj-time.format :as time]
-            [clojure.java.jdbc :as jdbc]
+  (:require (clojure.java [io :as io]
+                          [jdbc :as jdbc])
             [clojure.pprint :refer [pprint]]
             [clojure.tools.logging :as log]
+            [clj-time.coerce :as coerce]
+            [clj-time.format :as time]
             [colorize.core :as color]
             [medley.core :as m])
   (:import clojure.lang.Keyword
            (java.net Socket
                      InetSocketAddress
-                     InetAddress)
+                     InetAddress
+                     URL
+                     URLClassLoader)
            java.sql.Timestamp
            (java.util Calendar TimeZone)
            javax.xml.bind.DatatypeConverter
@@ -512,6 +515,25 @@
                                   ~form
                                   ~nm)]))]
      ~nm))
+
+(defn add-jar-to-classpath!
+  "Dynamically add a JAR file to the classpath. Throws an Exception if file does not exist.
+   See also [this SO post](http://stackoverflow.com/questions/60764/how-should-i-load-jars-dynamically-at-runtime/60766#60766)"
+  [jar-path]
+  (let [file      (io/file jar-path)
+        sysloader (ClassLoader/getSystemClassLoader)
+        method    (.getDeclaredMethod URLClassLoader "addURL" (into-array Class [URL]))]
+    (when-not (.exists file)
+      (throw (Exception. (format "File does not exist: %s" jar-path))))
+    (.setAccessible method true)
+    (.invoke method sysloader (into-array URL [(.toURL (.toURI file))]))))
+
+(defn round-to-decimals
+  "Round (presumabily floating-point) NUM to DECIMAL-PLACE. Returns a `Double`.
+
+     (round-to-decimals 2 35.5058998M) -> 35.51"
+  ^Double [^Integer decimal-place, ^Number num]
+  (double (.setScale (bigdec num) decimal-place BigDecimal/ROUND_HALF_UP)))
 
 
 (require-dox-in-this-namespace)
