@@ -1,6 +1,8 @@
 {{> metabase/email/_header}}
-  <h1 style="{{sectionStyle}} margin: 16px; color: {{colorGrey4}};">
-    {{pulseName}}
-  </h1>
+  {{#pulseName}}
+    <h1 style="{{sectionStyle}} margin: 16px; color: {{colorGrey4}};">
+      {{pulseName}}
+    </h1>
+  {{/pulseName}}
   {{{pulse}}}
 {{> metabase/email/_footer}}

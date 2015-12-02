@@ -75,14 +75,9 @@ export default class RecipientPicker extends Component {
     }
 
     onInputKeyDown(e) {
-        // enter
-        if (e.keyCode === 13) {
-            let user = _.find(this.state.filteredUsers, (u) => u.id === this.state.selectedUser);
-            if (user) {
-                this.addRecipient(user);
-            } else if (VALID_EMAIL_REGEX.test(e.target.value)) {
-                this.addRecipient({ email: e.target.value });
-            }
+        // enter, tab, comma
+        if (e.keyCode === 13 || e.keyCode === 9 || e.keyCode === 188) {
+            this.addCurrentRecipient();
         }
         // up arrow
         else if (e.keyCode === 38) {
@@ -114,6 +109,7 @@ export default class RecipientPicker extends Component {
     }
 
     onInputBlur(e) {
+        this.addCurrentRecipient();
         this.setState({ focused: false });
     }
 
@@ -123,6 +119,16 @@ export default class RecipientPicker extends Component {
         // prevents clicks from blurring input while still allowing text selection:
         if (input !== e.target) {
             e.preventDefault();
+        }
+    }
+
+    addCurrentRecipient() {
+        let input = React.findDOMNode(this.refs.input);
+        let user = _.find(this.state.filteredUsers, (u) => u.id === this.state.selectedUser);
+        if (user) {
+            this.addRecipient(user);
+        } else if (VALID_EMAIL_REGEX.test(input.value)) {
+            this.addRecipient({ email: input.value });
         }
     }
 

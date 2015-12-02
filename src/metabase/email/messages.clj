@@ -28,7 +28,8 @@
                                            :joinUrl join-url
                                            :quotation (:quote data-quote)
                                            :quotationAuthor (:author data-quote)
-                                           :today (u/format-date "MMM'&nbsp;'dd,'&nbsp;'yyyy" (System/currentTimeMillis))})]
+                                           :today (u/format-date "MMM'&nbsp;'dd,'&nbsp;'yyyy" (System/currentTimeMillis))
+                                           :logoHeader true})]
     (email/send-message
       :subject     (str "You're invited to join " company "'s Metabase")
       :recipients   [(:email invited)]
@@ -44,7 +45,8 @@
          (string? password-reset-url)]}
   (let [message-body (stencil/render-file "metabase/email/password_reset"
                                           {:hostname hostname
-                                           :passwordResetUrl password-reset-url})]
+                                           :passwordResetUrl password-reset-url
+                                           :logoHeader true})]
     (email/send-message
      :subject      "[Metabase] Password Reset Request"
      :recipients   [email]
@@ -61,20 +63,28 @@
     (.close fos)
     file))
 
+(defn- find-byte-array
+  [needle haystack]
+  (first (keep-indexed #(when (java.util.Arrays/equals %2 needle) %1) haystack)))
+
 (defn render-pulse-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
   [pulse results]
   (let [images       (atom [])
-        render-img   (fn [bytes] (reset! images (conj @images bytes)) (str "cid:IMAGE_" (-> @images count dec)))
+        render-img   (fn [bytes]
+                        (let [index (or (find-byte-array bytes @images) (count @images))]
+                          (if (= index (count @images)) (reset! images (conj @images bytes)))
+                          (str "cid:IMAGE_" index)))
         body         (apply vector :div (mapv (partial render-pulse-section render-img true) results))
         data-quote   (rand-nth q/quotations)
         message-body (stencil/render-file "metabase/email/pulse"
                                           {:pulse (html body)
-                                           :pulseName (:name pulse)
+                                          ;  :pulseName (:name pulse)
                                            :sectionStype p/section-style
                                            :colorGrey4 p/color-grey-4
                                            :quotation (:quote data-quote)
-                                           :quotationAuthor (:author data-quote)})]
+                                           :quotationAuthor (:author data-quote)
+                                           :logoFooter true})]
     (apply vector {:type "text/html" :content message-body}
                   (map-indexed (fn [idx bytes] {:type :inline
                                                 :content-id (str "IMAGE_" idx)
