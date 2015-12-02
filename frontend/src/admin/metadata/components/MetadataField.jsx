@@ -99,6 +99,9 @@ export default class MetadataField extends Component {
             );
         }
 
+        let specialTypes = MetabaseCore.field_special_types.slice(0);
+        specialTypes.push({'id': null, 'name': 'No special type', 'section': 'Other'});
+
         return (
             <li className="mt1 mb3">
                 <div>
@@ -128,7 +131,7 @@ export default class MetadataField extends Component {
                                     className="TableEditor-field-special-type block"
                                     placeholder="Select a special type"
                                     value={_.find(MetabaseCore.field_special_types, (type) => type.id === this.props.field.special_type)}
-                                    options={MetabaseCore.field_special_types}
+                                    options={specialTypes}
                                     onChange={this.onSpecialTypeChange}
                                 />
                                 {targetSelect}
