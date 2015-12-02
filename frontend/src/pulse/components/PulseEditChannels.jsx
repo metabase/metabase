@@ -6,12 +6,14 @@ import RecipientPicker from "./RecipientPicker.jsx";
 import SchedulePicker from "./SchedulePicker.jsx";
 import SetupMessage from "./SetupMessage.jsx";
 
+import ActionButton from "metabase/components/ActionButton.jsx";
 import Select from "metabase/components/Select.jsx";
 import Toggle from "metabase/components/Toggle.jsx";
 import Icon from "metabase/components/Icon.jsx";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
+import { testPulse } from "../actions";
 
 const CHANNEL_ICONS = {
     email: "mail",
@@ -88,6 +90,11 @@ export default class PulseEditChannels extends Component {
         }
     }
 
+    onTestPulseChannel(channel) {
+        // test a single channel
+        return this.props.dispatch(testPulse({ ...this.props.pulse, channels: [channel] }));
+    }
+
     renderFields(channel, index, channelSpec) {
         return (
             <div>
@@ -135,6 +142,16 @@ export default class PulseEditChannels extends Component {
                         onPropertyChange={this.onChannelPropertyChange.bind(this, index)}
                     />
                 }
+                <div className="pt2">
+                    <ActionButton
+                        actionFn={this.onTestPulseChannel.bind(this, channel)}
+                        className="Button"
+                        normalText="Test"
+                        activeText="Sending…"
+                        failedText="Test failed"
+                        successText="Test sent"
+                    />
+                </div>
             </li>
         );
     }

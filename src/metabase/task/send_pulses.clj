@@ -120,8 +120,8 @@
     (doseq [channel-id channels]
       (let [{:keys [channel_type details recipients]} (first (filter #(= channel-id (:id %)) (:channels pulse)))]
         (cond
-          (= :email channel_type) (send-pulse-email pulse results recipients)
-          (= :slack channel_type) (send-pulse-slack pulse results details))))))
+          (= :email (keyword channel_type)) (send-pulse-email pulse results recipients)
+          (= :slack (keyword channel_type)) (send-pulse-slack pulse results details))))))
 
 (defn send-pulses
   "Send any `Pulses` which are scheduled to run in the current day/hour.  We use the current time and determine the

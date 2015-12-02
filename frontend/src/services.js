@@ -623,6 +623,12 @@ CoreServices.factory('Pulse', ['$resource', '$cookies', function($resource, $coo
             params: { pulseId: '@pulseId' },
             headers: { 'X-CSRFToken': () => $cookies.csrftoken },
         },
+        test: {
+            url: '/api/pulse/test',
+            method: 'POST',
+            params: { pulseId: '@id' },
+            headers: { 'X-CSRFToken': () => $cookies.csrftoken },
+        },
         form_input: {
             url: '/api/pulse/form_input',
             method: 'GET',
