@@ -10,5 +10,5 @@ Some tips:
 
 ---
 
-## Next: data model references
-Sometimes you’ll need help understanding what data is available to you and what it means. Metabase provides a way for your administrators and data experts to build a [data model reference](07-data-model-reference.md) to help you make sense of your database.
+## Next: sharing data with Pulses
+Beyond dashboards, another great way to share updates on important metrics is with the [Pulses feature](07-pulses.md).
