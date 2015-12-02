@@ -10,7 +10,7 @@ const user = new Schema('user');
 //   cards: arrayOf(card)
 // });
 
-const Pulse = new AngularResourceProxy("Pulse", ["list", "get", "create", "update", "delete", "form_input", "preview_card"]);
+const Pulse = new AngularResourceProxy("Pulse", ["list", "get", "create", "update", "delete", "test", "form_input", "preview_card"]);
 const Card = new AngularResourceProxy("Card", ["list"]);
 const User = new AngularResourceProxy("User", ["list"]);
 
@@ -20,6 +20,7 @@ export const UPDATE_EDITING_PULSE = 'UPDATE_EDITING_PULSE';
 export const SAVE_PULSE = 'SAVE_PULSE';
 export const SAVE_EDITING_PULSE = 'SAVE_EDITING_PULSE';
 export const DELETE_PULSE = 'DELETE_PULSE';
+export const TEST_PULSE = 'TEST_PULSE';
 
 export const FETCH_CARDS = 'FETCH_CARDS';
 export const FETCH_USERS = 'FETCH_USERS';
@@ -71,6 +72,12 @@ export const saveEditingPulse = createThunkAction(SAVE_EDITING_PULSE, function()
 export const deletePulse = createThunkAction(DELETE_PULSE, function(id) {
     return async function(dispatch, getState) {
         return await Pulse.delete({ pulseId: id });
+    };
+});
+
+export const testPulse = createThunkAction(TEST_PULSE, function(pulse) {
+    return async function(dispatch, getState) {
+        return await Pulse.test(pulse);
     };
 });
 

@@ -77,7 +77,7 @@ export default class SchedulePicker extends Component {
                     onChange={(o) => this.props.onPropertyChange("schedule_hour", hour + o * 12) }
                     className="bg-white"
                 />
-                <div className="mt2 h4 text-bold text-grey-3">
+                <div className="mt2 h4 text-bold text-grey-3 border-top pt2">
                     {CHANNEL_NOUN_PLURAL[cs && cs.type] || "Messages"} will be sent at {hour === 0 ? 12 : hour}:00 {amPm ? "PM" : "AM"} {timezone}, your Metabase timezone.
                 </div>
             </div>

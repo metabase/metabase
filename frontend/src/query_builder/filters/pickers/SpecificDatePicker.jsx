@@ -7,7 +7,6 @@ import Input from "metabase/components/Input.jsx";
 import { computeFilterTimeRange } from "metabase/lib/query_time";
 
 import _ from "underscore";
-import cx from "classnames";
 import moment from "moment";
 
 export default class SpecificDatePicker extends Component {

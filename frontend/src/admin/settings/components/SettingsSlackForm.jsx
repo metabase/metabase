@@ -16,7 +16,6 @@ export default class SettingsSlackForm extends Component {
         super(props, context);
 
         this.state = {
-            dirty: false,
             formData: {},
             submitting: "default",
             valid: false,
@@ -96,7 +95,6 @@ export default class SettingsSlackForm extends Component {
 
     handleChangeEvent(element, value, event) {
         this.setState({
-            dirty: true,
             formData: { ...this.state.formData, [element.key]: (MetabaseUtils.isEmpty(value)) ? null : value }
         });
     }
@@ -130,7 +128,6 @@ export default class SettingsSlackForm extends Component {
         if (valid) {
             this.props.updateSlackSettings(formData).then(() => {
                 this.setState({
-                    dirty: false,
                     submitting: "success"
                 });
 
@@ -147,7 +144,7 @@ export default class SettingsSlackForm extends Component {
 
     render() {
         let { elements } = this.props;
-        let { dirty, formData, formErrors, submitting, valid, validationErrors } = this.state;
+        let { formData, formErrors, submitting, valid, validationErrors } = this.state;
 
         let settings = elements.map((element, index) => {
             // merge together data from a couple places to provide a complete view of the Element state

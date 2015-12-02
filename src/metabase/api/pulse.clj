@@ -111,12 +111,14 @@
           ba (p/render-pulse-card-to-png card data true)]
       {:status 200 :headers {"Content-Type" "image/png"} :body (new java.io.ByteArrayInputStream ba) })))
 
-;; Using "GET" for now so it's easier to trigger from the browser. Switch to using POST if we add a button in the UI.
-(defendpoint GET "/:id/test"
-  "Test send a pulse"
-  [id]
+(defendpoint POST "/test"
+  "Test send an unsaved pulse"
+  [:as {{:keys [name cards channels] :as body} :body}]
+  {name     [Required NonEmptyString]
+   cards    [Required ArrayOfMaps]
+   channels [Required ArrayOfMaps]}
   (check-superuser)
-  (send-pulse (retrieve-pulse id))
+  (send-pulse body)
   {:status 200 :body {:ok true}})
 
 (define-routes)

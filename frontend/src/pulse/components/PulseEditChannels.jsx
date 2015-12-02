@@ -6,12 +6,18 @@ import RecipientPicker from "./RecipientPicker.jsx";
 import SchedulePicker from "./SchedulePicker.jsx";
 import SetupMessage from "./SetupMessage.jsx";
 
+import ActionButton from "metabase/components/ActionButton.jsx";
 import Select from "metabase/components/Select.jsx";
 import Toggle from "metabase/components/Toggle.jsx";
 import Icon from "metabase/components/Icon.jsx";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
+import { channelIsValid } from "metabase/lib/pulse";
+
+import { testPulse } from "../actions";
+
+import cx from "classnames";
 
 const CHANNEL_ICONS = {
     email: "mail",
@@ -88,6 +94,11 @@ export default class PulseEditChannels extends Component {
         }
     }
 
+    onTestPulseChannel(channel) {
+        // test a single channel
+        return this.props.dispatch(testPulse({ ...this.props.pulse, channels: [channel] }));
+    }
+
     renderFields(channel, index, channelSpec) {
         return (
             <div>
@@ -111,6 +122,7 @@ export default class PulseEditChannels extends Component {
     }
 
     renderChannel(channel, index, channelSpec) {
+        let isValid = this.props.pulseIsValid && channelIsValid(channel, channelSpec);
         return (
             <li key={index} className="py2">
                 { channelSpec.recipients &&
@@ -135,6 +147,18 @@ export default class PulseEditChannels extends Component {
                         onPropertyChange={this.onChannelPropertyChange.bind(this, index)}
                     />
                 }
+                <div className="pt2">
+                    <ActionButton
+                        actionFn={this.onTestPulseChannel.bind(this, channel)}
+                        className={cx("Button", { disabled: !isValid })}
+                        normalText={channelSpec.type === "email" ?
+                            "Send a test email now" :
+                            "Test " + channelSpec.name + " now"}
+                        activeText="Sending…"
+                        failedText="Test failed"
+                        successText="Test sent"
+                    />
+                </div>
             </li>
         );
     }

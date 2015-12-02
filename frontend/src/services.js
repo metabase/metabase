@@ -606,8 +606,7 @@ CoreServices.factory('Pulse', ['$resource', '$cookies', function($resource, $coo
         },
         create: {
             url: '/api/pulse',
-            method: 'POST',
-            headers: { 'X-CSRFToken': () => $cookies.csrftoken },
+            method: 'POST'
         },
         get: {
             method: 'GET',
@@ -615,13 +614,15 @@ CoreServices.factory('Pulse', ['$resource', '$cookies', function($resource, $coo
         },
         update: {
             method: 'PUT',
-            params: { pulseId: '@id' },
-            headers: { 'X-CSRFToken': () => $cookies.csrftoken },
+            params: { pulseId: '@id' }
         },
         delete: {
             method: 'DELETE',
-            params: { pulseId: '@pulseId' },
-            headers: { 'X-CSRFToken': () => $cookies.csrftoken },
+            params: { pulseId: '@pulseId' }
+        },
+        test: {
+            url: '/api/pulse/test',
+            method: 'POST'
         },
         form_input: {
             url: '/api/pulse/form_input',

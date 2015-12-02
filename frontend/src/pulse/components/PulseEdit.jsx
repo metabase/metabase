@@ -21,6 +21,8 @@ import {
     fetchPulseFormInput
 } from "../actions";
 
+import { pulseIsValid, cleanPulse } from "metabase/lib/pulse";
+
 import _ from "underscore";
 import cx from "classnames";
 import { inflect } from "inflection";
@@ -47,6 +49,8 @@ export default class PulseEdit extends Component {
     }
 
     async save() {
+        let pulse = cleanPulse(this.props.pulse,  this.props.formInput.channels);
+        await this.props.dispatch(updateEditingPulse(pulse))
         await this.props.dispatch(saveEditingPulse());
 
         MetabaseAnalytics.trackEvent((this.props.pulseId) ? "PulseEdit" : "PulseCreate", "Complete", this.props.pulse.cards.length);
@@ -68,34 +72,7 @@ export default class PulseEdit extends Component {
 
     isValid() {
         let { pulse } = this.props;
-        return pulse.name && pulse.cards.length && pulse.channels.length > 0 && pulse.channels.filter((c) => !this.channelIsValid(c)).length === 0;
-    }
-
-    channelIsValid(channel) {
-        let channelSpec = this.props.formInput.channels && this.props.formInput.channels[channel.channel_type];
-        if (!channelSpec) {
-            return false;
-        }
-        switch (channel.schedule_type) {
-            // these cases intentionally fall though
-            case "weekly": if (channel.schedule_day == null) { return false };
-            case "daily":  if (channel.schedule_hour == null) { return false };
-            case "hourly": break;
-            default:       return false;
-        }
-        if (channelSpec.recipients) {
-            if (!channel.recipients || channel.recipients.length === 0) {
-                return false;
-            }
-        }
-        if (channelSpec.fields) {
-            for (let field of channelSpec.fields) {
-                if (field.required && (channel.details[field.name] == null || channel.details[field.name] == "")) {
-                    return false;
-                }
-            }
-        }
-        return true;
+        return pulse.name && pulse.cards.length && pulse.channels.length > 0 && pulse.channels.filter((c) => this.channelIsValid(c)).length > 0;
     }
 
     getConfirmItems() {
@@ -110,7 +87,8 @@ export default class PulseEdit extends Component {
     }
 
     render() {
-        let { pulse } = this.props;
+        let { pulse, formInput } = this.props;
+        let isValid = pulseIsValid(pulse, formInput.channels);
         return (
             <div className="PulseEdit">
                 <div className="PulseEdit-header flex align-center border-bottom py3">
@@ -135,7 +113,7 @@ export default class PulseEdit extends Component {
                 <div className="PulseEdit-content pt2 pb4">
                     <PulseEditName {...this.props} setPulse={this.setPulse} />
                     <PulseEditCards {...this.props} setPulse={this.setPulse} />
-                    <PulseEditChannels {...this.props} setPulse={this.setPulse} />
+                    <PulseEditChannels {...this.props} setPulse={this.setPulse} pulseIsValid={isValid} />
                     { pulse && pulse.id != null &&
                         <div className="DangerZone mb2 p3 rounded bordered relative">
                             <h3 className="text-error absolute top bg-white px1" style={{ marginTop: "-12px" }}>Danger Zone</h3>
@@ -164,7 +142,7 @@ export default class PulseEdit extends Component {
                 <div className="PulseEdit-footer flex align-center border-top py3">
                     <ActionButton
                         actionFn={this.save}
-                        className={cx("Button Button--primary", { "disabled": !this.isValid() })}
+                        className={cx("Button Button--primary", { "disabled": !isValid })}
                         normalText={pulse.id != null ? "Save changes" : "Create pulse"}
                         activeText="Saving…"
                         failedText="Save failed"
