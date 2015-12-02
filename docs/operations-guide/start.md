@@ -179,7 +179,6 @@ If you have an ssl certificate and would prefer to have Metabase run over HTTPS 
     export MB_JETTY_SSL_Port="8443"
     export MB_JETTY_SSL_Keystore="path/to/keystore.jks"
     export MB_JETTY_SSL_Keystore_Password="storepass"
-    export MB_JETTY_SSL_DISABLE_HTTP="true"
     java -jar metabase.jar
 
 With the above settings applied you will be running Metabase on port 8443 over HTTPS using the supplied certificate.  #secured
