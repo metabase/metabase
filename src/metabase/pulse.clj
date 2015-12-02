@@ -79,7 +79,7 @@
                 (cond (t/within? (t/interval d-start (t/plus d-start (t/days 1))) date) "Today"
                       (t/within? (t/interval (t/minus d-start (t/days 1)) d-start) date) "Yesterday"))
     :week     (let [date    (c/from-long timestamp)
-                    w-start (-> (new org.joda.time.LocalDate) .weekOfWeekyear .roundFloorCopy .toDateMidnight)]
+                    w-start (-> (new org.joda.time.LocalDate) .weekOfWeekyear .roundFloorCopy .toDateTimeAtStartOfDay)]
                 (cond (t/within? (t/interval w-start (t/plus w-start (t/weeks 1))) date) "This week"
                       (t/within? (t/interval (t/minus w-start (t/weeks 1)) w-start) date) "Last week"))
     :month    (let [date    (c/from-long timestamp)
