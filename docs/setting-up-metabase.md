@@ -42,7 +42,14 @@ One last quick thing that you’ll have to decide is if it’s okay for us to co
 
 ![Usage data preferences](images/UsageData.png)
 
-If you’re ready to start using Metabase, go ahead and click **Next** and then **Take me to Metabase**.
+If you’re ready to start using Metabase, go ahead and click **Next**
+
+## Staying in touch
+At this point you are all set and ready to use Metabase.  Since we like keeping in touch with our friends we made it easy to sign up for our newsletter (infrequent emails) with a single click!
+
+![Metabase Newsletter](images/NewsletterSignup.png)
+
+Once you're done here simply follow the link to **Take me to Metabase**.  And if you decided to skip the newsletter sign-up it's cool, we still like you :)
 
 # Next: Getting started with Metabase
 For a quick overview of how to use Metabase, head over to the [Getting Started Guide](getting-started.md).

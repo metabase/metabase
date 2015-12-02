@@ -1,12 +1,15 @@
 
-**This guide will teach you:**
+**Covered in this guide:**  
+> [How to install Metabase](#installing-and-running-metabase)  
+> [Tips for troubleshooting various issues](#troubleshooting-common-problems)   
+> [Configuring the application database](#configuring-the-metabase-application-database)  
+> [Running database migrations manually](#running-metabase-database-migrations-manually)  
+> [Backing up Metabase Application Data](#backing-up-metabase-application-data)  
+> [Customizing the Metabase Jetty Webserver](#customizing-the-metabase-jetty-webserver)  
+> [Changing password complexity](#changing-metabase-password-complexity)
 
-> [How to install Metabase](#installing-metabase)  
-> [Tips for troubleshooting various issues](#troubleshooting-metabase)  
-> [Common customizations](#customizing-metabase)
 
-
-# <a name="installing-metabase"></a>Installing and Running Metabase
+# Installing and Running Metabase
 
 Metabase is built and packaged as a Java jar file and can be run anywhere that Java is available.  Below we provide detailed instructions on how to install and run Metabase in a variety of common configurations.
 
@@ -29,7 +32,7 @@ Step-by-step instructions on how to deploy Metabase on Elastic Beanstalk using R
 Currently in beta.  We've run Metabase on Heroku and it works just fine, but it's not hardened for production use just yet.  If you're up for it then give it a shot and let us know how we can make it better!
 
 
-# <a name="troubleshooting-metabase"></a>Troubleshooting Common Problems
+# Troubleshooting Common Problems
 
 ### Metabase fails to startup
 
@@ -42,11 +45,154 @@ When this happens, go to a terminal where Metabase is installed and run:
 in the command line to manually clear the locks.  Then restart your Metabase instance.
 
 
-# <a name="customizing-metabase"></a>Custom Options
+# Configuring the Metabase Application Database
 
-#### HTTPS Support
+The application database is where Metabase stores information about users, saved questions, dashboards, and any other data needed to run the application.  The default settings use an embedded H2 database, but this is configurable.
 
-Regardless of how you deploy Metabase, it is *strongly* recommended that you use HTTPS for all traffic. If you are using Elastic Beanstalk or AWS, we recommend you use ELB and terminate the HTTPS connection there. Otherwise, you can use nginx as a reverse proxy and terminate there.
+**NOTE:** you cannot change the application database while the application is running.  these values are read only once when the application starts up and will remain constant throughout the running of the application.
 
-#### [Backing up your Metabase](backing-up-the-metabase-database.md)
-Better safe than sorry we always say.  Simple instructions to help with backing up a Metabase instance.
+**NOTE:** currently Metabase does not provide automated support for migrating data from one application database to another, so if you start with H2 and then want to move to Postgres you'll have to dump the data from H2 and import it into Postgres before relaunching the application.
+
+#### [H2](http://www.h2database.com/) (default)
+To use the H2 database for your Metabase instance you don't need to do anything at all.  When the application is first launched it will attempt to create a new H2 database in the same filesystem location the application is launched from.
+
+You can see these database files from the terminal:
+
+    ls metabase.*
+
+You should see the following files:
+
+    metabase.db.h2.db
+    metabase.db.trace.db
+
+If for any reason you want to use an H2 database file in a separate location from where you launch Metabase you can do so using an environment variable.  For example:
+
+    export MB_DB_TYPE=h2
+    export MB_DB_FILE=/the/path/to/my/h2.db
+    java -jar metabase.jar
+
+
+#### [Postgres](http://www.postgresql.org/)
+For production installations of Metabase we recommend that users replace the H2 database with a more robust option such as Postgres.  This offers a greater degree of performance and reliability when Metabase is running with many users.
+
+You can change the application database to use Postgres using a few simple environment variables. For example:
+
+    export MB_DB_TYPE=postgres
+    export MB_DB_DBNAME=metabase
+    export MB_DB_PORT=5432
+    export MB_DB_USER=<username>
+    export MB_DB_PASS=<password>
+    export MB_DB_HOST=localhost
+    java -jar metabase.jar
+
+This will tell Metabase to look for its application database using the supplied Postgres connection information.
+
+
+#### [MySQL](http://www.mysql.com/)
+If you prefer to use MySQL we've got you covered.  You can change the application database to use MySQL using these environment variables. For example:
+
+    export MB_DB_TYPE=mysql
+    export MB_DB_DBNAME=metabase
+    export MB_DB_PORT=3306
+    export MB_DB_USER=<username>
+    export MB_DB_PASS=<password>
+    export MB_DB_HOST=localhost
+    java -jar metabase.jar
+
+This will tell Metabase to look for its application database using the supplied MySQL connection information.
+
+
+# Running Metabase database migrations manually
+
+When Metabase is starting up it will typically attempt to determine if any changes are required to the application database and it will execute those changes automatically.  If for some reason you wanted to see what these changes are and run them manually on your database then we let you do that.
+
+Simply set the following environment variable before launching Metabase:
+
+    export MB_DB_AUTOMIGRATE=false
+
+When the application launches, if there are necessary database changes, you'll receive a message like the following which will indicate that the application cannot continue starting up until the specified upgrades are made:
+
+    2015-12-01 12:45:45,805 [INFO ] metabase.db :: Database Upgrade Required
+
+    NOTICE: Your database requires updates to work with this version of Metabase.  Please execute the following sql commands on your database before proceeding.
+
+    -- *********************************************************************
+    -- Update Database Script
+    -- *********************************************************************
+    -- Change Log: migrations/liquibase.json
+    -- Ran at: 12/1/15 12:45 PM
+    -- Against: @jdbc:h2:file:/Users/agilliland/workspace/metabase/metabase/metabase.db
+    -- Liquibase version: 3.4.1
+    -- *********************************************************************
+
+    -- Create Database Lock Table
+    CREATE TABLE PUBLIC.DATABASECHANGELOGLOCK (ID INT NOT NULL, LOCKED BOOLEAN NOT NULL, LOCKGRANTED TIMESTAMP, LOCKEDBY VARCHAR(255), CONSTRAINT PK_DATABASECHANGELOGLOCK PRIMARY KEY (ID));
+
+    ...
+
+    Once your database is updated try running the application again.
+
+    2015-12-01 12:46:39,489 [INFO ] metabase.core :: Metabase Shutting Down ...
+
+You can then take the supplied SQL script and apply it to your database manually.  Once that's done just restart Metabase and everything should work normally.
+
+
+# Backing up Metabase Application Data
+
+If you are using Metabase in a production environment or simply want to make sure you don't lose any of the work that you've done, then backups are what you need.
+
+Metabase uses a single SQL database for all of its runtime application data, so all you need to do is backup that database and you're good to go.  From a database back-up you can restore any Metabase installation.
+
+### H2 Embedded Database (default)
+If you launched Metabase on a laptop or PC the application will create an embedded H2 database in the directory it is being run in.  Navigate to the directory where you started Metabase from and find the file named `metabase.db.h2.db`.  Simply copy that file somewhere safe and you are all backed up!
+
+NOTE: If your Metabase is currently running it's best to shut down the Metabase process before making a backup copy of the file.  Then, restart the application.
+
+### Amazon RDS for the Database Application
+Amazon has its own best practices on how to backup and restore RDS databases, so we'll defer to them.  We recommend that you enable automated RDS Backups.  
+
+Instructions can be found in the [Amazon RDS User Guide](http://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html).  
+
+### Self-managed PostgreSQL or MySQL database
+Simply follow the same instructions you would use for making any normal database backup.  It's a large topic more fit for a DBA to answer, but as long as you have a dump of the Metabase database you'll be good to go.
+
+
+# Customizing the Metabase Jetty webserver
+
+In most cases there will be no reason to modify any of the settings around how Metabase runs its embedded Jetty webserver to host the application, but if you wish to run HTTPS directly with your Metabase server or if you need to run on another port, that's all configurable.
+
+### Running Metabase on another port
+
+By default Metabase will launch on port 3000, but if you prefer to run the application on another port you can do so by setting the following environment variable:
+
+    export MB_JETTY_PORT=12345
+    java -jar metabase.jar
+
+In this example once the application starts up you will access it on port `12345` instead of the default port of 3000.
+
+
+### Using HTTPS with Metabase
+
+If you have an ssl certificate and would prefer to have Metabase run over HTTPS directly using its webserver you can do so by using the following environment variables:
+
+    export MB_JETTY_SSL="true"
+    export MB_JETTY_SSL_Port="8443"
+    export MB_JETTY_SSL_Keystore="path/to/keystore.jks"
+    export MB_JETTY_SSL_Keystore_Password="storepass"
+    java -jar metabase.jar
+
+With the above settings applied you will be running Metabase on port 8443 over HTTPS using the supplied certificate.  #secured
+
+
+# Changing Metabase password complexity
+
+Metabase offers a couple controls for administrators who prefer to increase the password requirements on their user accounts.
+
+    export MB_PASSWORD_COMPLEXITY=strong
+    export MB_PASSWORD_LENGTH=10
+
+The settings above can be used independently, so it's fine to use only one or the other.  By default Metabase use complexity = `normal` and a password length of 6.  The following options are available for complexity choice:
+
+* `weak` = no character constraints
+* `normal` = at least 1 digit
+* `strong` = minimum 8 characters w/ 2 lowercase, 2 uppercase, 1 digit, and 1 special character
