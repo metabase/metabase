@@ -45,6 +45,23 @@
 
 ;; ## Persistence Functions
 
+(defn create-segment
+  "Create a new `Segment`.
+
+   Returns the newly created `Segment` or throws an Exception."
+  [table-id name description creator-id definition]
+  {:pre [(integer? table-id)
+         (string? name)
+         (integer? creator-id)
+         (map? definition)]}
+  (-> (db/ins Segment
+        :table_id    table-id
+        :creator_id  creator-id
+        :name        name
+        :description description
+        :definition  definition)
+      (hydrate :creator)))
+
 (defn retrieve-segment
   "Fetch a single `Segment` by its ID value."
   [id]
@@ -78,19 +95,20 @@
     (->> (retrieve-segment id)
          (events/publish-event :segment-update))))
 
-(defn create-segment
-  "Create a new `Segment`.
+(defn delete-segment
+  "Delete a `Segment`.
 
-   Returns the newly created `Segment` or throws an Exception."
-  [table-id name description creator-id definition]
-  {:pre [(integer? table-id)
-         (string? name)
-         (integer? creator-id)
-         (map? definition)]}
-  (-> (db/ins Segment
-        :table_id    table-id
-        :creator_id  creator-id
-        :name        name
-        :description description
-        :definition  definition)
-      (hydrate :creator)))
+   This does a soft delete and simply marks the `Segment` as deleted but does not actually remove the
+   record from the database at any time.
+
+   Returns the final state of the `Segment` is successful, or throws an Exception."
+  [id]
+  {:pre [(integer? id)]}
+  (kdb/transaction
+    ;; make Segment not active
+    (db/upd Segment id
+      :active false)
+    ;; TODO: create a new revision
+    ;; fetch the fully updated segment and return it (and fire off an event)
+    (->> (retrieve-segment id)
+         (events/publish-event :segment-delete))))

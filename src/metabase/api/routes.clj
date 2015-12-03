@@ -12,6 +12,7 @@
                           [notify :as notify]
                           [pulse :as pulse]
                           [revision :as revision]
+                          [segment :as segment]
                           [session :as session]
                           [setting :as setting]
                           [setup :as setup]
@@ -45,6 +46,7 @@
   (context "/notify"       [] (+apikey notify/routes))
   (context "/pulse"        [] (+auth pulse/routes))
   (context "/revision"     [] (+auth revision/routes))
+  (context "/segment"      [] (+auth segment/routes))
   (context "/session"      [] session/routes)
   (context "/setting"      [] (+auth setting/routes))
   (context "/setup"        [] setup/routes)
