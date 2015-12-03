@@ -165,9 +165,9 @@
   "Base-64 encoded public key for this site's SSL certificate. Specify this to enable HTTP Public Key Pinning.
    See http://mzl.la/1EnfqBf for more information.") ; TODO - it would be nice if we could make this a proper link in the UI; consider enabling markdown parsing
 
-(defn- public-key-pins-header []
-  (when-let [k (ssl-certificate-public-key)]
-    {"Public-Key-Pins" (format "pin-sha256=\"base64==%s\"; max-age=31536000" k)}))
+;(defn- public-key-pins-header []
+;  (when-let [k (ssl-certificate-public-key)]
+;    {"Public-Key-Pins" (format "pin-sha256=\"base64==%s\"; max-age=31536000" k)}))
 
 (defn- api-security-headers [] ; don't need to include all the nonsense we include with index.html
   (merge (cache-prevention-headers)
