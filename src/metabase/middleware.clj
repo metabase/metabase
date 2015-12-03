@@ -155,6 +155,7 @@
                                                                     "themes.googleusercontent.com"]
                                                       :img-src     ["*"]
                                                       :connect-src ["'self'"
+                                                                    "metabase.us10.list-manage.com"
                                                                     "*.intercom.io"
                                                                     "wss://*.intercom.io"]}] ; allow websockets as well
                                           (format "%s %s; " (name k) (apply str (interpose " " vs)))))})
