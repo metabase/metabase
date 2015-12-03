@@ -172,13 +172,14 @@
 (defn- api-security-headers [] ; don't need to include all the nonsense we include with index.html
   (merge (cache-prevention-headers)
          strict-transport-security-header
-         (public-key-pins-header)))
+         ;(public-key-pins-header)
+         ))
 
 (defn- index-page-security-headers []
   (merge (cache-prevention-headers)
          strict-transport-security-header
          content-security-policy-header
-         (public-key-pins-header)
+         ;(public-key-pins-header)
          {"X-Frame-Options"                   "DENY"          ; Tell browsers not to render our site as an iframe (prevent clickjacking)
           "X-XSS-Protection"                  "1; mode=block" ; Tell browser to block suspected XSS attacks
           "X-Permitted-Cross-Domain-Policies" "none"          ; Prevent Flash / PDF files from including content from site.
