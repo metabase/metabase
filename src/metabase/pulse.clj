@@ -183,7 +183,7 @@
                 (-> row (nth col-idx) (format-cell col) h)])
             (if bar-column
               [:td {:style (str bar-td-style "width: 99%;")}
-                [:div {:style (str "background-color: " color-purple "; height: 20px; width: " (float (* 100 (/ (bar-column row) max-value))) "%")} "&#160;"]])])
+                [:div {:style (str "background-color: " color-purple "; max-height: 10px; height: 10px; border-radius: 2px; width: " (float (* 100 (/ (bar-column row) max-value))) "%")} "&#160;"]])])
           rows)]]))
 
 (defn render-truncation-warning
