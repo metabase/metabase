@@ -153,7 +153,8 @@
                                                                     "fonts.googleapis.com"]
                                                       :font-src    ["fonts.gstatic.com"
                                                                     "themes.googleusercontent.com"]
-                                                      :img-src     ["*"]
+                                                      :img-src     ["*"
+                                                                    "self data:"]
                                                       :connect-src ["'self'"
                                                                     "metabase.us10.list-manage.com"
                                                                     "*.intercom.io"
