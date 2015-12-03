@@ -82,11 +82,13 @@
   "Create a new `Segment`.
 
    Returns the newly created `Segment` or throws an Exception."
-  [name description creator-id definition]
-  {:pre [(string? name)
+  [table-id name description creator-id definition]
+  {:pre [(integer? table-id)
+         (string? name)
          (integer? creator-id)
          (map? definition)]}
   (-> (db/ins Segment
+        :table_id    table-id
         :creator_id  creator-id
         :name        name
         :description description

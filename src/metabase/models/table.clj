@@ -5,7 +5,8 @@
                              [database :as db]
                              [field :refer [Field]]
                              [field-values :refer [FieldValues]]
-                             [interface :refer :all])
+                             [interface :refer :all]
+                             [segment :refer [Segment]])
             [metabase.util :as u]))
 
 (def ^:const entity-types
@@ -50,6 +51,7 @@
       (merge defaults table)))
 
   (pre-cascade-delete [_ {:keys [id] :as table}]
+    (cascade-delete Segment :table_id id)
     (cascade-delete Field :table_id id)))
 
 (extend-ICanReadWrite TableEntity :read :always, :write :superuser)
