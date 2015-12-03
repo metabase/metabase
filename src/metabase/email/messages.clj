@@ -21,7 +21,8 @@
   (let [data-quote   (rand-nth q/quotations)
         company      (or (setting/get :site-name) "Unknown")
         message-body (stencil/render-file "metabase/email/new_user_invite"
-                                          {:invitedName (:first_name invited)
+                                          {:emailType "new_user_invite"
+                                           :invitedName (:first_name invited)
                                            :invitorName (:first_name invitor)
                                            :invitorEmail (:email invitor)
                                            :company company
@@ -44,7 +45,8 @@
          (string? hostname)
          (string? password-reset-url)]}
   (let [message-body (stencil/render-file "metabase/email/password_reset"
-                                          {:hostname hostname
+                                          {:emailType "password_reset"
+                                           :hostname hostname
                                            :passwordResetUrl password-reset-url
                                            :logoHeader true})]
     (email/send-message
@@ -74,20 +76,21 @@
         render-img   (fn [bytes]
                         (let [index (or (find-byte-array bytes @images) (count @images))]
                           (if (= index (count @images)) (reset! images (conj @images bytes)))
-                          (str "cid:IMAGE_" index)))
+                          (str "cid:IMAGE" index)))
         body         (apply vector :div (mapv (partial render-pulse-section render-img true) results))
         data-quote   (rand-nth q/quotations)
         message-body (stencil/render-file "metabase/email/pulse"
-                                          {:pulse (html body)
+                                          {:emailType "pulse"
+                                           :pulse (html body)
                                           ;  :pulseName (:name pulse)
-                                           :sectionStype p/section-style
+                                           :sectionStyle p/section-style
                                            :colorGrey4 p/color-grey-4
                                            :quotation (:quote data-quote)
                                            :quotationAuthor (:author data-quote)
                                            :logoFooter true})]
     (apply vector {:type "text/html" :content message-body}
                   (map-indexed (fn [idx bytes] {:type :inline
-                                                :content-id (str "IMAGE_" idx)
+                                                :content-id (str "IMAGE" idx)
                                                 :content-type "image/png"
                                                 :content (write-byte-array-to-temp-file bytes)})
                                @images))))
