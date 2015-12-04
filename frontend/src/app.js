@@ -17,7 +17,7 @@ var Metabase = angular.module('metabase', [
     'metabaseadmin.databases',
     'metabaseadmin.people',
     'metabaseadmin.settings',
-    'metabase.admin.metadata',
+    'metabase.admin.datamodel',
 ]);
 Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider, $locationProvider) {
     $locationProvider.html5Mode({

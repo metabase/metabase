@@ -1,6 +1,6 @@
 angular
-.module('metabase.admin.metadata', [
-    'metabase.admin.metadata.controllers'
+.module('metabase.admin.datamodel', [
+    'metabase.admin.datamodel.controllers'
 ])
 .config(['$routeProvider', function ($routeProvider) {
     var metadataRoute = {

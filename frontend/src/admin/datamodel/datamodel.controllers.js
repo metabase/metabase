@@ -3,7 +3,7 @@ import _ from "underscore";
 import MetadataEditor from './components/MetadataEditor.jsx';
 
 angular
-.module('metabase.admin.metadata.controllers', [
+.module('metabase.admin.datamodel.controllers', [
     'metabase.services',
     'metabase.directives',
     'metabase.forms'
