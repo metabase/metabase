@@ -156,3 +156,26 @@
 
 ;; ## GET /api/segment/:id
 
+(expect
+  {:name         "One Segment to rule them all, one segment to define them"
+   :description  "One segment to bring them all, and in the DataModel bind them"
+   :creator_id   (user->id :crowberto)
+   :creator      (user-details (fetch-user :crowberto))
+   :created_at   true
+   :updated_at   true
+   :definition   {:database 123
+                  :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}
+  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
+                                             :engine    :yeehaw
+                                             :details   {}
+                                             :is_sample false}]
+    (tu/with-temp Table [{table-id :id} {:name   "Stuff"
+                                         :db_id  database-id
+                                         :active true}]
+      (tu/with-temp Segment [{:keys [id]} {:creator_id  (user->id :crowberto)
+                                           :table_id    table-id
+                                           :name        "One Segment to rule them all, one segment to define them"
+                                           :description "One segment to bring them all, and in the DataModel bind them"
+                                           :definition  {:database 123
+                                                         :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}]
+        (segment-response ((user->client :crowberto) :get 200 (format "segment/%d" id)))))))
