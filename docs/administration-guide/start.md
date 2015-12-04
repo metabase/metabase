@@ -11,6 +11,6 @@ Are you in charge of managing Metabase for your organization? Then you're in the
 * [Configure settings](06-configuration-settings.md)
 * [Setting up Slack Integration](07-setting-up-slack.md)
 
-First things first, you'll need to install Metabase. If you haven’t done that yet, our [Installation Guide](../operations-guide/start.md#installing-metabase) will help you through the process.
+First things first, you'll need to install Metabase. If you haven’t done that yet, our [Installation Guide](../operations-guide/start.md#installing-and-running-metabase) will help you through the process.
 
 Already done with that? Then let’s start with going over [connecting Metabase to your database](01-managing-databases.md).
