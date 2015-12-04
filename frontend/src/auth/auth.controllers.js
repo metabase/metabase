@@ -4,15 +4,12 @@ var AuthControllers = angular.module('metabase.auth.controllers', [
     'metabase.auth.services',
     'ipCookie',
     'metabase.services',
-    'metabase.forms'
+    'metabase.forms',
+    'metabase.lib.utils'
 ]);
 
-AuthControllers.controller('Login', ['$scope', '$location', '$timeout', 'AuthUtil', 'Session', 'AppState',
-    function($scope, $location, $timeout, AuthUtil, Session, AppState) {
-        function validEmail(email) {
-            var re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-            return re.test(email);
-        }
+AuthControllers.controller('Login', ['$scope', '$location', '$timeout', 'AuthUtil', 'Session', 'AppState','validEmail'
+    function($scope, $location, $timeout, AuthUtil, Session, AppState, 'validEmail') {
 
         $scope.login = function(email, password, remember_me) {
             $scope.$broadcast("form:reset");
