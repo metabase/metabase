@@ -25,11 +25,11 @@
   (->500 (segment/create-segment table_id name description *current-user-id* definition)))
 
 
-;(defendpoint GET "/:id"
-;  "Fetch `Segment` with ID."
-;  [id]
-;  (check-superuser)
-;  (->404 (segment/retrieve-segment id)))
+(defendpoint GET "/:id"
+  "Fetch `Segment` with ID."
+  [id]
+  (check-superuser)
+  (->404 (segment/retrieve-segment id)))
 
 
 (defendpoint PUT "/:id"
