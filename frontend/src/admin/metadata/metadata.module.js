@@ -13,8 +13,8 @@ angular
         }
     };
 
-    $routeProvider.when('/admin/metadata', metadataRoute);
-    $routeProvider.when('/admin/metadata/:databaseId', metadataRoute);
-    $routeProvider.when('/admin/metadata/:databaseId/:mode', metadataRoute);
-    $routeProvider.when('/admin/metadata/:databaseId/:mode/:tableId', metadataRoute);
+    $routeProvider.when('/admin/datamodel/database', metadataRoute);
+    $routeProvider.when('/admin/datamodel/database/:databaseId', metadataRoute);
+    $routeProvider.when('/admin/datamodel/database/:databaseId/:mode', metadataRoute);
+    $routeProvider.when('/admin/datamodel/database/:databaseId/:mode/:tableId', metadataRoute);
 }]);

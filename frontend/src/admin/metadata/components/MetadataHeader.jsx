@@ -59,8 +59,8 @@ export default class MetadataHeader extends Component {
     render() {
         return (
             <div className="MetadataEditor-header flex align-center">
-                <div className="MetadataEditor-headerSection h2">
-                    <span className="text-grey-4">Edit Metadata for</span> {this.renderDbSelector()}
+                <div className="MetadataEditor-headerSection h2 mb2">
+                    <span className="text-grey-4">Current database:</span> {this.renderDbSelector()}
                 </div>
                 <div className="MetadataEditor-headerSection flex-align-right flex align-center">
                     <SaveStatus ref="status" />

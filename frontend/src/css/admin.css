@@ -426,3 +426,26 @@
     padding-top: 1em;
     min-width: 180px;
 }
+
+.AdminTable {
+  border-collapse: collapse;
+  border-spacing: 0;
+
+  white-space: nowrap;
+  text-align: left;
+}
+
+.AdminTable th {
+  text-transform: uppercase;
+  color: color(var(--base-grey) shade(40%));
+  padding:  var(--padding-1);
+  font-weight: normal;
+}
+
+.AdminTable thead {
+  border-bottom: var(--border-size) var(--border-style) var(--border-color);
+}
+
+.AdminTable tbody tr:first-child td {
+  padding-top: var(--margin-1);
+}
