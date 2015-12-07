@@ -8,9 +8,7 @@ import QueryVisualization from '../query_builder/QueryVisualization.jsx';
 
 import SavedQuestionsApp from './containers/SavedQuestionsApp.jsx';
 
-import { createStore, applyMiddleware, combineReducers, compose } from 'redux';
-import promiseMiddleware from 'redux-promise';
-import thunkMidleware from "redux-thunk";
+import { createStore, combineReducers } from "metabase/lib/redux";
 import _ from "underscore";
 
 import MetabaseAnalytics from '../lib/analytics';
@@ -21,14 +19,6 @@ import Query from "metabase/lib/query";
 import { serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
 
 import * as reducers from './reducers';
-
-const finalCreateStore = compose(
-  applyMiddleware(
-      thunkMidleware,
-      promiseMiddleware
-  ),
-  createStore
-);
 
 const reducer = combineReducers(reducers);
 
@@ -43,7 +33,7 @@ CardControllers.controller('CardList', ['$scope', '$location', function($scope, 
             $scope.$apply(() => $location.url(url));
         }
     };
-    $scope.store = finalCreateStore(reducer, {});
+    $scope.store = createStore(reducer, {});
 }]);
 
 CardControllers.controller('CardDetail', [
