@@ -1,6 +1,21 @@
 import moment from "moment";
 import _ from "underscore";
 
+import { createStore as originalCreateStore, applyMiddleware, compose } from "redux";
+import promiseMiddleware from 'redux-promise';
+import thunkMidleware from "redux-thunk";
+
+// convienence
+export { combineReducers } from "redux";
+
+// common createStore with middleware applied
+export const createStore = compose(
+    applyMiddleware(
+        thunkMidleware,
+        promiseMiddleware
+    )
+)(originalCreateStore);
+
 // HACK: just use our Angular resources for now
 export function AngularResourceProxy(serviceName, methods) {
     methods.forEach((methodName) => {

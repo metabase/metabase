@@ -1,20 +1,9 @@
-import { createStore, applyMiddleware, combineReducers, compose } from 'redux';
-import promiseMiddleware from 'redux-promise';
-import thunkMidleware from "redux-thunk";
+import { createStore, combineReducers } from "metabase/lib/redux";
 
 import HomepageApp from './containers/HomepageApp.jsx';
 import * as reducers from './reducers';
 
-const finalCreateStore = compose(
-  applyMiddleware(
-      thunkMidleware,
-      promiseMiddleware
-  ),
-  createStore
-);
-
 const reducer = combineReducers(reducers);
-
 
 var HomeControllers = angular.module('metabase.home.controllers', []);
 HomeControllers.controller('Homepage', ['$scope', '$location', '$route', '$routeParams', function($scope, $location, $route, $routeParams) {
@@ -26,5 +15,5 @@ HomeControllers.controller('Homepage', ['$scope', '$location', '$route', '$route
             $scope.$apply(() => $location.url(url));
         }
     };
-    $scope.store = finalCreateStore(reducer, { });
+    $scope.store = createStore(reducer, { });
 }]);
