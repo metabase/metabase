@@ -7,7 +7,8 @@
                              [interface :refer :all]
                              [user :refer [User]])
             [metabase.models.revision.diff :refer [diff-str]]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [korma.db :as kdb]))
 
 (def ^:const max-revisions
   "Maximum number of revisions to keep for each individual object. After this limit is surpassed, the oldest revisions will be deleted."
@@ -45,6 +46,10 @@
 (defentity Revision
   [(table :revision)
    (types :object :json)]
+
+  (post-select [_ {:keys [message] :as revision}]
+    (assoc revision
+      :message (u/jdbc-clob->str message)))
 
   (pre-insert [_ revision]
     (assoc revision :timestamp (u/new-sql-timestamp)))
@@ -105,26 +110,33 @@
 (defn push-revision
   "Record a new `Revision` for ENTITY with ID.
    Returns OBJECT."
-  {:arglists '([& {:keys [object entity id user-id is-creation? skip-serialization? is-reversion?]}])}
+  {:arglists '([& {:keys [object entity id user-id is-creation? revision_message]}])}
   [& {object :object,
-      :keys [entity id user-id is-creation? skip-serialization? is-reversion?],
-      :or {id (:id object), is-creation? false, skip-serialization? false, is-reversion? false}}]
+      :keys [entity id user-id is-creation? revision_message],
+      :or {id (:id object), is-creation? false}}]
   {:pre [(metabase-entity? entity)
          (integer? user-id)
          (db/exists? User :id user-id)
          (integer? id)
          (db/exists? entity :id id)
          (map? object)]}
-  (let [object (if skip-serialization? object
-                   (serialize-instance entity id object))]
+  (let [object (dissoc object :revision_message)
+        object (serialize-instance entity id object)]
+    ;; make sure we still have a map after calling out serialization function
     (assert (map? object))
-    (ins Revision :model (:name entity) :model_id id, :user_id user-id, :object object, :is_creation is-creation?, :is_reversion is-reversion?))
+    (ins Revision
+      :model       (:name entity)
+      :model_id    id
+      :user_id     user-id
+      :object      object
+      :is_creation is-creation?
+      :message     revision_message))
   (delete-old-revisions entity id)
   object)
 
 (defn revert
   "Revert ENTITY with ID to a given `Revision`."
-  [& {:keys [entity id user-id revision-id], :or {user-id *current-user-id*}}]
+  [& {:keys [entity id user-id revision-id]}]
   {:pre [(metabase-entity? entity)
          (integer? id)
          (db/exists? entity :id id)
@@ -132,6 +144,13 @@
          (db/exists? User :id user-id)
          (integer? revision-id)]}
   (let-404 [serialized-instance (sel :one :field [Revision :object] :model (:name entity), :model_id id, :id revision-id)]
-    (revert-to-revision entity id serialized-instance)
-    ;; Push a new revision to record this reversion
-    (push-revision :entity entity, :id id, :object serialized-instance, :user-id user-id, :skip-serialization? true, :is-reversion? true)))
+    (kdb/transaction
+      (revert-to-revision entity id serialized-instance)
+      ;; Push a new revision to record this reversion
+      (ins Revision
+        :model        (:name entity)
+        :model_id     id
+        :user_id      user-id
+        :object       serialized-instance
+        :is_creation  false
+        :is_reversion true))))

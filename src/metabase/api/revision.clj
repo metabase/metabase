@@ -28,6 +28,10 @@
   "Revert an object to a prior revision."
   [:as {{:keys [entity id revision_id]} :body}]
   {entity Entity, id Integer, revision_id Integer}
-  (revision/revert :entity entity, :id id, :revision-id revision_id))
+  (revision/revert
+    :entity      entity
+    :id          id
+    :user-id     *current-user-id*
+    :revision-id revision_id))
 
 (define-routes)

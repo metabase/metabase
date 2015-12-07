@@ -69,7 +69,7 @@
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
 
 
-(defn- serialize-instance [_ _ instance]
+(defn serialize-instance [_ _ instance]
   (->> (dissoc instance :created_at :updated_at)
        (into {})                                 ; if it's a record type like CardInstance we need to convert it to a regular map or filter-vals won't work
        (m/filter-vals (complement delay?))))

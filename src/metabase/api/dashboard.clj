@@ -9,8 +9,7 @@
                              [card :refer [Card]]
                              [common :as common]
                              [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]]
-                             [revision :refer [push-revision]])))
+                             [dashboard-card :refer [DashboardCard]])))
 
 (defendpoint GET "/"
   "Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
