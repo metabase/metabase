@@ -40,6 +40,7 @@
    definition       [Required Dict]}
   (check-superuser)
   (check-404 (db/exists? Segment :id id))
+  ;; TODO: segment must be active
   (segment/update-segment {:id          id
                            :name        name
                            :description description
@@ -51,7 +52,8 @@
   [id]
   (check-superuser)
   (let-404 [segment (db/sel :one Segment :id id)]
-    (segment/delete-segment id)))
+    (when-not (:active segment)
+      (segment/delete-segment id))))
 
 
 (define-routes)

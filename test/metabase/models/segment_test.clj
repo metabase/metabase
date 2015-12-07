@@ -1,7 +1,6 @@
 (ns metabase.models.segment-test
   (:require [clojure.tools.macro :refer [symbol-macrolet]]
             [expectations :refer :all]
-            [metabase.db :as db]
             (metabase.models [database :refer [Database]]
                              [hydrate :refer :all]
                              [segment :refer :all]
@@ -15,19 +14,21 @@
   (-> (fetch-user username)
       (dissoc :date_joined :last_login)))
 
+(defn segment-details
+  [{:keys [creator] :as segment}]
+  (-> segment
+      (dissoc :id :table_id :created_at :updated_at)
+      (assoc :creator (dissoc creator :date_joined :last_login))))
+
 (defn create-segment-then-select
   [table name description creator definition]
-  (let [{:keys [creator] :as segment} (create-segment table name description creator definition)]
-    (-> segment
-        (dissoc :id :table_id :created_at :updated_at)
-        (assoc :creator (dissoc creator :date_joined :last_login)))))
+  (-> (create-segment table name description creator definition)
+      segment-details))
 
 (defn update-segment-then-select
   [segment message]
-  (let [{:keys [creator] :as segment} (update-segment segment message)]
-    (-> segment
-        (dissoc :id :table_id :created_at :updated_at)
-        (assoc :creator (dissoc creator :date_joined :last_login)))))
+  (-> (update-segment segment message)
+      segment-details))
 
 
 ;; create-segment
@@ -36,6 +37,7 @@
    :creator     (user-details :rasta)
    :name        "I only want *these* things"
    :description nil
+   :active      true
    :definition  {:clause ["a" "b"]}}
   (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
                                              :engine    :yeehaw
@@ -53,6 +55,7 @@
    :creator      (user-details :rasta)
    :name         "Ivory Tower"
    :description  "All the glorious things..."
+   :active       true
    :definition   {:database 45
                   :query    {:filter ["yay"]}}}
   (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
@@ -80,6 +83,7 @@
    :creator      (user-details :rasta)
    :name         "Segment 1"
    :description  nil
+   :active       true
    :definition   {}}
   (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
                                              :engine    :yeehaw
@@ -121,6 +125,7 @@
    :creator      (user-details :rasta)
    :name         "Tatooine"
    :description  nil
+   :active       true
    :definition   {:database 2
                   :query    {:filter ["not" "the droids you're looking for"]}}}
   (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
@@ -143,4 +148,25 @@
                                      :definition  {:database 2
                                                    :query    {:filter ["not" "the droids you're looking for"]}}} "Just horsing around")))))
 
-;; TODO: delete-segment
+;; delete-segment
+(expect
+  {:creator_id   (user->id :rasta)
+   :creator      (user-details :rasta)
+   :name         "Droids in the desert"
+   :description  "Lookin' for a jedi"
+   :active       false
+   :definition   {}}
+  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
+                                             :engine    :yeehaw
+                                             :details   {}
+                                             :is_sample false}]
+    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
+                                       :db_id  database-id
+                                       :active true}]
+      (tu/with-temp Segment [{:keys [id]} {:creator_id  (user->id :rasta)
+                                           :table_id    id
+                                           :name        "Droids in the desert"
+                                           :description "Lookin' for a jedi"
+                                           :definition  {}}]
+        (delete-segment id)
+        (segment-details (retrieve-segment id))))))

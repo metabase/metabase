@@ -27,9 +27,6 @@
    (types :definition :json)
    timestamped]
 
-  (post-insert [_ segment]
-    (events/publish-event :segment-create segment))
-
   (post-select [_ {:keys [creator_id description] :as segment}]
     (map->SegmentInstance
       (assoc segment
@@ -54,13 +51,15 @@
          (string? name)
          (integer? creator-id)
          (map? definition)]}
-  (-> (db/ins Segment
-        :table_id    table-id
-        :creator_id  creator-id
-        :name        name
-        :description description
-        :definition  definition)
-      (hydrate :creator)))
+  (let [segment (db/ins Segment
+                  :table_id    table-id
+                  :creator_id  creator-id
+                  :name        name
+                  :description description
+                  :active      true
+                  :definition  definition)]
+    (-> (events/publish-event :segment-create segment)
+        (hydrate :creator))))
 
 (defn retrieve-segment
   "Fetch a single `Segment` by its ID value."
