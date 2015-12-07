@@ -48,7 +48,6 @@
 
 
 ;; retrieve-segment
-;; this should cover all the basic Segment attributes
 (expect
   {:creator_id   (user->id :rasta)
    :creator      (user-details :rasta)
@@ -73,6 +72,40 @@
           (-> segment
               (dissoc :id :table_id :created_at :updated_at)
               (assoc :creator (dissoc creator :date_joined :last_login))))))))
+
+
+;; retrieve-segements
+(expect
+  {:creator_id   (user->id :rasta)
+   :creator      (user-details :rasta)
+   :name         "Segment 1"
+   :description  nil
+   :definition   {}}
+  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
+                                             :engine    :yeehaw
+                                             :details   {}
+                                             :is_sample false}]
+    (tu/with-temp Table [{table-id1 :id} {:name   "Table 1"
+                                          :db_id  database-id
+                                          :active true}]
+      (tu/with-temp Table [{table-id2 :id} {:name   "Table 2"
+                                            :db_id  database-id
+                                            :active true}]
+        (tu/with-temp Segment [{segement-id1 :id} {:creator_id  (user->id :rasta)
+                                                   :table_id    table-id1
+                                                   :name        "Segment 1"
+                                                   :definition  {}}]
+          (tu/with-temp Segment [{segment-id2 :id} {:creator_id  (user->id :rasta)
+                                                    :table_id    table-id2
+                                                    :name        "Segment 2"
+                                                    :definition  {}}]
+            (let [segments (retrieve-segments table-id1)]
+              (assert (= 1 (count segments)))
+              (->> segments
+                   (mapv #(dissoc % :id :table_id :created_at :updated_at))
+                   (mapv (fn [{:keys [creator] :as segment}]
+                           (assoc segment :creator (dissoc creator :date_joined :last_login))))
+                   first))))))))
 
 
 ;; update-segment

@@ -37,7 +37,7 @@
         :description (u/jdbc-clob->str description))))
 
   (pre-cascade-delete [_ {:keys [id]}]
-    (when-not (config/is-test?)
+    (when (config/is-prod?)
       (throw (Exception. "deleting a Segment is not supported.")))))
 
 (extend-ICanReadWrite SegmentEntity :read :always, :write :superuser)
@@ -70,9 +70,9 @@
       (hydrate :creator)))
 
 (defn retrieve-segments
-  "Fetch all `Segments`."
-  []
-  (-> (db/sel :many Segment (k/order :name :ASC))
+  "Fetch all `Segments` for a given `Table`."
+  [table-id]
+  (-> (db/sel :many Segment :table_id table-id (k/order :name :ASC))
       (hydrate :creator)))
 
 (defn update-segment
