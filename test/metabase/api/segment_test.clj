@@ -74,6 +74,7 @@
    :creator      (user-details (fetch-user :crowberto))
    :created_at   true
    :updated_at   true
+   :active       true
    :definition   {:database 21
                   :query    {:filter ["abc"]}}}
   (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
@@ -125,6 +126,7 @@
    :creator      (user-details (fetch-user :rasta))
    :created_at   true
    :updated_at   true
+   :active       true
    :definition   {:database 2
                   :query    {:filter ["not" "the droids you're looking for"]}}}
   (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
@@ -163,6 +165,7 @@
    :creator      (user-details (fetch-user :crowberto))
    :created_at   true
    :updated_at   true
+   :active       true
    :definition   {:database 123
                   :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}
   (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
