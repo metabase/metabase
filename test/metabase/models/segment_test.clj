@@ -103,13 +103,18 @@
                                                     :table_id    table-id2
                                                     :name        "Segment 2"
                                                     :definition  {}}]
-            (let [segments (retrieve-segments table-id1)]
+            (tu/with-temp Segment [{segment-id3 :id} {:creator_id  (user->id :rasta)
+                                                      :table_id    table-id1
+                                                      :name        "Segment 3"
+                                                      :active      false
+                                                      :definition  {}}]
+              (let [segments (retrieve-segments table-id1)]
               (assert (= 1 (count segments)))
               (->> segments
                    (mapv #(dissoc % :id :table_id :created_at :updated_at))
                    (mapv (fn [{:keys [creator] :as segment}]
                            (assoc segment :creator (dissoc creator :date_joined :last_login))))
-                   first))))))))
+                   first)))))))))
 
 
 ;; update-segment

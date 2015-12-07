@@ -69,10 +69,17 @@
       (hydrate :creator)))
 
 (defn retrieve-segments
-  "Fetch all `Segments` for a given `Table`."
-  [table-id]
-  (-> (db/sel :many Segment :table_id table-id (k/order :name :ASC))
-      (hydrate :creator)))
+  "Fetch all `Segments` for a given `Table`.  Optional second argument allows filtering by active state by
+   providing one of 3 keyword values: `:active`, `:deleted`, `:all`.  Default filtering is for `:active`."
+  ([table-id]
+    (retrieve-segments table-id :active))
+  ([table-id state]
+   {:pre [(integer? table-id)
+          (keyword? state)]}
+   (-> (if (= :all state)
+         (db/sel :many Segment :table_id table-id (k/order :name :ASC))
+         (db/sel :many Segment :table_id table-id :active (if (= :active state) true false) (k/order :name :ASC)))
+       (hydrate :creator))))
 
 (defn update-segment
   "Update an existing `Segment`.
