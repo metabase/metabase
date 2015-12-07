@@ -32,7 +32,6 @@
     "react": "^0.13.3",
     "react-grid-layout": "^0.8.5",
     "react-onclickout": "^1.1.0",
-    "react-onclickoutside": "^0.2.5",
     "react-redux": "^3.1.0",
     "react-retina-image": "^2.0.0",
     "redux": "^3.0.4",
