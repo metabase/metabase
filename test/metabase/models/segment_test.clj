@@ -79,12 +79,12 @@
 
 ;; retrieve-segements
 (expect
-  {:creator_id   (user->id :rasta)
-   :creator      (user-details :rasta)
-   :name         "Segment 1"
-   :description  nil
-   :active       true
-   :definition   {}}
+  [{:creator_id   (user->id :rasta)
+    :creator      (user-details :rasta)
+    :name         "Segment 1"
+    :description  nil
+    :active       true
+    :definition   {}}]
   (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
                                              :engine    :yeehaw
                                              :details   {}
@@ -111,10 +111,10 @@
               (let [segments (retrieve-segments table-id1)]
               (assert (= 1 (count segments)))
               (->> segments
+                   (mapv #(into {} %))                      ; expectations doesn't compare our record type properly
                    (mapv #(dissoc % :id :table_id :created_at :updated_at))
                    (mapv (fn [{:keys [creator] :as segment}]
-                           (assoc segment :creator (dissoc creator :date_joined :last_login))))
-                   first)))))))))
+                           (assoc segment :creator (dissoc creator :date_joined :last_login)))))))))))))
 
 
 ;; update-segment
