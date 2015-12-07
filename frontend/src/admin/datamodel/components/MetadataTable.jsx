@@ -1,7 +1,10 @@
 import React, { Component, PropTypes } from "react";
 
+import AggregationsList from "./AggregationsList.jsx";
+import ColumnsList from "./ColumnsList.jsx";
+import SegmentsList from "./SegmentsList.jsx";
+
 import Input from "metabase/components/Input.jsx";
-import MetadataField from "./MetadataField.jsx";
 import ProgressBar from "metabase/components/ProgressBar.jsx";
 
 import cx from "classnames";
@@ -74,24 +77,11 @@ export default class MetadataTable extends Component {
             return false;
         }
 
-        var fields = this.props.table.fields.map((field) => {
-            return (
-                <MetadataField
-                    key={field.id}
-                    field={field}
-                    idfields={this.props.idfields}
-                    updateField={this.props.updateField}
-                    updateFieldSpecialType={this.props.updateFieldSpecialType}
-                    updateFieldTarget={this.props.updateFieldTarget}
-                />
-            );
-        });
-
         return (
             <div className="MetadataTable px2 flex-full">
                 <div className="MetadataTable-title flex flex-column bordered rounded">
-                    <Input className="AdminInput TableEditor-table-name text-bold border-bottom rounded-top" type="text" value={this.props.table.display_name} onBlurChange={this.onNameChange}/>
-                    <Input className="AdminInput TableEditor-table-description rounded-bottom" type="text" value={this.props.table.description} onBlurChange={this.onDescriptionChange} placeholder="No table description yet" />
+                    <Input className="AdminInput TableEditor-table-name text-bold border-bottom rounded-top" type="text" value={table.display_name} onBlurChange={this.onNameChange}/>
+                    <Input className="AdminInput TableEditor-table-description rounded-bottom" type="text" value={table.description} onBlurChange={this.onDescriptionChange} placeholder="No table description yet" />
                 </div>
                 <div className="MetadataTable-header flex align-center py2 text-grey-3">
                     <span className="mx1 text-uppercase">Visibility</span>
@@ -102,17 +92,19 @@ export default class MetadataTable extends Component {
                     </span>
                 </div>
                 <div className={"mt2 " + (this.isHidden() ? "disabled" : "")}>
-                    <div className="text-uppercase text-grey-3 py1">
-                        <div style={{minWidth: 420}} className="float-left">Column</div>
-                        <div className="flex clearfix">
-                            <div className="flex-half px1">Visibility</div>
-                            <div className="flex-half px1">Type</div>
-                            <div className="flex-half px1">Details</div>
-                        </div>
-                    </div>
-                    <ol className="border-top border-bottom">
-                        {fields}
-                    </ol>
+                    <SegmentsList
+                        table={table}
+                    />
+                    <AggregationsList
+                        table={table}
+                    />
+                    <ColumnsList
+                        table={table}
+                        idfields={this.props.idfields}
+                        updateField={this.props.updateField}
+                        updateFieldSpecialType={this.props.updateFieldSpecialType}
+                        updateFieldTarget={this.props.updateFieldTarget}
+                    />
                 </div>
             </div>
         );

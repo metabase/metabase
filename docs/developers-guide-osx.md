@@ -8,6 +8,9 @@ You'll need to run the following commands before building the app:
 # Fetch and initialize git submodule
 git submodule update --init
 
+# Install libcurl (needed by WWW::Curl::Simple)
+brew install curl && brew link curl --force
+
 # Install Perl modules used by ./setup and ./release
 sudo cpan install File::Copy::Recursive JSON Readonly String::Util Text::Caml WWW::Curl::Simple
 

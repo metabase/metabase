@@ -3,7 +3,7 @@ import _ from "underscore";
 import MetadataEditor from './components/MetadataEditor.jsx';
 
 angular
-.module('metabase.admin.metadata.controllers', [
+.module('metabase.admin.datamodel.controllers', [
     'metabase.services',
     'metabase.directives',
     'metabase.forms'
@@ -80,11 +80,11 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
     }
 
     $scope.selectDatabase = function(db) {
-        $location.path('/admin/metadata/'+db.id);
+        $location.path('/admin/datamodel/database/'+db.id);
     };
 
     $scope.selectTable = function(table) {
-        $location.path('/admin/metadata/'+table.db_id+'/table/'+table.id);
+        $location.path('/admin/datamodel/database/'+table.db_id+'/table/'+table.id);
     };
 
     $scope.updateTable = function(table) {

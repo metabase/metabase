@@ -20,7 +20,7 @@ export default class MetadataTableList extends Component {
 
     static propTypes = {
         tableId: PropTypes.number,
-        tables: PropTypes.object.isRequired,
+        tables: PropTypes.array.isRequired,
         selectTable: PropTypes.func.isRequired
     };
 
