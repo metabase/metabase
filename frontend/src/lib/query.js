@@ -1,4 +1,5 @@
 import inflection from "inflection";
+import _ from "underscore";
 
 var Query = {
 
@@ -65,7 +66,7 @@ var Query = {
                     }
                 } else if (Query.hasValidBreakout(query)) {
                     // remove sort if it references a non-broken-out field
-                    if (query.breakout.filter(b => b === field).length === 0) {
+                    if (query.breakout.filter(b => Query.isSameField(b, field)).length === 0) {
                         return false;
                     }
                 } else if (!Query.isBareRowsAggregation(query)) {
@@ -272,12 +273,14 @@ var Query = {
         } else if (Query.hasValidBreakout(query)) {
             // further filter field list down to only fields in our breakout clause
             var breakoutFieldList = [];
-            query.breakout.map(function (breakoutFieldId) {
-                for (var idx in fields) {
-                    if (fields[idx].id === breakoutFieldId) {
-                        breakoutFieldList.push(fields[idx]);
+
+            query.breakout.map(function (breakoutField) {
+                let breakoutFieldId = Query.getFieldTargetId(breakoutField);
+                fields.map(function(field) {
+                    if (field.id === breakoutFieldId) {
+                        breakoutFieldList.push(field);
                     }
-                }
+                });
             });
 
             if (Query.canSortByAggregateField(query)) {
@@ -345,6 +348,24 @@ var Query = {
                 (field[0] === 'aggregation' && typeof field[1] === "number")
             ))
         );
+    },
+
+    isSameField: function(fieldA, fieldB) {
+        // TODO: should this be less strict, e.x. datetime_field might be considered same as raw field?
+        return _.isEqual(fieldA, fieldB);
+    },
+
+    getFieldTargetId: function(field) {
+        if (Array.isArray(field)) {
+            if (field[0] === "fk->") {
+                return field[2];
+            }
+            if (field[0] === "datetime_field") {
+                return field[1];
+            }
+        } else {
+            return field;
+        }
     },
 
     getFieldTarget: function(field, tableMetadata) {
