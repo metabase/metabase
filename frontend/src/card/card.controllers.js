@@ -228,13 +228,11 @@ CardControllers.controller('CardDetail', [
                 // NOTE: we only allow this for structured type queries & we only allow sorting by a single column
                 if (card.dataset_query.type === "query") {
                     var sortClause = [sortField, "ascending"];
-                    if (card.dataset_query.query.order_by !== undefined &&
-                            card.dataset_query.query.order_by.length > 0 &&
-                            card.dataset_query.query.order_by[0].length > 0 &&
-                            card.dataset_query.query.order_by[0][1] === "ascending" &&
-                            (card.dataset_query.query.order_by[0][0] === sortField ||
-                                (Array.isArray(card.dataset_query.query.order_by[0][0]) &&
-                                    Array.isArray(sortField)))) {
+                    if (card.dataset_query.query.order_by &&
+                        card.dataset_query.query.order_by.length > 0 &&
+                        card.dataset_query.query.order_by[0].length > 0 &&
+                        card.dataset_query.query.order_by[0][1] === "ascending" &&
+                        Query.isSameField(card.dataset_query.query.order_by[0][0], sortField)) {
                         // someone triggered another sort on the same column, so flip the sort direction
                         sortClause = [sortField, "descending"];
                     }

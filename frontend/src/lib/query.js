@@ -56,29 +56,37 @@ var Query = {
         }
 
         if (query.order_by) {
-            query.order_by = query.order_by.filter((s) => {
+            query.order_by = query.order_by.map((s) => {
                 let field = s[0];
 
                 if (Query.isAggregateField(field)) {
                     // remove aggregation sort if we can't sort by this aggregation
                     if (!Query.canSortByAggregateField(query)) {
-                        return false
+                        return null;
                     }
                 } else if (Query.hasValidBreakout(query)) {
                     // remove sort if it references a non-broken-out field
-                    if (query.breakout.filter(b => Query.isSameField(b, field)).length === 0) {
-                        return false;
+                    let matchingBreakout = query.breakout.filter(b => Query.isSameField(b, field));
+                    if (matchingBreakout.length > 0) {
+                        // query processor expect the order_by clause to match the breakout's granularity
+                        if (Array.isArray(matchingBreakout[0]) && matchingBreakout[0][0] === "datetime_field") {
+                            return [matchingBreakout[0], s[1]];
+                        } else {
+                            return s;
+                        }
+                    } else {
+                        return null;
                     }
                 } else if (!Query.isBareRowsAggregation(query)) {
                     // otherwise remove sort if it doesn't have a breakout but isn't a bare rows aggregation
-                    return false;
+                    return null;
                 }
                 // remove incomplete sorts
                 if (Query.isValidField(s[0]) && s[1] != null) {
-                    return true;
+                    return s;
                 }
-                return false;
-            });
+                return null;
+            }).filter(s => s != null);
             if (query.order_by.length === 0) {
                 delete query.order_by;
             }
@@ -350,9 +358,12 @@ var Query = {
         );
     },
 
-    isSameField: function(fieldA, fieldB) {
-        // TODO: should this be less strict, e.x. datetime_field might be considered same as raw field?
-        return _.isEqual(fieldA, fieldB);
+    isSameField: function(fieldA, fieldB, strict = false) {
+        if (strict) {
+            return _.isEqual(fieldA, fieldB);
+        } else {
+            return Query.getFieldTargetId(fieldA) === Query.getFieldTargetId(fieldB);
+        }
     },
 
     getFieldTargetId: function(field) {
@@ -413,8 +424,10 @@ var Query = {
                 if (id[0] === "fk->") {
                     var field = table.fields_lookup[id[1]];
                     if (field) {
-                        return field.display_name + " " + getFieldName(id[2], field.target.table);
+                        return field.display_name.replace(/\s+id$/i, "") + " → " + getFieldName(id[2], field.target.table);
                     }
+                } else if (id[0] === "datetime_field") {
+                    return getFieldName(id[1], table) + " (by " + id[3] + ")";
                 }
             } else if (table.fields_lookup[id]) {
                 return table.fields_lookup[id].display_name
