@@ -30,6 +30,7 @@
   "Update a `Segment` with ID."
   [id :as {{:keys [name description definition revision_message] :as body} :body}]
   {name             [Required NonEmptyString]
+   revision_message [Required NonEmptyString]
    definition       [Required Dict]}
   (check-superuser)
   (check-404 (segment/exists-segment? id))
@@ -44,10 +45,11 @@
 
 (defendpoint DELETE "/:id"
   "Delete a `Segment`."
-  [id]
+  [id :as {{:keys [revision_message] :as body} :body}]
+  {revision_message [Required NonEmptyString]}
   (check-superuser)
   (check-404 (segment/exists-segment? id))
-  (segment/delete-segment id *current-user-id*)
+  (segment/delete-segment id *current-user-id* revision_message)
   {:success true})
 
 
@@ -62,7 +64,7 @@
 (defendpoint POST "/:id/revert"
   "Revert a `Segement` to a prior `Revision`."
   [id :as {{:keys [revision_id]} :body}]
-  {revision_id Integer}
+  {revision_id [Required Integer]}
   (check-superuser)
   (check-404 (segment/exists-segment? id))
   (revision/revert

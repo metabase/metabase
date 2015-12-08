@@ -119,14 +119,16 @@
    record from the database at any time.
 
    Returns the final state of the `Segment` is successful, or throws an Exception."
-  [id user-id]
-  {:pre [(integer? id)]}
+  [id user-id revision-message]
+  {:pre [(integer? id)
+         (integer? user-id)
+         (string? revision-message)]}
   ;; make Segment not active
   (db/upd Segment id :is_active false)
   ;; retrieve the updated segment (now retired)
   (let [segment (retrieve-segment id)]
     ;; fire off an event
-    (events/publish-event :segment-delete (assoc segment :actor_id user-id))
+    (events/publish-event :segment-delete (assoc segment :actor_id user-id :revision_message revision-message))
     ;; return the updated segment
     segment))
 
