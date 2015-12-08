@@ -90,9 +90,10 @@
 
   i/IDatasetLoader
   (merge generic/IDatasetLoaderMixin
-         {:database->connection-details database->connection-details
-          :default-schema               (constantly "PUBLIC")
-          :engine                       (constantly :h2)
-          :format-name                  (fn [_ table-or-field-name]
-                                          (s/upper-case table-or-field-name))
-          :id-field-type                (constantly :BigIntegerField)}))
+         {:database->connection-details       database->connection-details
+          :default-schema                     (constantly "PUBLIC")
+          :engine                             (constantly :h2)
+          :format-name                        (fn [_ table-or-field-name]
+                                                (s/upper-case table-or-field-name))
+          :has-questionable-timezone-support? (constantly false)
+          :id-field-type                      (constantly :BigIntegerField)}))

@@ -11,7 +11,7 @@
                              [table :refer [Table]])
             (metabase.test.data [dataset-definitions :as defs]
                                 [datasets :as datasets :refer [*data-loader* *engine*]]
-                                [interface :refer [create-database-definition]])
+                                [interface :refer [create-database-definition], :as i])
             [metabase.test.data :refer :all]
             [metabase.test.util.q :refer [Q]]
             [metabase.util :as u]))
@@ -28,11 +28,6 @@
 
 (defn- engines-that-dont-support [feature]
   (set/difference datasets/all-valid-engines (engines-that-support feature)))
-
-(defmacro if-questionable-timezone-support [then else]
-  `(if (contains? #{:mongo :redshift :sqlite :sqlserver} *engine*)
-     ~then
-     ~else))
 
 (defmacro ^:private qp-expect-with-all-engines [data q-form & post-process-fns]
   `(datasets/expect-with-all-engines
@@ -573,18 +568,18 @@
 
 ;; ### Cumulative sum w/ a different breakout field
 (qp-expect-with-all-engines
-    {:rows    [["Broen Olujimi"       14]
-               ["Conchúr Tihomir"     21]
-               ["Dwight Gresham"      34]
-               ["Felipinho Asklepios" 36]
-               ["Frans Hevel"         46]
-               ["Kaneonuskatew Eiran" 49]
-               ["Kfir Caj"            61]
-               ["Nils Gotam"          70]
-               ["Plato Yeshua"        71]
-               ["Quentin Sören"       76]
-               ["Rüstem Hebel"        91]
-               ["Shad Ferdynand"      97]
+    {:rows    [["Broen Olujimi"        14]
+               ["Conchúr Tihomir"      21]
+               ["Dwight Gresham"       34]
+               ["Felipinho Asklepios"  36]
+               ["Frans Hevel"          46]
+               ["Kaneonuskatew Eiran"  49]
+               ["Kfir Caj"             61]
+               ["Nils Gotam"           70]
+               ["Plato Yeshua"         71]
+               ["Quentin Sören"        76]
+               ["Rüstem Hebel"         91]
+               ["Shad Ferdynand"       97]
                ["Simcha Yan"          101]
                ["Spiros Teofil"       112]
                ["Szymon Theutrich"    120]]
@@ -670,7 +665,7 @@
   {:columns [(format-name "price")
 
              "count"]
-   :rows    [[4 6]
+   :rows    [[4  6]
              [3 13]
              [1 22]
              [2 59]]
@@ -771,7 +766,7 @@
 
 ;; There were 9 "sad toucan incidents" on 2015-06-02
 (datasets/expect-with-all-engines
-  (if-questionable-timezone-support
+  (if (i/has-questionable-timezone-support? *data-loader*)
     10
     9)
   (Q dataset sad-toucan-incidents
@@ -783,42 +778,42 @@
 
 (datasets/expect-with-all-engines
   (cond
-    ;; SQL Server, Mongo, and Redshift don't have a concept of timezone so results are all grouped by UTC
-    (contains? #{:mongo :redshift :sqlserver} *engine*)
-    [[#inst "2015-06-01T07" 6]
-     [#inst "2015-06-02T07" 10]
-     [#inst "2015-06-03T07" 4]
-     [#inst "2015-06-04T07" 9]
-     [#inst "2015-06-05T07" 9]
-     [#inst "2015-06-06T07" 8]
-     [#inst "2015-06-07T07" 8]
-     [#inst "2015-06-08T07" 9]
-     [#inst "2015-06-09T07" 7]
-     [#inst "2015-06-10T07" 9]]
-
     (= *engine* :sqlite)
-    [["2015-06-01" 6]
+    [["2015-06-01"  6]
      ["2015-06-02" 10]
-     ["2015-06-03" 4]
-     ["2015-06-04" 9]
-     ["2015-06-05" 9]
-     ["2015-06-06" 8]
-     ["2015-06-07" 8]
-     ["2015-06-08" 9]
-     ["2015-06-09" 7]
-     ["2015-06-10" 9]]
+     ["2015-06-03"  4]
+     ["2015-06-04"  9]
+     ["2015-06-05"  9]
+     ["2015-06-06"  8]
+     ["2015-06-07"  8]
+     ["2015-06-08"  9]
+     ["2015-06-09"  7]
+     ["2015-06-10"  9]]
 
-    ;; Postgres, Redshift, MySQL, and H2 -- grouped by DB timezone, US/Pacific in this case
+    ;; SQL Server, Mongo, and Redshift don't have a concept of timezone so results are all grouped by UTC
+    (i/has-questionable-timezone-support? *data-loader*)
+    [[#inst "2015-06-01T07"  6]
+     [#inst "2015-06-02T07" 10]
+     [#inst "2015-06-03T07"  4]
+     [#inst "2015-06-04T07"  9]
+     [#inst "2015-06-05T07"  9]
+     [#inst "2015-06-06T07"  8]
+     [#inst "2015-06-07T07"  8]
+     [#inst "2015-06-08T07"  9]
+     [#inst "2015-06-09T07"  7]
+     [#inst "2015-06-10T07"  9]]
+
+    ;; Postgres, MySQL, and H2 -- grouped by DB timezone, US/Pacific in this case
     :else
-    [[#inst "2015-06-01T07" 8]
-     [#inst "2015-06-02T07" 9]
-     [#inst "2015-06-03T07" 9]
-     [#inst "2015-06-04T07" 4]
+    [[#inst "2015-06-01T07"  8]
+     [#inst "2015-06-02T07"  9]
+     [#inst "2015-06-03T07"  9]
+     [#inst "2015-06-04T07"  4]
      [#inst "2015-06-05T07" 11]
-     [#inst "2015-06-06T07" 8]
-     [#inst "2015-06-07T07" 6]
+     [#inst "2015-06-06T07"  8]
+     [#inst "2015-06-07T07"  6]
      [#inst "2015-06-08T07" 10]
-     [#inst "2015-06-09T07" 6]
+     [#inst "2015-06-09T07"  6]
      [#inst "2015-06-10T07" 10]])
   (Q dataset sad-toucan-incidents
      aggregate count of incidents
@@ -834,16 +829,16 @@
 ;; The top 10 cities by number of Tupac sightings
 ;; Test that we can breakout on an FK field (Note how the FK Field is returned in the results)
 (datasets/expect-with-engines (engines-that-support :foreign-keys)
-  [["Arlington" 16]
-   ["Albany" 15]
-   ["Portland" 14]
-   ["Louisville" 13]
+  [["Arlington"    16]
+   ["Albany"       15]
+   ["Portland"     14]
+   ["Louisville"   13]
    ["Philadelphia" 13]
-   ["Anchorage" 12]
-   ["Lincoln" 12]
-   ["Houston" 11]
-   ["Irvine" 11]
-   ["Lakeland" 11]]
+   ["Anchorage"    12]
+   ["Lincoln"      12]
+   ["Houston"      11]
+   ["Irvine"       11]
+   ["Lakeland"     11]]
   (Q dataset tupac-sightings
      aggregate count of sightings
      breakout city_id->cities.name
@@ -1171,18 +1166,6 @@
 
 (datasets/expect-with-all-engines
   (cond
-    (contains? #{:mongo :redshift :sqlserver} *engine*)
-    [[#inst "2015-06-01T17:31" 1]
-     [#inst "2015-06-01T23:06" 1]
-     [#inst "2015-06-02T00:23" 1]
-     [#inst "2015-06-02T01:55" 1]
-     [#inst "2015-06-02T04:04" 1]
-     [#inst "2015-06-02T04:19" 1]
-     [#inst "2015-06-02T09:13" 1]
-     [#inst "2015-06-02T12:37" 1]
-     [#inst "2015-06-02T15:20" 1]
-     [#inst "2015-06-02T18:11" 1]]
-
     (= *engine* :sqlite)
     [["2015-06-01 10:31:00" 1]
      ["2015-06-01 16:06:00" 1]
@@ -1194,6 +1177,18 @@
      ["2015-06-02 05:37:00" 1]
      ["2015-06-02 08:20:00" 1]
      ["2015-06-02 11:11:00" 1]]
+
+    (i/has-questionable-timezone-support? *data-loader*)
+    [[#inst "2015-06-01T17:31" 1]
+     [#inst "2015-06-01T23:06" 1]
+     [#inst "2015-06-02T00:23" 1]
+     [#inst "2015-06-02T01:55" 1]
+     [#inst "2015-06-02T04:04" 1]
+     [#inst "2015-06-02T04:19" 1]
+     [#inst "2015-06-02T09:13" 1]
+     [#inst "2015-06-02T12:37" 1]
+     [#inst "2015-06-02T15:20" 1]
+     [#inst "2015-06-02T18:11" 1]]
 
     :else
     [[#inst "2015-06-01T10:31" 1]
@@ -1223,18 +1218,6 @@
 
 (datasets/expect-with-all-engines
   (cond
-    (contains? #{:mongo :redshift :sqlserver} *engine*)
-    [[#inst "2015-06-01T17" 1]
-     [#inst "2015-06-01T23" 1]
-     [#inst "2015-06-02T00" 1]
-     [#inst "2015-06-02T01" 1]
-     [#inst "2015-06-02T04" 2]
-     [#inst "2015-06-02T09" 1]
-     [#inst "2015-06-02T12" 1]
-     [#inst "2015-06-02T15" 1]
-     [#inst "2015-06-02T18" 1]
-     [#inst "2015-06-02T20" 1]]
-
     (= *engine* :sqlite)
     [["2015-06-01 10:00:00" 1]
      ["2015-06-01 16:00:00" 1]
@@ -1246,6 +1229,18 @@
      ["2015-06-02 08:00:00" 1]
      ["2015-06-02 11:00:00" 1]
      ["2015-06-02 13:00:00" 1]]
+
+    (i/has-questionable-timezone-support? *data-loader*)
+    [[#inst "2015-06-01T17" 1]
+     [#inst "2015-06-01T23" 1]
+     [#inst "2015-06-02T00" 1]
+     [#inst "2015-06-02T01" 1]
+     [#inst "2015-06-02T04" 2]
+     [#inst "2015-06-02T09" 1]
+     [#inst "2015-06-02T12" 1]
+     [#inst "2015-06-02T15" 1]
+     [#inst "2015-06-02T18" 1]
+     [#inst "2015-06-02T20" 1]]
 
     :else
     [[#inst "2015-06-01T10" 1]
@@ -1261,83 +1256,83 @@
   (sad-toucan-incidents-with-bucketing :hour))
 
 (datasets/expect-with-all-engines
-  (if-questionable-timezone-support
-   [[0 13] [1  8] [2  4] [3  7] [4  5] [5 13] [6 10] [7  8] [8  9] [9  7]]
-   [[0  8] [1  9] [2  7] [3 10] [4 10] [5  9] [6  6] [7  5] [8  7] [9  7]])
+  (if (i/has-questionable-timezone-support? *data-loader*)
+   [[0 13] [1 8] [2 4] [3  7] [4  5] [5 13] [6 10] [7 8] [8 9] [9 7]]
+   [[0  8] [1 9] [2 7] [3 10] [4 10] [5  9] [6  6] [7 5] [8 7] [9 7]])
   (sad-toucan-incidents-with-bucketing :hour-of-day))
 
 (datasets/expect-with-all-engines
   (cond
-    (contains? #{:mongo :redshift :sqlserver} *engine*)
-    [[#inst "2015-06-01T07" 6]
-     [#inst "2015-06-02T07" 10]
-     [#inst "2015-06-03T07" 4]
-     [#inst "2015-06-04T07" 9]
-     [#inst "2015-06-05T07" 9]
-     [#inst "2015-06-06T07" 8]
-     [#inst "2015-06-07T07" 8]
-     [#inst "2015-06-08T07" 9]
-     [#inst "2015-06-09T07" 7]
-     [#inst "2015-06-10T07" 9]]
-
     (= *engine* :sqlite)
-    [["2015-06-01" 6]
+    [["2015-06-01"  6]
      ["2015-06-02" 10]
-     ["2015-06-03" 4]
-     ["2015-06-04" 9]
-     ["2015-06-05" 9]
-     ["2015-06-06" 8]
-     ["2015-06-07" 8]
-     ["2015-06-08" 9]
-     ["2015-06-09" 7]
-     ["2015-06-10" 9]]
+     ["2015-06-03"  4]
+     ["2015-06-04"  9]
+     ["2015-06-05"  9]
+     ["2015-06-06"  8]
+     ["2015-06-07"  8]
+     ["2015-06-08"  9]
+     ["2015-06-09"  7]
+     ["2015-06-10"  9]]
+
+    (i/has-questionable-timezone-support? *data-loader*)
+    [[#inst "2015-06-01T07"  6]
+     [#inst "2015-06-02T07" 10]
+     [#inst "2015-06-03T07"  4]
+     [#inst "2015-06-04T07"  9]
+     [#inst "2015-06-05T07"  9]
+     [#inst "2015-06-06T07"  8]
+     [#inst "2015-06-07T07"  8]
+     [#inst "2015-06-08T07"  9]
+     [#inst "2015-06-09T07"  7]
+     [#inst "2015-06-10T07"  9]]
 
     :else
-    [[#inst "2015-06-01T07" 8]
-     [#inst "2015-06-02T07" 9]
-     [#inst "2015-06-03T07" 9]
-     [#inst "2015-06-04T07" 4]
+    [[#inst "2015-06-01T07"  8]
+     [#inst "2015-06-02T07"  9]
+     [#inst "2015-06-03T07"  9]
+     [#inst "2015-06-04T07"  4]
      [#inst "2015-06-05T07" 11]
-     [#inst "2015-06-06T07" 8]
-     [#inst "2015-06-07T07" 6]
+     [#inst "2015-06-06T07"  8]
+     [#inst "2015-06-07T07"  6]
      [#inst "2015-06-08T07" 10]
-     [#inst "2015-06-09T07" 6]
+     [#inst "2015-06-09T07"  6]
      [#inst "2015-06-10T07" 10]])
   (sad-toucan-incidents-with-bucketing :day))
 
 (datasets/expect-with-all-engines
-  (if-questionable-timezone-support
+  (if (i/has-questionable-timezone-support? *data-loader*)
    [[1 28] [2 38] [3 29] [4 27] [5 24] [6 30] [7 24]]
    [[1 29] [2 36] [3 33] [4 29] [5 13] [6 38] [7 22]])
   (sad-toucan-incidents-with-bucketing :day-of-week))
 
 (datasets/expect-with-all-engines
-  (if-questionable-timezone-support
+  (if (i/has-questionable-timezone-support? *data-loader*)
    [[1  6] [2 10] [3  4] [4  9] [5  9] [6  8] [7  8] [8  9] [9  7] [10  9]]
    [[1  8] [2  9] [3  9] [4  4] [5 11] [6  8] [7  6] [8 10] [9  6] [10 10]])
   (sad-toucan-incidents-with-bucketing :day-of-month))
 
 (datasets/expect-with-all-engines
-  (if-questionable-timezone-support
+  (if (i/has-questionable-timezone-support? *data-loader*)
    [[152  6] [153 10] [154  4] [155  9] [156  9] [157  8] [158  8] [159  9] [160  7] [161  9]]
    [[152  8] [153  9] [154  9] [155  4] [156 11] [157  8] [158  6] [159 10] [160  6] [161 10]])
   (sad-toucan-incidents-with-bucketing :day-of-year))
 
 (datasets/expect-with-all-engines
   (cond
-    (contains? #{:mongo :redshift :sqlserver} *engine*)
-    [[#inst "2015-05-31T07" 46]
-     [#inst "2015-06-07T07" 47]
-     [#inst "2015-06-14T07" 40]
-     [#inst "2015-06-21T07" 60]
-     [#inst "2015-06-28T07" 7]]
-
     (= *engine* :sqlite)
     [["2015-05-31" 46]
      ["2015-06-07" 47]
      ["2015-06-14" 40]
      ["2015-06-21" 60]
      ["2015-06-28" 7]]
+
+    (i/has-questionable-timezone-support? *data-loader*)
+    [[#inst "2015-05-31T07" 46]
+     [#inst "2015-06-07T07" 47]
+     [#inst "2015-06-14T07" 40]
+     [#inst "2015-06-21T07" 60]
+     [#inst "2015-06-28T07" 7]]
 
     :else
     [[#inst "2015-05-31T07" 49]
