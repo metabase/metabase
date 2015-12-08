@@ -1,6 +1,7 @@
 (ns metabase.driver.generic-sql
   (:require [clojure.core.memoize :as memoize]
             [clojure.java.jdbc :as jdbc]
+            [clojure.set :as set]
             [clojure.tools.logging :as log]
             (korma [core :as k]
                    [db :as kdb])
@@ -125,12 +126,12 @@
      (let [~binding (.getMetaData conn#)]
        ~@body)))
 
-(defn- active-tables
-  "Fast implementation of `IDriver/active-tables`.
-   Fetches list of schemas, then for each one not in `excluded-schemas`, fetch their Tables.
 
-   The old implementation fetched *all* Tables, then filtered out ones with `excluded-schemas` in Clojure;
-   this is as much as 15x faster for Databases with a lot of system tables like Oracle (4 seconds vs 60)."
+(defn fast-active-tables
+  "Default, fast implementation of `IDriver/active-tables` best suited for DBs with lots of system tables (like Oracle).
+   Fetch list of schemas, then for each one not in `excluded-schemas`, fetch its Tables, and combine the results.
+
+   This is as much as 15x faster for Databases with lots of system tables than `post-filtered-active-tables` (4 seconds vs 60)."
   [driver database]
   (with-metadata [md driver database]
     (let [all-schemas (set (map :table_schem (jdbc/result-set-seq (.getSchemas md))))
@@ -139,6 +140,17 @@
                  table-name (mapv :table_name (jdbc/result-set-seq (.getTables md nil schema nil (into-array String ["TABLE", "VIEW"]))))]
              {:name   table-name
               :schema schema})))))
+
+(defn post-filtered-active-tables
+  "Alternative implementation of `IDriver/active-tables` best suited for DBs with little or no support for schemas.
+   Fetch *all* Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
+  [driver database]
+  (with-metadata [md driver database]
+    (set (for [table (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
+                             (jdbc/result-set-seq (.getTables md nil nil nil (into-array String ["TABLE", "VIEW"]))))]
+           {:name   (:table_name table)
+            :schema (:table_schem table)}))))
+
 
 (defn- active-column-names->type [driver table]
   (with-metadata [md driver @(:db table)]
@@ -253,7 +265,7 @@
            'metabase.driver.generic-sql.query-processor)
   (merge driver/IDriverDefaultsMixin
          {:active-column-names->type active-column-names->type
-          :active-tables             active-tables
+          :active-tables             fast-active-tables
           :can-connect?              can-connect?
           :features                  features
           :field-avg-length          field-avg-length

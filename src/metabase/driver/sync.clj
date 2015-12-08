@@ -84,12 +84,12 @@
     (validate-active-tables active-tables)
 
     (mark-inactive-tables! database active-tables existing-table->id)
-    (create-new-tables!    database active-tables existing-table->id))
+    (create-new-tables!    database active-tables existing-table->id)
 
-  (fetch-and-sync-database-active-tables! driver database)
+    (fetch-and-sync-database-active-tables! driver database)
 
-  ;; Ok, now if we had a _metabase_metadata table from earlier we can go ahead and sync from it
-  (sync-metabase-metadata-table! driver database active-tables))
+    ;; Ok, now if we had a _metabase_metadata table from earlier we can go ahead and sync from it
+    (sync-metabase-metadata-table! driver database active-tables)))
 
 (defn- -sync-database-with-tracking! [driver database]
   (let [start-time    (System/currentTimeMillis)

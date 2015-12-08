@@ -141,7 +141,8 @@
 (extend MySQLDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:date-interval                     date-interval
+         {:active-tables                     sql/post-filtered-active-tables
+          :date-interval                     date-interval
           :details-fields                    (constantly [{:name         "host"
                                                            :display-name "Host"
                                                            :default      "localhost"}
