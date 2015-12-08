@@ -10,6 +10,7 @@
             (metabase.driver [h2 :refer [map->H2Driver]]
                              [mongo :refer [map->MongoDriver]]
                              [mysql :refer [map->MySQLDriver]]
+                             [oracle :refer [map->OracleDriver], :as oracle]
                              [postgres :refer [map->PostgresDriver]]
                              [redshift :refer [map->RedshiftDriver]]
                              [sqlite :refer [map->SQLiteDriver]]
@@ -17,17 +18,19 @@
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
             (metabase.test.data [dataset-definitions :as defs]
-                                [h2 :as h2]
-                                [mongo :as mongo]
-                                [mysql :as mysql]
-                                [postgres :as postgres]
+                                h2
+                                mongo
+                                mysql
+                                oracle
+                                postgres
                                 [redshift :as redshift]
-                                [sqlite :as sqlite]
-                                [sqlserver :as sqlserver])
+                                sqlite
+                                sqlserver)
             [metabase.util :as u])
   (:import metabase.driver.h2.H2Driver
            metabase.driver.mongo.MongoDriver
            metabase.driver.mysql.MySQLDriver
+           metabase.driver.oracle.OracleDriver
            metabase.driver.postgres.PostgresDriver
            metabase.driver.redshift.RedshiftDriver
            metabase.driver.sqlite.SQLiteDriver
@@ -37,36 +40,39 @@
 
 (defprotocol IDataset
   "Functions needed to fetch test data for various drivers."
-  (load-data! [this]
-    "Load the test data for this dataset.")
   (db [this]
     "Return `Database` containing test data for this driver.")
   (default-schema [this]
     "Return the default schema name that tables for this DB should be expected to have.")
+  (expected-base-type->actual [this base-type]
+    "*OPTIONAL*. Return the base type type that is actually used to store `Fields` of BASE-TYPE.
+     The default implementation of this method is an identity fn. This is provided so DBs that don't support a given BASE-TYPE used in the test data
+     can specifiy what type we should expect in the results instead.
+     For example, Oracle has `INTEGER` data types, so `:IntegerField` test values are instead stored as `NUMBER`, which we map to `:DecimalField`.")
   (format-name [this table-or-field-name]
     "Transform a lowercase string `Table` or `Field` name in a way appropriate for this dataset
      (e.g., `h2` would want to upcase these names; `mongo` would want to use `\"_id\"` in place of `\"id\"`.")
   (id-field-type [this]
-    "Return the `base_type` of the `id` `Field` (e.g. `:IntegerField` or `:BigIntegerField`).")
-  (sum-field-type [this]
-    "Return the `base_type` of a aggregate summed field.")
+    "*OPTIONAL* Return the `base_type` of the `id` `Field` (e.g. `:IntegerField` or `:BigIntegerField`). Defaults to `:IntegerField`.")
+  (load-data! [this]
+    "Load the test data for this dataset.")
   (timestamp-field-type [this]
     "Return the `base_type` of a `TIMESTAMP` `Field` like `users.last_login`."))
 
 
 ;; # Implementations
 
-(defn- generic-load-data! [{:keys [dbpromise], :as this}]
+(defn- default-load-data! [{:keys [dbpromise], :as this}]
   (when-not (realized? dbpromise)
     (deliver dbpromise (@(resolve 'metabase.test.data/get-or-create-database!) this defs/test-data)))
   @dbpromise)
 
 (def ^:private IDatasetDefaultsMixin
-  {:load-data!     generic-load-data!
-   :db             generic-load-data!
-   :id-field-type  (constantly :IntegerField)
-   :sum-field-type (constantly :IntegerField)
-   :default-schema (constantly nil)})
+  {:db                         default-load-data!
+   :expected-base-type->actual (fn [_ base-type] base-type)
+   :default-schema             (constantly nil)
+   :id-field-type              (constantly :IntegerField)
+   :load-data!                 default-load-data!})
 
 ;; ## Mongo
 
@@ -94,14 +100,22 @@
          {:default-schema (constantly "PUBLIC")
           :format-name    (fn [_ table-or-field-name]
                             (s/upper-case table-or-field-name))
-          :id-field-type  (constantly :BigIntegerField)
-          :sum-field-type (constantly :BigIntegerField)}))
+          :id-field-type  (constantly :BigIntegerField)}))
 
 
 (extend MySQLDriver
+  IDataset GenericSQLIDatasetMixin)
+
+(extend OracleDriver
   IDataset
   (merge GenericSQLIDatasetMixin
-         {:sum-field-type (constantly :BigIntegerField)}))
+         {:expected-base-type->actual (fn [_ base-type]
+                                        (condp = base-type
+                                          :IntegerField    :DecimalField ; Oracle doesn't have INTEGERs
+                                          :BigIntegerField :DecimalField
+                                          base-type))
+          :default-schema             (constantly metabase.test.data.oracle/session-schema)
+          :id-field-type              (constantly :DecimalField)}))
 
 
 (extend PostgresDriver
@@ -124,21 +138,22 @@
 (extend SQLServerDriver
   IDataset
   (merge GenericSQLIDatasetMixin
-         {:default-schema (constantly "dbo")
-          :sum-field-type (constantly :IntegerField)}))
+         {:default-schema (constantly "dbo")}))
 
 
 ;; # Concrete Instances
 
 (def ^:private engine->loader*
   "Map of dataset keyword name -> dataset instance (i.e., an object that implements `IDataset`)."
-  {:h2        (map->H2Driver        {:dbpromise (promise)})
-   :mongo     (map->MongoDriver     {:dbpromise (promise)})
-   :mysql     (map->MySQLDriver     {:dbpromise (promise)})
-   :postgres  (map->PostgresDriver  {:dbpromise (promise)})
-   :redshift  (map->RedshiftDriver  {:dbpromise (promise)})
-   :sqlite    (map->SQLiteDriver    {:dbpromise (promise)})
-   :sqlserver (map->SQLServerDriver {:dbpromise (promise)})})
+  (merge {:h2        (map->H2Driver        {:dbpromise (promise)})
+          :mongo     (map->MongoDriver     {:dbpromise (promise)})
+          :mysql     (map->MySQLDriver     {:dbpromise (promise)})
+          :postgres  (map->PostgresDriver  {:dbpromise (promise)})
+          :redshift  (map->RedshiftDriver  {:dbpromise (promise)})
+          :sqlite    (map->SQLiteDriver    {:dbpromise (promise)})
+          :sqlserver (map->SQLServerDriver {:dbpromise (promise)})}
+         (when (oracle/jdbc-driver-available?)
+           {:oracle (map->OracleDriver {:dbpromise (promise)})})))
 
 (def ^:const all-valid-engines
   "Set of names of all valid datasets."

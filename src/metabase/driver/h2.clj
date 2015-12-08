@@ -5,8 +5,8 @@
             [metabase.db :as db]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
-            [metabase.driver.generic-sql.util :refer [funcs]]
-            [metabase.models.database :refer [Database]]))
+            [metabase.models.database :refer [Database]]
+            [metabase.util.korma-extensions :as kx]))
 
 (defn- column->base-type [_ column-type]
   ({:ARRAY                       :UnknownField
@@ -145,10 +145,10 @@
 ;; Postgres DATE_TRUNC('quarter', x)
 ;; becomes  PARSEDATETIME(CONCAT(YEAR(x), ((QUARTER(x) * 3) - 2)), 'yyyyMM')
 (defn- trunc-to-quarter [field-or-value]
-  (funcs "PARSEDATETIME(%s, 'yyyyMM')"
-         ["CONCAT(%s)"
-          ["YEAR(%s)" field-or-value]
-          ["((QUARTER(%s) * 3) - 2)" field-or-value]]))
+  (kx/funcs "PARSEDATETIME(%s, 'yyyyMM')"
+            ["CONCAT(%s)"
+             ["YEAR(%s)" field-or-value]
+             ["((QUARTER(%s) * 3) - 2)" field-or-value]]))
 
 (defn- date [_ unit field-or-value]
   (if (= unit :quarter)

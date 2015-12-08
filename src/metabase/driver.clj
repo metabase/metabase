@@ -144,7 +144,7 @@
      operation itself is encapsulated as the lambda F, which must be called with no arguments.
 
        (defn sync-in-context [driver database f]
-         (with-jdbc-metadata [_ database]
+         (with-connection [_ database]
            (f)))")
 
   (table-fks ^java.util.Set [this, ^TableInstance table]

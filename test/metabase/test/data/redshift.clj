@@ -77,12 +77,9 @@
 
 ;;; Create + destroy the schema used for this test session
 
-(defn- execute-when-testing-redshift! [format-str & args]
-  (when (contains? @(resolve 'metabase.test.data.datasets/test-engines) :redshift)
-    (let [sql (apply format format-str args)]
-      (log/info (u/format-color 'blue "[Redshift] %s" sql))
-      (jdbc/execute! (sql/connection-details->spec (RedshiftDriver.) @db-connection-details)
-                     [sql]))))
+(def ^:private execute-when-testing-redshift!
+  (comp (partial generic/execute-when-testing! :redshift (fn [] (sql/connection-details->spec (RedshiftDriver.) @db-connection-details)))
+        (partial apply format)))
 
 (defn- create-session-schema!
   {:expectations-options :before-run}

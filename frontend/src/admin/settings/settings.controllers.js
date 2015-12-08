@@ -117,6 +117,18 @@ const SECTIONS = [
                 autoFocus: true
             }
         ]
+    },
+    {
+        name: "Plugins",
+        settings: [
+            {
+                key: "oracle-jdbc-driver-path",
+                display_name: "Oracle JDBC Driver Path",
+                description: "Path to Oracle JDBC driver JAR. Download it at http://www.oracle.com/technetwork/database/features/jdbc/default-2280470.html.",
+                placeholder: "/Users/camsaul/Downloads/ojdbc7.jar",
+                type: "string"
+            }
+        ]
     }
 ];
 

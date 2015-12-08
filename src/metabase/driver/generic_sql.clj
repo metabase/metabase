@@ -1,14 +1,18 @@
 (ns metabase.driver.generic-sql
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [clojure.core.memoize :as memoize]
+            [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
-            [korma.core :as k]
+            (korma [core :as k]
+                   [db :as kdb])
             [korma.sql.utils :as utils]
             [metabase.driver :as driver]
-            [metabase.driver.generic-sql.util :refer :all]
             [metabase.models.field :as field]
             [metabase.util :as u])
   (:import java.util.Map
            clojure.lang.Keyword))
+
+(declare db->korma-db
+         korma-entity)
 
 (defprotocol ISQLDriver
   "Methods SQL-based drivers should implement in order to use `IDriverSQLDefaultsMixin`.
@@ -40,6 +44,9 @@
   (excluded-schemas ^java.util.Set [this]
     "*OPTIONAL*. Set of string names of schemas to skip syncing tables from.")
 
+  (get-connection-for-sync ^java.sql.Connection [this details]
+    "*OPTIONAL*. Get a connection used for a Sync step. By default, this returns a pooled connection.")
+
   (set-timezone-sql ^String [this]
     "*OPTIONAL*. This should be a prepared JDBC SQL statement string to be used to set the timezone for the current transaction.
 
@@ -55,23 +62,53 @@
     "Return a korma form appropriate for converting a Unix timestamp integer field or value to an proper SQL `Timestamp`.
      SECONDS-OR-MILLISECONDS refers to the resolution of the int in question and with be either `:seconds` or `:milliseconds`."))
 
+(def ^{:arglists '([connection-spec])}
+  connection-spec->pooled-connection-spec
+  "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`.
+   Theses connection pools are cached so we don't create multiple ones to the same DB.
+   Pools are destroyed after they aren't used for more than 3 hours."
+  (memoize/ttl
+   (fn [spec]
+     (log/info (u/format-color 'magenta "Creating new connection pool..."))
+     (kdb/connection-pool (assoc spec :minimum-pool-size 1)))
+   :ttl/threshold (* 3 60 60 1000)))
+
+(defn db->jdbc-connection-spec
+  "Return a JDBC connection spec for DATABASE. Normally this will have a C3P0 pool as its datasource, unless the database is `short-lived`."
+  {:arglists '([database] [driver details])}
+  ;; TODO - I don't think short-lived? key is really needed anymore. It's only used by unit tests, and its original purpose was for creating temporary DBs;
+  ;; since we don't destroy databases at the end of each test anymore, it's probably time to remove this
+  ([{:keys [engine details]}]
+   (db->jdbc-connection-spec (driver/engine->driver engine) details))
+  ([driver {:keys [short-lived?], :as details}]
+   (let [connection-spec (connection-details->spec driver details)]
+     (if short-lived?
+       connection-spec
+       (connection-spec->pooled-connection-spec connection-spec)))))
+
+(def ^{:arglists '([database] [driver details])}
+  db->connection
+  "Return a [possibly pooled] connection to DATABASE. Make sure to close this when you're done! (e.g. by using `with-open`)"
+  (comp jdbc/get-connection db->jdbc-connection-spec))
+
 
 (defn ISQLDriverDefaultsMixin
   "Default implementations for methods in `ISQLDriver`."
   []
   (require 'metabase.driver.generic-sql.query-processor)
-  {:apply-aggregation   (resolve 'metabase.driver.generic-sql.query-processor/apply-aggregation) ; don't resolve the vars yet so during interactive dev if the
-   :apply-breakout      (resolve 'metabase.driver.generic-sql.query-processor/apply-breakout)    ; underlying impl changes we won't have to reload all the drivers
-   :apply-fields        (resolve 'metabase.driver.generic-sql.query-processor/apply-fields)
-   :apply-filter        (resolve 'metabase.driver.generic-sql.query-processor/apply-filter)
-   :apply-join-tables   (resolve 'metabase.driver.generic-sql.query-processor/apply-join-tables)
-   :apply-limit         (resolve 'metabase.driver.generic-sql.query-processor/apply-limit)
-   :apply-order-by      (resolve 'metabase.driver.generic-sql.query-processor/apply-order-by)
-   :apply-page          (resolve 'metabase.driver.generic-sql.query-processor/apply-page)
-   :current-datetime-fn (constantly (k/sqlfn* :NOW))
-   :excluded-schemas    (constantly nil)
-   :set-timezone-sql    (constantly nil)
-   :stddev-fn           (constantly :STDDEV)})
+  {:apply-aggregation       (resolve 'metabase.driver.generic-sql.query-processor/apply-aggregation) ; don't resolve the vars yet so during interactive dev if the
+   :apply-breakout          (resolve 'metabase.driver.generic-sql.query-processor/apply-breakout) ; underlying impl changes we won't have to reload all the drivers
+   :apply-fields            (resolve 'metabase.driver.generic-sql.query-processor/apply-fields)
+   :apply-filter            (resolve 'metabase.driver.generic-sql.query-processor/apply-filter)
+   :apply-join-tables       (resolve 'metabase.driver.generic-sql.query-processor/apply-join-tables)
+   :apply-limit             (resolve 'metabase.driver.generic-sql.query-processor/apply-limit)
+   :apply-order-by          (resolve 'metabase.driver.generic-sql.query-processor/apply-order-by)
+   :apply-page              (resolve 'metabase.driver.generic-sql.query-processor/apply-page)
+   :current-datetime-fn     (constantly (k/sqlfn* :NOW))
+   :get-connection-for-sync db->connection
+   :excluded-schemas        (constantly nil)
+   :set-timezone-sql        (constantly nil)
+   :stddev-fn               (constantly :STDDEV)})
 
 
 (defn- can-connect? [driver details]
@@ -81,26 +118,39 @@
              vals
              first))))
 
-(defn- sync-in-context [_ database do-sync-fn]
-  (with-jdbc-metadata [_ database]
-    (do-sync-fn)))
+(defmacro with-metadata
+  "Execute BODY with `java.sql.DatabaseMetaData` for DATABASE."
+  [[binding driver database] & body]
+  `(with-open [^java.sql.Connection conn# (get-connection-for-sync ~driver (:details ~database))]
+     (let [~binding (.getMetaData conn#)]
+       ~@body)))
 
 (defn- active-tables [driver database]
-  (with-jdbc-metadata [^java.sql.DatabaseMetaData md database]
+  (with-metadata [md driver database]
     (set (for [table (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
                              (jdbc/result-set-seq (.getTables md nil nil nil (into-array String ["TABLE", "VIEW"]))))]
            {:name   (:table_name table)
             :schema (:table_schem table)}))))
 
 (defn- active-column-names->type [driver table]
-  (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db table)]
+  (with-metadata [md driver @(:db table)]
     (into {} (for [{:keys [column_name type_name]} (jdbc/result-set-seq (.getColumns md nil (:schema table) (:name table) nil))]
                {column_name (or (column->base-type driver (keyword type_name))
                                 (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :UnknownField." type_name))
                                     :UnknownField))}))))
 
-(defn- table-pks [_ table]
-  (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db table)]
+(defn pattern-based-column->base-type
+  "Return a `column->base-type` function that matches types based on a sequence of pattern / base-type pairs."
+  [pattern->type]
+  (fn [_ column-type]
+    (let [column-type (name column-type)]
+      (loop [[[pattern base-type] & more] pattern->type]
+        (cond
+          (re-find pattern column-type) base-type
+          (seq more)                    (recur more))))))
+
+(defn- table-pks [driver table]
+  (with-metadata [md driver @(:db table)]
     (->> (.getPrimaryKeys md nil nil (:name table))
          jdbc/result-set-seq
          (map :column_name)
@@ -150,8 +200,8 @@
                 (k/database (db->korma-db database)))))
 
 
-(defn- table-fks [_ table]
-  (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db table)]
+(defn- table-fks [driver table]
+  (with-metadata [md driver @(:db table)]
     (->> (.getImportedKeys md nil nil (:name table))
          jdbc/result-set-seq
          (map (fn [result]
@@ -203,7 +253,59 @@
           :field-values-lazy-seq     field-values-lazy-seq
           :process-native            (resolve 'metabase.driver.generic-sql.native/process-and-run)
           :process-structured        (resolve 'metabase.driver.generic-sql.query-processor/process-structured)
-          :sync-in-context           sync-in-context
           :table-fks                 table-fks
           :table-pks                 table-pks
           :table-rows-seq            table-rows-seq}))
+
+
+
+;;; ### Util Fns
+
+(defn db->korma-db
+  "Return a Korma DB spec for Metabase DATABASE."
+  ([database]
+   (db->korma-db (driver/engine->driver (:engine database)) (:details database)))
+  ([driver details]
+   {:pool    (db->jdbc-connection-spec driver details)
+    :options (korma.config/extract-options (connection-details->spec driver details))}))
+
+(defn- table->qualified-name [{schema :schema, table-name :name}]
+  (if (seq schema)
+    (str schema \. table-name)
+    table-name))
+
+(defn korma-entity
+  "Return a Korma entity for [DB and] TABLE.
+
+    (-> (sel :one Table :id 100)
+        korma-entity
+        (select (aggregate (count :*) :count)))"
+  ([table]
+   {:pre [(delay? (:db table))]}
+   (korma-entity @(:db table) table))
+
+  ([db table]
+   {:pre [(map? db)]}
+   {:table (table->qualified-name table)
+    :pk    :id
+    :db    (db->korma-db db)})
+
+  ([driver details table]
+   {:table (table->qualified-name table)
+    :pk    :id
+    :db    (db->korma-db driver details)}))
+
+
+(defn funcs
+  "Convenience for writing nested `utils/func` forms.
+   The first argument is treated the same as with `utils/func`;
+   But when any arg is a vector we'll treat it as a recursive call to `funcs`.
+
+     (funcs \"CONCAT(%s)\" [\"YEAR(%s)\" x] y [\"MONTH(%s)\" z])
+       -> (utils/func \"CONCAT(%s)\" [(utils/func \"YEAR(%s)\" [x])
+                                      y
+                                      (utils/func \"MONTH(%s)\" [z])])"
+  [fn-format-str & args]
+  (utils/func fn-format-str (vec (for [arg args]
+                                   (if (vector? arg) (apply funcs arg)
+                                       arg)))))

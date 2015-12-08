@@ -10,8 +10,7 @@
             [metabase.db :refer [upd]]
             [metabase.models.field :refer [Field]]
             [metabase.driver :as driver]
-            [metabase.driver.generic-sql :as sql]
-            [metabase.driver.generic-sql.util :refer [with-jdbc-metadata]])
+            [metabase.driver.generic-sql :as sql])
   ;; This is necessary for when NonValidatingFactory is passed in the sslfactory connection string argument,
   ;; e.x. when connecting to a Heroku Postgres database from outside of Heroku.
   (:import org.postgresql.ssl.NonValidatingFactory))
@@ -101,8 +100,11 @@
                 :milliseconds "TO_TIMESTAMP(%s / 1000)")
               [field-or-value]))
 
-(defn- driver-specific-sync-field! [_ {:keys [table], :as field}]
-  (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db @table)]
+(defn- driver-specific-sync-field! [driver {:keys [table], :as field}]
+  ;; TODO - this is throwing a `NullPointerException` (!)
+  (assert (delay? (:db @table))
+    (format "Didn't find DB delay: %s" field))
+  (sql/with-metadata [md driver @(:db @table)]
     (let [[{:keys [type_name]}] (->> (.getColumns md nil nil (:name @table) (:name field))
                                      jdbc/result-set-seq)]
       (when (= type_name "json")
