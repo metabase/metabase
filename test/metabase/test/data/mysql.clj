@@ -41,7 +41,7 @@
           :load-data!                generic/load-data-all-at-once!
           :pk-sql-type               (constantly "INTEGER NOT NULL AUTO_INCREMENT")
           :quote-name                quote-name})
-  i/IDatasetLoader
-  (merge generic/IDatasetLoaderMixin
+  i/ITestableDriver
+  (merge generic/ITestableDriverMixin
          {:database->connection-details database->connection-details
           :engine                       (constantly :mysql)}))

@@ -89,8 +89,8 @@
           :field-base-type->sql-type (fn [_ base-type] (field-base-type->sql-type base-type))
           :pk-sql-type               (constantly "INT IDENTITY(1,1)")
           :qualified-name-components qualified-name-components})
-  i/IDatasetLoader
-  (let [{:keys [create-db!], :as mixin} generic/IDatasetLoaderMixin]
+  i/ITestableDriver
+  (let [{:keys [create-db!], :as mixin} generic/ITestableDriverMixin]
     (merge mixin
            {:create-db!                   (fn [this dbdef]
                                             (swap! db-name-counter inc)

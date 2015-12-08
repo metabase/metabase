@@ -88,8 +88,8 @@
             :pk-sql-type               (constantly "BIGINT AUTO_INCREMENT")
             :quote-name                quote-name}))
 
-  i/IDatasetLoader
-  (merge generic/IDatasetLoaderMixin
+  i/ITestableDriver
+  (merge generic/ITestableDriverMixin
          {:database->connection-details       database->connection-details
           :default-schema                     (constantly "PUBLIC")
           :engine                             (constantly :h2)

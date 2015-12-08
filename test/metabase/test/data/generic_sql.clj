@@ -20,8 +20,8 @@
 
 (defprotocol IGenericSQLDatasetLoader
   "Methods for loading `DatabaseDefinition` in a SQL database.
-   A type that implements `IGenericSQLDatasetLoader` can be made to implement most of `IDatasetLoader`
-   by using the `IDatasetLoaderMixin`.
+   A type that implements `IGenericSQLDatasetLoader` can be made to implement most of `ITestableDriver`
+   by using the `ITestableDriverMixin`.
 
    Methods marked *Optional* below have a default implementation specified in `DefaultsMixin`."
   (field-base-type->sql-type [this ^Keyword base-type]
@@ -276,7 +276,7 @@
    :quote-name                default-quote-name})
 
 
-;; ## ------------------------------------------------------------ IDatasetLoader impl ------------------------------------------------------------
+;; ## ------------------------------------------------------------ ITestableDriver impl ------------------------------------------------------------
 
 (defn sequentially-execute-sql!
   "Alternative implementation of `execute-sql!` that executes statements one at a time for drivers
@@ -319,9 +319,9 @@
 (defn- destroy-db! [loader dbdef]
   (execute-sql! loader :server dbdef (drop-db-if-exists-sql loader dbdef)))
 
-(def IDatasetLoaderMixin
-  "Mixin for `IGenericSQLDatasetLoader` types to implemnt `create-db!` and `destroy-db!` from `IDatasetLoader`."
-  (merge i/IDatasetLoaderDefaultsMixin
+(def ITestableDriverMixin
+  "Mixin for `IGenericSQLDatasetLoader` types to implemnt `create-db!` and `destroy-db!` from `ITestableDriver`."
+  (merge i/ITestableDriverDefaultsMixin
          {:create-db!  create-db!
           :destroy-db! destroy-db!}))
 

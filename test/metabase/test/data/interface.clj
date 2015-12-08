@@ -1,7 +1,7 @@
 (ns metabase.test.data.interface
   "`Definition` types for databases, tables, fields; related protocols, helper functions.
 
-   Objects that implement `IDatasetLoader` know how to load a `DatabaseDefinition` into an
+   Objects that implement `ITestableDriver` know how to load a `DatabaseDefinition` into an
    actual physical RDMS database. This functionality allows us to easily test with multiple datasets."
   (:require [clojure.string :as s]
             [metabase.db :refer :all]
@@ -58,11 +58,11 @@
     (sel :one Database :name database-name, :engine (name engine-kw))))
 
 
-;; ## IDatasetLoader
+;; ## ITestableDriver
 
-(defprotocol IDatasetLoader
+(defprotocol ITestableDriver
   "Methods for creating, deleting, and populating *pyhsical* DBMS databases, tables, and fields.
-   Methods marked *OPTIONAL* have default implementations in `IDatasetLoaderDefaultsMixin`."
+   Methods marked *OPTIONAL* have default implementations in `ITestableDriverDefaultsMixin`."
   (engine [this]
     "Return the engine keyword associated with this database, e.g. `:h2` or `:mongo`.")
 
@@ -81,7 +81,7 @@
   (destroy-db! [this ^DatabaseDefinition database-definition]
     "Destroy database, if any, associated with DATABASE-DEFINITION.
      This refers to destroying a *DBMS* database -- removing an H2 file, dropping a Postgres database, etc.
-     This does not need to remove corresponding Metabase definitions -- this is handled by `DatasetLoader`.")
+     This does not need to remove corresponding Metabase definitions -- this is handled by `TestableDriver`.")
 
   (default-schema [this]
     "*OPTIONAL* Return the default schema name that tables for this DB should be expected to have.")
@@ -103,7 +103,7 @@
   (id-field-type [this]
     "*OPTIONAL* Return the `base_type` of the `id` `Field` (e.g. `:IntegerField` or `:BigIntegerField`). Defaults to `:IntegerField`."))
 
-(def IDatasetLoaderDefaultsMixin
+(def ITestableDriverDefaultsMixin
   {:expected-base-type->actual         (fn [_ base-type] base-type)
    :default-schema                     (constantly nil)
    :format-name                        (fn [_ table-or-field-name]
@@ -111,9 +111,6 @@
    :has-questionable-timezone-support? (fn [driver]
                                          (not (contains? (driver/features driver) :set-timezone)))
    :id-field-type                      (constantly :IntegerField)})
-
-
-;; ## Helper Functions for Creating New Definitions
 
 (defn create-field-definition
   "Create a new `FieldDefinition`; verify its values."
