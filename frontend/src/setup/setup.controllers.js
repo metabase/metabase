@@ -1,20 +1,9 @@
-import { createStore, applyMiddleware, combineReducers, compose } from 'redux';
-import promiseMiddleware from 'redux-promise';
-import thunkMidleware from "redux-thunk";
+import { createStore, combineReducers } from "metabase/lib/redux";
 
 import SetupApp from 'metabase/setup/containers/SetupApp.jsx';
 import * as reducers from 'metabase/setup/reducers';
 
-const finalCreateStore = compose(
-  applyMiddleware(
-      thunkMidleware,
-      promiseMiddleware
-  ),
-  createStore
-);
-
 const reducer = combineReducers(reducers);
-
 
 var SetupControllers = angular.module('metabase.setup.controllers', ['metabase.services']);
 SetupControllers.controller('SetupController', ['$scope', '$location', '$timeout', 'ipCookie', function($scope, $location, $timeout, ipCookie) {
@@ -36,5 +25,5 @@ SetupControllers.controller('SetupController', ['$scope', '$location', '$timeout
             return $timeout(function(){}, 1000);
         }
     };
-    $scope.store = finalCreateStore(reducer, { activeStep: 0, allowTracking: true, setupComplete: false });
+    $scope.store = createStore(reducer, { activeStep: 0, allowTracking: true, setupComplete: false });
 }]);
