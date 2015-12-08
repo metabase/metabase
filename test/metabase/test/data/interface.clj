@@ -5,6 +5,7 @@
    actual physical RDMS database. This functionality allows us to easily test with multiple datasets."
   (:require [clojure.string :as s]
             [metabase.db :refer :all]
+            [metabase.driver :as driver]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field] :as field]
                              [table :refer [Table]]))
@@ -95,15 +96,21 @@
     "*OPTIONAL* Transform a lowercase string `Table` or `Field` name in a way appropriate for this dataset
      (e.g., `h2` would want to upcase these names; `mongo` would want to use `\"_id\"` in place of `\"id\"`.")
 
+  (has-questionable-timezone-support? [this]
+    "*OPTIONAL*. Does this driver have \"questionable\" timezone support? (i.e., does it group things by UTC instead of the `US/Pacific` when we're testing?)
+     Defaults to `(not (contains? (metabase.driver/features this) :set-timezone)`")
+
   (id-field-type [this]
     "*OPTIONAL* Return the `base_type` of the `id` `Field` (e.g. `:IntegerField` or `:BigIntegerField`). Defaults to `:IntegerField`."))
 
 (def IDatasetLoaderDefaultsMixin
-  {:expected-base-type->actual (fn [_ base-type] base-type)
-   :default-schema             (constantly nil)
-   :format-name                (fn [_ table-or-field-name]
-                                 table-or-field-name)
-   :id-field-type              (constantly :IntegerField)})
+  {:expected-base-type->actual         (fn [_ base-type] base-type)
+   :default-schema                     (constantly nil)
+   :format-name                        (fn [_ table-or-field-name]
+                                         table-or-field-name)
+   :has-questionable-timezone-support? (fn [driver]
+                                         (not (contains? (driver/features driver) :set-timezone)))
+   :id-field-type                      (constantly :IntegerField)})
 
 
 ;; ## Helper Functions for Creating New Definitions
