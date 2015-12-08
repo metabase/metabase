@@ -26,8 +26,8 @@
       segment-details))
 
 (defn update-segment-then-select
-  [segment message]
-  (-> (update-segment segment message)
+  [segment]
+  (-> (update-segment segment (user->id :crowberto))
       segment-details))
 
 
@@ -37,7 +37,7 @@
    :creator     (user-details :rasta)
    :name        "I only want *these* things"
    :description nil
-   :active      true
+   :is_active   true
    :definition  {:clause ["a" "b"]}}
   (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
                                              :engine    :yeehaw
@@ -49,13 +49,34 @@
       (create-segment-then-select id "I only want *these* things" nil (user->id :rasta) {:clause ["a" "b"]}))))
 
 
+;; exists-segment?
+(expect
+  [true
+   false]
+  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
+                                             :engine    :yeehaw
+                                             :details   {}
+                                             :is_sample false}]
+    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
+                                       :db_id  database-id
+                                       :active true}]
+      (tu/with-temp Segment [{:keys [id]} {:creator_id  (user->id :rasta)
+                                           :table_id    id
+                                           :name        "Ivory Tower"
+                                           :description "All the glorious things..."
+                                           :definition  {:database 45
+                                                         :query    {:filter ["yay"]}}}]
+        [(exists-segment? id)
+         (exists-segment? 34)]))))
+
+
 ;; retrieve-segment
 (expect
   {:creator_id   (user->id :rasta)
    :creator      (user-details :rasta)
    :name         "Ivory Tower"
    :description  "All the glorious things..."
-   :active       true
+   :is_active    true
    :definition   {:database 45
                   :query    {:filter ["yay"]}}}
   (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
@@ -83,7 +104,7 @@
     :creator      (user-details :rasta)
     :name         "Segment 1"
     :description  nil
-    :active       true
+    :is_active    true
     :definition   {}}]
   (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
                                              :engine    :yeehaw
@@ -106,7 +127,7 @@
             (tu/with-temp Segment [{segment-id3 :id} {:creator_id  (user->id :rasta)
                                                       :table_id    table-id1
                                                       :name        "Segment 3"
-                                                      :active      false
+                                                      :is_active   false
                                                       :definition  {}}]
               (let [segments (retrieve-segments table-id1)]
               (assert (= 1 (count segments)))
@@ -130,7 +151,7 @@
    :creator      (user-details :rasta)
    :name         "Tatooine"
    :description  nil
-   :active       true
+   :is_active    true
    :definition   {:database 2
                   :query    {:filter ["not" "the droids you're looking for"]}}}
   (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
@@ -151,7 +172,8 @@
                                      :creator_id  (user->id :crowberto)
                                      :table_id    456
                                      :definition  {:database 2
-                                                   :query    {:filter ["not" "the droids you're looking for"]}}} "Just horsing around")))))
+                                                   :query    {:filter ["not" "the droids you're looking for"]}}
+                                     :revision_message "Just horsing around"})))))
 
 ;; delete-segment
 (expect
@@ -159,7 +181,7 @@
    :creator      (user-details :rasta)
    :name         "Droids in the desert"
    :description  "Lookin' for a jedi"
-   :active       false
+   :is_active    false
    :definition   {}}
   (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
                                              :engine    :yeehaw
@@ -173,5 +195,5 @@
                                            :name        "Droids in the desert"
                                            :description "Lookin' for a jedi"
                                            :definition  {}}]
-        (delete-segment id)
+        (delete-segment id (user->id :crowberto))
         (segment-details (retrieve-segment id))))))

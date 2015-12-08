@@ -182,7 +182,7 @@
    :user_id      (user->id :rasta)
    :object       {:name        "ABC"
                   :description "DEF"
-                  :active      true
+                  :is_active    true
                   :creator_id  (user->id :rasta)
                   :definition  {:a "b"}}
    :is_reversion false
@@ -212,7 +212,7 @@
    :user_id      (user->id :crowberto)
    :object       {:name        "ABC"
                   :description "DEF"
-                  :active      true
+                  :is_active   true
                   :creator_id  (user->id :rasta)
                   :definition  {:a "b"}}
    :is_reversion false
@@ -244,7 +244,7 @@
    :user_id      (user->id :rasta)
    :object       {:name        "ABC"
                   :description "DEF"
-                  :active      false
+                  :is_active   false
                   :creator_id  (user->id :rasta)
                   :definition  {:a "b"}}
    :is_reversion false
@@ -262,7 +262,7 @@
                                       :name        "ABC"
                                       :description "DEF"
                                       :definition  {:a "b"}
-                                      :active      false}]
+                                      :is_active   false}]
         (process-revision-event {:topic :segment-delete
                                  :item  segment})
         (let [revision (-> (db/sel :one Revision :model "Segment" :model_id (:id segment))

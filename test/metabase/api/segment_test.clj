@@ -74,7 +74,7 @@
    :creator      (user-details (fetch-user :crowberto))
    :created_at   true
    :updated_at   true
-   :active       true
+   :is_active    true
    :definition   {:database 21
                   :query    {:filter ["abc"]}}}
   (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
@@ -103,13 +103,6 @@
 (expect {:errors {:name "field is a required param."}}
   ((user->client :crowberto) :put 400 "segment/1" {}))
 
-(expect {:errors {:revision_message "field is a required param."}}
-  ((user->client :crowberto) :put 400 "segment/1" {:name "abc"}))
-
-(expect {:errors {:revision_message "Invalid value '' for 'revision_message': value must be a non-empty string."}}
-  ((user->client :crowberto) :put 400 "segment/1" {:name             "abc"
-                                                   :revision_message ""}))
-
 (expect {:errors {:definition "field is a required param."}}
   ((user->client :crowberto) :put 400 "segment/1" {:name             "abc"
                                                    :revision_message "123"}))
@@ -126,7 +119,7 @@
    :creator      (user-details (fetch-user :rasta))
    :created_at   true
    :updated_at   true
-   :active       true
+   :is_active    true
    :definition   {:database 2
                   :query    {:filter ["not" "the droids you're looking for"]}}}
   (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
@@ -165,7 +158,7 @@
    :creator      (user-details (fetch-user :crowberto))
    :created_at   true
    :updated_at   true
-   :active       true
+   :is_active    true
    :definition   {:database 123
                   :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}
   (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"

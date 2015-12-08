@@ -61,10 +61,17 @@
                   :creator_id  creator-id
                   :name        name
                   :description description
-                  :active      true
+                  :is_active   true
                   :definition  definition)]
     (-> (events/publish-event :segment-create segment)
         (hydrate :creator))))
+
+(defn exists-segment?
+  "Predicate function which checks for a given `Segment` with ID.
+   Returns true if `Segment` exists and is active, false otherwise."
+  [id]
+  {:pre [(integer? id)]}
+  (db/exists? Segment :id id :is_active true))
 
 (defn retrieve-segment
   "Fetch a single `Segment` by its ID value."
@@ -83,7 +90,7 @@
           (keyword? state)]}
    (-> (if (= :all state)
          (db/sel :many Segment :table_id table-id (k/order :name :ASC))
-         (db/sel :many Segment :table_id table-id :active (if (= :active state) true false) (k/order :name :ASC)))
+         (db/sel :many Segment :table_id table-id :is_active (if (= :active state) true false) (k/order :name :ASC)))
        (hydrate :creator))))
 
 (defn update-segment
@@ -117,7 +124,7 @@
   [id user-id]
   {:pre [(integer? id)]}
   ;; make Segment not active
-  (db/upd Segment id :active false)
+  (db/upd Segment id :is_active false)
   ;; retrieve the updated segment (now retired)
   (let [segment (retrieve-segment id)]
     ;; fire off an event

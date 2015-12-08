@@ -3,15 +3,9 @@
   (:require [compojure.core :refer [defroutes GET PUT POST DELETE]]
             [metabase.api.common :refer :all]
             [metabase.db :as db]
-            (metabase.models [segment :refer [Segment] :as segment]
+            (metabase.models [revision :as revision]
+                             [segment :refer [Segment] :as segment]
                              [table :refer [Table]])))
-
-
-;(defendpoint GET "/"
-;  "Fetch all `Segments`"
-;  []
-;  (check-superuser)
-;  (segment/retrieve-segments))
 
 
 (defendpoint POST "/"
@@ -36,24 +30,46 @@
   "Update a `Segment` with ID."
   [id :as {{:keys [name description definition revision_message] :as body} :body}]
   {name             [Required NonEmptyString]
-   revision_message [Required NonEmptyString]
    definition       [Required Dict]}
   (check-superuser)
-  (check-404 (db/exists? Segment :id id))
-  ;; TODO: segment must be active
-  (segment/update-segment {:id          id
-                           :name        name
-                           :description description
-                           :definition  definition} revision_message))
+  (check-404 (segment/exists-segment? id))
+  (segment/update-segment
+    {:id               id
+     :name             name
+     :description      description
+     :definition       definition
+     :revision_message revision_message}
+    *current-user-id*))
 
 
 (defendpoint DELETE "/:id"
   "Delete a `Segment`."
   [id]
   (check-superuser)
-  (let-404 [segment (db/sel :one Segment :id id)]
-    (when-not (:active segment)
-      (segment/delete-segment id))))
+  (check-404 (segment/exists-segment? id))
+  (segment/delete-segment id *current-user-id*)
+  {:ok true})
+
+
+(defendpoint GET "/:id/revisions"
+  "Fetch `Revisions` for `Segment` with ID."
+  [id]
+  (check-superuser)
+  (check-404 (segment/exists-segment? id))
+  (revision/revisions+details Segment id))
+
+
+(defendpoint POST "/:id/revert"
+  "Revert a `Segement` to a prior `Revision`."
+  [id :as {{:keys [revision_id]} :body}]
+  {revision_id Integer}
+  (check-superuser)
+  (check-404 (segment/exists-segment? id))
+  (revision/revert
+    :entity      Segment
+    :id          id
+    :user-id     *current-user-id*
+    :revision-id revision_id))
 
 
 (define-routes)
