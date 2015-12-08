@@ -48,7 +48,7 @@
   (check-superuser)
   (check-404 (segment/exists-segment? id))
   (segment/delete-segment id *current-user-id*)
-  {:ok true})
+  {:success true})
 
 
 (defendpoint GET "/:id/revisions"

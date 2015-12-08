@@ -9,7 +9,8 @@
                              [table :refer [Table]])
             [metabase.test.util :as tu]
             [metabase.test.data.users :refer :all]
-            [metabase.test.data :refer :all]))
+            [metabase.test.data :refer :all]
+            [metabase.models.segment :as segment]))
 
 ;; ## Helper Fns
 
@@ -25,7 +26,7 @@
      :common_name $}))
 
 (defn segment-response [{:keys [created_at updated_at] :as segment}]
-  (-> segment
+  (-> (into {} segment)                                     ; model class -> map
       (dissoc :id :table_id)
       (assoc :created_at (not (nil? created_at)))
       (assoc :updated_at (not (nil? updated_at)))))
@@ -145,8 +146,35 @@
 
 ;; ## DELETE /api/segment/:id
 
+;; test security.  requires superuser perms
+(expect "You don't have permissions to do that."
+  ((user->client :rasta) :delete 403 "segment/1"))
 
-;; ## GET /api/segment
+
+(expect
+  [{:success true}
+   {:name         "Droids in the desert"
+    :description  "Lookin' for a jedi"
+    :creator_id   (user->id :rasta)
+    :creator      (user-details (fetch-user :rasta))
+    :created_at   true
+    :updated_at   true
+    :is_active    false
+    :definition   {}}]
+  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
+                                             :engine    :yeehaw
+                                             :details   {}
+                                             :is_sample false}]
+    (tu/with-temp Table [{table-id :id} {:name   "Stuff"
+                                         :db_id  database-id
+                                         :active true}]
+      (tu/with-temp Segment [{:keys [id]} {:creator_id  (user->id :rasta)
+                                           :table_id    table-id
+                                           :name        "Droids in the desert"
+                                           :description "Lookin' for a jedi"
+                                           :definition  {}}]
+        [((user->client :crowberto) :delete 200 (format "segment/%d" id))
+         (segment-response (segment/retrieve-segment id))]))))
 
 
 ;; ## GET /api/segment/:id
@@ -175,3 +203,8 @@
                                            :definition  {:database 123
                                                          :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}]
         (segment-response ((user->client :crowberto) :get 200 (format "segment/%d" id)))))))
+
+
+;; ## GET /api/segment/:id/revisions
+
+;; ## POST /api/segment/:id/revert

@@ -145,7 +145,6 @@
 ;;  3. ability to set description, including to nil
 ;;  4. ability to modify the definition json
 ;;  5. revision is captured along with our commit message
-;; TODO: check on the revision
 (expect
   {:creator_id   (user->id :rasta)
    :creator      (user-details :rasta)

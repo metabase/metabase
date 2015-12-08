@@ -1,7 +1,5 @@
 (ns metabase.models.segment
-  (:require [clojure.tools.logging :as log]
-            [korma.core :as k]
-            [korma.db :as kdb]
+  (:require [korma.core :as k]
             [medley.core :as m]
             [metabase.config :as config]
             [metabase.db :as db]
