@@ -125,12 +125,20 @@
      (let [~binding (.getMetaData conn#)]
        ~@body)))
 
-(defn- active-tables [driver database]
+(defn- active-tables
+  "Fast implementation of `IDriver/active-tables`.
+   Fetches list of schemas, then for each one not in `excluded-schemas`, fetch their Tables.
+
+   The old implementation fetched *all* Tables, then filtered out ones with `excluded-schemas` in Clojure;
+   this is as much as 15x faster for Databases with a lot of system tables like Oracle (4 seconds vs 60)."
+  [driver database]
   (with-metadata [md driver database]
-    (set (for [table (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
-                             (jdbc/result-set-seq (.getTables md nil nil nil (into-array String ["TABLE", "VIEW"]))))]
-           {:name   (:table_name table)
-            :schema (:table_schem table)}))))
+    (let [all-schemas (set (map :table_schem (jdbc/result-set-seq (.getSchemas md))))
+          schemas     (set/difference all-schemas (excluded-schemas driver))]
+      (set (for [schema     schemas
+                 table-name (mapv :table_name (jdbc/result-set-seq (.getTables md nil schema nil (into-array String ["TABLE", "VIEW"]))))]
+             {:name   table-name
+              :schema schema})))))
 
 (defn- active-column-names->type [driver table]
   (with-metadata [md driver @(:db table)]
