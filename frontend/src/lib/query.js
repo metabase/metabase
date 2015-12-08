@@ -59,34 +59,39 @@ var Query = {
             query.order_by = query.order_by.map((s) => {
                 let field = s[0];
 
-                if (Query.isAggregateField(field)) {
-                    // remove aggregation sort if we can't sort by this aggregation
-                    if (!Query.canSortByAggregateField(query)) {
-                        return null;
-                    }
-                } else if (Query.hasValidBreakout(query)) {
-                    // remove sort if it references a non-broken-out field
-                    let matchingBreakout = query.breakout.filter(b => Query.isSameField(b, field));
-                    if (matchingBreakout.length > 0) {
-                        // query processor expect the order_by clause to match the breakout's granularity
-                        if (Array.isArray(matchingBreakout[0]) && matchingBreakout[0][0] === "datetime_field") {
-                            return [matchingBreakout[0], s[1]];
-                        } else {
-                            return s;
-                        }
-                    } else {
-                        return null;
-                    }
-                } else if (!Query.isBareRowsAggregation(query)) {
-                    // otherwise remove sort if it doesn't have a breakout but isn't a bare rows aggregation
+                // remove incomplete sorts
+                if (!Query.isValidField(field) || s[1] == null) {
                     return null;
                 }
-                // remove incomplete sorts
-                if (Query.isValidField(s[0]) && s[1] != null) {
+
+                if (Query.isAggregateField(field)) {
+                    // remove aggregation sort if we can't sort by this aggregation
+                    if (Query.canSortByAggregateField(query)) {
+                        return s;
+                    }
+                } else if (Query.hasValidBreakout(query)) {
+                    let exactMatches = query.breakout.filter(b => Query.isSameField(b, field, true));
+                    if (exactMatches.length > 0) {
+                        return s;
+                    }
+                    let targetMatches = query.breakout.filter(b => Query.isSameField(b, field, false));
+                    if (targetMatches.length > 0) {
+                        // query processor expect the order_by clause to match the breakout's datetime_field unit or fk-> target,
+                        // so just replace it with the one that matches the target field
+                        // NOTE: if we have more than one breakout for the same target field this could match the wrong one
+                        if (targetMatches.length > 1) {
+                            console.warn("Sort clause matches more than one breakout field", s[0], targetMatches);
+                        }
+                        return [targetMatches[0], s[1]];
+                    }
+                } else if (Query.isBareRowsAggregation(query)) {
                     return s;
                 }
+
+                // otherwise remove sort if it doesn't have a breakout but isn't a bare rows aggregation
                 return null;
             }).filter(s => s != null);
+
             if (query.order_by.length === 0) {
                 delete query.order_by;
             }
@@ -97,10 +102,6 @@ var Query = {
         }
 
         return query;
-    },
-
-    isAggregateField: function(field) {
-        return Array.isArray(field) && field[0] === "aggregation";
     },
 
     canAddDimensions: function(query) {
@@ -347,49 +348,63 @@ var Query = {
         }
     },
 
+    isRegularField: function(field) {
+        return typeof field === "number";
+    },
+
+    isForeignKeyField: function(field) {
+        return Array.isArray(field) && field[0] === "fk->";
+    },
+
+    isDatetimeField: function(field) {
+        return Array.isArray(field) && field[0] === "datetime_field";
+    },
+
+    isAggregateField: function(field) {
+        return Array.isArray(field) && field[0] === "aggregation";
+    },
+
     isValidField: function(field) {
         return (
-            typeof field === "number" ||
-            (Array.isArray(field) && (
-                (field[0] === 'fk->' && typeof field[1] === "number" && typeof field[2] === "number") ||
-                (field[0] === 'datetime_field' && Query.isValidField(field[1]) && field[2] === "as" && typeof field[3] === "string") ||
-                (field[0] === 'aggregation' && typeof field[1] === "number")
-            ))
+            (Query.isRegularField(field)) ||
+            (Query.isForeignKeyField(field) && Query.isRegularField(field[1]) && Query.isRegularField(field[2])) ||
+            (Query.isDatetimeField(field)   && Query.isValidField(field[1]) && field[2] === "as" && typeof field[3] === "string") ||
+            (Query.isAggregateField(field)  && typeof field[1] === "number")
         );
     },
 
-    isSameField: function(fieldA, fieldB, strict = false) {
-        if (strict) {
+    isSameField: function(fieldA, fieldB, exact = false) {
+        if (exact) {
             return _.isEqual(fieldA, fieldB);
         } else {
             return Query.getFieldTargetId(fieldA) === Query.getFieldTargetId(fieldB);
         }
     },
 
+    // gets the target field ID (recursively) from any type of field, including raw field ID, fk->, and datetime_field cast.
     getFieldTargetId: function(field) {
-        if (Array.isArray(field)) {
-            if (field[0] === "fk->") {
-                return field[2];
-            }
-            if (field[0] === "datetime_field") {
-                return field[1];
-            }
-        } else {
+        if (Query.isRegularField(field)) {
             return field;
+        } else if (Query.isForeignKeyField(field)) {
+            return Query.getFieldTargetId(field[2]);
+        } else if (Query.isDatetimeField(field)) {
+            return Query.getFieldTargetId(field[1]);
         }
+        console.warn("Unknown field type: ", field);
     },
 
-    getFieldTarget: function(field, tableMetadata) {
-        let table, fieldId, fk;
-        if (Array.isArray(field) && field[0] === "fk->") {
-            fk = tableMetadata.fields_lookup[field[1]];
-            table = fk.target.table;
-            fieldId = field[2];
-        } else {
-            table = tableMetadata;
-            fieldId = field;
+    // gets the table and field definitions from from a raw, fk->, or datetime_field field
+    getFieldTarget: function(field, tableDef) {
+        if (Query.isRegularField(field)) {
+            return { table: tableDef, field: tableDef.fields_lookup[field] };
+        } else if (Query.isForeignKeyField(field)) {
+            let fkFieldDef = tableDef.fields_lookup[field[1]];
+            let targetTableDef = fkFieldDef.target.table;
+            return Query.getFieldTarget(field[2], targetTableDef);
+        } else if (Query.isDatetimeField(field)) {
+            return Query.getFieldTarget(field[1], tableDef);
         }
-        return { table, field: table.fields_lookup[fieldId] };
+        console.warn("Unknown field type: ", field);
     },
 
     getFieldOptions: function(fields, includeJoins = false, filterFn = (fields) => fields, usedFields = {}) {
@@ -403,7 +418,7 @@ var Query = {
         results.count += results.fields.length;
         if (includeJoins) {
             results.fks = fields.filter((f) => f.special_type === "fk" && f.target).map((joinField) => {
-                var targetFields = filterFn(joinField.target.table.fields).filter((f) => (!Array.isArray(f.id) || f.id[0] !== "aggregation") && !usedFields[f.id]);
+                var targetFields = filterFn(joinField.target.table.fields).filter(f => (!Array.isArray(f.id) || f.id[0] !== "aggregation") && !usedFields[f.id]);
                 results.count += targetFields.length;
                 return {
                     field: joinField,
@@ -420,15 +435,15 @@ var Query = {
         }
 
         function getFieldName(id, table) {
-            if (Array.isArray(id)) {
-                if (id[0] === "fk->") {
-                    var field = table.fields_lookup[id[1]];
-                    if (field) {
-                        return field.display_name.replace(/\s+id$/i, "") + " → " + getFieldName(id[2], field.target.table);
-                    }
-                } else if (id[0] === "datetime_field") {
-                    return getFieldName(id[1], table) + " (by " + id[3] + ")";
+            if (Query.isForeignKeyField(id)) {
+                var field = table.fields_lookup[id[1]];
+                if (field) {
+                    return field.display_name.replace(/\s+id$/i, "") + " → " + getFieldName(id[2], field.target.table);
                 }
+            } else if (Query.isDatetimeField(id)) {
+                return getFieldName(id[1], table) + " (by " + id[3] + ")";
+            } else if (Query.isAggregateField(id)) {
+                return "aggregation";
             } else if (table.fields_lookup[id]) {
                 return table.fields_lookup[id].display_name
             }
