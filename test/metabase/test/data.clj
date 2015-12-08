@@ -93,7 +93,7 @@
 
 (defn get-or-create-database!
   "Create DBMS database associated with DATABASE-DEFINITION, create corresponding Metabase `Databases`/`Tables`/`Fields`, and sync the `Database`.
-   DATASET-LOADER should be an object that implements `IDatasetLoader`; it defaults to the value returned by the method `dataset-loader` for the
+   DATASET-LOADER should be an object that implements `ITestableDriver`; it defaults to the value returned by the method `dataset-loader` for the
    current dataset (`*data-loader*`), which is H2 by default."
   ([^DatabaseDefinition database-definition]
    (get-or-create-database! *data-loader* database-definition))
@@ -136,7 +136,7 @@
 
 (defn remove-database!
   "Delete Metabase `Database`, `Fields` and `Tables` associated with DATABASE-DEFINITION, then remove the physical database from the associated DBMS.
-   DATASET-LOADER should be an object that implements `IDatasetLoader`; by default it is the value returned by the method `dataset-loader` for the
+   DATASET-LOADER should be an object that implements `ITestableDriver`; by default it is the value returned by the method `dataset-loader` for the
    current dataset, bound to `*data-loader*`."
   ([^DatabaseDefinition database-definition]
    (remove-database! *data-loader* database-definition))

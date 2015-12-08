@@ -44,7 +44,7 @@
           :pk-sql-type               (constantly "INTEGER")
           :field-base-type->sql-type (fn [_ base-type]
                                        (field-base-type->sql-type base-type))})
-  i/IDatasetLoader
-  (merge generic/IDatasetLoaderMixin
+  i/ITestableDriver
+  (merge generic/ITestableDriverMixin
          {:database->connection-details database->connection-details
           :engine                       (constantly :sqlite)}))

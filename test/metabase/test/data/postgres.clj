@@ -37,8 +37,8 @@
                                        (field-base-type->sql-type base-type))
           :load-data!                generic/load-data-all-at-once!
           :pk-sql-type               (constantly "SERIAL")})
-  i/IDatasetLoader
-  (merge generic/IDatasetLoaderMixin
+  i/ITestableDriver
+  (merge generic/ITestableDriverMixin
          {:database->connection-details database->connection-details
           :default-schema               (constantly "public")
           :engine                       (constantly :postgres)}))

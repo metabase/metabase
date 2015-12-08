@@ -69,8 +69,8 @@
           :pk-sql-type               (constantly "INTEGER IDENTITY(1,1)")
           :qualified-name-components qualified-name-components})
 
-  i/IDatasetLoader
-  (merge generic/IDatasetLoaderMixin
+  i/ITestableDriver
+  (merge generic/ITestableDriverMixin
          {:database->connection-details (fn [& _]
                                           @db-connection-details)
           :default-schema               (constantly session-schema-name)

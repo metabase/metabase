@@ -41,8 +41,8 @@
 
 
 (extend MongoDriver
-  i/IDatasetLoader
-  (merge i/IDatasetLoaderDefaultsMixin
+  i/ITestableDriver
+  (merge i/ITestableDriverDefaultsMixin
          {:create-db!                   create-db!
           :destroy-db!                  destroy-db!
           :database->connection-details database->connection-details
