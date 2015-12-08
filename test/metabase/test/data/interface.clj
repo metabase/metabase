@@ -96,7 +96,7 @@
      (e.g., `h2` would want to upcase these names; `mongo` would want to use `\"_id\"` in place of `\"id\"`.")
 
   (id-field-type [this]
-                 "*OPTIONAL* Return the `base_type` of the `id` `Field` (e.g. `:IntegerField` or `:BigIntegerField`). Defaults to `:IntegerField`."))
+    "*OPTIONAL* Return the `base_type` of the `id` `Field` (e.g. `:IntegerField` or `:BigIntegerField`). Defaults to `:IntegerField`."))
 
 (def IDatasetLoaderDefaultsMixin
   {:expected-base-type->actual (fn [_ base-type] base-type)
