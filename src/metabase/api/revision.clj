@@ -28,6 +28,7 @@
   "Revert an object to a prior revision."
   [:as {{:keys [entity id revision_id]} :body}]
   {entity Entity, id Integer, revision_id Integer}
+  (check-404 (exists? revision/Revision :model (:name entity) :model_id id :id revision_id))
   (revision/revert
     :entity      entity
     :id          id

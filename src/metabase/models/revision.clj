@@ -125,12 +125,13 @@
     ;; make sure we still have a map after calling out serialization function
     (assert (map? object))
     (ins Revision
-      :model       (:name entity)
-      :model_id    id
-      :user_id     user-id
-      :object      object
-      :is_creation is-creation?
-      :message     message))
+      :model        (:name entity)
+      :model_id     id
+      :user_id      user-id
+      :object       object
+      :is_creation  is-creation?
+      :is_reversion false
+      :message      message))
   (delete-old-revisions entity id)
   object)
 
@@ -143,7 +144,8 @@
          (integer? user-id)
          (db/exists? User :id user-id)
          (integer? revision-id)]}
-  (let-404 [serialized-instance (sel :one :field [Revision :object] :model (:name entity), :model_id id, :id revision-id)]
+  (let [revision            (sel :one Revision :model (:name entity), :model_id id, :id revision-id)
+        serialized-instance (:object revision)]
     (kdb/transaction
       (revert-to-revision entity id serialized-instance)
       ;; Push a new revision to record this reversion
@@ -153,4 +155,8 @@
         :user_id      user-id
         :object       serialized-instance
         :is_creation  false
-        :is_reversion true))))
+        :is_reversion true)
+      ;; This is rather inefficient, but I don't want to fix it right now :(
+      ;; What we are after is the revision we just created + our revision delta logic & description
+      (-> (revisions+details entity id)
+          first))))

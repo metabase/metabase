@@ -5,6 +5,7 @@
             (metabase [http-client :as http]
                       [middleware :as middleware])
             (metabase.models [database :refer [Database]]
+                             [revision :refer [Revision]]
                              [segment :refer [Segment]]
                              [table :refer [Table]])
             [metabase.test.util :as tu]
@@ -207,4 +208,119 @@
 
 ;; ## GET /api/segment/:id/revisions
 
+(expect
+  [{:is_reversion false
+    :is_creation  false
+    :message      "updated"
+    :user         (-> (user-details (fetch-user :crowberto))
+                      (dissoc :email :date_joined :last_login :is_superuser))
+    :description  "changed a from \"b\" to \"c\"."}
+   {:is_reversion false
+    :is_creation  true
+    :message      nil
+    :user         (-> (user-details (fetch-user :rasta))
+                      (dissoc :email :date_joined :last_login :is_superuser))
+    :description  "First revision."}]
+  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
+                                             :engine    :yeehaw
+                                             :details   {}
+                                             :is_sample false}]
+    (tu/with-temp Table [{table-id :id} {:name   "Stuff"
+                                         :db_id  database-id
+                                         :active true}]
+      (tu/with-temp Segment [{:keys [id]} {:creator_id  (user->id :crowberto)
+                                           :table_id    table-id
+                                           :name        "One Segment to rule them all, one segment to define them"
+                                           :description "One segment to bring them all, and in the DataModel bind them"
+                                           :definition  {:database 123
+                                                         :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}]
+        (tu/with-temp Revision [_ {:model        "Segment"
+                                   :model_id     id
+                                   :user_id      (user->id :rasta)
+                                   :object       {:a "b"}
+                                   :is_creation  true
+                                   :is_reversion false}]
+          (tu/with-temp Revision [_ {:model        "Segment"
+                                     :model_id     id
+                                     :user_id      (user->id :crowberto)
+                                     :object       {:a "c"}
+                                     :is_creation  false
+                                     :is_reversion false
+                                     :message      "updated"}]
+            (->> ((user->client :crowberto) :get 200 (format "segment/%d/revisions" id))
+                 (mapv #(dissoc % :timestamp :id)))))))))
+
+
 ;; ## POST /api/segment/:id/revert
+
+(expect
+  [;; the api response
+   {:is_reversion true
+    :is_creation  false
+    :message      nil
+    :user         (-> (user-details (fetch-user :crowberto))
+                      (dissoc :email :date_joined :last_login :is_superuser))
+    :description  "reverted to an earlier revision and renamed this Segment from \"Changed Segment Name\" to \"One Segment to rule them all, one segment to define them\"."}
+   ;; full list of final revisions
+   [{:is_reversion true
+     :is_creation  false
+     :message      nil
+     :user         (-> (user-details (fetch-user :crowberto))
+                       (dissoc :email :date_joined :last_login :is_superuser))
+     :description  "reverted to an earlier revision and renamed this Segment from \"Changed Segment Name\" to \"One Segment to rule them all, one segment to define them\"."}
+    {:is_reversion false
+     :is_creation  false
+     :message      "updated"
+     :user         (-> (user-details (fetch-user :crowberto))
+                       (dissoc :email :date_joined :last_login :is_superuser))
+     :description  "renamed this Segment from \"One Segment to rule them all, one segment to define them\" to \"Changed Segment Name\"."}
+    {:is_reversion false
+     :is_creation  true
+     :message      nil
+     :user         (-> (user-details (fetch-user :rasta))
+                       (dissoc :email :date_joined :last_login :is_superuser))
+     :description  "First revision."}]]
+  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
+                                             :engine    :yeehaw
+                                             :details   {}
+                                             :is_sample false}]
+    (tu/with-temp Table [{table-id :id} {:name   "Stuff"
+                                         :db_id  database-id
+                                         :active true}]
+      (tu/with-temp Segment [{:keys [id]} {:creator_id  (user->id :crowberto)
+                                           :table_id    table-id
+                                           :name        "One Segment to rule them all, one segment to define them"
+                                           :description "One segment to bring them all, and in the DataModel bind them"
+                                           :definition  {:creator_id  (user->id :crowberto)
+                                                         :table_id    table-id
+                                                         :name        "Reverted Segment Name"
+                                                         :description nil
+                                                         :definition  {:database 123
+                                                                       :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}}]
+        (tu/with-temp Revision [{revision-id :id} {:model        "Segment"
+                                                   :model_id     id
+                                                   :user_id      (user->id :rasta)
+                                                   :object       {:creator_id  (user->id :crowberto)
+                                                                  :table_id    table-id
+                                                                  :name        "One Segment to rule them all, one segment to define them"
+                                                                  :description "One segment to bring them all, and in the DataModel bind them"
+                                                                  :definition  {:database 123
+                                                                                :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}
+                                                   :is_creation  true
+                                                   :is_reversion false}]
+          (tu/with-temp Revision [_ {:model        "Segment"
+                                     :model_id     id
+                                     :user_id      (user->id :crowberto)
+                                     :object       {:creator_id  (user->id :crowberto)
+                                                    :table_id    table-id
+                                                    :name        "Changed Segment Name"
+                                                    :description "One segment to bring them all, and in the DataModel bind them"
+                                                    :definition  {:database 123
+                                                                  :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}
+                                     :is_creation  false
+                                     :is_reversion false
+                                     :message      "updated"}]
+            [(-> ((user->client :crowberto) :post 200 (format "segment/%d/revert" id) {:revision_id revision-id})
+                 (dissoc :id :timestamp))
+             (->> ((user->client :crowberto) :get 200 (format "segment/%d/revisions" id))
+                  (mapv #(dissoc % :timestamp :id)))]))))))
