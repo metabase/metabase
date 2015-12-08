@@ -43,11 +43,11 @@
 
 (defn- push-fake-revision [card-id & {:keys [message] :as object}]
   (push-revision
-    :entity           FakedCard
-    :id               card-id
-    :user-id          (user->id :rasta)
-    :object           (dissoc object :message)
-    :revision_message message))
+    :entity   FakedCard
+    :id       card-id
+    :user-id  (user->id :rasta)
+    :object   (dissoc object :message)
+    :message  message))
 
 
 ;;; # REVISIONS + PUSH-REVISION

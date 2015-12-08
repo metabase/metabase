@@ -2,12 +2,14 @@
   (:require [clojure.tools.logging :as log]
             [korma.core :as k]
             [korma.db :as kdb]
+            [medley.core :as m]
             [metabase.config :as config]
             [metabase.db :as db]
             [metabase.events :as events]
             (metabase.models [common :refer [perms-readwrite]]
                              [hydrate :refer :all]
                              [interface :refer :all]
+                             [revision :as revision]
                              [user :refer [User]])
             [metabase.util :as u]))
 
@@ -34,8 +36,11 @@
         :description (u/jdbc-clob->str description))))
 
   (pre-cascade-delete [_ {:keys [id]}]
-    (when (config/is-prod?)
-      (throw (Exception. "deleting a Segment is not supported.")))))
+    (if (config/is-prod?)
+      ;; in prod we prevent any deleting
+      (throw (Exception. "deleting a Segment is not supported."))
+      ;; in test we allow deleting
+      (db/cascade-delete revision/Revision :model "Segment" :model_id id))))
 
 (extend-ICanReadWrite SegmentEntity :read :always, :write :superuser)
 
@@ -85,21 +90,22 @@
   "Update an existing `Segment`.
 
    Returns the updated `Segment` or throws an Exception."
-  [{:keys [id name description definition]} change-message]
+  [{:keys [id name description definition revision_message]} user-id]
   {:pre [(integer? id)
          (string? name)
          (map? definition)
-         (string? change-message)]}
-  (kdb/transaction
-    ;; update the segment itself
-    (db/upd Segment id
-      :name        name
-      :description description
-      :definition  definition)
-    ;; TODO: create a new revision
-    ;; fetch the fully updated segment and return it (and fire off an event)
-    (->> (retrieve-segment id)
-         (events/publish-event :segment-update))))
+         (integer? user-id)
+         (string? revision_message)]}
+  ;; update the segment itself
+  (db/upd Segment id
+    :name        name
+    :description description
+    :definition  definition)
+  (let [segment (retrieve-segment id)]
+    ;; fire off an event
+    (events/publish-event :segment-update (assoc segment :actor_id user-id :revision_message revision_message))
+    ;; return the updated segment
+    segment))
 
 (defn delete-segment
   "Delete a `Segment`.
@@ -108,13 +114,28 @@
    record from the database at any time.
 
    Returns the final state of the `Segment` is successful, or throws an Exception."
-  [id]
+  [id user-id]
   {:pre [(integer? id)]}
-  (kdb/transaction
-    ;; make Segment not active
-    (db/upd Segment id
-      :active false)
-    ;; TODO: create a new revision
-    ;; fetch the fully updated segment and return it (and fire off an event)
-    (->> (retrieve-segment id)
-         (events/publish-event :segment-delete))))
+  ;; make Segment not active
+  (db/upd Segment id :active false)
+  ;; retrieve the updated segment (now retired)
+  (let [segment (retrieve-segment id)]
+    ;; fire off an event
+    (events/publish-event :segment-delete (assoc segment :actor_id user-id))
+    ;; return the updated segment
+    segment))
+
+
+;;; ## ---------------------------------------- REVISIONS ----------------------------------------
+
+
+(defn- serialize-instance [_ _ instance]
+  (->> (dissoc instance :created_at :updated_at)
+       (into {})                                 ; if it's a record type like SegmentInstance we need to convert it to a regular map or filter-vals won't work
+       (m/filter-vals (complement delay?))))
+
+(extend SegmentEntity
+  revision/IRevisioned
+  {:serialize-instance serialize-instance
+   :revert-to-revision revision/default-revert-to-revision
+   :describe-diff      revision/default-describe-diff})

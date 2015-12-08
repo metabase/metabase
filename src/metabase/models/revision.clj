@@ -110,9 +110,9 @@
 (defn push-revision
   "Record a new `Revision` for ENTITY with ID.
    Returns OBJECT."
-  {:arglists '([& {:keys [object entity id user-id is-creation? revision_message]}])}
+  {:arglists '([& {:keys [object entity id user-id is-creation? message]}])}
   [& {object :object,
-      :keys [entity id user-id is-creation? revision_message],
+      :keys [entity id user-id is-creation? message],
       :or {id (:id object), is-creation? false}}]
   {:pre [(metabase-entity? entity)
          (integer? user-id)
@@ -120,7 +120,7 @@
          (integer? id)
          (db/exists? entity :id id)
          (map? object)]}
-  (let [object (dissoc object :revision_message)
+  (let [object (dissoc object :message)
         object (serialize-instance entity id object)]
     ;; make sure we still have a map after calling out serialization function
     (assert (map? object))
@@ -130,7 +130,7 @@
       :user_id     user-id
       :object      object
       :is_creation is-creation?
-      :message     revision_message))
+      :message     message))
   (delete-old-revisions entity id)
   object)
 
