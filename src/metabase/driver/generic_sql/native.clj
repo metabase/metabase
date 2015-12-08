@@ -7,7 +7,6 @@
             [metabase.db :refer [sel]]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
-            [metabase.driver.generic-sql.util :refer :all]
             [metabase.models.database :refer [Database]]
             [metabase.util :as u]))
 
@@ -20,9 +19,7 @@
   "Process and run a native (raw SQL) QUERY."
   [driver {{sql :query} :native, database-id :database, :as query}]
   (try (let [database (sel :one :fields [Database :engine :details] :id database-id)
-             db-conn  (-> database
-                          db->korma-db
-                          korma.db/get-connection)]
+             db-conn  (sql/db->jdbc-connection-spec database)]
 
          (jdbc/with-db-transaction [t-conn db-conn]
            (let [^java.sql.Connection jdbc-connection (:connection t-conn)]

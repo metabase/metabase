@@ -513,5 +513,12 @@
                                   ~nm)]))]
      ~nm))
 
+(defn round-to-decimals
+  "Round (presumabily floating-point) NUMBER to DECIMAL-PLACE. Returns a `Double`.
+
+     (round-to-decimals 2 35.5058998M) -> 35.51"
+  ^Double [^Integer decimal-place, ^Number number]
+  (double (.setScale (bigdec number) decimal-place BigDecimal/ROUND_HALF_UP)))
+
 
 (require-dox-in-this-namespace)
