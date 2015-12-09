@@ -186,7 +186,7 @@ Here's each step:
 1. Go to Elastic Beanstalk and select your `Metabase` application
 * Click on `Application Versions` on the left nav (you can also choose `Application Versions` from the dropdown at the top of the page)
 * Download the latest Metabase Elastic Beanstalk deployment file
-  * https://s3.amazonaws.com/downloads.metabase.com/v0.13.1/aws-elastic-beanstalk.zip
+  * https://s3.amazonaws.com/downloads.metabase.com/v0.13.1/metabase-aws-eb.zip
 * Upload a new Application Version
 	* Click the `Upload` button on the upper right side of the listing
 		* Give the new version a name, ideally including the Metabase version number (e.g. v0.13.0)

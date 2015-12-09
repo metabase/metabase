@@ -2,6 +2,9 @@
 
 set -e
 
+# NOTE: The canonical source for this file is in the metabase/metabase repository.
+# Please update it there then copy to the metabase/metabase-deploy repository.
+
 # Translate various Heroku environment variables to Metabase equivalents
 
 if [ "$PORT" ]; then
@@ -73,5 +76,4 @@ if [ ! -z "$RDS_HOSTNAME" ]; then
     export MB_DB_PORT=$RDS_PORT
 fi
 
-
-exec java $JAVA_OPTS -jar ./target/uberjar/metabase.jar
+exec java -Dfile.encoding=UTF-8 $JAVA_OPTS -jar ./target/uberjar/metabase.jar

@@ -7,27 +7,28 @@
             (metabase [config :as config]
                       [driver :as driver])
             [metabase.driver.generic-sql :as sql]
-            [metabase.driver.generic-sql.util :as sqlutil]
-            [metabase.driver.postgres :as postgres]))
+            [metabase.driver.postgres :as postgres]
+            [metabase.util.korma-extensions :as kx]))
 
 (defn- connection-details->spec [_ details]
   (kdb/postgres (merge details postgres/ssl-params))) ; always connect to redshift over SSL
 
 (defn- date-interval [_ unit amount]
-  (kutils/generated (format "(GETDATE() + INTERVAL '%d %s')" amount (name unit))))
+  (k/raw (format "(GETDATE() + INTERVAL '%d %s')" (int amount) (name unit))))
 
-(defn- unix-timestamp->timestamp [_ field-or-value seconds-or-milliseconds]
-  (kutils/func (case seconds-or-milliseconds
-                 :seconds      "(TIMESTAMP '1970-01-01T00:00:00Z' + (%s * INTERVAL '1 second'))"
-                 :milliseconds "(TIMESTAMP '1970-01-01T00:00:00Z' + ((%s / 1000) * INTERVAL '1 second'))")
-               [field-or-value]))
+(defn- unix-timestamp->timestamp [_ expr seconds-or-milliseconds]
+  (case seconds-or-milliseconds
+    :seconds      (kx/+ (k/raw "TIMESTAMP '1970-01-01T00:00:00Z'")
+                        (kx/* expr
+                              (k/raw "INTERVAL '1 second'")))
+    :milliseconds (recur nil (kx// expr 1000) :seconds)))
 
 ;; The Postgres JDBC .getImportedKeys method doesn't work for Redshift, and we're not allowed to access information_schema.constraint_column_usage,
 ;; so we'll have to use this custome query instead
 ;; See also: [Related Postgres JDBC driver issue on GitHub](https://github.com/pgjdbc/pgjdbc/issues/79)
 ;;           [How to access the equivalent of information_schema.constraint_column_usage in Redshift](https://forums.aws.amazon.com/thread.jspa?threadID=133514)
 (defn- table-fks [_ table]
-  (set (jdbc/query (sqlutil/db->connection-spec @(:db table))
+  (set (jdbc/query (sql/db->jdbc-connection-spec @(:db table))
                    ["SELECT source_column.attname AS \"fk-column-name\",
                        dest_table.relname  AS \"dest-table-name\",
                        dest_column.attname AS \"dest-column-name\"

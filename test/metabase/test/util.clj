@@ -117,6 +117,7 @@
   {:pre [(symbol? namespc)
          (symbol? fn-name)
          (every? symbol? more)]}
-  `(do (def ~fn-name (ns-resolve '~namespc '~fn-name))
+  `(do (require '~namespc)
+       (def ~(vary-meta fn-name assoc :private true) (ns-resolve '~namespc '~fn-name))
        ~(when (seq more)
           `(resolve-private-fns ~namespc ~(first more) ~@(rest more)))))

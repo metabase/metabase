@@ -2,6 +2,7 @@
   "Code for creating / destroying a MySQL database from a `DatabaseDefinition`."
   (:require [clojure.string :as s]
             [environ.core :refer [env]]
+            metabase.driver.mysql
             (metabase.test.data [generic-sql :as generic]
                                 [interface :as i]))
   (:import metabase.driver.mysql.MySQLDriver))
@@ -35,10 +36,11 @@
   generic/IGenericSQLDatasetLoader
   (merge generic/DefaultsMixin
          {:execute-sql!              generic/sequentially-execute-sql!
-          :pk-sql-type               (constantly "INTEGER NOT NULL AUTO_INCREMENT")
-          :quote-name                quote-name
           :field-base-type->sql-type (fn [_ base-type]
-                                       (field-base-type->sql-type base-type))})
+                                       (field-base-type->sql-type base-type))
+          :load-data!                generic/load-data-all-at-once!
+          :pk-sql-type               (constantly "INTEGER NOT NULL AUTO_INCREMENT")
+          :quote-name                quote-name})
   i/IDatasetLoader
   (merge generic/IDatasetLoaderMixin
          {:database->connection-details database->connection-details

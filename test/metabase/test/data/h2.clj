@@ -4,6 +4,7 @@
             [clojure.string :as s]
             (korma [core :as k]
                    [db :as kdb])
+            metabase.driver.h2
             (metabase.test.data [generic-sql :as generic]
                                 [interface :as i]))
   (:import metabase.driver.h2.H2Driver))
@@ -71,22 +72,28 @@
     (merge mixin
            {:create-db-sql             create-db-sql
             :create-table-sql          create-table-sql
-            :drop-db-if-exists-sql     (constantly nil)
-            :korma-entity              korma-entity
-            :pk-field-name             (constantly "ID")
-            :pk-sql-type               (constantly "BIGINT AUTO_INCREMENT")
-            :quote-name                quote-name
             :database->spec            (fn [this context dbdef]
                                          ;; Don't use the h2 driver implementation, which makes the connection string read-only & if-exists only
                                          (kdb/h2 (i/database->connection-details this context dbdef)))
+            :drop-db-if-exists-sql     (constantly nil)
             :execute-sql!              (fn [this _ dbdef sql]
                                          ;; we always want to use 'server' context when execute-sql! is called
                                          ;; (never try connect as GUEST, since we're not giving them priviledges to create tables / etc)
                                          (execute-sql! this :server dbdef sql))
             :field-base-type->sql-type (fn [_ base-type]
-                                         (field-base-type->sql-type base-type))}))
+                                         (field-base-type->sql-type base-type))
+            :korma-entity              korma-entity
+            :load-data!                generic/load-data-all-at-once!
+            :pk-field-name             (constantly "ID")
+            :pk-sql-type               (constantly "BIGINT AUTO_INCREMENT")
+            :quote-name                quote-name}))
 
   i/IDatasetLoader
   (merge generic/IDatasetLoaderMixin
-         {:database->connection-details database->connection-details
-          :engine                       (constantly :h2)}))
+         {:database->connection-details       database->connection-details
+          :default-schema                     (constantly "PUBLIC")
+          :engine                             (constantly :h2)
+          :format-name                        (fn [_ table-or-field-name]
+                                                (s/upper-case table-or-field-name))
+          :has-questionable-timezone-support? (constantly false)
+          :id-field-type                      (constantly :BigIntegerField)}))

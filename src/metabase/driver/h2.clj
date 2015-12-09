@@ -1,12 +1,13 @@
 (ns metabase.driver.h2
   (:require [clojure.string :as s]
-            [korma.db :as kdb]
-            [korma.sql.utils :as utils]
+            (korma [core :as k]
+                   [db :as kdb])
+            [korma.sql.utils :as kutils]
             [metabase.db :as db]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
-            [metabase.driver.generic-sql.util :refer [funcs]]
-            [metabase.models.database :refer [Database]]))
+            [metabase.models.database :refer [Database]]
+            [metabase.util.korma-extensions :as kx]))
 
 (defn- column->base-type [_ column-type]
   ({:ARRAY                       :UnknownField
@@ -106,11 +107,11 @@
               (update details :db connection-string-set-safe-options))))
 
 
-(defn- unix-timestamp->timestamp [_ field-or-value seconds-or-milliseconds]
-  (utils/func (format "TIMESTAMPADD('%s', %%s, TIMESTAMP '1970-01-01T00:00:00Z')" (case seconds-or-milliseconds
-                                                                                    :seconds      "SECOND"
-                                                                                    :milliseconds "MILLISECOND"))
-              [field-or-value]))
+(defn- unix-timestamp->timestamp [_ expr seconds-or-milliseconds]
+  (kutils/func (format "TIMESTAMPADD('%s', %%s, TIMESTAMP '1970-01-01T00:00:00Z')" (case seconds-or-milliseconds
+                                                                                     :seconds      "SECOND"
+                                                                                     :milliseconds "MILLISECOND"))
+               [expr]))
 
 
 (defn- process-query-in-context [_ qp]
@@ -132,51 +133,48 @@
 ;; H2 doesn't have date_trunc() we fake it by formatting a date to an appropriate string
 ;; and then converting back to a date.
 ;; Format strings are the same as those of SimpleDateFormat.
-(defn- trunc-with-format [format-str]
-  (format "PARSEDATETIME(FORMATDATETIME(%%s, '%s'), '%s')" format-str format-str))
+(defn- format-datetime   [format-str expr] (k/sqlfn :FORMATDATETIME expr (kx/literal format-str)))
+(defn- parse-datetime    [format-str expr] (k/sqlfn :PARSEDATETIME expr  (kx/literal format-str)))
+(defn- trunc-with-format [format-str expr] (parse-datetime format-str (format-datetime format-str expr)))
 
-;; Rounding dates to quarters is a bit involved but still doable. Here's the plan:
-;; *  extract the year and quarter from the date;
-;; *  convert the quarter (1 - 4) to the corresponding starting month (1, 4, 7, or 10).
-;;    (do this by multiplying by 3, giving us [3 6 9 12]. Then subtract 2 to get [1 4 7 10])
-;; *  Concatenate the year and quarter start month together to create a yyyyMM date string;
-;; *  Parse the string as a date. :sunglasses:
-;;
-;; Postgres DATE_TRUNC('quarter', x)
-;; becomes  PARSEDATETIME(CONCAT(YEAR(x), ((QUARTER(x) * 3) - 2)), 'yyyyMM')
-(defn- trunc-to-quarter [field-or-value]
-  (funcs "PARSEDATETIME(%s, 'yyyyMM')"
-         ["CONCAT(%s)"
-          ["YEAR(%s)" field-or-value]
-          ["((QUARTER(%s) * 3) - 2)" field-or-value]]))
+(defn- date [_ unit expr]
+  (case unit
+    :default         (kx/->timestamp expr)
+    :minute          (trunc-with-format "yyyyMMddHHmm" expr)
+    :minute-of-hour  (kx/minute expr)
+    :hour            (trunc-with-format "yyyyMMddHH" expr)
+    :hour-of-day     (kx/hour expr)
+    :day             (kx/->date expr)
+    :day-of-week     (k/sqlfn :DAY_OF_WEEK expr)
+    :day-of-month    (k/sqlfn :DAY_OF_MONTH expr)
+    :day-of-year     (k/sqlfn :DAY_OF_YEAR expr)
+    :week            (trunc-with-format "yyyyww" expr) ; ww = week of year
+    :week-of-year    (kx/week expr)
+    :month           (trunc-with-format "yyyyMM" expr)
+    :month-of-year   (kx/month expr)
+    ;; Rounding dates to quarters is a bit involved but still doable. Here's the plan:
+    ;; *  extract the year and quarter from the date;
+    ;; *  convert the quarter (1 - 4) to the corresponding starting month (1, 4, 7, or 10).
+    ;;    (do this by multiplying by 3, giving us [3 6 9 12]. Then subtract 2 to get [1 4 7 10])
+    ;; *  Concatenate the year and quarter start month together to create a yyyyMM date string;
+    ;; *  Parse the string as a date. :sunglasses:
+    ;;
+    ;; Postgres DATE_TRUNC('quarter', x)
+    ;; becomes  PARSEDATETIME(CONCAT(YEAR(x), ((QUARTER(x) * 3) - 2)), 'yyyyMM')
+    :quarter         (parse-datetime "yyyyMM"
+                                     (kx/concat (kx/year expr) (kx/- (kx/* (kx/quarter expr)
+                                                                           3)
+                                                                     2)))
+    :quarter-of-year (kx/quarter expr)
+    :year            (kx/year expr)))
 
-(defn- date [_ unit field-or-value]
-  (if (= unit :quarter)
-    (trunc-to-quarter field-or-value)
-    (utils/func (case unit
-                  :default         "CAST(%s AS TIMESTAMP)"
-                  :minute          (trunc-with-format "yyyyMMddHHmm")
-                  :minute-of-hour  "MINUTE(%s)"
-                  :hour            (trunc-with-format "yyyyMMddHH")
-                  :hour-of-day     "HOUR(%s)"
-                  :day             "CAST(%s AS DATE)"
-                  :day-of-week     "DAY_OF_WEEK(%s)"
-                  :day-of-month    "DAY_OF_MONTH(%s)"
-                  :day-of-year     "DAY_OF_YEAR(%s)"
-                  :week            (trunc-with-format "yyyyww") ; ww = week of year
-                  :week-of-year    "WEEK(%s)"
-                  :month           (trunc-with-format "yyyyMM")
-                  :month-of-year   "MONTH(%s)"
-                  :quarter-of-year "QUARTER(%s)"
-                  :year            "YEAR(%s)")
-                [field-or-value])))
-
+(def ^:private now (k/sqlfn :NOW))
 
 ;; TODO - maybe rename this relative-date ?
 (defn- date-interval [_ unit amount]
-  (utils/generated (if (= unit :quarter)
-                     (format "DATEADD('MONTH', (%d * 3), NOW())" amount)
-                     (format "DATEADD('%s', %d, NOW())" (s/upper-case (name unit)) amount))))
+  (if (= unit :quarter)
+    (recur nil :month (kx/* amount 3))
+    (k/sqlfn :DATEADD (kx/literal (s/upper-case (name unit))) amount now)))
 
 
 (defn- humanize-connection-error-message [_ message]
@@ -200,7 +198,8 @@
 (extend H2Driver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:date-interval                     date-interval
+         {:active-tables                     sql/post-filtered-active-tables
+          :date-interval                     date-interval
           :details-fields                    (constantly [{:name         "db"
                                                            :display-name "Connection String"
                                                            :placeholder  "file:/Users/camsaul/bird_sightings/toucans;AUTO_SERVER=TRUE"

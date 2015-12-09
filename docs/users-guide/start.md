@@ -14,6 +14,8 @@
 
 > [Tips on creating useful dashboards](06-dashboard-tips.md)
 
-> [Some helpful tips on building your data model](07-data-model-reference.md)
+> [Using Pulses for daily emails](07-pulses.md)
+
+> [Some helpful tips on building your data model](08-data-model-reference.md)
 
 Let's get started with an overview of [What Metabase does](01-what-is-metabase.md).

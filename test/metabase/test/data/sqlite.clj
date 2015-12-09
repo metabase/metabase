@@ -1,6 +1,7 @@
 (ns metabase.test.data.sqlite
   (:require [clojure.string :as s]
             [korma.core :as k]
+            metabase.driver.sqlite
             (metabase.test.data [generic-sql :as generic]
                                 [interface :as i])
             [metabase.util :as u])
@@ -23,14 +24,14 @@
    :TextField       "TEXT"
    :TimeField       "TIME"})
 
-(defn- load-table-data! [loader dbdef tabledef]
-  ;; Our SQLite JDBC driver doesn't seem to handle Dates/Timestamps correctly so just convert them to string before INSERTing them into the Database
-  (generic/default-load-table-data! loader dbdef (update tabledef :rows (fn [rows]
-                                                                          (for [row rows]
-                                                                            (for [v row]
-                                                                              (if (instance? java.util.Date v)
-                                                                                (k/raw (format "DATETIME('%s')" (u/date->iso-8601 v)))
-                                                                                v)))))))
+(defn- load-data-stringify-dates
+  "Our SQLite JDBC driver doesn't seem to handle Dates/Timestamps correctly so just convert them to string before INSERTing them into the Database."
+  [insert!]
+  (fn [rows]
+    (insert! (for [row rows]
+               (into {} (for [[k v] row]
+                          [k (u/cond-as-> v v
+                               (instance? java.util.Date v) (k/raw (format "DATETIME('%s')" (u/date->iso-8601 v))))]))))))
 
 (extend SQLiteDriver
   generic/IGenericSQLDatasetLoader
@@ -39,7 +40,7 @@
           :create-db-sql             (constantly nil)
           :drop-db-if-exists-sql     (constantly nil)
           :execute-sql!              generic/sequentially-execute-sql!
-          :load-table-data!          load-table-data!
+          :load-data!                (generic/make-load-data-fn load-data-stringify-dates generic/load-data-chunked)
           :pk-sql-type               (constantly "INTEGER")
           :field-base-type->sql-type (fn [_ base-type]
                                        (field-base-type->sql-type base-type))})
