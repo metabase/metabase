@@ -20,13 +20,10 @@ export default class DataSelector extends Component {
         databases: PropTypes.array.isRequired,
         setDatabaseFn: PropTypes.func.isRequired,
         setSourceTableFn: PropTypes.func,
-        isInitiallyOpen: PropTypes.bool,
-        name: PropTypes.string
+        isInitiallyOpen: PropTypes.bool
     };
 
     static defaultProps = {
-        name: "Data",
-        className: "",
         isInitiallyOpen: false,
         includeTables: false
     };
@@ -124,25 +121,22 @@ export default class DataSelector extends Component {
         }
 
         return (
-            <div className={"GuiBuilder-section GuiBuilder-data flex align-center " + this.props.className}>
-                <span className="GuiBuilder-section-label Query-label">{this.props.name}</span>
-                <PopoverWithTrigger
-                    ref="popover"
-                    isInitiallyOpen={this.props.isInitiallyOpen}
-                    triggerElement={triggerElement}
-                    triggerClasses="flex align-center"
-                >
-                    <AccordianList
-                        className="text-brand"
-                        sections={sections}
-                        onChange={this.onChange}
-                        sectionIsSelected={this.sectionIsSelected}
-                        itemIsSelected={this.itemIsSelected}
-                        renderSectionIcon={this.renderSectionIcon}
-                        renderItemIcon={this.renderItemIcon}
-                    />
-                </PopoverWithTrigger>
-            </div>
+            <PopoverWithTrigger
+                ref="popover"
+                isInitiallyOpen={this.props.isInitiallyOpen}
+                triggerElement={triggerElement}
+                triggerClasses="flex align-center"
+            >
+                <AccordianList
+                    className="text-brand"
+                    sections={sections}
+                    onChange={this.onChange}
+                    sectionIsSelected={this.sectionIsSelected}
+                    itemIsSelected={this.itemIsSelected}
+                    renderSectionIcon={this.renderSectionIcon}
+                    renderItemIcon={this.renderItemIcon}
+                />
+            </PopoverWithTrigger>
         );
     }
 }

@@ -1,25 +1,25 @@
 import React, { Component, PropTypes } from "react";
 
-import AggregationActionSelect from "./AggregationActionSelect.jsx";
+import MetricActionSelect from "./MetricActionSelect.jsx";
 
-export default class AggregationItem extends Component {
+export default class MetricItem extends Component {
     static propTypes = {
-        aggregation: PropTypes.object.isRequired,
+        metric: PropTypes.object.isRequired,
     };
 
     render() {
-        let { aggregation } = this.props;
+        let { metric } = this.props;
 
         return (
             <tr className="mt1 mb3">
                 <td className="px1">
-                    {aggregation.name}
+                    {metric.name}
                 </td>
                 <td className="px1 text-ellipsis">
-                    {aggregation.formula}
+                    {metric.formula}
                 </td>
                 <td className="px1 text-centered">
-                    <AggregationActionSelect aggregation={aggregation}/>
+                    <MetricActionSelect metric={metric}/>
                 </td>
             </tr>
         )

@@ -2,19 +2,19 @@ import inflection from "inflection";
 
 var Query = {
 
-    isStructured: function(query) {
+    isStructured(query) {
         return query && query.type && query.type === "query";
     },
 
-    isNative: function(query) {
+    isNative(query) {
         return query && query.type && query.type === "native";
     },
 
-    canRun: function(query) {
+    canRun(query) {
         return query && query.source_table != undefined && Query.hasValidAggregation(query);
     },
 
-    cleanQuery: function(query) {
+    cleanQuery(query) {
         if (!query) {
             return query;
         }
@@ -90,16 +90,16 @@ var Query = {
         return query;
     },
 
-    isAggregateField: function(field) {
+    isAggregateField(field) {
         return Array.isArray(field) && field[0] === "aggregation";
     },
 
-    canAddDimensions: function(query) {
+    canAddDimensions(query) {
         var MAX_DIMENSIONS = 2;
         return query && query.breakout && (query.breakout.length < MAX_DIMENSIONS);
     },
 
-    numDimensions: function(query) {
+    numDimensions(query) {
         if (query && query.breakout) {
             return query.breakout.filter(function(b) {
                 return b !== null;
@@ -109,27 +109,27 @@ var Query = {
         return 0;
     },
 
-    hasValidBreakout: function(query) {
+    hasValidBreakout(query) {
         return (query && query.breakout &&
                     query.breakout.length > 0 &&
                     query.breakout[0] !== null);
     },
 
-    canSortByAggregateField: function(query) {
+    canSortByAggregateField(query) {
         var SORTABLE_AGGREGATION_TYPES = new Set(["avg", "count", "distinct", "stddev", "sum"]);
 
         return Query.hasValidBreakout(query) && SORTABLE_AGGREGATION_TYPES.has(query.aggregation[0]);
     },
 
-    addDimension: function(query) {
+    addDimension(query) {
         query.breakout.push(null);
     },
 
-    updateDimension: function(query, dimension, index) {
+    updateDimension(query, dimension, index) {
         query.breakout[index] = dimension;
     },
 
-    removeDimension: function(query, index) {
+    removeDimension(query, index) {
         let field = query.breakout.splice(index, 1)[0];
 
         // remove sorts that referenced the dimension that was removed
@@ -141,7 +141,7 @@ var Query = {
         }
     },
 
-    hasEmptyAggregation: function(query) {
+    hasEmptyAggregation(query) {
         var aggregation = query.aggregation;
         if (aggregation !== undefined &&
                 aggregation.length > 0 &&
@@ -151,7 +151,7 @@ var Query = {
         return true;
     },
 
-    hasValidAggregation: function(query) {
+    hasValidAggregation(query) {
         var aggregation = query && query.aggregation;
         if (aggregation &&
                 ((aggregation.length === 1 && aggregation[0] !== null) ||
@@ -161,13 +161,13 @@ var Query = {
         return false;
     },
 
-    isBareRowsAggregation: function(query) {
+    isBareRowsAggregation(query) {
         return (query.aggregation &&
                     query.aggregation.length > 0 &&
                     query.aggregation[0] === "rows");
     },
 
-    updateAggregation: function(query, aggregationClause) {
+    updateAggregation(query, aggregationClause) {
         // when switching to or from "rows" aggregation clear out any sorting clauses
         if ((query.aggregation[0] === "rows" || aggregationClause[0] === "rows") && query.aggregation[0] !== aggregationClause[0]) {
             delete query.order_by;
@@ -181,7 +181,7 @@ var Query = {
         }
     },
 
-    getFilters: function(query) {
+    getFilters(query) {
         // Special handling for accessing query filters because it's been fairly complex to deal with their structure.
         // This method provide a unified and consistent view of the filter definition for the rest of the tool to use.
 
@@ -204,7 +204,7 @@ var Query = {
         return queryFilters;
     },
 
-    canAddFilter: function(query) {
+    canAddFilter(query) {
         var queryFilters = Query.getFilters(query);
         if (!queryFilters) {
             return false;
@@ -221,7 +221,7 @@ var Query = {
         return true;
     },
 
-    addFilter: function(query) {
+    addFilter(query) {
         var queryFilters = Query.getFilters(query);
 
         if (queryFilters.length === 0) {
@@ -233,7 +233,7 @@ var Query = {
         query.filter = queryFilters;
     },
 
-    updateFilter: function(query, index, filter) {
+    updateFilter(query, index, filter) {
         var queryFilters = Query.getFilters(query);
 
         queryFilters[index] = filter;
@@ -241,7 +241,7 @@ var Query = {
         query.filter = queryFilters;
     },
 
-    removeFilter: function(query, index) {
+    removeFilter(query, index) {
         var queryFilters = Query.getFilters(query);
 
         if (queryFilters.length === 2) {
@@ -254,7 +254,7 @@ var Query = {
         query.filter = queryFilters;
     },
 
-    canAddLimitAndSort: function(query) {
+    canAddLimitAndSort(query) {
         if (Query.isBareRowsAggregation(query)) {
             return true;
         } else if (Query.hasValidBreakout(query)) {
@@ -264,7 +264,7 @@ var Query = {
         }
     },
 
-    getSortableFields: function(query, fields) {
+    getSortableFields(query, fields) {
         // in bare rows all fields are sortable, otherwise we only sort by our breakout columns
 
         if (Query.isBareRowsAggregation(query)) {
@@ -294,24 +294,24 @@ var Query = {
         }
     },
 
-    addLimit: function(query) {
+    addLimit(query) {
         query.limit = null;
     },
 
-    updateLimit: function(query, limit) {
+    updateLimit(query, limit) {
         query.limit = limit;
     },
 
-    removeLimit: function(query) {
+    removeLimit(query) {
         delete query.limit;
     },
 
-    canAddSort: function(query) {
+    canAddSort(query) {
         // TODO: allow for multiple sorting choices
         return false;
     },
 
-    addSort: function(query) {
+    addSort(query) {
         // TODO: make sure people don't try to sort by the same field multiple times
         var order_by = query.order_by;
         if (!order_by) {
@@ -322,11 +322,11 @@ var Query = {
         query.order_by = order_by;
     },
 
-    updateSort: function(query, index, sort) {
+    updateSort(query, index, sort) {
         query.order_by[index] = sort;
     },
 
-    removeSort: function(query, index) {
+    removeSort(query, index) {
         var queryOrderBy = query.order_by;
 
         if (queryOrderBy.length === 1) {
@@ -336,7 +336,7 @@ var Query = {
         }
     },
 
-    isValidField: function(field) {
+    isValidField(field) {
         return (
             typeof field === "number" ||
             (Array.isArray(field) && (
@@ -347,7 +347,7 @@ var Query = {
         );
     },
 
-    getFieldTarget: function(field, tableMetadata) {
+    getFieldTarget(field, tableMetadata) {
         let table, fieldId, fk;
         if (Array.isArray(field) && field[0] === "fk->") {
             fk = tableMetadata.fields_lookup[field[1]];
@@ -360,7 +360,7 @@ var Query = {
         return { table, field: table.fields_lookup[fieldId] };
     },
 
-    getFieldOptions: function(fields, includeJoins = false, filterFn = (fields) => fields, usedFields = {}) {
+    getFieldOptions(fields, includeJoins = false, filterFn = (fields) => fields, usedFields = {}) {
         var results = {
             count: 0,
             fields: null,
@@ -382,66 +382,69 @@ var Query = {
         return results;
     },
 
-    generateQueryDescription: function(dataset_query, tableMetadata) {
+
+    getFieldName(tableMetadata, id) {
+        if (Array.isArray(id)) {
+            if (id[0] === "fk->") {
+                var field = tableMetadata.fields_lookup[id[1]];
+                if (field) {
+                    return field.display_name + " " + Query.getFieldName(field.target.table, id[2]);
+                }
+            }
+        } else if (tableMetadata.fields_lookup[id]) {
+            return tableMetadata.fields_lookup[id].display_name
+        }
+        return '[unknown]';
+    },
+
+    getFilterDescription(tableMetadata, filter) {
+        if (filter[0] === "AND" || filter[0] === "OR") {
+            return filter.slice(1).map(Query.getFilterDescription.bind(null, tableMetadata)).join(" " + filter[0].toLowerCase() + " ");
+        } else {
+            return Query.getFieldName(tableMetadata, filter[1]);
+        }
+    },
+
+    generateQueryDescription(tableMetadata, dataset_query) {
         if (!tableMetadata) {
             return "";
         }
 
-        function getFieldName(id, table) {
-            if (Array.isArray(id)) {
-                if (id[0] === "fk->") {
-                    var field = table.fields_lookup[id[1]];
-                    if (field) {
-                        return field.display_name + " " + getFieldName(id[2], field.target.table);
-                    }
-                }
-            } else if (table.fields_lookup[id]) {
-                return table.fields_lookup[id].display_name
+        const getFieldName = Query.getFieldName.bind(null, tableMetadata);
+        const query = dataset_query.query;
+        let description = inflection.pluralize(tableMetadata.display_name) + " ";
+
+        if (query.aggregation && query.aggregation.length > 0) {
+            switch (query.aggregation[0]) {
+                case "rows":     description += "raw data"; break;
+                case "count":    description += "count"; break;
+                case "avg":      description += "average of " + getFieldName(query.aggregation[1]); break;
+                case "distinct": description += "distinct values of " + getFieldName(query.aggregation[1]); break;
+                case "stddev":   description += "standard deviation of " + getFieldName(query.aggregation[1]); break;
+                case "sum":      description += "sum of " + getFieldName(query.aggregation[1]); break;
+                case "cum_sum":  description += "cumulative sum of " + getFieldName(query.aggregation[1]); break;
+                default:
             }
-            return '[unknown]';
-        }
-
-        function getFilterDescription(filter) {
-            if (filter[0] === "AND" || filter[0] === "OR") {
-                return filter.slice(1).map(getFilterDescription).join(" " + filter[0].toLowerCase() + " ");
-            } else {
-                return getFieldName(filter[1], tableMetadata);
-            }
-        }
-
-        var query = dataset_query.query;
-
-        var name = inflection.pluralize(tableMetadata.display_name) + " ";
-
-        switch (query.aggregation[0]) {
-            case "rows":     name += "raw data"; break;
-            case "count":    name += "count"; break;
-            case "avg":      name += "average of " + getFieldName(query.aggregation[1], tableMetadata); break;
-            case "distinct": name += "distinct values of " + getFieldName(query.aggregation[1], tableMetadata); break;
-            case "stddev":   name += "standard deviation of " + getFieldName(query.aggregation[1], tableMetadata); break;
-            case "sum":      name += "sum of " + getFieldName(query.aggregation[1], tableMetadata); break;
-            case "cum_sum":  name += "cumulative sum of " + getFieldName(query.aggregation[1], tableMetadata); break;
-            default:
         }
 
         if (query.breakout && query.breakout.length > 0) {
-            name += ", grouped by " + query.breakout.map((b) => getFieldName(b, tableMetadata)).join(" and ");
+            description += ", grouped by " + query.breakout.map((b) => getFieldName(b)).join(" and ");
         }
 
         var filters = Query.getFilters(dataset_query.query);
         if (filters && filters.length > 0) {
-            name += ", filtered by " + getFilterDescription(filters);
+            description += ", filtered by " + Query.getFilterDescription(tableMetadata, filters);
         }
 
         if (query.order_by && query.order_by.length > 0) {
-            name += ", sorted by " + query.order_by.map((ordering) => getFieldName(ordering[0], tableMetadata) + " " + ordering[1]).join(" and ");
+            description += ", sorted by " + query.order_by.map((ordering) => getFieldName(ordering[0]) + " " + ordering[1]).join(" and ");
         }
 
         if (query.limit != null) {
-            name += ", " + query.limit + " " + inflection.inflect("row", query.limit);
+            description += ", " + query.limit + " " + inflection.inflect("row", query.limit);
         }
 
-        return name;
+        return description;
     }
 }
 

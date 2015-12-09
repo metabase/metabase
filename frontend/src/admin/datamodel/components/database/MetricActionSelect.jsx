@@ -6,15 +6,15 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 export default class UserActionsSelect extends Component {
 
     static propTypes = {
-        segment: PropTypes.object.isRequired
+        metric: PropTypes.object.isRequired
     };
 
-    onRemoveSegment() {
+    onRemove() {
 
     }
 
     render() {
-        let { segment } = this.props;
+        let { metric } = this.props;
 
         return (
             <PopoverWithTrigger
@@ -24,17 +24,17 @@ export default class UserActionsSelect extends Component {
             >
                 <ul className="UserActionsSelect">
                     <li>
-                        <a href={"/admin/datamodel/segment/"+segment.id} className="py1 px2 block bg-brand-hover text-white-hover no-decoration cursor-pointer">
-                            Edit Segment
+                        <a href={"/admin/datamodel/metric/"+metric.id} className="py1 px2 block bg-brand-hover text-white-hover no-decoration cursor-pointer">
+                            Edit Metric
                         </a>
                     </li>
                     <li>
-                        <a href={"/admin/datamodel/segment/"+segment.id+"/revisions"} className="py1 px2 block bg-brand-hover text-white-hover no-decoration cursor-pointer">
+                        <a href={"/admin/datamodel/metric/"+metric.id+"/revisions"} className="py1 px2 block bg-brand-hover text-white-hover no-decoration cursor-pointer">
                             Revision History
                         </a>
                     </li>
-                    <li className="mt1 p2 border-top bg-error-hover text-error text-white-hover cursor-pointer"  onClick={this.onRemoveSegment.bind(this)}>
-                        Remove Segment
+                    <li className="mt1 p2 border-top bg-error-hover text-error text-white-hover cursor-pointer"  onClick={this.onRemove.bind(this)}>
+                        Retire Metric
                     </li>
                 </ul>
             </PopoverWithTrigger>

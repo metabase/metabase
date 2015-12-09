@@ -77,7 +77,7 @@ export default class AggregationWidget extends Component {
     render() {
         if (this.props.aggregation.length === 0) {
             // we can't do anything without a valid aggregation
-            return;
+            return <span/>;
         }
 
         // aggregation clause.  must have table details available
@@ -103,7 +103,6 @@ export default class AggregationWidget extends Component {
                 </div>
             );
         }
-
         return (
             <div className='Query-section'>
                 <SelectionModule

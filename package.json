@@ -37,6 +37,7 @@
     "redux": "^3.0.4",
     "redux-actions": "^0.8.0",
     "redux-devtools": "^2.1.5",
+    "redux-form": "3.1.0",
     "redux-logger": "^2.1.1",
     "redux-promise": "^0.5.0",
     "redux-thunk": "^1.0.0",

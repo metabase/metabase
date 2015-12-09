@@ -6,15 +6,15 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 export default class UserActionsSelect extends Component {
 
     static propTypes = {
-        aggregation: PropTypes.object.isRequired
+        segment: PropTypes.object.isRequired
     };
 
-    onRemoveAggregation() {
+    onRemove() {
 
     }
 
     render() {
-        let { aggregation } = this.props;
+        let { segment } = this.props;
 
         return (
             <PopoverWithTrigger
@@ -24,17 +24,17 @@ export default class UserActionsSelect extends Component {
             >
                 <ul className="UserActionsSelect">
                     <li>
-                        <a href={"/admin/datamodel/aggregation/"+aggregation.id} className="py1 px2 block bg-brand-hover text-white-hover no-decoration cursor-pointer">
-                            Edit Aggregation
+                        <a href={"/admin/datamodel/segment/"+segment.id} className="py1 px2 block bg-brand-hover text-white-hover no-decoration cursor-pointer">
+                            Edit Segment
                         </a>
                     </li>
                     <li>
-                        <a href={"/admin/datamodel/aggregation/"+aggregation.id+"/revisions"} className="py1 px2 block bg-brand-hover text-white-hover no-decoration cursor-pointer">
+                        <a href={"/admin/datamodel/segment/"+segment.id+"/revisions"} className="py1 px2 block bg-brand-hover text-white-hover no-decoration cursor-pointer">
                             Revision History
                         </a>
                     </li>
-                    <li className="mt1 p2 border-top bg-error-hover text-error text-white-hover cursor-pointer"  onClick={this.onRemoveAggregation.bind(this)}>
-                        Remove Aggregation
+                    <li className="mt1 p2 border-top bg-error-hover text-error text-white-hover cursor-pointer"  onClick={this.onRemove.bind(this)}>
+                        Retire Segment
                     </li>
                 </ul>
             </PopoverWithTrigger>

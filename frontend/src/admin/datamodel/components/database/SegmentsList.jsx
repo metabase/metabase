@@ -3,41 +3,42 @@ import React, { Component, PropTypes } from "react";
 import SegmentItem from "./SegmentItem.jsx";
 
 export default class SegmentsList extends Component {
-    static propTypes = {};
+    static propTypes = {
+        tableMetadata: PropTypes.object.isRequired
+    };
 
     render() {
-        let { table } = this.props;
-
-        table.segments = [
-            { id: "1", name: "Monthly New Users", rule: "Created At, Classification, and Email → Not Employee" },
-            { id: "2", name: "Active Users", rule: "User ID → Last Login, Classification, and Email → Not Employee" },
-            { id: "3", name: "Customers", rule: "Classification, Created At, and User ID → Total Purchases" },
-            { id: "4", name: "Agents", rule: "Classification and Email → Not Employee" }
-        ];
+        let { tableMetadata } = this.props;
 
         return (
-            <div className="mb4">
+            <div className="my3">
                 <div className="flex mb1">
                     <h2 className="px1 text-purple">Segments</h2>
-                    <a className="flex-align-right float-right text-bold text-brand no-decoration" href={"/admin/datamodel/segment/create?table="+table.id}>+ Add a Segment</a>
+                    <a className="flex-align-right float-right text-bold text-brand no-decoration" href={"/admin/datamodel/segment/create?table="+tableMetadata.id}>+ Add a Segment</a>
                 </div>
                 <table className="AdminTable">
                     <thead>
                         <tr>
-                            <th>Name</th>
+                            <th style={{ minWidth: "200px" }}>Name</th>
                             <th className="full">Rule</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {table.segments.map(segment =>
+                        {tableMetadata.segments.map(segment =>
                             <SegmentItem
                                 key={segment.id}
                                 segment={segment}
+                                tableMetadata={tableMetadata}
                             />
                         )}
                     </tbody>
                 </table>
+                { tableMetadata.segments.length === 0 &&
+                    <div className="flex layout-centered m4 text-grey-3">
+                        Create segments to add them to the Filter dropdown in the query builder
+                    </div>
+                }
             </div>
         );
     }

@@ -636,6 +636,27 @@ CoreServices.factory('Pulse', ['$resource', '$cookies', function($resource, $coo
     });
 }]);
 
+CoreServices.factory('Segment', ['$resource', '$cookies', function($resource, $cookies) {
+    return $resource('/api/segment/:segmentId', {}, {
+        create: {
+            url: '/api/segment',
+            method: 'POST'
+        },
+        get: {
+            method: 'GET',
+            params: { segmentId: '@segmentId' },
+        },
+        update: {
+            method: 'PUT',
+            params: { segmentId: '@id' }
+        },
+        delete: {
+            method: 'DELETE',
+            params: { segmentId: '@segmentId' }
+        }
+    });
+}]);
+
 CoreServices.factory('Revision', ['$resource', function($resource) {
     return $resource('/api/revision', {}, {
         list: {
