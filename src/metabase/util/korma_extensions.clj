@@ -13,7 +13,6 @@
   "Interpose OPERATOR between ARGS and wrap the result in parentheses.
 
      (infix \"+\" :x :y :z) -> \"(x + y + z)\";"
-  {:arglists '([operator & args])}
   [operator x y & more]
   (let [x+y (kengine/infix x operator y)]
     (if (seq more)
