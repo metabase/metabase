@@ -9,6 +9,12 @@ import ClickOutComponent from 'react-onclickout';
 var popoverStack = [];
 
 export default class OnClickOutsideWrapper extends ClickOutComponent {
+    constructor(props, context) {
+        super(props, context);
+        this.state = this.state || {};
+        this.state.ready = false;
+    }
+
     componentWillMount() {
         popoverStack.push(this);
     }
@@ -17,6 +23,8 @@ export default class OnClickOutsideWrapper extends ClickOutComponent {
         super.componentDidMount();
         // HACK: set the z-index of the parent element to ensure it's always on top
         React.findDOMNode(this).parentNode.style.zIndex = popoverStack.length + 2; // HACK: add 2 to ensure it's in front of main and nav elements
+        // necessary to ignore click events that fire immediately, causing modals/popovers to close prematurely
+        setTimeout(() => this.setState({ ready: true }), 10);
     }
 
     componentWillUnmount() {
@@ -30,7 +38,7 @@ export default class OnClickOutsideWrapper extends ClickOutComponent {
 
     onClickOut(...args) {
         // only propagate event for the popover on top of the stack
-        if (this === popoverStack[popoverStack.length - 1]) {
+        if (this.state.ready && this === popoverStack[popoverStack.length - 1]) {
             this.props.handleClickOutside(...args);
         }
     }
