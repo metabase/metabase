@@ -176,14 +176,6 @@
          (map :column_name)
          set)))
 
-(def ^:private ^:const field-values-lazy-seq-chunk-size
-  "How many Field values should we fetch at a time for `field-values-lazy-seq`?"
-  ;; Hopefully this is a good balance between
-  ;; 1. Not doing too many DB calls
-  ;; 2. Not running out of mem
-  ;; 3. Not fetching too many results for things like mark-json-field! which will fail after the first result that isn't valid JSON
-  500)
-
 (defn- field-values-lazy-seq [driver {:keys [qualified-name-components table], :as field}]
   (assert (and (map? field)
                (delay? qualified-name-components)
@@ -198,7 +190,7 @@
         fetch-one-page  (fn [page-num]
                           (let [query (as-> (k/select* (korma-entity table)) <>
                                         (k/fields <> (:name field))
-                                        (apply-page driver <> {:page {:items field-values-lazy-seq-chunk-size, :page page-num}}))]
+                                        (apply-page driver <> {:page {:items driver/field-values-lazy-seq-chunk-size, :page page-num}}))]
                             (->> (k/exec query)
                                  (map (keyword (:name field)))
                                  (map transform-fn))))
@@ -208,10 +200,10 @@
         fetch-page      (fn -fetch-page [page-num]
                           (lazy-seq
                            (let [results             (fetch-one-page page-num)
-                                 total-items-fetched (* (inc page-num) field-values-lazy-seq-chunk-size)]
+                                 total-items-fetched (* (inc page-num) driver/field-values-lazy-seq-chunk-size)]
                              (concat results (when (and (seq results)
                                                         (< total-items-fetched driver/max-sync-lazy-seq-results)
-                                                        (= (count results) field-values-lazy-seq-chunk-size))
+                                                        (= (count results) driver/field-values-lazy-seq-chunk-size))
                                                (-fetch-page (inc page-num)))))))]
     (fetch-page 0)))
 

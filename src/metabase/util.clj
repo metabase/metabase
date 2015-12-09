@@ -150,7 +150,7 @@
      (case unit
        :minute-of-hour  (.get cal Calendar/MINUTE)
        :hour-of-day     (.get cal Calendar/HOUR_OF_DAY)
-       ;; 1 = Sunday <-> 6 = Saturday
+       ;; 1 = Sunday <-> 7 = Saturday
        :day-of-week     (.get cal Calendar/DAY_OF_WEEK)
        :day-of-month    (.get cal Calendar/DAY_OF_MONTH)
        :day-of-year     (.get cal Calendar/DAY_OF_YEAR)
@@ -378,7 +378,7 @@
    [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj).
 
      (format-color 'red \"Fatal error: %s\" error-message)"
-  [color-symb format-string & args]
+  ^String [color-symb format-string & args]
   {:pre [(symbol? color-symb)]}
   ((ns-resolve 'colorize.core color-symb) (apply format format-string args)))
 
@@ -388,10 +388,10 @@
    function from `colorize.core`.
 
      (pprint-to-str 'green some-obj)"
-  ([x]
+  (^String [x]
    (when x
      (with-out-str (pprint x))))
-  ([color-symb x]
+  (^String [color-symb x]
    ((ns-resolve 'colorize.core color-symb) (pprint-to-str x))))
 
 (defmacro cond-let
@@ -519,6 +519,18 @@
      (round-to-decimals 2 35.5058998M) -> 35.51"
   ^Double [^Integer decimal-place, ^Number number]
   (double (.setScale (bigdec number) decimal-place BigDecimal/ROUND_HALF_UP)))
+
+(defn string-or-keyword?
+  "Is X a string or a keyword?"
+  [x]
+  (or (string? x) (keyword? x)))
+
+(defn nil-or?
+  "True if X is `nil` or statisfies PRED.
+
+     (nil-or? map? x) -> (or (nil? x) (map? x))"
+  [pred x]
+  (or (nil? x) (map? x)))
 
 
 (require-dox-in-this-namespace)

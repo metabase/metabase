@@ -60,7 +60,9 @@
 (defn- create-new-tables!
   "Create new `Tables` as needed. These are ones that came back from `active-tables` but don't already exist in the DB."
   [database active-tables existing-table->id]
-  (let [existing-tables (set (keys existing-table->id))
+  (let [active-tables   (set (for [table active-tables]
+                               (update table :schema identity))) ; if table comes back like {:name ...} convert it to {:name ..., :schema nil}
+        existing-tables (set (keys existing-table->id))
         new-tables      (set/difference active-tables existing-tables)]
     (when (seq new-tables)
       (log/debug (u/format-color 'blue "Found new tables: %s" (vec (for [{table :name, schema :schema} new-tables]

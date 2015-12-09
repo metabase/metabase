@@ -16,7 +16,7 @@
             [metabase.driver.query-processor :as qp]
             (metabase.driver.query-processor [annotate :as annotate]
                                              [interface :refer [qualified-name-components map->DateTimeField map->DateTimeValue]])
-            [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
+            [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection*]]
             [metabase.models.field :as field]
             [metabase.util :as u])
   (:import java.sql.Timestamp
@@ -39,10 +39,10 @@
 
 (def ^:dynamic ^:private *query* nil)
 
-(defn- log-monger-form [form]
+(defn- log-mongo-pipeline [pipeline]
   (when-not qp/*disable-qp-logging*
     (log/debug (u/format-color 'blue "\nMONGO AGGREGATION PIPELINE:\n%s\n"
-                 (->> form
+                 (->> pipeline
                       (walk/postwalk #(if (symbol? %) (symbol (name %)) %)) ; strip namespace qualifiers from Monger form
                       u/pprint-to-str) "\n"))))
 
@@ -412,7 +412,7 @@
          (string? source-table-name)]}
   (binding [*query* query]
     (let [generated-pipeline (generate-aggregation-pipeline (:query query))]
-      (log-monger-form generated-pipeline)
+      (log-mongo-pipeline generated-pipeline)
       (->> (with-mongo-connection [_ database]
              (mc/aggregate *mongo-connection* source-table-name generated-pipeline
                            :allow-disk-use true))

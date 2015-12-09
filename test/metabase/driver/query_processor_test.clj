@@ -226,7 +226,7 @@
                     :stddev "stddev"
                     :sum    "sum")}))
 
-(defn- format-rows-by
+(defn format-rows-by
   "Format the values in result ROWS with the fns at the corresponding indecies in FORMAT-FNS.
    ROWS can be a sequence or any of the common map formats we expect in QP tests.
 
@@ -626,7 +626,7 @@
   (select-keys (Q aggregate stddev latitude of venues) [:status :error]))
 
 
-;;; ## order_by aggregate fields (SQL-only for the time being)
+;;; ## order_by aggregate fields
 
 ;;; ### order_by aggregate ["count"]
 (qp-expect-with-all-engines

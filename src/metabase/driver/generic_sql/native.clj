@@ -6,14 +6,15 @@
                    db)
             [metabase.db :refer [sel]]
             [metabase.driver :as driver]
-            [metabase.driver.generic-sql :as sql]
+            (metabase.driver [generic-sql :as sql]
+                             [util :as driver-util])
             [metabase.models.database :refer [Database]]
             [metabase.util :as u]))
 
 (defn- value->base-type
   "Attempt to match a value we get back from the DB with the corresponding base-type`."
   [v]
-  (driver/class->base-type (type v)))
+  (driver-util/class->base-type (type v)))
 
 (defn process-and-run
   "Process and run a native (raw SQL) QUERY."

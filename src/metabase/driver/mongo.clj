@@ -10,8 +10,9 @@
                     [db :as mdb]
                     [query :as mq])
             [metabase.driver :as driver]
+            [metabase.driver.util :as driver-util]
             (metabase.driver.mongo [query-processor :as qp]
-                                   [util :refer [*mongo-connection* with-mongo-connection values->base-type]])
+                                   [util :refer [*mongo-connection* with-mongo-connection]])
             [metabase.util :as u]))
 
 (declare driver field-values-lazy-seq)
@@ -20,7 +21,7 @@
 
 (defn- table->column-names
   "Return a set of the column names for TABLE."
-  [table]
+  [_ table]
   (with-mongo-connection [^com.mongodb.DB conn @(:db table)]
     (->> (mc/find-maps conn (:name table))
          (take driver/max-sync-lazy-seq-results)
@@ -30,11 +31,9 @@
 
 (defn- field->base-type
   "Determine the base type of FIELD in the most ghetto way possible, via `values->base-type`."
-  [field]
-  {:pre [(map? field)]
-   :post [(keyword? %)]}
+  [driver field]
   (with-mongo-connection [_ @(:db @(:table field))]
-    (values->base-type (field-values-lazy-seq nil field))))
+    (driver-util/field->base-type driver field)))
 
 
 ;;; ## MongoDriver
@@ -77,13 +76,6 @@
     (set (for [collection (set/difference (mdb/get-collection-names conn) #{"system.indexes"})]
            {:name collection}))))
 
-(defn- active-column-names->type [_ table]
-  (with-mongo-connection [_ @(:db table)]
-    (into {} (for [column-name (table->column-names table)]
-               {(name column-name)
-                (field->base-type {:name                      (name column-name)
-                                   :table                     (delay table)
-                                   :qualified-name-components (delay [(:name table) (name column-name)])})}))))
 
 (defn- field-values-lazy-seq [_ {:keys [qualified-name-components table], :as field}]
   (assert (and (map? field)
@@ -115,16 +107,19 @@
                             (sort-by second)              ; source by count
                             last                          ; take last item (highest count)
                             first                         ; keep just the type
-                            driver/class->base-type))))))
+                            driver-util/class->base-type))))))
 
 (defrecord MongoDriver []
   clojure.lang.Named
   (getName [_] "MongoDB"))
 
 (extend MongoDriver
+  driver-util/IDriverTableToColumnNames
+  {:table->column-names table->column-names}
+
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:active-column-names->type         active-column-names->type
+         {:active-column-names->type         driver-util/ghetto-active-column-names->type
           :active-nested-field-name->type    active-nested-field-name->type
           :active-tables                     active-tables
           :can-connect?                      can-connect?

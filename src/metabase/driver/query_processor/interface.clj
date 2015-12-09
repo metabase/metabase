@@ -2,6 +2,7 @@
   "Definitions of `Field`, `Value`, and other record types present in an expanded query.
    This namespace should just contain definitions of various protocols and record types; associated logic
    should go in `metabase.driver.query-processor.expand`."
+  (:require [metabase.util :as u])
   (:import clojure.lang.Keyword
            java.sql.Timestamp))
 
@@ -85,6 +86,22 @@
 (defrecord RelativeDateTimeValue [^Integer       amount
                                   ^Keyword       unit
                                   ^DateTimeField field])
+
+(defprotocol IDateTimeValue
+  (unit [this]
+    "Get the `unit` associated with a `DateTimeValue` or `RelativeDateTimeValue`.")
+
+  (add-date-time-units [this n]
+    "Return a new `DateTimeValue` or `RelativeDateTimeValue` with N `units` added to it."))
+
+(extend-protocol IDateTimeValue
+  DateTimeValue
+  (unit                [this]   (:unit (:field this)))
+  (add-date-time-units [this n] (assoc this :value (u/relative-date (unit this) n (:value this))))
+
+  RelativeDateTimeValue
+  (unit                [this]   (:unit this))
+  (add-date-time-units [this n] (update this :amount (partial + n))))
 
 
 ;;; # ------------------------------------------------------------ PLACEHOLDER TYPES: FIELDPLACEHOLDER + VALUEPLACEHOLDER ------------------------------------------------------------

@@ -39,7 +39,8 @@
    Calls to `db` and `id` use this value."
   [db & body]
   `(let [db# ~db]
-     (binding [*get-db* (constantly db#)]
+     (binding [*get-db*      (constantly db#)
+               *data-loader* (driver/engine->driver (:engine db#))]
        ~@body)))
 
 (defn format-name [nm]
