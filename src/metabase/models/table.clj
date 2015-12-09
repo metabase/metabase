@@ -56,3 +56,12 @@
     (db/cascade-delete Field :table_id id)))
 
 (extend-ICanReadWrite TableEntity :read :always, :write :superuser)
+
+
+;; ## Persistence Functions
+
+(defn table-id->database-id
+  "Retrieve the `Database` ID for the given table-id."
+  [table-id]
+  {:pre [(integer? table-id)]}
+  (db/sel :one :field [Table :db_id] :id table-id))

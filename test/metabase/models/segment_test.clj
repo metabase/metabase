@@ -194,5 +194,5 @@
                                            :name        "Droids in the desert"
                                            :description "Lookin' for a jedi"
                                            :definition  {}}]
-        (delete-segment id (user->id :crowberto))
+        (delete-segment id (user->id :crowberto) "revision message")
         (segment-details (retrieve-segment id))))))

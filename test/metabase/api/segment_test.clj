@@ -105,6 +105,13 @@
 (expect {:errors {:name "field is a required param."}}
   ((user->client :crowberto) :put 400 "segment/1" {}))
 
+(expect {:errors {:revision_message "field is a required param."}}
+  ((user->client :crowberto) :put 400 "segment/1" {:name "abc"}))
+
+(expect {:errors {:revision_message "Invalid value '' for 'revision_message': value must be a non-empty string."}}
+  ((user->client :crowberto) :put 400 "segment/1" {:name             "abc"
+                                                   :revision_message ""}))
+
 (expect {:errors {:definition "field is a required param."}}
   ((user->client :crowberto) :put 400 "segment/1" {:name             "abc"
                                                    :revision_message "123"}))
@@ -149,8 +156,16 @@
 
 ;; test security.  requires superuser perms
 (expect "You don't have permissions to do that."
-  ((user->client :rasta) :delete 403 "segment/1"))
+  ((user->client :rasta) :delete 403 "segment/1" {:revision_message "yeeeehaw!"}))
 
+
+;; test validations
+(expect {:errors {:revision_message "field is a required param."}}
+  ((user->client :crowberto) :delete 400 "segment/1" {:name "abc"}))
+
+(expect {:errors {:revision_message "Invalid value '' for 'revision_message': value must be a non-empty string."}}
+  ((user->client :crowberto) :delete 400 "segment/1" {:name             "abc"
+                                                      :revision_message ""}))
 
 (expect
   [{:success true}
@@ -174,11 +189,16 @@
                                            :name        "Droids in the desert"
                                            :description "Lookin' for a jedi"
                                            :definition  {}}]
-        [((user->client :crowberto) :delete 200 (format "segment/%d" id))
+        [((user->client :crowberto) :delete 200 (format "segment/%d" id) {:revision_message "carry on"})
          (segment-response (segment/retrieve-segment id))]))))
 
 
 ;; ## GET /api/segment/:id
+
+;; test security.  requires superuser perms
+(expect "You don't have permissions to do that."
+  ((user->client :rasta) :get 403 "segment/1"))
+
 
 (expect
   {:name         "One Segment to rule them all, one segment to define them"
@@ -207,6 +227,11 @@
 
 
 ;; ## GET /api/segment/:id/revisions
+
+;; test security.  requires superuser perms
+(expect "You don't have permissions to do that."
+  ((user->client :rasta) :get 403 "segment/1/revisions"))
+
 
 (expect
   [{:is_reversion false
@@ -252,6 +277,18 @@
 
 
 ;; ## POST /api/segment/:id/revert
+
+;; test security.  requires superuser perms
+(expect "You don't have permissions to do that."
+  ((user->client :rasta) :post 403 "segment/1/revert" {:revision_id 56}))
+
+
+(expect {:errors {:revision_id "field is a required param."}}
+  ((user->client :crowberto) :post 400 "segment/1/revert" {}))
+
+(expect {:errors {:revision_id "Invalid value 'foobar' for 'revision_id': value must be an integer."}}
+  ((user->client :crowberto) :post 400 "segment/1/revert" {:revision_id "foobar"}))
+
 
 (expect
   [;; the api response
