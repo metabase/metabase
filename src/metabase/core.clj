@@ -113,7 +113,7 @@
   (task/stop-scheduler!)
   (log/info "Metabase Shutdown COMPLETE"))
 
-(defn init
+(defn init!
   "General application initialization function which should be run once at application startup."
   []
   (log/info (format "Starting Metabase version %s..." (config/mb-version-string)))
@@ -125,6 +125,7 @@
 
   ;; Load up all of our Database drivers, which are used for app db work
   (driver/find-and-load-drivers!)
+  (reset! metabase-initialization-progress 0.4)
 
   ;; startup database.  validates connection & runs any necessary migrations
   (db/setup-db :auto-migrate (config/config-bool :mb-db-automigrate))
@@ -157,9 +158,8 @@
       ;; otherwise update if appropriate
       (sample-data/update-sample-dataset-if-needed!)))
 
-  (log/info "Metabase Initialization COMPLETE")
   (initialization-complete!)
-  true)
+  (log/info "Metabase Initialization COMPLETE"))
 
 
 ;;; ## ---------------------------------------- Jetty (Web) Server ----------------------------------------
@@ -209,13 +209,14 @@
     ;; launch embedded webserver async
     (start-jetty)
     ;; run our initialization process
-    (init)
+    (init!)
     ;; Ok, now block forever while Jetty does its thing
     (when (config/config-bool :mb-jetty-join)
       (.join ^org.eclipse.jetty.server.Server @jetty-instance))
     (catch Exception e
       (.printStackTrace e)
-      (log/error "Metabase Initialization FAILED: " (.getMessage e)))))
+      (log/error "Metabase Initialization FAILED: " (.getMessage e))
+      (System/exit 1))))
 
 (defn- run-cmd [cmd & args]
   (let [cmd->fn {:migrate (fn [direction]
