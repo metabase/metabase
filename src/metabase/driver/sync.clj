@@ -84,12 +84,12 @@
     (validate-active-tables active-tables)
 
     (mark-inactive-tables! database active-tables existing-table->id)
-    (create-new-tables!    database active-tables existing-table->id))
+    (create-new-tables!    database active-tables existing-table->id)
 
-  (fetch-and-sync-database-active-tables! driver database)
+    (fetch-and-sync-database-active-tables! driver database)
 
-  ;; Ok, now if we had a _metabase_metadata table from earlier we can go ahead and sync from it
-  (sync-metabase-metadata-table! driver database))
+    ;; Ok, now if we had a _metabase_metadata table from earlier we can go ahead and sync from it
+    (sync-metabase-metadata-table! driver database active-tables)))
 
 (defn- -sync-database-with-tracking! [driver database]
   (let [start-time    (System/currentTimeMillis)
@@ -125,8 +125,8 @@
    `keypath` is of the form `table-name.key` or `table-name.field-name.key`, where `key` is the name of some property of `Table` or `Field`.
 
    This functionality is currently only used by the Sample Dataset. In order to use this functionality, drivers must implement optional fn `:table-rows-seq`."
-  [driver database]
-  (doseq [{table-name :name} (driver/active-tables driver database)]
+  [driver database active-tables]
+  (doseq [{table-name :name} active-tables]
     (when (= (s/lower-case table-name) "_metabase_metadata")
       (doseq [{:keys [keypath value]} (driver/table-rows-seq driver database table-name)]
         (let [[_ table-name field-name k] (re-matches #"^([^.]+)\.(?:([^.]+)\.)?([^.]+)$" keypath)]

@@ -108,7 +108,8 @@
 (extend SQLiteDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:date-interval  date-interval
+         {:active-tables  sql/post-filtered-active-tables
+          :date-interval  date-interval
           :details-fields (constantly [{:name         "db"
                                         :display-name "Filename"
                                         :placeholder  "/home/camsaul/toucan_sightings.sqlite 😋"

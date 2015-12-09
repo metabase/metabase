@@ -198,7 +198,8 @@
 (extend H2Driver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:date-interval                     date-interval
+         {:active-tables                     sql/post-filtered-active-tables
+          :date-interval                     date-interval
           :details-fields                    (constantly [{:name         "db"
                                                            :display-name "Connection String"
                                                            :placeholder  "file:/Users/camsaul/bird_sightings/toucans;AUTO_SERVER=TRUE"
