@@ -1,9 +1,7 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
-  (:require [clojure.core.reducers :as r]
-            [clojure.set :as set]
+  (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [colorize.core :as color]
             [medley.core :as m]
             (monger [collection :as mc]
                     [command :as cmd]

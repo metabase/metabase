@@ -9,7 +9,7 @@
 ;; Define a setting which captures our Slack api token
 (defsetting slack-token "Slack API bearer token obtained from https://api.slack.com/web#authentication")
 
-(def ^:const slack-api-baseurl "https://slack.com/api")
+(def ^:private ^:const slack-api-baseurl "https://slack.com/api")
 
 
 (defn slack-configured?
@@ -59,13 +59,13 @@
   "Calls Slack api `channels.list` function and returns the list of available channels."
   []
   (-> (slack-api-get (slack-token) "channels.list" {:exclude_archived 1})
-      (handle-api-response)))
+      handle-api-response))
 
 (defn users-list
   "Calls Slack api `users.list` function and returns the list of available users."
   []
   (-> (slack-api-get (slack-token) "users.list")
-      (handle-api-response)))
+      handle-api-response))
 
 (defn files-upload
   "Calls Slack api `files.upload` function and returns the url of the uploaded file."
@@ -90,4 +90,4 @@
                                                          :icon_url    "http://static.metabase.com/mb_slack_avatar.png"
                                                          :text        text
                                                          :attachments attachments})
-       (handle-api-response))))
+       handle-api-response)))

@@ -8,7 +8,7 @@
             [metabase.email :as email]
             [metabase.models.setting :as setting]))
 
-(defonce ^:private ^:const mb-to-smtp-settings
+(def ^:private ^:const mb-to-smtp-settings
   {:email-smtp-host     :host
    :email-smtp-username :user
    :email-smtp-password :pass
