@@ -84,6 +84,62 @@ describe('Query', () => {
             Query.cleanQuery(query);
             expect(query.order_by).toBe(undefined);
         });
+
+        it('should not remove sort clauses with foreign keys on fields appearing in breakout', () => {
+            let query = {
+                source_table: 0,
+                aggregation: ["count"],
+                breakout: [["fk->", 1, 2]],
+                filter: [],
+                order_by: [
+                    [["fk->", 1, 2], "ascending"]
+                ]
+            };
+            Query.cleanQuery(query);
+            expect(JSON.stringify(query.order_by)).toBe(JSON.stringify([[["fk->", 1, 2], "ascending"]]));
+        });
+
+        it('should not remove sort clauses with datetime_fields on fields appearing in breakout', () => {
+            let query = {
+                source_table: 0,
+                aggregation: ["count"],
+                breakout: [["datetime_field", 1, "as", "week"]],
+                filter: [],
+                order_by: [
+                    [["datetime_field", 1, "as", "week"], "ascending"]
+                ]
+            };
+            Query.cleanQuery(query);
+            expect(JSON.stringify(query.order_by)).toBe(JSON.stringify([[["datetime_field", 1, "as", "week"], "ascending"]]));
+        });
+
+        it('should replace order_by clauses with the exact matching datetime_fields version in the breakout', () => {
+            let query = {
+                source_table: 0,
+                aggregation: ["count"],
+                breakout: [["datetime_field", 1, "as", "week"]],
+                filter: [],
+                order_by: [
+                    [1, "ascending"]
+                ]
+            };
+            Query.cleanQuery(query);
+            expect(JSON.stringify(query.order_by)).toBe(JSON.stringify([[["datetime_field", 1, "as", "week"], "ascending"]]));
+        });
+
+        it('should replace order_by clauses with the exact matching fk-> version in the breakout', () => {
+            let query = {
+                source_table: 0,
+                aggregation: ["count"],
+                breakout: [["fk->", 1, 2]],
+                filter: [],
+                order_by: [
+                    [2, "ascending"]
+                ]
+            };
+            Query.cleanQuery(query);
+            expect(JSON.stringify(query.order_by)).toBe(JSON.stringify([[["fk->", 1, 2], "ascending"]]));
+        });
     });
 
     describe('removeDimension', () => {

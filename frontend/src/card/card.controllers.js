@@ -219,24 +219,16 @@ CardControllers.controller('CardDetail', [
                 renderAll();
             },
             setSortFn: function(fieldId) {
-                // for now, just put this into the query and re-run
-                var sortField = fieldId;
-                if (fieldId === "agg") {
-                    sortField = ["aggregation", 0];
-                }
-
                 // NOTE: we only allow this for structured type queries & we only allow sorting by a single column
                 if (card.dataset_query.type === "query") {
-                    var sortClause = [sortField, "ascending"];
-                    if (card.dataset_query.query.order_by !== undefined &&
-                            card.dataset_query.query.order_by.length > 0 &&
-                            card.dataset_query.query.order_by[0].length > 0 &&
-                            card.dataset_query.query.order_by[0][1] === "ascending" &&
-                            (card.dataset_query.query.order_by[0][0] === sortField ||
-                                (Array.isArray(card.dataset_query.query.order_by[0][0]) &&
-                                    Array.isArray(sortField)))) {
+                    var sortClause = [fieldId, "ascending"];
+                    if (card.dataset_query.query.order_by &&
+                        card.dataset_query.query.order_by.length > 0 &&
+                        card.dataset_query.query.order_by[0].length > 0 &&
+                        card.dataset_query.query.order_by[0][1] === "ascending" &&
+                        Query.isSameField(card.dataset_query.query.order_by[0][0], fieldId)) {
                         // someone triggered another sort on the same column, so flip the sort direction
-                        sortClause = [sortField, "descending"];
+                        sortClause = [fieldId, "descending"];
                     }
 
                     // set clause

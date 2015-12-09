@@ -132,8 +132,15 @@ export default class QueryVisualizationTable extends Component {
         return (this.props.setSortFn !== undefined);
     }
 
-    setSort(fieldId) {
-        this.props.setSortFn(fieldId);
+    setSort(column) {
+        if (column.id == null) {
+            // ICK.  this is hacky for dealing with aggregations.  need something better
+            this.props.setSortFn(["aggregation", 0]);
+        } else if (column.unit != null) {
+            this.props.setSortFn(["datetime_field", column.id, "as", column.unit]);
+        } else {
+            this.props.setSortFn(column.id);
+        }
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Sort', 'table column');
     }
@@ -243,11 +250,8 @@ export default class QueryVisualizationTable extends Component {
         }
 
         if (this.isSortable()) {
-            // ICK.  this is hacky for dealing with aggregations.  need something better
-            var fieldId = (column.id) ? column.id : "agg";
-
             return (
-                <div key={columnIndex} className={headerClasses} onClick={this.setSort.bind(this, fieldId)}>
+                <div key={columnIndex} className={headerClasses} onClick={this.setSort.bind(this, column)}>
                     <span>
                         {colVal}
                     </span>
