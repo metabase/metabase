@@ -1,16 +1,14 @@
 import React, { Component, PropTypes } from "react";
-import { reduxForm } from "redux-form";
-
-import { segmentFormSelectors } from "../selectors";
 
 import FormLabel from "../components/FormLabel.jsx";
 import FormInput from "../components/FormInput.jsx";
 import FormTextArea from "../components/FormTextArea.jsx";
 import Fieldset from "../components/FieldSet.jsx";
-
 import SegmentBuilder from "../components/segment/SegmentBuilder.jsx";
-
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+
+import { segmentFormSelectors } from "../selectors";
+import { reduxForm } from "redux-form";
 
 import cx from "classnames";
 

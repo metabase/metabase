@@ -1,26 +1,30 @@
 import React, { Component, PropTypes } from "react";
-import { connect } from "react-redux";
+
+import SegmentForm from "./SegmentForm.jsx";
 
 import { segmentEditSelectors } from "../selectors";
 import * as actions from "../actions";
 
-import SegmentForm from "./SegmentForm.jsx";
+import { connect } from "react-redux";
 
 @connect(segmentEditSelectors, actions)
 export default class SegmentApp extends Component {
-    async componentDidMount() {
-        let { tableId, segmentId } = this.props;
+    async componentWillMount() {
+        const { params } = this.props;
 
-        if (segmentId) {
+        let tableId;
+        if (params.id) {
+            const segmentId = parseInt(params.id);
             this.props.setCurrentSegmentId(segmentId);
-            let { payload: segment } = await this.props.getSegment({ segmentId });
+            const { payload: segment } = await this.props.getSegment({ segmentId });
             tableId = segment.table_id;
-        } else if (tableId) {
+        } else if (location.query.table) {
+            tableId = parseInt(location.query.table);
             this.props.setCurrentSegmentId(null);
             this.props.newSegment({ id: null, table_id: tableId, definition: { filter: [] } });
         }
 
-        if (tableId) {
+        if (tableId != null) {
             this.props.loadTableMetadata(tableId);
         }
     }
@@ -32,7 +36,8 @@ export default class SegmentApp extends Component {
         } else {
             await this.props.createSegment(segment);
         }
-        this.props.onChangeLocation("/admin/datamodel/database/" + tableMetadata.db_id + "/table/" + tableMetadata.id);
+
+        this.onLocationChange("/admin/datamodel/database/" + tableMetadata.db_id + "/table/" + tableMetadata.id);
     }
 
     render() {
@@ -44,5 +49,13 @@ export default class SegmentApp extends Component {
                 />
             </div>
         );
+    }
+
+    // HACK: figure out a better way to do this that works with both redux-router and Angular's router
+    onLocationChange(path) {
+        const el = angular.element(document.querySelector("body"));
+        el.scope().$apply(function() {
+            el.injector().get("$location").path(path);
+        });
     }
 }
