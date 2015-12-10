@@ -1,13 +1,14 @@
 import React, { Component, PropTypes } from "react";
 
-import SegmentActionSelect from "./SegmentActionSelect.jsx";
+import ObjectActionSelect from "../ObjectActionSelect.jsx";
 
 import Query from "metabase/lib/query";
 
 export default class SegmentItem extends Component {
     static propTypes = {
         segment: PropTypes.object.isRequired,
-        tableMetadata: PropTypes.object.isRequired
+        tableMetadata: PropTypes.object.isRequired,
+        onRetire: PropTypes.func.isRequired
     };
 
     render() {
@@ -29,7 +30,11 @@ export default class SegmentItem extends Component {
                     Filtered by {rule}
                 </td>
                 <td className="px1 text-centered">
-                    <SegmentActionSelect segment={segment}/>
+                    <ObjectActionSelect
+                        object={segment}
+                        objectType="segment"
+                        onRetire={this.props.onRetire}
+                    />
                 </td>
             </tr>
         )

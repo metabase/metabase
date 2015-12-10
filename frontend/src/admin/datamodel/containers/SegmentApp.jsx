@@ -10,7 +10,7 @@ import { connect } from "react-redux";
 @connect(segmentEditSelectors, actions)
 export default class SegmentApp extends Component {
     async componentWillMount() {
-        const { params } = this.props;
+        const { params, location } = this.props;
 
         let tableId;
         if (params.id) {

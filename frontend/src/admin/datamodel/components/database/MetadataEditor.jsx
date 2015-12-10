@@ -79,6 +79,8 @@ export default class MetadataEditor extends Component {
                         updateField={this.updateField}
                         updateFieldSpecialType={this.updateFieldSpecialType}
                         updateFieldTarget={this.updateFieldTarget}
+                        onRetireSegment={this.props.onRetireSegment}
+                        onRetireMetric={this.props.onRetireMetric}
                     />
                 );
             }

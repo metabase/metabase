@@ -1,10 +1,11 @@
 import React, { Component, PropTypes } from "react";
 
-import MetricActionSelect from "./MetricActionSelect.jsx";
+import ObjectActionSelect from "../ObjectActionSelect.jsx";
 
 export default class MetricItem extends Component {
     static propTypes = {
         metric: PropTypes.object.isRequired,
+        onRetire: PropTypes.func.isRequired
     };
 
     render() {
@@ -19,7 +20,11 @@ export default class MetricItem extends Component {
                     {metric.formula}
                 </td>
                 <td className="px1 text-centered">
-                    <MetricActionSelect metric={metric}/>
+                    <ObjectActionSelect
+                        object={metric}
+                        objectType="metric"
+                        onRetire={this.props.onRetire}
+                    />
                 </td>
             </tr>
         )

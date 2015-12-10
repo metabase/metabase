@@ -10,8 +10,8 @@ angular
     'metabase.directives',
     'metabase.forms'
 ])
-.controller('MetadataEditor', ['$scope', '$route', '$routeParams', '$location', '$q', '$timeout', 'databases', 'Metabase', 'ForeignKey',
-function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metabase, ForeignKey) {
+.controller('MetadataEditor', ['$scope', '$route', '$routeParams', '$location', '$q', '$timeout', 'databases', 'Metabase', 'ForeignKey', 'Segment',
+function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metabase, ForeignKey, Segment) {
     // inject the React component to be rendered
     $scope.MetadataEditor = MetadataEditor;
 
@@ -57,7 +57,7 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
                 await loadDatabaseMetadata();
                 $timeout(() => $scope.$digest());
             } catch (error) {
-                console.warn("error loading tables", error)
+                console.error("error loading tables", error)
             }
         }
     }, true);
@@ -181,4 +181,13 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
             return ForeignKey.delete({ 'fkID': fk.id }).$promise;
         });
     }
+
+    $scope.onRetireSegment = async function(segment) {
+        await Segment.delete(segment).$promise;
+        loadDatabaseMetadata();
+    };
+
+    $scope.onRetireMetric = function(metric) {
+
+    };
 }]);
