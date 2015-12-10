@@ -3,8 +3,6 @@ import { handleActions } from "redux-actions";
 
 import { momentifyTimestamps } from "metabase/lib/redux";
 
-export { reducer as form } from "redux-form";
-
 import {
     NEW_SEGMENT,
     GET_SEGMENT,
@@ -17,10 +15,10 @@ import {
 } from "./actions";
 
 export const segments = handleActions({
-    [NEW_SEGMENT]:    { next: (state, { payload }) => ({ ...state, [payload.id]: momentifyTimestamps(payload), revision_message: undefined }) },
-    [GET_SEGMENT]:    { next: (state, { payload }) => ({ ...state, [payload.id]: momentifyTimestamps(payload), revision_message: undefined }) },
-    [CREATE_SEGMENT]: { next: (state, { payload }) => ({ ...state, [payload.id]: momentifyTimestamps(payload), revision_message: undefined }) },
-    [UPDATE_SEGMENT]: { next: (state, { payload }) => ({ ...state, [payload.id]: momentifyTimestamps(payload), revision_message: undefined }) },
+    [NEW_SEGMENT]:    { next: (state, { payload }) => ({ ...state, [payload.id]: momentifyTimestamps(payload) }) },
+    [GET_SEGMENT]:    { next: (state, { payload }) => ({ ...state, [payload.id]: momentifyTimestamps(payload) }) },
+    [CREATE_SEGMENT]: { next: (state, { payload }) => ({ ...state, [payload.id]: momentifyTimestamps(payload) }) },
+    [UPDATE_SEGMENT]: { next: (state, { payload }) => ({ ...state, [payload.id]: momentifyTimestamps(payload) }) },
     [DELETE_SEGMENT]: { next: (state, { payload }) => { state = { ...state }; delete state[payload.id]; return state; }}
 }, {});
 

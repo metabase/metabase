@@ -3,7 +3,10 @@ import React, { Component, PropTypes } from "react";
 import MetricItem from "./MetricItem.jsx";
 
 export default class MetricsList extends Component {
-    static propTypes = {};
+    static propTypes = {
+        tableMetadata: PropTypes.object.isRequired,
+        onRetire: PropTypes.func.isRequired
+    };
 
     render() {
         let { tableMetadata } = this.props;
@@ -30,6 +33,7 @@ export default class MetricsList extends Component {
                                 key={metric.id}
                                 metric={metric}
                                 tableMetadata={tableMetadata}
+                                onRetire={this.props.onRetire}
                             />
                         )}
                     </tbody>

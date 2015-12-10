@@ -1,14 +1,15 @@
 
 import { createSelector } from 'reselect';
 
-const segmentsSelector         = state => state.segments;
-const currentSegmentIdSelector = state => state.currentSegmentId;
-const tableMetadataSelector    = state => state.tableMetadata;
-const resultCountSelector      = state => state.resultCount;
+const segmentsSelector         = state => state.datamodel.segments;
+const currentSegmentIdSelector = state => state.datamodel.currentSegmentId;
+const tableMetadataSelector    = state => state.datamodel.tableMetadata;
+const resultCountSelector      = state => state.datamodel.resultCount;
 
-// EDIT
 export const segmentEditSelectors = createSelector(
-    [segmentsSelector, currentSegmentIdSelector, tableMetadataSelector],
+    segmentsSelector,
+    currentSegmentIdSelector,
+    tableMetadataSelector,
     (segments, currentSegmentId, tableMetadata) => ({
         segment: segments[currentSegmentId],
         tableMetadata
@@ -16,6 +17,11 @@ export const segmentEditSelectors = createSelector(
 );
 
 export const segmentFormSelectors = createSelector(
-    [segmentEditSelectors, tableMetadataSelector, resultCountSelector],
-    ({ segment }, tableMetadata, resultCount) => ({ initialValues: segment, tableMetadata, resultCount })
+    segmentEditSelectors,
+    resultCountSelector,
+    ({ segment, tableMetadata }, resultCount) => ({
+        initialValues: segment,
+        tableMetadata,
+        resultCount
+    })
 );

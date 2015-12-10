@@ -1,0 +1,55 @@
+import React, { Component, PropTypes } from "react";
+
+import ActionButton from "metabase/components/ActionButton.jsx";
+import ModalContent from "metabase/components/ModalContent.jsx";
+
+import { capitalize } from "metabase/lib/formatting";
+import cx from "classnames";
+
+export default class ObjectRetireModal extends Component {
+    async handleSubmit() {
+        const { object } = this.props;
+        await this.props.onRetire({
+            segmentId: object.id,
+            revision_message: React.findDOMNode(this.refs.revision_message).value
+        });
+        this.props.onClose();
+    }
+
+    render() {
+        const { objectType } = this.props;
+        let invalid = false;
+        return (
+            <ModalContent
+                title={"Retire This \"" + capitalize(objectType) + "\""}
+                closeFn={this.props.onClose}
+            >
+                <form className="flex flex-column flex-full">
+                    <div className="Form-inputs pb4">
+                        <p>Saved questions and other things that depend on this {{objectType}} will continue to work, but this {{objectType}} will no lgoner by selectable from the query builder.</p>
+                        <p>If you're sure you want to retire this {{objectType}}, please write a quick explanation of why it's being retired:</p>
+                        <textarea
+                            ref="revision_message"
+                            className="input full text-default h4"
+                            placeholder={"This will show up in the activity feed and in an email that will be sent to anyone on your team who created something that uses this " + objectType + "."}
+                        />
+                    </div>
+
+                    <div className="Form-actions">
+                        <ActionButton
+                            actionFn={this.handleSubmit.bind(this)}
+                            className={cx("Button", { "Button--primary": !invalid, "disabled": invalid })}
+                            normalText="Retire"
+                            activeText="Retiring…"
+                            failedText="Failed"
+                            successText="Success"
+                        />
+                        <a className="Button Button--borderless" onClick={this.props.onClose}>
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </ModalContent>
+        );
+    }
+}

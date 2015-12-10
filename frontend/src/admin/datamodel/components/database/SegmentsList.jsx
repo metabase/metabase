@@ -4,7 +4,8 @@ import SegmentItem from "./SegmentItem.jsx";
 
 export default class SegmentsList extends Component {
     static propTypes = {
-        tableMetadata: PropTypes.object.isRequired
+        tableMetadata: PropTypes.object.isRequired,
+        onRetire: PropTypes.func.isRequired
     };
 
     render() {
@@ -30,6 +31,7 @@ export default class SegmentsList extends Component {
                                 key={segment.id}
                                 segment={segment}
                                 tableMetadata={tableMetadata}
+                                onRetire={this.props.onRetire}
                             />
                         )}
                     </tbody>
