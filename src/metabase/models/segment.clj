@@ -145,4 +145,5 @@
   revision/IRevisioned
   {:serialize-instance serialize-instance
    :revert-to-revision revision/default-revert-to-revision
-   :describe-diff      revision/default-describe-diff})
+   :diff-map           revision/default-diff-map
+   :diff-str           revision/default-diff-str})

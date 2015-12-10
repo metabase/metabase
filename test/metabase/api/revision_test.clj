@@ -64,9 +64,9 @@
 ;  2. :user is hydrated
 ;  3. :description is calculated
 
-;; case with no revisions
+;; case with no revisions (maintains backwards compatibility with old installs before revisions)
 (expect-let [{:keys [id] :as card} (create-test-card)]
-  [{:user {}, :description "First revision."}]
+  [{:user {}, :diff nil, :description nil}]
   (get-revisions :card id))
 
 ;; case with single creation revision
@@ -75,7 +75,8 @@
     :is_creation  true
     :message      nil
     :user         @rasta-revision-info
-    :description  "First revision."}]
+    :diff         nil
+    :description  nil}]
   (do
     (create-card-revision card true)
     (get-revisions :card id)))
@@ -86,17 +87,22 @@
     :is_creation  false
     :message      "because i wanted to"
     :user         @rasta-revision-info
-    :description  (format "reverted to an earlier revision and renamed this Card from \"something else\" to \"%s\"." name)}
+    :diff         {:before {:name "something else"}
+                   :after  {:name name}}
+    :description  (format "renamed this Card from \"something else\" to \"%s\"." name)}
    {:is_reversion false
     :is_creation  false
     :message      nil
     :user         @rasta-revision-info
+    :diff         {:before {:name name}
+                   :after  {:name "something else"}}
     :description  (format "renamed this Card from \"%s\" to \"something else\"." name)}
    {:is_reversion false
     :is_creation  true
     :message      nil
     :user         @rasta-revision-info
-    :description  "First revision."}]
+    :diff         nil
+    :description  nil}]
   (do
     (create-card-revision card true)
     (create-card-revision (assoc card :name "something else") false)
@@ -116,62 +122,84 @@
     :is_creation  true
     :message      nil
     :user         @rasta-revision-info
-    :description  "First revision."}]
+    :diff         nil
+    :description  nil}]
   (do
     (create-dashboard-revision dash true)
     (get-revisions :dashboard id)))
 
+(defn- strip-ids
+  [objects]
+  (mapv #(dissoc % :id) objects))
+
 ;; dashboard with card add then delete
-(expect-let [{:keys [id] :as dash} (create-test-dashboard)
-             card                  (create-test-card)]
+(expect-let [{:keys [id] :as dash}   (create-test-dashboard)
+             {card-id :id, :as card} (create-test-card)]
   [{:is_reversion false
     :is_creation  false
     :message      nil
     :user         @rasta-revision-info
+    :diff         {:before {:cards [{:sizeX 2, :sizeY 2, :row nil, :col nil, :card_id card-id}]},
+                   :after  {:cards nil}}
     :description  "removed a card."}
    {:is_reversion false
     :is_creation  false
     :message      nil
     :user         @rasta-revision-info
+    :diff         {:before {:cards nil},
+                   :after  {:cards [{:sizeX 2, :sizeY 2, :row nil, :col nil, :card_id card-id}]}}
     :description  "added a card."}
    {:is_reversion false
     :is_creation  true
     :message      nil
     :user         @rasta-revision-info
-    :description  "First revision."}]
+    :diff         nil
+    :description  nil}]
   (do
     (create-dashboard-revision dash true)
     (let [dashcard (db/ins DashboardCard :dashboard_id id :card_id (:id card))]
       (create-dashboard-revision dash false)
       (db/del DashboardCard :id (:id dashcard)))
     (create-dashboard-revision dash false)
-    (get-revisions :dashboard id)))
+    (->> (get-revisions :dashboard id)
+         (mapv (fn [rev]
+                 (if-not (:diff rev) rev
+                                     (if (get-in rev [:diff :before :cards])
+                                       (update-in rev [:diff :before :cards] strip-ids)
+                                       (update-in rev [:diff :after :cards] strip-ids))))))))
 
 
 ;;; # POST /revision/revert
 
-(expect-let [{:keys [id] :as dash} (create-test-dashboard)
-             card                  (create-test-card)]
+(expect-let [{:keys [id] :as dash}   (create-test-dashboard)
+             {card-id :id, :as card} (create-test-card)]
   [{:is_reversion true
     :is_creation  false
     :message      nil
     :user         @rasta-revision-info
-    :description  "reverted to an earlier revision and added a card."}
+    :diff         {:before {:cards nil}
+                   :after  {:cards [{:sizeX 2, :sizeY 2, :row nil, :col nil, :card_id card-id}]}}
+    :description  "added a card."}
    {:is_reversion false
     :is_creation  false
     :message      nil
     :user         @rasta-revision-info
+    :diff         {:before {:cards [{:sizeX 2, :sizeY 2, :row nil, :col nil, :card_id card-id}]}
+                   :after  {:cards nil}}
     :description "removed a card."}
    {:is_reversion false
     :is_creation  false
     :message      nil
     :user         @rasta-revision-info
+    :diff         {:before {:cards nil}
+                   :after  {:cards [{:sizeX 2, :sizeY 2, :row nil, :col nil, :card_id card-id}]}}
     :description "added a card."}
    {:is_reversion false
     :is_creation  true
     :message      nil
     :user         @rasta-revision-info
-    :description "First revision."}]
+    :diff         nil
+    :description  nil}]
   (do
     (create-dashboard-revision dash true)
     (let [dashcard (db/ins DashboardCard :dashboard_id id :card_id (:id card))]
@@ -181,4 +209,9 @@
     (let [[_ {previous-revision-id :id}] (revisions Dashboard id)]
       ;; Revert to the previous revision
       ((user->client :rasta) :post 200 "revision/revert", {:entity :dashboard, :id id, :revision_id previous-revision-id}))
-    (get-revisions :dashboard id)))
+    (->> (get-revisions :dashboard id)
+         (mapv (fn [rev]
+                 (if-not (:diff rev) rev
+                                     (if (get-in rev [:diff :before :cards])
+                                       (update-in rev [:diff :before :cards] strip-ids)
+                                       (update-in rev [:diff :after :cards] strip-ids))))))))

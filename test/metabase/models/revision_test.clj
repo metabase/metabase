@@ -38,8 +38,11 @@
     (assoc obj :serialized true))
   (revert-to-revision [_ _ serialized-instance]
     (reset! reverted-to (dissoc serialized-instance :serialized)))
-  (describe-diff [_ o1 o2]
-    (str "BEFORE=" o1 ",AFTER=" o2)))
+  (diff-map [_ o1 o2]
+    {:o1 o1, :o2 o2})
+  (diff-str [_ o1 o2]
+    (when o1
+      (str "BEFORE=" o1 ",AFTER=" o2))))
 
 (defn- push-fake-revision [card-id & {:keys [message] :as object}]
   (push-revision
@@ -48,6 +51,39 @@
     :user-id  (user->id :rasta)
     :object   (dissoc object :message)
     :message  message))
+
+
+;;; # Default diff-* implementations
+
+;; Check that pattern matching allows specialization and that string only reflects the keys that have changed
+(expect "renamed this Card from \"Tips by State\" to \"Spots by State\"."
+  (default-diff-str Card
+                    {:name "Tips by State", :private false}
+                    {:name "Spots by State", :private false}))
+
+(expect "made this Card private."
+  (default-diff-str Card
+                    {:name "Spots by State", :private false}
+                    {:name "Spots by State", :private true}))
+
+
+;; Check the fallback sentence fragment for key without specialized sentence fragment
+(expect "changed priority from \"Important\" to \"Regular\"."
+  (default-diff-str Card
+                    {:priority "Important"}
+                    {:priority "Regular"}))
+
+;; Check that 2 changes are handled nicely
+(expect "made this Card private and renamed it from \"Tips by State\" to \"Spots by State\"."
+  (default-diff-str Card
+                    {:name "Tips by State", :private false}
+                    {:name "Spots by State", :private true}))
+
+;; Check that several changes are handled nicely
+(expect "changed priority from \"Important\" to \"Regular\", made this Card private and renamed it from \"Tips by State\" to \"Spots by State\"."
+  (default-diff-str Card
+                    {:name "Tips by State", :private false, :priority "Important"}
+                    {:name "Spots by State", :private true, :priority "Regular"}))
 
 
 ;;; # REVISIONS + PUSH-REVISION
@@ -98,12 +134,31 @@
 
 ;;; # REVISIONS+DETAILS
 
+;; Test that add-revision-details properly enriches our revision objects
+(expect
+  {:is_creation  false
+   :is_reversion false
+   :message      nil
+   :user         {:id (user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"}
+   :diff         {:o1 {:name "Initial Name", :serialized true}
+                  :o2 {:name "Modified Name", :serialized true}}
+   :description  "BEFORE={:name \"Initial Name\", :serialized true},AFTER={:name \"Modified Name\", :serialized true}"}
+  (with-fake-card [{card-id :id}]
+    (push-fake-revision card-id, :name "Initial Name")
+    (push-fake-revision card-id, :name "Modified Name")
+    (let [revisions (revisions FakedCard card-id)]
+      (assert (= 2 (count revisions)))
+      (-> (add-revision-details FakedCard (first revisions) (last revisions))
+          (dissoc :timestamp :id :model_id)))))
+
 ;; Check that revisions+details pulls in user info and adds description
 (expect [{:is_reversion false,
           :is_creation  false,
           :message      nil
           :user         {:id (user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"},
-          :description  "First revision."}]
+          :diff         {:o1 nil
+                         :o2 {:name "Tips Created by Day", :serialized true}}
+          :description  nil}]
   (with-fake-card [{card-id :id}]
     (push-fake-revision card-id, :name "Tips Created by Day")
     (->> (revisions+details FakedCard card-id)
@@ -114,12 +169,16 @@
           :is_creation  false,
           :message      nil
           :user         {:id (user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"},
+          :diff         {:o1 {:name "Tips Created by Day", :serialized true}
+                         :o2 {:name "Spots Created by Day", :serialized true}}
           :description  "BEFORE={:name \"Tips Created by Day\", :serialized true},AFTER={:name \"Spots Created by Day\", :serialized true}"}
          {:is_reversion false,
           :is_creation  false,
           :message      nil
           :user         {:id (user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"},
-          :description  "First revision."}]
+          :diff         {:o1 nil
+                         :o2 {:name "Tips Created by Day", :serialized true}}
+          :description  nil}]
   (with-fake-card [{card-id :id}]
     (push-fake-revision card-id, :name "Tips Created by Day")
     (push-fake-revision card-id, :name "Spots Created by Day")
