@@ -45,7 +45,7 @@
 
 (defendpoint DELETE "/:id"
   "Delete a `Segment`."
-  [id :as {{:keys [revision_message] :as body} :body}]
+  [id revision_message]
   {revision_message [Required NonEmptyString]}
   (check-superuser)
   (check-404 (segment/exists-segment? id))

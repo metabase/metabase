@@ -156,7 +156,7 @@
 
 ;; test security.  requires superuser perms
 (expect "You don't have permissions to do that."
-  ((user->client :rasta) :delete 403 "segment/1" {:revision_message "yeeeehaw!"}))
+  ((user->client :rasta) :delete 403 "segment/1" :revision_message "yeeeehaw!"))
 
 
 ;; test validations
@@ -164,8 +164,7 @@
   ((user->client :crowberto) :delete 400 "segment/1" {:name "abc"}))
 
 (expect {:errors {:revision_message "Invalid value '' for 'revision_message': value must be a non-empty string."}}
-  ((user->client :crowberto) :delete 400 "segment/1" {:name             "abc"
-                                                      :revision_message ""}))
+  ((user->client :crowberto) :delete 400 "segment/1" :revision_message ""))
 
 (expect
   [{:success true}
@@ -189,7 +188,7 @@
                                            :name        "Droids in the desert"
                                            :description "Lookin' for a jedi"
                                            :definition  {}}]
-        [((user->client :crowberto) :delete 200 (format "segment/%d" id) {:revision_message "carry on"})
+        [((user->client :crowberto) :delete 200 (format "segment/%d" id) :revision_message "carryon")
          (segment-response (segment/retrieve-segment id))]))))
 
 
