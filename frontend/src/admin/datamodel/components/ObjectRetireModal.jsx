@@ -7,6 +7,13 @@ import { capitalize } from "metabase/lib/formatting";
 import cx from "classnames";
 
 export default class ObjectRetireModal extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.state = {
+            valid: false
+        };
+    }
+
     async handleSubmit() {
         const { object } = this.props;
         await this.props.onRetire({
@@ -18,7 +25,7 @@ export default class ObjectRetireModal extends Component {
 
     render() {
         const { objectType } = this.props;
-        let invalid = false;
+        const { valid } = this.state;
         return (
             <ModalContent
                 title={"Retire This \"" + capitalize(objectType) + "\""}
@@ -32,13 +39,14 @@ export default class ObjectRetireModal extends Component {
                             ref="revision_message"
                             className="input full text-default h4"
                             placeholder={"This will show up in the activity feed and in an email that will be sent to anyone on your team who created something that uses this " + objectType + "."}
+                            onChange={(e) => this.setState({ valid: !!e.target.value })}
                         />
                     </div>
 
                     <div className="Form-actions">
                         <ActionButton
                             actionFn={this.handleSubmit.bind(this)}
-                            className={cx("Button", { "Button--primary": !invalid, "disabled": invalid })}
+                            className={cx("Button", { "Button--primary": valid, "disabled": !valid })}
                             normalText="Retire"
                             activeText="Retiring…"
                             failedText="Failed"
