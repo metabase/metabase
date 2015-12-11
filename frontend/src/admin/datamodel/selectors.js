@@ -5,6 +5,7 @@ const segmentsSelector         = state => state.datamodel.segments;
 const currentSegmentIdSelector = state => state.datamodel.currentSegmentId;
 const tableMetadataSelector    = state => state.datamodel.tableMetadata;
 const resultCountSelector      = state => state.datamodel.resultCount;
+const revisionObjectSelector   = state => state.datamodel.revisionObject;
 
 export const segmentEditSelectors = createSelector(
     segmentsSelector,
@@ -23,5 +24,13 @@ export const segmentFormSelectors = createSelector(
         initialValues: segment,
         tableMetadata,
         resultCount
+    })
+);
+
+export const revisionHistorySelectors = createSelector(
+    revisionObjectSelector,
+    (object) => ({
+        name: object && object.name,
+        revisions: object && object.revisions
     })
 );

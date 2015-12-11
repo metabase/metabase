@@ -11,7 +11,8 @@ import {
     DELETE_SEGMENT,
     SET_CURRENT_SEGMENT_ID,
     LOAD_TABLE_METADATA,
-    UPDATE_RESULT_COUNT
+    UPDATE_RESULT_COUNT,
+    FETCH_REVISIONS
 } from "./actions";
 
 export const segments = handleActions({
@@ -36,4 +37,8 @@ export const tableMetadata = handleActions({
 
 export const resultCount = handleActions({
     [UPDATE_RESULT_COUNT]: { next: (state, { payload: resultCount }) => resultCount }
+}, null);
+
+export const revisionObject = handleActions({
+    [FETCH_REVISIONS]: { next: (state, { payload: revisions }) => revisions }
 }, null);

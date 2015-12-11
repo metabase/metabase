@@ -680,6 +680,20 @@ CoreServices.factory('Revision', ['$resource', function($resource) {
     });
 }]);
 
+// Revisions V2
+CoreServices.factory('Revisions', ['$resource', function($resource) {
+    return $resource('/api/:entity/:id/revisions', {}, {
+        get: {
+            method: 'GET',
+            isArray: true,
+            params: {
+                'entity': '@entity',
+                'id': '@id'
+            }
+        }
+    });
+}]);
+
 CoreServices.factory('Session', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/session/', {}, {
         create: {
