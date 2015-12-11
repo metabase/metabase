@@ -1,5 +1,6 @@
 (ns metabase.models.segment
-  (:require [korma.core :as k]
+  (:require [clojure.core.match :refer [match]]
+            [korma.core :as k]
             [medley.core :as m]
             [metabase.config :as config]
             [metabase.db :as db]
@@ -141,9 +142,19 @@
        (into {})                                 ; if it's a record type like SegmentInstance we need to convert it to a regular map or filter-vals won't work
        (m/filter-vals (complement delay?))))
 
+(defn diff-segments [this segment1 segment2]
+  (let [base-diff (revision/default-diff-map this
+                                             (select-keys segment1 [:name :description :definition])
+                                             (select-keys segment2 [:name :description :definition]))]
+    (cond-> (merge-with merge
+                    (u/update-values (:after base-diff) (fn [v] {:after v}))
+                    (u/update-values (:before base-diff) (fn [v] {:before v})))
+            (get-in base-diff [:after :definition]) (assoc :definition {:before (get-in segment1 [:definition :filter])
+                                                                        :after  (get-in segment2 [:definition :filter])}))))
+
 (extend SegmentEntity
   revision/IRevisioned
   {:serialize-instance serialize-instance
    :revert-to-revision revision/default-revert-to-revision
-   :diff-map           revision/default-diff-map
+   :diff-map           diff-segments
    :diff-str           revision/default-diff-str})
