@@ -196,3 +196,41 @@
                                            :definition  {}}]
         (delete-segment id (user->id :crowberto) "revision message")
         (segment-details (retrieve-segment id))))))
+
+
+;; ## Segment Revisions
+
+;; diff-segments
+(expect
+  {:definition  {:before ["AND" [">" 4 "2014-10-19"]]
+                 :after  ["AND" ["BETWEEN" 4 "2014-07-01" "2014-10-19"]]}
+   :description {:before "Lookin' for a jedi"
+                 :after  "BBB"}
+   :name        {:before "Droids in the desert"
+                 :after  "Something else"}}
+  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
+                                             :engine    :yeehaw
+                                             :details   {}
+                                             :is_sample false}]
+    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
+                                       :db_id  database-id
+                                       :active true}]
+      (tu/with-temp Segment [segment {:creator_id  (user->id :rasta)
+                                      :table_id    id
+                                      :name        "Droids in the desert"
+                                      :description "Lookin' for a jedi"
+                                      :definition  {:filter ["AND",[">",4,"2014-10-19"]]}}]
+        (diff-segments Segment segment (assoc segment :name "Something else"
+                                                      :description "BBB"
+                                                      :definition {:filter ["AND",["BETWEEN",4,"2014-07-01","2014-10-19"]]}))))))
+
+(expect
+  {:name {:before "A"
+          :after  "B"}}
+  (diff-segments Segment
+                 {:name        "A"
+                  :description "Unchanged"
+                  :definition  {:filter ["AND",[">",4,"2014-10-19"]]}}
+                 {:name        "B"
+                  :description "Unchanged"
+                  :definition  {:filter ["AND",[">",4,"2014-10-19"]]}}))
