@@ -153,8 +153,8 @@
       (cond-> (merge-with merge
                           (u/update-values (:after base-diff) (fn [v] {:after v}))
                           (u/update-values (:before base-diff) (fn [v] {:before v})))
-              (get-in base-diff [:after :definition]) (assoc :definition {:before (get-in segment1 [:definition :filter])
-                                                                          :after  (get-in segment2 [:definition :filter])})))))
+              (get-in base-diff [:after :definition]) (assoc :definition {:before (get-in segment1 [:definition])
+                                                                          :after  (get-in segment2 [:definition])})))))
 
 (extend SegmentEntity
   revision/IRevisioned
