@@ -202,8 +202,8 @@
 
 ;; diff-segments
 (expect
-  {:definition  {:before ["AND" [">" 4 "2014-10-19"]]
-                 :after  ["AND" ["BETWEEN" 4 "2014-07-01" "2014-10-19"]]}
+  {:definition  {:before {:filter ["AND" [">" 4 "2014-10-19"]]}
+                 :after  {:filter ["AND" ["BETWEEN" 4 "2014-07-01" "2014-10-19"]]}}
    :description {:before "Lookin' for a jedi"
                  :after  "BBB"}
    :name        {:before "Droids in the desert"
@@ -224,7 +224,7 @@
                                                       :description "BBB"
                                                       :definition {:filter ["AND",["BETWEEN",4,"2014-07-01","2014-10-19"]]}))))))
 
-;; test case where difinition doesn't change
+;; test case where definition doesn't change
 (expect
   {:name {:before "A"
           :after  "B"}}
@@ -243,6 +243,18 @@
    :definition  {:after {:filter ["AND",[">",4,"2014-10-19"]]}}}
   (diff-segments Segment
                  nil
+                 {:name        "A"
+                  :description "Unchanged"
+                  :definition  {:filter ["AND",[">",4,"2014-10-19"]]}}))
+
+;; removals only
+(expect
+  {:definition  {:before {:filter ["AND",[">",4,"2014-10-19"],["=",5,"yes"]]}
+                 :after  {:filter ["AND",[">",4,"2014-10-19"]]}}}
+  (diff-segments Segment
+                 {:name        "A"
+                  :description "Unchanged"
+                  :definition  {:filter ["AND",[">",4,"2014-10-19"],["=",5,"yes"]]}}
                  {:name        "A"
                   :description "Unchanged"
                   :definition  {:filter ["AND",[">",4,"2014-10-19"]]}}))
