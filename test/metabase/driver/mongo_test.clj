@@ -6,6 +6,7 @@
             [metabase.driver :as driver]
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
+            [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
             [metabase.test.util :refer [expect-eval-actual-first resolve-private-fns]])
   (:import metabase.driver.mongo.MongoDriver))
@@ -18,7 +19,7 @@
      ~actual))
 
 (defn- mongo-db []
-  (datasets/db (datasets/engine->loader :mongo)))
+  (data/get-or-create-test-data-db! (driver/engine->driver :mongo)))
 
 ;; ## Constants + Helper Fns/Macros
 ;; TODO - move these to metabase.test-data ?

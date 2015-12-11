@@ -106,7 +106,7 @@
       (set (filter identity
                    (conj (for [engine datasets/all-valid-engines]
                            (datasets/when-testing-engine engine
-                             (match-$ (datasets/db (datasets/engine->loader engine))
+                             (match-$ (get-or-create-test-data-db! (driver/engine->driver engine))
                                {:created_at      $
                                 :engine          (name $engine)
                                 :id              $
@@ -129,7 +129,7 @@
       (cascade-delete Database :id [not-in (set (filter identity
                                                         (for [engine datasets/all-valid-engines]
                                                           (datasets/when-testing-engine engine
-                                                            (:id (datasets/db (datasets/engine->loader engine)))))))])
+                                                            (:id (get-or-create-test-data-db! (driver/engine->driver engine)))))))])
       ;; Add an extra DB so we have something to fetch besides the Test DB
       (create-db db-name)
       ;; Now hit the endpoint

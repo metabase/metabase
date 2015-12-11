@@ -2,7 +2,7 @@
   (:require [expectations :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
-            [metabase.driver.generic-sql.util :refer [korma-entity]]
+            [metabase.driver.generic-sql :refer :all]
             (metabase.models [field :refer [Field]]
                              [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])

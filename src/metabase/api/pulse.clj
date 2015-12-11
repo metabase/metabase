@@ -117,7 +117,6 @@
   {name     [Required NonEmptyString]
    cards    [Required ArrayOfMaps]
    channels [Required ArrayOfMaps]}
-  (check-superuser)
   (send-pulse body)
   {:status 200 :body {:ok true}})
 

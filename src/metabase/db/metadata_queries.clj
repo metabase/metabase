@@ -23,7 +23,7 @@
    :post [(integer? %)]}
   (-> (qp-query (:db_id table) {:source_table (:id table)
                                 :aggregation  ["count"]})
-      first first))
+      first first int))
 
 (defn field-distinct-values
   "Return the distinct values of FIELD.
@@ -38,10 +38,10 @@
   (-> (field-query field (merge {:aggregation ["distinct" field-id]}
                                 (when limit
                                   {:limit limit})))
-      first first))
+      first first int))
 
 (defn field-count
   "Return the count of FIELD."
   [{field-id :id :as field}]
   (-> (field-query field {:aggregation ["count" field-id]})
-      first first))
+      first first int))

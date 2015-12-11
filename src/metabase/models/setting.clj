@@ -9,7 +9,8 @@
                              [interface :refer :all]]
             [metabase.setup :as setup]
             [metabase.util :as u]
-            [metabase.util.password :as password]))
+            [metabase.util.password :as password])
+  (:import java.util.TimeZone))
 
 ;; Settings are a fast + simple way to create a setting that can be set
 ;; from the SuperAdmin page. They are saved to the Database, but intelligently
@@ -146,18 +147,25 @@
    metadata of the `Setting` under the key `::options`:
 
      *  `:internal` - This `Setting` is for internal use and shouldn't be exposed in the UI (i.e., not
-        returned by the corresponding endpoints). Default: `false`"
+                      returned by the corresponding endpoints). Default: `false`
+     *  `:getter` - A custom getter fn, which takes no arguments. Overrides the default implementation.
+     *  `:setter` - A custom setter fn, which takes a single argument. Overrides the default implementation."
   [nm description & [default-value & {:as options}]]
   {:pre [(symbol? nm)
          (string? description)]}
-  (let [setting-key (keyword nm)]
+  (let [setting-key (keyword nm)
+        value       (gensym "value")]
     `(defn ~nm ~description
        {::is-setting?   true
         ::default-value ~default-value
         ::options       ~options}
-       ([]       (or (get* ~setting-key)
-                     ~default-value))
-       ([value#] (set* ~setting-key value#)))))
+       ([]       ~(if (:getter options)
+                    `(~(:getter options))
+                    `(or (get* ~setting-key)
+                         ~default-value)))
+       ([~value] ~(if (:setter options)
+                    `(~(:setter options) ~value)
+                    `(set* ~setting-key ~value))))))
 
 
 ;;; ## ALL SETTINGS (ETC)
@@ -181,13 +189,17 @@
          (sort-by :key))))
 
 (defn short-timezone-name
-  [tz]
-  (.getDisplayName tz (.inDaylightTime tz (new java.util.Date)) java.util.TimeZone/SHORT))
+  "Get a short display name for a TIMEZONE, e.g. `PST`."
+  [^TimeZone timezone]
+  (.getDisplayName timezone (.inDaylightTime timezone (new java.util.Date)) TimeZone/SHORT))
 
 (defn get-instance-timezone
+  "Get the `report-timezone`, or fall back to the System default if it's not set."
   []
-  (let [tz (metabase.models.setting/get :report-timezone)]
-    (if (s/blank? tz) (java.util.TimeZone/getDefault) (java.util.TimeZone/getTimeZone tz))))
+  (let [^String timezone-name (get :report-timezone)]
+    (or (when (seq timezone-name)
+          (TimeZone/getTimeZone timezone-name))
+        (TimeZone/getDefault))))
 
 (defn public-settings
   "Return a simple map of key/value pairs which represent the public settings for the front-end application."
@@ -220,7 +232,8 @@
   "Map of setting name (keyword) -> string value, as they exist in the DB."
   (atom nil))
 
-(defentity Setting
+(defentity ^{:doc "The model that underlies `defsetting`."}
+  Setting
   [(k/table :setting)])
 
 (defn- settings-list
@@ -241,3 +254,5 @@
                                                              (s/replace "-" "_")
                                                              s/upper-case)))
                                 default)}))))
+
+(u/require-dox-in-this-namespace)

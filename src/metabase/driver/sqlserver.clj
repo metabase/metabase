@@ -2,10 +2,10 @@
   (:require [clojure.string :as s]
             (korma [core :as k]
                    [db :as kdb])
-            [korma.sql.utils :as utils]
+            [korma.sql.utils :as kutils]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
-            [metabase.driver.generic-sql.util :refer [funcs]])
+            [metabase.util.korma-extensions :as kx])
   (:import net.sourceforge.jtds.jdbc.Driver)) ; need to import this in order to load JDBC driver
 
 (defn- column->base-type
@@ -58,53 +58,56 @@
       (update :subname #(cond-> (s/replace % #";database=" "/")
                           (seq instance) (str ";instance=" instance)))))
 
+(defn- date-part [unit expr]
+  (k/sqlfn :DATEPART (k/raw (name unit)) expr))
+
+(defn- date-add [unit & exprs]
+  (apply k/sqlfn* :DATEADD (k/raw (name unit)) exprs))
+
 (defn- date
   "See also the [jTDS SQL <-> Java types table](http://jtds.sourceforge.net/typemap.html)"
-  [_ unit field-or-value]
+  [_ unit expr]
   (case unit
-    :default         (utils/func "CAST(%s AS DATETIME)" [field-or-value])
-    :minute          (utils/func "CAST(%s AS SMALLDATETIME)" [field-or-value])
-    :minute-of-hour  (utils/func "DATEPART(minute, %s)" [field-or-value])
-    :hour            (utils/func "CAST(FORMAT(%s, 'yyyy-MM-dd HH:00:00') AS DATETIME)" [field-or-value])
-    :hour-of-day     (utils/func "DATEPART(hour, %s)" [field-or-value])
+    :default         (kx/->datetime expr)
+    :minute          (kx/cast :SMALLDATETIME expr)
+    :minute-of-hour  (date-part :minute expr)
+    :hour            (kx/->datetime (kx/format "yyyy-MM-dd HH:00:00" expr))
+    :hour-of-day     (date-part :hour expr)
     ;; jTDS is retarded; I sense an ongoing theme here. It returns DATEs as strings instead of as java.sql.Dates
     ;; like every other SQL DB we support. Work around that by casting to DATE for truncation then back to DATETIME so we get the type we want
-    :day             (utils/func "CAST(CAST(%s AS DATE) AS DATETIME)" [field-or-value])
-    :day-of-week     (utils/func "DATEPART(weekday, %s)" [field-or-value])
-    :day-of-month    (utils/func "DATEPART(day, %s)" [field-or-value])
-    :day-of-year     (utils/func "DATEPART(dayofyear, %s)" [field-or-value])
+    :day             (kx/->datetime (kx/->date expr))
+    :day-of-week     (date-part :weekday expr)
+    :day-of-month    (date-part :day expr)
+    :day-of-year     (date-part :dayofyear expr)
     ;; Subtract the number of days needed to bring us to the first day of the week, then convert to date
     ;; The equivalent SQL looks like:
     ;;     CAST(DATEADD(day, 1 - DATEPART(weekday, %s), CAST(%s AS DATE)) AS DATETIME)
-    ;; But we have to use this ridiculous 'funcs' function in order to generate the korma form we want (AFAIK)
-    ;; utils/func only handles multiple arguments if they are comma separated and injected into a single `%s` format placeholder
-    :week            (funcs "CAST(%s AS DATETIME)"
-                            ["DATEADD(day, %s)"
-                             ["1 - DATEPART(weekday, %s)" field-or-value]
-                             ["CAST(%s AS DATE)" field-or-value]])
-    :week-of-year    (utils/func "DATEPART(iso_week, %s)" [field-or-value])
-    :month           (utils/func "CAST(FORMAT(%s, 'yyyy-MM-01') AS DATETIME)" [field-or-value])
-    :month-of-year   (utils/func "DATEPART(month, %s)" [field-or-value])
+    :week            (kx/->datetime
+                      (date-add :day
+                                (kx/- 1 (date-part :weekday expr))
+                                (kx/->date expr)))
+    :week-of-year    (date-part :iso_week expr)
+    :month           (kx/->datetime (kx/format "yyyy-MM-01" expr))
+    :month-of-year   (date-part :month expr)
     ;; Format date as yyyy-01-01 then add the appropriate number of quarter
     ;; Equivalent SQL:
     ;;     DATEADD(quarter, DATEPART(quarter, %s) - 1, FORMAT(%s, 'yyyy-01-01'))
-    :quarter         (funcs "DATEADD(quarter, %s)"
-                            ["DATEPART(quarter, %s) - 1" field-or-value]
-                            ["FORMAT(%s, 'yyyy-01-01')" field-or-value])
-    :quarter-of-year (utils/func "DATEPART(quarter, %s)" [field-or-value])
-    :year            (utils/func "DATEPART(year, %s)" [field-or-value])))
+    :quarter         (date-add :quarter
+                               (kx/dec (date-part :quarter expr))
+                               (kx/format "yyyy-01-01" expr))
+    :quarter-of-year (date-part :quarter expr)
+    :year            (date-part :year expr)))
 
 (defn- date-interval [_ unit amount]
-  (utils/generated (format "DATEADD(%s, %d, GETUTCDATE())" (name unit) amount)))
+  (date-add unit amount (k/sqlfn :GETUTCDATE)))
 
-(defn- unix-timestamp->timestamp [_ field-or-value seconds-or-milliseconds]
-  (utils/func (case seconds-or-milliseconds
-                ;; The second argument to DATEADD() gets casted to a 32-bit integer. BIGINT is 64 bites, so we tend to run into
-                ;; integer overflow errors (especially for millisecond timestamps).
-                ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
-                :seconds      "DATEADD(minute, (%s / 60), '1970-01-01')"
-                :milliseconds "DATEADD(minute, (%s / 60000), '1970-01-01')")
-              [field-or-value]))
+(defn- unix-timestamp->timestamp [_ expr seconds-or-milliseconds]
+  (case seconds-or-milliseconds
+    ;; The second argument to DATEADD() gets casted to a 32-bit integer. BIGINT is 64 bites, so we tend to run into
+    ;; integer overflow errors (especially for millisecond timestamps).
+    ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
+    :seconds      (date-add :minute (kx// expr 60) (kx/literal "1970-01-01"))
+    :milliseconds (recur nil (kx// expr 1000) :seconds)))
 
 (defn- apply-limit [_ korma-query {value :limit}]
   (k/modifier korma-query (format "TOP %d" value)))
