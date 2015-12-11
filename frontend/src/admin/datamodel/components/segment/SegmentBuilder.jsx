@@ -76,7 +76,7 @@ export default class SegmentBuilder extends Component {
                     setQueryFn={this.setQuery}
                 >
                     <div className="flex align-center mx2 my2">
-                        {resultCount != null && <span className="text-bold px3">Results: {formatScalar(resultCount)}</span>}
+                        {resultCount != null && <span className="text-bold px3">{formatScalar(resultCount)} rows</span>}
                         <a target="_blank" className={cx("Button Button--primary")} href={previewUrl}>Preview</a>
                     </div>
                 </GuiQueryEditor>

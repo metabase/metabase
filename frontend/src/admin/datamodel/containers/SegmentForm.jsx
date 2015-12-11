@@ -37,8 +37,18 @@ import cx from "classnames";
 },
 segmentFormSelectors)
 export default class SegmentForm extends Component {
+    renderActionButtons() {
+        const { invalid, handleSubmit, tableMetadata } = this.props;
+        return (
+            <div>
+                <button className={cx("Button", { "Button--primary": !invalid, "disabled": invalid })} onClick={handleSubmit}>Save changes</button>
+                <a className="Button Button--borderless mx1" href={"/admin/datamodel/database/" + tableMetadata.db_id + "/table/" + tableMetadata.id}>Cancel</a>
+            </div>
+        )
+    }
+
     render() {
-        const { fields: { id, name, description, definition, revision_message }, invalid, handleSubmit, segment, tableMetadata } = this.props;
+        const { fields: { id, name, description, definition, revision_message }, segment, tableMetadata, handleSubmit } = this.props;
         return (
             <LoadingAndErrorWrapper loading={!tableMetadata}>
             { () =>
@@ -83,8 +93,7 @@ export default class SegmentForm extends Component {
                                         />
                                     </FormLabel>
                                     <div className="flex align-center">
-                                        <button className={cx("Button", { "Button--primary": !invalid, "disabled": invalid })} onClick={handleSubmit}>Save changes</button>
-                                        <a className="Button Button--borderless mx1" href={"/admin/datamodel/database/" + tableMetadata.db_id + "/table/" + tableMetadata.id}>Cancel</a>
+                                        {this.renderActionButtons()}
                                     </div>
                                 </Fieldset>
                             }
@@ -93,7 +102,7 @@ export default class SegmentForm extends Component {
 
                     { id.value == null &&
                         <div  className="border-top p4">
-                            <button className={cx("Button", { "Button--primary": !invalid, "disabled": invalid })} onClick={handleSubmit}>Save</button>
+                            {this.renderActionButtons()}
                         </div>
                     }
                 </form>
