@@ -238,14 +238,15 @@
     :message      "updated"
     :user         (-> (user-details (fetch-user :crowberto))
                       (dissoc :email :date_joined :last_login :is_superuser))
-    :diff         {:before {:a "b"}, :after {:a "c"}}
-    :description  "changed a from \"b\" to \"c\"."}
+    :diff         {:name {:before "b" :after "c"}}
+    :description  "renamed this Segment from \"b\" to \"c\"."}
    {:is_reversion false
     :is_creation  true
     :message      nil
     :user         (-> (user-details (fetch-user :rasta))
                       (dissoc :email :date_joined :last_login :is_superuser))
-    :diff         nil
+    :diff         {:name       {:after "b"}
+                   :definition {:after {:filter ["AND" [">" 1 25]]}}}
     :description  nil}]
   (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
                                              :engine    :yeehaw
@@ -263,13 +264,15 @@
         (tu/with-temp Revision [_ {:model        "Segment"
                                    :model_id     id
                                    :user_id      (user->id :rasta)
-                                   :object       {:a "b"}
+                                   :object       {:name "b"
+                                                  :definition {:filter ["AND" [">" 1 25]]}}
                                    :is_creation  true
                                    :is_reversion false}]
           (tu/with-temp Revision [_ {:model        "Segment"
                                      :model_id     id
                                      :user_id      (user->id :crowberto)
-                                     :object       {:a "c"}
+                                     :object       {:name "c"
+                                                    :definition {:filter ["AND" [">" 1 25]]}}
                                      :is_creation  false
                                      :is_reversion false
                                      :message      "updated"}]
@@ -298,8 +301,8 @@
     :message      nil
     :user         (-> (user-details (fetch-user :crowberto))
                       (dissoc :email :date_joined :last_login :is_superuser))
-    :diff         {:before {:name "Changed Segment Name"},
-                   :after  {:name "One Segment to rule them all, one segment to define them"}}
+    :diff         {:name {:before "Changed Segment Name"
+                          :after  "One Segment to rule them all, one segment to define them"}}
     :description  "renamed this Segment from \"Changed Segment Name\" to \"One Segment to rule them all, one segment to define them\"."}
    ;; full list of final revisions, first one should be same as the revision returned by the endpoint
    [{:is_reversion true
@@ -307,23 +310,26 @@
      :message      nil
      :user         (-> (user-details (fetch-user :crowberto))
                        (dissoc :email :date_joined :last_login :is_superuser))
-     :diff         {:before {:name "Changed Segment Name"},
-                    :after  {:name "One Segment to rule them all, one segment to define them"}}
+     :diff         {:name {:before "Changed Segment Name"
+                           :after  "One Segment to rule them all, one segment to define them"}}
      :description  "renamed this Segment from \"Changed Segment Name\" to \"One Segment to rule them all, one segment to define them\"."}
     {:is_reversion false
      :is_creation  false
      :message      "updated"
      :user         (-> (user-details (fetch-user :crowberto))
                        (dissoc :email :date_joined :last_login :is_superuser))
-     :diff         {:before {:name "One Segment to rule them all, one segment to define them"},
-                    :after  {:name "Changed Segment Name"}}
+     :diff         {:name {:after  "Changed Segment Name"
+                           :before "One Segment to rule them all, one segment to define them"}}
      :description  "renamed this Segment from \"One Segment to rule them all, one segment to define them\" to \"Changed Segment Name\"."}
     {:is_reversion false
      :is_creation  true
      :message      nil
      :user         (-> (user-details (fetch-user :rasta))
                        (dissoc :email :date_joined :last_login :is_superuser))
-     :diff         nil
+     :diff         {:name        {:after "One Segment to rule them all, one segment to define them"}
+                    :description {:after "One segment to bring them all, and in the DataModel bind them"}
+                    :definition  {:after {:database 123
+                                          :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}}
      :description  nil}]]
   (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
                                              :engine    :yeehaw
