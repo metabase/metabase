@@ -246,3 +246,15 @@
                  {:name        "A"
                   :description "Unchanged"
                   :definition  {:filter ["AND",[">",4,"2014-10-19"]]}}))
+
+;; removals only
+(expect
+  {:definition  {:before {:filter ["AND",[">",4,"2014-10-19"],["=",5,"yes"]]}
+                 :after  {:filter ["AND",[">",4,"2014-10-19"]]}}}
+  (diff-segments Segment
+                 {:name        "A"
+                  :description "Unchanged"
+                  :definition  {:filter ["AND",[">",4,"2014-10-19"],["=",5,"yes"]]}}
+                 {:name        "A"
+                  :description "Unchanged"
+                  :definition  {:filter ["AND",[">",4,"2014-10-19"]]}}))
