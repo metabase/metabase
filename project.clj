@@ -60,7 +60,7 @@
   :javac-options ["-target" "1.6" "-source" "1.6"]
   :uberjar-name "metabase.jar"
   :ring {:handler metabase.core/app
-         :init metabase.core/init
+         :init metabase.core/init!
          :destroy metabase.core/destroy}
   :eastwood {:exclude-namespaces [:test-paths]
              :add-linters [:unused-private-vars]
