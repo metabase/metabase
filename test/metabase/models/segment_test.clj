@@ -224,6 +224,7 @@
                                                       :description "BBB"
                                                       :definition {:filter ["AND",["BETWEEN",4,"2014-07-01","2014-10-19"]]}))))))
 
+;; test case where difinition doesn't change
 (expect
   {:name {:before "A"
           :after  "B"}}
@@ -232,5 +233,16 @@
                   :description "Unchanged"
                   :definition  {:filter ["AND",[">",4,"2014-10-19"]]}}
                  {:name        "B"
+                  :description "Unchanged"
+                  :definition  {:filter ["AND",[">",4,"2014-10-19"]]}}))
+
+;; first version, so comparing against nil
+(expect
+  {:name        {:after  "A"}
+   :description {:after "Unchanged"}
+   :definition  {:after {:filter ["AND",[">",4,"2014-10-19"]]}}}
+  (diff-segments Segment
+                 nil
+                 {:name        "A"
                   :description "Unchanged"
                   :definition  {:filter ["AND",[">",4,"2014-10-19"]]}}))

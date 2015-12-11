@@ -143,14 +143,18 @@
        (m/filter-vals (complement delay?))))
 
 (defn diff-segments [this segment1 segment2]
-  (let [base-diff (revision/default-diff-map this
-                                             (select-keys segment1 [:name :description :definition])
-                                             (select-keys segment2 [:name :description :definition]))]
-    (cond-> (merge-with merge
-                    (u/update-values (:after base-diff) (fn [v] {:after v}))
-                    (u/update-values (:before base-diff) (fn [v] {:before v})))
-            (get-in base-diff [:after :definition]) (assoc :definition {:before (get-in segment1 [:definition :filter])
-                                                                        :after  (get-in segment2 [:definition :filter])}))))
+  (if-not segment1
+    ;; this is the first version of the segment
+    (u/update-values (select-keys segment2 [:name :description :definition]) (fn [v] {:after v}))
+    ;; do our diff logic
+    (let [base-diff (revision/default-diff-map this
+                                               (select-keys segment1 [:name :description :definition])
+                                               (select-keys segment2 [:name :description :definition]))]
+      (cond-> (merge-with merge
+                          (u/update-values (:after base-diff) (fn [v] {:after v}))
+                          (u/update-values (:before base-diff) (fn [v] {:before v})))
+              (get-in base-diff [:after :definition]) (assoc :definition {:before (get-in segment1 [:definition :filter])
+                                                                          :after  (get-in segment2 [:definition :filter])})))))
 
 (extend SegmentEntity
   revision/IRevisioned
