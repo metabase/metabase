@@ -20,6 +20,7 @@
       {"include": {"file": "migrations/019_add_schema_column_to_table.yaml"}},
       {"include": {"file": "migrations/020_add_pulse_tables.yaml"}},
       {"include": {"file": "migrations/021_add_segment_table.yaml"}},
-      {"include": {"file": "migrations/022_add_revision_message_field.yaml"}}
+      {"include": {"file": "migrations/022_add_revision_message_field.yaml"}},
+      {"include": {"file": "migrations/024_add_dependency_table.yaml"}}
   ]
 }
