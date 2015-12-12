@@ -1,8 +1,10 @@
 (ns metabase.models.card
-  (:require [korma.core :refer :all, :exclude [defentity update]]
+  (:require [clojure.core.match :refer [match]]
+            [korma.core :refer :all, :exclude [defentity update]]
             [medley.core :as m]
             [metabase.db :refer :all]
-            (metabase.models [interface :refer :all]
+            (metabase.models [dependency :as dependency]
+                             [interface :refer :all]
                              [revision :as revision]
                              [user :refer [User]])))
 
@@ -80,3 +82,36 @@
    :revert-to-revision revision/default-revert-to-revision
    :diff-map           revision/default-diff-map
    :diff-str           revision/default-diff-str})
+
+
+;;; ## ---------------------------------------- DEPENDENCIES ----------------------------------------
+
+
+(defn- parse-filter-subclause [subclause]
+  (match subclause
+    ["SEGMENT" (segment-id :guard integer?)] segment-id
+    subclause                                nil))
+
+(defn- parse-filter [clause]
+  (match clause
+    ["AND" & subclauses] (mapv parse-filter subclauses)
+    ["OR" & subclauses]  (mapv parse-filter subclauses)
+    subclause            (parse-filter-subclause subclause)))
+
+(defn- extract-segment-ids [filter-clause]
+  (when filter-clause
+    (->> (parse-filter filter-clause)
+         flatten
+         (filter identity)
+         set)))
+
+(defn card-dependencies
+  "Calculate any dependent objects for a given `Card`."
+  [this id {:keys [dataset_query] :as instance}]
+  (when (and dataset_query
+             (= :query (keyword (:type dataset_query))))
+    {:Segment (extract-segment-ids (get-in dataset_query [:query :filter]))}))
+
+(extend CardEntity
+  dependency/IDependent
+  {:dependencies card-dependencies})
