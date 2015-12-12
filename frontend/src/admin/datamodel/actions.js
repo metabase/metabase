@@ -1,6 +1,6 @@
 
 import { createAction } from "redux-actions";
-import { AngularResourceProxy } from "metabase/lib/redux";
+import { AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
 
 import { loadTable } from "metabase/lib/table";
 
@@ -45,10 +45,13 @@ export const updateResultCount = createAction(UPDATE_RESULT_COUNT, async (query)
 
 export const FETCH_REVISIONS = "FETCH_REVISIONS";
 
-export const fetchRevisions = createAction(FETCH_REVISIONS, async ({ entity, id }) => {
-    let [segment, revisions] = await * [
-        Segment.get({ segmentId: id }),
-        Revisions.get({ entity, id })
-    ];
-    return { name: segment.name, revisions };
-})
+export const fetchRevisions = createThunkAction(FETCH_REVISIONS, ({ entity, id }) =>
+    async (dispatch, getState) => {
+        let [segment, revisions] = await * [
+            dispatch(getSegment({ segmentId: id })),
+            Revisions.get({ entity, id })
+        ];
+        await dispatch(loadTableMetadata(segment.payload.definition.source_table));
+        return { object: segment.payload, revisions };
+    }
+);

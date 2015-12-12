@@ -40,5 +40,5 @@ export const resultCount = handleActions({
 }, null);
 
 export const revisionObject = handleActions({
-    [FETCH_REVISIONS]: { next: (state, { payload: revisions }) => revisions }
+    [FETCH_REVISIONS]: { next: (state, { payload: revisionObject }) => revisionObject }
 }, null);

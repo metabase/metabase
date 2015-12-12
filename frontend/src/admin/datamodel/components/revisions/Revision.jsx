@@ -1,28 +1,62 @@
 import React, { Component, PropTypes } from "react";
 
+import RevisionDiff from "./RevisionDiff.jsx";
+
 import UserAvatar from "metabase/components/UserAvatar.jsx"
 
 import moment from "moment";
 
 // TODO: "you" for current user
-// TODO: format diffs
 // TODO: show different color avatars for users that aren't me
 
 export default class Revision extends Component {
     static propTypes = {
-        revision: PropTypes.object.isRequired
+        objectName: PropTypes.string.isRequired,
+        revision: PropTypes.object.isRequired,
+        currentUser: PropTypes.object.isRequired,
+        tableMetadata: PropTypes.object.isRequired
     };
 
-    render() {
+    getAction() {
         const { revision, objectName } = this.props;
-
-        let name = revision.user.common_name;
-
-        let action;
         if (revision.is_creation) {
-            action = "created \"" + objectName + "\"";
+            return "created \"" + revision.diff.name.after + "\"";
+        }
+        if (revision.is_reversion) {
+            return "reverted to a previous version";
+        }
+        let changedKeys = Object.keys(revision.diff);
+        if (changedKeys.length === 1) {
+            switch (changedKeys[0]) {
+                case "name":
+                    return "edited the title";
+                case "description":
+                    return "edited the description";
+                case "defintion":
+                    return "edited the " + objectName;
+            }
+        }
+        return "made some changes";
+    }
+
+    getName() {
+        const { revision: { user }, currentUser } = this.props;
+        if (user.id === currentUser.id) {
+            return "You"
         } else {
-            action = "made some changes";
+            return user.first_name;
+        }
+    }
+
+    render() {
+        const { revision, tableMetadata } = this.props;
+        let message = revision.message;
+        let diffKeys = Object.keys(revision.diff);
+
+        if (revision.is_creation) {
+            // these are included in the
+            message = revision.diff.description.after;
+            diffKeys = diffKeys.filter(k => k !== "name" && k !== "description");
         }
 
         return (
@@ -34,14 +68,23 @@ export default class Revision extends Component {
                     <div className="flex-full my1 border-left" style={{borderWidth: 2}} />
                 </div>
                 <div className="flex-full mt1 mb4">
-                    <div className="flex mb1">
-                        <span><strong>{name}</strong> {action}</span>
-                        <span className="flex-align-right">{moment(revision.timestamp).format("MMMM DD, YYYY")}</span>
+                    <div className="flex mb1 text-grey-4">
+                        <span className="">
+                            <strong>{this.getName()}</strong> {this.getAction()}
+                        </span>
+                        <span className="flex-align-right h5">
+                            {moment(revision.timestamp).format("MMMM DD, YYYY")}
+                        </span>
                     </div>
-                    { revision.message && <p>"{revision.message}"</p> }
-                    <div className="bordered rounded mt2 p2" style={{borderWidth: 2}}>
-                        <pre className="m1">{JSON.stringify(revision.diff, null, 2)}</pre>
-                    </div>
+                    { message && <p>"{message}"</p> }
+                    { diffKeys.map(key =>
+                        <RevisionDiff
+                            key={key}
+                            property={key}
+                            diff={revision.diff[key]}
+                            tableMetadata={tableMetadata}
+                        />
+                    )}
                 </div>
             </li>
         );

@@ -3,7 +3,7 @@ import React, { Component, PropTypes } from "react";
 import AggregationWidget from './AggregationWidget.jsx';
 import DataSelector from './DataSelector.jsx';
 import FieldWidget from './FieldWidget.jsx';
-import FilterWidget from './filters/FilterWidget.jsx';
+import FilterList from './filters/FilterList.jsx';
 import FilterPopover from './filters/FilterPopover.jsx';
 import Icon from "metabase/components/Icon.jsx";
 import IconBorder from 'metabase/components/IconBorder.jsx';
@@ -192,23 +192,14 @@ export default class GuiQueryEditor extends Component {
         if (this.props.tableMetadata) {
             enabled = true;
 
-            let queryFilters = Query.getFilters(this.props.query.query);
-            if (queryFilters && queryFilters.length > 0) {
-                filterList = queryFilters.map((filter, index) => {
-                    if(index > 0) {
-                        return (
-                            <FilterWidget
-                                key={index}
-                                placeholder="Item"
-                                filter={filter}
-                                tableMetadata={this.props.tableMetadata}
-                                index={index}
-                                removeFilter={this.removeFilter}
-                                updateFilter={this.updateFilter}
-                            />
-                        );
-                    }
-                });
+            let filters = Query.getFilters(this.props.query.query);
+            if (filters && filters.length > 0) {
+                filterList = <FilterList
+                    filters={filters}
+                    tableMetadata={this.props.tableMetadata}
+                    removeFilter={this.removeFilter}
+                    updateFilter={this.updateFilter}
+                />
             }
 
             // TODO: proper check for isFilterComplete(filter)

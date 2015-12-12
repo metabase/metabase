@@ -72,17 +72,19 @@
 }
 
 .Query-filters {
+  max-width: 400px;
+}
+
+.Query-filterList {
     display: flex;
     overflow-x: auto;
     overflow-y: hidden;
-    max-width: 400px;
     white-space: nowrap;
-    height: 55px;
+    min-height: 55px;
 }
 
 .Query-filter {
     display: flex;
-    align-items: center;
     font-size: 0.75em;
     border: 2px solid transparent;
     border-radius: var(--default-border-radius);
@@ -415,6 +417,7 @@
 
 .Filter-section-value {
     padding-right: 0.5em;
+    padding-bottom: 0.25em;
 }
 
 .Filter-section-sort-field.selected .QueryOption,

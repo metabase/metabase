@@ -27,8 +27,12 @@ export default class FilterWidget extends Component {
         filter: PropTypes.array.isRequired,
         tableMetadata: PropTypes.object.isRequired,
         index: PropTypes.number.isRequired,
-        updateFilter: PropTypes.func.isRequired,
-        removeFilter: PropTypes.func.isRequired
+        updateFilter: PropTypes.func,
+        removeFilter: PropTypes.func
+    };
+
+    static defaultProps = {
+        maxDisplayValues: 1
     };
 
     componentWillMount() {
@@ -87,9 +91,10 @@ export default class FilterWidget extends Component {
     }
 
     renderValues() {
+        const { maxDisplayValues } = this.props;
         let { operatorDef, fieldDef, values } = this.state;
 
-        if (operatorDef && operatorDef.multi && values.length > 1) {
+        if (operatorDef && operatorDef.multi && values.length > maxDisplayValues) {
             values = [values.length + " selections"];
         }
 
@@ -129,20 +134,22 @@ export default class FilterWidget extends Component {
 
     render() {
         return (
-            <div className={cx("Query-filter px1", { "selected": this.state.isOpen })}>
+            <div className={cx("Query-filter p1", { "selected": this.state.isOpen })}>
                 <div className="ml1">
                     <div className="flex align-center" style={{"padding": "0.5em", "paddingTop": "0.3em", "paddingBottom": "0.3em"}}>
                         {this.renderField()}
                         {this.renderOperator()}
                     </div>
-                    <div className="flex align-center">
+                    <div className="flex align-center flex-wrap">
                         {this.renderValues()}
                     </div>
                     {this.renderPopover()}
                 </div>
-                <a className="text-grey-2 no-decoration px1 flex align-center" href="#" onClick={this.removeFilter}>
-                    <Icon name='close' width="14px" height="14px" />
-                </a>
+                { this.props.removeFilter &&
+                    <a className="text-grey-2 no-decoration px1 flex align-center" href="#" onClick={this.removeFilter}>
+                        <Icon name='close' width="14px" height="14px" />
+                    </a>
+                }
             </div>
         );
     }

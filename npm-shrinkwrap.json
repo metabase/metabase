@@ -3014,6 +3014,9 @@
     "dc": {
       "version": "2.0.0-beta.23"
     },
+    "diff": {
+      "version": "2.2.1"
+    },
     "eslint": {
       "version": "1.10.3",
       "dependencies": {

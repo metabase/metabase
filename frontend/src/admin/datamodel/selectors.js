@@ -29,8 +29,9 @@ export const segmentFormSelectors = createSelector(
 
 export const revisionHistorySelectors = createSelector(
     revisionObjectSelector,
-    (object) => ({
-        name: object && object.name,
-        revisions: object && object.revisions
+    tableMetadataSelector,
+    (revisionObject, tableMetadata) => ({
+        ...revisionObject,
+        tableMetadata
     })
 );
