@@ -14,7 +14,8 @@
             [metabase.util :as u])
   (:import (clojure.lang Keyword)))
 
-(declare parse-aggregation
+(declare expand-macros
+         parse-aggregation
          parse-breakout
          parse-fields
          parse-filter
@@ -45,15 +46,19 @@
     (binding [*original-query-dict* query-dict]
       ;; TODO - we should parse the Page clause so we can validate it
       ;; And convert to a limit / offset clauses
-      (update query-dict :query #(-<> (assoc %
-                                             :aggregation (parse-aggregation (:aggregation %))
-                                             :breakout    (parse-breakout    (:breakout %))
-                                             :fields      (parse-fields      (:fields %))
-                                             :filter      (parse-filter      (:filter %))
-                                             :order_by    (parse-order-by    (:order_by %)))
-                                      (set/rename-keys <> {:order_by     :order-by
-                                                           :source_table :source-table})
-                                      (m/filter-vals non-empty-clause? <>))))))
+      (-> query-dict
+          ;; expand/resolve macro type clauses first (metrics & segments)
+          expand-macros
+          ;; now parse the base clauses, fields, & values
+          (update :query #(-<> (assoc %
+                                 :aggregation (parse-aggregation (:aggregation %))
+                                 :breakout    (parse-breakout    (:breakout %))
+                                 :fields      (parse-fields      (:fields %))
+                                 :filter      (parse-filter      (:filter %))
+                                 :order_by    (parse-order-by    (:order_by %)))
+                               (set/rename-keys <> {:order_by     :order-by
+                                                    :source_table :source-table})
+                               (m/filter-vals non-empty-clause? <>)))))))
 
 
 ;; ## -------------------- Field + Value --------------------
@@ -267,3 +272,27 @@
                                                                       (parse-order-by-direction direction)))
 (defparser parse-order-by
   subclauses (mapv parse-order-by-subclause subclauses))
+
+
+;; # ======================================== MACRO EXPANSION ========================================
+
+
+(defparser segment-parse-filter-subclause
+  ["SEGMENT" (segment-id :guard integer?)] [(-> (sel :one :field [metabase.models.segment/Segment :definition] :id segment-id)
+                                                :filter)]
+  subclause  [subclause])
+
+(defparser segment-parse-filter
+  ["AND" & subclauses] (vec (apply concat ["AND"] (mapv segment-parse-filter subclauses)))
+  ["OR" & subclauses]  (vec (apply concat ["OR"] (mapv segment-parse-filter subclauses)))
+  subclause            (segment-parse-filter-subclause subclause))
+
+(defn- macroexpand-segment
+  [query-dict]
+  (if (non-empty-clause? (get-in query-dict [:query :filter]))
+    (update-in query-dict [:query :filter] segment-parse-filter)
+    query-dict))
+
+(defn expand-macros "Expand the macros (Segment, Metric) in a QUERY-DICT."
+  [query-dict]
+  (macroexpand-segment query-dict))
