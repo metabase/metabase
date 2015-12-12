@@ -278,13 +278,13 @@
 
 
 (defparser segment-parse-filter-subclause
-  ["SEGMENT" (segment-id :guard integer?)] [(-> (sel :one :field [metabase.models.segment/Segment :definition] :id segment-id)
-                                                :filter)]
-  subclause  [subclause])
+  ["SEGMENT" (segment-id :guard integer?)] (-> (sel :one :field [metabase.models.segment/Segment :definition] :id segment-id)
+                                               :filter)
+  subclause  subclause)
 
 (defparser segment-parse-filter
-  ["AND" & subclauses] (vec (apply concat ["AND"] (mapv segment-parse-filter subclauses)))
-  ["OR" & subclauses]  (vec (apply concat ["OR"] (mapv segment-parse-filter subclauses)))
+  ["AND" & subclauses] (into ["AND"] (mapv segment-parse-filter subclauses))
+  ["OR" & subclauses]  (into ["OR"] (mapv segment-parse-filter subclauses))
   subclause            (segment-parse-filter-subclause subclause))
 
 (defn- macroexpand-segment
