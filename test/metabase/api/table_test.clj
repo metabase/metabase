@@ -53,6 +53,7 @@
                                 :rows                100
                                 :id                  (id :venues)}])))))
   (->> ((user->client :rasta) :get 200 "table")
+       (filter #(= (:db_id %) (id)))                        ; prevent stray tables from affecting unit test results
        (map #(dissoc % :db :created_at :updated_at :schema :entity_name :description :entity_type :visibility_type))
        set))
 
