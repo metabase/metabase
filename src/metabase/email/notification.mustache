@@ -1,0 +1,37 @@
+{{> metabase/email/_header }}
+  <div style="padding: 2em 4em; border: 1px solid #dddddd; border-radius: 2px; background-color: white; box-shadow: 0 1px 2px rgba(0, 0, 0, .08);">
+    <p>
+      <h1>Things Have Changed</h1>
+      <a href="mailto:{{modifier_email}}">{{modifier_name}} ({{modifier_email}})</a> changed the definition of <span>"{{object_name}}"</span>.
+      This might affect the appearance or results of these items that you created:
+    </p>
+    {{#has_dashboards}}
+    <p>
+      <h3>Dashboards</h3>
+      {{#dashboards}}
+      <a href="{{url}}">{{name}}</a>
+      {{/dashboards}}
+    </p>
+    {{/has_dashboards}}
+    {{#has_questions}}
+    <p>
+      <h3>Saved Questions</h3>
+      {{#questions}}
+      <a href="{{url}}">{{name}}</a>
+      {{/questions}}
+    </p>
+    {{/has_questions}}
+    {{#has_pulses}}
+    <p>
+      <h3>Pulses</h3>
+      {{#pulses}}
+      <a href="{{url}}">{{name}}</a>
+      {{/pulses}}
+    </p>
+    {{/has_pulses}}
+    <p>
+      <h1>Why was this changed?</h1>
+      "{{revision_message}}"
+    </p>
+  </div>
+{{> metabase/email/footer }}

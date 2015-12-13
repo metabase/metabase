@@ -55,6 +55,37 @@
      :message-type :html
      :message      message-body)))
 
+(defn send-notification-email
+  "Format and Send an email informing the user about changes to objects in the system."
+  [email object-name modifier-name modifier-email dashboards cards pulses revision-message]
+  {:pre [(string? email)
+         (u/is-email? email)
+         (string? object-name)
+         (string? modifier-name)
+         (string? modifier-email)
+         (string? revision-message)]}
+  (let [data-quote   (rand-nth q/quotations)
+        message-body (stencil/render-file "metabase/email/notification"
+                                          {:emailType "notification"
+                                           :modifier_email modifier-email
+                                           :modifier_name modifier-name
+                                           :object_name object-name
+                                           :has_dashboards (seq dashboards)
+                                           :dashboards dashboards
+                                           :has_questions (seq cards)
+                                           :questions cards
+                                           :has_pulses (seq pulses)
+                                           :pulses pulses
+                                           :revision_message revision-message
+                                           :logoHeader true
+                                           :quotation (:quote data-quote)
+                                           :quotationAuthor (:author data-quote)})]
+    (email/send-message
+      :subject      "[Metabase] Notification"
+      :recipients   [email]
+      :message-type :html
+      :message      message-body)))
+
 ;; HACK: temporary workaround to postal requiring a file as the attachment
 (defn- write-byte-array-to-temp-file
   [img-bytes]
