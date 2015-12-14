@@ -131,7 +131,7 @@ export default class FieldList extends Component {
     renderTypeIcon(item) {
         let name;
         if (item.segment) {
-            name = "star";
+            name = "star-outline";
         } else {
             name = ICON_MAPPING[getFieldType(item.field)]
         }
