@@ -4,6 +4,8 @@ import Icon from "metabase/components/Icon.jsx";
 
 import cx from "classnames";
 
+import _ from "underscore";
+
 export default class AccordianList extends Component {
     constructor(props, context) {
         super(props, context);
@@ -15,7 +17,6 @@ export default class AccordianList extends Component {
     static propTypes = {
         sections: PropTypes.array.isRequired,
         onChange: PropTypes.func,
-        sectionIsSelected: PropTypes.func,
         itemIsSelected: PropTypes.func,
         renderItem: PropTypes.func,
         renderSectionIcon: PropTypes.func
@@ -33,12 +34,10 @@ export default class AccordianList extends Component {
     getOpenSection() {
         let { openSection } = this.state;
         if (openSection === undefined) {
-            if (this.props.sectionIsSelected) {
-                for (let [index, section] of this.props.sections.entries()) {
-                    if (this.props.sectionIsSelected(section, index)) {
-                        openSection = index;
-                        break;
-                    }
+            for (let [index, section] of this.props.sections.entries()) {
+                if (this.sectionIsSelected(section, index)) {
+                    openSection = index;
+                    break;
                 }
             }
             if (openSection === undefined) {
@@ -46,6 +45,18 @@ export default class AccordianList extends Component {
             }
         }
         return openSection;
+    }
+
+    sectionIsSelected(section, sectionIndex) {
+        let { sections } = this.props;
+        let selectedSection = 0;
+        for (let i = 0; i < sections.length; i++) {
+            if (_.some(sections[i].items, (item) => this.itemIsSelected(item))) {
+                selectedSection = i;
+                break;
+            }
+        }
+        return selectedSection === sectionIndex;
     }
 
     itemIsSelected(item) {

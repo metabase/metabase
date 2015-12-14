@@ -268,6 +268,10 @@ var Query = {
         query.filter = queryFilters;
     },
 
+    isSegmentFilter(filter) {
+        return Array.isArray(filter) && filter[0] === "SEGMENT";
+    },
+
     canAddLimitAndSort(query) {
         if (Query.isBareRowsAggregation(query)) {
             return true;

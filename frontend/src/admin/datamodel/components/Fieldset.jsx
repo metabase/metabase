@@ -1,14 +1,16 @@
 import React, { Component, PropTypes } from "react";
 
-export default class Fieldset extends Component {
+export default class FieldSet extends Component {
     static propTypes = {};
-    static defaultProps = {};
+    static defaultProps = {
+        border: "border-brand"
+    };
 
     render() {
-        const { children, legend } = this.props;
+        const { children, legend, border } = this.props;
         return (
-            <fieldset className="px3 pb3 bordered border-brand rounded">
-                {legend && <legend className="h5 text-bold text-uppercase bg-white px1" style={{ marginLeft: "-0.5rem" }}>{legend}</legend>}
+            <fieldset className={"px2 pb2 bordered rounded " + border}>
+                {legend && <legend className="h5 text-bold text-uppercase px1" style={{ marginLeft: "-0.5rem" }}>{legend}</legend>}
                 {{children}}
             </fieldset>
         );
