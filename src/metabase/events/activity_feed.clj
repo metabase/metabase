@@ -21,6 +21,9 @@
     :dashboard-add-cards
     :dashboard-remove-cards
     :install
+    :metric-create
+    :metric-update
+    :metric-delete
     :pulse-create
     :pulse-delete
     :segment-create
@@ -95,6 +98,17 @@
 ;                                              (assoc :status "completed")
 ;                                              (dissoc :database_id :custom_id))))))))
 
+(defn- process-metric-activity [topic object]
+  (let [details-fn  #(select-keys % [:name :description :revision_message])
+        table-id    (:table_id object)
+        database-id (table/table-id->database-id table-id)]
+    (activity/record-activity
+      :topic       topic
+      :object      object
+      :details-fn  details-fn
+      :database-id database-id
+      :table-id    table-id)))
+
 (defn- process-pulse-activity [topic object]
   (let [details-fn #(select-keys % [:name :public_perms])]
     (activity/record-activity
@@ -133,6 +147,7 @@
         "dashboard" (process-dashboard-activity topic object)
         "install"   (when-not (db/sel :one :fields [Activity :id])
                       (db/ins Activity :topic "install" :model "install"))
+        "metric"    (process-metric-activity topic object)
         "pulse"     (process-pulse-activity topic object)
         "segment"   (process-segment-activity topic object)
         "user"      (process-user-activity topic object)))

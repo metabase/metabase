@@ -5,6 +5,7 @@
             [metabase.events :as events]
             (metabase.models [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
+                             [metric :refer [Metric]]
                              [revision :refer [push-revision]]
                              [segment :refer [Segment]])))
 
@@ -18,6 +19,9 @@
     :dashboard-add-cards
     :dashboard-remove-cards
     :dashboard-reposition-cards
+    :metric-create
+    :metric-update
+    :metric-delete
     :segment-create
     :segment-update
     :segment-delete})
@@ -53,6 +57,12 @@
                                      :object       (Dashboard id),
                                      :user-id      user-id,
                                      :is-creation? (= :dashboard-create topic)
+                                     :message      revision-message)
+          "metric"    (push-revision :entity       Metric,
+                                     :id           id,
+                                     :object       (Metric id),
+                                     :user-id      user-id,
+                                     :is-creation? (= :metric-create topic)
                                      :message      revision-message)
           "segment"   (push-revision :entity       Segment,
                                      :id           id,

@@ -22,16 +22,22 @@
 ;; card-dependencies
 
 (expect
-  {:Segment #{2 3}}
+  {:Segment #{2 3}
+   :Metric  nil}
   (card-dependencies Card 12 {:dataset_query {:type :query
-                                              :query {:filter ["AND" [">" 4 "2014-10-19"] ["=" 5 "yes"] ["SEGMENT" 2] ["SEGMENT" 3]]}}}))
+                                              :query {:aggregation ["rows"]
+                                                      :filter      ["AND" [">" 4 "2014-10-19"] ["=" 5 "yes"] ["SEGMENT" 2] ["SEGMENT" 3]]}}}))
 
 (expect
-  {:Segment #{1}}
+  {:Segment #{1}
+   :Metric #{7}}
   (card-dependencies Card 12 {:dataset_query {:type :query
-                                              :query {:filter ["AND" [">" 4 "2014-10-19"] ["=" 5 "yes"] ["OR" ["SEGMENT" 1] ["!=" 5 "5"]]]}}}))
+                                              :query {:aggregation ["METRIC" 7]
+                                                      :filter      ["AND" [">" 4 "2014-10-19"] ["=" 5 "yes"] ["OR" ["SEGMENT" 1] ["!=" 5 "5"]]]}}}))
 
 (expect
-  {:Segment nil}
+  {:Segment nil
+   :Metric  nil}
   (card-dependencies Card 12 {:dataset_query {:type :query
-                                              :query {:filter nil}}}))
+                                              :query {:aggregation nil
+                                                      :filter      nil}}}))

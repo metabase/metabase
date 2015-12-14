@@ -105,12 +105,18 @@
          (filter identity)
          set)))
 
+(defn- extract-metric-ids [aggregation-clause]
+  (match aggregation-clause
+    ["METRIC" (metric-id :guard integer?)] #{metric-id}
+    other                                  nil))
+
 (defn card-dependencies
   "Calculate any dependent objects for a given `Card`."
   [this id {:keys [dataset_query] :as instance}]
   (when (and dataset_query
              (= :query (keyword (:type dataset_query))))
-    {:Segment (extract-segment-ids (get-in dataset_query [:query :filter]))}))
+    {:Metric  (extract-metric-ids (get-in dataset_query [:query :aggregation]))
+     :Segment (extract-segment-ids (get-in dataset_query [:query :filter]))}))
 
 (extend CardEntity
   dependency/IDependent

@@ -8,6 +8,7 @@
                              [dashboard :refer [Dashboard]]
                              [dashboard-card :refer [DashboardCard]]
                              [database :refer [Database]]
+                             [metric :refer [Metric]]
                              [pulse :refer [Pulse]]
                              [segment :refer [Segment]]
                              [session :refer [Session]]
@@ -66,11 +67,18 @@
                     :table_id    (:id table)
                     :name        "Activity Segment"
                     :description "Something worth reading"
+                    :definition  {:a "b"})
+        metric   (db/ins Metric
+                    :creator_id  (:id user)
+                    :table_id    (:id table)
+                    :name        "Activity Metric"
+                    :description "Whoot!"
                     :definition  {:a "b"})]
     {:card      card
      :dashboard dashboard
      :dashcard  dashcard
      :database  database
+     :metric    metric
      :pulse     pulse
      :segment   segment
      :session   {:id rand-name}
@@ -259,6 +267,64 @@
                              :item  {}})
     (-> (db/sel :one Activity :topic "install")
         (select-keys [:topic :user_id :model :model_id :details]))))
+
+;; `:metric-create`
+(expect-let [{:keys [database table metric user]} (create-test-objects)]
+  {:topic       :metric-create
+   :user_id     (:id user)
+   :model       "metric"
+   :model_id    (:id metric)
+   :database_id (:id database)
+   :table_id    (:id table)
+   :details     {:name        (:name metric)
+                 :description (:description metric)}}
+  (do
+    (k/delete Activity)
+    (process-activity-event {:topic :metric-create
+                             :item  metric})
+    (-> (db/sel :one Activity :topic "metric-create")
+        (select-keys [:topic :user_id :model :model_id :database_id :table_id :details]))))
+
+;; `:metric-update`
+(expect-let [{:keys [database table metric user]} (create-test-objects)]
+  {:topic       :metric-update
+   :user_id     (:id user)
+   :model       "metric"
+   :model_id    (:id metric)
+   :database_id (:id database)
+   :table_id    (:id table)
+   :details     {:name             (:name metric)
+                 :description      (:description metric)
+                 :revision_message "update this mofo"}}
+  (do
+    (k/delete Activity)
+    (process-activity-event {:topic :metric-update
+                             :item  (-> metric
+                                        (assoc :actor_id         (:id user)
+                                               :revision_message "update this mofo")
+                                        ;; doing this specifically to ensure :actor_id is utilized
+                                        (dissoc :creator_id))})
+    (-> (db/sel :one Activity :topic "metric-update")
+        (select-keys [:topic :user_id :model :model_id :database_id :table_id :details]))))
+
+;; `:metric-delete`
+(expect-let [{:keys [database table metric user]} (create-test-objects)]
+  {:topic       :metric-delete
+   :user_id     (:id user)
+   :model       "metric"
+   :model_id    (:id metric)
+   :database_id (:id database)
+   :table_id    (:id table)
+   :details     {:name             (:name metric)
+                 :description      (:description metric)
+                 :revision_message "deleted"}}
+  (do
+    (k/delete Activity)
+    (process-activity-event {:topic :metric-delete
+                             :item  (assoc metric :actor_id         (:id user)
+                                                   :revision_message "deleted")})
+    (-> (db/sel :one Activity :topic "metric-delete")
+        (select-keys [:topic :user_id :model :model_id :database_id :table_id :details]))))
 
 ;; `:pulse-create` event
 (expect-let [{:keys [pulse user]} (create-test-objects)]

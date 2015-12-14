@@ -6,6 +6,7 @@
                              [field :refer [Field]]
                              [field-values :refer [FieldValues]]
                              [interface :refer :all]
+                             [metric :refer [Metric retrieve-metrics]]
                              [segment :refer [Segment retrieve-segments]])
             [metabase.util :as u]))
 
@@ -44,6 +45,7 @@
                                                   (k/order :position :asc)
                                                   (k/order :name :asc))]
                                (db/sel :many :field->field [FieldValues :field_id :values] :field_id [in field-ids])))
+       :metrics             (delay (retrieve-metrics id))
        :pk_field            (delay (:id (db/sel :one :fields [Field :id] :table_id id (k/where {:special_type "id"}))))
        :segments            (delay (retrieve-segments id)))))
 
@@ -53,6 +55,7 @@
 
   (pre-cascade-delete [_ {:keys [id] :as table}]
     (db/cascade-delete Segment :table_id id)
+    (db/cascade-delete Metric :table_id id)
     (db/cascade-delete Field :table_id id)))
 
 (extend-ICanReadWrite TableEntity :read :always, :write :superuser)

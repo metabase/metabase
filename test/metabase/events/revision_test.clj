@@ -7,6 +7,7 @@
                              [dashboard :refer [Dashboard]]
                              [dashboard-card :refer [DashboardCard]]
                              [database :refer [Database]]
+                             [metric :refer [Metric]]
                              [revision :refer [Revision revisions]]
                              [revision-test :refer [with-fake-card]]
                              [segment :refer [Segment]]
@@ -175,6 +176,101 @@
                                      :dashcards [(assoc dashcard :sizeX 4)]}})
     (-> (db/sel :one Revision :model "Dashboard" :model_id dashboard-id)
         (select-keys [:model :model_id :user_id :object :is_reversion :is_creation]))))
+
+
+;; :metric-create
+(expect
+  {:model        "Metric"
+   :user_id      (user->id :rasta)
+   :object       {:name        "ABC"
+                  :description "DEF"
+                  :is_active    true
+                  :creator_id  (user->id :rasta)
+                  :definition  {:a "b"}}
+   :is_reversion false
+   :is_creation  true
+   :message      nil}
+  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
+                                             :engine    :yeehaw
+                                             :details   {}
+                                             :is_sample false}]
+    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
+                                       :db_id  database-id
+                                       :active true}]
+      (tu/with-temp Metric [metric {:creator_id  (user->id :rasta)
+                                      :table_id    id
+                                      :name        "ABC"
+                                      :description "DEF"
+                                      :definition  {:a "b"}}]
+        (process-revision-event {:topic :metric-create
+                                 :item  metric})
+        (let [revision (-> (db/sel :one Revision :model "Metric" :model_id (:id metric))
+                           (select-keys [:model :user_id :object :is_reversion :is_creation :message]))]
+          (assoc revision :object (dissoc (:object revision) :id :table_id)))))))
+
+;; :metric-update
+(expect
+  {:model        "Metric"
+   :user_id      (user->id :crowberto)
+   :object       {:name        "ABC"
+                  :description "DEF"
+                  :is_active   true
+                  :creator_id  (user->id :rasta)
+                  :definition  {:a "b"}}
+   :is_reversion false
+   :is_creation  false
+   :message      "updated"}
+  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
+                                             :engine    :yeehaw
+                                             :details   {}
+                                             :is_sample false}]
+    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
+                                       :db_id  database-id
+                                       :active true}]
+      (tu/with-temp Metric [metric {:creator_id  (user->id :rasta)
+                                      :table_id    id
+                                      :name        "ABC"
+                                      :description "DEF"
+                                      :definition  {:a "b"}}]
+        (process-revision-event {:topic :metric-update
+                                 :item  (assoc metric
+                                          :actor_id         (user->id :crowberto)
+                                          :revision_message "updated")})
+        (let [revision (-> (db/sel :one Revision :model "Metric" :model_id (:id metric))
+                           (select-keys [:model :user_id :object :is_reversion :is_creation :message]))]
+          (assoc revision :object (dissoc (:object revision) :id :table_id)))))))
+
+;; :metric-delete
+(expect
+  {:model        "Metric"
+   :user_id      (user->id :rasta)
+   :object       {:name        "ABC"
+                  :description "DEF"
+                  :is_active   false
+                  :creator_id  (user->id :rasta)
+                  :definition  {:a "b"}}
+   :is_reversion false
+   :is_creation  false
+   :message      nil}
+  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
+                                             :engine    :yeehaw
+                                             :details   {}
+                                             :is_sample false}]
+    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
+                                       :db_id  database-id
+                                       :active true}]
+      (tu/with-temp Metric [metric {:creator_id  (user->id :rasta)
+                                      :table_id    id
+                                      :name        "ABC"
+                                      :description "DEF"
+                                      :definition  {:a "b"}
+                                      :is_active   false}]
+        (process-revision-event {:topic :metric-delete
+                                 :item  metric})
+        (let [revision (-> (db/sel :one Revision :model "Metric" :model_id (:id metric))
+                           (select-keys [:model :user_id :object :is_reversion :is_creation :message]))]
+          (assoc revision :object (dissoc (:object revision) :id :table_id)))))))
+
 
 ;; :segment-create
 (expect

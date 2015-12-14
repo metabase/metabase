@@ -9,6 +9,7 @@
                           [email :as email]
                           [field :as field]
                           [foreignkey :as fk]
+                          [metric :as metric]
                           [notify :as notify]
                           [pulse :as pulse]
                           [revision :as revision]
@@ -43,6 +44,7 @@
   (GET     "/health"       [] (if ((resolve 'metabase.core/initialized?))
                                 {:status 200 :body {:status "ok"}}
                                 {:status 503 :body {:status "initializing" :progress ((resolve 'metabase.core/initialization-progress))}}))
+  (context "/metric"       [] (+auth metric/routes))
   (context "/notify"       [] (+apikey notify/routes))
   (context "/pulse"        [] (+auth pulse/routes))
   (context "/revision"     [] (+auth revision/routes))
