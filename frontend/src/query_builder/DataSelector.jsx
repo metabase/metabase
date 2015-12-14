@@ -12,7 +12,7 @@ export default class DataSelector extends Component {
     constructor(props, context) {
         super(props, context);
 
-        _.bindAll(this, "onChange", "itemIsSelected", "sectionIsSelected", "renderSectionIcon", "renderItemIcon");
+        _.bindAll(this, "onChange", "itemIsSelected", "renderSectionIcon", "renderItemIcon");
     }
 
     static propTypes = {
@@ -36,14 +36,6 @@ export default class DataSelector extends Component {
             this.props.setSourceTableFn(item.table.id);
         }
         this.refs.popover.toggle();
-    }
-
-    sectionIsSelected(section, sectionIndex) {
-        if (this.props.includeTables) {
-            return section.items[0].database.id === this.getDatabaseId();
-        } else {
-            return true;
-        }
     }
 
     itemIsSelected(item) {
@@ -131,7 +123,6 @@ export default class DataSelector extends Component {
                     className="text-brand"
                     sections={sections}
                     onChange={this.onChange}
-                    sectionIsSelected={this.sectionIsSelected}
                     itemIsSelected={this.itemIsSelected}
                     renderSectionIcon={this.renderSectionIcon}
                     renderItemIcon={this.renderItemIcon}

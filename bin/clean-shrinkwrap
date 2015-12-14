@@ -8,7 +8,7 @@ function clean(module) {
     delete module.from;
 
     // remove module.resolved unless it points to a git repo
-    if (module.resolved && !module.resolved.match(/^git(\+[a-z]+)?:\/\//)) {
+    if (module.resolved && module.resolved.indexOf("https://registry.npmjs.org/") === 0) {
         delete module.resolved;
     }
 

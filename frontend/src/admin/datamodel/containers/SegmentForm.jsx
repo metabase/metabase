@@ -3,7 +3,7 @@ import React, { Component, PropTypes } from "react";
 import FormLabel from "../components/FormLabel.jsx";
 import FormInput from "../components/FormInput.jsx";
 import FormTextArea from "../components/FormTextArea.jsx";
-import Fieldset from "../components/FieldSet.jsx";
+import FieldSet from "../components/FieldSet.jsx";
 import SegmentBuilder from "../components/segment/SegmentBuilder.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
@@ -85,7 +85,7 @@ export default class SegmentForm extends Component {
                                 />
                             </FormLabel>
                             { id.value != null &&
-                                <Fieldset legend="Reason For Changes">
+                                <FieldSet legend="Reason For Changes">
                                     <FormLabel description="Leave a note to explain what changes you made and why they were required.">
                                         <FormTextArea
                                             field={revision_message}
@@ -95,7 +95,7 @@ export default class SegmentForm extends Component {
                                     <div className="flex align-center">
                                         {this.renderActionButtons()}
                                     </div>
-                                </Fieldset>
+                                </FieldSet>
                             }
                         </div>
                     </div>
