@@ -42,11 +42,11 @@
          (integer? id)
          (map? deps)]}
   (let [entity-name      (:name entity)
-        dependency-set   (fn [key]
+        dependency-set   (fn [k]
                            ;; TODO: validate that key is a valid entity model
-                           (when (every? integer? (key deps))
-                             (for [val (key deps)]
-                               {:dependent_on_model (name key), :dependent_on_id val})))
+                           (when (every? integer? (k deps))
+                             (for [val (k deps)]
+                               {:dependent_on_model (name k), :dependent_on_id val})))
         dependencies-old (set (db/sel :many :fields [Dependency :dependent_on_model :dependent_on_id] :model entity-name :model_id id))
         dependencies-new (->> (mapv dependency-set (keys deps))
                               (filter identity)

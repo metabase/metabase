@@ -1,5 +1,5 @@
 (ns metabase.models.table
-  (:require [korma.core :as k, :exclude [defentity update]]
+  (:require [korma.core :as k]
             [metabase.db :as db]
             (metabase.models [common :refer :all]
                              [database :as database]
