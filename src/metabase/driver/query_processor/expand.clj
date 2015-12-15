@@ -298,7 +298,10 @@
     ["AND" base addtl]))
 
 (defn- macroexpand-metric [query-dict]
-  (if (non-empty-clause? (get-in query-dict [:query :aggregation]))
+  (if-not (non-empty-clause? (get-in query-dict [:query :aggregation]))
+    ;; aggregation is empty, so no METRIC to expand
+    query-dict
+    ;; we have an aggregation clause, so lets see if we are using a METRIC
     (if-let [metric-def (match (get-in query-dict [:query :aggregation])
                           ["METRIC" (metric-id :guard integer?)] (sel :one :field [metabase.models.metric/Metric :definition] :id metric-id)
                           other                                  nil)]
