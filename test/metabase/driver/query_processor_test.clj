@@ -400,6 +400,33 @@
     aggregate count of places
     filter = liked false))
 
+;;; filter = true
+(datasets/expect-with-all-engines
+  [[1 true "Tempest"]
+   [2 true "Bullit"]]
+  (Q dataset places-cam-likes
+     aggregate rows of places
+     filter = liked true
+     return rows))
+
+;;; filter != false
+(datasets/expect-with-all-engines
+  [[1 true "Tempest"]
+   [2 true "Bullit"]]
+  (Q dataset places-cam-likes
+     aggregate rows of places
+     filter != liked false
+     return rows))
+
+;;; filter != true
+(datasets/expect-with-all-engines
+  [[3 false "The Dentist"]]
+  (Q dataset places-cam-likes
+     aggregate rows of places
+     filter != liked true
+     return rows))
+
+
 ;; ### FILTER -- "BETWEEN", single subclause (neither "AND" nor "OR")
 (datasets/expect-with-all-engines
   [[21 "PizzaHacker"    58 37.7441 -122.421 2]
