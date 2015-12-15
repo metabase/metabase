@@ -4,29 +4,32 @@ import { handleActions } from "redux-actions";
 import { momentifyTimestamps } from "metabase/lib/redux";
 
 import {
-    NEW_SEGMENT,
     GET_SEGMENT,
     CREATE_SEGMENT,
     UPDATE_SEGMENT,
     DELETE_SEGMENT,
-    SET_CURRENT_SEGMENT_ID,
+    GET_METRIC,
+    CREATE_METRIC,
+    UPDATE_METRIC,
+    DELETE_METRIC,
     LOAD_TABLE_METADATA,
-    UPDATE_RESULT_COUNT,
+    UPDATE_PREVIEW_SUMMARY,
     FETCH_REVISIONS
 } from "./actions";
 
 export const segments = handleActions({
-    [NEW_SEGMENT]:    { next: (state, { payload }) => ({ ...state, [payload.id]: momentifyTimestamps(payload) }) },
     [GET_SEGMENT]:    { next: (state, { payload }) => ({ ...state, [payload.id]: momentifyTimestamps(payload) }) },
     [CREATE_SEGMENT]: { next: (state, { payload }) => ({ ...state, [payload.id]: momentifyTimestamps(payload) }) },
     [UPDATE_SEGMENT]: { next: (state, { payload }) => ({ ...state, [payload.id]: momentifyTimestamps(payload) }) },
     [DELETE_SEGMENT]: { next: (state, { payload }) => { state = { ...state }; delete state[payload.id]; return state; }}
 }, {});
 
-export const currentSegmentId = handleActions({
-    [SET_CURRENT_SEGMENT_ID]: { next: (state, { payload: segmentId }) => segmentId },
-    [CREATE_SEGMENT]: { next: (state, { payload: segment }) => segment.id }
-}, null);
+export const metrics = handleActions({
+    [GET_METRIC]:    { next: (state, { payload }) => ({ ...state, [payload.id]: momentifyTimestamps(payload) }) },
+    [CREATE_METRIC]: { next: (state, { payload }) => ({ ...state, [payload.id]: momentifyTimestamps(payload) }) },
+    [UPDATE_METRIC]: { next: (state, { payload }) => ({ ...state, [payload.id]: momentifyTimestamps(payload) }) },
+    [DELETE_METRIC]: { next: (state, { payload }) => { state = { ...state }; delete state[payload.id]; return state; }}
+}, {});
 
 export const tableMetadata = handleActions({
     [LOAD_TABLE_METADATA]: {
@@ -35,8 +38,8 @@ export const tableMetadata = handleActions({
     }
 }, null);
 
-export const resultCount = handleActions({
-    [UPDATE_RESULT_COUNT]: { next: (state, { payload: resultCount }) => resultCount }
+export const previewSummary = handleActions({
+    [UPDATE_PREVIEW_SUMMARY]: { next: (state, { payload }) => payload }
 }, null);
 
 export const revisionObject = handleActions({

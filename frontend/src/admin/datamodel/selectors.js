@@ -2,28 +2,58 @@
 import { createSelector } from 'reselect';
 
 const segmentsSelector         = state => state.datamodel.segments;
-const currentSegmentIdSelector = state => state.datamodel.currentSegmentId;
+const metricsSelector          = state => state.datamodel.metrics;
+
 const tableMetadataSelector    = state => state.datamodel.tableMetadata;
-const resultCountSelector      = state => state.datamodel.resultCount;
+const previewSummarySelector   = state => state.datamodel.previewSummary;
 const revisionObjectSelector   = state => state.datamodel.revisionObject;
+
+const idSelector               = state => state.router.params.id == null ? null : parseInt(state.router.params.id);
+const tableIdSelector          = state => state.router.location.query.table == null ? null : parseInt(state.router.location.query.table);
 
 export const segmentEditSelectors = createSelector(
     segmentsSelector,
-    currentSegmentIdSelector,
+    idSelector,
+    tableIdSelector,
     tableMetadataSelector,
-    (segments, currentSegmentId, tableMetadata) => ({
-        segment: segments[currentSegmentId],
+    (segments, id, tableId, tableMetadata) => ({
+        segment: id == null ?
+            { id: null, table_id: tableId, definition: { filter: [] } } :
+            segments[id],
         tableMetadata
     })
 );
 
 export const segmentFormSelectors = createSelector(
     segmentEditSelectors,
-    resultCountSelector,
-    ({ segment, tableMetadata }, resultCount) => ({
+    previewSummarySelector,
+    ({ segment, tableMetadata }, previewSummary) => ({
         initialValues: segment,
         tableMetadata,
-        resultCount
+        previewSummary
+    })
+);
+
+export const metricEditSelectors = createSelector(
+    metricsSelector,
+    idSelector,
+    tableIdSelector,
+    tableMetadataSelector,
+    (metrics, id, tableId, tableMetadata) => ({
+        metric: id == null ?
+            { id: null, table_id: tableId, definition: { aggregation: [null], filter: [] } } :
+            metrics[id],
+        tableMetadata
+    })
+);
+
+export const metricFormSelectors = createSelector(
+    metricEditSelectors,
+    previewSummarySelector,
+    ({ metric, tableMetadata }, previewSummary) => ({
+        initialValues: metric,
+        tableMetadata,
+        previewSummary
     })
 );
 

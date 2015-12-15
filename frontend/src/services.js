@@ -657,6 +657,27 @@ CoreServices.factory('Segment', ['$resource', '$cookies', function($resource, $c
     });
 }]);
 
+CoreServices.factory('Metric', ['$resource', '$cookies', function($resource, $cookies) {
+    return $resource('/api/metric/:metricId', {}, {
+        create: {
+            url: '/api/metric',
+            method: 'POST'
+        },
+        get: {
+            method: 'GET',
+            params: { metricId: '@metricId' },
+        },
+        update: {
+            method: 'PUT',
+            params: { metricId: '@id' }
+        },
+        delete: {
+            method: 'DELETE',
+            params: { metricId: '@metricId' }
+        }
+    });
+}]);
+
 CoreServices.factory('Revision', ['$resource', function($resource) {
     return $resource('/api/revision', {}, {
         list: {
