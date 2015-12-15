@@ -164,7 +164,7 @@ function applyChartLegend(dcjsChart, card) {
         legendEnabled = false;
     
     if (card.display && settings[card.display]) {
-        legendEnabled = settings[card.display].legend_enabled
+        legendEnabled = settings[card.display].legend_enabled;
     } else if (settings.chart) {
         legendEnabled = settings.chart.legend_enabled;
     }
