@@ -45,9 +45,9 @@
                                                   (k/order :position :asc)
                                                   (k/order :name :asc))]
                                (db/sel :many :field->field [FieldValues :field_id :values] :field_id [in field-ids])))
-       :metrics             (delay (retrieve-metrics id))
+       :metrics             (delay (retrieve-metrics id :all))
        :pk_field            (delay (:id (db/sel :one :fields [Field :id] :table_id id (k/where {:special_type "id"}))))
-       :segments            (delay (retrieve-segments id)))))
+       :segments            (delay (retrieve-segments id :all)))))
 
   (pre-insert [_ table]
     (let [defaults {:display_name (name->human-readable-name (:name table))}]
