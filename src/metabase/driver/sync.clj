@@ -79,6 +79,7 @@
                                          ;; replace default delays with ones that reuse database (and don't require a DB call)
                                          (assoc table :db (delay database)))))
 
+
 (defn- -sync-database! [driver database]
   (let [active-tables      (driver/active-tables driver database)
         existing-table->id (into {} (for [{:keys [name schema id]} (sel :many :fields [Table :name :schema :id], :db_id (:id database), :active true)]
