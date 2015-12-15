@@ -50,15 +50,15 @@
   "Create a new `Segment`.
 
    Returns the newly created `Segment` or throws an Exception."
-  [table-id name description creator-id definition]
+  [table-id segment-name description creator-id definition]
   {:pre [(integer? table-id)
-         (string? name)
+         (string? segment-name)
          (integer? creator-id)
          (map? definition)]}
   (let [segment (db/ins Segment
                   :table_id    table-id
                   :creator_id  creator-id
-                  :name        name
+                  :name        segment-name
                   :description description
                   :is_active   true
                   :definition  definition)]

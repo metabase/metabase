@@ -49,15 +49,15 @@
   "Create a new `Metric`.
 
    Returns the newly created `Metric` or throws an Exception."
-  [table-id name description creator-id definition]
+  [table-id metric-name description creator-id definition]
   {:pre [(integer? table-id)
-         (string? name)
+         (string? metric-name)
          (integer? creator-id)
          (map? definition)]}
   (let [metric (db/ins Metric
                   :table_id    table-id
                   :creator_id  creator-id
-                  :name        name
+                  :name        metric-name
                   :description description
                   :is_active   true
                   :definition  definition)]
