@@ -400,14 +400,20 @@
     aggregate count of places
     filter = liked false))
 
+(defn- int->bool [x]
+  (condp = x
+    0 false
+    1 true
+      x))
+
 ;;; filter = true
 (datasets/expect-with-all-engines
   [[1 true "Tempest"]
    [2 true "Bullit"]]
   (Q dataset places-cam-likes
      aggregate rows of places
-     filter = liked true
-     return rows))
+     filter = liked true, order id+
+     return rows (format-rows-by [int int->bool str])))
 
 ;;; filter != false
 (datasets/expect-with-all-engines
@@ -415,16 +421,16 @@
    [2 true "Bullit"]]
   (Q dataset places-cam-likes
      aggregate rows of places
-     filter != liked false
-     return rows))
+     filter != liked false, order id+
+     return rows (format-rows-by [int int->bool str])))
 
 ;;; filter != true
 (datasets/expect-with-all-engines
   [[3 false "The Dentist"]]
   (Q dataset places-cam-likes
      aggregate rows of places
-     filter != liked true
-     return rows))
+     filter != liked true, order id+
+     return rows (format-rows-by [int int->bool str])))
 
 
 ;; ### FILTER -- "BETWEEN", single subclause (neither "AND" nor "OR")
