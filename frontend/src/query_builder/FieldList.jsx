@@ -5,14 +5,11 @@ import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import TimeGroupingPopover from "./TimeGroupingPopover.jsx";
-
-import FilterList from "./filters/FilterList.jsx";
-import FieldSet from "../admin/datamodel/components/FieldSet.jsx";
+import QueryDefinitionTooltip from "./QueryDefinitionTooltip.jsx";
 
 import { isDate, getFieldType, DATE_TIME, NUMBER, STRING, LOCATION, COORDINATE } from 'metabase/lib/schema_metadata';
 import { parseFieldBucketing, parseFieldTarget } from "metabase/lib/query_time";
 import { stripId, singularize } from "metabase/lib/formatting";
-import Query from "metabase/lib/query";
 
 import _ from "underscore";
 
@@ -143,26 +140,9 @@ export default class FieldList extends Component {
 
     renderSegmentTooltip(segment) {
         let { tableMetadata } = this.props;
-        let tooltip = (
-            <div className="p2" style={{width: 250}}>
-                <div className="mb2">
-                    {segment.description}
-                </div>
-                <FieldSet legend="Definition" border="border-light">
-                    <div className="TooltipFilterList">
-                        <FilterList
-                            filters={Query.getFilters(segment.definition)}
-                            tableMetadata={tableMetadata}
-                            maxDisplayValues={Infinity}
-                        />
-                    </div>
-                </FieldSet>
-            </div>
-        );
-
         return (
             <div className="p1">
-                <Tooltip tooltipElement={tooltip}>
+                <Tooltip tooltipElement={<QueryDefinitionTooltip object={segment} tableMetadata={tableMetadata} />}>
                     <span className="QuestionTooltipTarget" />
                 </Tooltip>
             </div>

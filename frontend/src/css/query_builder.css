@@ -117,10 +117,15 @@
 
 .TooltipFilterList .Query-filter {
   padding-left: 0 !important;
+  padding-bottom: 0 !important;
 }
 
 .TooltipFilterList .Query-filterList {
   flex-direction: column;
+}
+
+.TooltipFilterList .Query-section {
+  margin-left: -0.5rem;
 }
 
 /*
