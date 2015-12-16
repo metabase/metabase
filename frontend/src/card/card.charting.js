@@ -183,7 +183,10 @@ function applyChartLegend(dcjsChart, card) {
 }
 
 function addLegendMarginsForCharts(dcjsChart, card, legendCount) {
-    if (card.display === "bar" || card.display === "line" || card.display === "area") {
+    //Chart types which support legends
+    var chartTypes = ["bar", "line", "area"];
+
+    if (chartTypes.indexOf(card.display) > -1) {
         dcjsChart.margins().top = dcjsChart.margins().top + legendCount*(dcjsChart.legend().itemHeight() + dcjsChart.legend().gap())
     } 
 }
