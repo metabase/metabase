@@ -6,10 +6,12 @@
             [metabase.db :as db]
             [metabase.events :as events]
             (metabase.models [common :refer [perms-readwrite]]
+                             [dependency :as dependency]
                              [hydrate :refer :all]
                              [interface :refer :all]
                              [revision :as revision]
                              [user :refer [User]])
+            [metabase.query :as q]
             [metabase.util :as u]))
 
 
@@ -162,3 +164,17 @@
    :revert-to-revision revision/default-revert-to-revision
    :diff-map           diff-metrics
    :diff-str           revision/default-diff-str})
+
+
+;;; ## ---------------------------------------- DEPENDENCIES ----------------------------------------
+
+
+(defn metric-dependencies
+  "Calculate any dependent objects for a given `Metric`."
+  [this id {:keys [definition] :as instance}]
+  (when definition
+    {:Segment (q/extract-segment-ids definition)}))
+
+(extend MetricEntity
+  dependency/IDependent
+  {:dependencies metric-dependencies})

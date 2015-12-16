@@ -6,7 +6,8 @@
             (metabase.models [dependency :as dependency]
                              [interface :refer :all]
                              [revision :as revision]
-                             [user :refer [User]])))
+                             [user :refer [User]])
+            [metabase.query :as q]))
 
 (def ^:const display-types
   "Valid values of `Card.display_type`."
@@ -87,36 +88,13 @@
 ;;; ## ---------------------------------------- DEPENDENCIES ----------------------------------------
 
 
-(defn- parse-filter-subclause [subclause]
-  (match subclause
-    ["SEGMENT" (segment-id :guard integer?)] segment-id
-    subclause                                nil))
-
-(defn- parse-filter [clause]
-  (match clause
-    ["AND" & subclauses] (mapv parse-filter subclauses)
-    ["OR" & subclauses]  (mapv parse-filter subclauses)
-    subclause            (parse-filter-subclause subclause)))
-
-(defn- extract-segment-ids [filter-clause]
-  (when filter-clause
-    (->> (parse-filter filter-clause)
-         flatten
-         (filter identity)
-         set)))
-
-(defn- extract-metric-ids [aggregation-clause]
-  (match aggregation-clause
-    ["METRIC" (metric-id :guard integer?)] #{metric-id}
-    other                                  nil))
-
 (defn card-dependencies
   "Calculate any dependent objects for a given `Card`."
   [this id {:keys [dataset_query] :as instance}]
   (when (and dataset_query
              (= :query (keyword (:type dataset_query))))
-    {:Metric  (extract-metric-ids (get-in dataset_query [:query :aggregation]))
-     :Segment (extract-segment-ids (get-in dataset_query [:query :filter]))}))
+    {:Metric  (q/extract-metric-ids (:query dataset_query))
+     :Segment (q/extract-segment-ids (:query dataset_query))}))
 
 (extend CardEntity
   dependency/IDependent

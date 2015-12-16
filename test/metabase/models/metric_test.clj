@@ -258,3 +258,23 @@
                 {:name        "A"
                  :description "Unchanged"
                  :definition  {:filter ["AND",[">",4,"2014-10-19"]]}}))
+
+
+
+;; ## Metric Dependencies
+
+(expect
+  {:Segment #{2 3}}
+  (metric-dependencies Metric 12 {:definition {:aggregation ["rows"]
+                                               :breakout    [4 5]
+                                               :filter      ["AND" [">" 4 "2014-10-19"] ["=" 5 "yes"] ["SEGMENT" 2] ["SEGMENT" 3]]}}))
+
+(expect
+  {:Segment #{1}}
+  (metric-dependencies Metric 12 {:definition {:aggregation ["METRIC" 7]
+                                               :filter      ["AND" [">" 4 "2014-10-19"] ["=" 5 "yes"] ["OR" ["SEGMENT" 1] ["!=" 5 "5"]]]}}))
+
+(expect
+  {:Segment nil}
+  (metric-dependencies Metric 12 {:definition {:aggregation nil
+                                               :filter      nil}}))
