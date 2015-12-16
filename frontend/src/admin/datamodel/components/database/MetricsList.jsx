@@ -23,7 +23,7 @@ export default class MetricsList extends Component {
                     <thead>
                         <tr>
                             <th style={{ minWidth: "200px" }}>Name</th>
-                            <th className="full">Formula</th>
+                            <th className="full">Definition</th>
                             <th>Actions</th>
                         </tr>
                     </thead>

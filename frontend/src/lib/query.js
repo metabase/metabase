@@ -438,67 +438,97 @@ var Query = {
     },
 
     getFieldName(tableMetadata, id) {
-        if (Array.isArray(id)) {
-            if (id[0] === "fk->") {
-                var field = tableMetadata.fields_lookup[id[1]];
-                if (field) {
-                    return field.display_name + " " + Query.getFieldName(field.target.table, id[2]);
+        if (tableMetadata) {
+            if (Array.isArray(id)) {
+                if (id[0] === "fk->") {
+                    var field = tableMetadata.fields_lookup[id[1]];
+                    if (field) {
+                        return field.display_name.replace(/\s+id\s*$/i, "") + " → " + Query.getFieldName(field.target.table, id[2]);
+                    }
                 }
+            } else if (tableMetadata.fields_lookup[id]) {
+                return tableMetadata.fields_lookup[id].display_name
             }
-        } else if (tableMetadata.fields_lookup[id]) {
-            return tableMetadata.fields_lookup[id].display_name
         }
         return '[unknown]';
     },
 
-    getFilterDescription(tableMetadata, filter) {
+    getTableDescription(tableMetadata) {
+        return inflection.pluralize(tableMetadata.display_name);
+    },
+
+    getAggregationDescription(tableMetadata, { aggregation }) {
+        if (aggregation) {
+            switch (aggregation[0]) {
+                case "rows":     return           "raw data";
+                case "count":    return              "count";
+                case "avg":      return            "average of " + Query.getFieldName(tableMetadata, aggregation[1]);
+                case "distinct": return    "distinct values of " + Query.getFieldName(tableMetadata, aggregation[1]);
+                case "stddev":   return "standard deviation of " + Query.getFieldName(tableMetadata, aggregation[1]);
+                case "sum":      return                "sum of " + Query.getFieldName(tableMetadata, aggregation[1]);
+                case "cum_sum":  return     "cumulative sum of " + Query.getFieldName(tableMetadata, aggregation[1]);
+            }
+        }
+        return "";
+    },
+
+    getBreakoutDescription(tableMetadata, { breakout }) {
+        if (breakout && breakout.length > 0) {
+            return "grouped by " + breakout.map((b) => Query.getFieldName(tableMetadata, b)).join(" and ");
+        }
+    },
+
+    getFilterDescription(tableMetadata, query) {
+        let filters = Query.getFilters(query);
+        if (filters && filters.length > 0) {
+            return "filtered by " + Query.getFilterClauseDescription(tableMetadata, filters);
+        }
+    },
+
+    getFilterClauseDescription(tableMetadata, filter) {
         if (filter[0] === "AND" || filter[0] === "OR") {
-            return filter.slice(1).map(Query.getFilterDescription.bind(null, tableMetadata)).join(" " + filter[0].toLowerCase() + " ");
+            return filter.slice(1).map((f) => Query.getFilterClauseDescription(tableMetadata, f)).join(" " + filter[0].toLowerCase() + " ");
         } else {
             return Query.getFieldName(tableMetadata, filter[1]);
         }
     },
 
-    generateQueryDescription(tableMetadata, dataset_query) {
+    getOrderByDescription(tableMetadata, { order_by }) {
+        if (order_by && order_by.length > 0) {
+            return "sorted by " + order_by.map((o) => Query.getFieldName(tableMetadata, o[0]) + " " + o[1]).join(" and ");
+        }
+    },
+
+    getLimitDescription(tableMetadata, { limit }) {
+        if (limit != null) {
+            return limit + " " + inflection.inflect("row", limit);
+        }
+    },
+
+    generateQueryDescription(tableMetadata, query, options = {}) {
         if (!tableMetadata) {
             return "";
         }
 
-        const getFieldName = Query.getFieldName.bind(null, tableMetadata);
-        const query = dataset_query.query;
-        let description = inflection.pluralize(tableMetadata.display_name) + " ";
+        options = {
+            sections: ["table", "aggregation", "breakout", "filter", "order_by", "limit"],
+            ...options
+        };
 
-        if (query.aggregation && query.aggregation.length > 0) {
-            switch (query.aggregation[0]) {
-                case "rows":     description += "raw data"; break;
-                case "count":    description += "count"; break;
-                case "avg":      description += "average of " + getFieldName(query.aggregation[1]); break;
-                case "distinct": description += "distinct values of " + getFieldName(query.aggregation[1]); break;
-                case "stddev":   description += "standard deviation of " + getFieldName(query.aggregation[1]); break;
-                case "sum":      description += "sum of " + getFieldName(query.aggregation[1]); break;
-                case "cum_sum":  description += "cumulative sum of " + getFieldName(query.aggregation[1]); break;
-                default:
-            }
+        const sections = {
+            table:       Query.getTableDescription,
+            aggregation: Query.getAggregationDescription,
+            breakout:    Query.getBreakoutDescription,
+            filter:      Query.getFilterDescription,
+            order_by:    Query.getOrderByDescription,
+            limit:       Query.getLimitDescription
         }
 
-        if (query.breakout && query.breakout.length > 0) {
-            description += ", grouped by " + query.breakout.map((b) => getFieldName(b)).join(" and ");
-        }
-
-        var filters = Query.getFilters(dataset_query.query);
-        if (filters && filters.length > 0) {
-            description += ", filtered by " + Query.getFilterDescription(tableMetadata, filters);
-        }
-
-        if (query.order_by && query.order_by.length > 0) {
-            description += ", sorted by " + query.order_by.map((ordering) => getFieldName(ordering[0]) + " " + ordering[1]).join(" and ");
-        }
-
-        if (query.limit != null) {
-            description += ", " + query.limit + " " + inflection.inflect("row", query.limit);
-        }
-
-        return description;
+        return options.sections
+            .map((section) => sections[section](tableMetadata, query))
+            .filter(s => !!s)
+            .map(s => s.charAt(0).toUpperCase() + s.slice(1))
+            .join(", ");
     }
 }
 
