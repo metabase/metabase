@@ -78,6 +78,59 @@
                                    :breakout    [17]
                                    :order_by    [[1 "ASC"]]}})))))
 
+;; check that when the original filter is empty we simply use our metric filter definition instead
+(expect
+  {:database 1
+   :type     :query
+   :query    {:aggregation ["count"]
+              :filter      ["AND" ["=" 5 "abc"]]
+              :breakout    [17]
+              :order_by    [[1 "ASC"]]}}
+  (tu/with-temp Database [{database-id :id} {:name      "Macro Expansion Test"
+                                             :engine    :yeehaw
+                                             :details   {}
+                                             :is_sample false}]
+    (tu/with-temp Table [{table-id :id} {:name   "Macro Expansion Table"
+                                         :db_id  database-id
+                                         :active true}]
+      (tu/with-temp Metric [{metric1 :id} {:creator_id  (user->id :crowberto)
+                                           :table_id    table-id
+                                           :name        "Test Metric"
+                                           :definition  {:aggregation ["count"]
+                                                         :filter      ["AND" ["=" 5 "abc"]]}}]
+        (expand-macros {:database 1
+                        :type     :query
+                        :query    {:aggregation ["METRIC" metric1]
+                                   :filter      []
+                                   :breakout    [17]
+                                   :order_by    [[1 "ASC"]]}})))))
+
+;; metric w/ no filter definition
+(expect
+  {:database 1
+   :type     :query
+   :query    {:aggregation ["count"]
+              :filter      ["AND" ["=" 5 "abc"]]
+              :breakout    [17]
+              :order_by    [[1 "ASC"]]}}
+  (tu/with-temp Database [{database-id :id} {:name      "Macro Expansion Test"
+                                             :engine    :yeehaw
+                                             :details   {}
+                                             :is_sample false}]
+    (tu/with-temp Table [{table-id :id} {:name   "Macro Expansion Table"
+                                         :db_id  database-id
+                                         :active true}]
+      (tu/with-temp Metric [{metric1 :id} {:creator_id  (user->id :crowberto)
+                                           :table_id    table-id
+                                           :name        "Test Metric"
+                                           :definition  {:aggregation ["count"]}}]
+        (expand-macros {:database 1
+                        :type     :query
+                        :query    {:aggregation ["METRIC" metric1]
+                                   :filter      ["AND" ["=" 5 "abc"]]
+                                   :breakout    [17]
+                                   :order_by    [[1 "ASC"]]}})))))
+
 ;; a metric w/ nested segments
 (expect
   {:database 1

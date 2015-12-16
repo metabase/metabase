@@ -293,9 +293,12 @@
     query-dict))
 
 (defn- merge-filter-clauses [base addtl]
-  (if-not addtl
-    base
-    ["AND" base addtl]))
+  (cond
+    (and (seq base)
+         (seq addtl)) ["AND" base addtl]
+    (seq base)        base
+    (seq addtl)       addtl
+    :else             []))
 
 (defn- macroexpand-metric [query-dict]
   (if-not (non-empty-clause? (get-in query-dict [:query :aggregation]))
@@ -305,7 +308,7 @@
     (if-let [metric-def (match (get-in query-dict [:query :aggregation])
                           ["METRIC" (metric-id :guard integer?)] (sel :one :field [metabase.models.metric/Metric :definition] :id metric-id)
                           other                                  nil)]
-      ;; we have a metric, so expand its definition into the existing query-dict
+      ;; we have a metric, so merge its definition into the existing query-dict
       (-> query-dict
           (assoc-in [:query :aggregation] (:aggregation metric-def))
           (assoc-in [:query :filter] (merge-filter-clauses (get-in query-dict [:query :filter]) (:filter metric-def))))
