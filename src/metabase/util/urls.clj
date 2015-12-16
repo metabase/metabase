@@ -9,3 +9,6 @@
 
 (defn question-url [id]
   (format "%s/card/%d" (setting/get :-site-url) id))
+
+(defn segment-url [id]
+  (format "%s/admin/datamodel/segment/%d" (setting/get :-site-url) id))
