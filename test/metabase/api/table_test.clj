@@ -177,6 +177,7 @@
        :id              (id :categories)
        :db_id           (id)
        :segments        []
+       :metrics         []
        :created_at      $})
     ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :categories))))
 
@@ -309,6 +310,7 @@
                           "Spiros Teofil"
                           "Szymon Theutrich"]}
        :segments        []
+       :metrics         []
        :created_at      $})
     ((user->client :rasta) :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (id :users))))
 
@@ -405,6 +407,7 @@
                           "Spiros Teofil"
                           "Szymon Theutrich"]}
        :segments        []
+       :metrics         []
        :created_at      $})
     ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :users))))
 
