@@ -9,13 +9,13 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.j
 
 import { formatScalar } from "metabase/lib/formatting";
 
-import { segmentFormSelectors } from "../selectors";
+import { metricFormSelectors } from "../selectors";
 import { reduxForm } from "redux-form";
 
 import cx from "classnames";
 
 @reduxForm({
-    form: "segment",
+    form: "metric",
     fields: ["id", "name", "description", "table_id", "definition", "revision_message"],
     validate: (values) => {
         const errors = {};
@@ -30,21 +30,20 @@ import cx from "classnames";
                 errors.revision_message = "Revision message is required";
             }
         }
-        if (!values.definition || !values.definition.filter || values.definition.filter.length < 1) {
-            errors.definition = "At least one filter is required";
+        if (!values.definition || !values.definition.filter || !values.definition.aggregation || values.definition.aggregation[0] == null) {
+            errors.definition = "Aggreagtion is required";
         }
         return errors;
-    },
-    initialValues: { name: "", description: "", table_id: null, definition: { filter: [] }, revision_message: null }
+    }
 },
-segmentFormSelectors)
-export default class SegmentForm extends Component {
+metricFormSelectors)
+export default class MetricForm extends Component {
     updatePreviewSummary(query) {
         this.props.updatePreviewSummary({
             ...query,
             query: {
+                aggregation: ["count"],
                 ...query.query,
-                aggregation: ["count"]
             }
         })
     }
@@ -60,7 +59,7 @@ export default class SegmentForm extends Component {
     }
 
     render() {
-        const { fields: { id, name, description, definition, revision_message }, segment, tableMetadata, handleSubmit, previewSummary } = this.props;
+        const { fields: { id, name, description, definition, revision_message }, metric, tableMetadata, handleSubmit, previewSummary } = this.props;
 
         return (
             <LoadingAndErrorWrapper loading={!tableMetadata}>
@@ -68,26 +67,28 @@ export default class SegmentForm extends Component {
                 <form onSubmit={handleSubmit}>
                     <div className="p4">
                         <FormLabel
-                            title={(segment && segment.id != null ? "Edit" : "Create") + " Your Segment"}
-                            description={"Select and add filters to create your new segment for the " + tableMetadata.display_name + " table"}
+                            title={(metric && metric.id != null ? "Edit" : "Create") + " Your Metric"}
+                            description={"Select and add filters to create your new metric for the " + tableMetadata.display_name + " table"}
                         >
-                            <PartialQueryBuilder
-                                features={{
-                                    filter: true
-                                }}
-                                tableMetadata={{
-                                    ...tableMetadata,
-                                    segments: null
-                                }}
-                                previewSummary={previewSummary == null ? "" : formatScalar(previewSummary) + " rows"}
-                                updatePreviewSummary={this.updatePreviewSummary.bind(this)}
-                                {...definition}
-                            />
+                        <PartialQueryBuilder
+                            features={{
+                                filter: true,
+                                aggregation: true
+                            }}
+                            tableMetadata={{
+                                ...tableMetadata,
+                                aggregation_options: tableMetadata.aggregation_options.filter(a => a.short !== "rows"),
+                                metrics: null
+                            }}
+                            previewSummary={previewSummary == null ? "" : "Result: " + formatScalar(previewSummary)}
+                            updatePreviewSummary={this.updatePreviewSummary.bind(this)}
+                            {...definition}
+                        />
                         </FormLabel>
                         <div style={{ maxWidth: "575px" }}>
                             <FormLabel
-                                title="Name Your Segment"
-                                description="Give your segment a name to help others find it."
+                                title="Name Your Metric"
+                                description="Give your metric a name to help others find it."
                             >
                                 <FormInput
                                     field={name}
@@ -95,12 +96,12 @@ export default class SegmentForm extends Component {
                                 />
                             </FormLabel>
                             <FormLabel
-                                title="Describe Your Segment"
-                                description="Give your segment a description to help others understand what it's about."
+                                title="Describe Your Metric"
+                                description="Give your metric a description to help others understand what it's about."
                             >
                                 <FormTextArea
                                     field={description}
-                                    placeholder="This is a good place to be more specific about less obvious segment rules"
+                                    placeholder="This is a good place to be more specific about less obvious metric rules"
                                 />
                             </FormLabel>
                             { id.value != null &&
@@ -108,7 +109,7 @@ export default class SegmentForm extends Component {
                                     <FormLabel description="Leave a note to explain what changes you made and why they were required.">
                                         <FormTextArea
                                             field={revision_message}
-                                            placeholder="This will show up in the revision history for this segment to help everyone remember why things changed"
+                                            placeholder="This will show up in the revision history for this metric to help everyone remember why things changed"
                                         />
                                     </FormLabel>
                                     <div className="flex align-center">

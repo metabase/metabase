@@ -3,12 +3,11 @@ import React, { Component, PropTypes } from "react";
 import GuiQueryEditor from "metabase/query_builder/GuiQueryEditor.jsx";
 
 import { serializeCardForUrl } from "metabase/lib/card";
-import { formatScalar } from "metabase/lib/formatting";
 
 import _ from "underscore";
 import cx from "classnames";
 
-export default class SegmentBuilder extends Component {
+export default class PartialQueryBuilder extends Component {
     constructor(props, context) {
         super(props, context);
         this.state = {};
@@ -19,13 +18,13 @@ export default class SegmentBuilder extends Component {
     static propTypes = {
         onChange: PropTypes.func.isRequired,
         tableMetadata: PropTypes.object.isRequired,
-        updateResultCount: PropTypes.func.isRequired,
-        resultCount: PropTypes.number
+        updatePreviewSummary: PropTypes.func.isRequired,
+        previewSummary: PropTypes.string
     };
 
     componentDidMount() {
         const { value, tableMetadata } = this.props;
-        this.props.updateResultCount({
+        this.props.updatePreviewSummary({
             type: "query",
             database: tableMetadata.db_id,
             query: {
@@ -37,11 +36,11 @@ export default class SegmentBuilder extends Component {
 
     setQuery(query) {
         this.props.onChange(query.query);
-        this.props.updateResultCount(query);
+        this.props.updatePreviewSummary(query);
     }
 
     render() {
-        let { value, tableMetadata, resultCount } = this.props;
+        let { features, value, tableMetadata, previewSummary } = this.props;
 
         let dataset_query = {
             type: "query",
@@ -69,14 +68,12 @@ export default class SegmentBuilder extends Component {
             <div className="py1">
                 <GuiQueryEditor
                     query={dataset_query}
-                    features={{
-                        filter: true
-                    }}
+                    features={features}
                     tableMetadata={tableMetadata}
                     setQueryFn={this.setQuery}
                 >
                     <div className="flex align-center mx2 my2">
-                        {resultCount != null && <span className="text-bold px3">{formatScalar(resultCount)} rows</span>}
+                        <span className="text-bold px3">{previewSummary}</span>
                         <a target="_blank" className={cx("Button Button--primary")} href={previewUrl}>Preview</a>
                     </div>
                 </GuiQueryEditor>

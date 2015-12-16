@@ -1,22 +1,22 @@
 import React, { Component, PropTypes } from "react";
 
-import SegmentForm from "./SegmentForm.jsx";
+import MetricForm from "./MetricForm.jsx";
 
-import { segmentEditSelectors } from "../selectors";
+import { metricEditSelectors } from "../selectors";
 import * as actions from "../actions";
 
 import { connect } from "react-redux";
 
-@connect(segmentEditSelectors, actions)
-export default class SegmentApp extends Component {
+@connect(metricEditSelectors, actions)
+export default class MetricApp extends Component {
     async componentWillMount() {
         const { params, location } = this.props;
 
         let tableId;
         if (params.id) {
-            const segmentId = parseInt(params.id);
-            const { payload: segment } = await this.props.getSegment({ segmentId });
-            tableId = segment.table_id;
+            const metricId = parseInt(params.id);
+            const { payload: metric } = await this.props.getMetric({ metricId });
+            tableId = metric.table_id;
         } else if (location.query.table) {
             tableId = parseInt(location.query.table);
         }
@@ -26,12 +26,12 @@ export default class SegmentApp extends Component {
         }
     }
 
-    async onSubmit(segment, f) {
+    async onSubmit(metric, f) {
         let { tableMetadata } = this.props;
-        if (segment.id != null) {
-            await this.props.updateSegment(segment);
+        if (metric.id != null) {
+            await this.props.updateMetric(metric);
         } else {
-            await this.props.createSegment(segment);
+            await this.props.createMetric(metric);
         }
 
         this.onLocationChange("/admin/datamodel/database/" + tableMetadata.db_id + "/table/" + tableMetadata.id);
@@ -40,7 +40,7 @@ export default class SegmentApp extends Component {
     render() {
         return (
             <div>
-                <SegmentForm
+                <MetricForm
                     {...this.props}
                     onSubmit={this.onSubmit.bind(this)}
                 />
