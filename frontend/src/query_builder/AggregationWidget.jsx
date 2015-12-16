@@ -5,6 +5,7 @@ import AccordianList from "./AccordianList.jsx";
 
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
+import Tooltip from "metabase/components/Tooltip.jsx";
 
 import Query from "metabase/lib/query";
 
@@ -75,6 +76,18 @@ export default class AggregationWidget extends Component {
         return (aggregation[0] === item.value[0] && (aggregation[0] !== "METRIC" || aggregation[1] === item.value[1]));
     }
 
+    renderItemExtra(item, itemIndex) {
+        if (item.description) {
+            return (
+                <div className="p1">
+                    <Tooltip tooltipElement={item.description}>
+                        <span className="QuestionTooltipTarget" />
+                    </Tooltip>
+                </div>
+            );
+        }
+    }
+
     render() {
         const { aggregation, tableMetadata } = this.props;
         const { availableAggregations } = this.state;
@@ -88,7 +101,8 @@ export default class AggregationWidget extends Component {
             name: "Metabasics",
             items: availableAggregations.map(option => ({
                 name: option.name,
-                value: [option.short].concat(option.fields.map(field => null))
+                value: [option.short].concat(option.fields.map(field => null)),
+                description: option.description
             })),
             icon: "table2"
         }];
@@ -129,6 +143,7 @@ export default class AggregationWidget extends Component {
                             onChange={this.setAggregation}
                             itemIsSelected={this.itemIsSelected.bind(this)}
                             renderSectionIcon={this.renderSectionIcon}
+                            renderItemExtra={this.renderItemExtra.bind(this)}
                         />
                     </PopoverWithTrigger>
                 </div>

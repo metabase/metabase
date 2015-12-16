@@ -19,7 +19,8 @@ export default class AccordianList extends Component {
         onChange: PropTypes.func,
         itemIsSelected: PropTypes.func,
         renderItem: PropTypes.func,
-        renderSectionIcon: PropTypes.func
+        renderSectionIcon: PropTypes.func,
+        getItemClasses: PropTypes.func
     };
 
     toggleSection(sectionIndex) {
@@ -73,18 +74,11 @@ export default class AccordianList extends Component {
         }
     }
 
-    renderItem(item, itemIndex) {
-        if (this.props.renderItem) {
-            return this.props.renderItem(item, itemIndex);
+    renderItemExtra(item, itemIndex) {
+        if (this.props.renderItemExtra) {
+            return this.props.renderItemExtra(item, itemIndex);
         } else {
-            return (
-                <a className="flex-full flex align-center px1 py1 cursor-pointer"
-                     onClick={this.onChange.bind(this, item)}
-                >
-                    { this.renderItemIcon(item, itemIndex) }
-                    <h4 className="List-item-title ml2">{item.name}</h4>
-                </a>
-            );
+            return null;
         }
     }
 
@@ -102,6 +96,10 @@ export default class AccordianList extends Component {
         } else {
             return null;
         }
+    }
+
+    getItemClasses(item, itemIndex) {
+        return this.props.getItemClasses && this.props.getItemClasses(item, itemIndex);
     }
 
     render() {
@@ -131,8 +129,14 @@ export default class AccordianList extends Component {
                             <ul style={{maxHeight: 400}} className="p1 border-bottom scroll-y scroll-show">
                               {section.items.map((item, itemIndex) => {
                                   return (
-                                      <li key={itemIndex} className={cx("List-item flex", { 'List-item--selected': this.itemIsSelected(item) })}>
-                                        {this.renderItem(item, itemIndex)}
+                                      <li key={itemIndex} className={cx("List-item flex", { 'List-item--selected': this.itemIsSelected(item, itemIndex) }, this.getItemClasses(item, itemIndex))}>
+                                          <a className="flex-full flex align-center px1 py1 cursor-pointer"
+                                               onClick={this.onChange.bind(this, item)}
+                                          >
+                                              { this.renderItemIcon(item, itemIndex) }
+                                              <h4 className="List-item-title ml2">{item.name}</h4>
+                                          </a>
+                                          { this.renderItemExtra(item, itemIndex) }
                                       </li>
                                   )
                               })}

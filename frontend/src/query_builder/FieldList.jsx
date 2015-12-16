@@ -15,7 +15,6 @@ import { stripId, singularize } from "metabase/lib/formatting";
 import Query from "metabase/lib/query";
 
 import _ from "underscore";
-import cx from "classnames";
 
 const ICON_MAPPING = {
     [DATE_TIME]:  'calendar',
@@ -28,6 +27,8 @@ const ICON_MAPPING = {
 export default class FieldList extends Component {
     constructor(props, context) {
         super(props, context);
+
+        _.bindAll(this, "onChange", "itemIsSelected", "renderItemExtra", "renderItemIcon", "renderSectionIcon", "getItemClasses");
     }
 
     static propTypes = {
@@ -46,34 +47,33 @@ export default class FieldList extends Component {
     }
 
     componentWillReceiveProps(newProps) {
-        let { tableMetadata, field, fieldOptions, segmentOptions, onFieldChange, onFilterChange } = newProps;
+        let { tableMetadata, field, fieldOptions, segmentOptions } = newProps;
         let tableName = tableMetadata.display_name;
 
         let specialOptions = [];
         if (segmentOptions) {
             specialOptions = segmentOptions.map(segment => ({
-                field: { display_name: segment.name },
+                name: segment.name,
                 value: ["SEGMENT", segment.id],
-                segment: segment,
-                onClick: onFilterChange
+                segment: segment
             }));
         }
 
         let mainSection = {
             name: singularize(tableName),
             items: specialOptions.concat(fieldOptions.fields.map(field => ({
-                field: field,
+                name: field.display_name,
                 value: field.id,
-                onClick: onFieldChange
+                field: field
             })))
         };
 
         let fkSections = fieldOptions.fks.map(fk => ({
             name: stripId(fk.field.display_name),
             items: fk.fields.map(field => ({
-                field: field,
+                name: field.display_name,
                 value: ["fk->", fk.field.id, field.id],
-                onClick: onFieldChange
+                field: field
             }))
         }));
 
@@ -87,7 +87,7 @@ export default class FieldList extends Component {
         return _.isEqual(this.state.fieldTarget, item.value);
     }
 
-    renderItem(item) {
+    renderItemExtra(item) {
         let { field, tableMetadata, enableTimeGrouping } = this.props;
 
         if (tableMetadata.db.engine === "mongo") {
@@ -95,17 +95,11 @@ export default class FieldList extends Component {
         }
 
         return (
-            <div className="flex-full flex align-center">
-                <a className={cx("flex-full flex align-center px1 py1 cursor-pointer", { "List-item--segment": !!item.segment })}
-                     onClick={item.onClick.bind(null, item.value)}
-                >
-                    { this.renderTypeIcon(item) }
-                    <h4 className="List-item-title ml2">{item.field.display_name}</h4>
-                </a>
+            <div className="flex align-center">
                 { item.segment &&
                     this.renderSegmentTooltip(item.segment)
                 }
-                { enableTimeGrouping && isDate(item.field) &&
+                { item.field && enableTimeGrouping && isDate(item.field) &&
                     <PopoverWithTrigger
                         className={this.props.className}
                         hasArrow={false}
@@ -120,7 +114,7 @@ export default class FieldList extends Component {
                         <TimeGroupingPopover
                             field={field}
                             value={item.value}
-                            onFieldChange={item.onClick}
+                            onFieldChange={this.props.onFieldChange}
                         />
                     </PopoverWithTrigger>
                 }
@@ -128,11 +122,11 @@ export default class FieldList extends Component {
         );
     }
 
-    renderTypeIcon(item) {
+    renderItemIcon(item) {
         let name;
         if (item.segment) {
             name = "star-outline";
-        } else {
+        } else if (item.field) {
             name = ICON_MAPPING[getFieldType(item.field)]
         }
         return <Icon name={name || 'unknown'} width={18} height={18} />;
@@ -144,7 +138,7 @@ export default class FieldList extends Component {
                 <h4 className="mr1">by {parseFieldBucketing(field).split("-").join(" ")}</h4>
                 <Icon name="chevronright" width={16} height={16} />
             </div>
-        )
+        );
     }
 
     renderSegmentTooltip(segment) {
@@ -175,9 +169,25 @@ export default class FieldList extends Component {
         );
     }
 
+    getItemClasses(item, itemIndex) {
+        if (item.segment) {
+            return "List-item--segment"
+        } else {
+            return null;
+        }
+    }
+
     renderSectionIcon(section, sectionIndex) {
         if (sectionIndex > 0) {
             return <Icon name="connections" width={18} height={18} />
+        }
+    }
+
+    onChange(item) {
+        if (item.segment) {
+            this.props.onFilterChange(item.value);
+        } else {
+            this.props.onFieldChange(item.value);
         }
     }
 
@@ -186,9 +196,12 @@ export default class FieldList extends Component {
             <AccordianList
                 className={this.props.className}
                 sections={this.state.sections}
-                itemIsSelected={this.itemIsSelected.bind(this)}
-                renderItem={this.renderItem.bind(this)}
-                renderSectionIcon={this.renderSectionIcon.bind(this)}
+                onChange={this.onChange}
+                itemIsSelected={this.itemIsSelected}
+                renderSectionIcon={this.renderSectionIcon}
+                renderItemExtra={this.renderItemExtra}
+                renderItemIcon={this.renderItemIcon}
+                getItemClasses={this.getItemClasses}
             />
         )
     }
