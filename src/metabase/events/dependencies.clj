@@ -4,13 +4,16 @@
             [metabase.config :as config]
             [metabase.events :as events]
             (metabase.models [card :refer [Card]]
-                             [dependency :refer [IDependent] :as dependency])))
+                             [dependency :refer [IDependent] :as dependency]
+                             [metric :refer [Metric]])))
 
 
 (def ^:const dependencies-topics
   "The `Set` of event topics which are subscribed to for use in dependencies tracking."
   #{:card-create
-    :card-update})
+    :card-update
+    :metric-create
+    :metric-update})
 
 (def ^:private dependencies-channel
   "Channel for receiving event notifications we want to subscribe to for dependencies events."
@@ -21,7 +24,8 @@
 
 
 (def model->entity
-  {:card Card})
+  {:card   Card
+   :metric Metric})
 
 (defn process-dependencies-event
   "Handle processing for a single event notification received on the dependencies-channel"
