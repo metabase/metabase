@@ -1,13 +1,33 @@
 (ns metabase.util.korma-extensions
   "Extensions and utility functions for [SQL Korma](http://www.sqlkorma.com/docs)."
   (:refer-clojure :exclude [+ - / * mod inc dec cast concat format])
-  (:require (korma [core :as k])
+  (:require [clojure.core.match :refer [match]]
+            [korma.core :as k]
             (korma.sql [engine :as kengine]
                        [utils :as kutils])
             [metabase.util :as u]))
 
+;;; Korma bugfixes
 
-(defn wrap [x] (kutils/func "(%s)" [x]))
+;; `korma.sql.fns/pred-not=` doesn't take into account `false` values, and ends up generating SQL appropriate for `nil`,
+;; such as "WHERE `field` IS NOT `false`". This is invalid and causes most of our DBs to explode.
+;; Replace this wonky implementation with one that works properly
+(defn- pred-not= [x y]
+  (match [x y]
+    [nil nil] nil
+    [  _ nil] (kengine/infix x "IS NOT" y)
+    [nil   _] (kengine/infix y "IS NOT" x)
+    [  _   _] (kengine/infix x "<>" y)))
+
+(intern 'korma.sql.fns 'pred-not= pred-not=)
+
+
+;;; util fns
+
+(defn wrap
+  "Wrap form X in parentheses."
+  [x]
+  (kutils/func "(%s)" [x]))
 
 (defn infix
   "Interpose OPERATOR between ARGS and wrap the result in parentheses.
@@ -39,7 +59,9 @@
 (defn literal [s]
   (k/raw (str \' (name s) \')))
 
-(defn cast [c x]
+(defn cast
+  "Generate a statement like `CAST(x AS c)`/"
+  [c x]
   (kutils/func (clojure.core/format "CAST(%%s AS %s)" (name c))
                [x]))
 

@@ -518,7 +518,16 @@
 
      (round-to-decimals 2 35.5058998M) -> 35.51"
   ^Double [^Integer decimal-place, ^Number number]
+  {:pre [(integer? decimal-place) (number? number)]}
   (double (.setScale (bigdec number) decimal-place BigDecimal/ROUND_HALF_UP)))
+
+(defn drop-first-arg
+  "Returns a new fn that drops its first arg and applies the rest to the original.
+   Useful for creating `extend` method maps when you don't care about the `this` param.
+
+     ((drop-first-arg :value) xyz {:value 100}) -> (apply :value [{:value 100}]) -> 100"
+  ^clojure.lang.IFn [^clojure.lang.IFn f]
+  (comp (partial apply f) rest list))
 
 
 (require-dox-in-this-namespace)
