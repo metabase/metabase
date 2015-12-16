@@ -7,7 +7,7 @@
                              [dependency :refer [IDependent] :as dependency])))
 
 
-(def dependencies-topics
+(def ^:const dependencies-topics
   "The `Set` of event topics which are subscribed to for use in dependencies tracking."
   #{:card-create
     :card-update})

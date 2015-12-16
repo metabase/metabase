@@ -11,7 +11,7 @@
                              [table :as table])))
 
 
-(def activity-feed-topics
+(def ^:const activity-feed-topics
   "The `Set` of event topics which are subscribed to for use in the Metabase activity feed."
   #{:card-create
     :card-update
@@ -62,23 +62,14 @@
                                                               (select-keys [:name :description :public_perms])
                                                               (assoc :id id)
                                                               (assoc :card_id card_id))))))]
-    (case topic
-      :dashboard-create       (activity/record-activity
-                                :topic      topic
-                                :object     object
-                                :details-fn create-delete-details)
-      :dashboard-delete       (activity/record-activity
-                                :topic      topic
-                                :object     object
-                                :details-fn create-delete-details)
-      :dashboard-add-cards    (activity/record-activity
-                                :topic      topic
-                                :object     object
-                                :details-fn add-remove-card-details)
-      :dashboard-remove-cards (activity/record-activity
-                                :topic      topic
-                                :object     object
-                                :details-fn add-remove-card-details))))
+    (activity/record-activity
+      :topic      topic
+      :object     object
+      :details-fn (case topic
+                    :dashboard-create       create-delete-details
+                    :dashboard-delete       create-delete-details
+                    :dashboard-add-cards    add-remove-card-details
+                    :dashboard-remove-cards add-remove-card-details))))
 
 ;; disabled for now as it's overly verbose in the feed
 ;(defn- process-database-activity [topic object]

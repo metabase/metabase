@@ -15,7 +15,7 @@
             [metabase.util.urls :as urls]))
 
 
-(def notifications-topics
+(def ^:const notifications-topics
   "The `Set` of event topics which are subscribed to for use in notifications tracking."
   #{:segment-update})
 

@@ -10,7 +10,7 @@
                              [segment :refer [Segment]])))
 
 
-(def revisions-topics
+(def ^:const revisions-topics
   "The `Set` of event topics which are subscribed to for use in revision tracking."
   #{:card-create
     :card-update

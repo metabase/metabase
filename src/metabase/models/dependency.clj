@@ -15,8 +15,8 @@
      be a collection of unique integer ids for the given model.
 
      For example:
-         (dependencies Card 13 {})  ->  {:segment [25 134 344]
-                                         :table   [18]}"))
+         (dependencies Card 13 {})  ->  {:Segment [25 134 344]
+                                         :Table   [18]}"))
 
 
 ;;; # Dependency Entity
