@@ -230,15 +230,19 @@
   "Format the values in result ROWS with the fns at the corresponding indecies in FORMAT-FNS.
    ROWS can be a sequence or any of the common map formats we expect in QP tests.
 
-     (format-rows-by [int str double] [[1 1 1]]) -> [[1 \"1\" 1.0]]"
-  [format-fns rows]
-  (cond
-    (:data rows) (update-in rows [:data :rows] (partial format-rows-by format-fns))
-    (:rows rows) (update    rows :rows         (partial format-rows-by format-fns))
-    :else        (vec (for [row rows]
-                        (vec (for [[f v] (partition 2 (interleave format-fns row))]
-                               (when v
-                                 (f v))))))))
+     (format-rows-by [int str double] [[1 1 1]]) -> [[1 \"1\" 1.0]]
+
+   By default, does't call fns on `nil` values; pass a truthy value as optional param FORMAT-NIL-VALUES? to override this behavior."
+  ([format-fns rows]
+   (format-rows-by format-fns (not :format-nil-values?) rows))
+  ([format-fns format-nil-values? rows]
+   (cond
+     (:data rows) (update-in rows [:data :rows] (partial format-rows-by format-fns))
+     (:rows rows) (update    rows :rows         (partial format-rows-by format-fns))
+     :else        (vec (for [row rows]
+                         (vec (for [[f v] (partition 2 (interleave format-fns row))]
+                                (when (or v format-nil-values?)
+                                  (f v)))))))))
 
 (def ^:private formatted-venues-rows (partial format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]))
 
@@ -399,6 +403,40 @@
     return rows (format-rows-by [int])
     aggregate count of places
     filter = liked false))
+
+(defn- ->bool [x] ; SQLite returns 0/1 for false/true;
+  (condp = x      ; Redshift returns nil/true.
+    0   false     ; convert to false/true and restore sanity.
+    1   true
+    nil false
+    x))
+
+;;; filter = true
+(datasets/expect-with-all-engines
+  [[1 true "Tempest"]
+   [2 true "Bullit"]]
+  (Q dataset places-cam-likes
+     aggregate rows of places
+     filter = liked true, order id+
+     return rows (format-rows-by [int ->bool str] :format-nil-values)))
+
+;;; filter != false
+(datasets/expect-with-all-engines
+  [[1 true "Tempest"]
+   [2 true "Bullit"]]
+  (Q dataset places-cam-likes
+     aggregate rows of places
+     filter != liked false, order id+
+     return rows (format-rows-by [int ->bool str] :format-nil-values)))
+
+;;; filter != true
+(datasets/expect-with-all-engines
+  [[3 false "The Dentist"]]
+  (Q dataset places-cam-likes
+     aggregate rows of places
+     filter != liked true, order id+
+     return rows (format-rows-by [int ->bool str] :format-nil-values)))
+
 
 ;; ### FILTER -- "BETWEEN", single subclause (neither "AND" nor "OR")
 (datasets/expect-with-all-engines

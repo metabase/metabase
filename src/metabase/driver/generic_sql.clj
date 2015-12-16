@@ -5,10 +5,11 @@
             [clojure.tools.logging :as log]
             (korma [core :as k]
                    [db :as kdb])
-            [korma.sql.utils :as utils]
             [metabase.driver :as driver]
+            metabase.driver.query-processor.interface
             [metabase.models.field :as field]
-            [metabase.util :as u])
+            [metabase.util :as u]
+            [metabase.util.korma-extensions :as kx])
   (:import java.util.Map
            clojure.lang.Keyword))
 
@@ -63,6 +64,7 @@
     "Return a korma form appropriate for converting a Unix timestamp integer field or value to an proper SQL `Timestamp`.
      SECONDS-OR-MILLISECONDS refers to the resolution of the int in question and with be either `:seconds` or `:milliseconds`."))
 
+
 (def ^{:arglists '([connection-spec])}
   connection-spec->pooled-connection-spec
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`.
@@ -106,8 +108,8 @@
    :apply-order-by          (resolve 'metabase.driver.generic-sql.query-processor/apply-order-by)
    :apply-page              (resolve 'metabase.driver.generic-sql.query-processor/apply-page)
    :current-datetime-fn     (constantly (k/sqlfn* :NOW))
-   :get-connection-for-sync db->connection
    :excluded-schemas        (constantly nil)
+   :get-connection-for-sync db->connection
    :set-timezone-sql        (constantly nil)
    :stddev-fn               (constantly :STDDEV)})
 
@@ -233,8 +235,7 @@
 (defn- field-avg-length [driver field]
   (or (some-> (korma-entity @(:table field))
               (k/select (k/aggregate (avg (k/sqlfn* (string-length-fn driver)
-                                                    (utils/func "CAST(%s AS CHAR)"
-                                                                [(keyword (:name field))])))
+                                                    (kx/cast :CHAR (keyword (:name field)))))
                                      :len))
               first
               :len
