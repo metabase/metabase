@@ -138,8 +138,7 @@
                                                       breakout-fields)]
         (qp (cond-> query
               (seq implicit-breakout-order-by-fields) (update-in [:query :order-by] concat (for [field implicit-breakout-order-by-fields]
-                                                                                             (map->OrderBySubclause {:field     field
-                                                                                                                     :direction :ascending}))))))
+                                                                                             {:field field, :direction :ascending})))))
       ;; for non-structured queries we do nothing
       (qp query))))
 
@@ -165,14 +164,14 @@
       ;; to just fetch all the values of the field in question.
       cum-sum-with-same-breakout? [ag-field (update-in query [:query] #(-> %
                                                                            (dissoc :breakout)
-                                                                           (assoc :aggregation (map->Aggregation {:aggregation-type :rows})
+                                                                           (assoc :aggregation {:aggregation-type :rows}
                                                                                   :fields      [ag-field])))]
 
       ;; Otherwise if we're breaking out on different fields, rewrite the query as a "sum" aggregation
-      cum-sum-with-breakout? [ag-field (assoc-in query [:query :aggregation] (map->Aggregation {:aggregation-type :sum, :field ag-field}))]
+      cum-sum-with-breakout? [ag-field (assoc-in query [:query :aggregation] {:aggregation-type :sum, :field ag-field})]
 
       ;; Cumulative sum without any breakout fields should just be treated the same way as "sum". Rewrite query as such
-      cum-sum? [false (assoc-in query [:query :aggregation] (map->Aggregation {:aggregation-type :sum, :field ag-field}))]
+      cum-sum? [false (assoc-in query [:query :aggregation] {:aggregation-type :sum, :field ag-field})]
 
       ;; Otherwise if this isn't a cum_sum query return it as-is
       :else [false query])))
@@ -285,18 +284,19 @@
   [driver query]
   (when-not *disable-qp-logging*
     (log/debug (u/format-color 'blue "\nQUERY: 😎\n%s" (u/pprint-to-str query))))
-  (let [driver-process-query (partial (if (structured-query? query)
-                                        driver/process-structured
-                                        driver/process-native) driver)]
-    ((<<- wrap-catch-exceptions
-          pre-expand
-          (driver/process-query-in-context driver)
-          post-add-row-count-and-status
-          pre-add-implicit-fields
-          pre-add-implicit-breakout-order-by
-          cumulative-sum
-          limit
-          annotate/post-annotate
-          pre-log-query
-          wrap-guard-multiple-calls
-          driver-process-query) (assoc query :driver driver))))
+  (binding [*driver* driver]
+    (let [driver-process-query (partial (if (structured-query? query)
+                                          driver/process-structured
+                                          driver/process-native) driver)]
+      ((<<- wrap-catch-exceptions
+            pre-expand
+            (driver/process-query-in-context driver)
+            post-add-row-count-and-status
+            pre-add-implicit-fields
+            pre-add-implicit-breakout-order-by
+            cumulative-sum
+            limit
+            annotate/post-annotate
+            pre-log-query
+            wrap-guard-multiple-calls
+            driver-process-query) (assoc query :driver driver)))))

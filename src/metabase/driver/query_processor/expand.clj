@@ -1,269 +1,250 @@
 (ns metabase.driver.query-processor.expand
   "Converts a Query Dict as recieved by the API into an *expanded* one that contains extra information that will be needed to
    construct the appropriate native Query, and perform various post-processing steps such as Field ordering."
-  (:require [clojure.core.match :refer [match]]
-            (clojure [set :as set]
-                     [string :as s]
-                     [walk :as walk])
-            [medley.core :as m]
-            [korma.core :as k]
-            [swiss.arrows :refer [-<>]]
-            [metabase.db :refer [sel]]
+  (:refer-clojure :exclude [< <= > >= = != and or filter count distinct sum])
+  (:require (clojure [core :as core]
+                     [string :as s])
             [metabase.driver :as driver]
-            [metabase.driver.query-processor.interface :refer :all]
-            [metabase.util :as u])
-  (:import (clojure.lang Keyword)))
+            [metabase.driver.query-processor.interface :refer [*driver*], :as i]))
 
-(declare parse-aggregation
-         parse-breakout
-         parse-fields
-         parse-filter
-         parse-order-by
-         ph)
+;; *driver* is always bound when running queries the normal way, e.g. via `metabase.driver/process-query`
+;; It is not neccesarily bound when using various functions like `fk->` in the REPL.
+;; The check is not performed in those cases to allow flexibility when composing queries for tests or interactive development
+(defn- assert-driver-supports
+  "When `*driver*` is bound, assert that is supports keyword FEATURE."
+  [feature]
+  (when *driver*
+    (when-not (contains? (driver/features *driver*) feature)
+      (throw (Exception. (str (name feature) " is not supported by this driver."))))))
 
+;;; # ------------------------------------------------------------ Token dispatch ------------------------------------------------------------
 
-;; ## -------------------- Expansion - Impl --------------------
+(defn- normalize-token [token]
+  (when-not (core/or (keyword? token) (string? token))
+    (throw (Exception. (str "Invalid token: " token))))
+  (-> (name token)
+      s/lower-case
+      (s/replace #"_" "-")
+      keyword))
 
-(def ^:private ^:dynamic *original-query-dict*
-  "The entire original Query dict being expanded."
-  nil)
+(def ^:private ^:const dispatchable-tokens
+  #{;; top-level
+    :aggregation :breakout :filter :fields :order-by :source-table :limit :page
+    ;; aggregation subclauses
+    :count :avg :distinct :stddev :sum :cum-sum
+    ;; filter subclauses
+    :and :or :inside :between := :!= :< :> :<= :>= :starts-with :contains :ends-with :time-interval
+    ;; fields
+    :fk-> :datetime-field
+    ;; values
+    :relative-datetime})
 
-(defn- assert-driver-supports [^Keyword feature]
-  {:pre [(:driver *original-query-dict*)]}
-  (when-not (contains? (driver/features (:driver *original-query-dict*)) feature)
-    (throw (Exception. (format "%s is not supported by this driver." (name feature))))))
-
-(defn- non-empty-clause? [clause]
-  (and clause
-       (or (not (sequential? clause))
-           (and (seq clause)
-                (not (every? nil? clause))))))
-
-(defn expand "Expand a QUERY-DICT."
-  [query-dict]
-  (when query-dict
-    (binding [*original-query-dict* query-dict]
-      ;; TODO - we should parse the Page clause so we can validate it
-      ;; And convert to a limit / offset clauses
-      (update query-dict :query #(-<> (assoc %
-                                             :aggregation (parse-aggregation (:aggregation %))
-                                             :breakout    (parse-breakout    (:breakout %))
-                                             :fields      (parse-fields      (:fields %))
-                                             :filter      (parse-filter      (:filter %))
-                                             :order_by    (parse-order-by    (:order_by %)))
-                                      (set/rename-keys <> {:order_by     :order-by
-                                                           :source_table :source-table})
-                                      (m/filter-vals non-empty-clause? <>))))))
-
-
-;; ## -------------------- Field + Value --------------------
-
-(defn- unexpanded-Field? [field-id]
-  (match field-id
-    (_ :guard integer?)                                                                  true
-    ["fk->" (_ :guard integer?) (_ :guard integer?)]                                     true
-    ["datetime_field" (_ :guard unexpanded-Field?) "as" (_ :guard datetime-field-unit?)] true
-    :else                                                                                false))
-
-(defn- parse-field [field-id]
-  (map->FieldPlaceholder
-   (match field-id
-     (_ :guard integer?)
-     {:field-id field-id}
-
-     ["fk->" (fk-field-id :guard integer?) (dest-field-id :guard integer?)]
-     (do (assert-driver-supports :foreign-keys)
-         (map->FieldPlaceholder {:field-id dest-field-id, :fk-field-id fk-field-id}))
-
-     ["datetime_field" id "as" (unit :guard datetime-field-unit?)]
-     (assoc (ph id)
-            :datetime-unit (keyword unit))
-
-     _ (throw (Exception. (str "Invalid field: " field-id))))))
-
-(defn- parse-value [field-id value]
-  (map->ValuePlaceholder {:field-placeholder (ph field-id)
-                          :value             value}))
-
-(defn- ph
-  "Create a new placeholder object for a Field ID or value that can be resolved later."
-  ([field-id]       (parse-field field-id))
-  ([field-id value] (parse-value field-id value)))
+(defn- apply-fn-for-token
+  ([token+args]
+   (apply-fn-for-token (first token+args) (rest token+args)))
+  ([token args]
+   (let [token (normalize-token token)
+         f     (core/or (when (contains? dispatchable-tokens token)
+                          (ns-resolve 'metabase.driver.query-processor.expand (symbol (name token))))
+                        (throw (Exception. (str "Illegal clause (no matching fn found): " token))))]
+     (apply f args))))
 
 
-;; # ======================================== CLAUSE DEFINITIONS ========================================
+;;; # ------------------------------------------------------------ Clause Handlers ------------------------------------------------------------
 
-(defmacro defparser
-  "Convenience for writing a parser function, i.e. one that pattern-matches against a lone argument."
-  [fn-name & match-forms]
-  `(defn ~(vary-meta fn-name assoc :private true) [form#]
-     (when (non-empty-clause? form#)
-       (match form#
-         ~@match-forms
-         form# (throw (Exception. (format ~(format "%s failed: invalid clause: %%s" fn-name) form#)))))))
+(defn aggregate-field [index]
+  (i/->OrderByAggregateField :aggregation index))
 
-;; ## -------------------- Aggregation --------------------
+(defn field [f] l
+  (cond
+    (map?     f) f
+    (integer? f) (i/map->FieldPlaceholder {:field-id f})
+    (vector?  f) (let [[token & args] f]
+                   (if (core/= (normalize-token token) :aggregation)
+                     (apply aggregate-field args)
+                     (apply-fn-for-token token args)))
+    :else        (throw (Exception. (str "Invalid field: " f)))))
 
-(defparser parse-aggregation
-  ["rows"]                                         (->Aggregation :rows nil)
-  ["count"]                                        (->Aggregation :count nil)
-  ["avg" (field-id :guard unexpanded-Field?)]      (->Aggregation :avg (ph field-id))
-  ["count" (field-id :guard unexpanded-Field?)]    (->Aggregation :count (ph field-id))
-  ["distinct" (field-id :guard unexpanded-Field?)] (->Aggregation :distinct (ph field-id))
-  ["stddev" (field-id :guard unexpanded-Field?)]   (do (assert-driver-supports :standard-deviation-aggregations)
-                                                       (->Aggregation :stddev (ph field-id)))
-  ["sum" (field-id :guard unexpanded-Field?)]      (->Aggregation :sum (ph field-id))
-  ["cum_sum" (field-id :guard unexpanded-Field?)]  (->Aggregation :cumulative-sum (ph field-id)))
+(defn datetime-field
+  ([f _ unit] (datetime-field f unit))
+  ([f unit]   (assoc (field f) :datetime-unit (normalize-token unit))))
 
-
-;; ## -------------------- Breakout --------------------
-
-;; Breakout + Fields clauses are just regular vectors of Fields
-
-(defparser parse-breakout
-  field-ids (mapv ph field-ids))
+(defn fk-> [fk-field-id dest-field-id]
+  (assert-driver-supports :foreign-keys)
+  (i/map->FieldPlaceholder {:fk-field-id fk-field-id, :field-id dest-field-id}))
 
 
-;; ## -------------------- Fields --------------------
+(defn value [f v]
+  (cond
+    (map?    v) v
+    (vector? v) (apply-fn-for-token (first v) (cons f (rest v)))
+    :else       (i/map->ValuePlaceholder {:field-placeholder (field f), :value v})))
 
-(defparser parse-fields
-  field-ids (mapv ph field-ids))
-
-
-;; ## -------------------- Filter --------------------
-
-(defn- orderable-Value?
-  "Is V an unexpanded value that can be compared with operators such as `<` and `>`?
-   i.e. This is true of numbers and dates, but not of other strings or booleans."
-  [v]
-  (match v
-    (_ :guard number?)                                                                 true
-    (_ :guard u/date-string?)                                                          true
-    ["relative_datetime" "current"]                                                    true
-    ["relative_datetime" (_ :guard integer?) (_ :guard relative-datetime-value-unit?)] true
-    _                                                                                  false))
-
-(defn- Value?
-  "Is V a valid unexpanded `Value`?"
-  [v]
-  (or (string? v)
-      (= v true)
-      (= v false)
-      (orderable-Value? v)))
-
-;; [TIME_INTERVAL ...] filters are just syntactic sugar for more complicated datetime filter subclauses.
-;; This function parses the args to the TIME_INTERVAL and returns the appropriate subclause.
-;; This clause is then recursively parsed below by parse-filter-subclause.
-;;
-;; A valid input looks like [TIME_INTERVAL <field> (current|last|next|<int>) <unit>] .
-;;
-;; "current", "last", and "next" are the same as supplying the integers 0, -1, and 1, respectively.
-;; For these values, we want to generate a clause like [= [datetime_field <field> as <unit>] [datetime <int> <unit>]].
-;;
-;; For ints > 1 or < -1, we want to generate a range (i.e., a BETWEEN filter clause). These should *exclude* the current moment in time.
-;;
-;; e.g. [TIME_INTERVAL <field> -30 "day"] refers to the past 30 days, excluding today; i.e. the range of -31 days ago to -1 day ago.
-;; Thus values of n < -1 translate to clauses like [BETWEEN [datetime_field <field> as day] [datetime -31 day] [datetime -1 day]].
-(defparser parse-time-interval-filter-subclause
-  ;; For "current"/"last"/"next" replace with the appropriate int and recurse
-  [field "current" unit] (parse-time-interval-filter-subclause [field  0 unit])
-  [field "last"    unit] (parse-time-interval-filter-subclause [field -1 unit])
-  [field "next"    unit] (parse-time-interval-filter-subclause [field  1 unit])
-
-  ;; For values of -1 <= n <= 1, generate the appropriate [= ...] clause
-  [field  0 unit] ["=" ["datetime_field" field "as" unit] ["relative_datetime" "current"]]
-  [field -1 unit] ["=" ["datetime_field" field "as" unit] ["relative_datetime" -1 unit]]
-  [field  1 unit] ["=" ["datetime_field" field "as" unit] ["relative_datetime"  1 unit]]
-
-  ;; For other int values of n generate the appropriate [BETWEEN ...] clause
-  [field (n :guard #(< % -1)) unit] ["BETWEEN" ["datetime_field" field "as" unit] ["relative_datetime" (dec n) unit] ["relative_datetime"      -1 unit]]
-  [field (n :guard #(> %  1)) unit] ["BETWEEN" ["datetime_field" field "as" unit] ["relative_datetime"       1 unit] ["relative_datetime" (inc n) unit]])
-
-(defparser parse-filter-subclause
-  ["TIME_INTERVAL" (field-id :guard unexpanded-Field?) (n :guard #(or (integer? %) (contains? #{"current" "last" "next"} %))) (unit :guard relative-datetime-value-unit?)]
-  (parse-filter-subclause (parse-time-interval-filter-subclause [field-id n (name unit)]))
-
-  ["TIME_INTERVAL" & args]
-  (throw (Exception. (format "Invalid TIME_INTERVAL clause: %s" args)))
-
-   ["INSIDE" (lat-field :guard unexpanded-Field?) (lon-field :guard unexpanded-Field?) (lat-max :guard number?) (lon-min :guard number?) (lat-min :guard number?) (lon-max :guard number?)]
-  (map->Filter:Inside {:filter-type :inside
-                       :lat         {:field (ph lat-field)
-                                     :min   (ph lat-field lat-min)
-                                     :max   (ph lat-field lat-max)}
-                       :lon         {:field (ph lon-field)
-                                     :min   (ph lon-field lon-min)
-                                     :max   (ph lon-field lon-max)}})
-
-  ["BETWEEN" (field-id :guard unexpanded-Field?) (min :guard orderable-Value?) (max :guard orderable-Value?)]
-  (map->Filter:Between {:filter-type :between
-                        :field       (ph field-id)
-                        :min-val     (ph field-id min)
-                        :max-val     (ph field-id max)})
-
-  ;; Single-value != and =
-  [(filter-type :guard (partial contains? #{"!=" "="})) (field-id :guard unexpanded-Field?) (val :guard Value?)]
-  (map->Filter:Field+Value {:filter-type (keyword filter-type)
-                            :field       (ph field-id)
-                            :value       (ph field-id val)})
-
-  ;; <, >, <=, >= - like single-value != and =, but value must be orderable
-  [(filter-type :guard (partial contains? #{"<" ">" "<=" ">="})) (field-id :guard unexpanded-Field?) (val :guard orderable-Value?)]
-  (map->Filter:Field+Value {:filter-type (keyword filter-type)
-                            :field       (ph field-id)
-                            :value       (ph field-id val)})
-
-  ;; = with more than one value -- Convert to OR and series of = clauses
-  ["=" (field-id :guard unexpanded-Field?) & (values :guard #(and (seq %) (every? Value? %)))]
-  (map->Filter {:compound-type :or
-                :subclauses    (vec (for [value values]
-                                      (map->Filter:Field+Value {:filter-type :=
-                                                                :field       (ph field-id)
-                                                                :value       (ph field-id value)})))})
-
-  ;; != with more than one value -- Convert to AND and series of != clauses
-  ["!=" (field-id :guard unexpanded-Field?) & (values :guard #(and (seq %) (every? Value? %)))]
-  (map->Filter {:compound-type :and
-                :subclauses    (vec (for [value values]
-                                      (map->Filter:Field+Value {:filter-type :!=
-                                                                :field       (ph field-id)
-                                                                :value       (ph field-id value)})))})
-
-  [(filter-type :guard (partial contains? #{"STARTS_WITH" "CONTAINS" "ENDS_WITH"})) (field-id :guard unexpanded-Field?) (val :guard string?)]
-  (map->Filter:Field+Value {:filter-type (case filter-type
-                                           "STARTS_WITH" :starts-with
-                                           "CONTAINS"    :contains
-                                           "ENDS_WITH"   :ends-with)
-                            :field       (ph field-id)
-                            :value       (ph field-id val)})
-
-  [(filter-type :guard string?) (field-id :guard unexpanded-Field?)]
-  (map->Filter:Field {:filter-type (case filter-type
-                                     "NOT_NULL" :not-null
-                                     "IS_NULL"  :is-null)
-                      :field       (ph field-id)}))
-
-(defparser parse-filter
-  ["AND" & subclauses] (map->Filter {:compound-type :and
-                                     :subclauses    (mapv parse-filter subclauses)})
-  ["OR" & subclauses]  (map->Filter {:compound-type :or
-                                     :subclauses    (mapv parse-filter subclauses)})
-  subclause            (parse-filter-subclause subclause))
+(defn relative-datetime
+  ([f]        (relative-datetime f 0 nil))
+  ([f _]      (relative-datetime f 0 nil))
+  ([f n unit] (i/map->ValuePlaceholder {:field-placeholder (field f), :value (if (zero? n)
+                                                                               ["relative_datetime" "current"]
+                                                                               ["relative_datetime" n (normalize-token unit)])})))
 
 
-;; ## -------------------- Order-By --------------------
+;;; ## aggregation
 
-(defn- parse-order-by-direction [direction]
-  (case direction
-    "ascending"  :ascending
-    "descending" :descending))
+(defn- ag-with-field [ag-type f]
+  {:aggregation-type ag-type, :field (field f)})
 
-(defparser parse-order-by-subclause
-  [["aggregation" index] direction]               (let [{{:keys [aggregation]} :query} *original-query-dict*]
-                                                    (assert aggregation "Query does not contain an aggregation clause.")
-                                                    (->OrderBySubclause (->OrderByAggregateField :aggregation index (parse-aggregation aggregation))
-                                                                        (parse-order-by-direction direction)))
-  [(field-id :guard unexpanded-Field?) direction] (->OrderBySubclause (ph field-id)
-                                                                      (parse-order-by-direction direction)))
-(defparser parse-order-by
-  subclauses (mapv parse-order-by-subclause subclauses))
+(def ^{:arglists '([f])} avg      (partial ag-with-field :avg))
+(def ^{:arglists '([f])} distinct (partial ag-with-field :distinct))
+(def ^{:arglists '([f])} sum      (partial ag-with-field :sum))
+(def ^{:arglists '([f])} cum-sum  (partial ag-with-field :cumulative-sum))
+
+(defn stddev [f]
+  (assert-driver-supports :standard-deviation-aggregations)
+  (ag-with-field :stddev f))
+
+(defn count
+  ([]  {:aggregation-type :count})
+  ([f] (ag-with-field :count f)))
+
+(defn aggregation [query ag-type & args]
+  (let [ag-type (normalize-token ag-type)]
+    (when-not (core/= ag-type :rows)
+      (assoc query :aggregation (apply-fn-for-token ag-type args)))))
+
+
+;;; ## breakout & fields
+
+(defn- fields-list-clause [k query & fields] (assoc query k (mapv field fields)))
+
+(def ^{:arglists '([query & fields])} breakout (partial fields-list-clause :breakout))
+(def ^{:arglists '([query & fields])} fields   (partial fields-list-clause :fields))
+
+;;; ## filter
+
+(declare expand-filter-subclause-if-needed)
+
+(defn- compound-filter
+  ([_ subclause] (expand-filter-subclause-if-needed subclause))
+  ([compound-type subclause & more]
+   {:compound-type compound-type, :subclauses (mapv expand-filter-subclause-if-needed (cons subclause more))}))
+
+(def ^{:arglists '([& subclauses])} and (partial compound-filter :and))
+(def ^{:arglists '([& subclauses])} or  (partial compound-filter :or))
+
+(defn- equality-filter
+  ([filter-type _ f v]
+   {:filter-type filter-type, :field (field f), :value (value f v)})
+  ([filter-type compound-fn f v & more]
+   (apply compound-fn (for [v (cons v more)]
+                        (equality-filter filter-type compound-fn f v)))))
+
+(def ^{:arglists '([f v & more])} =  (partial equality-filter :=  or))
+(def ^{:arglists '([f v & more])} != (partial equality-filter :!= and))
+
+(defn- comparison-filter [filter-type f v]
+  {:filter-type filter-type, :field (field f), :value (value f v)})
+
+(def ^{:arglists '([f v])} <  (partial comparison-filter :<))
+(def ^{:arglists '([f v])} <= (partial comparison-filter :<=))
+(def ^{:arglists '([f v])} >  (partial comparison-filter :>))
+(def ^{:arglists '([f v])} >= (partial comparison-filter :>=))
+
+(defn between [f min max]
+  {:filter-type :between, :field (field f), :min-val (value f min), :max-val (value f max)})
+
+(defn inside [lat-field lon-field lat-max lon-min lat-min lon-max]
+  {:filter-type :inside
+   :lat         {:field (field lat-field)
+                 :min   (value lat-field lat-min)
+                 :max   (value lat-field lat-max)}
+   :lon         {:field (field lon-field)
+                 :min   (value lon-field lon-min)
+                 :max   (value lon-field lon-max)}})
+
+(defn- string-filter [filter-type f s]
+  {:filter-type filter-type, :field (field f), :value (value f s)})
+
+(def ^{:arglists '([f s])} starts-with (partial string-filter :starts-with))
+(def ^{:arglists '([f s])} contains    (partial string-filter :contains))
+(def ^{:arglists '([f s])} ends-with   (partial string-filter :ends-with))
+
+(defn time-interval [f n unit]
+  (if-not (integer? n)
+    (let [n (normalize-token n)]
+      (case n
+        :current (recur f  0 unit)
+        :last    (recur f -1 unit)
+        :next    (recur f  1 unit)))
+    (let [f (datetime-field f unit)]
+      (cond
+        (core/= n  0) (= f (relative-datetime f))
+        (core/= n -1) (= f (relative-datetime f -1 unit))
+        (core/= n  1) (= f (relative-datetime f  1 unit))
+        (core/< n -1) (between f (relative-datetime f (dec n) unit) (relative-datetime f -1 unit))
+        (core/> n  1) (between f (relative-datetime f 1 unit) (relative-datetime f (inc n) unit))))))
+
+(defn- expand-filter-subclause-if-needed [subclause]
+  (cond
+    (vector? subclause) (apply-fn-for-token subclause)
+    (map? subclause)    subclause))
+
+(defn filter
+  ([query filter-map]
+   (assoc query :filter filter-map))
+  ([query filter-type & args]
+   (filter query (apply-fn-for-token filter-type args))))
+
+(defn limit [query limit]
+  (assoc query :limit limit))
+
+
+;;; ## order-by
+
+(defn- maybe-parse-order-by-subclause [subclause]
+  (cond
+    (map? subclause)    subclause
+    (vector? subclause) (let [[f direction] subclause]
+                          {:field (field f), :direction (normalize-token direction)})
+    :else               (throw (Exception. (str "Invald order-by subclause: " subclause)))))
+
+(defn order-by [query & subclauses]
+  (assoc query :order-by (mapv maybe-parse-order-by-subclause subclauses)))
+
+
+;;; ## page
+
+(defn- page [query page-clause]
+  (assoc query :page page-clause))
+
+;;; ## source-table
+
+(defn source-table [query table-id]
+  (assoc query :source-table table-id))
+
+
+;;; # ------------------------------------------------------------ Expansion ------------------------------------------------------------
+
+(defn- expand-inner [inner-query]
+  (loop [query {}, [[clause-name arg] & more] (seq inner-query)]
+    (let [args  (cond
+                  (sequential? arg) arg
+                  arg               [arg])
+          query (core/or (when (seq args)
+                           (apply-fn-for-token clause-name (cons query args)))
+                         query)]
+      (if (seq more)
+        (recur query more)
+        query))))
+
+(defn expand [outer-query]
+  (update outer-query :query expand-inner))
+
+(defmacro query
+  {:style/indent 0}
+  [& body]
+  (let [query (gensym "query-")]
+    `(let [~query {}
+           ~@(mapcat (fn [clause]
+                       `[~query (core/or (-> ~query ~clause) ~query)])
+                     body)]
+       ~query)))
