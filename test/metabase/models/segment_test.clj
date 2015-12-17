@@ -200,6 +200,32 @@
 
 ;; ## Segment Revisions
 
+;; serialize-segment
+(expect
+  {:id          true
+   :table_id    true
+   :creator_id  (user->id :rasta)
+   :name        "Droids in the desert"
+   :description "Lookin' for a jedi"
+   :definition  {:filter ["AND",[">",4,"2014-10-19"]]}
+   :is_active   true}
+  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
+                                             :engine    :yeehaw
+                                             :details   {}
+                                             :is_sample false}]
+    (tu/with-temp Table [{table-id :id} {:name   "Stuff"
+                                         :db_id  database-id
+                                         :active true}]
+      (tu/with-temp Segment [segment {:creator_id  (user->id :rasta)
+                                      :table_id    table-id
+                                      :name        "Droids in the desert"
+                                      :description "Lookin' for a jedi"
+                                      :definition  {:filter ["AND",[">",4,"2014-10-19"]]}}]
+        (-> (serialize-segment Segment (:id segment) segment)
+            (update :id boolean)
+            (update :table_id boolean))))))
+
+
 ;; diff-segments
 (expect
   {:definition  {:before {:filter ["AND" [">" 4 "2014-10-19"]]}
