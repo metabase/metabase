@@ -1,8 +1,12 @@
 (ns metabase.integrations.slack
-  (:require [cheshire.core :as cheshire]
+  (:require [aleph.http]
+            [cheshire.core :as cheshire]
             [clj-http.lite.client :as client]
             [clj-http.client :as http]
             [clojure.tools.logging :as log]
+            [instaparse.core :as insta]
+            [manifold.deferred :as d]
+            [manifold.stream :as s]
             [metabase.models.setting :refer [defsetting]]))
 
 
@@ -91,3 +95,74 @@
                                                          :text        text
                                                          :attachments attachments})
        (handle-api-response))))
+
+(defn websocket-url
+  []
+  (-> (slack-api-get (slack-token) "rtm.start")
+      (handle-api-response)
+      (get "url")))
+
+(defn parser [str] (insta/parses (insta/parser "
+  command = query | show
+
+  show = <'show'> ('tables' | 'databases')
+  query = whitespace? (preamble whitespace)? (aggregation whitespace)? (pre-limit whitespace)? table (whitespace breakout)? (whitespace filter)? (whitespace post-limit)? whitespace?
+
+  <preamble> = <'show me' | 'show' | 'display' | 'graph' | 'chart'>
+
+  aggregation = count | sum | avg
+  count = <'count of' | 'how many'>
+  sum = <'sum'> aggregation-target
+  avg = <'average'> aggregation-target
+  <aggregation-target> = <whitespace 'of' whitespace> column <whitespace 'in'>
+
+  table = identifier
+
+  breakout = <('group'|'grouped') whitespace>? <'by' whitespace> column (<whitespace 'and' whitespace> column)?
+
+  filter = <'filtered by' | 'when' | 'where' | 'with'> whitespace filter-clause
+  <filter-clause> = and | or | equal | filter-grouping
+  <filter-grouping> = <'('> filter-clause <')'>
+  and = filter-clause (whitespace <'and'> whitespace filter-clause)+
+  or = filter-clause (whitespace <'or'> whitespace filter-clause)+
+  equal = value whitespace <'=' | '==' | 'is' | 'equals' | 'equal to' | 'is equal to'> whitespace value
+
+  limit = number
+  <pre-limit> = <'top' whitespace>? limit <whitespace 'rows of'>?
+  <post-limit> = <'limit'> whitespace limit
+
+  <column> = identifier
+  <value> = identifier | number
+  <whitespace> = <#'\\s+'>
+  <identifier> = #'[a-zA-Z]+'
+  <number> = #'[0-9]+'
+  ") str))
+
+(parser "top 10 users grouped by asdf where id is 10")
+
+(defn- process-metabot-command
+  [channel command]
+  (chat-post-message channel (cheshire/generate-string (parser command) {:pretty true})))
+
+(defn start-metabot
+  []
+  (let [ws-url (websocket-url)
+        stream @(aleph.http/websocket-client ws-url)]
+    @(d/loop []
+      (d/chain (s/take! stream ::drained)
+
+        ;; if we got a message, process it
+        (fn [msg]
+          (if (identical? ::drained msg)
+            ::drained
+            (let [body (-> (cheshire/parse-string msg) (clojure.walk/keywordize-keys))
+                  command (second (re-matches #"(?i).*@metabot\W(.*)" (or (:text body) "")))]
+              (if (and (= (:type body) "message") command)
+                (process-metabot-command (:channel body) command)
+                (log/info msg)))))
+
+        ;; wait for the result from `f` to be realized, and
+        ;; recur, unless the stream is already drained
+        (fn [result]
+          (when-not (identical? ::drained result)
+            (d/recur)))))))

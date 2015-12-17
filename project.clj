@@ -17,6 +17,7 @@
                  [org.clojure/math.numeric-tower "0.0.4"]             ; math functions like `ceil`
                  [org.clojure/tools.logging "0.3.1"]                  ; logging framework
                  [org.clojure/tools.namespace "0.2.10"]
+                 [aleph "0.4.1-beta2"]
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
                  [cheshire "5.5.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
                  [clj-http "0.3.0"]
@@ -32,6 +33,7 @@
                  [compojure "1.4.0"]                                  ; HTTP Routing library built on Ring
                  [environ "1.0.1"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
+                 [instaparse "1.4.1"]
                  [korma "0.4.2"]                                      ; SQL lib
                  [log4j/log4j "1.2.17"
                   :exclusions [javax.mail/mail
