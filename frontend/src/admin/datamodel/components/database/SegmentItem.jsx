@@ -14,20 +14,15 @@ export default class SegmentItem extends Component {
     render() {
         let { segment, tableMetadata } = this.props;
 
-        let rule;
-        try {
-            rule = Query.getFilterDescription(tableMetadata, segment.definition.filter);
-        } catch (e) {
-            rule = "";
-        }
+        let description = Query.generateQueryDescription(tableMetadata, segment.definition, { sections: ["filter"] });
 
         return (
             <tr className="mt1 mb3">
                 <td className="px1">
-                     {segment.name}
+                    {segment.name}
                 </td>
                 <td className="px1 text-ellipsis">
-                    Filtered by {rule}
+                    {description}
                 </td>
                 <td className="px1 text-centered">
                     <ObjectActionSelect

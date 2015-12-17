@@ -21,7 +21,7 @@ export default class SegmentsList extends Component {
                     <thead>
                         <tr>
                             <th style={{ minWidth: "200px" }}>Name</th>
-                            <th className="full">Rule</th>
+                            <th className="full">Definition</th>
                             <th>Actions</th>
                         </tr>
                     </thead>

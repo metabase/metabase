@@ -2,6 +2,7 @@ import React, { Component, PropTypes } from "react";
 
 import FieldWidget from './FieldWidget.jsx';
 import AccordianList from "./AccordianList.jsx";
+import QueryDefinitionTooltip from "./QueryDefinitionTooltip.jsx";
 
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
@@ -77,15 +78,28 @@ export default class AggregationWidget extends Component {
     }
 
     renderItemExtra(item, itemIndex) {
-        if (item.description) {
+        if (item.aggregation && item.aggregation.description) {
             return (
                 <div className="p1">
-                    <Tooltip tooltipElement={item.description}>
+                    <Tooltip tooltipElement={item.aggregation.description}>
                         <span className="QuestionTooltipTarget" />
                     </Tooltip>
                 </div>
             );
+        } else if (item.metric) {
+            return this.renderMetricTooltip(item.metric);
         }
+    }
+
+    renderMetricTooltip(metric) {
+        let { tableMetadata } = this.props;
+        return (
+            <div className="p1">
+                <Tooltip tooltipElement={<QueryDefinitionTooltip object={metric} tableMetadata={tableMetadata} />}>
+                    <span className="QuestionTooltipTarget" />
+                </Tooltip>
+            </div>
+        );
     }
 
     render() {
@@ -99,10 +113,10 @@ export default class AggregationWidget extends Component {
 
         let sections = [{
             name: "Metabasics",
-            items: availableAggregations.map(option => ({
-                name: option.name,
-                value: [option.short].concat(option.fields.map(field => null)),
-                description: option.description
+            items: availableAggregations.map(aggregation => ({
+                name: aggregation.name,
+                value: [aggregation.short].concat(aggregation.fields.map(field => null)),
+                aggregation: aggregation
             })),
             icon: "table2"
         }];
@@ -111,7 +125,8 @@ export default class AggregationWidget extends Component {
                 name: "Common Metrics",
                 items: tableMetadata.metrics.map(metric => ({
                     name: metric.name,
-                    value: ["METRIC", metric.id]
+                    value: ["METRIC", metric.id],
+                    metric: metric
                 })),
                 icon: "star-outline"
             });

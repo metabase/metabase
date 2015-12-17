@@ -2,6 +2,8 @@ import React, { Component, PropTypes } from "react";
 
 import ObjectActionSelect from "../ObjectActionSelect.jsx";
 
+import Query from "metabase/lib/query";
+
 export default class MetricItem extends Component {
     static propTypes = {
         metric: PropTypes.object.isRequired,
@@ -9,7 +11,9 @@ export default class MetricItem extends Component {
     };
 
     render() {
-        let { metric } = this.props;
+        let { metric, tableMetadata } = this.props;
+
+        let description = Query.generateQueryDescription(tableMetadata, metric.definition, { sections: ["aggregation", "filter"] });
 
         return (
             <tr className="mt1 mb3">
@@ -17,7 +21,7 @@ export default class MetricItem extends Component {
                     {metric.name}
                 </td>
                 <td className="px1 text-ellipsis">
-                    {metric.formula}
+                    {description}
                 </td>
                 <td className="px1 text-centered">
                     <ObjectActionSelect
