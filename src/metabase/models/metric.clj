@@ -138,7 +138,7 @@
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
 
 
-(defn- serialize-instance [_ _ instance]
+(defn serialize-metric [this id instance]
   (->> (dissoc instance :created_at :updated_at)
        (into {})                                 ; if it's a record type like MetricInstance we need to convert it to a regular map or filter-vals won't work
        (m/filter-vals (complement delay?))))
@@ -160,7 +160,7 @@
 
 (extend MetricEntity
   revision/IRevisioned
-  {:serialize-instance serialize-instance
+  {:serialize-instance serialize-metric
    :revert-to-revision revision/default-revert-to-revision
    :diff-map           diff-metrics
    :diff-str           revision/default-diff-str})
