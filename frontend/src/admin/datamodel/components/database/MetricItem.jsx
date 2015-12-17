@@ -13,7 +13,7 @@ export default class MetricItem extends Component {
     render() {
         let { metric, tableMetadata } = this.props;
 
-        let description = Query.generateQueryDescription(tableMetadata, metric.definition, { sections: ["aggregation", "filter"] });
+        let description = Query.generateQueryDescription(tableMetadata, metric.definition, { sections: ["aggregation", "filter"], jsx: true });
 
         return (
             <tr className="mt1 mb3">

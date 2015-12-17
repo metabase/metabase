@@ -14,7 +14,7 @@ export default class SegmentItem extends Component {
     render() {
         let { segment, tableMetadata } = this.props;
 
-        let description = Query.generateQueryDescription(tableMetadata, segment.definition, { sections: ["filter"] });
+        let description = Query.generateQueryDescription(tableMetadata, segment.definition, { sections: ["filter"], jsx: true });
 
         return (
             <tr className="mt1 mb3">

@@ -1,3 +1,5 @@
+import React from "react";
+
 import inflection from "inflection";
 import _ from "underscore";
 
@@ -404,10 +406,10 @@ var Query = {
     // gets the table and field definitions from from a raw, fk->, or datetime_field field
     getFieldTarget: function(field, tableDef) {
         if (Query.isRegularField(field)) {
-            return { table: tableDef, field: tableDef.fields_lookup[field] };
+            return { table: tableDef, field: tableDef.fields_lookup && tableDef.fields_lookup[field] };
         } else if (Query.isForeignKeyField(field)) {
-            let fkFieldDef = tableDef.fields_lookup[field[1]];
-            let targetTableDef = fkFieldDef.target.table;
+            let fkFieldDef = tableDef.fields_lookup && tableDef.fields_lookup[field[1]];
+            let targetTableDef = fkFieldDef && fkFieldDef.target.table;
             return Query.getFieldTarget(field[2], targetTableDef);
         } else if (Query.isDatetimeField(field)) {
             return Query.getFieldTarget(field[1], tableDef);
@@ -437,71 +439,84 @@ var Query = {
         return results;
     },
 
-    getFieldName(tableMetadata, id) {
-        if (tableMetadata) {
-            if (Array.isArray(id)) {
-                if (id[0] === "fk->") {
-                    var field = tableMetadata.fields_lookup[id[1]];
-                    if (field) {
-                        return field.display_name.replace(/\s+id\s*$/i, "") + " → " + Query.getFieldName(field.target.table, id[2]);
-                    }
+    getFieldName(tableMetadata, field, options) {
+        try {
+            if (Query.isRegularField(field)) {
+                let fieldDef = tableMetadata.fields_lookup && tableMetadata.fields_lookup[field];
+                if (fieldDef) {
+                    return fieldDef.display_name.replace(/\s+id\s*$/i, "");
                 }
-            } else if (tableMetadata.fields_lookup[id]) {
-                return tableMetadata.fields_lookup[id].display_name
+            } else if (Query.isForeignKeyField(field)) {
+                let fkFieldDef = tableMetadata.fields_lookup && tableMetadata.fields_lookup[field[1]];
+                let targetTableDef = fkFieldDef && fkFieldDef.target.table;
+                return [Query.getFieldName(tableMetadata, field[1], options), " → ", Query.getFieldName(targetTableDef, field[2], options)];
+            } else if (Query.isDatetimeField(field)) {
+                return [Query.getFieldName(tableMetadata, field[1], options), " (" + field[3] + ")"];
             }
+        } catch (e) {
+            console.warn("Couldn't format field name for field", field, "in table", tableMetadata);
         }
-        return '[unknown]';
+        return "[Unknown Field]";
     },
 
     getTableDescription(tableMetadata) {
-        return inflection.pluralize(tableMetadata.display_name);
+        return [inflection.pluralize(tableMetadata.display_name)];
     },
 
-    getAggregationDescription(tableMetadata, { aggregation }) {
+    getAggregationDescription(tableMetadata, { aggregation }, options) {
         if (aggregation) {
             switch (aggregation[0]) {
-                case "rows":     return           "raw data";
-                case "count":    return              "count";
-                case "avg":      return            "average of " + Query.getFieldName(tableMetadata, aggregation[1]);
-                case "distinct": return    "distinct values of " + Query.getFieldName(tableMetadata, aggregation[1]);
-                case "stddev":   return "standard deviation of " + Query.getFieldName(tableMetadata, aggregation[1]);
-                case "sum":      return                "sum of " + Query.getFieldName(tableMetadata, aggregation[1]);
-                case "cum_sum":  return     "cumulative sum of " + Query.getFieldName(tableMetadata, aggregation[1]);
+                case "METRIC":
+                    let metric = _.findWhere(tableMetadata.metrics, { id: aggregation[1] });
+                    let name = metric ? metric.name : "[Unknown Metric]";
+                    return [options.jsx ? <span className="text-green text-bold">{name}</span> : name];
+                case "rows":     return           ["Raw data"];
+                case "count":    return              ["Count"];
+                case "avg":      return            ["Average of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "distinct": return    ["Distinct values of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "stddev":   return ["Standard deviation of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "sum":      return                ["Sum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "cum_sum":  return     ["Cumulative sum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
             }
         }
         return "";
     },
 
-    getBreakoutDescription(tableMetadata, { breakout }) {
+    getBreakoutDescription(tableMetadata, { breakout }, options) {
         if (breakout && breakout.length > 0) {
-            return "grouped by " + breakout.map((b) => Query.getFieldName(tableMetadata, b)).join(" and ");
+            return ["Grouped by ", joinList(breakout.map((b) => Query.getFieldName(tableMetadata, b, options)), " and ")];
         }
     },
 
-    getFilterDescription(tableMetadata, query) {
+    getFilterDescription(tableMetadata, query, options) {
         let filters = Query.getFilters(query);
         if (filters && filters.length > 0) {
-            return "filtered by " + Query.getFilterClauseDescription(tableMetadata, filters);
+            return ["Filtered by ", Query.getFilterClauseDescription(tableMetadata, filters, options)];
         }
     },
 
-    getFilterClauseDescription(tableMetadata, filter) {
+    getFilterClauseDescription(tableMetadata, filter, options) {
         if (filter[0] === "AND" || filter[0] === "OR") {
-            return filter.slice(1).map((f) => Query.getFilterClauseDescription(tableMetadata, f)).join(" " + filter[0].toLowerCase() + " ");
+            let clauses = filter.slice(1).map((f) => Query.getFilterClauseDescription(tableMetadata, f, options));
+            return conjunctList(clauses, filter[0].toLowerCase());
+        } else if (filter[0] === "SEGMENT") {
+            let segment = _.findWhere(tableMetadata.segments, { id: filter[1] });
+            let name = segment ? segment.name : "[Unknown Segment]";
+            return options.jsx ? <span className="text-purple text-bold">{name}</span> : name;
         } else {
-            return Query.getFieldName(tableMetadata, filter[1]);
+            return Query.getFieldName(tableMetadata, filter[1], options);
         }
     },
 
-    getOrderByDescription(tableMetadata, { order_by }) {
+    getOrderByDescription(tableMetadata, { order_by }, options) {
         if (order_by && order_by.length > 0) {
-            return "sorted by " + order_by.map((o) => Query.getFieldName(tableMetadata, o[0]) + " " + o[1]).join(" and ");
+            return ["Sorted by ", joinList(order_by.map(o => Query.getFieldName(tableMetadata, o[0], options) + " " + o[1]), " and ")];
         }
     },
 
     getLimitDescription(tableMetadata, { limit }) {
         if (limit != null) {
-            return limit + " " + inflection.inflect("row", limit);
+            return [limit, " ", inflection.inflect("row", limit)];
         }
     },
 
@@ -511,11 +526,12 @@ var Query = {
         }
 
         options = {
+            jsx: false,
             sections: ["table", "aggregation", "breakout", "filter", "order_by", "limit"],
             ...options
         };
 
-        const sections = {
+        const sectionFns = {
             table:       Query.getTableDescription,
             aggregation: Query.getAggregationDescription,
             breakout:    Query.getBreakoutDescription,
@@ -524,11 +540,30 @@ var Query = {
             limit:       Query.getLimitDescription
         }
 
-        return options.sections
-            .map((section) => sections[section](tableMetadata, query))
-            .filter(s => !!s)
-            .map(s => s.charAt(0).toUpperCase() + s.slice(1))
-            .join(", ");
+        // these array gymnastics are needed to support JSX formatting
+        let sections = options.sections
+            .map((section) => _.flatten(sectionFns[section](tableMetadata, query, options)).filter(s => !!s))
+            .filter(s => s && s.length > 0);
+
+        let description = _.flatten(joinList(sections, ", "));
+        if (options.jsx) {
+            return <span>{description}</span>;
+        } else {
+            return description.join("");
+        }
+    }
+}
+
+function joinList(list, joiner) {
+    return _.flatten(list.map((l, i) => i === list.length - 1 ? [l] : [l, joiner]), true);
+}
+
+function conjunctList(list, conjunction) {
+    switch (list.length) {
+        case 0: return null;
+        case 1: return list[0];
+        case 2: return [list[0], " ", conjunction, " ", list[1]];
+        default: return [list.slice(0, -1).join(", "), ", ", conjunction, " ", list[list.length - 1]];
     }
 }
 
