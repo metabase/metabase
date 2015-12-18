@@ -69,7 +69,10 @@ export default class SegmentForm extends Component {
                     <div className="wrapper py4">
                         <FormLabel
                             title={(segment && segment.id != null ? "Edit" : "Create") + " Your Segment"}
-                            description={"Select and add filters to create your new segment for the " + tableMetadata.display_name + " table"}
+                            description={segment && segment.id != null ?
+                                "Make changes to your segment and leave an explanatory note." :
+                                "Select and add filters to create your new segment for the " + tableMetadata.display_name + " table"
+                            }
                         >
                             <PartialQueryBuilder
                                 features={{

@@ -68,7 +68,10 @@ export default class MetricForm extends Component {
                     <div className="wrapper py4">
                         <FormLabel
                             title={(metric && metric.id != null ? "Edit" : "Create") + " Your Metric"}
-                            description={"You can create saved metrics to add a named metric option to this table. Saved metrics include the aggregation type, the aggregated field, and optionally any filter you add. As an example, you might use this to create something like the official way of calculating \"Average Price\" for an Orders table."}
+                            description={metric && metric.id != null ?
+                                "Make changes to your metric and leave an explanatory note." :
+                                "You can create saved metrics to add a named metric option to this table. Saved metrics include the aggregation type, the aggregated field, and optionally any filter you add. As an example, you might use this to create something like the official way of calculating \"Average Price\" for an Orders table."
+                            }
                         >
                         <PartialQueryBuilder
                             features={{
