@@ -66,7 +66,7 @@ export default class SegmentForm extends Component {
             <LoadingAndErrorWrapper loading={!tableMetadata}>
             { () =>
                 <form onSubmit={handleSubmit}>
-                    <div className="p4">
+                    <div className="wrapper py4">
                         <FormLabel
                             title={(segment && segment.id != null ? "Edit" : "Create") + " Your Segment"}
                             description={"Select and add filters to create your new segment for the " + tableMetadata.display_name + " table"}
@@ -120,7 +120,7 @@ export default class SegmentForm extends Component {
                     </div>
 
                     { id.value == null &&
-                        <div  className="border-top p4">
+                        <div  className="border-top wrapper py4">
                             {this.renderActionButtons()}
                         </div>
                     }
