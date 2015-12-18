@@ -15,8 +15,10 @@ export default class FormLabel extends Component {
         let { title, description, children } = this.props;
         return (
             <div className="mb3">
-                { title && <label className="h5 text-bold text-uppercase">{ title }</label> }
-                { description && <p className="mt1 mb2">{description}</p> }
+                <div style={{ maxWidth: "575px" }}>
+                    { title && <label className="h5 text-bold text-uppercase">{ title }</label> }
+                    { description && <p className="mt1 mb2">{description}</p> }
+                </div>
                 {children}
             </div>
         );
