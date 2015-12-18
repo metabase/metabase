@@ -102,3 +102,23 @@ export function capitalize(...args) {
 export function stripId(name) {
     return name && name.replace(/ id$/i, "");
 }
+
+export function assignUserColors(userIds, currentUserId, colorClasses = ['bg-brand', 'bg-purple', 'bg-error', 'bg-green', 'bg-gold', 'bg-grey-2']) {
+    let assignments = {};
+
+    const currentUserColor = colorClasses[0];
+    const otherUserColors = colorClasses.slice(1);
+    let otherUserColorIndex = 0;
+
+    for (let userId of userIds) {
+        if (!(userId in assignments)) {
+            if (userId === currentUserId) {
+                assignments[userId] = currentUserColor;
+            } else if (userId != null) {
+                assignments[userId] = otherUserColors[otherUserColorIndex++ % otherUserColors.length];
+            }
+        }
+    }
+
+    return assignments;
+}
