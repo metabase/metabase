@@ -16,7 +16,7 @@ export default class FormLabel extends Component {
         return (
             <div className="mb3">
                 { title && <label className="h5 text-bold text-uppercase">{ title }</label> }
-                { description && <p>{description}</p> }
+                { description && <p className="mt1 mb2">{description}</p> }
                 {children}
             </div>
         );
