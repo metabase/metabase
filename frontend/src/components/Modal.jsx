@@ -59,7 +59,7 @@ export default class Modal extends Component {
         if (this.props.isOpen) {
             // modal is open, lets do this!
             React.render(
-                <div className="Modal-backdrop">
+                <div className="Modal-backdrop" style={this.props.style}>
                     {this._modalComponent()}
                 </div>
             , this._modalElement);

@@ -105,7 +105,7 @@ export default class AggregationWidget extends Component {
         }
 
         return (
-            <div className='Query-section'>
+            <div className='Query-section Query-section-aggregation'>
                 <SelectionModule
                     className="View-section-aggregation"
                     placeholder="..."

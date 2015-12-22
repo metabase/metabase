@@ -313,13 +313,8 @@ export default class GuiQueryEditor extends Component {
             addBreakoutButton = this.renderAdd("Add a grouping", this.addDimension);
         }
 
-        var querySectionClasses = cx({
-            "Query-section": true,
-            ml1: true,
-            disabled: !enabled
-        });
         return (
-            <div className={querySectionClasses}>
+            <div className={cx("Query-section Query-section-breakout ml1", { disabled: !enabled })}>
                 {breakoutList}
                 {addBreakoutButton}
             </div>

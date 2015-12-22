@@ -85,6 +85,7 @@ export default class RelativeDatePicker extends Component {
                             { RELATIVE_SHORTCUTS[sectionName].map((s, index) =>
                                 <button
                                     key={index}
+                                    data-ui-tag={"relative-date-shortcut-" + sectionName.toLowerCase() + "-" + s.name.toLowerCase()}
                                     className={cx("Button Button-normal Button--medium flex-full mb1", { "Button--purple": this.isSelectedShortcut(s), "mr1": index !== RELATIVE_SHORTCUTS[sectionName].length - 1 })}
                                     onClick={() => this.onSetShortcut(s)}
                                 >

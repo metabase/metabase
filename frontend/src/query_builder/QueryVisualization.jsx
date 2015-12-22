@@ -203,8 +203,9 @@ export default class QueryVisualization extends Component {
 
         if (!this.props.result) {
             viz = (
-                <div className="flex full layout-centered text-grey-1">
-                    <h1>If you're stuck, you can always just pick a table and hit "Run Query" to get started.</h1>
+                <div className="flex full layout-centered text-grey-1 flex-column">
+                    <h1>If you give me some data I can show you something cool. Run a Query!</h1>
+                    <a className="link my2" onClick={this.props.onStartTutorial}>How do I use this thing?</a>
                 </div>
             );
         } else {
