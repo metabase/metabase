@@ -4,11 +4,17 @@
             [clj-http.lite.client :as client]
             [clj-http.client :as http]
             [clojure.tools.logging :as log]
+            [clojure.string :refer [join]]
             [instaparse.core :as insta]
+            (korma [core :as k])
             [manifold.deferred :as d]
             [manifold.stream :as s]
-            [metabase.models.setting :refer [defsetting]]))
-
+            [metabase.db :refer :all]
+            [metabase.driver :as driver]
+            (metabase.models [database :refer [Database]]
+                             [hydrate :refer [hydrate]]
+                             [setting :refer [defsetting]])
+            [metabase.task.send-pulses :refer [send-pulse-slack]]))
 
 ;; Define a setting which captures our Slack api token
 (defsetting slack-token "Slack API bearer token obtained from https://api.slack.com/web#authentication")
@@ -102,11 +108,8 @@
       (handle-api-response)
       (get "url")))
 
-(defn parser [str] (insta/parses (insta/parser "
-  command = query | show
-
-  show = <'show'> ('tables' | 'databases')
-  query = whitespace? (preamble whitespace)? (aggregation whitespace)? (pre-limit whitespace)? table (whitespace breakout)? (whitespace filter)? (whitespace post-limit)? whitespace?
+(def base-grammar
+  "query = whitespace? (preamble whitespace)? (aggregation whitespace)? (pre-limit whitespace)? source_table (whitespace breakout)? (whitespace filter)? (whitespace post-limit)? whitespace?
 
   <preamble> = <'show me' | 'show' | 'display' | 'graph' | 'chart'>
 
@@ -115,8 +118,6 @@
   sum = <'sum'> aggregation-target
   avg = <'average'> aggregation-target
   <aggregation-target> = <whitespace 'of' whitespace> column <whitespace 'in'>
-
-  table = identifier
 
   breakout = <('group'|'grouped') whitespace>? <'by' whitespace> column (<whitespace 'and' whitespace> column)?
 
@@ -131,18 +132,76 @@
   <pre-limit> = <'top' whitespace>? limit <whitespace 'rows of'>?
   <post-limit> = <'limit'> whitespace limit
 
-  <column> = identifier
   <value> = identifier | number
-  <whitespace> = <#'\\s+'>
+  <whitespace> = <#'(,|\\s)+'>
   <identifier> = #'[a-zA-Z]+'
-  <number> = #'[0-9]+'
-  ") str))
+  number = #'[0-9]+'")
+
+; source_table = identifier
+; <column> = identifier
+
+(defn parser
+  [s]
+  ((insta/parser (str base-grammar "\nsource_table = identifier\n<column> = identifier")) s))
 
 (parser "top 10 users grouped by asdf where id is 10")
 
+(defn- get-tables
+  []
+  (let [dbs    (-> (sel :many Database (k/order :name)) (hydrate [:tables [:fields :target]]))
+        tables (mapcat (fn [db] (:tables db)) dbs)]
+    (filter #(> (count (:fields %)) 0) tables)))
+
+(defn- entity-name-clause
+  [entity]
+  (join " | " (map #(str "'" % "'") [(:name entity) (:display_name entity)])))
+
+(defn parse-with-parser
+  [input parser]
+  (let [sexprs (parser input)]
+    (if (insta/failure? sexprs)
+      sexprs
+      (->> sexprs
+          (insta/transform {:query (fn [& rest] (into {} rest))
+                            :column (fn [col]
+                              (-> col (first) (name) (subs 7) (read-string)))
+                            :breakout (fn [& rest] [:breakout (into [] rest)])
+                            :sum #(-> ["sum" %])
+                            :avg #(-> ["avg" %])
+                            :count #(-> ["count"])
+                            :number read-string})
+          (merge { :aggregation ["rows"] :breakout [] :filter [] })))))
+
+(defn- parser-for-table
+  [table]
+  (let [source-table-clause (str "source_table = " (entity-name-clause table))
+        column-clause       (str "column = " (join " | " (map #(str "column_" (:id %)) (:fields table))))
+        column-clauses      (map #(str "column_" (:id %) " = " (entity-name-clause %)) (:fields table))
+        full-grammar        (str base-grammar "\n" source-table-clause "\n" column-clause "\n" (join "\n" column-clauses))
+        parser              (insta/parser full-grammar :string-ci true)]
+    (fn
+      [input]
+      (let [result (parse-with-parser input parser)]
+        (if (insta/failure? result)
+          result
+          {:database (:db_id table)
+           :query (merge result {:source_table (:id table)})
+           :type "query"})))))
+
+(defn parse-with-table-metadata
+  [input]
+  (let [tables (get-tables)
+        parsers (map parser-for-table tables)]
+    (filter #(not (insta/failure? %)) (map #(% input) parsers))))
+
 (defn- process-metabot-command
   [channel command]
-  (chat-post-message channel (cheshire/generate-string (parser command) {:pretty true})))
+  (let [parsed (parse-with-table-metadata command)
+        dataset_query (first parsed)
+        fake-card {:id 0 :name "" :dataset_query dataset_query}
+        result {:card fake-card :result (driver/dataset-query dataset_query {:executed_by 1})}]
+    (chat-post-message channel (str "```\n" (cheshire/generate-string parsed {:pretty true}) "\n```"))
+    (send-pulse-slack {:id 0 :name ""} [result] {:channel channel})))
 
 (defn start-metabot
   []
