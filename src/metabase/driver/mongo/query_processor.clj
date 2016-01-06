@@ -28,7 +28,7 @@
            (metabase.driver.query_processor.interface DateTimeField
                                                       DateTimeValue
                                                       Field
-                                                      OrderByAggregateField
+                                                      AgFieldRef
                                                       RelativeDateTimeValue
                                                       Value)))
 
@@ -111,7 +111,7 @@
   (->initial-rvalue [this]
     (str \$ (field->name this ".")))
 
-  OrderByAggregateField
+  AgFieldRef
   (->lvalue [_]
     (let [{:keys [aggregation-type]} (:aggregation (:query *query*))]
       (case aggregation-type

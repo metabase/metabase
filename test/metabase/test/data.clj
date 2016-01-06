@@ -26,7 +26,7 @@
   ([]            (get-or-create-test-data-db! *data-loader*))
   ([data-loader] (get-or-create-database! data-loader defs/test-data)))
 
-(def ^:dynamic *get-db* get-or-create-test-data-db!)
+(def ^:dynamic ^:private *get-db* get-or-create-test-data-db!)
 
 (defn db
   "Return the current database.
@@ -34,13 +34,15 @@
   []
   (*get-db*))
 
+(defn do-with-db [db f]
+  (binding [*get-db* (constantly db)]
+    (f)))
+
 (defmacro with-db
   "Run body with DB as the current database.
    Calls to `db` and `id` use this value."
   [db & body]
-  `(let [db# ~db]
-     (binding [*get-db* (constantly db#)]
-       ~@body)))
+  `(do-with-db ~db (fn [] ~@body)))
 
 (defn format-name [nm]
   (i/format-name *data-loader* (name nm)))

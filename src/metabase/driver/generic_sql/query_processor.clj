@@ -18,7 +18,7 @@
            (metabase.driver.query_processor.interface DateTimeField
                                                       DateTimeValue
                                                       Field
-                                                      OrderByAggregateField
+                                                      AgFieldRef
                                                       RelativeDateTimeValue
                                                       Value)))
 
@@ -52,7 +52,7 @@
            field))))
 
   ;; e.g. the ["aggregation" 0] fields we allow in order-by
-  OrderByAggregateField
+  AgFieldRef
   (formatted
     ([this]
      (formatted this false))

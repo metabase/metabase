@@ -10,12 +10,12 @@
             [metabase.models.table :refer [Table]]
             [metabase.util :as u]
             [schema.core :as s])
-  (:import (metabase.driver.query_processor.interface BetweenFilter
+  (:import (metabase.driver.query_processor.interface AgFieldRef
+                                                      BetweenFilter
                                                       ComparisonFilter
                                                       CompoundFilter
                                                       EqualityFilter
                                                       FieldPlaceholder
-                                                      OrderByAggregateField
                                                       RelativeDatetime
                                                       StringFilter
                                                       ValuePlaceholder)))
@@ -71,25 +71,26 @@
 ;;; # ------------------------------------------------------------ Clause Handlers ------------------------------------------------------------
 
 ;; TODO - check that there's a matching :aggregation clause in the query ?
-(s/defn ^:always-validate aggregate-field :- OrderByAggregateField
+(s/defn ^:always-validate aggregate-field :- AgFieldRef
   "Aggregate field referece, e.g. for use in an `order-by` clause.
 
      (query (aggregate (count))
             (order-by [(aggregate-field 0) :ascending])) ; order by :count"
   [index :- s/Int]
-  (i/map->OrderByAggregateField {:index index}))
+  (i/map->AgFieldRef {:index index}))
 
 (s/defn ^:always-validate field :- i/FieldPlaceholderOrAgRef
   "Generic reference to a `Field`. F can be an integer Field ID, or various other forms like `fk->` or `aggregation`."
   [f]
   (cond
-    (map?     f) (i/map->FieldPlaceholder f)
-    (integer? f) (i/map->FieldPlaceholder {:field-id f})
-    (vector?  f) (let [[token & args] f]
-                   (if (core/= (normalize-token token) :aggregation)
-                     (apply aggregate-field args)
-                     (apply-fn-for-token token args)))
-    :else        (throw (Exception. (str "Invalid field: " f)))))
+    (instance? AgFieldRef f) f
+    (map?     f)             (i/map->FieldPlaceholder f)
+    (integer? f)             (i/map->FieldPlaceholder {:field-id f})
+    (vector?  f)             (let [[token & args] f]
+                               (if (core/= (normalize-token token) :aggregation)
+                                 (apply aggregate-field args)
+                                 (apply-fn-for-token token args)))
+    :else                    (throw (Exception. (str "Invalid field: " f)))))
 
 (s/defn ^:always-validate datetime-field :- FieldPlaceholder
   "Reference to a `DateTimeField`. This is just a `Field` reference with an associated datetime UNIT."
@@ -341,15 +342,21 @@
   [outer-query]
   (update outer-query :query expand-inner))
 
+(defn validate-query
+  "Check that a given query is valid, returning it as-is if so."
+  [query]
+  (s/validate i/Query query))
+
 (defmacro query
   "Build a query by threading an (initially empty) map through each form in BODY with `->`.
    The final result is validated against the `Query` schema."
   {:style/indent 0}
   [& body]
-  `(s/validate i/Query (-> {} ~@body)))
+  `(-> {}
+       ~@body
+       validate-query))
 
 (s/defn ^:always-validate run-query* [query :- i/Query]
-  #_(println "query:\n" (u/pprint-to-str 'cyan query))
   (let [db-id (db/sel :one :field [Table :db_id], :id (:source-table query))]
     (driver/process-query {:database db-id
                            :type     :query
