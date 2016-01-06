@@ -105,9 +105,9 @@
                                fk-field-id   :- (s/maybe s/Int)
                                datetime-unit :- (s/maybe (apply s/enum datetime-field-units))])
 
-(s/defrecord OrderByAggregateField [index :- s/Int]) ; e.g. 0
+(s/defrecord AgFieldRef [index :- s/Int]) ; e.g. 0
 
-(def FieldPlaceholderOrAgRef (s/named (s/cond-pre FieldPlaceholder OrderByAggregateField) "Valid field (field ID or aggregate field reference)"))
+(def FieldPlaceholderOrAgRef (s/named (s/cond-pre FieldPlaceholder AgFieldRef) "Valid field (field ID or aggregate field reference)"))
 
 
 (s/defrecord RelativeDatetime [amount :- s/Int
