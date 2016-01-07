@@ -172,7 +172,7 @@
    (Cumulative sum is a special case; it is implemented in post-processing).
 
    Return a pair of [`cumulative-sum-field?` `query`]."
-  [{{{ag-type :aggregation-type, ag-field :field} :aggregation, breakout-fields :breakout, order-by :order_by} :query, :as query}]
+  [{{{ag-type :aggregation-type, ag-field :field} :aggregation, breakout-fields :breakout} :query, :as query}]
   (let [cum-sum?                    (= ag-type :cumulative-sum)
         cum-sum-with-breakout?      (and cum-sum?
                                          (seq breakout-fields))
@@ -187,9 +187,8 @@
       ;; If there's only one breakout field that is the same as the cum_sum field, re-write this as a "rows" aggregation
       ;; to just fetch all the values of the field in question.
       cum-sum-with-same-breakout? [ag-field (update-in query [:query] #(-> %
-                                                                           (dissoc :breakout)
-                                                                           (assoc :aggregation {:aggregation-type :rows}
-                                                                                  :fields      [ag-field])))]
+                                                                           (dissoc :breakout :aggregation)
+                                                                           (assoc :fields [ag-field])))]
 
       ;; Otherwise if we're breaking out on different fields, rewrite the query as a "sum" aggregation
       cum-sum-with-breakout? [ag-field (assoc-in query [:query :aggregation] {:aggregation-type :sum, :field ag-field})]

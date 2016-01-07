@@ -256,31 +256,6 @@
 (defn- first-row [results]
   (first (rows results)))
 
-(defn- $->id
-  "Convert symbols like `$field` to `id` fn calls. Input is split into separate args by splitting the token on `.`.
-   With no `.` delimiters, it is assumed we're referring to a Field belonging to TABLE-NAME, which is passed implicitly as the first arg.
-   With one or more `.` delimiters, no implicit TABLE-NAME arg is passed to `id`:
-
-    $venue_id  -> (id :sightings :venue_id) ; TABLE-NAME is implicit first arg
-    $cities.id -> (id :cities :id)          ; specify non-default Table"
-  [table-name body]
-  (clojure.walk/prewalk (fn [form]
-                          (if (and (symbol? form)
-                                   (= (first (name form)) \$))
-                            (let [form  (apply str (rest (name form)))
-                                  parts (s/split form #"\.")]
-                              (if (= (count parts) 1)
-                                `(id ~table-name ~(keyword (first parts)))
-                                `(id ~@(map keyword parts))))
-                            form))
-                        body))
-
-(defmacro ^:private query
-  {:style/indent 1}
-  [table & forms]
-  `(ql/run-query (ql/source-table (id ~(keyword table)))
-                 ~@(map (partial $->id (keyword table)) forms)))
-
 
 ;; # THE TESTS THEMSELVES (!)
 
@@ -303,7 +278,7 @@
     {:rows    [[100]]
      :columns ["count"]
      :cols    [(aggregate-col :count)]}
-  (->> (query venues
+  (->> (run-query venues
          (ql/aggregation :count))
        (format-rows-by [int])))
 
@@ -313,7 +288,7 @@
     {:rows    [[203]]
      :columns ["sum"]
      :cols    [(aggregate-col :sum (venues-col :price))]}
-  (->> (query venues
+  (->> (run-query venues
          (ql/aggregation (ql/sum $price)))
        (format-rows-by [int])))
 
@@ -323,7 +298,7 @@
     {:rows    [[35.5059]]
      :columns ["avg"]
      :cols    [(aggregate-col :avg (venues-col :latitude))]}
-  (->> (query venues
+  (->> (run-query venues
          (ql/aggregation (ql/avg $latitude)))
        (format-rows-by [(partial u/round-to-decimals 4)])))
 
@@ -333,7 +308,7 @@
     {:rows    [[15]]
      :columns ["count"]
      :cols    [(aggregate-col :count)]}
-  (format-rows-by [int] (query checkins
+  (format-rows-by [int] (run-query checkins
                           (ql/aggregation (ql/distinct $user_id)))))
 
 
@@ -352,9 +327,9 @@
                [10 "Fred 62"                      20 34.1046 -118.292 2]]
      :columns (venues-columns)
      :cols    (venues-cols)}
-  (formatted-venues-rows (query venues
+  (formatted-venues-rows (run-query venues
                            (ql/limit 10)
-                           (ql/order-by [$id :ascending]))))
+                           (ql/order-by (ql/asc $id)))))
 
 
 ;; ## "PAGE" CLAUSE
@@ -367,9 +342,9 @@
    [3 "Artisan"]
    [4 "Asian"]
    [5 "BBQ"]]
-  (->> (query categories
+  (->> (run-query categories
          (ql/page {:page 1, :items 5})
-         (ql/order-by [$id :ascending]))
+         (ql/order-by (ql/asc $id)))
        rows (format-rows-by [int str])))
 
 ;; ### PAGE - Get the second page
@@ -379,9 +354,9 @@
    [ 8 "Beer Garden"]
    [ 9 "Breakfast / Brunch"]
    [10 "Brewery"]]
-  (->> (query categories
+  (->> (run-query categories
          (ql/page {:page 2, :items 5})
-         (ql/order-by [$id :ascending]))
+         (ql/order-by (ql/asc $id)))
        rows (format-rows-by [int str])))
 
 
@@ -398,11 +373,11 @@
    [2  9 833]
    [2  8 380]
    [2  5 719]]
-  (->> (query checkins
+  (->> (run-query checkins
          (ql/fields $venue_id $user_id $id)
-         (ql/order-by [$venue_id :ascending]
-                      [$user_id  :descending]
-                      [$id       :ascending])
+         (ql/order-by (ql/asc $venue_id)
+                      (ql/desc $user_id)
+                      (ql/asc $id))
          (ql/limit 10))
        rows (format-rows-by [int int int])))
 
@@ -416,10 +391,10 @@
    [77 "Sushi Nakazawa"           40 40.7318 -74.0045 4]
    [79 "Sushi Yasuda"             40 40.7514 -73.9736 4]
    [81 "Tanoshi Sushi & Sake Bar" 40 40.7677 -73.9533 4]]
-  (-> (query venues
+  (-> (run-query venues
         (ql/filter (ql/and (ql/>  $id    50)
                            (ql/>= $price  4)))
-        (ql/order-by [$id :ascending]))
+        (ql/order-by (ql/asc $id)))
       rows formatted-venues-rows))
 
 (defmacro compaare [a b]
@@ -429,11 +404,11 @@
 (datasets/expect-with-all-engines
   [[21 "PizzaHacker"          58 37.7441 -122.421 2]
    [23 "Taqueria Los Coyotes" 50 37.765  -122.42  2]]
-  (-> (query venues
+  (-> (run-query venues
         (ql/filter (ql/and (ql/<  $id 24)
                            (ql/>  $id 20)
                            (ql/!= $id 22)))
-        (ql/order-by [$id :ascending]))
+        (ql/order-by (ql/asc $id)))
       rows formatted-venues-rows))
 
 ;; ### FILTER WITH A FALSE VALUE
@@ -442,7 +417,7 @@
 (datasets/expect-with-all-engines
   [[1]]
   (->> (dataset places-cam-likes
-         (query places
+         (run-query places
            (ql/aggregation :count)
            (ql/filter (ql/= $liked false))))
        rows (format-rows-by [int])))
@@ -459,9 +434,9 @@
   [[1 true "Tempest"]
    [2 true "Bullit"]]
   (->> (dataset places-cam-likes
-         (query places
+         (run-query places
            (ql/filter (ql/= $liked true))
-           (ql/order-by [$id :ascending])))
+           (ql/order-by (ql/asc $id))))
        rows (format-rows-by [int ->bool str] :format-nil-values)))
 
 ;;; filter != false
@@ -469,18 +444,18 @@
   [[1 true "Tempest"]
    [2 true "Bullit"]]
   (->> (dataset places-cam-likes
-         (query places
+         (run-query places
            (ql/filter (ql/!= $liked false))
-           (ql/order-by [$id :ascending])))
+           (ql/order-by (ql/asc $id))))
        rows (format-rows-by [int ->bool str] :format-nil-values)))
 
 ;;; filter != true
 (datasets/expect-with-all-engines
   [[3 false "The Dentist"]]
   (->> (dataset places-cam-likes
-         (query places
+         (run-query places
            (ql/filter (ql/!= $liked true))
-           (ql/order-by [$id :ascending])))
+           (ql/order-by (ql/asc $id))))
        rows (format-rows-by [int ->bool str] :format-nil-values)))
 
 
@@ -488,9 +463,9 @@
 (datasets/expect-with-all-engines
   [[21 "PizzaHacker"    58 37.7441 -122.421 2]
    [22 "Gordo Taqueria" 50 37.7822 -122.484 1]]
-  (-> (query venues
+  (-> (run-query venues
         (ql/filter (ql/between $id 21 22))
-        (ql/order-by [$id :ascending]))
+        (ql/order-by (ql/asc $id)))
       rows formatted-venues-rows))
 
 ;; ### FILTER -- "BETWEEN" with dates
@@ -498,7 +473,7 @@
     {:rows    [[29]]
      :columns ["count"]
      :cols    [(aggregate-col :count)]}
-  (format-rows-by [int] (query checkins
+  (format-rows-by [int] (run-query checkins
                           (ql/aggregation :count)
                           (ql/filter (ql/between $date "2015-04-01" "2015-05-01")))))
 
@@ -508,16 +483,16 @@
    [2 "Stout Burgers & Beers"        11 34.0996 -118.329 2]
    [3 "The Apple Pan"                11 34.0406 -118.428 2]
    [5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]]
-  (-> (query venues
+  (-> (run-query venues
         (ql/filter (ql/or (ql/<= $id 3)
                           (ql/= $id 5)))
-        (ql/order-by [$id :ascending]))
+        (ql/order-by (ql/asc $id)))
       rows formatted-venues-rows))
 
 ;; ### FILTER -- "INSIDE"
 (datasets/expect-with-all-engines
   [[1 "Red Medicine" 4 10.0646 -165.374 3]]
-  (-> (query venues
+  (-> (run-query venues
         (ql/filter (ql/inside $latitude $longitude 10.0649 -165.379 10.0641 -165.371)))
       rows formatted-venues-rows))
 
@@ -538,10 +513,10 @@
      :columns (->columns "name" "id")
      :cols    [(venues-col :name)
                (venues-col :id)]}
-  (format-rows-by [str int] (query venues
+  (format-rows-by [str int] (run-query venues
                               (ql/fields $name $id)
                               (ql/limit 10)
-                              (ql/order-by [$id :ascending]))))
+                              (ql/order-by (ql/asc $id)))))
 
 
 ;; ## "BREAKOUT"
@@ -552,10 +527,10 @@
                "count"]
      :cols    [(checkins-col :user_id)
                (aggregate-col :count)]}
-  (format-rows-by [int int] (query checkins
+  (format-rows-by [int int] (run-query checkins
                               (ql/aggregation :count)
                               (ql/breakout $user_id)
-                              (ql/order-by [$user_id :ascending]))))
+                              (ql/order-by (ql/asc $user_id)))))
 
 ;; ### BREAKOUT w/o AGGREGATION
 ;; This should act as a "distinct values" query and return ordered results
@@ -563,7 +538,7 @@
     {:cols    [(checkins-col :user_id)]
      :columns [(format-name "user_id")]
      :rows    [[1] [2] [3] [4] [5] [6] [7] [8] [9] [10]]}
-  (format-rows-by [int] (query checkins
+  (format-rows-by [int] (run-query checkins
                           (ql/breakout $user_id)
                           (ql/limit 10))))
 
@@ -578,7 +553,7 @@
      :cols    [(checkins-col :user_id)
                (checkins-col :venue_id)
                (aggregate-col :count)]}
-  (format-rows-by [int int int] (query checkins
+  (format-rows-by [int int int] (run-query checkins
                                   (ql/aggregation :count)
                                   (ql/breakout $user_id $venue_id)
                                   (ql/limit 10))))
@@ -593,10 +568,10 @@
      :cols    [(checkins-col :user_id)
                (checkins-col :venue_id)
                (aggregate-col :count)]}
-  (format-rows-by [int int int] (query checkins
+  (format-rows-by [int int int] (run-query checkins
                                   (ql/aggregation :count)
                                   (ql/breakout $user_id $venue_id)
-                                  (ql/order-by [$user_id :descending] [$venue_id :ascending])
+                                  (ql/order-by (ql/desc $user_id))
                                   (ql/limit 10))))
 
 
@@ -635,7 +610,7 @@
     {:rows    [[120]]
      :columns ["sum"]
      :cols    [(aggregate-col :sum (users-col :id))]}
-  (format-rows-by [int] (query users
+  (format-rows-by [int] (run-query users
                           (ql/aggregation (ql/cum-sum $id)))))
 
 
@@ -644,7 +619,7 @@
     {:rows    [[1] [3] [6] [10] [15] [21] [28] [36] [45] [55] [66] [78] [91] [105] [120]]
      :columns (->columns "id")
      :cols    [(users-col :id)]}
-  (format-rows-by [int] (query users
+  (format-rows-by [int] (run-query users
                           (ql/aggregation (ql/cum-sum $id))
                           (ql/breakout $id))))
 
@@ -670,7 +645,7 @@
                "sum"]
      :cols    [(users-col :name)
                (aggregate-col :sum (users-col :id))]}
-  (format-rows-by [str int] (query users
+  (format-rows-by [str int] (run-query users
                               (ql/aggregation (ql/cum-sum $id))
                               (ql/breakout $name))))
 
@@ -685,7 +660,7 @@
                [2 4066]
                [3 4681]
                [4 5050]]}
-  (format-rows-by [int int] (query venues
+  (format-rows-by [int int] (run-query venues
                               (ql/aggregation (ql/cum-sum $id))
                               (ql/breakout $price))))
 
@@ -698,7 +673,7 @@
   {:columns ["stddev"]
    :cols    [(aggregate-col :stddev (venues-col :latitude))]
    :rows    [[3.4]]}
-  (-> (query venues
+  (-> (run-query venues
         (ql/aggregation (ql/stddev $latitude)))
       (update-in [:data :rows] (fn [[[v]]]
                                  [[(u/round-to-decimals 1 v)]]))))
@@ -707,7 +682,7 @@
 (datasets/expect-with-engines (engines-that-dont-support :standard-deviation-aggregations)
   {:status :failed
    :error  "standard-deviation-aggregations is not supported by this driver."}
-  (select-keys (query venues
+  (select-keys (run-query venues
                  (ql/aggregation (ql/stddev $latitude)))
                [:status :error]))
 
@@ -724,10 +699,10 @@
              [2 59]]
    :cols    [(venues-col :price)
              (aggregate-col :count)]}
-  (format-rows-by [int int] (query venues
+  (format-rows-by [int int] (run-query venues
                               (ql/aggregation :count)
                               (ql/breakout $price)
-                              (ql/order-by [(ql/aggregate-field 0) :ascending]))))
+                              (ql/order-by (ql/asc (ql/aggregate-field 0))))))
 
 
 ;;; ### order_by aggregate ["sum" field-id]
@@ -740,10 +715,10 @@
              [4  369]]
    :cols    [(venues-col :price)
              (aggregate-col :sum (venues-col :id))]}
-  (format-rows-by [int int] (query venues
+  (format-rows-by [int int] (run-query venues
                               (ql/aggregation (ql/sum $id))
                               (ql/breakout $price)
-                              (ql/order-by [(ql/aggregate-field 0) :descending]))))
+                              (ql/order-by (ql/desc (ql/aggregate-field 0))))))
 
 
 ;;; ### order_by aggregate ["distinct" field-id]
@@ -756,10 +731,10 @@
              [2 59]]
    :cols    [(venues-col :price)
              (aggregate-col :count)]}
-  (format-rows-by [int int] (query venues
+  (format-rows-by [int int] (run-query venues
                               (ql/aggregation (ql/distinct $id))
                               (ql/breakout $price)
-                              (ql/order-by [(ql/aggregate-field 0) :ascending]))))
+                              (ql/order-by (ql/asc (ql/aggregate-field 0))))))
 
 
 ;;; ### order_by aggregate ["avg" field-id]
@@ -772,10 +747,10 @@
              [4 53]]
    :cols    [(venues-col :price)
              (aggregate-col :avg (venues-col :category_id))]}
-  (->> (query venues
+  (->> (run-query venues
          (ql/aggregation (ql/avg $category_id))
          (ql/breakout $price)
-         (ql/order-by [(ql/aggregate-field 0) :ascending]))
+         (ql/order-by (ql/asc (ql/aggregate-field 0))))
        :data (format-rows-by [int int])))
 
 ;;; ### order_by aggregate ["stddev" field-id]
@@ -790,10 +765,10 @@
              [4 (if (= *engine* :mysql) 14 15)]]
    :cols    [(venues-col :price)
              (aggregate-col :stddev (venues-col :category_id))]}
-  (->> (query venues
+  (->> (run-query venues
          (ql/aggregation (ql/stddev $category_id))
          (ql/breakout $price)
-         (ql/order-by [(ql/aggregate-field 0) :descending]))
+         (ql/order-by (ql/desc (ql/aggregate-field 0))))
        :data (format-rows-by [int (comp int math/round)])))
 
 ;;; ### make sure that rows where preview_display = false are included and properly marked up
@@ -807,8 +782,8 @@
     (-> (venues-col :price)
         (assoc :preview_display false))}
   (set (venues-cols))]
- (let [get-col-names (fn [] (-> (query venues
-                                  (ql/order-by [$id :ascending])
+ (let [get-col-names (fn [] (-> (run-query venues
+                                  (ql/order-by (ql/asc $id))
                                   (ql/limit 1))
                                 :data :cols set))]
    [(get-col-names)
@@ -841,8 +816,8 @@
                [14 "Broen Olujimi"]
                [15 "Rüstem Hebel"]]}
   ;; Filter out the timestamps from the results since they're hard to test :/
-  (-> (query users
-        (ql/order-by [$id :ascending]))
+  (-> (run-query users
+        (ql/order-by (ql/asc $id)))
       (update-in [:data :rows] (partial mapv (fn [[id last-login name]]
                                                [(int id) name])))))
 
@@ -857,10 +832,10 @@
     10
     9)
   (count (rows (dataset sad-toucan-incidents
-                 (query incidents
+                 (run-query incidents
                    (ql/filter (ql/and (ql/> $timestamp "2015-06-01")
                                       (ql/< $timestamp "2015-06-03")))
-                   (ql/order-by [$timestamp :ascending]))))))
+                   (ql/order-by (ql/asc $timestamp)))))))
 
 (datasets/expect-with-all-engines
   (cond
@@ -902,7 +877,7 @@
      [#inst "2015-06-09T07"  6]
      [#inst "2015-06-10T07" 10]])
   (->> (dataset sad-toucan-incidents
-         (query incidents
+         (run-query incidents
            (ql/aggregation :count)
            (ql/breakout $timestamp)
            (ql/limit 10)))
@@ -927,10 +902,10 @@
    ["Irvine"       11]
    ["Lakeland"     11]]
   (->> (dataset tupac-sightings
-         (query sightings
+         (run-query sightings
            (ql/aggregation :count)
            (ql/breakout (ql/fk-> $city_id $cities.name))
-           (ql/order-by [(ql/aggregate-field 0) :descending])
+           (ql/order-by (ql/desc (ql/aggregate-field 0)))
            (ql/limit 10)))
        rows (format-rows-by [str int])))
 
@@ -941,7 +916,7 @@
 (datasets/expect-with-engines (engines-that-support :foreign-keys)
   [[60]]
   (->> (dataset tupac-sightings
-         (query sightings
+         (run-query sightings
            (ql/aggregation :count)
            (ql/filter (ql/= (ql/fk-> $category_id $categories.id) 8))))
        rows (format-rows-by [int])))
@@ -962,9 +937,9 @@
    [897 "Wearing a Biggie Shirt"]
    [499 "In the Expa Office"]]
   (->> (dataset tupac-sightings
-         (query sightings
+         (run-query sightings
            (ql/fields $id (ql/fk-> $category_id $categories.name))
-           (ql/order-by [$timestamp :descending])
+           (ql/order-by (ql/desc $timestamp))
            (ql/limit 10)))
        rows (format-rows-by [int str])))
 
@@ -987,10 +962,10 @@
    [2 13  77]
    [2 13 202]]
   (->> (dataset tupac-sightings
-         (query sightings
-           (ql/order-by [(ql/fk-> $city_id $cities.name) :ascending]
-                        [(ql/fk-> $category_id $categories.name) :descending]
-                        [$id :ascending])
+         (run-query sightings
+           (ql/order-by (ql/asc (ql/fk-> $city_id $cities.name))
+                        (ql/desc (ql/fk-> $category_id $categories.name))
+                        (ql/asc $id))
            (ql/limit 10)))
        rows (map butlast) (map reverse) (format-rows-by [int int int]))) ; drop timestamps. reverse ordering to make the results columns order match order_by
 
@@ -1000,10 +975,10 @@
   {:status :failed
    :error "foreign-keys is not supported by this driver."}
   (select-keys (dataset tupac-sightings
-                 (query sightings
-                   (ql/order-by [(ql/fk-> $city_id $cities.name) :ascending]
-                                [(ql/fk-> $category_id $categories.name) :descending]
-                                [$id :ascending])
+                 (run-query sightings
+                   (ql/order-by (ql/asc (ql/fk-> $city_id $cities.name))
+                                (ql/desc (ql/fk-> $category_id $categories.name))
+                                (ql/asc $id))
                    (ql/limit 10)))
                [:status :error]))
 
@@ -1025,9 +1000,9 @@
    [426 "Kyle's Low-Carb Grill"]
    [470 "Kyle's Low-Carb Grill"]]
   (->> (dataset geographical-tips
-         (query tips
+         (run-query tips
            (ql/filter (ql/= $tips.venue.name "Kyle's Low-Carb Grill"))
-           (ql/order-by [$id :ascending])
+           (ql/order-by (ql/asc $id))
            (ql/limit 10)))
        rows (mapv (fn [[id _ _ _ {venue-name :name}]] [id venue-name]))))
 
@@ -1063,24 +1038,24 @@
      :small  "http://cloudfront.net/cedd4221-dbdb-46c3-95a9-935cce6b3fe5/small.jpg"}
     {:phone "415-901-6541", :name "Pacific Heights Free-Range Eatery", :categories ["Free-Range" "Eatery"], :id "88b361c8-ce69-4b2e-b0f2-9deedd574af6"}]]
   (rows (dataset geographical-tips
-          (query tips
+          (run-query tips
             (ql/filter (ql/and (ql/= $tips.source.service "twitter")
                                (ql/= $tips.source.username "kyle")))
-            (ql/order-by [$tips.venue.name :ascending])))))
+            (ql/order-by (ql/asc $tips.venue.name))))))
 
 ;; Nested Field in AGGREGATION
 ;; Let's see how many *distinct* venue names are mentioned
 (datasets/expect-with-engines (engines-that-support :nested-fields)
   [99]
   (first-row (dataset geographical-tips
-               (query tips
+               (run-query tips
                  (ql/aggregation (ql/distinct $tips.venue.name))))))
 
 ;; Now let's just get the regular count
 (datasets/expect-with-engines (engines-that-support :nested-fields)
   [500]
   (first-row (dataset geographical-tips
-               (query tips
+               (run-query tips
                  (ql/aggregation (ql/count $tips.venue.name))))))
 
 ;;; Nested Field in BREAKOUT
@@ -1092,7 +1067,7 @@
              ["twitter"     98]
              ["yelp"        90]]
    :columns ["source.service" "count"]}
-  (->> (query tips
+  (->> (run-query tips
          (ql/aggregation :count)
          (ql/breakout $tips.source.service))
        :data (#(dissoc % :cols)) (format-rows-by [str int])))
@@ -1112,9 +1087,9 @@
              ["Mission Homestyle Churros"]
              ["Sameer's Pizza Liquor Store"]]}
   (select-keys (:data (dataset geographical-tips
-                        (query tips
+                        (run-query tips
                           (ql/fields $tips.venue.name)
-                          (ql/order-by [$id :ascending])
+                          (ql/order-by (ql/asc $id))
                           (ql/limit 10))))
                [:columns :rows]))
 
@@ -1136,10 +1111,10 @@
    ["rasta_toucan"  13]
    [nil            400]]
   (->> (dataset geographical-tips
-         (query tips
+         (run-query tips
            (ql/aggregation :count)
            (ql/breakout $tips.source.mayor)
-           (ql/order-by [(ql/aggregate-field 0) :ascending])))
+           (ql/order-by (ql/asc (ql/aggregate-field 0)))))
        rows (format-rows-by [identity int])))
 
 
@@ -1149,9 +1124,9 @@
 (datasets/expect-with-all-engines
  [[41 "Cheese Steak Shop" 18 37.7855 -122.44  1]
   [74 "Chez Jay"           2 34.0104 -118.493 2]]
- (-> (query venues
+ (-> (run-query venues
        (ql/filter (ql/starts-with $name "Che"))
-       (ql/order-by [$id :ascending]))
+       (ql/order-by (ql/asc $id)))
      rows formatted-venues-rows))
 
 
@@ -1162,9 +1137,9 @@
   [17 "Ruen Pair Thai Restaurant"    71 34.1021 -118.306 2]
   [45 "Tu Lan Restaurant"             4 37.7821 -122.41  1]
   [55 "Dal Rae Restaurant"           67 33.983  -118.096 4]]
- (-> (query venues
+ (-> (run-query venues
        (ql/filter (ql/ends-with $name "Restaurant"))
-       (ql/order-by [$id :ascending]))
+       (ql/order-by (ql/asc $id)))
      rows formatted-venues-rows))
 
 ;;; ## CONTAINS
@@ -1172,16 +1147,16 @@
   [[31 "Bludso's BBQ"             5 33.8894 -118.207 2]
    [34 "Beachwood BBQ & Brewing" 10 33.7701 -118.191 2]
    [39 "Baby Blues BBQ"           5 34.0003 -118.465 2]]
-  (-> (query venues
+  (-> (run-query venues
         (ql/filter (ql/contains $name "BBQ"))
-        (ql/order-by [$id :ascending]))
+        (ql/order-by (ql/asc $id)))
       rows formatted-venues-rows))
 
 ;;; ## Nested AND / OR
 
 (datasets/expect-with-all-engines
   [[81]]
-  (->> (query venues
+  (->> (run-query venues
          (ql/aggregation :count)
          (ql/filter (ql/and (ql/!= $price 3)
                             (ql/or (ql/= $price 1)
@@ -1193,14 +1168,14 @@
 
 (datasets/expect-with-all-engines
   [[81]]
-  (->> (query venues
+  (->> (run-query venues
          (ql/aggregation :count)
          (ql/filter (ql/= $price 1 2)))
        rows (format-rows-by [int])))
 
 (datasets/expect-with-all-engines
   [[19]]
-  (->> (query venues
+  (->> (run-query venues
          (ql/aggregation :count)
          (ql/filter (ql/!= $price 1 2)))
      rows (format-rows-by [int])))
@@ -1215,7 +1190,7 @@
 
 (defn- sad-toucan-incidents-with-bucketing [unit]
   (->> (with-db (get-or-create-database! defs/sad-toucan-incidents)
-         (query incidents
+         (run-query incidents
            (ql/aggregation :count)
            (ql/breakout (ql/datetime-field $timestamp unit))
            (ql/limit 10)))
@@ -1488,7 +1463,7 @@
 
 (defn- count-of-grouping [db field-grouping & relative-datetime-args]
   (-> (with-temp-db [_ db]
-        (query checkins
+        (run-query checkins
           (ql/aggregation :count)
           (ql/filter (ql/= (ql/datetime-field $timestamp field-grouping)
                            (apply ql/relative-datetime relative-datetime-args)))))
@@ -1512,7 +1487,7 @@
 (datasets/expect-with-all-engines
   1
   (-> (with-temp-db [_ (checkins:1-per-day)]
-        (query checkins
+        (run-query checkins
           (ql/aggregation :count)
           (ql/filter (ql/time-interval $timestamp :current :day))))
       first-row first int))
@@ -1520,7 +1495,7 @@
 (datasets/expect-with-all-engines
   7
   (-> (with-temp-db [_ (checkins:1-per-day)]
-        (query checkins
+        (run-query checkins
           (ql/aggregation :count)
           (ql/filter (ql/time-interval $timestamp :last :week))))
       first-row first int))
@@ -1531,7 +1506,7 @@
 ;; use the unit used by breakout
 (defn- date-bucketing-unit-when-you [& {:keys [breakout-by filter-by]}]
   (let [results (with-temp-db [_ (checkins:1-per-day)]
-                  (query checkins
+                  (run-query checkins
                     (ql/aggregation :count)
                     (ql/breakout (ql/datetime-field $timestamp breakout-by))
                     (ql/filter (ql/time-interval $timestamp :current filter-by))))]

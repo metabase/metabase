@@ -52,9 +52,8 @@
 (expect-with-engine :postgres
   [{:name "id",      :base_type :IntegerField}
    {:name "user_id", :base_type :UUIDField}]
-  (->> (data/dataset with-uuid
-         (ql/run-query
-           (ql/source-table (data/id :users))))
+  (->> (data/dataset metabase.driver.postgres-test/with-uuid
+         (data/run-query users))
        :data
        :cols
        (mapv (u/rpartial select-keys [:name :base_type]))))
@@ -63,8 +62,7 @@
 ;; Check that we can filter by a UUID Field
 (expect-with-engine :postgres
   [[2 #uuid "4652b2e7-d940-4d55-a971-7e484566663e"]]
-  (-> (data/dataset with-uuid
-        (ql/run-query
-          (ql/source-table (data/id :users))
-          (ql/filter (ql/= (data/id :users :user_id) "4652b2e7-d940-4d55-a971-7e484566663e"))))
+  (-> (data/dataset metabase.driver.postgres-test/with-uuid
+        (data/run-query users
+          (ql/filter (ql/= $user_id "4652b2e7-d940-4d55-a971-7e484566663e"))))
       :data :rows))
