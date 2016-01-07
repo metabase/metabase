@@ -1,8 +1,10 @@
 (ns metabase.test.data
   "Code related to creating and deleting test databases + datasets."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as s]
+            [clojure.tools.logging :as log]
             (metabase [db :refer :all]
                       [driver :as driver])
+            [metabase.driver.query-processor.expand :as ql]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field] :as field]
                              [table :refer [Table]])
@@ -46,11 +48,10 @@
 
 (defn do-with-dataset
   "Bind `Database` for DATASET as the current DB and execute F.
-   DATASET is a *symbol* that can be resolved in the current namespace or in `metabase.test.data.dataset-definitions`:
+   DATASET is an optionally namespace-qualified *symbol*. If not namespace-qualified, `metabase.test.data.dataset-definitions` is assumed.
 
-     (do-with-dataset 'some-local-db-def f)
      (do-with-dataset 'some-other-ns/some-db-def f)
-     (do-with-dataset 'sad-toucan-incidents)         ; metabase.test.data.dataset-definitions/sad-toucan-incidents"
+     (do-with-dataset 'sad-toucan-incidents)        ; metabase.test.data.dataset-definitions/sad-toucan-incidents"
   [dataset f]
   {:pre [(symbol? dataset)]}
   (let [dataset-var (or (resolve dataset)
@@ -63,13 +64,56 @@
 (defmacro dataset
   "Convenience wrapper for `do-with-dataset`.
    Bind `Database` for DATASET as the current DB and execute BODY.
-   DATASET is a unquoted symbol name of a dataset resolvable in the current namespace or in `metabase.test.data.dataset-definitions`.
+   DATASET is a unquoted symbol name of a dataset; if not namespace-qualified, `metabase.test.data.dataset-definitions` is assumed.
 
      (dataset sad-toucan-incidents
        ...)"
   {:style/indent 1}
   [dataset & body]
   `(do-with-dataset '~dataset (fn [] ~@body)))
+
+
+(defn- $->id
+  "Convert symbols like `$field` to `id` fn calls. Input is split into separate args by splitting the token on `.`.
+   With no `.` delimiters, it is assumed we're referring to a Field belonging to TABLE-NAME, which is passed implicitly as the first arg.
+   With one or more `.` delimiters, no implicit TABLE-NAME arg is passed to `id`:
+
+    $venue_id  -> (id :sightings :venue_id) ; TABLE-NAME is implicit first arg
+    $cities.id -> (id :cities :id)          ; specify non-default Table"
+  [table-name body]
+  (clojure.walk/prewalk (fn [form]
+                          (if (and (symbol? form)
+                                   (= (first (name form)) \$))
+                            (let [form  (apply str (rest (name form)))
+                                  parts (s/split form #"\.")]
+                              (if (= (count parts) 1)
+                                `(id ~table-name ~(keyword (first parts)))
+                                `(id ~@(map keyword parts))))
+                            form))
+                        body))
+
+(defmacro query
+  "Build a query, expands symbols like `$field` into calls to `id`.
+   Internally, this wraps `metabase.driver.query-processor.expand/query` and includes a call to `source-table`.
+   See the dox for `$->id` for more information on how `$`-prefixed expansion behaves.
+
+     (query venues
+       (ql/filter (ql/= $id 1)))
+
+      -> (ql/query
+           (ql/source-table (id :venues))
+           (ql/filter (ql/= (id :venues :id) 1)))"
+  {:style/indent 1}
+  [table & forms]
+  `(ql/query (ql/source-table (id ~(keyword table)))
+             ~@(map (partial $->id (keyword table)) forms)))
+
+(defmacro run-query
+  "Like `query`, but runs the query as well."
+  {:style/indent 1}
+  [table & forms]
+  `(ql/run-query* (query ~table ~@forms)))
+
 
 (defn format-name [nm]
   (i/format-name *data-loader* (name nm)))

@@ -13,6 +13,6 @@
 
 (expect-with-engine :mysql
   [[1 nil]]
-  (data/dataset all-zero-dates
-    (ql/run-query
-      (ql/source-table (data/id :exciting-moments-in-history)))))
+  (-> (data/dataset metabase.driver.mysql-test/all-zero-dates
+        (data/run-query exciting-moments-in-history))
+      :data :rows))

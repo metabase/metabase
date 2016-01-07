@@ -4,12 +4,13 @@
   (:refer-clojure :exclude [< <= > >= = != and or filter count distinct sum])
   (:require (clojure [core :as core]
                      [string :as str])
+            [clojure.tools.logging :as log]
+            [schema.core :as s]
             [metabase.db :as db]
             [metabase.driver :as driver]
             [metabase.driver.query-processor.interface :refer [*driver*], :as i]
             [metabase.models.table :refer [Table]]
-            [metabase.util :as u]
-            [schema.core :as s])
+            [metabase.util :as u])
   (:import (metabase.driver.query_processor.interface AgFieldRef
                                                       BetweenFilter
                                                       ComparisonFilter
@@ -68,7 +69,7 @@
   "Aggregate field referece, e.g. for use in an `order-by` clause.
 
      (query (aggregate (count))
-            (order-by [(aggregate-field 0) :ascending])) ; order by :count"
+            (order-by (asc (aggregate-field 0)))) ; order by :count"
   [index :- s/Int]
   (i/map->AgFieldRef {:index index}))
 
@@ -151,11 +152,13 @@
      (aggregation {} :count 100))"
   [query ag & args]
   (if (map? ag)
-    (do (s/validate i/Aggregation ag)
-        (assoc query :aggregation ag))
+    (let [ag (update ag :aggregation-type normalize-token)]
+      (s/validate i/Aggregation ag)
+      (assoc query :aggregation ag))
     (let [ag-type (normalize-token ag)]
       (if (core/= ag-type :rows)
-        query
+        (do (log/warn (u/format-color 'yellow "Specifying :rows as the aggregation type is deprecated; this is the default behavior, so you don't need to specify it."))
+            query)
         (aggregation query (apply-fn-for-token ag-type args))))))
 
 
@@ -275,27 +278,29 @@
   (cond
     (map? subclause)    subclause
     (vector? subclause) (let [[f direction] subclause]
+                          (log/warn (u/format-color 'yellow (str "You're using legacy order-by syntax: [<field> :ascending/:descending] is deprecated. "
+                                                                 "Prefer [:asc <field>] or [:desc <field>] instead.")))
                           {:field (field f), :direction (normalize-token direction)})))
 
 (s/defn ^:always-validate asc :- i/OrderBy
   "order-by subclause. Specify that results should be returned in ascending order for Field or AgRef F.
 
      (order-by {} (asc 100))"
-  [f :- i/FieldPlaceholderOrAgRef]
+  [f]
   {:field (field f), :direction :ascending})
 
 (s/defn ^:always-validate desc :- i/OrderBy
   "order-by subclause. Specify that results should be returned in ascending order for Field or AgRef F.
 
      (order-by {} (desc 100))"
-  [f :- i/FieldPlaceholderOrAgRef]
+  [f]
   {:field (field f), :direction :descending})
 
 (defn order-by
   "Specify how ordering should be done for this query.
 
      (order-by {} (asc 20))        ; order by field 20
-     (order-by {} [20 :ascending]) ; order by field 20 (legacy syntax)
+     (order-by {} [20 :ascending]) ; order by field 20 (deprecated/legacy syntax)
      (order-by {} [(aggregate-field 0) :descending]) ; order by the aggregate field (e.g. :count)"
   [query & subclauses]
   (assoc query :order-by (mapv maybe-parse-order-by-subclause subclauses)))
@@ -363,15 +368,20 @@
        ~@body
        validate-query))
 
+(s/defn ^:always-validate wrap-inner-query
+  "Wrap inner QUERY with `:database` ID and other 'outer query' kvs. DB ID is fetched by looking up the Database for the query's `:source-table`."
+  {:style/indent 0}
+  [query :- i/Query]
+  {:database (db/sel :one :field [Table :db_id], :id (:source-table query))
+   :type     :query
+   :query    query})
+
 (s/defn ^:always-validate run-query*
   "Call `driver/process-query` on expanded inner QUERY, looking up the `Database` ID for the `source-table.`
 
      (run-query* (query (source-table 5) ...))"
   [query :- i/Query]
-  (let [db-id (db/sel :one :field [Table :db_id], :id (:source-table query))]
-    (driver/process-query {:database db-id
-                           :type     :query
-                           :query    query})))
+  (driver/process-query (wrap-inner-query query)))
 
 (defmacro run-query
   "Build and run a query.

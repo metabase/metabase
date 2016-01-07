@@ -1,6 +1,7 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
-  (:require [expectations :refer :all]
+  (:require [cheshire.core :as json]
+            [expectations :refer :all]
             [medley.core :as m]
             (metabase [db :refer :all]
                       [util :as u])))
@@ -121,3 +122,11 @@
        (def ~(vary-meta fn-name assoc :private true) (ns-resolve '~namespc '~fn-name))
        ~(when (seq more)
           `(resolve-private-fns ~namespc ~(first more) ~@(rest more)))))
+
+(defn obj->json->obj
+  "Convert an object to JSON and back again. This can be done to ensure something will match its serialized + deserialized form,
+   e.g. keywords that aren't map keys:
+
+     (obj->json->obj {:type :query}) -> {:type \"query\"}"
+  [obj]
+  (json/parse-string (json/generate-string obj) keyword))
