@@ -44,6 +44,33 @@
   [db & body]
   `(do-with-db ~db (fn [] ~@body)))
 
+(defn do-with-dataset
+  "Bind `Database` for DATASET as the current DB and execute F.
+   DATASET is a *symbol* that can be resolved in the current namespace or in `metabase.test.data.dataset-definitions`:
+
+     (do-with-dataset 'some-local-db-def f)
+     (do-with-dataset 'some-other-ns/some-db-def f)
+     (do-with-dataset 'sad-toucan-incidents)         ; metabase.test.data.dataset-definitions/sad-toucan-incidents"
+  [dataset f]
+  {:pre [(symbol? dataset)]}
+  (let [dataset-var (or (resolve dataset)
+                        (ns-resolve 'metabase.test.data.dataset-definitions dataset))]
+    (when-not dataset-var
+      (throw (Exception. (format "Dataset definition not found: '%s' or 'metabase.test.data.dataset-definitions/%s'" dataset dataset))))
+    (with-db (get-or-create-database! @dataset-var)
+      (f))))
+
+(defmacro dataset
+  "Convenience wrapper for `do-with-dataset`.
+   Bind `Database` for DATASET as the current DB and execute BODY.
+   DATASET is a unquoted symbol name of a dataset resolvable in the current namespace or in `metabase.test.data.dataset-definitions`.
+
+     (dataset sad-toucan-incidents
+       ...)"
+  {:style/indent 1}
+  [dataset & body]
+  `(do-with-dataset '~dataset (fn [] ~@body)))
+
 (defn format-name [nm]
   (i/format-name *data-loader* (name nm)))
 

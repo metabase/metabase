@@ -3,6 +3,7 @@
    This namespace should just contain definitions of various protocols and record types; associated logic
    should go in `metabase.driver.query-processor.expand`."
   (:require [schema.core :as s]
+            [metabase.driver :as driver]
             [metabase.models.field :as field]
             [metabase.util :as u])
   (:import clojure.lang.Keyword
@@ -10,6 +11,16 @@
 
 (def ^:dynamic *driver*
   nil)
+
+;; *driver* is always bound when running queries the normal way, e.g. via `metabase.driver/process-query`
+;; It is not neccesarily bound when using various functions like `fk->` in the REPL.
+;; The check is not performed in those cases to allow flexibility when composing queries for tests or interactive development
+(defn assert-driver-supports
+  "When `*driver*` is bound, assert that is supports keyword FEATURE."
+  [feature]
+  (when *driver*
+    (when-not (contains? (driver/features *driver*) feature)
+      (throw (Exception. (str (name feature) " is not supported by this driver."))))))
 
 ;; Expansion Happens in a Few Stages:
 ;; 1. A query dict is parsed via pattern-matching code in the Query Expander.
@@ -62,16 +73,16 @@
 
 
 (def ^:const datetime-field-units
-  "Valid units for a `DateTimeField`."
+  "Invalid units for a `DateTimeField`."
   #{:default :minute :minute-of-hour :hour :hour-of-day :day :day-of-week :day-of-month :day-of-year
     :week :week-of-year :month :month-of-year :quarter :quarter-of-year :year})
 
 (def ^:const relative-datetime-value-units
-  "Valid units for a `RelativeDateTimeValue`."
+  "Invalid units for a `RelativeDateTimeValue`."
   #{:minute :hour :day :week :month :quarter :year})
 
-(def DatetimeFieldUnit (s/named (apply s/enum datetime-field-units)          "Valid datetime unit for a field"))
-(def DatetimeValueUnit (s/named (apply s/enum relative-datetime-value-units) "Valid datetime unit for a relative datetime"))
+(def DatetimeFieldUnit (s/named (apply s/enum datetime-field-units)          "Invalid datetime unit for a field"))
+(def DatetimeValueUnit (s/named (apply s/enum relative-datetime-value-units) "Invalid datetime unit for a relative datetime"))
 
 (defn datetime-field-unit? [unit]
   (contains? datetime-field-units (keyword unit)))
@@ -102,22 +113,25 @@
 
 ;; Replace Field IDs with these during first pass
 (s/defrecord FieldPlaceholder [field-id      :- s/Int
-                               fk-field-id   :- (s/maybe s/Int)
+                               fk-field-id   :- (s/maybe (s/both s/Int
+                                                                 (s/named (s/pred (fn [_] (or (assert-driver-supports :foreign-keys)
+                                                                                              true)))
+                                                                          "foreign-keys is not supported by this driver.")))
                                datetime-unit :- (s/maybe (apply s/enum datetime-field-units))])
 
 (s/defrecord AgFieldRef [index :- s/Int]) ; e.g. 0
 
-(def FieldPlaceholderOrAgRef (s/named (s/cond-pre FieldPlaceholder AgFieldRef) "Valid field (field ID or aggregate field reference)"))
+(def FieldPlaceholderOrAgRef (s/named (s/cond-pre FieldPlaceholder AgFieldRef) "Invalid field (not a field ID or aggregate field reference)"))
 
 
 (s/defrecord RelativeDatetime [amount :- s/Int
                                unit   :- (s/maybe DatetimeValueUnit)])
 
-(def LiteralDatetimeString (s/constrained s/Str u/date-string? "ISO-8601 datetime string literal"))
-(def LiteralDatetime       (s/named (s/cond-pre java.sql.Date LiteralDatetimeString)   "Datetime literal (ISO-8601 string or java.sql.Date)"))
-(def Datetime              (s/named (s/cond-pre RelativeDatetime LiteralDatetime)      "Valid datetime (ISO-8601 string literal or relative-datetime form)"))
-(def OrderableValue        (s/named (s/cond-pre s/Num Datetime)                        "Orderable value (number or datetime)"))
-(def AnyValue              (s/named (s/maybe (s/cond-pre s/Bool s/Str OrderableValue)) "Valid value (nil, boolean, number, string, or relative-datetime form)"))
+(def LiteralDatetimeString (s/both s/Str (s/named (s/pred u/date-string?)              "Invalid ISO-8601 datetime string literal")))
+(def LiteralDatetime       (s/named (s/cond-pre java.sql.Date LiteralDatetimeString)   "Invalid datetime literal (must be ISO-8601 string or java.sql.Date)"))
+(def Datetime              (s/named (s/cond-pre RelativeDatetime LiteralDatetime)      "Invalid datetime (must ISO-8601 string literal or a relative-datetime form)"))
+(def OrderableValue        (s/named (s/cond-pre s/Num Datetime)                        "Invalid orrderable value (must be number or datetime)"))
+(def AnyValue              (s/named (s/maybe (s/cond-pre s/Bool s/Str OrderableValue)) "Invalid value (must be nil, boolean, number, string, or a relative-datetime form)"))
 
 ;; Replace values with these during first pass over Query.
 ;; Include associated Field ID so appropriate the info can be found during Field resolution
@@ -137,13 +151,18 @@
 (def CountAggregation {:aggregation-type       (s/eq :count)
                        (s/optional-key :field) FieldPlaceholder})
 
-(def OtherAggregation {:aggregation-type (s/named (s/enum :avg :cumulative-sum :distinct :stddev :sum) "Valid aggregation type")
-                       :field            FieldPlaceholder})
+(def OtherAggregation (s/both {:aggregation-type (s/named (s/enum :avg :cumulative-sum :distinct :stddev :sum) "Invalid aggregation type")
+                               :field            FieldPlaceholder}
+                              (s/named (s/pred (fn [{:keys [aggregation-type]}]
+                                                 (when (= aggregation-type :stddev)
+                                                   (assert-driver-supports :standard-deviation-aggregations))
+                                                 true))
+                                       "standard-deviation-aggregations is not supported by this driver.")))
 
 (def Aggregation (s/named (s/if #(= (get % :aggregation-type) :count)
                             CountAggregation
                             OtherAggregation)
-                          "Valid aggregation clause"))
+                          "Invalid aggregation clause."))
 
 
 (s/defrecord EqualityFilter [filter-type :- (s/enum := :!=)
@@ -166,19 +185,19 @@
 (def SimpleFilter (s/cond-pre EqualityFilter ComparisonFilter BetweenFilter StringFilter))
 
 (s/defrecord CompoundFilter [compound-type :- (s/enum :and :or)
-                             subclauses    :- [(s/named (s/cond-pre SimpleFilter CompoundFilter) "Valid filter subclause in compound (and/or) filter")]])
+                             subclauses    :- [(s/named (s/cond-pre SimpleFilter CompoundFilter) "Invalid filter subclause in compound (and/or) filter")]])
 
-(def Filter (s/named (s/cond-pre SimpleFilter CompoundFilter) "Valid filter clause"))
+(def Filter (s/named (s/cond-pre SimpleFilter CompoundFilter) "Invalid filter clause"))
 
 
 (def OrderBy (s/named {:field     FieldPlaceholderOrAgRef
-                       :direction (s/named (s/enum :ascending :descending) "Valid order-by direction")}
-                      "Valid order-by subclause"))
+                       :direction (s/named (s/enum :ascending :descending) "Invalid order-by direction")}
+                      "Invalid order-by subclause"))
 
 
 (def Page (s/named {:page  s/Int
                     :items s/Int}
-                   "Valid page clause"))
+                   "Invalid page clause"))
 
 
 (def Query

@@ -12,6 +12,7 @@
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.query-processor :as qp]
+            metabase.driver.query-processor.interface
             [metabase.util :as u])
   (:import java.sql.Timestamp
            java.util.Date

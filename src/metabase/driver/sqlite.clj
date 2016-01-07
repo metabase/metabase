@@ -120,7 +120,7 @@
                                             #{:standard-deviation-aggregations}
                                             ;; HACK SQLite doesn't support ALTER TABLE ADD CONSTRAINT FOREIGN KEY and I don't have all day to work around this
                                             ;; so for now we'll just skip the foreign key stuff in the tests.
-                                            (when (config/is-test?)
+                                            (when true #_(config/is-test?)
                                               #{:foreign-keys})))})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)

@@ -6,6 +6,7 @@
             [clojure.walk :as walk]
             [korma.core :as k]
             [medley.core :as m]
+            schema.utils
             [swiss.arrows :refer [<<-]]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
@@ -15,7 +16,8 @@
                                              [resolve :as resolve])
             (metabase.models [field :refer [Field], :as field]
                              [foreign-key :refer [ForeignKey]])
-            [metabase.util :as u]))
+            [metabase.util :as u])
+  (:import (schema.utils NamedError ValidationError)))
 
 ;; # CONSTANTS
 
@@ -53,20 +55,45 @@
        (or (not ag-type)
            (= ag-type :rows))))
 
+(defn- fail [query, ^Throwable e, & [additional-info]]
+  (merge {:status         :failed
+          :class          (class e)
+          :error          (or (.getMessage e) (str e))
+          :stacktrace     (u/filtered-stacktrace e)
+          :query          (dissoc query :database :driver)
+          :expanded-query (try (dissoc (resolve/resolve (expand/expand query)) :database :driver)
+                               (catch Throwable e
+                                 {:error      (or (.getMessage e) (str e))
+                                  :stacktrace (u/filtered-stacktrace e) }))}
+         (when-let [data (ex-data e)]
+           {:ex-data data})
+         additional-info))
+
+(defn- explain-schema-validation-error
+  "Return a nice error message to explain the schema validation error."
+  [error]
+  (println "ERROR:" error)
+  (cond
+    (instance? NamedError error)      (let [nested-error (.error ^NamedError error)] ; recurse until we find the innermost nested named error, which is the reason we actually failed
+                                        (if (instance? NamedError nested-error)
+                                          (recur nested-error)
+                                          (or (when (map? nested-error)
+                                                (when-let [nested-error (first (filter (partial instance? NamedError)
+                                                                                       (vals nested-error)))]
+                                                  (explain-schema-validation-error nested-error)))
+                                              (.name ^NamedError error))))
+    (instance? ValidationError error) (schema.utils/validation-error-explain error)))
 
 (defn- wrap-catch-exceptions [qp]
   (fn [query]
     (try (qp query)
+         (catch clojure.lang.ExceptionInfo e
+           (fail query e (when-let [data (ex-data e)]
+                           (when (= (:type data) :schema.core/error)
+                             (when-let [error (explain-schema-validation-error (:error data))]
+                               {:error error})))))
          (catch Throwable e
-           {:status         :failed
-            :class          (class e)
-            :error          (or (.getMessage e) (str e))
-            :stacktrace     (u/filtered-stacktrace e)
-            :query          (dissoc query :database :driver)
-            :expanded-query (try (dissoc (resolve/resolve (expand/expand query)) :database :driver)
-                                 (catch Throwable e
-                                   {:error      (or (.getMessage e) (str e))
-                                    :stacktrace (u/filtered-stacktrace e) }))}))))
+           (fail query e)))))
 
 
 (defn- pre-expand [qp]
