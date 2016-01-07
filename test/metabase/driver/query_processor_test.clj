@@ -281,18 +281,6 @@
   `(ql/run-query (ql/source-table (id ~(keyword table)))
                  ~@(map (partial $->id (keyword table)) forms)))
 
-(defn- do-with-dataset [dataset f]
-  (let [dataset-var (ns-resolve 'metabase.test.data.dataset-definitions dataset)]
-    (when-not dataset-var
-      (throw (Exception. (format "Dataset definition not found: metabase.test.data.dataset-definitions/%s" dataset))))
-    (with-db (get-or-create-database! @dataset-var)
-      (f))))
-
-(defmacro dataset
-  {:style/indent 1}
-  [dataset & body]
-  `(do-with-dataset '~dataset (fn [] ~@body)))
-
 
 ;; # THE TESTS THEMSELVES (!)
 
@@ -1104,10 +1092,9 @@
              ["twitter"     98]
              ["yelp"        90]]
    :columns ["source.service" "count"]}
-  (->> (dataset geographical-tips
-         (query tips
-           (ql/aggregation :count)
-           (ql/breakout $tips.source.service)))
+  (->> (query tips
+         (ql/aggregation :count)
+         (ql/breakout $tips.source.service))
        :data (#(dissoc % :cols)) (format-rows-by [str int])))
 
 ;;; Nested Field in FIELDS

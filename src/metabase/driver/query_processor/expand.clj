@@ -20,15 +20,6 @@
                                                       StringFilter
                                                       ValuePlaceholder)))
 
-;; *driver* is always bound when running queries the normal way, e.g. via `metabase.driver/process-query`
-;; It is not neccesarily bound when using various functions like `fk->` in the REPL.
-;; The check is not performed in those cases to allow flexibility when composing queries for tests or interactive development
-(defn- assert-driver-supports
-  "When `*driver*` is bound, assert that is supports keyword FEATURE."
-  [feature]
-  (when *driver*
-    (when-not (contains? (driver/features *driver*) feature)
-      (throw (Exception. (str (name feature) " is not supported by this driver."))))))
 
 ;;; # ------------------------------------------------------------ Token dispatch ------------------------------------------------------------
 
@@ -50,6 +41,8 @@
     :and :or :inside :between := :!= :< :> :<= :>= :starts-with :contains :ends-with :time-interval
     ;; fields
     :fk-> :datetime-field
+    ;; order-by subclauses
+    :asc :desc
     ;; values
     :relative-datetime})
 
@@ -105,7 +98,7 @@
 
      (fk-> 100 200) ; refer to Field 200, which is part of another Table; join to the other table via our foreign key 100"
   [fk-field-id :- s/Int, dest-field-id :- s/Int]
-  (assert-driver-supports :foreign-keys)
+  (i/assert-driver-supports :foreign-keys)
   (i/map->FieldPlaceholder {:fk-field-id fk-field-id, :field-id dest-field-id}))
 
 
@@ -143,7 +136,7 @@
 (defn stddev
   "Aggregation clause. Return the standard deviation of values of F."
   [f]
-  (assert-driver-supports :standard-deviation-aggregations)
+  (i/assert-driver-supports :standard-deviation-aggregations)
   (ag-with-field :stddev f))
 
 (s/defn ^:always-validate count :- i/CountAggregation
@@ -284,10 +277,25 @@
     (vector? subclause) (let [[f direction] subclause]
                           {:field (field f), :direction (normalize-token direction)})))
 
+(s/defn ^:always-validate asc :- i/OrderBy
+  "order-by subclause. Specify that results should be returned in ascending order for Field or AgRef F.
+
+     (order-by {} (asc 100))"
+  [f :- i/FieldPlaceholderOrAgRef]
+  {:field (field f), :direction :ascending})
+
+(s/defn ^:always-validate desc :- i/OrderBy
+  "order-by subclause. Specify that results should be returned in ascending order for Field or AgRef F.
+
+     (order-by {} (desc 100))"
+  [f :- i/FieldPlaceholderOrAgRef]
+  {:field (field f), :direction :descending})
+
 (defn order-by
   "Specify how ordering should be done for this query.
 
-     (order-by {} [20 :ascending]) ; order by field 20
+     (order-by {} (asc 20))        ; order by field 20
+     (order-by {} [20 :ascending]) ; order by field 20 (legacy syntax)
      (order-by {} [(aggregate-field 0) :descending]) ; order by the aggregate field (e.g. :count)"
   [query & subclauses]
   (assoc query :order-by (mapv maybe-parse-order-by-subclause subclauses)))
@@ -342,10 +350,9 @@
   [outer-query]
   (update outer-query :query expand-inner))
 
-(defn validate-query
+(def ^{:arglists '([query])} validate-query
   "Check that a given query is valid, returning it as-is if so."
-  [query]
-  (s/validate i/Query query))
+  (s/validator i/Query))
 
 (defmacro query
   "Build a query by threading an (initially empty) map through each form in BODY with `->`.
@@ -356,11 +363,20 @@
        ~@body
        validate-query))
 
-(s/defn ^:always-validate run-query* [query :- i/Query]
+(s/defn ^:always-validate run-query*
+  "Call `driver/process-query` on expanded inner QUERY, looking up the `Database` ID for the `source-table.`
+
+     (run-query* (query (source-table 5) ...))"
+  [query :- i/Query]
   (let [db-id (db/sel :one :field [Table :db_id], :id (:source-table query))]
     (driver/process-query {:database db-id
                            :type     :query
                            :query    query})))
 
-(defmacro run-query [& body]
+(defmacro run-query
+  "Build and run a query.
+
+     (run-query (source-table 5) ...)"
+  {:style/indent 0}
+  [& body]
   `(run-query* (query ~@body)))
