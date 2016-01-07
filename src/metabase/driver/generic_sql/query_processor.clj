@@ -99,9 +99,8 @@
 (defn apply-aggregation [driver korma-query {{:keys [aggregation-type field]} :aggregation}]
   (if-not field
     ;; aggregation clauses w/o a Field
-    (case aggregation-type
-      :rows  korma-query ; don't need to do anything special for `rows` - `select` selects all rows by default
-      :count (k/aggregate korma-query (count (k/raw "*")) :count))
+    (do (assert (= aggregation-type :count))
+        (k/aggregate korma-query (count (k/raw "*")) :count))
     ;; aggregation clauses with a Field
     (let [field (formatted field)]
       (case aggregation-type
@@ -127,28 +126,21 @@
 (defn- filter-subclause->predicate
   "Given a filter SUBCLAUSE, return a Korma filter predicate form for use in korma `where`."
   [{:keys [filter-type], :as filter}]
-  (if (= filter-type :inside)
-    ;; INSIDE filter subclause
-    (let [{:keys [lat lon]} filter]
-      (kfns/pred-and {(formatted (:field lat)) ['between [(formatted (:min lat)) (formatted (:max lat))]]}
-                     {(formatted (:field lon)) ['between [(formatted (:min lon)) (formatted (:max lon))]]}))
-
-    ;; all other filter subclauses
-    (let [field (formatted (:field filter))
-          value (some-> filter :value formatted)]
-      (case          filter-type
-        :between     {field ['between [(formatted (:min-val filter)) (formatted (:max-val filter))]]}
-        :not-null    {field ['not= nil]}
-        :is-null     {field ['=    nil]}
-        :starts-with {field ['like (str value \%)]}
-        :contains    {field ['like (str \% value \%)]}
-        :ends-with   {field ['like (str \% value)]}
-        :>           {field ['>    value]}
-        :<           {field ['<    value]}
-        :>=          {field ['>=   value]}
-        :<=          {field ['<=   value]}
-        :=           {field ['=    value]}
-        :!=          {field ['not= value]}))))
+  (let [field (formatted (:field filter))
+        value (some-> filter :value formatted)]
+    (case          filter-type
+      :between     {field ['between [(formatted (:min-val filter)) (formatted (:max-val filter))]]}
+      :not-null    {field ['not= nil]}
+      :is-null     {field ['=    nil]}
+      :starts-with {field ['like (str value \%)]}
+      :contains    {field ['like (str \% value \%)]}
+      :ends-with   {field ['like (str \% value)]}
+      :>           {field ['>    value]}
+      :<           {field ['<    value]}
+      :>=          {field ['>=   value]}
+      :<=          {field ['<=   value]}
+      :=           {field ['=    value]}
+      :!=          {field ['not= value]})))
 
 (defn- filter-clause->predicate [{:keys [compound-type subclauses], :as clause}]
   (case compound-type

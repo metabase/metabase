@@ -120,10 +120,7 @@
         (= num-results results-limit) (assoc-in [:data :rows_truncated] results-limit)))))
 
 (defn- should-add-implicit-fields? [{{:keys [fields breakout], {ag-type :aggregation-type} :aggregation} :query}]
-  (and (or (not ag-type)
-           (= ag-type :rows))
-       (not breakout)
-       (not fields)))
+  (not (or ag-type breakout fields)))
 
 (defn- pre-add-implicit-fields
   "Add an implicit `fields` clause to queries with `rows` aggregations."
