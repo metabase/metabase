@@ -16,10 +16,10 @@
             [metabase.util :as u])
   (:import java.sql.Timestamp
            java.util.Date
-           (metabase.driver.query_processor.interface DateTimeField
+           (metabase.driver.query_processor.interface AgFieldRef
+                                                      DateTimeField
                                                       DateTimeValue
                                                       Field
-                                                      AgFieldRef
                                                       RelativeDateTimeValue
                                                       Value)))
 

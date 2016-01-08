@@ -1067,9 +1067,10 @@
              ["twitter"     98]
              ["yelp"        90]]
    :columns ["source.service" "count"]}
-  (->> (run-query tips
-         (ql/aggregation :count)
-         (ql/breakout $tips.source.service))
+  (->> (dataset geographical-tips
+         (run-query tips
+           (ql/aggregation :count)
+           (ql/breakout $tips.source.service)))
        :data (#(dissoc % :cols)) (format-rows-by [str int])))
 
 ;;; Nested Field in FIELDS
