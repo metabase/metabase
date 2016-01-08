@@ -74,11 +74,6 @@
   (with-mongo-connection [_ database]
     (do-sync-fn)))
 
-(defn- active-tables [_ database]
-  (with-mongo-connection [^com.mongodb.DB conn database]
-    (set (for [collection (set/difference (mdb/get-collection-names conn) #{"system.indexes"})]
-           {:name collection}))))
-
 (defn- active-column-names->type [_ table]
   (with-mongo-connection [_ @(:db table)]
     (into {} (for [column-name (table->column-names table)]
@@ -86,6 +81,26 @@
                 (field->base-type {:name                      (name column-name)
                                    :table                     (delay table)
                                    :qualified-name-components (delay [(:name table) (name column-name)])})}))))
+
+(defn describe-database-table [table-name]
+  (let [column-names (table->column-names table-name)]
+    {:name   table-name
+     ;; TODO: broken, fix me!
+     :fields (active-column-names->type nil table-name)}))
+
+(defn describe-database [_ database]
+  (with-mongo-connection [^com.mongodb.DB conn database]
+    (let [tables (set (for [collection (set/difference (mdb/get-collection-names conn) #{"system.indexes"})]
+                        {:name collection}))]
+      {:tables (into #{} (map table->column-names tables))})))
+
+(defn describe-table [_ database table-name]
+  (with-mongo-connection [^com.mongodb.DB conn database]
+    (let [tables (set (for [collection (set/difference (mdb/get-collection-names conn) #{"system.indexes"})]
+                        {:name collection}))]
+      ;; note that we grab the collections list and check that the desired table-name actually exists
+      (when (first (filter #(= table-name (:name %)) tables))
+        (describe-database-table table-name)))))
 
 (defn- field-values-lazy-seq [_ {:keys [qualified-name-components table], :as field}]
   (assert (and (map? field)
@@ -126,10 +141,10 @@
 (extend MongoDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:active-column-names->type         active-column-names->type
-          :active-nested-field-name->type    active-nested-field-name->type
-          :active-tables                     active-tables
+         {:active-nested-field-name->type    active-nested-field-name->type
           :can-connect?                      can-connect?
+          :describe-database                 describe-database
+          :describe-table                    describe-table
           :details-fields                    (constantly [{:name         "host"
                                                            :display-name "Host"
                                                            :default      "localhost"}
@@ -158,7 +173,6 @@
           :process-native                    qp/process-and-run-native
           :process-structured                qp/process-and-run-structured
           :process-query-in-context          process-query-in-context
-          :sync-in-context                   sync-in-context
-          :table-pks                         (constantly #{"_id"})}))
+          :sync-in-context                   sync-in-context}))
 
 (driver/register-driver! :mongo (MongoDriver.))

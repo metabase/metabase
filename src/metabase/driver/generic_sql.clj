@@ -19,6 +19,12 @@
 (defprotocol ISQLDriver
   "Methods SQL-based drivers should implement in order to use `IDriverSQLDefaultsMixin`.
    Methods marked *OPTIONAL* have default implementations in `ISQLDriverDefaultsMixin`."
+
+  (active-tables ^java.util.Set [this, ^java.sql.DatabaseMetaData metadata]
+    "Return a set of maps containing information about the active tables/views, collections, or equivalent that currently exist in DATABASE.
+     Each map should contain the key `:name`, which is the string name of the table. For databases that have a concept of schemas,
+     this map should also include the string name of the table's `:schema`.")
+
   ;; The following apply-* methods define how the SQL Query Processor handles given query clauses. Each method is called when a matching clause is present
   ;; in QUERY, and should return an appropriately modified version of KORMA-QUERY. Most drivers can use the default implementations for all of these methods,
   ;; but some may need to override one or more (e.g. SQL Server needs to override the behavior of `apply-limit`, since T-SQL uses `TOP` instead of `LIMIT`).
@@ -126,46 +132,6 @@
              vals
              first))))
 
-(defmacro with-metadata
-  "Execute BODY with `java.sql.DatabaseMetaData` for DATABASE."
-  [[binding driver database] & body]
-  `(with-open [^java.sql.Connection conn# (get-connection-for-sync ~driver (:details ~database))]
-     (let [~binding (.getMetaData conn#)]
-       ~@body)))
-
-
-(defn fast-active-tables
-  "Default, fast implementation of `IDriver/active-tables` best suited for DBs with lots of system tables (like Oracle).
-   Fetch list of schemas, then for each one not in `excluded-schemas`, fetch its Tables, and combine the results.
-
-   This is as much as 15x faster for Databases with lots of system tables than `post-filtered-active-tables` (4 seconds vs 60)."
-  [driver database]
-  (with-metadata [md driver database]
-    (let [all-schemas (set (map :table_schem (jdbc/result-set-seq (.getSchemas md))))
-          schemas     (set/difference all-schemas (excluded-schemas driver))]
-      (set (for [schema     schemas
-                 table-name (mapv :table_name (jdbc/result-set-seq (.getTables md nil schema nil (into-array String ["TABLE", "VIEW"]))))]
-             {:name   table-name
-              :schema schema})))))
-
-(defn post-filtered-active-tables
-  "Alternative implementation of `IDriver/active-tables` best suited for DBs with little or no support for schemas.
-   Fetch *all* Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
-  [driver database]
-  (with-metadata [md driver database]
-    (set (for [table (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
-                             (jdbc/result-set-seq (.getTables md nil nil nil (into-array String ["TABLE", "VIEW"]))))]
-           {:name   (:table_name table)
-            :schema (:table_schem table)}))))
-
-
-(defn- active-column-names->type [driver table]
-  (with-metadata [md driver @(:db table)]
-    (into {} (for [{:keys [column_name type_name]} (jdbc/result-set-seq (.getColumns md nil (:schema table) (:name table) nil))]
-               {column_name (or (column->base-type driver (keyword type_name))
-                                (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :UnknownField." type_name))
-                                    :UnknownField))}))))
-
 (defn pattern-based-column->base-type
   "Return a `column->base-type` function that matches types based on a sequence of pattern / base-type pairs."
   [pattern->type]
@@ -175,13 +141,6 @@
         (cond
           (re-find pattern column-type) base-type
           (seq more)                    (recur more))))))
-
-(defn- table-pks [driver table]
-  (with-metadata [md driver @(:db table)]
-    (->> (.getPrimaryKeys md nil nil (:name table))
-         jdbc/result-set-seq
-         (map :column_name)
-         set)))
 
 (def ^:private ^:const field-values-lazy-seq-chunk-size
   "How many Field values should we fetch at a time for `field-values-lazy-seq`?"
@@ -224,17 +183,6 @@
 (defn- table-rows-seq [_ database table-name]
   (k/select (korma-entity database {:table-name table-name})))
 
-
-(defn- table-fks [driver table]
-  (with-metadata [md driver @(:db table)]
-    (->> (.getImportedKeys md nil nil (:name table))
-         jdbc/result-set-seq
-         (map (fn [result]
-                {:fk-column-name   (:fkcolumn_name result)
-                 :dest-table-name  (:pktable_name result)
-                 :dest-column-name (:pkcolumn_name result)}))
-         set)))
-
 (defn- field-avg-length [driver field]
   (or (some-> (korma-entity @(:table field))
               (k/select (k/aggregate (avg (k/sqlfn* (string-length-fn driver)
@@ -262,14 +210,101 @@
                 :standard-deviation-aggregations]
          (set-timezone-sql driver) (conj :set-timezone))))
 
+
+;;; ## Database introspection methods used by sync process
+
+(defmacro with-metadata
+  "Execute BODY with `java.sql.DatabaseMetaData` for DATABASE."
+  [[binding driver database] & body]
+  `(with-open [^java.sql.Connection conn# (get-connection-for-sync ~driver (:details ~database))]
+     (let [~binding (.getMetaData conn#)]
+       ~@body)))
+
+(defn fast-active-tables
+  "Default, fast implementation of `IDriver/active-tables` best suited for DBs with lots of system tables (like Oracle).
+   Fetch list of schemas, then for each one not in `excluded-schemas`, fetch its Tables, and combine the results.
+
+   This is as much as 15x faster for Databases with lots of system tables than `post-filtered-active-tables` (4 seconds vs 60)."
+  [driver metadata]
+  (let [all-schemas (set (map :table_schem (jdbc/result-set-seq (.getSchemas metadata))))
+        schemas     (set/difference all-schemas (excluded-schemas driver))]
+    (set (for [schema     schemas
+               table-name (mapv :table_name (jdbc/result-set-seq (.getTables metadata nil schema nil (into-array String ["TABLE", "VIEW"]))))]
+           {:name   table-name
+            :schema schema}))))
+
+(defn post-filtered-active-tables
+  "Alternative implementation of `IDriver/active-tables` best suited for DBs with little or no support for schemas.
+   Fetch *all* Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
+  [driver metadata]
+  (set (for [table (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
+                           (jdbc/result-set-seq (.getTables metadata nil nil nil (into-array String ["TABLE", "VIEW"]))))]
+         {:name   (:table_name table)
+          :schema (:table_schem table)})))
+
+(defn describe-table-fields
+  [metadata driver {:keys [schema name]}]
+  (for [{:keys [column_name type_name]} (jdbc/result-set-seq (.getColumns metadata nil schema name nil))]
+    {:name        column_name
+     :column-type type_name
+     :base-type   (or (column->base-type driver (keyword type_name))
+                      (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :UnknownField." type_name))
+                          :UnknownField))}))
+
+(defn add-table-pks
+  [metadata table]
+  (let [pks (->> (.getPrimaryKeys metadata nil nil (:name table))
+                 jdbc/result-set-seq
+                 (map :column_name)
+                 set)]
+    (update table :fields (fn [fields]
+                            (for [field fields]
+                              (if-not (contains? pks (:name field)) field
+                                                                    (assoc field :pk? true)))))))
+
+(defn add-table-fks
+  [metadata table]
+  (let [field->fk (into {} (->> (.getImportedKeys metadata nil nil (:name table))
+                          jdbc/result-set-seq
+                          (map (fn [result]
+                                 {(:fkcolumn_name result) {:dest-table (:pktable_name result)
+                                                           :dest-field (:pkcolumn_name result)}}))))
+        fk-fields (set (keys field->fk))]
+    (update table :fields (fn [fields]
+                            (for [{field-name :name :as field} fields]
+                              (if-not (contains? fk-fields field-name) field
+                                                                       (assoc field :fk (get field->fk field-name))))))))
+
+(defn describe-database-table
+  [metadata driver table]
+  (->> (assoc table :fields (describe-table-fields metadata driver table))
+       ;; find PKs and mark them
+       (add-table-pks metadata)
+       ;; find FKs and add their details
+       (add-table-fks metadata)))
+
+(defn describe-database
+  [driver database]
+  (with-metadata [metadata driver database]
+    (let [tables (active-tables driver metadata)]
+      {:tables (into #{} (map (partial describe-database-table metadata driver) tables))})))
+
+(defn describe-table
+  [driver database table-name]
+  (with-metadata [metadata driver database]
+    (let [tables        (active-tables driver metadata)
+          desired-table (first (filter #(= table-name (:name %)) tables))]
+      (describe-database-table metadata driver desired-table))))
+
+
 (defn IDriverSQLDefaultsMixin
   "Default implementations of methods in `IDriver` for SQL drivers."
   []
   (require 'metabase.driver.generic-sql.native
            'metabase.driver.generic-sql.query-processor)
   (merge driver/IDriverDefaultsMixin
-         {:active-column-names->type active-column-names->type
-          :active-tables             fast-active-tables
+         {:describe-database         describe-database
+          :describe-table            describe-table
           :can-connect?              can-connect?
           :features                  features
           :field-avg-length          field-avg-length
@@ -277,8 +312,6 @@
           :field-values-lazy-seq     field-values-lazy-seq
           :process-native            (resolve 'metabase.driver.generic-sql.native/process-and-run)
           :process-structured        (resolve 'metabase.driver.generic-sql.query-processor/process-structured)
-          :table-fks                 table-fks
-          :table-pks                 table-pks
           :table-rows-seq            table-rows-seq}))
 
 

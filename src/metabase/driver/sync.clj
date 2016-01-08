@@ -61,56 +61,19 @@
   "Create new `Tables` as needed. These are ones that came back from `active-tables` but don't already exist in the DB."
   [database active-tables existing-table->id]
   (let [active-tables   (set (for [table active-tables]
-                               (update table :schema identity))) ; convert tables that come back like {:name ...} to {:name ..., :schema nil}
+                               (-> (select-keys table [:name :schema])
+                                   (update :schema identity)))) ; convert tables that come back like {:name ...} to {:name ..., :schema nil}
         existing-tables (set (keys existing-table->id))
-        new-tables      (set/difference active-tables existing-tables)]
+        new-tables      (->> (set/difference active-tables existing-tables)
+                             ;; exclude _metabase_metadata table which is not a real table
+                             (filter #(not= "_metabase_metadata" (s/lower-case (:name %)))))]
     (when (seq new-tables)
       (log/debug (u/format-color 'blue "Found new tables: %s" (vec (for [{table :name, schema :schema} new-tables]
                                                                      (if schema
                                                                        (str schema \. table)
                                                                        table)))))
       (doseq [{table :name, schema :schema} new-tables]
-        ;; If it's a _metabase_metadata table then we'll handle later once everything else has been synced
-        (when-not (= (s/lower-case table) "_metabase_metadata")
-          (ins Table :db_id (:id database), :active true, :schema schema, :name table))))))
-
-(defn- fetch-and-sync-database-active-tables! [driver database]
-  (sync-database-active-tables! driver (for [table (sel :many Table, :db_id (:id database) :active true)]
-                                         ;; replace default delays with ones that reuse database (and don't require a DB call)
-                                         (assoc table :db (delay database)))))
-
-(defn- -sync-database! [driver database]
-  (let [active-tables      (driver/active-tables driver database)
-        existing-table->id (into {} (for [{:keys [name schema id]} (sel :many :fields [Table :name :schema :id], :db_id (:id database), :active true)]
-                                      {{:name name, :schema schema} id}))]
-    (validate-active-tables active-tables)
-
-    (mark-inactive-tables! database active-tables existing-table->id)
-    (create-new-tables!    database active-tables existing-table->id)
-
-    (fetch-and-sync-database-active-tables! driver database)
-
-    ;; Ok, now if we had a _metabase_metadata table from earlier we can go ahead and sync from it
-    (sync-metabase-metadata-table! driver database active-tables)))
-
-(defn- -sync-database-with-tracking! [driver database]
-  (let [start-time    (System/currentTimeMillis)
-        tracking-hash (str (java.util.UUID/randomUUID))]
-    (log/info (u/format-color 'magenta "Syncing %s database '%s'..." (name driver) (:name database)))
-    (events/publish-event :database-sync-begin {:database_id (:id database) :custom_id tracking-hash})
-
-    (-sync-database! driver database)
-
-    (events/publish-event :database-sync-end {:database_id (:id database) :custom_id tracking-hash :running_time (- (System/currentTimeMillis) start-time)})
-    (log/info (u/format-color 'magenta "Finished syncing %s database '%s'. (%d ms)" (name driver) (:name database)
-                              (- (System/currentTimeMillis) start-time)))))
-
-(defn sync-database!
-  "Sync DATABASE and all its Tables and Fields."
-  [driver database]
-  (binding [qp/*disable-qp-logging* true
-            *sel-disable-logging* true]
-    (driver/sync-in-context driver database (partial -sync-database-with-tracking! driver database))))
+        (ins Table :db_id (:id database), :active true, :schema schema, :name table)))))
 
 (defn- sync-metabase-metadata-table!
   "Databases may include a table named `_metabase_metadata` (case-insentive) which includes descriptions or other metadata about the `Tables` and `Fields`
@@ -145,13 +108,57 @@
                (catch Throwable e
                  (log/error (u/format-color 'red "Error in _metabase_metadata: %s" (.getMessage e))))))))))
 
+(defn- -sync-database! [driver database]
+  (let [database-schema    (driver/describe-database driver database)
+        active-tables      (:tables database-schema)
+        existing-table->id (into {} (for [{:keys [name schema id]} (sel :many :fields [Table :name :schema :id], :db_id (:id database), :active true)]
+                                      {{:name name, :schema schema} id}))]
+    (validate-active-tables active-tables)
+
+    (mark-inactive-tables! database active-tables existing-table->id)
+    (create-new-tables!    database active-tables existing-table->id)
+
+    (sync-database-active-tables! driver database-schema (for [table (sel :many Table, :db_id (:id database) :active true)]
+                                                           ;; replace default delays with ones that reuse database (and don't require a DB call)
+                                                           (assoc table :db (delay database))))
+
+    ;; Ok, now if we had a _metabase_metadata table from earlier we can go ahead and sync from it
+    (sync-metabase-metadata-table! driver database active-tables)))
+
+(defn- -sync-database-with-tracking! [driver database]
+  (let [start-time (System/currentTimeMillis)
+        tracking-hash (str (java.util.UUID/randomUUID))]
+    (log/info (u/format-color 'magenta "Syncing %s database '%s'..." (name driver) (:name database)))
+    (events/publish-event :database-sync-begin {:database_id (:id database) :custom_id tracking-hash})
+
+    (-sync-database! driver database)
+
+    (events/publish-event :database-sync-end {:database_id (:id database) :custom_id tracking-hash :running_time (- (System/currentTimeMillis) start-time)})
+    (log/info (u/format-color 'magenta "Finished syncing %s database '%s'. (%d ms)" (name driver) (:name database)
+                              (- (System/currentTimeMillis) start-time)))))
+
+(def ^:dynamic *sync-full* true)
+
+(defn sync-database!
+  "Sync DATABASE and all its Tables and Fields."
+  [driver database & {:keys [do-full-sync]
+                      :or {do-full-sync true}}]
+  (binding [qp/*disable-qp-logging* true
+            *sel-disable-logging*   true
+            *sync-full*             do-full-sync]
+    (driver/sync-in-context driver database (partial -sync-database-with-tracking! driver database))))
+
 (defn sync-table!
   "Sync a *single* TABLE by running all the sync steps for it.
    This is used *instead* of `sync-database!` when syncing just one Table is desirable."
-  [driver table]
-  (binding [qp/*disable-qp-logging* true]
+  [driver table & {:keys [do-full-sync]
+                   :or {do-full-sync true}}]
+  (binding [qp/*disable-qp-logging* true
+            *sync-full*             do-full-sync]
     (driver/sync-in-context driver @(:db table) (fn []
-                                                  (sync-database-active-tables! driver [table])
+                                                  ;; TODO: its overkill getting the whole schema for one table (optimize this)
+                                                  (let [database-schema (driver/describe-database driver @(:db table))]
+                                                    (sync-database-active-tables! driver database-schema [table]))
                                                   (events/publish-event :table-sync {:table_id (:id table)})))))
 
 
@@ -192,33 +199,40 @@
    Note that we want to completely finish each step for *all* tables before starting the next, since they depend on the results of the previous step.
    (e.g., `sync-table-fks!` can't run until all tables have finished `sync-table-active-fields-and-pks!`, since creating `ForeignKeys` to `Fields` of *other*
    Tables can't take place before they exist."
-  [driver active-tables]
+  [driver database-schema active-tables]
   (let [active-tables (sort-by :name active-tables)]
-    ;; First, create all the Fields / PKs for all of the Tables
+    ;; Do a first pass which adds fields and sets PKs which are required for later steps
     (doseq [table active-tables]
-      (u/try-apply sync-table-active-fields-and-pks! driver table))
+      ;; make sure table has :display_name
+      (u/try-apply update-table-display-name! table)
+      ;; create all the Fields / PKs
+      (u/try-apply sync-table-active-fields-and-pks! driver database-schema table))
 
     ;; After that, we can do all the other syncing for the Tables
     (let [tables-count          (count active-tables)
           finished-tables-count (atom 0)]
       (doseq [table active-tables]
-        ;; make sure table has :display_name
-        (u/try-apply update-table-display-name! table)
+        ;; Sync FKs
+        (u/try-apply sync-table-fks! driver database-schema table)
 
-        ;; update the row counts for every Table
-        (u/try-apply update-table-row-count! table)
+        ;; If we are doing a FULL sync then call functions which require querying the table
+        (when *sync-full*
+          ;; update the row counts for every Table
+          (u/try-apply update-table-row-count! table)
+          ;; do field level analysis which requires row data
+          (sync-table-fields-metadata! driver table))
 
-        ;; Sync FKs for this Table
-        (u/try-apply sync-table-fks! driver table)
-
-        (sync-table-fields-metadata! driver table)
         (swap! finished-tables-count inc)
         (log/debug (u/format-color 'magenta "%s Synced table '%s'." (sync-progress-meter-string @finished-tables-count tables-count) (:name table)))))))
 
 
 ;; ## sync-table steps.
 
-;; ### 0) update-table-display-name!
+(defn table-schema [database-schema schema-name table-name]
+  (first (filter #(and (= table-name (:name %))
+                       (= schema-name (:schema %))) (:tables database-schema))))
+
+;; ### 1) update-table-display-name!
 
 (defn- update-table-display-name!
   "Update the display_name of TABLE if it doesn't exist."
@@ -231,71 +245,139 @@
       (log/error (u/format-color 'red "Unable to update display_name for %s: %s" (:name table) (.getMessage e))))))
 
 
-;; ### 1) update-table-row-count!
-
-(defn- update-table-row-count!
-  "Update the row count of TABLE if it has changed."
-  [table]
-  {:pre [(integer? (:id table))]}
-  (try
-    (let [table-row-count (queries/table-row-count table)]
-      (when-not (= (:rows table) table-row-count)
-        (upd Table (:id table) :rows table-row-count)))
-    (catch Throwable e
-      (log/error (u/format-color 'red "Unable to update row_count for '%s': %s" (:name table) (.getMessage e))))))
-
-
 ;; ### 2) sync-table-active-fields-and-pks!
 
-(defn- update-table-pks!
-  "Mark primary-key `Fields` for TABLE as `special_type = id` if they don't already have a `special_type`."
-  [table pk-fields]
-  {:pre [(set? pk-fields)
-         (every? string? pk-fields)]}
-  (doseq [{field-name :name field-id :id} (sel :many :fields [Field :name :id], :table_id (:id table), :special_type nil, :name [in pk-fields], :parent_id nil)]
-    (log/debug (u/format-color 'green "Field '%s.%s' is a primary key. Marking it as such." (:name table) field-name))
-    (upd Field field-id :special_type :id)))
+(def ^:private ^{:arglists '([field-name base-type])}
+infer-field-special-type
+  "If FIELD has a `name` and `base_type` that matches a known pattern, return the `special_type` we should assign to it."
+  (let [bool-or-int #{:BooleanField :BigIntegerField :IntegerField}
+        float       #{:DecimalField :FloatField}
+        int-or-text #{:BigIntegerField :IntegerField :CharField :TextField}
+        text        #{:CharField :TextField}
+        ;; tuples of [pattern set-of-valid-base-types special-type
+        ;; * Convert field name to lowercase before matching against a pattern
+        ;; * consider a nil set-of-valid-base-types to mean "match any base type"
+        pattern+base-types+special-type [[#"^.*_lat$"       float       :latitude]
+                                         [#"^.*_lon$"       float       :longitude]
+                                         [#"^.*_lng$"       float       :longitude]
+                                         [#"^.*_long$"      float       :longitude]
+                                         [#"^.*_longitude$" float       :longitude]
+                                         [#"^.*_rating$"    int-or-text :category]
+                                         [#"^.*_type$"      int-or-text :category]
+                                         [#"^.*_url$"       text        :url]
+                                         [#"^_latitude$"    float       :latitude]
+                                         [#"^active$"       bool-or-int :category]
+                                         [#"^city$"         text        :city]
+                                         [#"^country$"      text        :country]
+                                         [#"^countryCode$"  text        :country]
+                                         [#"^currency$"     int-or-text :category]
+                                         [#"^first_name$"   text        :name]
+                                         [#"^full_name$"    text        :name]
+                                         [#"^gender$"       int-or-text :category]
+                                         [#"^last_name$"    text        :name]
+                                         [#"^lat$"          float       :latitude]
+                                         [#"^latitude$"     float       :latitude]
+                                         [#"^lon$"          float       :longitude]
+                                         [#"^lng$"          float       :longitude]
+                                         [#"^long$"         float       :longitude]
+                                         [#"^longitude$"    float       :longitude]
+                                         [#"^name$"         text        :name]
+                                         [#"^postalCode$"   int-or-text :zip_code]
+                                         [#"^postal_code$"  int-or-text :zip_code]
+                                         [#"^rating$"       int-or-text :category]
+                                         [#"^role$"         int-or-text :category]
+                                         [#"^sex$"          int-or-text :category]
+                                         [#"^state$"        text        :state]
+                                         [#"^status$"       int-or-text :category]
+                                         [#"^type$"         int-or-text :category]
+                                         [#"^url$"          text        :url]
+                                         [#"^zip_code$"     int-or-text :zip_code]
+                                         [#"^zipcode$"      int-or-text :zip_code]]]
+    ;; Check that all the pattern tuples are valid
+    (doseq [[name-pattern base-types special-type] pattern+base-types+special-type]
+      (assert (= (type name-pattern) java.util.regex.Pattern))
+      (assert (every? (partial contains? field/base-types) base-types))
+      (assert (contains? field/special-types special-type)))
+
+    (fn [field-name base-type]
+      {:pre [(string? field-name)
+             (keyword? base-type)]}
+      (or (m/find-first (fn [[name-pattern valid-base-types _]]
+                          (and (or (nil? valid-base-types)
+                                   (contains? valid-base-types base-type))
+                               (re-matches name-pattern (s/lower-case field-name))))
+                        pattern+base-types+special-type)))))
+
+(defn- insert-or-update-active-field!
+  [field existing-field table]
+  (let [{active-field-name :name,
+         active-field-type :base-type,
+         active-field-pk?  :pk?}              field
+        {existing-base-type    :base_type,
+         existing-field-id     :id,
+         existing-special-type :special_type
+         existing-display-name :display_name} existing-field
+        ;; here we do a quick attempt to match the field name to a known pattern indicating its special type
+        [pattern _ inferred-special-type]     (infer-field-special-type active-field-name active-field-type)
+        field-special-type                    (or existing-special-type
+                                                  (when active-field-pk? :id)
+                                                  (when (= "id" (s/lower-case active-field-name)) :id)
+                                                  inferred-special-type)
+
+        field-display-name                    (or existing-display-name
+                                                  (common/name->human-readable-name active-field-name))
+        field-base-type                       (if (= active-field-type existing-base-type)
+                                                existing-base-type
+                                                active-field-type)]
+    (when (and inferred-special-type
+               (not existing-special-type)
+               (not (= :id field-special-type)))
+      (log/debug (u/format-color 'green "%s '%s' matches '%s'. Setting special_type to '%s'."
+                                 (name active-field-type) active-field-name pattern (name field-special-type))))
+    (if-not existing-field
+      ;; Field doesn't exist, so create it.
+      (ins Field
+        :table_id     (:id table)
+        :name         active-field-name
+        :display_name field-display-name
+        :base_type    active-field-type
+        :special_type field-special-type)
+      ;; Otherwise update the Field if needed
+      (when-not (and (= field-base-type existing-base-type)
+                     (= field-special-type existing-special-type)
+                     (= field-display-name existing-display-name))
+        (log/debug (u/format-color 'blue "Updating field '%s.%s' :base_type %s, :special_type %s, :display_name." (:name table) active-field-name field-base-type field-special-type field-display-name))
+        (upd Field existing-field-id
+          :base_type    field-base-type
+          :special_type field-special-type
+          :display_name field-display-name)))))
 
 (defn- sync-table-active-fields-and-pks!
   "Create new Fields (and mark old ones as inactive) for TABLE, and update PK fields."
-  [driver table]
-  ;; Now do the syncing for Table's Fields
-  (let [active-column-names->type  (driver/active-column-names->type driver table)
-        existing-field-name->field (sel :many :field->fields [Field :name :base_type :id], :table_id (:id table), :active true, :parent_id nil)]
+  [driver database-schema table]
+  (let [table-schema               (table-schema database-schema (:schema table) (:name table))
+        existing-field-name->field (sel :many :field->fields [Field :name :base_type :special_type :display_name :id], :table_id (:id table), :active true, :parent_id nil)]
 
-    (assert (map? active-column-names->type) "active-column-names->type should return a map.")
-    (assert (every? string? (keys active-column-names->type)) "The keys of active-column-names->type should be strings.")
-    (assert (every? (partial contains? field/base-types) (vals active-column-names->type)) "The vals of active-column-names->type should be valid Field base types.")
+    (assert (every? map? (:fields table-schema)) "table-schema should describe each field using a map.")
+    (assert (every? string? (map :name (:fields table-schema))) "The :name of each field in table-schema should be a string.")
+    (assert (every? (partial contains? field/base-types) (map :base-type (:fields table-schema))) "The :base-type of each field in table-schema should be a valid Field base type.")
 
     ;; As above, first mark inactive Fields
-    (let [active-column-names (set (keys active-column-names->type))]
+    (let [active-column-names (set (map :name (:fields table-schema)))]
       (doseq [[field-name {field-id :id}] existing-field-name->field]
         (when-not (contains? active-column-names field-name)
           (upd Field field-id :active false)
           (log/info (u/format-color 'cyan "Marked field '%s.%s' as inactive." (:name table) field-name)))))
 
     ;; Create new Fields, update existing types if needed
+    ;; TODO - we need to add functionality to update nested Field base types as well!
     (let [existing-field-names (set (keys existing-field-name->field))
-          new-field-names      (set/difference (set (keys active-column-names->type)) existing-field-names)]
+          new-field-names      (set/difference (set (map :name (:fields table-schema))) existing-field-names)]
       (when (seq new-field-names)
         (log/debug (u/format-color 'blue "Found new fields for table '%s': %s" (:name table) new-field-names)))
-      (doseq [[active-field-name active-field-type] active-column-names->type]
-        ;; If Field doesn't exist create it
-        (if-not (contains? existing-field-names active-field-name)
-          (ins Field
-            :table_id  (:id table)
-            :name      active-field-name
-            :base_type active-field-type)
-          ;; Otherwise update the Field type if needed
-          (let [{existing-base-type :base_type, existing-field-id :id} (existing-field-name->field active-field-name)]
-            (when-not (= active-field-type existing-base-type)
-              (log/debug (u/format-color 'blue "Field '%s.%s' has changed from a %s to a %s." (:name table) active-field-name existing-base-type active-field-type))
-              (upd Field existing-field-id :base_type active-field-type))))))
-    ;; TODO - we need to add functionality to update nested Field base types as well!
 
-    ;; Now mark PK fields as such if needed
-    (let [pk-fields (driver/table-pks driver table)]
-      (u/try-apply update-table-pks! table pk-fields))))
+      (doseq [field (:fields table-schema)]
+        (insert-or-update-active-field! field (existing-field-name->field (:name field)) table)))))
 
 
 ;; ### 3) sync-table-fks!
@@ -312,9 +394,13 @@
     (if (= field-count field-distinct-count) :1t1
         :Mt1)))
 
-(defn- sync-table-fks! [driver table]
+(defn- sync-table-fks! [driver database-schema table]
   (when (contains? (driver/features driver) :foreign-keys)
-    (let [fks (driver/table-fks driver table)]
+    (let [table-schema (table-schema database-schema (:schema table) (:name table))
+          fks          (set (for [fk-field (filter :fk (:fields table-schema))]
+                              {:fk-column-name   (:name fk-field)
+                               :dest-table-name  (get-in fk-field [:fk :dest-table])
+                               :dest-column-name (get-in fk-field [:fk :dest-field])}))]
       (assert (and (set? fks)
                    (every? map? fks)
                    (every? :fk-column-name fks)
@@ -332,11 +418,27 @@
                   (ins ForeignKey
                     :origin_id      fk-column-id
                     :destination_id dest-column-id
-                    :relationship   (determine-fk-type {:id fk-column-id, :table (delay table)})) ; fake a Field instance
+                    ;; TODO: do we even care about this?
+                    ;:relationship   (determine-fk-type {:id fk-column-id, :table (delay table)}) ; fake a Field instance
+                    :relationship   :Mt1)
                   (upd Field fk-column-id :special_type :fk))))))))))
 
 
-;; ### 4) sync-table-fields-metadata!
+;; ### 4) update-table-row-count!  (*sync-full* ONLY)
+
+(defn- update-table-row-count!
+  "Update the row count of TABLE if it has changed."
+  [table]
+  {:pre [(integer? (:id table))]}
+  (try
+    (let [table-row-count (queries/table-row-count table)]
+      (when-not (= (:rows table) table-row-count)
+        (upd Table (:id table) :rows table-row-count)))
+    (catch Throwable e
+      (log/error (u/format-color 'red "Unable to update row_count for '%s': %s" (:name table) (.getMessage e))))))
+
+
+;; ### 5) sync-table-fields-metadata!  (*sync-full* ONLY)
 
 (defn- sync-table-fields-metadata!
   "Call `sync-field!` for every active Field for TABLE."
@@ -355,12 +457,10 @@
   [driver field]
   {:pre [driver field]}
   (loop [field field, [f & more] [(partial driver/driver-specific-sync-field! driver)
-                                  set-field-display-name-if-needed!
                                   (partial mark-url-field! driver)
                                   (partial mark-no-preview-display-field! driver)
                                   mark-category-field-or-update-field-values!
                                   (partial mark-json-field! driver)
-                                  auto-assign-field-special-type-by-name!
                                   (partial sync-field-nested-fields! driver)]]
     (let [field (or (u/try-apply f field)
                     field)]
@@ -370,17 +470,6 @@
 
 ;; Each field-syncing function below should return FIELD with any updates that we made, or nil.
 ;; That way the next fn in the 'pipeline' won't trample over changes made by the last.
-
-;; ### set-field-display-name-if-needed!
-
-(defn- set-field-display-name-if-needed!
-  "If FIELD doesn't yet have a `display_name`, calculate one now and set it."
-  [field]
-  (when (nil? (:display_name field))
-    (let [display-name (common/name->human-readable-name (:name field))]
-      (log/debug (u/format-color 'green "Field '%s.%s' has no display_name. Setting it now." (:name @(:table field)) (:name field) display-name))
-      (upd Field (:id field) :display_name display-name)
-      (assoc field :display_name display-name))))
 
 
 ;; ### mark-url-field!
@@ -484,82 +573,7 @@
     (assoc field :special_type :json, :preview_display false)))
 
 
-;; ### auto-assign-field-special-type-by-name!
-
-(def ^:private ^{:arglists '([field])}
-  field->name-inferred-special-type
-  "If FIELD has a `name` and `base_type` that matches a known pattern, return the `special_type` we should assign to it."
-  (let [bool-or-int #{:BooleanField :BigIntegerField :IntegerField}
-        float       #{:DecimalField :FloatField}
-        int-or-text #{:BigIntegerField :IntegerField :CharField :TextField}
-        text        #{:CharField :TextField}
-        ;; tuples of [pattern set-of-valid-base-types special-type [& top-level-only?]
-        ;; * Convert field name to lowercase before matching against a pattern
-        ;; * consider a nil set-of-valid-base-types to mean "match any base type"
-        pattern+base-types+special-type+top-level-only? [[#"^.*_lat$"       float       :latitude]
-                                                         [#"^.*_lon$"       float       :longitude]
-                                                         [#"^.*_lng$"       float       :longitude]
-                                                         [#"^.*_long$"      float       :longitude]
-                                                         [#"^.*_longitude$" float       :longitude]
-                                                         [#"^.*_rating$"    int-or-text :category]
-                                                         [#"^.*_type$"      int-or-text :category]
-                                                         [#"^.*_url$"       text        :url]
-                                                         [#"^_latitude$"    float       :latitude]
-                                                         [#"^active$"       bool-or-int :category]
-                                                         [#"^city$"         text        :city]
-                                                         [#"^country$"      text        :country]
-                                                         [#"^countryCode$"  text        :country]
-                                                         [#"^currency$"     int-or-text :category]
-                                                         [#"^first_name$"   text        :name]
-                                                         [#"^full_name$"    text        :name]
-                                                         [#"^gender$"       int-or-text :category]
-                                                         [#"^id$"           nil         :id         :top-level-only]
-                                                         [#"^last_name$"    text        :name]
-                                                         [#"^lat$"          float       :latitude]
-                                                         [#"^latitude$"     float       :latitude]
-                                                         [#"^lon$"          float       :longitude]
-                                                         [#"^lng$"          float       :longitude]
-                                                         [#"^long$"         float       :longitude]
-                                                         [#"^longitude$"    float       :longitude]
-                                                         [#"^name$"         text        :name]
-                                                         [#"^postalCode$"   int-or-text :zip_code]
-                                                         [#"^postal_code$"  int-or-text :zip_code]
-                                                         [#"^rating$"       int-or-text :category]
-                                                         [#"^role$"         int-or-text :category]
-                                                         [#"^sex$"          int-or-text :category]
-                                                         [#"^state$"        text        :state]
-                                                         [#"^status$"       int-or-text :category]
-                                                         [#"^type$"         int-or-text :category]
-                                                         [#"^url$"          text        :url]
-                                                         [#"^zip_code$"     int-or-text :zip_code]
-                                                         [#"^zipcode$"      int-or-text :zip_code]]]
-    ;; Check that all the pattern tuples are valid
-    (doseq [[name-pattern base-types special-type] pattern+base-types+special-type+top-level-only?]
-      (assert (= (type name-pattern) java.util.regex.Pattern))
-      (assert (every? (partial contains? field/base-types) base-types))
-      (assert (contains? field/special-types special-type)))
-
-    (fn [{base-type :base_type, field-name :name, :as field}]
-      {:pre [(string? field-name)
-             (keyword? base-type)]}
-      (or (m/find-first (fn [[name-pattern valid-base-types _ top-level-only?]]
-                          (and (or (nil? valid-base-types)
-                                   (contains? valid-base-types base-type))
-                               (re-matches name-pattern (s/lower-case field-name))
-                               (or (not top-level-only?)
-                                   (nil? (:parent_id field)))))
-                        pattern+base-types+special-type+top-level-only?)))))
-
-(defn- auto-assign-field-special-type-by-name!
-  "If FIELD doesn't have a special type, but has a name that matches a known pattern like `latitude`, mark it as having the specified special type."
-  [field]
-  (when-not (:special_type field)
-    (when-let [[pattern _ special-type] (field->name-inferred-special-type field)]
-      (log/debug (u/format-color 'green "%s '%s' matches '%s'. Setting special_type to '%s'."
-                                (name (:base_type field)) @(:qualified-name field) pattern (name special-type)))
-      (upd Field (:id field) :special_type special-type)
-      (assoc field :special_type special-type))))
-
+;; ### sync-field-nested-fields!
 
 (defn- sync-field-nested-fields! [driver field]
   (when (and (= (:base_type field) :DictionaryField)

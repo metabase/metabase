@@ -48,10 +48,49 @@
 
      Return a map of string names of active child `Fields` of FIELD -> `Field.base_type`.")
 
-  (active-tables ^java.util.Set [this, ^DatabaseInstance database]
-    "Return a set of maps containing information about the active tables/views, collections, or equivalent that currently exist in DATABASE.
-     Each map should contain the key `:name`, which is the string name of the table. For databases that have a concept of schemas,
-     this map should also include the string name of the table's `:schema`.")
+  (analyze-table ^java.util.Map [this, ^TableInstance table]
+    "Return a map containing information that provides optional analysis values for TABLE.
+
+     Each map should be structured as follows:
+
+         {:rows   <row-count>
+          :fields [{:name            <field-name>
+                    :base-type       <field-base-type>
+                    :field-type      <field-field-type>
+                    :special-type    <field-special-type>
+                    :preview-display <true|false>
+                    :parent          <parent-table-name>
+                    :pk?             <true|false>
+                    :fk              {:dest-table <target-table-name>
+                                      :dest-field <target-table-field-name>}]}")
+
+  (describe-database ^java.util.Map [this, ^DatabaseInstance database]
+    "Return a map containing information that describes all of the physical schema in DATABASE.
+     It is expected that this function will be peformant and avoid draining meaningful resources of the database.
+
+     Each map should be structured as follows:
+
+         {:tables [{:name   <table-name>
+                    :schema <table-schema|nil>
+                    :fields [{:name <field-name>
+                              :type <field-base-type>
+                              :pk?  <true|false>
+                              :fk   {:dest-table <target-table-name>
+                                     :dest-field <target-table-field-name>}]}]}")
+
+  (describe-table ^java.util.Map [this, ^DatabaseInstance database, ^String table-name]
+    "Return a map containing information that describes the physical schema of TABLE-NAME in DATABASE.
+     It is expected that this function will be peformant and avoid draining meaningful resources of the database.
+
+     Each map should be structured as follows:
+
+         {:name   <table-name>
+          :schema <table-schema|nil>
+          :fields [{:name <field-name>
+                    :type <field-base-type>
+                    :pk?  <true|false>
+                    :fk   {:dest-table <target-table-name>
+                           :dest-field <target-table-field-name>}]}")
 
   (can-connect? ^Boolean [this, ^Map details-map]
     "Check whether we can connect to a `Database` with DETAILS-MAP and perform a simple query. For example, a SQL database might
