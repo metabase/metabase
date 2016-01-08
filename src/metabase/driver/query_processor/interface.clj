@@ -32,12 +32,16 @@
 
 ;; These are just used by the QueryExpander to record information about how joins should occur.
 
-(s/defrecord JoinTableField [field-id   :- s/Int
+(def IntGreaterThanZero (s/constrained s/Int
+                                       (partial < 0)
+                                       "Integer greater than zero"))
+
+(s/defrecord JoinTableField [field-id   :- IntGreaterThanZero
                              field-name :- s/Str])
 
 (s/defrecord JoinTable [source-field :- JoinTableField
                         pk-field     :- JoinTableField
-                        table-id     :- s/Int
+                        table-id     :- IntGreaterThanZero
                         table-name   :- s/Str])
 
 ;;; # ------------------------------------------------------------ PROTOCOLS ------------------------------------------------------------
@@ -51,17 +55,17 @@
 ;;; # ------------------------------------------------------------ "RESOLVED" TYPES: FIELD + VALUE ------------------------------------------------------------
 
 ;; Field is the expansion of a Field ID in the standard QL
-(s/defrecord Field [field-id           :- s/Int
+(s/defrecord Field [field-id           :- IntGreaterThanZero
                     field-name         :- s/Str
                     field-display-name :- s/Str
                     base-type          :- (apply s/enum field/base-types)
                     special-type       :- (s/maybe (apply s/enum field/special-types))
-                    table-id           :- s/Int
+                    table-id           :- IntGreaterThanZero
                     schema-name        :- (s/maybe s/Str)
                     table-name         :- s/Str
-                    position           :- (s/maybe s/Int)
+                    position           :- (s/maybe s/Int) ; TODO - int >= 0
                     description        :- (s/maybe s/Str)
-                    parent-id          :- (s/maybe s/Int)
+                    parent-id          :- (s/maybe IntGreaterThanZero)
                     ;; Field once its resolved; FieldPlaceholder before that
                     parent             :- s/Any]
   IField
@@ -112,13 +116,15 @@
 ;;; # ------------------------------------------------------------ PLACEHOLDER TYPES: FIELDPLACEHOLDER + VALUEPLACEHOLDER ------------------------------------------------------------
 
 ;; Replace Field IDs with these during first pass
-(s/defrecord FieldPlaceholder [field-id      :- s/Int
-                               fk-field-id   :- (s/maybe (s/constrained s/Int
+(s/defrecord FieldPlaceholder [field-id      :- IntGreaterThanZero
+                               fk-field-id   :- (s/maybe (s/constrained IntGreaterThanZero
                                                                         (fn [_] (or (assert-driver-supports :foreign-keys) true))
                                                                         "foreign-keys is not supported by this driver."))
                                datetime-unit :- (s/maybe (apply s/enum datetime-field-units))])
 
-(s/defrecord AgFieldRef [index :- s/Int]) ; e.g. 0
+(s/defrecord AgFieldRef [index :- (s/constrained s/Int
+                                                 zero?
+                                                 "Ag field index should be 0 -- MBQL currently only supports a single aggregation")])
 
 (def FieldPlaceholderOrAgRef (s/named (s/cond-pre FieldPlaceholder AgFieldRef) "Valid field (not a field ID or aggregate field reference)"))
 
@@ -192,8 +198,8 @@
                       "Valid order-by subclause"))
 
 
-(def Page (s/named {:page  s/Int
-                    :items s/Int}
+(def Page (s/named {:page  IntGreaterThanZero
+                    :items IntGreaterThanZero}
                    "Valid page clause"))
 
 
@@ -202,7 +208,7 @@
    (s/optional-key :breakout)    [FieldPlaceholder]
    (s/optional-key :fields)      [FieldPlaceholderOrAgRef]
    (s/optional-key :filter)      Filter
-   (s/optional-key :limit)       s/Int
+   (s/optional-key :limit)       IntGreaterThanZero
    (s/optional-key :order-by)    [OrderBy]
    (s/optional-key :page)        Page
-   :source-table                 s/Int})
+   :source-table                 IntGreaterThanZero})
