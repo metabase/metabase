@@ -60,15 +60,15 @@
    that is used to store the `test-data` dataset when you call `load-data!`."
   (driver/engine->driver default-engine))
 
-
+(defn do-with-engine [engine f]
+  (binding [*engine*      engine
+            *data-loader* (driver/engine->driver engine)]
+    (f)))
 
 (defmacro with-engine
   "Bind `*data-loader*` to the dataset with ENGINE and execute BODY."
   [engine & body]
-  `(let [engine# ~engine]
-     (binding [*engine*      engine#
-               *data-loader* (driver/engine->driver engine#)]
-       ~@body)))
+  `(do-with-engine ~engine (fn [] ~@body)))
 
 (defmacro when-testing-engine
   "Execute BODY only if we're currently testing against ENGINE."
@@ -94,17 +94,23 @@
   "Generate a unit test that only runs if we're currently testing against ENGINE, and that binds `*data-loader*` to the current dataset."
   [engine expected actual]
   `(expect-when-testing-engine ~engine
-     (with-engine ~engine
-       ~expected)
-     (with-engine ~engine
-       ~actual)))
+     (with-engine ~engine ~expected)
+     (with-engine ~engine ~actual)))
 
 (defmacro expect-with-engines
   "Generate unit tests for all datasets in ENGINES; each test will only run if we're currently testing the corresponding dataset.
    `*data-loader*` is bound to the current dataset inside each test."
   [engines expected actual]
-  `(do ~@(for [engine (eval engines)]
-           `(expect-with-engine ~engine ~expected ~actual))))
+  ;; Make functions to get expected/actual so the code is only compiled one time instead of for every single driver
+  ;; speeds up loading of metabase.driver.query-processor-test significantly
+  (let [e (gensym "expected-")
+        a (gensym "actual-")]
+    `(let [~e (fn [] ~expected)
+           ~a (fn [] ~actual)]
+       ~@(for [engine (eval engines)]
+           `(expect-when-testing-engine ~engine
+              (do-with-engine ~engine ~e)
+              (do-with-engine ~engine ~a))))))
 
 (defmacro expect-with-all-engines
   "Generate unit tests for all valid datasets; each test will only run if we're currently testing the corresponding dataset.
