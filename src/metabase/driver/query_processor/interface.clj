@@ -68,11 +68,11 @@
 
 ;; Value is the expansion of a value within a QL clause
 ;; Information about the associated Field is included for convenience
-(defrecord Value [value
-                  ^Field field])
+(defrecord Value [^Object value
+                  ^Field  field])
 
 ;; e.g. an absolute point in time (literal)
-(defrecord DateTimeValue [^Timestamp value
+(defrecord DateTimeValue [^Timestamp     value
                           ^DateTimeField field])
 
 (def ^:const relative-datetime-value-units
