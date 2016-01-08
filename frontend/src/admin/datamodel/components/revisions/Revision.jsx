@@ -49,7 +49,7 @@ export default class Revision extends Component {
     }
 
     render() {
-        const { revision, tableMetadata } = this.props;
+        const { revision, tableMetadata, userColor } = this.props;
         let message = revision.message;
         let diffKeys = Object.keys(revision.diff);
 
@@ -63,7 +63,7 @@ export default class Revision extends Component {
             <li className="flex flex-row">
                 <div className="flex flex-column align-center mr2">
                     <div className="text-white">
-                        <UserAvatar user={revision.user} />
+                        <UserAvatar user={revision.user} background={userColor}/>
                     </div>
                     <div className="flex-full my1 border-left" style={{borderWidth: 2}} />
                 </div>

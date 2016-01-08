@@ -11,8 +11,8 @@ var Admin = angular.module('metabase.admin', []);
 Admin.config(['$routeProvider', function($routeProvider) {
     const adminRoute = {
         template: '<div mb-redux-component class="flex flex-column flex-full" />',
-        controller: ['$scope', '$location', '$route', '$routeParams',
-            function($scope, $location, $route, $routeParams) {
+        controller: ['$scope', '$location', '$route', '$routeParams', 'AppState',
+            function($scope, $location, $route, $routeParams, AppState) {
                 $scope.Component = AdminRoutes;
                 $scope.props = {};
                 $scope.store = createStore(combineReducers({
@@ -21,8 +21,9 @@ Admin.config(['$routeProvider', function($routeProvider) {
                     // },
                     datamodel: combineReducers(datamodel),
                     form,
-                    router
-                }), {});
+                    router,
+                    user: (state = null) => state
+                }), { user: AppState.model.currentUser });
 
                 // HACK: prevent reloading controllers as the URL changes
                 var route = $route.current;
@@ -45,7 +46,12 @@ Admin.config(['$routeProvider', function($routeProvider) {
                     }
                 });
             }
-        ]
+        ],
+        resolve: {
+            appState: ["AppState", function(AppState) {
+                return AppState.init();
+            }]
+        }
     }
 
     $routeProvider.when('/admin/datamodel/metric', adminRoute);

@@ -11,6 +11,8 @@ const revisionObjectSelector   = state => state.datamodel.revisionObject;
 const idSelector               = state => state.router.params.id == null ? null : parseInt(state.router.params.id);
 const tableIdSelector          = state => state.router.location.query.table == null ? null : parseInt(state.router.location.query.table);
 
+const userSelector             = state => state.user;
+
 export const segmentEditSelectors = createSelector(
     segmentsSelector,
     idSelector,
@@ -60,8 +62,10 @@ export const metricFormSelectors = createSelector(
 export const revisionHistorySelectors = createSelector(
     revisionObjectSelector,
     tableMetadataSelector,
-    (revisionObject, tableMetadata) => ({
+    userSelector,
+    (revisionObject, tableMetadata, user) => ({
         ...revisionObject,
-        tableMetadata
+        tableMetadata,
+        user
     })
 );

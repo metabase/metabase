@@ -16,7 +16,7 @@ export default class RevisionHistoryApp extends Component {
     }
     render() {
         return (
-            <RevisionHistory {...this.props} />
+            <RevisionHistory {...this.props} objectType={this.props.params.entity} />
         );
     }
 }

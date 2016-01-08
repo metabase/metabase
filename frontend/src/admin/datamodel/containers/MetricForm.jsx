@@ -65,10 +65,13 @@ export default class MetricForm extends Component {
             <LoadingAndErrorWrapper loading={!tableMetadata}>
             { () =>
                 <form onSubmit={handleSubmit}>
-                    <div className="p4">
+                    <div className="wrapper py4">
                         <FormLabel
                             title={(metric && metric.id != null ? "Edit" : "Create") + " Your Metric"}
-                            description={"Select and add filters to create your new metric for the " + tableMetadata.display_name + " table"}
+                            description={metric && metric.id != null ?
+                                "Make changes to your metric and leave an explanatory note." :
+                                "You can create saved metrics to add a named metric option to this table. Saved metrics include the aggregation type, the aggregated field, and optionally any filter you add. As an example, you might use this to create something like the official way of calculating \"Average Price\" for an Orders table."
+                            }
                         >
                         <PartialQueryBuilder
                             features={{
@@ -121,7 +124,7 @@ export default class MetricForm extends Component {
                     </div>
 
                     { id.value == null &&
-                        <div  className="border-top p4">
+                        <div  className="border-top wrapper py4">
                             {this.renderActionButtons()}
                         </div>
                     }

@@ -9,7 +9,6 @@ import RevisionHistoryApp from "./datamodel/containers/RevisionHistoryApp.jsx";
 
 export default class AdminRoutes extends Component {
     render() {
-        console.log(this.props)
         return (
             <ReduxRouter>
                 <Route path="/admin">
