@@ -21,14 +21,13 @@
             [metabase.util :as u])
   (:import java.sql.Timestamp
            java.util.Date
-           (com.mongodb CommandResult
-                        DB)
+           (com.mongodb CommandResult DB)
            clojure.lang.PersistentArrayMap
            org.bson.types.ObjectId
-           (metabase.driver.query_processor.interface DateTimeField
+           (metabase.driver.query_processor.interface AgFieldRef
+                                                      DateTimeField
                                                       DateTimeValue
                                                       Field
-                                                      OrderByAggregateField
                                                       RelativeDateTimeValue
                                                       Value)))
 
@@ -111,7 +110,7 @@
   (->initial-rvalue [this]
     (str \$ (field->name this ".")))
 
-  OrderByAggregateField
+  AgFieldRef
   (->lvalue [_]
     (let [{:keys [aggregation-type]} (:aggregation (:query *query*))]
       (case aggregation-type
@@ -238,10 +237,6 @@
   (let [field (when field (->lvalue field))
         value (when value (->rvalue value))]
     (case filter-type
-      :inside      (let [lat (:lat filter)
-                         lon (:lon filter)]
-                     {$and [{(->lvalue (:field lat)) {$gte (->rvalue (:min lat)), $lte (->rvalue (:max lat))}}
-                            {(->lvalue (:field lon)) {$gte (->rvalue (:min lon)), $lte (->rvalue (:max lon))}}]})
       :between     {field {$gte (->rvalue (:min-val filter))
                            $lte (->rvalue (:max-val filter))}}
       :is-null     {field {$exists false}}
@@ -288,8 +283,7 @@
       :sum      {$sum (->rvalue field)})))
 
 (defn- handle-breakout+aggregation [{breakout-fields :breakout, {ag-type :aggregation-type, ag-field :field, :as aggregation} :aggregation} pipeline]
-  (let [aggregation? (and ag-type
-                          (not= ag-type :rows))
+  (let [aggregation? ag-type
         breakout?    (seq breakout-fields)]
     (when (or aggregation? breakout?)
       (let [ag-field-name (ag-type->field-name ag-type)]
