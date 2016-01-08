@@ -24,10 +24,10 @@
            (com.mongodb CommandResult DB)
            clojure.lang.PersistentArrayMap
            org.bson.types.ObjectId
-           (metabase.driver.query_processor.interface DateTimeField
+           (metabase.driver.query_processor.interface AgFieldRef
+                                                      DateTimeField
                                                       DateTimeValue
                                                       Field
-                                                      AgFieldRef
                                                       RelativeDateTimeValue
                                                       Value)))
 

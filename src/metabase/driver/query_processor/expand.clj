@@ -140,7 +140,7 @@
   (i/assert-driver-supports :standard-deviation-aggregations)
   (ag-with-field :stddev f))
 
-(s/defn ^:always-validate count :- i/CountAggregation
+(s/defn ^:always-validate count :- i/Aggregation
   "Aggregation clause. Return total row count (e.g., `COUNT(*)`). If F is specified, only count rows where F is non-null (e.g. `COUNT(f)`)."
   ([]  {:aggregation-type :count})
   ([f] (ag-with-field :count f)))
@@ -213,8 +213,8 @@
 (s/defn ^:always-validate between :- BetweenFilter
   "Filter subclause. Return results where F is between MIN and MAX. MIN and MAX must be orderable, i.e. numbers or datetimes.
    This behaves like SQL `BETWEEN`, i.e. MIN and MAX are inclusive."
-  [f min max]
-  (i/map->BetweenFilter {:filter-type :between, :field (field f), :min-val (value f min), :max-val (value f max)}))
+  [f min-val max-val]
+  (i/map->BetweenFilter {:filter-type :between, :field (field f), :min-val (value f min-val), :max-val (value f max-val)}))
 
 (s/defn ^:always-validate inside :- CompoundFilter
   "Filter subclause for geo bounding. Return results where LAT-FIELD and LON-FIELD are between some set of bounding values."

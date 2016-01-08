@@ -46,33 +46,6 @@
   [db & body]
   `(do-with-db ~db (fn [] ~@body)))
 
-(defn do-with-dataset
-  "Bind `Database` for DATASET as the current DB and execute F.
-   DATASET is an optionally namespace-qualified *symbol*. If not namespace-qualified, `metabase.test.data.dataset-definitions` is assumed.
-
-     (do-with-dataset 'some-other-ns/some-db-def f)
-     (do-with-dataset 'sad-toucan-incidents)        ; metabase.test.data.dataset-definitions/sad-toucan-incidents"
-  [dataset f]
-  {:pre [(symbol? dataset)]}
-  (let [dataset-var (or (resolve dataset)
-                        (ns-resolve 'metabase.test.data.dataset-definitions dataset))]
-    (when-not dataset-var
-      (throw (Exception. (format "Dataset definition not found: '%s' or 'metabase.test.data.dataset-definitions/%s'" dataset dataset))))
-    (with-db (get-or-create-database! @dataset-var)
-      (f))))
-
-(defmacro dataset
-  "Convenience wrapper for `do-with-dataset`.
-   Bind `Database` for DATASET as the current DB and execute BODY.
-   DATASET is a unquoted symbol name of a dataset; if not namespace-qualified, `metabase.test.data.dataset-definitions` is assumed.
-
-     (dataset sad-toucan-incidents
-       ...)"
-  {:style/indent 1}
-  [dataset & body]
-  `(do-with-dataset '~dataset (fn [] ~@body)))
-
-
 (defn- $->id
   "Convert symbols like `$field` to `id` fn calls. Input is split into separate args by splitting the token on `.`.
    With no `.` delimiters, it is assumed we're referring to a Field belonging to TABLE-NAME, which is passed implicitly as the first arg.
@@ -237,7 +210,7 @@
   (reset! loader->loaded-db-def #{}))
 
 
-(defn -with-temp-db [^DatabaseDefinition dbdef f]
+(defn do-with-temp-db [^DatabaseDefinition dbdef f]
   (let [loader *data-loader*
         dbdef  (i/map->DatabaseDefinition (assoc dbdef :short-lived? true))]
     (swap! loader->loaded-db-def conj [loader dbdef])
@@ -262,6 +235,24 @@
                                           :aggregation  [\"count\"]
                                           :filter       [\"<\" (:id &events.timestamp) \"1765-01-01\"]}}))"
   [[db-binding ^DatabaseDefinition database-definition] & body]
-  `(-with-temp-db ~database-definition
+  `(do-with-temp-db ~database-definition
      (fn [~db-binding]
        ~@body)))
+
+(defn resolve-dbdef [symb]
+  @(or (resolve symb)
+       (ns-resolve 'metabase.test.data.dataset-definitions symb)
+       (throw (Exception. (format "Dataset definition not found: '%s' or 'metabase.test.data.dataset-definitions/%s'" symb symb)))))
+
+(defmacro dataset
+  "Bind temp `Database` for DATASET as the current DB and execute BODY.
+
+   Like `with-temp-db`, but takes an unquoted symbol naming a `DatabaseDefinition` rather than the dbef itself.
+   DATASET is optionally namespace-qualified; if not, `metabase.test.data.dataset-definitions` is assumed.
+
+     (dataset sad-toucan-incidents
+       ...)"
+  {:style/indent 1}
+  [dataset & body]
+  `(with-temp-db [_# (resolve-dbdef '~dataset)]
+     ~@body))
