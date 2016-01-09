@@ -1,6 +1,7 @@
 (ns metabase.test.data
   "Code related to creating and deleting test databases + datasets."
-  (:require [clojure.string :as s]
+  (:require (clojure [string :as s]
+                     [walk :as walk])
             [clojure.tools.logging :as log]
             (metabase [db :refer :all]
                       [driver :as driver])
@@ -46,6 +47,8 @@
   [db & body]
   `(do-with-db ~db (fn [] ~@body)))
 
+(defn- parts->id [table-name ])
+
 (defn- $->id
   "Convert symbols like `$field` to `id` fn calls. Input is split into separate args by splitting the token on `.`.
    With no `.` delimiters, it is assumed we're referring to a Field belonging to TABLE-NAME, which is passed implicitly as the first arg.
@@ -54,16 +57,21 @@
     $venue_id  -> (id :sightings :venue_id) ; TABLE-NAME is implicit first arg
     $cities.id -> (id :cities :id)          ; specify non-default Table"
   [table-name body]
-  (clojure.walk/prewalk (fn [form]
-                          (if (and (symbol? form)
-                                   (= (first (name form)) \$))
-                            (let [form  (apply str (rest (name form)))
-                                  parts (s/split form #"\.")]
-                              (if (= (count parts) 1)
-                                `(id ~table-name ~(keyword (first parts)))
-                                `(id ~@(map keyword parts))))
-                            form))
-                        body))
+  (let [->id (fn [s]
+               (let [parts (s/split s #"\.")]
+                 (if (= (count parts) 1)
+                   `(id ~table-name ~(keyword (first parts)))
+                   `(id ~@(map keyword parts)))))]
+    (walk/postwalk (fn [form]
+                     (or (when (symbol? form)
+                           (let [[first-char & rest-chars] (name form)]
+                             (when (= first-char \$)
+                               (let [token (apply str rest-chars)]
+                                 (if-let [[_ token-1 token-2] (re-matches #"(^.*)->(.*$)" token)]
+                                   `(ql/fk-> ~(->id token-1) ~(->id token-2))
+                                   `(ql/field-id ~(->id token)))))))
+                         form))
+                   body)))
 
 (defmacro query
   "Build a query, expands symbols like `$field` into calls to `id`.
