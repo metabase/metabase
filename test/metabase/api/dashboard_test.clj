@@ -123,7 +123,7 @@
                              :updated_at             $
                              :dataset_query          (obj->json->obj (ql/wrap-inner-query
                                                                        (query categories
-                                                                         (ql/aggregation :count))))
+                                                                         (ql/aggregation (ql/count)))))
                              :id                     card-id
                              :display                "scalar"
                              :visualization_settings {:global {:title nil}}

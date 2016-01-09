@@ -279,7 +279,7 @@
      :columns ["count"]
      :cols    [(aggregate-col :count)]}
   (->> (run-query venues
-         (ql/aggregation :count))
+         (ql/aggregation (ql/count)))
        (format-rows-by [int])))
 
 
@@ -397,9 +397,6 @@
         (ql/order-by (ql/asc $id)))
       rows formatted-venues-rows))
 
-(defmacro compaare [a b]
-  `(compare-expr ~a ~b '~a '~b))
-
 ;; ### FILTER -- "AND", "<", ">", "!="
 (datasets/expect-with-all-engines
   [[21 "PizzaHacker"          58 37.7441 -122.421 2]
@@ -418,7 +415,7 @@
   [[1]]
   (->> (dataset places-cam-likes
          (run-query places
-           (ql/aggregation :count)
+           (ql/aggregation (ql/count))
            (ql/filter (ql/= $liked false))))
        rows (format-rows-by [int])))
 
@@ -474,7 +471,7 @@
      :columns ["count"]
      :cols    [(aggregate-col :count)]}
   (format-rows-by [int] (run-query checkins
-                          (ql/aggregation :count)
+                          (ql/aggregation (ql/count))
                           (ql/filter (ql/between $date "2015-04-01" "2015-05-01")))))
 
 ;; ### FILTER -- "OR", "<=", "="
@@ -528,7 +525,7 @@
      :cols    [(checkins-col :user_id)
                (aggregate-col :count)]}
   (format-rows-by [int int] (run-query checkins
-                              (ql/aggregation :count)
+                              (ql/aggregation (ql/count))
                               (ql/breakout $user_id)
                               (ql/order-by (ql/asc $user_id)))))
 
@@ -554,7 +551,7 @@
                (checkins-col :venue_id)
                (aggregate-col :count)]}
   (format-rows-by [int int int] (run-query checkins
-                                  (ql/aggregation :count)
+                                  (ql/aggregation (ql/count))
                                   (ql/breakout $user_id $venue_id)
                                   (ql/limit 10))))
 
@@ -569,7 +566,7 @@
                (checkins-col :venue_id)
                (aggregate-col :count)]}
   (format-rows-by [int int int] (run-query checkins
-                                  (ql/aggregation :count)
+                                  (ql/aggregation (ql/count))
                                   (ql/breakout $user_id $venue_id)
                                   (ql/order-by (ql/desc $user_id))
                                   (ql/limit 10))))
@@ -700,7 +697,7 @@
    :cols    [(venues-col :price)
              (aggregate-col :count)]}
   (format-rows-by [int int] (run-query venues
-                              (ql/aggregation :count)
+                              (ql/aggregation (ql/count))
                               (ql/breakout $price)
                               (ql/order-by (ql/asc (ql/aggregate-field 0))))))
 
@@ -878,7 +875,7 @@
      [#inst "2015-06-10T07" 10]])
   (->> (dataset sad-toucan-incidents
          (run-query incidents
-           (ql/aggregation :count)
+           (ql/aggregation (ql/count))
            (ql/breakout $timestamp)
            (ql/limit 10)))
         rows (format-rows-by [identity int])))
@@ -903,8 +900,8 @@
    ["Lakeland"     11]]
   (->> (dataset tupac-sightings
          (run-query sightings
-           (ql/aggregation :count)
-           (ql/breakout (ql/fk-> $city_id $cities.name))
+           (ql/aggregation (ql/count))
+           (ql/breakout $city_id->cities.name)
            (ql/order-by (ql/desc (ql/aggregate-field 0)))
            (ql/limit 10)))
        rows (format-rows-by [str int])))
@@ -917,8 +914,8 @@
   [[60]]
   (->> (dataset tupac-sightings
          (run-query sightings
-           (ql/aggregation :count)
-           (ql/filter (ql/= (ql/fk-> $category_id $categories.id) 8))))
+           (ql/aggregation (ql/count))
+           (ql/filter (ql/= $category_id->categories.id 8))))
        rows (format-rows-by [int])))
 
 
@@ -938,7 +935,7 @@
    [499 "In the Expa Office"]]
   (->> (dataset tupac-sightings
          (run-query sightings
-           (ql/fields $id (ql/fk-> $category_id $categories.name))
+           (ql/fields $id $category_id->categories.name)
            (ql/order-by (ql/desc $timestamp))
            (ql/limit 10)))
        rows (format-rows-by [int str])))
@@ -963,8 +960,8 @@
    [2 13 202]]
   (->> (dataset tupac-sightings
          (run-query sightings
-           (ql/order-by (ql/asc (ql/fk-> $city_id $cities.name))
-                        (ql/desc (ql/fk-> $category_id $categories.name))
+           (ql/order-by (ql/asc $city_id->cities.name)
+                        (ql/desc $category_id->categories.name)
                         (ql/asc $id))
            (ql/limit 10)))
        rows (map butlast) (map reverse) (format-rows-by [int int int]))) ; drop timestamps. reverse ordering to make the results columns order match order_by
@@ -976,8 +973,8 @@
    :error "foreign-keys is not supported by this driver."}
   (select-keys (dataset tupac-sightings
                  (run-query sightings
-                   (ql/order-by (ql/asc (ql/fk-> $city_id $cities.name))
-                                (ql/desc (ql/fk-> $category_id $categories.name))
+                   (ql/order-by (ql/asc $city_id->cities.name)
+                                (ql/desc $category_id->categories.name)
                                 (ql/asc $id))
                    (ql/limit 10)))
                [:status :error]))
@@ -1069,7 +1066,7 @@
    :columns ["source.service" "count"]}
   (->> (dataset geographical-tips
          (run-query tips
-           (ql/aggregation :count)
+           (ql/aggregation (ql/count))
            (ql/breakout $tips.source.service)))
        :data (#(dissoc % :cols)) (format-rows-by [str int])))
 
@@ -1113,7 +1110,7 @@
    [nil            400]]
   (->> (dataset geographical-tips
          (run-query tips
-           (ql/aggregation :count)
+           (ql/aggregation (ql/count))
            (ql/breakout $tips.source.mayor)
            (ql/order-by (ql/asc (ql/aggregate-field 0)))))
        rows (format-rows-by [identity int])))
@@ -1158,7 +1155,7 @@
 (datasets/expect-with-all-engines
   [[81]]
   (->> (run-query venues
-         (ql/aggregation :count)
+         (ql/aggregation (ql/count))
          (ql/filter (ql/and (ql/!= $price 3)
                             (ql/or (ql/= $price 1)
                                    (ql/= $price 2)))))
@@ -1170,14 +1167,14 @@
 (datasets/expect-with-all-engines
   [[81]]
   (->> (run-query venues
-         (ql/aggregation :count)
+         (ql/aggregation (ql/count))
          (ql/filter (ql/= $price 1 2)))
        rows (format-rows-by [int])))
 
 (datasets/expect-with-all-engines
   [[19]]
   (->> (run-query venues
-         (ql/aggregation :count)
+         (ql/aggregation (ql/count))
          (ql/filter (ql/!= $price 1 2)))
      rows (format-rows-by [int])))
 
@@ -1192,7 +1189,7 @@
 (defn- sad-toucan-incidents-with-bucketing [unit]
   (->> (with-db (get-or-create-database! defs/sad-toucan-incidents)
          (run-query incidents
-           (ql/aggregation :count)
+           (ql/aggregation (ql/count))
            (ql/breakout (ql/datetime-field $timestamp unit))
            (ql/limit 10)))
        rows (format-rows-by [(fn [x] (if (number? x) (int x) x))
@@ -1465,7 +1462,7 @@
 (defn- count-of-grouping [db field-grouping & relative-datetime-args]
   (-> (with-temp-db [_ db]
         (run-query checkins
-          (ql/aggregation :count)
+          (ql/aggregation (ql/count))
           (ql/filter (ql/= (ql/datetime-field $timestamp field-grouping)
                            (apply ql/relative-datetime relative-datetime-args)))))
       first-row first int))
@@ -1489,7 +1486,7 @@
   1
   (-> (with-temp-db [_ (checkins:1-per-day)]
         (run-query checkins
-          (ql/aggregation :count)
+          (ql/aggregation (ql/count))
           (ql/filter (ql/time-interval $timestamp :current :day))))
       first-row first int))
 
@@ -1497,7 +1494,7 @@
   7
   (-> (with-temp-db [_ (checkins:1-per-day)]
         (run-query checkins
-          (ql/aggregation :count)
+          (ql/aggregation (ql/count))
           (ql/filter (ql/time-interval $timestamp :last :week))))
       first-row first int))
 
@@ -1508,7 +1505,7 @@
 (defn- date-bucketing-unit-when-you [& {:keys [breakout-by filter-by]}]
   (let [results (with-temp-db [_ (checkins:1-per-day)]
                   (run-query checkins
-                    (ql/aggregation :count)
+                    (ql/aggregation (ql/count))
                     (ql/breakout (ql/datetime-field $timestamp breakout-by))
                     (ql/filter (ql/time-interval $timestamp :current filter-by))))]
     {:rows (-> results :row_count)
