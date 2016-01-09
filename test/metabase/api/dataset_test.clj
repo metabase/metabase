@@ -23,7 +23,7 @@
        :uuid      $})
   ((user->client :rasta) :post 200 "dataset" (ql/wrap-inner-query
                                                (query checkins
-                                                 (ql/aggregation :count)))))
+                                                 (ql/aggregation (ql/count))))))
 
 ;; Even if a query fails we still expect a 200 response from the api
 (expect-eval-actual-first

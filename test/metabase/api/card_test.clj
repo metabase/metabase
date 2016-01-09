@@ -22,7 +22,7 @@
                                            :display                "scalar"
                                            :dataset_query          (obj->json->obj (ql/wrap-inner-query
                                                                                     (query categories
-                                                                                      (ql/aggregation :count))))
+                                                                                      (ql/aggregation (ql/count)))))
                                            :visualization_settings {:global {:title nil}}}))
 
 ;; ## GET /api/card
@@ -121,7 +121,7 @@
                                :updated_at             $
                                :dataset_query          (obj->json->obj (ql/wrap-inner-query
                                                                         (query categories
-                                                                          (ql/aggregation :count))))
+                                                                          (ql/aggregation (ql/count)))))
                                :id                     $
                                :display                "scalar"
                                :visualization_settings {:global {:title nil}}
@@ -156,7 +156,7 @@
          :updated_at $
          :dataset_query (obj->json->obj (ql/wrap-inner-query
                                          (query categories
-                                           (ql/aggregation :count))))
+                                           (ql/aggregation (ql/count)))))
          :id $
          :display "scalar"
          :visualization_settings {:global {:title nil}}

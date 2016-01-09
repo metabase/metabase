@@ -26,35 +26,16 @@
 
 (s/defn ^:private ^:always-validate normalize-token :- s/Keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased keyword."
-  [token :- (s/cond-pre s/Keyword s/Str)]
+  [token :- (s/named (s/cond-pre s/Keyword s/Str) "Valid token (keyword or string)")]
   (-> (name token)
       str/lower-case
       (str/replace #"_" "-")
       keyword))
 
-;;; Function Dispatch
-;; QL functions are any public function in this namespace marked with `^:ql`.
-;; At the bottom of this namespace, we collect these functions and create a dispatch map, `token->ql-fn`.
-
-(declare token->ql-fn)
-
-(defn- apply-fn-for-token
-  "Apply the appropriate function for dispatchable token.
-
-    (apply-fn-for-token [\"fk->\" 100 200]) -> (fk-> 100 200)"
-  ([token+args]
-   (apply-fn-for-token (first token+args) (rest token+args)))
-  ([token args]
-   (let [token (normalize-token token)
-         f     (core/or (token->ql-fn token)
-                        (throw (Exception. (str "Illegal clause (no matching fn found): " token))))]
-     (apply f args))))
-
-
 ;;; # ------------------------------------------------------------ Clause Handlers ------------------------------------------------------------
 
 ;; TODO - check that there's a matching :aggregation clause in the query ?
-(s/defn ^:always-validate aggregate-field :- AgFieldRef
+(s/defn ^:ql ^:always-validate aggregate-field :- AgFieldRef
   "Aggregate field referece, e.g. for use in an `order-by` clause.
 
      (query (aggregate (count))
@@ -62,18 +43,18 @@
   [index :- s/Int]
   (i/map->AgFieldRef {:index index}))
 
-(s/defn ^:always-validate field :- i/FieldPlaceholderOrAgRef
+(s/defn ^:ql ^:always-validate field-id :- FieldPlaceholder
+  "Create a generic reference to a `Field` with ID."
+  [id :- i/IntGreaterThanZero]
+  (i/map->FieldPlaceholder {:field-id id}))
+
+(s/defn ^:private ^:always-validate field :- i/FieldPlaceholderOrAgRef
   "Generic reference to a `Field`. F can be an integer Field ID, or various other forms like `fk->` or `aggregation`."
   [f]
-  (cond
-    (instance? AgFieldRef f) f
-    (map?     f)             (i/map->FieldPlaceholder f)
-    (integer? f)             (i/map->FieldPlaceholder {:field-id f})
-    (vector?  f)             (let [[token & args] f]
-                               (if (core/= (normalize-token token) :aggregation)
-                                 (apply aggregate-field args)
-                                 (apply-fn-for-token token args)))
-    :else                    (throw (Exception. (str "Invalid field: " f)))))
+  (if (integer? f)
+    (do (log/warn (u/format-color 'yellow "Referring to fields by their bare ID (%d) is deprecated in MBQL '98. Please use [:field-id %d] instead." f f))
+        (field-id f))
+    f))
 
 (s/defn ^:ql ^:always-validate datetime-field :- FieldPlaceholder
   "Reference to a `DateTimeField`. This is just a `Field` reference with an associated datetime UNIT."
@@ -92,13 +73,19 @@
   (i/map->FieldPlaceholder {:fk-field-id fk-field-id, :field-id dest-field-id}))
 
 
-(s/defn ^:always-validate value :- ValuePlaceholder
+(s/defn ^:private ^:always-validate value :- ValuePlaceholder
   "Literal value. F is the `Field` it relates to, and V is `nil`, or a boolean, string, numerical, or datetime value."
   [f v]
   (cond
     (instance? ValuePlaceholder v) v
-    (vector? v)                    (apply-fn-for-token (first v) (cons f (rest v)))
     :else                          (i/map->ValuePlaceholder {:field-placeholder (field f), :value v})))
+
+(s/defn ^:private ^:always-validate field-or-value
+  "Use instead of `value` when something may be either a field or a value."
+  [f v]
+  (if (instance? FieldPlaceholder v)
+    v
+    (value f v)))
 
 (s/defn ^:ql ^:always-validate relative-datetime :- RelativeDatetime
   "Value that represents a point in time relative to each moment the query is ran, e.g. \"today\" or \"1 year ago\".
@@ -134,45 +121,52 @@
   ([]  {:aggregation-type :count})
   ([f] (ag-with-field :count f)))
 
+(defn ^:ql ^:deprecated rows
+  "Bare rows aggregation. This is the default behavior, so specifying it is deprecated."
+  []
+  (log/warn (u/format-color 'yellow "Specifying :rows as the aggregation type is deprecated in MBQL '98. This is the default behavior, so you don't need to specify it.")))
+
 (s/defn ^:ql ^:always-validate aggregation
   "Specify the aggregation to be performed for this query.
 
      (aggregation {} (count 100))
      (aggregation {} :count 100))"
-  [query ag & args]
-  (if (map? ag)
-    (let [ag (update ag :aggregation-type normalize-token)]
-      (s/validate i/Aggregation ag)
-      (assoc query :aggregation ag))
-    (let [ag-type (normalize-token ag)]
-      (if (core/= ag-type :rows)
-        (do (log/warn (u/format-color 'yellow "Specifying :rows as the aggregation type is deprecated; this is the default behavior, so you don't need to specify it."))
-            query)
-        (aggregation query (apply-fn-for-token ag-type args))))))
+  ;; Handle ag field references like [:aggregation 0] (deprecated)
+  ([index :- s/Int]
+   (log/warn "The syntax for aggregate fields has changed in MBQL '98. Instead of `[:aggregation 0]`, please use `[:aggregate-field 0]` instead.")
+   (aggregate-field index))
+
+  ;; Handle :aggregation top-level clauses
+  ([query ag :- (s/maybe (s/pred map?))]
+   (if ag
+     (let [ag (update ag :aggregation-type normalize-token)]
+       (s/validate i/Aggregation ag)
+       (assoc query :aggregation ag))
+     ag)))
 
 
 ;;; ## breakout & fields
 
-(defn- fields-list-clause [k query & fields] (assoc query k (mapv field fields)))
+(defn- fields-list-clause
+  ([k query] query)
+  ([k query & fields] (assoc query k (mapv field fields))))
 
 (def ^:ql ^{:arglists '([query & fields])} breakout "Specify which fields to breakout by." (partial fields-list-clause :breakout))
 (def ^:ql ^{:arglists '([query & fields])} fields   "Specify which fields to return."      (partial fields-list-clause :fields))
 
 ;;; ## filter
 
-(declare expand-filter-subclause-if-needed)
-
-(s/defn ^:always-validate ^:private compound-filter :- i/Filter
-  ([_ subclause] (expand-filter-subclause-if-needed subclause))
-  ([compound-type subclause & more]
-   (i/map->CompoundFilter {:compound-type compound-type, :subclauses (mapv expand-filter-subclause-if-needed (cons subclause more))})))
+(s/defn ^:private ^:always-validate compound-filter :- i/Filter
+  ([_ subclause :- i/Filter] subclause)
+  ([compound-type, subclause :- i/Filter, & more :- [i/Filter]]
+   (i/map->CompoundFilter {:compound-type compound-type, :subclauses (cons subclause more)})))
 
 (def ^:ql ^{:arglists '([& subclauses])} and "Filter subclause. Return results that satisfy *all* SUBCLAUSES." (partial compound-filter :and))
 (def ^:ql ^{:arglists '([& subclauses])} or  "Filter subclause. Return results that satisfy *any* of the SUBCLAUSES." (partial compound-filter :or))
 
 (s/defn ^:private ^:always-validate equality-filter :- i/Filter
   ([filter-type _ f v]
-   (i/map->EqualityFilter {:filter-type filter-type, :field (field f), :value (value f v)}))
+   (i/map->EqualityFilter {:filter-type filter-type, :field (field f), :value (field-or-value f v)}))
   ([filter-type compound-fn f v & more]
    (apply compound-fn (for [v (cons v more)]
                         (equality-filter filter-type compound-fn f v)))))
@@ -239,26 +233,23 @@
         (core/> n  1) (between f (value f (relative-datetime       1 unit))
                                  (value f (relative-datetime (inc n) unit)))))))
 
-(s/defn ^:private ^:always-validate expand-filter-subclause-if-needed :- i/Filter [subclause]
-  (cond
-    (vector? subclause) (apply-fn-for-token subclause)
-    (map? subclause)    subclause))
-
 (s/defn ^:ql ^:always-validate filter
   "Filter the results returned by the query.
 
      (filter {} := 100 true) ; return rows where Field 100 == true"
-  ([query, filter-map :- i/Filter]
-   (assoc query :filter filter-map))
-  ([query filter-type & args]
-   (filter query (apply-fn-for-token filter-type args))))
+  [query, filter-map :- (s/maybe i/Filter)]
+  (if filter-map
+    (assoc query :filter filter-map)
+    query))
 
 (s/defn ^:ql ^:always-validate limit
   "Limit the number of results returned by the query.
 
      (limit {} 10)"
-  [query limit :- s/Int]
-  (assoc query :limit limit))
+  [query, limit :- (s/maybe s/Int)]
+  (if limit
+    (assoc query :limit limit)
+    query))
 
 
 ;;; ## order-by
@@ -267,8 +258,8 @@
   (cond
     (map? subclause)    subclause
     (vector? subclause) (let [[f direction] subclause]
-                          (log/warn (u/format-color 'yellow (str "You're using legacy order-by syntax: [<field> :ascending/:descending] is deprecated. "
-                                                                 "Prefer [:asc <field>] or [:desc <field>] instead.")))
+                          (log/warn (u/format-color 'yellow (str "The syntax for order-by has changed in MBQL '98. [<field> :ascending/:descending] is deprecated. "
+                                                                 "Prefer [:asc/:desc <field>] instead.")))
                           {:field (field f), :direction (normalize-token direction)})))
 
 (s/defn ^:ql ^:always-validate asc :- i/OrderBy
@@ -291,8 +282,9 @@
      (order-by {} (asc 20))        ; order by field 20
      (order-by {} [20 :ascending]) ; order by field 20 (deprecated/legacy syntax)
      (order-by {} [(aggregate-field 0) :descending]) ; order by the aggregate field (e.g. :count)"
-  [query & subclauses]
-  (assoc query :order-by (mapv maybe-parse-order-by-subclause subclauses)))
+  ([query] query)
+  ([query & subclauses]
+   (assoc query :order-by (mapv maybe-parse-order-by-subclause subclauses))))
 
 
 ;;; ## page
@@ -301,8 +293,10 @@
   "Specify which 'page' of results to fetch (offset and limit the results).
 
      (page {} {:page 1, :items 20}) ; fetch first 20 rows"
-  [query {:keys [page items], :as page-clause} :- i/Page]
-  (assoc query :page page-clause))
+  [query {:keys [page items], :as page-clause} :- (s/maybe i/Page)]
+  (if page-clause
+    (assoc query :page page-clause)
+    query))
 
 ;;; ## source-table
 
@@ -316,14 +310,54 @@
 
 ;;; # ------------------------------------------------------------ Expansion ------------------------------------------------------------
 
-(s/defn ^:private ^:always-validate expand-inner :- i/Query [inner-query]
+;; QL functions are any public function in this namespace marked with `^:ql`.
+(def ^:private token->ql-fn
+  "A map of keywords (e.g., `:=`), to the matching vars (e.g., `#'=`)."
+  (into {} (for [[symb varr] (ns-publics *ns*)
+                 :let        [metta (meta varr)]
+                 :when       (:ql metta)]
+             {(keyword symb) varr})))
+
+(defn- fn-for-token
+  "Return fn var that matches a token, or throw an exception.
+
+     (fn-for-token :starts-with) -> #'starts-with"
+  [token]
+  (let [token (normalize-token token)]
+    (core/or (token->ql-fn token)
+             (throw (Exception. (str "Illegal clause (no matching fn found): " token))))))
+
+(s/defn ^:always-validate expand-ql-sexpr
+  "Expand a QL bracketed S-expression by dispatching to the appropriate `^:ql` function. If SEXPR is not a QL
+   S-expression (the first item isn't a token), it is returned as-is.
+
+     (expand-ql-sexpr [:field-id 10]) -> (field-id 10) -> {:field-id 10, :fk-field-id nil, :datetime-unit nil}"
+  [[token & args :as sexpr] :- (s/pred vector?)]
+  (if (core/or (keyword? token)
+               (string?  token))
+    (apply (fn-for-token token) args)
+    sexpr))
+
+(defn- walk-expand-ql-sexprs
+  "Walk QUERY depth-first and expand QL bracketed S-expressions."
+  [x]
+  (cond (map? x)    (into x (for [[k v] x]                    ; do `into x` instead of `into {}` so we can keep the original class,
+                              [k (walk-expand-ql-sexprs v)])) ; e.g. FieldPlaceholder
+        (vector? x) (expand-ql-sexpr (mapv walk-expand-ql-sexprs x))
+        :else       x))
+
+
+(s/defn ^:always-validate expand-inner :- i/Query
+  "Expand an inner query map."
+  [inner-query :- (s/pred map?)]
   (loop [query {}, [[clause-name arg] & more] (seq inner-query)]
-    (let [args  (cond
+    (let [arg   (walk-expand-ql-sexprs arg)
+          args  (cond
                   (sequential? arg) arg
                   arg               [arg])
-          query (core/or (when (seq args)
-                           (apply-fn-for-token clause-name (cons query args)))
-                         query)]
+          query (if (seq args)
+                  (apply (fn-for-token clause-name) query args)
+                  query)]
       (if (seq more)
         (recur query more)
         query))))
@@ -344,9 +378,6 @@
   [outer-query]
   (update outer-query :query expand-inner))
 
-(def ^{:arglists '([query])} validate-query
-  "Check that a given query is valid, returning it as-is if so."
-  (s/validator i/Query))
 
 (defmacro query
   "Build a query by threading an (initially empty) map through each form in BODY with `->`.
@@ -355,7 +386,7 @@
   [& body]
   `(-> {}
        ~@body
-       validate-query))
+       expand-inner))
 
 (s/defn ^:always-validate wrap-inner-query
   "Wrap inner QUERY with `:database` ID and other 'outer query' kvs. DB ID is fetched by looking up the Database for the query's `:source-table`."
@@ -379,13 +410,3 @@
   {:style/indent 0}
   [& body]
   `(run-query* (query ~@body)))
-
-
-;; Now collect the functions we marked as ^:ql (see above)
-
-(def token->ql-fn
-  "A map of keywords (e.g., `:=`), to the matching vars (e.g., `#'=`)."
-  (into {} (for [[symb varr] (ns-publics *ns*)
-                 :let        [metta (meta varr)]
-                 :when       (:ql metta)]
-             {(keyword symb) varr})))

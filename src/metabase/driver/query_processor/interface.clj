@@ -146,7 +146,7 @@
 (def OrderableValuePlaceholder (s/constrained ValuePlaceholder (comp (complement (s/checker OrderableValue)) :value) ":value must be orderable (number or datetime)"))
 (def StringValuePlaceholder    (s/constrained ValuePlaceholder (comp string? :value)                                 ":value must be a string"))
 
-;; (def FieldOrAnyValue       (s/named (s/cond-pre FieldPlaceholder ValuePlaceholder)          "Field or value"))
+(def FieldOrAnyValue       (s/named (s/cond-pre FieldPlaceholder ValuePlaceholder)          "Field or value"))
 ;; (def FieldOrOrderableValue (s/named (s/cond-pre FieldPlaceholder OrderableValuePlaceholder) "Field or orderable value (number or datetime)"))
 ;; (def FieldOrStringValue    (s/named (s/cond-pre FieldPlaceholder StringValuePlaceholder)    "Field or string literal"))
 
@@ -170,7 +170,7 @@
 
 (s/defrecord EqualityFilter [filter-type :- (s/enum := :!=)
                              field       :- FieldPlaceholder
-                             value       :- ValuePlaceholder])
+                             value       :- FieldOrAnyValue])
 
 (s/defrecord ComparisonFilter [filter-type :- (s/enum :< :<= :> :>=)
                                field       :- FieldPlaceholder

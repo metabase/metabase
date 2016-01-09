@@ -61,10 +61,9 @@
           :error          (or (.getMessage e) (str e))
           :stacktrace     (u/filtered-stacktrace e)
           :query          (dissoc query :database :driver)
-          :expanded-query (try (dissoc (resolve/resolve (expand/expand query)) :database :driver)
-                               (catch Throwable e
-                                 {:error      (or (.getMessage e) (str e))
-                                  :stacktrace (u/filtered-stacktrace e) }))}
+          :expanded-query (when (structured-query? query)
+                            (try (dissoc (resolve/resolve (expand/expand query)) :database :driver)
+                                 (catch Throwable _)))}
          (when-let [data (ex-data e)]
            {:ex-data data})
          additional-info))
