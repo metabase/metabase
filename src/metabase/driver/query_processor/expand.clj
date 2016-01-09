@@ -32,20 +32,11 @@
       (str/replace #"_" "-")
       keyword))
 
-(def ^:private ^:const dispatchable-tokens
-  "Keywords that have a corresponding function in this namespace that we can 'dispatch' to."
-  #{;; top-level
-    :aggregation :breakout :filter :fields :order-by :source-table :limit :page
-    ;; aggregation subclauses
-    :count :avg :distinct :stddev :sum :cum-sum
-    ;; filter subclauses
-    :and :or :inside :between := :!= :< :> :<= :>= :starts-with :contains :ends-with :time-interval
-    ;; fields
-    :fk-> :datetime-field
-    ;; order-by subclauses
-    :asc :desc
-    ;; values
-    :relative-datetime})
+;;; Function Dispatch
+;; QL functions are any public function in this namespace marked with `^:ql`.
+;; At the bottom of this namespace, we collect these functions and create a dispatch map, `token->ql-fn`.
+
+(declare token->ql-fn)
 
 (defn- apply-fn-for-token
   "Apply the appropriate function for dispatchable token.
@@ -55,9 +46,7 @@
    (apply-fn-for-token (first token+args) (rest token+args)))
   ([token args]
    (let [token (normalize-token token)
-         ;; _     (println "fn:" (cons (name token) args))
-         f     (core/or (when (contains? dispatchable-tokens token)
-                          (ns-resolve 'metabase.driver.query-processor.expand (symbol (name token))))
+         f     (core/or (token->ql-fn token)
                         (throw (Exception. (str "Illegal clause (no matching fn found): " token))))]
      (apply f args))))
 
@@ -86,12 +75,12 @@
                                  (apply-fn-for-token token args)))
     :else                    (throw (Exception. (str "Invalid field: " f)))))
 
-(s/defn ^:always-validate datetime-field :- FieldPlaceholder
+(s/defn ^:ql ^:always-validate datetime-field :- FieldPlaceholder
   "Reference to a `DateTimeField`. This is just a `Field` reference with an associated datetime UNIT."
   ([f _ unit] (datetime-field f unit))
   ([f unit]   (assoc (field f) :datetime-unit (normalize-token unit))))
 
-(s/defn ^:always-validate fk-> :- FieldPlaceholder
+(s/defn ^:ql ^:always-validate fk-> :- FieldPlaceholder
   "Reference to a `Field` that belongs to another `Table`. DEST-FIELD-ID is the ID of this Field, and FK-FIELD-ID is the ID of the foreign key field
    belonging to the *source table* we should use to perform the join.
 
@@ -111,7 +100,7 @@
     (vector? v)                    (apply-fn-for-token (first v) (cons f (rest v)))
     :else                          (i/map->ValuePlaceholder {:field-placeholder (field f), :value v})))
 
-(s/defn ^:always-validate relative-datetime :- RelativeDatetime
+(s/defn ^:ql ^:always-validate relative-datetime :- RelativeDatetime
   "Value that represents a point in time relative to each moment the query is ran, e.g. \"today\" or \"1 year ago\".
 
    With `:current` as the only arg, refer to the current point in time; otherwise N is some number and UNIT is a unit like `:day` or `:year`.
@@ -129,23 +118,23 @@
 (s/defn ^:private ^:always-validate ag-with-field :- i/Aggregation [ag-type f]
   {:aggregation-type ag-type, :field (field f)})
 
-(def ^{:arglists '([f])} avg      "Aggregation clause. Return the average value of F."                (partial ag-with-field :avg))
-(def ^{:arglists '([f])} distinct "Aggregation clause. Return the number of distinct values of F."    (partial ag-with-field :distinct))
-(def ^{:arglists '([f])} sum      "Aggregation clause. Return the sum of the values of F."            (partial ag-with-field :sum))
-(def ^{:arglists '([f])} cum-sum  "Aggregation clause. Return the cumulative sum of the values of F." (partial ag-with-field :cumulative-sum))
+(def ^:ql ^{:arglists '([f])} avg      "Aggregation clause. Return the average value of F."                (partial ag-with-field :avg))
+(def ^:ql ^{:arglists '([f])} distinct "Aggregation clause. Return the number of distinct values of F."    (partial ag-with-field :distinct))
+(def ^:ql ^{:arglists '([f])} sum      "Aggregation clause. Return the sum of the values of F."            (partial ag-with-field :sum))
+(def ^:ql ^{:arglists '([f])} cum-sum  "Aggregation clause. Return the cumulative sum of the values of F." (partial ag-with-field :cumulative-sum))
 
-(defn stddev
+(defn ^:ql stddev
   "Aggregation clause. Return the standard deviation of values of F."
   [f]
   (i/assert-driver-supports :standard-deviation-aggregations)
   (ag-with-field :stddev f))
 
-(s/defn ^:always-validate count :- i/Aggregation
+(s/defn ^:ql ^:always-validate count :- i/Aggregation
   "Aggregation clause. Return total row count (e.g., `COUNT(*)`). If F is specified, only count rows where F is non-null (e.g. `COUNT(f)`)."
   ([]  {:aggregation-type :count})
   ([f] (ag-with-field :count f)))
 
-(s/defn ^:always-validate aggregation
+(s/defn ^:ql ^:always-validate aggregation
   "Specify the aggregation to be performed for this query.
 
      (aggregation {} (count 100))
@@ -166,8 +155,8 @@
 
 (defn- fields-list-clause [k query & fields] (assoc query k (mapv field fields)))
 
-(def ^{:arglists '([query & fields])} breakout "Specify which fields to breakout by." (partial fields-list-clause :breakout))
-(def ^{:arglists '([query & fields])} fields   "Specify which fields to return."      (partial fields-list-clause :fields))
+(def ^:ql ^{:arglists '([query & fields])} breakout "Specify which fields to breakout by." (partial fields-list-clause :breakout))
+(def ^:ql ^{:arglists '([query & fields])} fields   "Specify which fields to return."      (partial fields-list-clause :fields))
 
 ;;; ## filter
 
@@ -178,8 +167,8 @@
   ([compound-type subclause & more]
    (i/map->CompoundFilter {:compound-type compound-type, :subclauses (mapv expand-filter-subclause-if-needed (cons subclause more))})))
 
-(def ^{:arglists '([& subclauses])} and "Filter subclause. Return results that satisfy *all* SUBCLAUSES." (partial compound-filter :and))
-(def ^{:arglists '([& subclauses])} or  "Filter subclause. Return results that satisfy *any* of the SUBCLAUSES." (partial compound-filter :or))
+(def ^:ql ^{:arglists '([& subclauses])} and "Filter subclause. Return results that satisfy *all* SUBCLAUSES." (partial compound-filter :and))
+(def ^:ql ^{:arglists '([& subclauses])} or  "Filter subclause. Return results that satisfy *any* of the SUBCLAUSES." (partial compound-filter :or))
 
 (s/defn ^:private ^:always-validate equality-filter :- i/Filter
   ([filter-type _ f v]
@@ -188,14 +177,14 @@
    (apply compound-fn (for [v (cons v more)]
                         (equality-filter filter-type compound-fn f v)))))
 
-(def ^{:arglists '([f v & more])} =
+(def ^:ql ^{:arglists '([f v & more])} =
   "Filter subclause. With a single value, return results where F == V. With two or more values, return results where F matches *any* of the values (i.e.`IN`)
 
      (= f v)
      (= f v1 v2) ; same as (or (= f v1) (= f v2))"
   (partial equality-filter := or))
 
-(def ^{:arglists '([f v & more])} !=
+(def ^:ql ^{:arglists '([f v & more])} !=
   "Filter subclause. With a single value, return results where F != V. With two or more values, return results where F does not match *any* of the values (i.e. `NOT IN`)
 
      (!= f v)
@@ -205,18 +194,18 @@
 (s/defn ^:private ^:always-validate comparison-filter :- ComparisonFilter [filter-type f v]
   (i/map->ComparisonFilter {:filter-type filter-type, :field (field f), :value (value f v)}))
 
-(def ^{:arglists '([f v])} <  "Filter subclause. Return results where F is less than V. V must be orderable, i.e. a number or datetime."                (partial comparison-filter :<))
-(def ^{:arglists '([f v])} <= "Filter subclause. Return results where F is less than or equal to V. V must be orderable, i.e. a number or datetime."    (partial comparison-filter :<=))
-(def ^{:arglists '([f v])} >  "Filter subclause. Return results where F is greater than V. V must be orderable, i.e. a number or datetime."             (partial comparison-filter :>))
-(def ^{:arglists '([f v])} >= "Filter subclause. Return results where F is greater than or equal to V. V must be orderable, i.e. a number or datetime." (partial comparison-filter :>=))
+(def ^:ql ^{:arglists '([f v])} <  "Filter subclause. Return results where F is less than V. V must be orderable, i.e. a number or datetime."                (partial comparison-filter :<))
+(def ^:ql ^{:arglists '([f v])} <= "Filter subclause. Return results where F is less than or equal to V. V must be orderable, i.e. a number or datetime."    (partial comparison-filter :<=))
+(def ^:ql ^{:arglists '([f v])} >  "Filter subclause. Return results where F is greater than V. V must be orderable, i.e. a number or datetime."             (partial comparison-filter :>))
+(def ^:ql ^{:arglists '([f v])} >= "Filter subclause. Return results where F is greater than or equal to V. V must be orderable, i.e. a number or datetime." (partial comparison-filter :>=))
 
-(s/defn ^:always-validate between :- BetweenFilter
+(s/defn ^:ql ^:always-validate between :- BetweenFilter
   "Filter subclause. Return results where F is between MIN and MAX. MIN and MAX must be orderable, i.e. numbers or datetimes.
    This behaves like SQL `BETWEEN`, i.e. MIN and MAX are inclusive."
   [f min-val max-val]
   (i/map->BetweenFilter {:filter-type :between, :field (field f), :min-val (value f min-val), :max-val (value f max-val)}))
 
-(s/defn ^:always-validate inside :- CompoundFilter
+(s/defn ^:ql ^:always-validate inside :- CompoundFilter
   "Filter subclause for geo bounding. Return results where LAT-FIELD and LON-FIELD are between some set of bounding values."
   [lat-field lon-field lat-max lon-min lat-min lon-max]
   (and (between lat-field lat-min lat-max)
@@ -225,11 +214,11 @@
 (s/defn ^:private ^:always-validate string-filter :- StringFilter [filter-type f s]
   (i/map->StringFilter {:filter-type filter-type, :field (field f), :value (value f s)}))
 
-(def ^{:arglists '([f s])} starts-with "Filter subclause. Return results where F starts with the string V."    (partial string-filter :starts-with))
-(def ^{:arglists '([f s])} contains    "Filter subclause. Return results where F contains the string V."       (partial string-filter :contains))
-(def ^{:arglists '([f s])} ends-with   "Filter subclause. Return results where F ends with with the string V." (partial string-filter :ends-with))
+(def ^:ql ^{:arglists '([f s])} starts-with "Filter subclause. Return results where F starts with the string V."    (partial string-filter :starts-with))
+(def ^:ql ^{:arglists '([f s])} contains    "Filter subclause. Return results where F contains the string V."       (partial string-filter :contains))
+(def ^:ql ^{:arglists '([f s])} ends-with   "Filter subclause. Return results where F ends with with the string V." (partial string-filter :ends-with))
 
-(s/defn ^:always-validate time-interval :- i/Filter
+(s/defn ^:ql ^:always-validate time-interval :- i/Filter
   "Filter subclause. Syntactic sugar for specifying a specific time interval.
 
     (filter {} (time-interval 100 :current :day)) ; return rows where datetime Field 100's value is in the current day"
@@ -255,7 +244,7 @@
     (vector? subclause) (apply-fn-for-token subclause)
     (map? subclause)    subclause))
 
-(s/defn ^:always-validate filter
+(s/defn ^:ql ^:always-validate filter
   "Filter the results returned by the query.
 
      (filter {} := 100 true) ; return rows where Field 100 == true"
@@ -264,7 +253,7 @@
   ([query filter-type & args]
    (filter query (apply-fn-for-token filter-type args))))
 
-(s/defn ^:always-validate limit
+(s/defn ^:ql ^:always-validate limit
   "Limit the number of results returned by the query.
 
      (limit {} 10)"
@@ -282,21 +271,21 @@
                                                                  "Prefer [:asc <field>] or [:desc <field>] instead.")))
                           {:field (field f), :direction (normalize-token direction)})))
 
-(s/defn ^:always-validate asc :- i/OrderBy
+(s/defn ^:ql ^:always-validate asc :- i/OrderBy
   "order-by subclause. Specify that results should be returned in ascending order for Field or AgRef F.
 
      (order-by {} (asc 100))"
   [f]
   {:field (field f), :direction :ascending})
 
-(s/defn ^:always-validate desc :- i/OrderBy
+(s/defn ^:ql ^:always-validate desc :- i/OrderBy
   "order-by subclause. Specify that results should be returned in ascending order for Field or AgRef F.
 
      (order-by {} (desc 100))"
   [f]
   {:field (field f), :direction :descending})
 
-(defn order-by
+(defn ^:ql order-by
   "Specify how ordering should be done for this query.
 
      (order-by {} (asc 20))        ; order by field 20
@@ -308,7 +297,7 @@
 
 ;;; ## page
 
-(s/defn ^:always-validate page
+(s/defn ^:ql ^:always-validate page
   "Specify which 'page' of results to fetch (offset and limit the results).
 
      (page {} {:page 1, :items 20}) ; fetch first 20 rows"
@@ -317,7 +306,7 @@
 
 ;;; ## source-table
 
-(s/defn ^:always-validate source-table
+(s/defn ^:ql ^:always-validate source-table
   "Specify the ID of the table to query (required).
 
      (source-table {} 100)"
@@ -390,3 +379,13 @@
   {:style/indent 0}
   [& body]
   `(run-query* (query ~@body)))
+
+
+;; Now collect the functions we marked as ^:ql (see above)
+
+(def token->ql-fn
+  "A map of keywords (e.g., `:=`), to the matching vars (e.g., `#'=`)."
+  (into {} (for [[symb varr] (ns-publics *ns*)
+                 :let        [metta (meta varr)]
+                 :when       (:ql metta)]
+             {(keyword symb) varr})))
