@@ -40,8 +40,6 @@
      (name (PostgresDriver.)) -> \"PostgreSQL\"
 
    This name should be a \"nice-name\" that we'll display to the user."
-  (active-column-names->type ^java.util.Map [this, ^TableInstance table]
-    "Return a map of string names of active columns (or equivalent) -> `Field` `base_type` for TABLE (or equivalent).")
 
   (active-nested-field-name->type ^java.util.Map [this, ^FieldInstance field]
     "*OPTIONAL, BUT REQUIRED FOR DRIVERS THAT SUPPORT `:nested-fields`*
@@ -63,6 +61,17 @@
                     :pk?             <true|false>
                     :fk              {:dest-table <target-table-name>
                                       :dest-field <target-table-field-name>}]}")
+
+  (can-connect? ^Boolean [this, ^Map details-map]
+    "Check whether we can connect to a `Database` with DETAILS-MAP and perform a simple query. For example, a SQL database might
+     try running a query like `SELECT 1;`. This function should return `true` or `false`.")
+
+  (date-interval [this, ^Keyword unit, ^Number amount]
+    "*OPTIONAL* Return an driver-appropriate representation of a moment relative to the current moment in time. By default, this returns an `Timestamp` by calling
+     `metabase.util/relative-date`; but when possible drivers should return a native form so we can be sure the correct timezone is applied. For example, SQL drivers should
+     return a Korma form to call the appropriate SQL fns:
+
+       (date-interval (PostgresDriver.) :month 1) -> (k/raw* \"(NOW() + INTERVAL '1 month')\")")
 
   (describe-database ^java.util.Map [this, ^DatabaseInstance database]
     "Return a map containing information that describes all of the schema settings in DATABASE, most notably a set of tables.
@@ -99,17 +108,6 @@
           :dest-table        {:name   <name-of-destination-table>,
                               :schema <schema-of-destination-table>}
           :dest-column-name  <column-name-of-fk-destination>}")
-
-  (can-connect? ^Boolean [this, ^Map details-map]
-    "Check whether we can connect to a `Database` with DETAILS-MAP and perform a simple query. For example, a SQL database might
-     try running a query like `SELECT 1;`. This function should return `true` or `false`.")
-
-  (date-interval [this, ^Keyword unit, ^Number amount]
-    "*OPTIONAL* Return an driver-appropriate representation of a moment relative to the current moment in time. By default, this returns an `Timestamp` by calling
-     `metabase.util/relative-date`; but when possible drivers should return a native form so we can be sure the correct timezone is applied. For example, SQL drivers should
-     return a Korma form to call the appropriate SQL fns:
-
-       (date-interval (PostgresDriver.) :month 1) -> (k/raw* \"(NOW() + INTERVAL '1 month')\")")
 
   (details-fields ^clojure.lang.Sequential [this]
     "A vector of maps that contain information about connection properties that should
@@ -189,19 +187,6 @@
          (with-connection [_ database]
            (f)))")
 
-  (table-fks ^java.util.Set [this, ^TableInstance table]
-    "*OPTIONAL*, BUT REQUIRED FOR DRIVERS THAT SUPPORT `:foreign-keys`*
-
-     Return a set of maps containing info about FK columns for TABLE.
-     Each map should contain the following keys:
-
-       *  `fk-column-name`
-       *  `dest-table-name`
-       *  `dest-column-name`")
-
-  (table-pks ^java.util.Set [this, ^TableInstance table]
-    "Return a set of string names of active Fields that are primary keys for TABLE (or equivalent).")
-
   (table-rows-seq ^clojure.lang.Sequential [this, ^DatabaseInstance database, ^String table-name]
     "*OPTIONAL*. Return a sequence of all the rows in a table with a given TABLE-NAME.
      Currently, this is only used for iterating over the values in a `_metabase_metadata` table. As such, the results are not expected to be returned lazily."))
@@ -253,7 +238,6 @@
    :humanize-connection-error-message (fn [_ message] message)
    :process-query-in-context          (fn [_ qp]      qp)
    :sync-in-context                   (fn [_ _ f] (f))
-   :table-fks                         (constantly nil)
    :table-rows-seq                    (constantly nil)})
 
 
