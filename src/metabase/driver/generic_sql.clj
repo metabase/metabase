@@ -242,59 +242,53 @@
          {:name   (:table_name table)
           :schema (:table_schem table)})))
 
-(defn describe-table-fields
+(defn- describe-table-fields
   [metadata driver {:keys [schema name]}]
-  (for [{:keys [column_name type_name]} (jdbc/result-set-seq (.getColumns metadata nil schema name nil))]
-    {:name        column_name
-     :column-type type_name
-     :base-type   (or (column->base-type driver (keyword type_name))
-                      (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :UnknownField." type_name))
-                          :UnknownField))}))
+  (set (for [{:keys [column_name type_name]} (jdbc/result-set-seq (.getColumns metadata nil schema name nil))]
+         {:name        column_name
+          :column-type type_name
+          :base-type   (or (column->base-type driver (keyword type_name))
+                           (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :UnknownField." type_name))
+                               :UnknownField))})))
 
-(defn add-table-pks
+(defn- add-table-pks
   [metadata table]
   (let [pks (->> (.getPrimaryKeys metadata nil nil (:name table))
                  jdbc/result-set-seq
-                 (map :column_name)
+                 (mapv :column_name)
                  set)]
     (update table :fields (fn [fields]
                             (for [field fields]
                               (if-not (contains? pks (:name field)) field
                                                                     (assoc field :pk? true)))))))
 
-(defn add-table-fks
-  [metadata table]
-  (let [field->fk (into {} (->> (.getImportedKeys metadata nil nil (:name table))
-                          jdbc/result-set-seq
-                          (map (fn [result]
-                                 {(:fkcolumn_name result) {:dest-table (:pktable_name result)
-                                                           :dest-field (:pkcolumn_name result)}}))))
-        fk-fields (set (keys field->fk))]
-    (update table :fields (fn [fields]
-                            (for [{field-name :name :as field} fields]
-                              (if-not (contains? fk-fields field-name) field
-                                                                       (assoc field :fk (get field->fk field-name))))))))
-
-(defn describe-database-table
-  [metadata driver table]
-  (->> (assoc table :fields (describe-table-fields metadata driver table))
-       ;; find PKs and mark them
-       (add-table-pks metadata)
-       ;; find FKs and add their details
-       (add-table-fks metadata)))
-
 (defn describe-database
   [driver database]
   (with-metadata [metadata driver database]
-    (let [tables (active-tables driver metadata)]
-      {:tables (into #{} (map (partial describe-database-table metadata driver) tables))})))
+    {:tables (active-tables driver metadata)}))
 
 (defn describe-table
-  [driver database table-name]
-  (with-metadata [metadata driver database]
-    (let [tables        (active-tables driver metadata)
-          desired-table (first (filter #(= table-name (:name %)) tables))]
-      (describe-database-table metadata driver desired-table))))
+  [driver table]
+  (with-metadata [metadata driver @(:db table)]
+    (->> (assoc (select-keys table [:name :schema]) :fields (describe-table-fields metadata driver table))
+         ;; find PKs and mark them
+         (add-table-pks metadata))))
+
+(defn describe-table-fks
+  [driver table]
+  (with-metadata [metadata driver @(:db table)]
+    (set (->> (.getImportedKeys metadata nil nil (:name table))
+              jdbc/result-set-seq
+              (mapv (fn [result]
+                      {:fk-column-name   (:fkcolumn_name result)
+                       :dest-table       {:name   (:pktable_name result)
+                                          :schema (:pktable_schem result)}
+                       :dest-column-name (:pkcolumn_name result)}))))))
+
+
+(defn analyze-table
+  [driver table]
+  {})
 
 
 (defn IDriverSQLDefaultsMixin
@@ -303,8 +297,10 @@
   (require 'metabase.driver.generic-sql.native
            'metabase.driver.generic-sql.query-processor)
   (merge driver/IDriverDefaultsMixin
-         {:describe-database         describe-database
+         {:analyze-table             analyze-table
+          :describe-database         describe-database
           :describe-table            describe-table
+          :describe-table-fks        describe-table-fks
           :can-connect?              can-connect?
           :features                  features
           :field-avg-length          field-avg-length

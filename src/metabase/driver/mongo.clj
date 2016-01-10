@@ -14,29 +14,10 @@
             [metabase.driver :as driver]
             (metabase.driver.mongo [query-processor :as qp]
                                    [util :refer [*mongo-connection* with-mongo-connection values->base-type]])
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [cheshire.core :as json]))
 
 (declare driver field-values-lazy-seq)
-
-;;; ### Driver Helper Fns
-
-(defn- table->column-names
-  "Return a set of the column names for TABLE."
-  [table]
-  (with-mongo-connection [^com.mongodb.DB conn @(:db table)]
-    (->> (mc/find-maps conn (:name table))
-         (take driver/max-sync-lazy-seq-results)
-         (map keys)
-         (map set)
-         (reduce set/union))))
-
-(defn- field->base-type
-  "Determine the base type of FIELD in the most ghetto way possible, via `values->base-type`."
-  [field]
-  {:pre [(map? field)]
-   :post [(keyword? %)]}
-  (with-mongo-connection [_ @(:db @(:table field))]
-    (values->base-type (field-values-lazy-seq nil field))))
 
 
 ;;; ## MongoDriver
@@ -74,33 +55,79 @@
   (with-mongo-connection [_ database]
     (do-sync-fn)))
 
-(defn- active-column-names->type [_ table]
-  (with-mongo-connection [_ @(:db table)]
-    (into {} (for [column-name (table->column-names table)]
-               {(name column-name)
-                (field->base-type {:name                      (name column-name)
-                                   :table                     (delay table)
-                                   :qualified-name-components (delay [(:name table) (name column-name)])})}))))
+(defmacro swallow-exceptions [& body]
+  `(try ~@body (catch Exception e#)))
 
-(defn describe-database-table [table-name]
-  (let [column-names (table->column-names table-name)]
-    {:name   table-name
-     ;; TODO: broken, fix me!
-     :fields (active-column-names->type nil table-name)}))
+(defn- val->special-type [val]
+  (cond
+    ;; 1. url?
+    (and (string? val)
+         (u/is-url? val)) :url
+    ;; 2. json?
+    (and (string? val)
+         (or (.startsWith "{" val)
+             (.startsWith "[" val))) (when-let [j (swallow-exceptions (json/parse-string val))]
+                                           (when (or (map? j)
+                                                     (sequential? j))
+                                             :json))))
 
-(defn describe-database [_ database]
+(defn- update-field-attrs [field-value field]
+  (let [safe-inc #(inc (or % 0))]
+    (-> field
+        (update :count safe-inc)
+        (update :len #(if (string? field-value)
+                       (+ (or % 0) (.length field-value))
+                       %))
+        (update :types (fn [types]
+                         (update types (type field-value) safe-inc)))
+        (update :special-types (fn [special-types]
+                                 (if-let [st (val->special-type field-value)]
+                                   (update special-types st safe-inc)
+                                   special-types))))))
+
+;; TODO: nesting?
+(defn- describe-table-field [field-kw field-def]
+  ;; TODO: indicate preview-display status based on :len
+  (cond-> {:name      (name field-kw)
+           :base-type (->> (into [] (:types field-def))
+                           (sort-by second)
+                           last
+                           first
+                           driver/class->base-type)}
+          (= :_id field-kw) (assoc :pk? true)
+          (:special-types field-def) (assoc :special-type (->> (into [] (:special-types field-def))
+                                                               (filter #(not (nil? (first %))))
+                                                               (sort-by second)
+                                                               last
+                                                               first))))
+
+(defn describe-database
+  [_ database]
   (with-mongo-connection [^com.mongodb.DB conn database]
-    (let [tables (set (for [collection (set/difference (mdb/get-collection-names conn) #{"system.indexes"})]
-                        {:name collection}))]
-      {:tables (into #{} (map table->column-names tables))})))
+    {:tables (set (for [collection (set/difference (mdb/get-collection-names conn) #{"system.indexes"})]
+                    {:name collection}))}))
 
-(defn describe-table [_ database table-name]
-  (with-mongo-connection [^com.mongodb.DB conn database]
-    (let [tables (set (for [collection (set/difference (mdb/get-collection-names conn) #{"system.indexes"})]
-                        {:name collection}))]
-      ;; note that we grab the collections list and check that the desired table-name actually exists
-      (when (first (filter #(= table-name (:name %)) tables))
-        (describe-database-table table-name)))))
+(defn describe-table
+  [_ table]
+  (with-mongo-connection [^com.mongodb.DB conn @(:db table)]
+    (let [parsed-rows (->> (mc/find-maps conn (:name table))
+                           (take driver/max-sync-lazy-seq-results)
+                           (reduce
+                             (fn [field-defs row]
+                               (loop [[k & more-keys] (keys row)
+                                      fields field-defs]
+                                 (if-not k
+                                   fields
+                                   (recur more-keys (update fields k (partial update-field-attrs (k row)))))))
+                             {}))]
+      ;; TODO: handle nested dictionaries
+      {:name   (:name table)
+       :fields (set (for [field (keys parsed-rows)]
+                      (describe-table-field field (field parsed-rows))))})))
+
+(defn analyze-table
+  [driver table]
+  {})
 
 (defn- field-values-lazy-seq [_ {:keys [qualified-name-components table], :as field}]
   (assert (and (map? field)
@@ -142,6 +169,7 @@
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
          {:active-nested-field-name->type    active-nested-field-name->type
+          :analyze-table                     analyze-table
           :can-connect?                      can-connect?
           :describe-database                 describe-database
           :describe-table                    describe-table

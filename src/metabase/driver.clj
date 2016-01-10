@@ -65,32 +65,40 @@
                                       :dest-field <target-table-field-name>}]}")
 
   (describe-database ^java.util.Map [this, ^DatabaseInstance database]
-    "Return a map containing information that describes all of the physical schema in DATABASE.
+    "Return a map containing information that describes all of the schema settings in DATABASE, most notably a set of tables.
      It is expected that this function will be peformant and avoid draining meaningful resources of the database.
 
-     Each map should be structured as follows:
+     Each map should be structured as follows (NOTE that :tables is a Set):
 
-         {:tables [{:name   <table-name>
-                    :schema <table-schema|nil>
-                    :fields [{:name <field-name>
-                              :type <field-base-type>
-                              :pk?  <true|false>
-                              :fk   {:dest-table <target-table-name>
-                                     :dest-field <target-table-field-name>}]}]}")
+         {:tables #{{:name   <table-name>
+                     :schema <table-schema|nil>}}}")
 
-  (describe-table ^java.util.Map [this, ^DatabaseInstance database, ^String table-name]
-    "Return a map containing information that describes the physical schema of TABLE-NAME in DATABASE.
+  (describe-table ^java.util.Map [this, ^TableInstance table]
+    "Return a map containing information that describes the physical schema of TABLE.
      It is expected that this function will be peformant and avoid draining meaningful resources of the database.
 
-     Each map should be structured as follows:
+     Each map should be structured as follows (NOTE that :fields is a Set):
 
          {:name   <table-name>
           :schema <table-schema|nil>
-          :fields [{:name <field-name>
-                    :type <field-base-type>
-                    :pk?  <true|false>
-                    :fk   {:dest-table <target-table-name>
-                           :dest-field <target-table-field-name>}]}")
+          :fields #{{:name            <field-name>
+                     :base-type       <field-base-type>
+                     :special-type    <field-special-type>
+                     :preview-display <true|false>
+                     :pk?             <true|false>
+                     :fk              {:dest-table <target-table-name>
+                                       :dest-field <target-table-field-name>}}}")
+
+  (describe-table-fks ^java.util.Set [this, ^TableInstance table]
+    "*OPTIONAL*, BUT REQUIRED FOR DRIVERS THAT SUPPORT `:foreign-keys`*
+
+     Return a set of maps containing info about FK columns for TABLE.
+     Each map should be structured as follows:
+
+         {:fk-column-name    <column-name-of-fk-origin>
+          :dest-table        {:name   <name-of-destination-table>,
+                              :schema <schema-of-destination-table>}
+          :dest-column-name  <column-name-of-fk-destination>}")
 
   (can-connect? ^Boolean [this, ^Map details-map]
     "Check whether we can connect to a `Database` with DETAILS-MAP and perform a simple query. For example, a SQL database might
@@ -242,6 +250,7 @@
   "Default implementations of `IDriver` methods marked *OPTIONAL*."
   {:active-nested-field-name->type    (constantly nil)
    :date-interval                     (fn [_ unit amount] (u/relative-date unit amount))
+   :describe-table-fks                (constantly nil)
    :driver-specific-sync-field!       (constantly nil)
    :features                          (constantly nil)
    :field-avg-length                  default-field-avg-length

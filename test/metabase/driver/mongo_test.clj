@@ -21,6 +21,9 @@
 (defn- mongo-db []
   (data/get-or-create-test-data-db! (driver/engine->driver :mongo)))
 
+(defn- venues-table []
+  (sel :one Table :db_id (:id (mongo-db)) :name "venues"))
+
 ;; ## Constants + Helper Fns/Macros
 ;; TODO - move these to metabase.test-data ?
 (def ^:private ^:const table-names
@@ -30,40 +33,6 @@
    :users
    :venues])
 
-(def ^:private ^:const field-names
-  "Names of various test data `Fields`, as `[table-name field-name]` pairs."
-  [[:categories :_id]
-   [:categories :name]
-   [:checkins :_id]
-   [:checkins :date]
-   [:checkins :user_id]
-   [:checkins :venue_id]
-   [:users :_id]
-   [:users :last_login]
-   [:users :name]
-   [:venues :_id]
-   [:venues :category_id]
-   [:venues :latitude]
-   [:venues :longitude]
-   [:venues :name]
-   [:venues :price]])
-
-(defn- table-name->fake-table
-  "Return an object that can be passed like a `Table` to driver sync functions."
-  [table-name]
-  {:pre [(keyword? table-name)]}
-  {:db   (delay (mongo-db))
-   :name (name table-name)})
-
-(defn- field-name->fake-field
-  "Return an object that can be passed like a `Field` to driver sync functions."
-  [table-name field-name]
-  {:pre [(keyword? table-name)
-         (keyword? field-name)]}
-  (let [table-delay (delay (table-name->fake-table table-name))]
-    {:name                      (name field-name)
-     :table                     table-delay
-     :qualified-name-components (delay [(name (:name @table-delay)) (name field-name)])}))
 
 ;; ## Tests for connection functions
 
@@ -97,63 +66,31 @@
 
 ;; ## Tests for individual syncing functions
 
-(resolve-private-fns metabase.driver.mongo field->base-type table->column-names)
-
-;; ### active-tables
+;; DESCRIBE-DATABASE
 (expect-when-testing-mongo
-    #{{:name "checkins"}
-      {:name "categories"}
-      {:name "users"}
-      {:name "venues"}}
-    (driver/active-tables (MongoDriver.) (mongo-db)))
+    {:tables #{{:name "checkins"}
+               {:name "categories"}
+               {:name "users"}
+               {:name "venues"}}}
+    (driver/describe-database (MongoDriver.) (mongo-db)))
 
-;; ### table->column-names
-(expect-when-testing-mongo
-    [#{:_id :name}                                           ; categories
-     #{:_id :date :venue_id :user_id}                        ; checkins
-     #{:_id :name :last_login :password}                     ; users
-     #{:_id :name :longitude :latitude :price :category_id}] ; venues
-  (->> table-names
-       (map table-name->fake-table)
-       (map table->column-names)))
-
-;; ### field->base-type
-(expect-when-testing-mongo
-    [:IntegerField  ; categories._id
-     :TextField     ; categories.name
-     :IntegerField  ; checkins._id
-     :DateField     ; checkins.date
-     :IntegerField  ; checkins.user_id
-     :IntegerField  ; checkins.venue_id
-     :IntegerField  ; users._id
-     :DateField     ; users.last_login
-     :TextField     ; users.name
-     :IntegerField  ; venues._id
-     :IntegerField  ; venues.category_id
-     :FloatField    ; venues.latitude
-     :FloatField    ; venues.longitude
-     :TextField     ; venues.name
-     :IntegerField] ; venues.price
-  (->> field-names
-       (map (partial apply field-name->fake-field))
-       (mapv field->base-type)))
-
-;; ### active-column-names->type
-(expect-when-testing-mongo
-    [{"_id" :IntegerField, "name" :TextField}                                                                                                       ; categories
-     {"_id" :IntegerField, "date" :DateField, "venue_id" :IntegerField, "user_id" :IntegerField}                                                    ; checkins
-     {"_id" :IntegerField, "password" :TextField, "name" :TextField, "last_login" :DateField}                                                       ; users
-     {"_id" :IntegerField, "name" :TextField, "longitude" :FloatField, "latitude" :FloatField, "price" :IntegerField, "category_id" :IntegerField}] ; venues
-  (->> table-names
-       (map table-name->fake-table)
-       (mapv (partial driver/active-column-names->type (MongoDriver.)))))
-
-;; ### table-pks
-(expect-when-testing-mongo
-    [#{"_id"} #{"_id"} #{"_id"} #{"_id"}] ; _id for every table
-  (->> table-names
-       (map table-name->fake-table)
-       (mapv (partial driver/table-pks (MongoDriver.)))))
+;; DESCRIBE-TABLE
+(expect
+  {:name   "venues"
+   :fields #{{:name "name",
+              :base-type :TextField}
+             {:name "latitude",
+              :base-type :FloatField}
+             {:name "longitude",
+              :base-type :FloatField}
+             {:name "price",
+              :base-type :IntegerField}
+             {:name "category_id",
+              :base-type :IntegerField}
+             {:name "_id",
+              :base-type :IntegerField,
+              :pk? true}}}
+  (driver/describe-table (MongoDriver.) (venues-table)))
 
 
 ;; ## Big-picture tests for the way data should look post-sync

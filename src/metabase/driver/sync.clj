@@ -27,6 +27,7 @@
          mark-url-field!
          set-field-display-name-if-needed!
          sync-database-active-tables!
+         sync-database-with-tracking!
          sync-field!
          sync-metabase-metadata-table!
          sync-table-active-fields-and-pks!
@@ -36,13 +37,32 @@
          sync-field-nested-fields!
          update-table-row-count!)
 
-;; ## sync-database! and sync-table!
 
-(defn- validate-active-tables [results]
-  (when-not (and (set? results)
-                 (every? map? results)
-                 (every? :name results))
-    (throw (Exception. "Invalid results returned by active-tables. Results should be a set of maps like {:name \"table_name\", :schema \"schema_name_or_nil\"}."))))
+;;; ## ---------------------------------------- PUBLIC API ----------------------------------------
+
+
+(defn sync-database!
+  "Sync DATABASE and all its Tables and Fields."
+  [driver database & {:keys [full-sync?]
+                      :or {full-sync? true}}]
+  (binding [qp/*disable-qp-logging* true
+            *sel-disable-logging*   true]
+    (driver/sync-in-context driver database (partial sync-database-with-tracking! driver database full-sync?))))
+
+(defn sync-table!
+  "Sync a *single* TABLE by running all the sync steps for it.
+   This is used *instead* of `sync-database!` when syncing just one Table is desirable."
+  [driver table & {:keys [full-sync?]
+                   :or {full-sync? true}}]
+  (binding [qp/*disable-qp-logging* true]
+    (driver/sync-in-context driver @(:db table) (fn []
+                                                  ;; TODO: create/update/fetch table
+                                                  (sync-database-active-tables! driver [table] :analyze? full-sync?)
+                                                  (events/publish-event :table-sync {:table_id (:id table)})))))
+
+
+;;; ## ---------------------------------------- IMPLEMENTATION ----------------------------------------
+
 
 (defn- mark-inactive-tables!
   "Mark any `Tables` that are no longer active as such. These are ones that exist in the DB but didn't come back from `active-tables`."
@@ -108,61 +128,39 @@
                (catch Throwable e
                  (log/error (u/format-color 'red "Error in _metabase_metadata: %s" (.getMessage e))))))))))
 
-(defn- -sync-database! [driver database]
-  (let [database-schema    (driver/describe-database driver database)
-        active-tables      (:tables database-schema)
-        existing-table->id (into {} (for [{:keys [name schema id]} (sel :many :fields [Table :name :schema :id], :db_id (:id database), :active true)]
-                                      {{:name name, :schema schema} id}))]
-    (validate-active-tables active-tables)
-
-    (mark-inactive-tables! database active-tables existing-table->id)
-    (create-new-tables!    database active-tables existing-table->id)
-
-    (sync-database-active-tables! driver database-schema (for [table (sel :many Table, :db_id (:id database) :active true)]
-                                                           ;; replace default delays with ones that reuse database (and don't require a DB call)
-                                                           (assoc table :db (delay database))))
-
-    ;; Ok, now if we had a _metabase_metadata table from earlier we can go ahead and sync from it
-    (sync-metabase-metadata-table! driver database active-tables)))
-
-(defn- -sync-database-with-tracking! [driver database]
+(defn- sync-database-with-tracking! [driver database full-sync?]
   (let [start-time (System/currentTimeMillis)
         tracking-hash (str (java.util.UUID/randomUUID))]
     (log/info (u/format-color 'magenta "Syncing %s database '%s'..." (name driver) (:name database)))
     (events/publish-event :database-sync-begin {:database_id (:id database) :custom_id tracking-hash})
 
-    (-sync-database! driver database)
+    (let [database-schema    (driver/describe-database driver database)
+          active-tables      (:tables database-schema)
+          existing-table->id (into {} (for [{:keys [name schema id]} (sel :many :fields [Table :name :schema :id], :db_id (:id database), :active true)]
+                                        {{:name name, :schema schema} id}))]
+      ;; do some quick validations that our tables list is sensible
+      (when-not (and (set? active-tables)
+                     (every? map? active-tables)
+                     (every? :name active-tables))
+        (throw (Exception. "Invalid results returned by active-tables. Results should be a set of maps like {:name \"table_name\", :schema \"schema_name_or_nil\"}.")))
+
+      ;; now persist the tables, creating new ones as needed and inactivating old ones
+      (mark-inactive-tables! database active-tables existing-table->id)
+      (create-new-tables!    database active-tables existing-table->id)
+
+      ;; once the tables are persisted then we can do a detailed sync for each table
+      (let [tables (for [table (sel :many Table, :db_id (:id database) :active true)]
+                     ;; replace default delays with ones that reuse database (and don't require a DB call)
+                     (assoc table :db (delay database)))]
+        (sync-database-active-tables! driver tables :analyze? full-sync?))
+
+      ;; lastly, if we have a _metabase_metadata table go ahead and handle it
+      (sync-metabase-metadata-table! driver database active-tables))
 
     (events/publish-event :database-sync-end {:database_id (:id database) :custom_id tracking-hash :running_time (- (System/currentTimeMillis) start-time)})
     (log/info (u/format-color 'magenta "Finished syncing %s database '%s'. (%d ms)" (name driver) (:name database)
                               (- (System/currentTimeMillis) start-time)))))
 
-(def ^:dynamic *sync-full* true)
-
-(defn sync-database!
-  "Sync DATABASE and all its Tables and Fields."
-  [driver database & {:keys [do-full-sync]
-                      :or {do-full-sync true}}]
-  (binding [qp/*disable-qp-logging* true
-            *sel-disable-logging*   true
-            *sync-full*             do-full-sync]
-    (driver/sync-in-context driver database (partial -sync-database-with-tracking! driver database))))
-
-(defn sync-table!
-  "Sync a *single* TABLE by running all the sync steps for it.
-   This is used *instead* of `sync-database!` when syncing just one Table is desirable."
-  [driver table & {:keys [do-full-sync]
-                   :or {do-full-sync true}}]
-  (binding [qp/*disable-qp-logging* true
-            *sync-full*             do-full-sync]
-    (driver/sync-in-context driver @(:db table) (fn []
-                                                  ;; TODO: its overkill getting the whole schema for one table (optimize this)
-                                                  (let [database-schema (driver/describe-database driver @(:db table))]
-                                                    (sync-database-active-tables! driver database-schema [table]))
-                                                  (events/publish-event :table-sync {:table_id (:id table)})))))
-
-
-;; ### sync-database-active-tables! -- runs the sync-table steps over sequence of Tables
 
 (def ^:private sync-progress-meter-string
   "Create a string that shows sync progress for a database.
@@ -194,43 +192,51 @@
              (apply str (repeat blanks "·"))
              (format "] %s  %3.0f%%" (percent-done->emoji percent-done) (* percent-done 100.0)))))))
 
+
+(defn- sync-database-active-table!
+  [driver table & {:keys [analyze?]
+                   :or {analyze? true}}]
+  (let [table-def (driver/describe-table driver table)]
+    ;; make sure table has :display_name
+    (u/try-apply update-table-display-name! table)
+
+    ;; create all the Fields / PKs
+    (u/try-apply sync-table-active-fields-and-pks! table table-def)
+
+    ;; If we are doing a FULL sync then call functions which require querying the table
+    (when analyze?
+      (when-let [table-stats (driver/analyze-table driver table)]
+        ;; update the row counts for every Table
+        (u/try-apply update-table-row-count! table)
+
+        ;; do field level analysis which requires row data
+        (sync-table-fields-metadata! driver table)))))
+
+
 (defn- sync-database-active-tables!
   "Sync active tables by running each of the sync table steps.
    Note that we want to completely finish each step for *all* tables before starting the next, since they depend on the results of the previous step.
    (e.g., `sync-table-fks!` can't run until all tables have finished `sync-table-active-fields-and-pks!`, since creating `ForeignKeys` to `Fields` of *other*
    Tables can't take place before they exist."
-  [driver database-schema active-tables]
+  [driver active-tables & {:keys [analyze?]
+                           :or {analyze? true}}]
   (let [active-tables (sort-by :name active-tables)]
-    ;; Do a first pass which adds fields and sets PKs which are required for later steps
-    (doseq [table active-tables]
-      ;; make sure table has :display_name
-      (u/try-apply update-table-display-name! table)
-      ;; create all the Fields / PKs
-      (u/try-apply sync-table-active-fields-and-pks! driver database-schema table))
-
-    ;; After that, we can do all the other syncing for the Tables
+    ;; Do a first pass which does the bulk of the work
     (let [tables-count          (count active-tables)
           finished-tables-count (atom 0)]
       (doseq [table active-tables]
-        ;; Sync FKs
-        (u/try-apply sync-table-fks! driver database-schema table)
-
-        ;; If we are doing a FULL sync then call functions which require querying the table
-        (when *sync-full*
-          ;; update the row counts for every Table
-          (u/try-apply update-table-row-count! table)
-          ;; do field level analysis which requires row data
-          (sync-table-fields-metadata! driver table))
+        (sync-database-active-table! driver table :analyze? analyze?)
 
         (swap! finished-tables-count inc)
-        (log/debug (u/format-color 'magenta "%s Synced table '%s'." (sync-progress-meter-string @finished-tables-count tables-count) (:name table)))))))
+        (log/debug (u/format-color 'magenta "%s Synced table '%s'." (sync-progress-meter-string @finished-tables-count tables-count) (:name table)))))
+
+    ;; Second pass to sync FKs, which must take place after all other table info is in place
+    (when (contains? (driver/features driver) :foreign-keys)
+      (doseq [table active-tables]
+        (u/try-apply sync-table-fks! driver table)))))
 
 
 ;; ## sync-table steps.
-
-(defn table-schema [database-schema schema-name table-name]
-  (first (filter #(and (= table-name (:name %))
-                       (= schema-name (:schema %))) (:tables database-schema))))
 
 ;; ### 1) update-table-display-name!
 
@@ -247,7 +253,7 @@
 
 ;; ### 2) sync-table-active-fields-and-pks!
 
-(def ^:private ^{:arglists '([field-name base-type])}
+(def ^{:arglists '([field-def])}
 infer-field-special-type
   "If FIELD has a `name` and `base_type` that matches a known pattern, return the `special_type` we should assign to it."
   (let [bool-or-int #{:BooleanField :BigIntegerField :IntegerField}
@@ -299,71 +305,65 @@ infer-field-special-type
       (assert (every? (partial contains? field/base-types) base-types))
       (assert (contains? field/special-types special-type)))
 
-    (fn [field-name base-type]
+    (fn [{:keys [base-type special-type pk?] field-name :name}]
       {:pre [(string? field-name)
              (keyword? base-type)]}
-      (or (m/find-first (fn [[name-pattern valid-base-types _]]
-                          (and (or (nil? valid-base-types)
-                                   (contains? valid-base-types base-type))
-                               (re-matches name-pattern (s/lower-case field-name))))
-                        pattern+base-types+special-type)))))
+      (or special-type
+          (when pk? :id)
+          (when (= "id" (s/lower-case field-name)) :id)
+          (when-let [matching-pattern (m/find-first (fn [[name-pattern valid-base-types _]]
+                                                      (and (or (nil? valid-base-types)
+                                                               (contains? valid-base-types base-type))
+                                                           (re-matches name-pattern (s/lower-case field-name))))
+                                                    pattern+base-types+special-type)]
+            ;; a little something for the app log
+            (log/debug (u/format-color 'green "%s '%s' matches '%s'. Setting special_type to '%s'."
+                                       (name base-type) field-name (first matching-pattern) (name (last matching-pattern))))
+            ;; the actual special-type is the last element of the pattern
+            (last matching-pattern))))))
 
 (defn- insert-or-update-active-field!
-  [field existing-field table]
-  (let [{active-field-name :name,
-         active-field-type :base-type,
-         active-field-pk?  :pk?}              field
-        {existing-base-type    :base_type,
-         existing-field-id     :id,
+  [field-def existing-field table]
+  (let [{field-name :name, field-base-type :base-type}  field-def
+        {existing-base-type    :base_type
          existing-special-type :special_type
-         existing-display-name :display_name} existing-field
-        ;; here we do a quick attempt to match the field name to a known pattern indicating its special type
-        [pattern _ inferred-special-type]     (infer-field-special-type active-field-name active-field-type)
-        field-special-type                    (or existing-special-type
-                                                  (when active-field-pk? :id)
-                                                  (when (= "id" (s/lower-case active-field-name)) :id)
-                                                  inferred-special-type)
-
-        field-display-name                    (or existing-display-name
-                                                  (common/name->human-readable-name active-field-name))
-        field-base-type                       (if (= active-field-type existing-base-type)
-                                                existing-base-type
-                                                active-field-type)]
-    (when (and inferred-special-type
-               (not existing-special-type)
-               (not (= :id field-special-type)))
-      (log/debug (u/format-color 'green "%s '%s' matches '%s'. Setting special_type to '%s'."
-                                 (name active-field-type) active-field-name pattern (name field-special-type))))
+         existing-display-name :display_name}           existing-field
+        field-special-type                              (or existing-special-type
+                                                            (infer-field-special-type field-def))
+        field-display-name                              (or existing-display-name
+                                                            (common/name->human-readable-name field-name))
+        field-base-type                                 (if (= field-base-type existing-base-type)
+                                                          existing-base-type
+                                                          field-base-type)]
     (if-not existing-field
       ;; Field doesn't exist, so create it.
       (ins Field
         :table_id     (:id table)
-        :name         active-field-name
+        :name         field-name
         :display_name field-display-name
-        :base_type    active-field-type
+        :base_type    field-base-type
         :special_type field-special-type)
       ;; Otherwise update the Field if needed
-      (when-not (and (= field-base-type existing-base-type)
-                     (= field-special-type existing-special-type)
-                     (= field-display-name existing-display-name))
-        (log/debug (u/format-color 'blue "Updating field '%s.%s' :base_type %s, :special_type %s, :display_name." (:name table) active-field-name field-base-type field-special-type field-display-name))
-        (upd Field existing-field-id
+      (when-not (and (= field-display-name existing-display-name)
+                     (= field-base-type existing-base-type)
+                     (= field-special-type existing-special-type))
+        (log/debug (u/format-color 'blue "Updating field '%s.%s' :base_type %s, :special_type %s, :display_name." (:name table) field-name field-base-type field-special-type field-display-name))
+        (upd Field (:id existing-field)
+          :display_name field-display-name
           :base_type    field-base-type
-          :special_type field-special-type
-          :display_name field-display-name)))))
+          :special_type field-special-type)))))
 
 (defn- sync-table-active-fields-and-pks!
   "Create new Fields (and mark old ones as inactive) for TABLE, and update PK fields."
-  [driver database-schema table]
-  (let [table-schema               (table-schema database-schema (:schema table) (:name table))
-        existing-field-name->field (sel :many :field->fields [Field :name :base_type :special_type :display_name :id], :table_id (:id table), :active true, :parent_id nil)]
+  [table table-def]
 
-    (assert (every? map? (:fields table-schema)) "table-schema should describe each field using a map.")
-    (assert (every? string? (map :name (:fields table-schema))) "The :name of each field in table-schema should be a string.")
-    (assert (every? (partial contains? field/base-types) (map :base-type (:fields table-schema))) "The :base-type of each field in table-schema should be a valid Field base type.")
+  (assert (every? map? (:fields table-def)) "table-def should describe each field using a map.")
+  (assert (every? string? (map :name (:fields table-def))) "The :name of each field in table-def should be a string.")
+  (assert (every? (partial contains? field/base-types) (map :base-type (:fields table-def))) "The :base-type of each field in table-def should be a valid Field base type.")
 
+  (let [existing-field-name->field (sel :many :field->fields [Field :name :base_type :special_type :display_name :id], :table_id (:id table), :active true, :parent_id nil)]
     ;; As above, first mark inactive Fields
-    (let [active-column-names (set (map :name (:fields table-schema)))]
+    (let [active-column-names (set (map :name (:fields table-def)))]
       (doseq [[field-name {field-id :id}] existing-field-name->field]
         (when-not (contains? active-column-names field-name)
           (upd Field field-id :active false)
@@ -372,59 +372,15 @@ infer-field-special-type
     ;; Create new Fields, update existing types if needed
     ;; TODO - we need to add functionality to update nested Field base types as well!
     (let [existing-field-names (set (keys existing-field-name->field))
-          new-field-names      (set/difference (set (map :name (:fields table-schema))) existing-field-names)]
+          new-field-names      (set/difference (set (map :name (:fields table-def))) existing-field-names)]
       (when (seq new-field-names)
         (log/debug (u/format-color 'blue "Found new fields for table '%s': %s" (:name table) new-field-names)))
 
-      (doseq [field (:fields table-schema)]
-        (insert-or-update-active-field! field (existing-field-name->field (:name field)) table)))))
+      (doseq [field-def (:fields table-def)]
+        (insert-or-update-active-field! field-def (existing-field-name->field (:name field-def)) table)))))
 
 
-;; ### 3) sync-table-fks!
-
-(defn- determine-fk-type
-  "Determine whether a FK is `:1t1`, or `:Mt1`.
-   Do this by getting the count and distinct counts of source `Field`.
-
-   *  If count and distinct count are equal, we have a one-to-one foreign key relationship.
-   *  If count is > distinct count, we have a many-to-one foreign key relationship."
-  [field]
-  (let [field-count          (queries/field-count field)
-        field-distinct-count (queries/field-distinct-count field)]
-    (if (= field-count field-distinct-count) :1t1
-        :Mt1)))
-
-(defn- sync-table-fks! [driver database-schema table]
-  (when (contains? (driver/features driver) :foreign-keys)
-    (let [table-schema (table-schema database-schema (:schema table) (:name table))
-          fks          (set (for [fk-field (filter :fk (:fields table-schema))]
-                              {:fk-column-name   (:name fk-field)
-                               :dest-table-name  (get-in fk-field [:fk :dest-table])
-                               :dest-column-name (get-in fk-field [:fk :dest-field])}))]
-      (assert (and (set? fks)
-                   (every? map? fks)
-                   (every? :fk-column-name fks)
-                   (every? :dest-table-name fks)
-                   (every? :dest-column-name fks))
-              "table-fks should return a set of maps with keys :fk-column-name, :dest-table-name, and :dest-column-name.")
-      (when (seq fks)
-        (let [fk-name->id    (sel :many :field->id [Field :name], :table_id (:id table), :special_type nil, :name [in (map :fk-column-name fks)], :parent_id nil)
-              table-name->id (sel :many :field->id [Table :name], :name [in (map :dest-table-name fks)])]
-          (doseq [{:keys [fk-column-name dest-column-name dest-table-name] :as fk} fks]
-            (when-let [fk-column-id (fk-name->id fk-column-name)]
-              (when-let [dest-table-id (table-name->id dest-table-name)]
-                (when-let [dest-column-id (sel :one :id Field, :table_id dest-table-id, :name dest-column-name, :parent_id nil)]
-                  (log/debug (u/format-color 'green "Marking foreign key '%s.%s' -> '%s.%s'." (:name table) fk-column-name dest-table-name dest-column-name))
-                  (ins ForeignKey
-                    :origin_id      fk-column-id
-                    :destination_id dest-column-id
-                    ;; TODO: do we even care about this?
-                    ;:relationship   (determine-fk-type {:id fk-column-id, :table (delay table)}) ; fake a Field instance
-                    :relationship   :Mt1)
-                  (upd Field fk-column-id :special_type :fk))))))))))
-
-
-;; ### 4) update-table-row-count!  (*sync-full* ONLY)
+;; ### 3) update-table-row-count!  (full sync ONLY)
 
 (defn- update-table-row-count!
   "Update the row count of TABLE if it has changed."
@@ -438,7 +394,7 @@ infer-field-special-type
       (log/error (u/format-color 'red "Unable to update row_count for '%s': %s" (:name table) (.getMessage e))))))
 
 
-;; ### 5) sync-table-fields-metadata!  (*sync-full* ONLY)
+;; ### 4) sync-table-fields-metadata!  (full sync ONLY)
 
 (defn- sync-table-fields-metadata!
   "Call `sync-field!` for every active Field for TABLE."
@@ -448,6 +404,45 @@ infer-field-special-type
     (doseq [field active-fields]
       ;; replace the normal delay for the Field with one that just returns the existing Table so we don't need to re-fetch
       (u/try-apply sync-field! driver (assoc field :table (delay table))))))
+
+
+;; ### 5) sync-table-fks!
+
+(defn- determine-fk-type
+  "Determine whether a FK is `:1t1`, or `:Mt1`.
+   Do this by getting the count and distinct counts of source `Field`.
+
+   *  If count and distinct count are equal, we have a one-to-one foreign key relationship.
+   *  If count is > distinct count, we have a many-to-one foreign key relationship."
+  [field]
+  (let [field-count          (queries/field-count field)
+        field-distinct-count (queries/field-distinct-count field)]
+    (if (= field-count field-distinct-count) :1t1
+                                             :Mt1)))
+
+(defn- sync-table-fks! [driver table]
+  (when (contains? (driver/features driver) :foreign-keys)
+    (let [fks (driver/describe-table-fks driver table)]
+      (assert (and (set? fks)
+                   (every? map? fks)
+                   (every? :fk-column-name fks)
+                   (every? :dest-table fks)
+                   (every? :dest-column-name fks))
+              "table-fks should return a set of maps with keys :fk-column-name, :dest-table, and :dest-column-name.")
+      (when (seq fks)
+        (let [fk-name->id    (sel :many :field->id [Field :name], :table_id (:id table), :name [in (map :fk-column-name fks)], :parent_id nil)]
+          (doseq [{:keys [fk-column-name dest-column-name dest-table]} fks]
+            (when-let [fk-column-id (fk-name->id fk-column-name)]
+              (when-let [dest-table-id (sel :one :field [Table :id], :db_id (:db_id table) :name (:name dest-table) :schema (:schema dest-table))]
+                (when-let [dest-column-id (sel :one :id Field, :table_id dest-table-id, :name dest-column-name, :parent_id nil)]
+                  (log/debug (u/format-color 'green "Marking foreign key '%s.%s' -> '%s.%s'." (:name table) fk-column-name (:name dest-table) dest-column-name))
+                  (ins ForeignKey
+                    :origin_id      fk-column-id
+                    :destination_id dest-column-id
+                    ;; TODO: do we even care about this?
+                    ;:relationship   (determine-fk-type {:id fk-column-id, :table (delay table)}) ; fake a Field instance
+                    :relationship   :Mt1)
+                  (upd Field fk-column-id :special_type :fk))))))))))
 
 
 ;; ## sync-field

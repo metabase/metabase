@@ -23,104 +23,49 @@
   (delay (Field (id :users :name))))
 
 
-;; ANALYZE-TABLE
-
 ;; DESCRIBE-DATABASE
 (expect
-  {:tables #{{:name   "CATEGORIES"
-              :schema "PUBLIC"
-              :fields [{:name "NAME",
-                        :column-type "VARCHAR",
-                        :base-type :TextField}
-                       {:name "ID",
-                        :column-type "BIGINT",
-                        :base-type :BigIntegerField,
-                        :pk? true}]}
-             {:name   "VENUES"
-              :schema "PUBLIC"
-              :fields [{:name "NAME",
-                        :column-type "VARCHAR",
-                        :base-type :TextField}
-                       {:name "LATITUDE",
-                        :column-type "DOUBLE",
-                        :base-type :FloatField}
-                       {:name "LONGITUDE",
-                        :column-type "DOUBLE",
-                        :base-type :FloatField}
-                       {:name "PRICE",
-                        :column-type "INTEGER",
-                        :base-type :IntegerField}
-                       {:name "CATEGORY_ID",
-                        :column-type "INTEGER",
-                        :base-type :IntegerField,
-                        :fk {:dest-table "CATEGORIES",
-                             :dest-field "ID"}}
-                       {:name "ID",
-                        :column-type "BIGINT",
-                        :base-type :BigIntegerField,
-                        :pk? true}]}
-             {:name   "CHECKINS"
-              :schema "PUBLIC"
-              :fields [{:name "USER_ID",
-                        :column-type "INTEGER",
-                        :base-type :IntegerField,
-                        :fk {:dest-table "USERS",
-                             :dest-field "ID"}}
-                       {:name "VENUE_ID",
-                        :column-type "INTEGER",
-                        :base-type :IntegerField,
-                        :fk {:dest-table "VENUES",
-                             :dest-field "ID"}}
-                       {:name "DATE",
-                        :column-type "DATE",
-                        :base-type :DateField}
-                       {:name "ID",
-                        :column-type "BIGINT",
-                        :base-type :BigIntegerField,
-                        :pk? true}]}
-             {:name   "USERS"
-              :schema "PUBLIC"
-              :fields [{:name "NAME",
-                        :column-type "VARCHAR",
-                        :base-type :TextField}
-                       {:name "LAST_LOGIN",
-                        :column-type "TIMESTAMP",
-                        :base-type :DateTimeField}
-                       {:name "PASSWORD",
-                        :column-type "VARCHAR",
-                        :base-type :TextField}
-                       {:name "ID",
-                        :column-type "BIGINT",
-                        :base-type :BigIntegerField,
-                        :pk? true}]}}}
+  {:tables #{{:name "CATEGORIES" :schema "PUBLIC"}
+             {:name "VENUES"     :schema "PUBLIC"}
+             {:name "CHECKINS"   :schema "PUBLIC"}
+             {:name "USERS"      :schema "PUBLIC"}}}
   (driver/describe-database (H2Driver.) (db)))
 
 ;; DESCRIBE-TABLE
 (expect
   {:name   "VENUES"
    :schema "PUBLIC"
-   :fields [{:name "NAME",
-             :column-type "VARCHAR",
-             :base-type :TextField}
-            {:name "LATITUDE",
-             :column-type "DOUBLE",
-             :base-type :FloatField}
-            {:name "LONGITUDE",
-             :column-type "DOUBLE",
-             :base-type :FloatField}
-            {:name "PRICE",
-             :column-type "INTEGER",
-             :base-type :IntegerField}
-            {:name "CATEGORY_ID",
-             :column-type "INTEGER",
-             :base-type :IntegerField,
-             :fk {:dest-table "CATEGORIES",
-                  :dest-field "ID"}}
-            {:name "ID",
-             :column-type "BIGINT",
-             :base-type :BigIntegerField,
-             :pk? true}]}
-  (driver/describe-table (H2Driver.) (db) (:name @venues-table)))
+   :fields #{{:name "NAME",
+              :column-type "VARCHAR",
+              :base-type :TextField}
+             {:name "LATITUDE",
+              :column-type "DOUBLE",
+              :base-type :FloatField}
+             {:name "LONGITUDE",
+              :column-type "DOUBLE",
+              :base-type :FloatField}
+             {:name "PRICE",
+              :column-type "INTEGER",
+              :base-type :IntegerField}
+             {:name "CATEGORY_ID",
+              :column-type "INTEGER",
+              :base-type :IntegerField}
+             {:name "ID",
+              :column-type "BIGINT",
+              :base-type :BigIntegerField,
+              :pk? true}}}
+  (driver/describe-table (H2Driver.) @venues-table))
+
+;; DESCRIBE-TABLE-FKS
+(expect
+  #{{:fk-column-name   "CATEGORY_ID"
+     :dest-table       {:name   "CATEGORIES"
+                        :schema "PUBLIC"}
+     :dest-column-name "ID"}}
+  (driver/describe-table-fks (H2Driver.) @venues-table))
+
+
+;; ANALYZE-TABLE
 
 
 ;; ## TEST FIELD-AVG-LENGTH
