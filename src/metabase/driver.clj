@@ -143,11 +143,6 @@
 
           Is this property required? Defaults to `false`.")
 
-  (driver-specific-sync-field! ^metabase.models.field.FieldInstance [this, ^FieldInstance field]
-    "*OPTIONAL*. This is a chance for drivers to do custom `Field` syncing specific to their database.
-     For example, the Postgres driver can mark Postgres JSON fields as `special_type = json`.
-     As with the other Field syncing functions in `metabase.driver.sync`, this method should return the modified FIELD, if any, or `nil`.")
-
   (features ^java.util.Set [this]
     "*OPTIONAL*. A set of keyword names of optional features supported by this driver, such as `:foreign-keys`.
      Valid features are: `:foreign-keys :nested-fields :set-timezone :standard-deviation-aggregations`")

@@ -451,8 +451,7 @@ infer-field-special-type
   "Sync the metadata for FIELD, marking urls, categories, etc. when applicable."
   [driver field]
   {:pre [driver field]}
-  (loop [field field, [f & more] [(partial driver/driver-specific-sync-field! driver)
-                                  (partial mark-url-field! driver)
+  (loop [field field, [f & more] [(partial mark-url-field! driver)
                                   (partial mark-no-preview-display-field! driver)
                                   mark-category-field-or-update-field-values!
                                   (partial mark-json-field! driver)

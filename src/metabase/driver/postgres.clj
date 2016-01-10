@@ -78,6 +78,13 @@
     (keyword "timestamp with timezone")    :DateTimeField
     (keyword "timestamp without timezone") :DateTimeField} column-type))
 
+(defn- column->special-type
+  "Attempt to determine the special-type of a Field given its name and Postgres column type."
+  [_ column-name column-type]
+  ;; this is really, really simple right now.  if its postgres :json type then it's :json special-type
+  (when (= column-type :json)
+    :json))
+
 (def ^:const ssl-params
   "Params to include in the JDBC connection spec for an SSL connection."
   {:ssl        true
@@ -94,18 +101,6 @@
                ssl-params))
       (rename-keys {:dbname :db})
       kdb/postgres))
-
-
-(defn- driver-specific-sync-field! [driver {:keys [table], :as field}]
-  ;; TODO - this is throwing a `NullPointerException` (!)
-  (assert (delay? (:db @table))
-    (format "Didn't find DB delay: %s" field))
-  (sql/with-metadata [md driver @(:db @table)]
-    (let [[{:keys [type_name]}] (->> (.getColumns md nil nil (:name @table) (:name field))
-                                     jdbc/result-set-seq)]
-      (when (= type_name "json")
-        (upd Field (:id field) :special_type :json)
-        (assoc field :special_type :json)))))
 
 
 (defn- unix-timestamp->timestamp [_ expr seconds-or-milliseconds]
@@ -178,6 +173,7 @@
   "Implementations of `ISQLDriver` methods for `PostgresDriver`."
   (merge (sql/ISQLDriverDefaultsMixin)
          {:column->base-type         column->base-type
+          :column->special-type      column->special-type
           :connection-details->spec  connection-details->spec
           :date                      date
           :set-timezone-sql          (constantly "UPDATE pg_settings SET setting = ? WHERE name ILIKE 'timezone';")
@@ -211,7 +207,6 @@
                                                            :display-name "Use a secure connection (SSL)?"
                                                            :type         :boolean
                                                            :default      false}])
-          :driver-specific-sync-field!       driver-specific-sync-field!
           :humanize-connection-error-message humanize-connection-error-message})
 
   sql/ISQLDriver PostgresISQLDriverMixin)

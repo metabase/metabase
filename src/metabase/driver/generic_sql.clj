@@ -40,6 +40,10 @@
   (column->base-type ^clojure.lang.Keyword [this, ^Keyword column-type]
     "Given a native DB column type, return the corresponding `Field` `base-type`.")
 
+  (column->special-type ^clojure.lang.Keyword [this, ^String column-name, ^Keyword column-type]
+    "*OPTIONAL*. Attempt to determine the special-type of a field given the column name and native type.
+     For example, the Postgres driver can mark Postgres JSON type columns as `:json` special type.")
+
   (connection-details->spec [this, ^Map details-map]
     "Given a `Database` DETAILS-MAP, return a JDBC connection spec.")
 
@@ -226,12 +230,15 @@
 
 (defn- describe-table-fields
   [metadata driver {:keys [schema name]}]
-  (set (for [{:keys [column_name type_name]} (jdbc/result-set-seq (.getColumns metadata nil schema name nil))]
-         {:name        column_name
-          :column-type type_name
-          :base-type   (or (column->base-type driver (keyword type_name))
-                           (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :UnknownField." type_name))
-                               :UnknownField))})))
+  (set (for [{:keys [column_name type_name]} (jdbc/result-set-seq (.getColumns metadata nil schema name nil))
+             :let [calculated-special-type (column->special-type driver column_name (keyword type_name))]]
+         (merge {:name        column_name
+                 :column-type type_name
+                 :base-type   (or (column->base-type driver (keyword type_name))
+                                  (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :UnknownField." type_name))
+                                      :UnknownField))}
+                (when calculated-special-type
+                  {:special-type calculated-special-type})))))
 
 (defn- add-table-pks
   [metadata table]
@@ -240,9 +247,9 @@
                  (mapv :column_name)
                  set)]
     (update table :fields (fn [fields]
-                            (for [field fields]
-                              (if-not (contains? pks (:name field)) field
-                                                                    (assoc field :pk? true)))))))
+                            (set (for [field fields]
+                                   (if-not (contains? pks (:name field)) field
+                                                                         (assoc field :pk? true))))))))
 
 (defn describe-database
   [driver database]
@@ -286,6 +293,7 @@
    :apply-limit             (resolve 'metabase.driver.generic-sql.query-processor/apply-limit)
    :apply-order-by          (resolve 'metabase.driver.generic-sql.query-processor/apply-order-by)
    :apply-page              (resolve 'metabase.driver.generic-sql.query-processor/apply-page)
+   :column->special-type    (constantly nil)
    :current-datetime-fn     (constantly (k/sqlfn* :NOW))
    :excluded-schemas        (constantly nil)
    :get-connection-for-sync db->connection
