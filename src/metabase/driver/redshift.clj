@@ -24,27 +24,33 @@
     :milliseconds (recur nil (kx// expr 1000) :seconds)))
 
 ;; The Postgres JDBC .getImportedKeys method doesn't work for Redshift, and we're not allowed to access information_schema.constraint_column_usage,
-;; so we'll have to use this custome query instead
+;; so we'll have to use this custom query instead
 ;; See also: [Related Postgres JDBC driver issue on GitHub](https://github.com/pgjdbc/pgjdbc/issues/79)
 ;;           [How to access the equivalent of information_schema.constraint_column_usage in Redshift](https://forums.aws.amazon.com/thread.jspa?threadID=133514)
-(defn- table-fks [_ table]
-  (set (jdbc/query (sql/db->jdbc-connection-spec @(:db table))
-                   ["SELECT source_column.attname AS \"fk-column-name\",
-                       dest_table.relname  AS \"dest-table-name\",
-                       dest_column.attname AS \"dest-column-name\"
-                     FROM pg_constraint c
-                       JOIN pg_namespace n             ON c.connamespace = n.oid
-                       JOIN pg_class source_table      ON c.conrelid     = source_table.oid
-                       JOIN pg_attribute source_column ON c.conrelid     = source_column.attrelid
-                       JOIN pg_class dest_table        ON c.confrelid    = dest_table.oid
-                       JOIN pg_attribute dest_column   ON c.confrelid    = dest_column.attrelid
-                     WHERE c.contype            = 'f'::char
-                       AND source_table.relname = ?
-                       AND n.nspname            = ?
-                       AND source_column.attnum = ANY(c.conkey)
-                       AND dest_column.attnum   = ANY(c.confkey)"
-                    (:name table)
-                    (:schema table)])))
+(defn- describe-table-fks [_ table]
+  (set (for [fk (jdbc/query (sql/db->jdbc-connection-spec @(:db table))
+                            ["SELECT source_column.attname AS \"fk-column-name\",
+                                     dest_table.relname  AS \"dest-table-name\",
+                                     dest_table_ns.nspname AS \"dest-table-schema\",
+                                     dest_column.attname AS \"dest-column-name\"
+                              FROM pg_constraint c
+                                     JOIN pg_namespace n             ON c.connamespace = n.oid
+                                     JOIN pg_class source_table      ON c.conrelid     = source_table.oid
+                                     JOIN pg_attribute source_column ON c.conrelid     = source_column.attrelid
+                                     JOIN pg_class dest_table        ON c.confrelid    = dest_table.oid
+                                     JOIN pg_namespace dest_table_ns ON dest_table.relnamespace = dest_table_ns.oid
+                                     JOIN pg_attribute dest_column   ON c.confrelid    = dest_column.attrelid
+                              WHERE c.contype            = 'f'::char
+                                     AND source_table.relname = ?
+                                     AND n.nspname            = ?
+                                     AND source_column.attnum = ANY(c.conkey)
+                                     AND dest_column.attnum   = ANY(c.confkey)"
+                             (:name table)
+                             (:schema table)])]
+         {:fk-column-name (:fk-column-name fk)
+          :dest-table {:name   (:dest-table-name fk)
+                       :schema (:dest-table-schema fk)}
+          :dest-column-name (:dest-column-name fk)})))
 
 (defrecord RedshiftDriver []
   clojure.lang.Named
@@ -53,29 +59,29 @@
 (extend RedshiftDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:date-interval  date-interval
-          :details-fields (constantly [{:name         "host"
-                                        :display-name "Host"
-                                        :placeholder  "my-cluster-name.abcd1234.us-east-1.redshift.amazonaws.com"
-                                        :required     true}
-                                       {:name         "port"
-                                        :display-name "Port"
-                                        :type         :integer
-                                        :default      5439}
-                                       {:name         "db"
-                                        :display-name "Database name"
-                                        :placeholder  "toucan_sightings"
-                                        :required     true}
-                                       {:name         "user"
-                                        :display-name "Master username"
-                                        :placeholder  "cam"
-                                        :required     true}
-                                       {:name         "password"
-                                        :display-name "Master user password"
-                                        :type         :password
-                                        :placeholder  "*******"
-                                        :required     true}])
-          :table-fks      table-fks})
+         {:date-interval       date-interval
+          :describe-table-fks  describe-table-fks
+          :details-fields      (constantly [{:name         "host"
+                                             :display-name "Host"
+                                             :placeholder  "my-cluster-name.abcd1234.us-east-1.redshift.amazonaws.com"
+                                             :required     true}
+                                            {:name         "port"
+                                             :display-name "Port"
+                                             :type         :integer
+                                             :default      5439}
+                                            {:name         "db"
+                                             :display-name "Database name"
+                                             :placeholder  "toucan_sightings"
+                                             :required     true}
+                                            {:name         "user"
+                                             :display-name "Master username"
+                                             :placeholder  "cam"
+                                             :required     true}
+                                            {:name         "password"
+                                             :display-name "Master user password"
+                                             :type         :password
+                                             :placeholder  "*******"
+                                             :required     true}])})
 
   sql/ISQLDriver
   (merge postgres/PostgresISQLDriverMixin

@@ -101,24 +101,6 @@
   (comp jdbc/get-connection db->jdbc-connection-spec))
 
 
-(defn ISQLDriverDefaultsMixin
-  "Default implementations for methods in `ISQLDriver`."
-  []
-  (require 'metabase.driver.generic-sql.query-processor)
-  {:apply-aggregation       (resolve 'metabase.driver.generic-sql.query-processor/apply-aggregation) ; don't resolve the vars yet so during interactive dev if the
-   :apply-breakout          (resolve 'metabase.driver.generic-sql.query-processor/apply-breakout) ; underlying impl changes we won't have to reload all the drivers
-   :apply-fields            (resolve 'metabase.driver.generic-sql.query-processor/apply-fields)
-   :apply-filter            (resolve 'metabase.driver.generic-sql.query-processor/apply-filter)
-   :apply-join-tables       (resolve 'metabase.driver.generic-sql.query-processor/apply-join-tables)
-   :apply-limit             (resolve 'metabase.driver.generic-sql.query-processor/apply-limit)
-   :apply-order-by          (resolve 'metabase.driver.generic-sql.query-processor/apply-order-by)
-   :apply-page              (resolve 'metabase.driver.generic-sql.query-processor/apply-page)
-   :current-datetime-fn     (constantly (k/sqlfn* :NOW))
-   :excluded-schemas        (constantly nil)
-   :get-connection-for-sync db->connection
-   :set-timezone-sql        (constantly nil)
-   :stddev-fn               (constantly :STDDEV)})
-
 (defn escape-field-name
   "Escape dots in a field name so Korma doesn't get confused and separate them. Returns a keyword."
   ^clojure.lang.Keyword [k]
@@ -289,6 +271,26 @@
 (defn analyze-table
   [driver table]
   {})
+
+
+(defn ISQLDriverDefaultsMixin
+  "Default implementations for methods in `ISQLDriver`."
+  []
+  (require 'metabase.driver.generic-sql.query-processor)
+  {:active-tables           fast-active-tables
+   :apply-aggregation       (resolve 'metabase.driver.generic-sql.query-processor/apply-aggregation) ; don't resolve the vars yet so during interactive dev if the
+   :apply-breakout          (resolve 'metabase.driver.generic-sql.query-processor/apply-breakout) ; underlying impl changes we won't have to reload all the drivers
+   :apply-fields            (resolve 'metabase.driver.generic-sql.query-processor/apply-fields)
+   :apply-filter            (resolve 'metabase.driver.generic-sql.query-processor/apply-filter)
+   :apply-join-tables       (resolve 'metabase.driver.generic-sql.query-processor/apply-join-tables)
+   :apply-limit             (resolve 'metabase.driver.generic-sql.query-processor/apply-limit)
+   :apply-order-by          (resolve 'metabase.driver.generic-sql.query-processor/apply-order-by)
+   :apply-page              (resolve 'metabase.driver.generic-sql.query-processor/apply-page)
+   :current-datetime-fn     (constantly (k/sqlfn* :NOW))
+   :excluded-schemas        (constantly nil)
+   :get-connection-for-sync db->connection
+   :set-timezone-sql        (constantly nil)
+   :stddev-fn               (constantly :STDDEV)})
 
 
 (defn IDriverSQLDefaultsMixin
