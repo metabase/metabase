@@ -164,9 +164,7 @@ export default class Tutorial extends Component {
 
         return (
             <div>
-                { pageFlagTarget &&
-                    <PageFlag ref="pageflag" className="z4" target={pageFlagTarget} text={pageFlagText} bounce={this.state.bouncePageFlag} />
-                }
+                <PageFlag ref="pageflag" className="z5" target={pageFlagTarget} text={pageFlagText} bounce={this.state.bouncePageFlag} />
                 { portalTarget &&
                     <Portal className="z2" target={portalTarget} />
                 }

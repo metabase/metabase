@@ -17,6 +17,8 @@
   padding-left: 0.5em;
   padding-right: 0.75em;
   line-height: 24px;
+
+  transition: left 0.5s ease-in-out, top 0.5s ease-in-out;
 }
 
 .PageFlag:before,
@@ -56,6 +58,28 @@
 .PageFlag--large:before {
   left: -25px;
   border-width: 24px;
+}
+
+.PageFlag-enter {
+  transition: opacity 200ms linear, transform 200ms linear;
+  opacity: 0.01;
+  transform: translateX(15px);
+}
+
+.PageFlag-enter-active {
+  opacity: 1;
+  transform: translateX(0px);
+}
+
+.PageFlag-leave {
+  transition: opacity 200ms linear, transform 200ms linear;
+  opacity: 1;
+  transform: translateX(0px);
+}
+
+.PageFlag-leave-active {
+  opacity: 0.01;
+  transform: translateX(15px);
 }
 
 .bounce-left {
