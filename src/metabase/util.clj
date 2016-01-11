@@ -241,22 +241,43 @@
       ;; otherwise this is a whole number
       :else (format "%,d" number))))
 
-(defn jdbc-clob->str
-  "Convert a `JdbcClob` or `PGobject` to a `String`."
-  (^String
-   [clob]
-   (when clob
-     (condp = (type clob)
-       java.lang.String             clob
-       org.postgresql.util.PGobject (.getValue ^org.postgresql.util.PGobject clob)
-       org.h2.jdbc.JdbcClob         (->> (jdbc-clob->str (.getCharacterStream ^org.h2.jdbc.JdbcClob clob) [])
-                                         (interpose "\n")
-                                         (apply str)))))
-  ([^java.io.BufferedReader reader acc]
-   (if-let [line (.readLine reader)]
-     (recur reader (conj acc line))
-     (do (.close reader)
-         acc))))
+(defprotocol ^:private IClobToStr
+  (jdbc-clob->str ^String [this]
+   "Convert a Postgres/H2/SQLServer JDBC Clob to a string."))
+
+(extend-protocol IClobToStr
+  nil     (jdbc-clob->str [_]    nil)
+  String  (jdbc-clob->str [this] this)
+
+  org.postgresql.util.PGobject
+  (jdbc-clob->str [this] (.getValue this))
+
+  ;; H2 + SQLServer clobs both have methods called `.getCharacterStream` that officially return a `Reader`,
+  ;; but in practice I've only seen them return a `BufferedReader`. Just to be safe include a method to convert
+  ;; a plain `Reader` to a `BufferedReader` so we don't get caught with our pants down
+  java.io.Reader
+  (jdbc-clob->str [this]
+    (jdbc-clob->str (java.io.BufferedReader. this)))
+
+  ;; Read all the lines for the `BufferedReader` and combine into a single `String`
+  java.io.BufferedReader
+  (jdbc-clob->str [this]
+    (with-open [_ this]
+      (loop [acc []]
+        (if-let [line (.readLine this)]
+          (recur (conj acc line))
+          (apply str (interpose "\n" acc))))))
+
+  ;; H2 -- See also http://h2database.com/javadoc/org/h2/jdbc/JdbcClob.html
+  org.h2.jdbc.JdbcClob
+  (jdbc-clob->str [this]
+    (jdbc-clob->str (.getCharacterStream this)))
+
+  ;; SQL Server -- See also http://jtds.sourceforge.net/doc/net/sourceforge/jtds/jdbc/ClobImpl.html
+  net.sourceforge.jtds.jdbc.ClobImpl
+  (jdbc-clob->str [this]
+    (jdbc-clob->str (.getCharacterStream this))))
+
 
 (defn optional
   "Helper function for defining functions that accept optional arguments.
