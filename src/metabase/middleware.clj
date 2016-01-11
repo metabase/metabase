@@ -14,7 +14,8 @@
                              [session :refer [Session]]
                              [setting :refer [defsetting]]
                              [user :refer [User]])
-            [metabase.util :as u]))
+            [metabase.util :as u])
+  (:import com.fasterxml.jackson.core.JsonGenerator))
 
 ;;; # ------------------------------------------------------------ UTIL FNS ------------------------------------------------------------
 
@@ -203,7 +204,7 @@
 ;; ## Custom JSON encoders
 
 ;; stringify JDBC clobs
-(add-encoder org.h2.jdbc.JdbcClob (fn [clob ^com.fasterxml.jackson.core.JsonGenerator json-generator]
+(add-encoder org.h2.jdbc.JdbcClob (fn [clob, ^JsonGenerator json-generator]
                                     (.writeString json-generator (u/jdbc-clob->str clob))))
 
 ;; stringify Postgres binary objects (e.g. PostGIS geometries)
@@ -220,6 +221,12 @@
 
 ;; serialize sql dates (i.e., QueryProcessor results) like YYYY-MM-DD instead of as a full-blown timestamp
 (add-encoder java.sql.Date encode-str)
+
+;; Binary arrays ("[B") -- hex-encode their first four bytes, e.g. "0xC42360D7"
+(add-encoder (Class/forName "[B") (fn [byte-ar, ^JsonGenerator json-generator]
+                                    (.writeString json-generator ^String (apply str "0x" (for [b (take 4 byte-ar)]
+                                                                                           (format "%02X" b))))))
+
 
 (defn- remove-fns-and-delays
   "Remove values that are fns or delays from map M."
