@@ -1,4 +1,4 @@
-(ns metabase.driver.sql-server-test
+(ns metabase.driver.sqlserver-test
   (:require  [cheshire.core :as json]
              [expectations :refer :all]
              [metabase.test.data :as data]
@@ -19,6 +19,6 @@
 
 (expect-with-engine :sqlserver
   [[1 a-gene]]
-  (-> (data/dataset metabase.driver.sql-server-test/genetic-data
+  (-> (data/dataset metabase.driver.sqlserver-test/genetic-data
         (data/run-query genetic-data))
       :data :rows obj->json->obj)) ; convert to JSON + back so the Clob gets stringified
