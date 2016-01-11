@@ -48,15 +48,22 @@
      :xml              :UnknownField
      (keyword "int identity") :IntegerField} column-type)) ; auto-incrementing integer (ie pk) field
 
-(defn- connection-details->spec [_ {:keys [instance], :as details}]
+(defn- connection-details->spec [_ {:keys [instance ssl], :as details}]
   (-> (kdb/mssql details)
       ;; swap out Microsoft Driver details for jTDS ones
       (assoc :classname   "net.sourceforge.jtds.jdbc.Driver"
              :subprotocol "jtds:sqlserver")
+
       ;; adjust the connection URL to match up with the jTDS format (see http://jtds.sourceforge.net/faq.html#urlFormat)
-      ;; and add the ;instance= option if applicable
-      (update :subname #(cond-> (s/replace % #";database=" "/")
-                          (seq instance) (str ";instance=" instance)))))
+      (update :subname #(-> %
+                            ;; jTDS uses a "/" instead of ";database="
+                            (s/replace #";database=" "/")
+                            ;; and add the ;instance= option if applicable
+                            (str (when (seq instance)
+                                   (str ";instance=" instance)))
+                            ;; If SSL is specified append ;ssl=require, which enables SSL and throws exception if SSL connection cannot be made
+                            (str (when ssl
+                                   ";ssl=require"))))))
 
 (defn- date-part [unit expr]
   (k/sqlfn :DATEPART (k/raw (name unit)) expr))
@@ -146,7 +153,11 @@
                                        {:name         "password"
                                         :display-name "Database password"
                                         :type         :password
-                                        :placeholder  "*******"}])})
+                                        :placeholder  "*******"}
+                                       {:name         "ssl"
+                                        :display-name "Use a secure connection (SSL)?"
+                                        :type         :boolean
+                                        :default      false}])})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)

@@ -323,11 +323,11 @@
 
 (defn host-port-up?
   "Returns true if the port is active on a given host, false otherwise"
-  [^String hostname ^Integer port]
+  [^String hostname, ^Integer port]
   (try
     (let [sock-addr (InetSocketAddress. hostname port)]
       (with-open [sock (Socket.)]
-        (. sock connect sock-addr host-up-timeout)
+        (.connect sock sock-addr host-up-timeout)
         true))
     (catch Exception _ false)))
 
