@@ -6,6 +6,7 @@
                              [dashboard :refer [Dashboard]]
                              [database :refer [Database]]
                              [interface :refer :all]
+                             [metric :refer [Metric]]
                              [pulse :refer [Pulse]]
                              [segment :refer [Segment]]
                              [table :refer [Table]]
@@ -38,6 +39,7 @@
           :model_exists (delay (case model
                                  "card"      (db/exists? Card :id model_id)
                                  "dashboard" (db/exists? Dashboard :id model_id)
+                                 "metric"    (db/exists? Metric :id model_id)
                                  "pulse"     (db/exists? Pulse :id model_id)
                                  "segment"   (db/exists? Segment :id model_id :is_active true)
                                  nil))
