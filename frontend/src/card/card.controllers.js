@@ -678,6 +678,16 @@ CardControllers.controller('CardDetail', [
                 card.isDirty = true;
             }
 
+            if ($routeParams.segment != undefined && card.dataset_query.query) {
+                card.dataset_query.query.filter = ["AND", ["SEGMENT", parseInt($routeParams.segment)]];
+                card.isDirty = true;
+            }
+
+            if ($routeParams.metric != undefined && card.dataset_query.query) {
+                card.dataset_query.query.aggregation = ["METRIC", parseInt($routeParams.metric)];
+                card.isDirty = true;
+            }
+
             return card;
         }
 

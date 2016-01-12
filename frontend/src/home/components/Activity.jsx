@@ -150,14 +150,14 @@ export default class Activity extends Component {
                 break;
             case "metric-create":
                 if(item.model_exists) {
-                    description.summary = (<span>added the metric <span className="text-dark">{item.details.name}</span> to the <a className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id)}>{item.table.display_name}</a> table</span>);
+                    description.summary = (<span>added the metric <a className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id, item.model_id)}>{item.details.name}</a> to the <a className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id)}>{item.table.display_name}</a> table</span>);
                 } else {
                     description.summary = (<span>added the metric <span className="text-dark">{item.details.name}</span></span>);
                 }
                 break;
             case "metric-update":
                 if(item.model_exists) {
-                    description.summary = (<span>made changes to the metric <span className="text-dark">{item.details.name}</span> in the <a className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id)}>{item.table.display_name}</a> table</span>);
+                    description.summary = (<span>made changes to the metric <a className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id, item.model_id)}>{item.details.name}</a> in the <a className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id)}>{item.table.display_name}</a> table</span>);
                 } else {
                     description.summary = (<span>made changes to the metric <span className="text-dark">{item.details.name}</span></span>);
                 }
@@ -173,14 +173,14 @@ export default class Activity extends Component {
                 break;
             case "segment-create":
                 if(item.model_exists) {
-                    description.summary = (<span>added the filter <span className="text-dark">{item.details.name}</span> to the <a className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id)}>{item.table.display_name}</a> table</span>);
+                    description.summary = (<span>added the filter <a className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id, null, item.model_id)}>{item.details.name}</a> to the <a className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id)}>{item.table.display_name}</a> table</span>);
                 } else {
                     description.summary = (<span>added the filter <span className="text-dark">{item.details.name}</span></span>);
                 }
                 break;
             case "segment-update":
                 if(item.model_exists) {
-                    description.summary = (<span>made changes to the filter <span className="text-dark">{item.details.name}</span> in the <a className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id)}>{item.table.display_name}</a> table</span>);
+                    description.summary = (<span>made changes to the filter <a className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id, null, item.model_id)}>{item.details.name}</a> in the <a className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id)}>{item.table.display_name}</a> table</span>);
                 } else {
                     description.summary = (<span>made changes to the filter <span className="text-dark">{item.details.name}</span></span>);
                 }
