@@ -65,7 +65,7 @@
   #{}
   (do
     (update-dependencies Mock 2 {:test ["a" "b" "c"]})
-    (set (db/sel :many Dependency :model_id 2))))
+    (set (db/sel :many Dependency :model "Mock" :model_id 2))))
 
 ;; valid working dependencies list
 (expect
