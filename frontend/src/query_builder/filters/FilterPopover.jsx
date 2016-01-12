@@ -196,7 +196,7 @@ export default class FilterPopover extends Component {
                         className="text-purple"
                         field={this.state.filter[1]}
                         fieldOptions={Query.getFieldOptions(this.props.tableMetadata.fields, true)}
-                        segmentOptions={this.props.tableMetadata.segments}
+                        segmentOptions={this.props.tableMetadata.segments && this.props.tableMetadata.segments.filter((sgmt) => sgmt.is_active === true)}
                         tableMetadata={this.props.tableMetadata}
                         onFieldChange={this.setField}
                         onFilterChange={this.commitFilter}

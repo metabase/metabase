@@ -111,6 +111,13 @@ export default class AggregationWidget extends Component {
             return <span/>;
         }
 
+        let selectedAggregation;
+        if (aggregation[0] === "METRIC") {
+            selectedAggregation = _.findWhere(tableMetadata.metrics, { id: aggregation[1] });
+        } else if (aggregation[0]) {
+            selectedAggregation = _.findWhere(availableAggregations, { short: aggregation[0] });
+        }
+
         let sections = [{
             name: "Metabasics",
             items: availableAggregations.map(aggregation => ({
@@ -123,7 +130,7 @@ export default class AggregationWidget extends Component {
         if (tableMetadata.metrics && tableMetadata.metrics.length > 0) {
             sections.push({
                 name: "Common Metrics",
-                items: tableMetadata.metrics.map(metric => ({
+                items: tableMetadata.metrics.filter((mtrc) => mtrc.is_active === true || (selectedAggregation && selectedAggregation.id === mtrc.id)).map(metric => ({
                     name: metric.name,
                     value: ["METRIC", metric.id],
                     metric: metric
@@ -134,13 +141,6 @@ export default class AggregationWidget extends Component {
 
         if (sections.length === 1) {
             sections[0].name = null
-        }
-
-        let selectedAggregation;
-        if (aggregation[0] === "METRIC") {
-            selectedAggregation = _.findWhere(tableMetadata.metrics, { id: aggregation[1] });
-        } else if (aggregation[0]) {
-            selectedAggregation = _.findWhere(availableAggregations, { short: aggregation[0] });
         }
 
         return (
