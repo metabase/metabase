@@ -18,25 +18,17 @@
   "Valid values for `Table.visibility_type` (field may also be `nil`)."
   #{:hidden :technical :cruft})
 
-
 (i/defentity Table :metabase_table)
 
-(defn- post-select [{:keys [id db db_id description] :as table}]
-  (u/assoc<> table
-    :db           (or db (delay (db/sel :one database/Database :id db_id)))
-    :description  (u/jdbc-clob->str description)
-    :fields       (delay (db/sel :many Field :table_id id :active true (k/order :position :ASC) (k/order :name :ASC)))
-    :field_values (delay
-                   (let [field-ids (db/sel :many :field [Field :id]
-                                     :table_id id
-                                     :active true
-                                     :field_type [not= "sensitive"]
-                                     (k/order :position :asc)
-                                     (k/order :name :asc))]
-                     (db/sel :many :field->field [FieldValues :field_id :values] :field_id [in field-ids])))
-    :metrics      (delay (retrieve-metrics id :all))
-    :pk_field     (delay (db/sel :one :id Field :table_id id (k/where {:special_type "id"})))
-    :segments     (delay (retrieve-segments id :all))))
+(defn ^:hydrate metrics
+  "Retrieve the metrics for TABLE."
+  [{:keys [id]}]
+  (retrieve-metrics id :all))
+
+(defn ^:hydrate segments
+  "Retrieve the segments for TABLE."
+  [{:keys [id]}]
+  (retrieve-segments id :all))
 
 (defn- pre-insert [table]
   (let [defaults {:display_name (common/name->human-readable-name (:name table))}]
@@ -47,14 +39,30 @@
   (db/cascade-delete Metric :table_id id)
   (db/cascade-delete Field :table_id id))
 
+(defn- ^:hydrate fields [{:keys [id]}]
+  (sel :many Field :table_id id, :active true, (k/order :position :ASC) (k/order :name :ASC)))
+
+(defn- field-values
+  {:hydrate :field_values}
+  [{:keys [id]}]
+  (let [field-ids (sel :many :id Field, :table_id id, :active true, :field_type [not= "sensitive"]
+                       (k/order :position :asc)
+                       (k/order :name :asc))]
+    (sel :many :field->field [FieldValues :field_id :values] :field_id [in field-ids])))
+
+(defn- pk-field-id
+  {:hydrate :pk_field}
+  [{:keys [id]}]
+  (sel :one :id Field, :table_id id, :special_type "id"))
+
 (extend (class Table)
   i/IEntity (merge i/IEntityDefaults
                    {:hydration-keys     (constantly [:table])
-                    :types              (constantly {:entity_type :keyword, :visibility_type :keyword})
+                    :types              (constantly {:entity_type :keyword, :visibility_type :keyword, :description :clob})
                     :timestamped?       (constantly true)
-                    :post-select        post-select
                     :pre-insert         pre-insert
-                    :pre-cascade-delete pre-cascade-delete}))
+                    :pre-cascade-delete pre-cascade-delete
+                    :database           (comp db/Database :db_id)}))
 
 
 ;; ## Persistence Functions

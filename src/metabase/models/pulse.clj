@@ -2,6 +2,7 @@
   (:require [clojure.tools.logging :as log]
             (korma [core :as k]
                    [db :as kdb])
+            [medley.core :as m]
             [metabase.db :as db]
             [metabase.events :as events]
             (metabase.models [card :refer [Card]]
@@ -19,19 +20,23 @@
   (let [defaults {:public_perms perms-readwrite}]
     (merge defaults pulse)))
 
-(defn- post-select [{:keys [id creator_id] :as pulse}]
-  (assoc pulse
-         :cards    (delay (k/select Card
-                                    (k/join PulseCard (= :pulse_card.card_id :id))
-                                    (k/fields :id :name :description :display)
-                                    (k/where {:pulse_card.pulse_id id})
-                                    (k/order :pulse_card.position :asc)))
-         :channels (delay (db/sel :many PulseChannel (k/where {:pulse_id id})))
-         :creator  (delay (when creator_id (db/sel :one User :id creator_id)))))
+(defn- ^:hydrate channels [{:keys [id]}]
+  (db/sel :many PulseChannel, :pulse_id id))
 
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete PulseCard :pulse_id id)
   (db/cascade-delete PulseChannel :pulse_id id))
+
+(defn- ^:hydrate cards [{:keys [id]}]
+  (k/select Card
+            (k/join PulseCard (= :pulse_card.card_id :id))
+            (k/fields :id :name :description :display)
+            (k/where {:pulse_card.pulse_id id})
+            (k/order :pulse_card.position :asc)))
+
+(defn- creator [{:keys [creator_id]}]
+  (when creator_id
+    (User creator_id)))
 
 (extend (class Pulse)
   i/IEntity
@@ -41,8 +46,8 @@
           :can-read?          i/publicly-readable?
           :can-write?         i/publicly-writeable?
           :pre-insert         pre-insert
-          :post-select        post-select
-          :pre-cascade-delete pre-cascade-delete}))
+          :pre-cascade-delete pre-cascade-delete
+          :creator            (comp User :creator_id)}))
 
 
 ;; ## Persistence Functions
@@ -110,13 +115,15 @@
   [id]
   {:pre [(integer? id)]}
   (-> (db/sel :one Pulse :id id)
-      (hydrate :creator :cards [:channels :recipients])))
+      (hydrate :creator :cards [:channels :recipients])
+      (m/dissoc-in [:details :emails])))
 
 (defn retrieve-pulses
   "Fetch all `Pulses`."
   []
-  (-> (db/sel :many Pulse (k/order :name :ASC))
-      (hydrate :creator :cards [:channels :recipients])))
+  (for [pulse (-> (db/sel :many Pulse (k/order :name :ASC))
+                  (hydrate :creator :cards [:channels :recipients]))]
+    (m/dissoc-in pulse [:details :emails])))
 
 (defn update-pulse
   "Update an existing `Pulse`, including all associated data such as: `PulseCards`, `PulseChannels`, and `PulseChannelRecipients`.

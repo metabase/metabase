@@ -17,6 +17,7 @@
                              [field :refer [Field] :as field]
                              [field-values :as field-values]
                              [foreign-key :refer [ForeignKey]]
+                             [interface :as models]
                              [table :refer [Table]])
             [metabase.util :as u]))
 
@@ -150,9 +151,9 @@
    This is used *instead* of `sync-database!` when syncing just one Table is desirable."
   [driver table]
   (binding [qp/*disable-qp-logging* true]
-    (driver/sync-in-context driver @(:db table) (fn []
-                                                  (sync-database-active-tables! driver [table])
-                                                  (events/publish-event :table-sync {:table_id (:id table)})))))
+    (driver/sync-in-context driver (models/database table) (fn []
+                                                             (sync-database-active-tables! driver [table])
+                                                             (events/publish-event :table-sync {:table_id (:id table)})))))
 
 
 ;; ### sync-database-active-tables! -- runs the sync-table steps over sequence of Tables
@@ -332,7 +333,7 @@
                   (ins ForeignKey
                     :origin_id      fk-column-id
                     :destination_id dest-column-id
-                    :relationship   (determine-fk-type {:id fk-column-id, :table (delay table)})) ; fake a Field instance
+                    :relationship   (determine-fk-type (field/map->FieldInstance {:id fk-column-id, :table_id (:id table)}))) ; fake a Fieldinstance
                   (upd Field fk-column-id :special_type :fk))))))))))
 
 
@@ -399,7 +400,7 @@
       (assert (>= percent-urls 0.0))
       (assert (<= percent-urls 100.0))
       (when (> percent-urls percent-valid-url-threshold)
-        (log/debug (u/format-color 'green "Field '%s' is %d%% URLs. Marking it as a URL." @(:qualified-name field) (int (math/round (* 100 percent-urls)))))
+        (log/debug (u/format-color 'green "Field '%s' is %d%% URLs. Marking it as a URL." (field/qualified-name field) (int (math/round (* 100 percent-urls)))))
         (upd Field (:id field) :special_type :url)
         (assoc field :special_type :url)))))
 
@@ -416,7 +417,7 @@
   (let [cardinality (queries/field-distinct-count field low-cardinality-threshold)]
     (when (and (> cardinality 0)
                (< cardinality low-cardinality-threshold))
-      (log/debug (u/format-color 'green "Field '%s' has %d unique values. Marking it as a category." @(:qualified-name field) cardinality))
+      (log/debug (u/format-color 'green "Field '%s' has %d unique values. Marking it as a category." (field/qualified-name field) cardinality))
       (upd Field (:id field) :special_type :category)
       (assoc field :special_type :category))))
 
@@ -445,7 +446,7 @@
     (let [avg-len (driver/field-avg-length driver field)]
       (assert (integer? avg-len) "field-avg-length should return an integer.")
       (when (> avg-len average-length-no-preview-threshold)
-        (log/debug (u/format-color 'green "Field '%s' has an average length of %d. Not displaying it in previews." @(:qualified-name field) avg-len))
+        (log/debug (u/format-color 'green "Field '%s' has an average length of %d. Not displaying it in previews." (field/qualified-name field) avg-len))
         (upd Field (:id field) :preview_display false)
         (assoc field :preview_display false)))))
 
@@ -479,7 +480,7 @@
              (contains? #{:CharField :TextField} (:base_type field))
              (values-are-valid-json? (->> (driver/field-values-lazy-seq driver field)
                                           (take driver/max-sync-lazy-seq-results))))
-    (log/debug (u/format-color 'green "Field '%s' looks like it contains valid JSON objects. Setting special_type to :json." @(:qualified-name field)))
+    (log/debug (u/format-color 'green "Field '%s' looks like it contains valid JSON objects. Setting special_type to :json." (field/qualified-name field)))
     (upd Field (:id field) :special_type :json, :preview_display false)
     (assoc field :special_type :json, :preview_display false)))
 
@@ -556,7 +557,7 @@
   (when-not (:special_type field)
     (when-let [[pattern _ special-type] (field->name-inferred-special-type field)]
       (log/debug (u/format-color 'green "%s '%s' matches '%s'. Setting special_type to '%s'."
-                                (name (:base_type field)) @(:qualified-name field) pattern (name special-type)))
+                                (name (:base_type field)) (field/qualified-name field) pattern (name special-type)))
       (upd Field (:id field) :special_type special-type)
       (assoc field :special_type special-type))))
 
@@ -571,13 +572,13 @@
         ;; mark existing nested fields as inactive if they didn't come back from active-nested-field-name->type
         (doseq [[nested-field-name nested-field-id] existing-nested-field-name->id]
           (when-not (contains? (set (map keyword (keys nested-field-name->type))) (keyword nested-field-name))
-            (log/info (u/format-color 'cyan "Marked nested field '%s.%s' as inactive." @(:qualified-name field) nested-field-name))
+            (log/info (u/format-color 'cyan "Marked nested field '%s.%s' as inactive." (field/qualified-name field) nested-field-name))
             (upd Field nested-field-id :active false)))
 
         ;; OK, now create new Field objects for ones that came back from active-nested-field-name->type but *aren't* in existing-nested-field-name->id
         (doseq [[nested-field-name nested-field-type] nested-field-name->type]
           (when-not (contains? (set (map keyword (keys existing-nested-field-name->id))) (keyword nested-field-name))
-            (log/debug (u/format-color 'blue "Found new nested field: '%s.%s'" @(:qualified-name field) (name nested-field-name)))
+            (log/debug (u/format-color 'blue "Found new nested field: '%s.%s'" (field/qualified-name field) (name nested-field-name)))
             (let [nested-field (ins Field, :table_id (:table_id field), :parent_id (:id field), :name (name nested-field-name) :base_type (name nested-field-type), :active true)]
               ;; Now recursively sync this nested Field
               ;; Replace parent so deref doesn't need to do a DB call

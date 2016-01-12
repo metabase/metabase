@@ -7,6 +7,7 @@
             (metabase.models [activity :refer [Activity] :as activity]
                              [dashboard :refer [Dashboard]]
                              [database :refer [Database]]
+                             [interface :as models]
                              [session :refer [Session first-session-for-user]]
                              [table :as table])))
 
@@ -57,8 +58,8 @@
                                   ;; plus a `:dashcards` attribute which is a vector of the cards added/removed
                                   (-> (db/sel :one Dashboard :id (events/object->model-id topic obj))
                                       (select-keys [:description :name :public_perms])
-                                      (assoc :dashcards (for [{:keys [id card_id card]} dashcards]
-                                                          (-> @card
+                                      (assoc :dashcards (for [{:keys [id card_id], :as dashcard} dashcards]
+                                                          (-> (models/card dashcard)
                                                               (select-keys [:name :description :public_perms])
                                                               (assoc :id id)
                                                               (assoc :card_id card_id))))))]

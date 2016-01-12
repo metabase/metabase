@@ -13,11 +13,10 @@
 
 (i/defentity Dashboard :report_dashboard)
 
-(defn- post-select [{:keys [id creator_id description] :as dash}]
-  (assoc dash
-         :creator       (delay (User creator_id))
-         :description   (u/jdbc-clob->str description)
-         :ordered_cards (delay (sel :many DashboardCard :dashboard_id id (k/order :created_at :asc)))))
+(defn- ordered-cards
+  {:hydrate :ordered_cards}
+  [{:keys [id]}]
+  (sel :many DashboardCard, :dashboard_id id, (k/order :created_at :asc)))
 
 (defn- pre-cascade-delete [{:keys [id]}]
   (cascade-delete 'Revision :model "Dashboard" :model_id id)
@@ -37,10 +36,10 @@
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
 
 
-(defn- serialize-instance [_ id {:keys [ordered_cards], :as dashboard}]
+(defn- serialize-instance [_ id dashboard]
   (-> dashboard
       (select-keys [:description :name :public_perms])
-      (assoc :cards (for [card @ordered_cards]
+      (assoc :cards (for [card (ordered-cards dashboard)]
                       (select-keys card [:sizeX :sizeY :row :col :id :card_id])))))
 
 (defn- revert-to-revision [_ dashboard-id serialized-dashboard]
@@ -92,6 +91,15 @@
 
 
 (extend (class Dashboard)
+  i/IEntity
+  (merge i/IEntityDefaults
+         {:timestamped?       (constantly true)
+          :types              (constantly {:description :clob})
+          :can-read?          i/publicly-readable?
+          :can-write?         i/publicly-writeable?
+          :pre-cascade-delete pre-cascade-delete
+          :creator            (comp User :creator_id)})
+
   revision/IRevisioned
   {:serialize-instance serialize-instance
    :revert-to-revision revert-to-revision

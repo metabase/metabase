@@ -6,8 +6,7 @@
 
 (defn- post-select [{:keys [result_rows] :as query-execution}]
   ;; sadly we have 2 ways to reference the row count :(
-  (assoc query-execution
-         :row_count (or result_rows 0)))
+  (assoc query-execution :row_count (or result_rows 0)))
 
 (extend (class QueryExecution)
   i/IEntity

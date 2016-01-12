@@ -12,12 +12,13 @@
 
 (i/defentity Database :metabase_database)
 
-(defn- post-select [{:keys [id] :as database}]
-  (assoc database :tables (delay (sel :many 'Table :db_id id :active true (k/order :display_name :ASC)))))
-
 (defn- pre-cascade-delete [{:keys [id] :as database}]
   (cascade-delete 'Card  :database_id id)
   (cascade-delete 'Table :db_id id))
+
+(defn- ^:hydrate tables
+  [{:keys [id]}]
+  (sel :many 'Table :db_id id, :active true, (k/order :display_name :ASC)))
 
 (extend (class Database)
   i/IEntity
@@ -25,8 +26,8 @@
          {:hydration-keys     (constantly [:database :db])
           :types              (constantly {:details :json, :engine :keyword})
           :timestamped?       (constantly true)
-          :post-select        post-select
           :pre-cascade-delete pre-cascade-delete}))
+
 
 (add-encoder DatabaseInstance (fn [db json-generator]
                                 (encode-map (cond

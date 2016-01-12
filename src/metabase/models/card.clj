@@ -36,14 +36,14 @@
       (merge defaults card)
       card)))
 
-(defn- post-select [{:keys [creator_id] :as card}]
-  (assoc card
-         :creator         (delay (User creator_id))
-         :dashboard_count (delay (-> (k/select @(ns-resolve 'metabase.models.dashboard-card 'DashboardCard)
-                                               (k/aggregate (count :*) :dashboards)
-                                               (k/where {:card_id (:id card)}))
-                                     first
-                                     :dashboards))))
+(defn ^{:hydrate :dashboard_count} dashboard-count
+  "Return the number of Dashboards this Card is in."
+  [{:keys [id]}]
+  (-> (k/select @(ns-resolve 'metabase.models.dashboard-card 'DashboardCard)
+                (k/aggregate (count :*) :dashboards)
+                (k/where {:card_id id}))
+      first
+      :dashboards))
 
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete 'PulseCard :card_id id)
@@ -84,8 +84,8 @@
           :can-write?         i/publicly-writeable?
           :pre-update         populate-query-fields
           :pre-insert         populate-query-fields
-          :post-select        post-select
-          :pre-cascade-delete pre-cascade-delete})
+          :pre-cascade-delete pre-cascade-delete
+          :creator            (comp User :creator_id)})
 
   revision/IRevisioned
   {:serialize-instance serialize-instance

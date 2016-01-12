@@ -10,7 +10,8 @@
                              [pulse-channel-recipient :refer :all])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :as tu]))
+            [metabase.test.util :as tu]
+            [medley.core :as m]))
 
 (defn user-details
   [username]
@@ -24,7 +25,9 @@
     (-> pulse
         (dissoc :id :creator :public_perms :created_at :updated_at)
         (assoc :cards (mapv #(dissoc % :id) cards))
-        (assoc :channels (mapv #(dissoc % :id :pulse_id :created_at :updated_at) channels)))))
+        (assoc :channels (for [channel channels]
+                           (-> (dissoc channel :id :pulse_id :created_at :updated_at)
+                               (m/dissoc-in [:details :emails])))))))
 
 (defn update-pulse-then-select
   [pulse]
@@ -32,7 +35,9 @@
     (-> pulse
         (dissoc :id :creator :pulse_id :created_at :updated_at)
         (assoc :cards (mapv #(dissoc % :id) cards))
-        (assoc :channels (mapv #(dissoc % :id :pulse_id :created_at :updated_at) channels)))))
+        (assoc :channels (for [channel channels]
+                           (-> (dissoc channel :id :pulse_id :created_at :updated_at)
+                               (m/dissoc-in [:details :emails])))))))
 
 
 ;; retrieve-pulse
@@ -74,7 +79,9 @@
                 (dissoc :id :pulse_id :created_at :updated_at)
                 (assoc :creator (dissoc creator :date_joined :last_login))
                 (assoc :cards (mapv #(dissoc % :id) cards))
-                (assoc :channels (mapv #(dissoc % :id :pulse_id :created_at :updated_at) channels)))))))))
+                (assoc :channels (for [channel channels]
+                                   (-> (dissoc channel :id :pulse_id :created_at :updated_at)
+                                       (m/dissoc-in [:details :emails])))))))))))
 
 ;; retrieve-pulses
 ;; some crappy problem with expectations where tests with vectors of maps are failing without explanation :(
@@ -169,7 +176,6 @@
   {:channel_type  :email
    :schedule_type schedule-type-daily
    :schedule_hour 4
-   :details       {}
    :schedule_day  nil
    :recipients    [{:email "foo@bar.com"}
                    (dissoc (user-details :rasta) :is_superuser)]}
@@ -182,19 +188,19 @@
                                         :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)}]}])
       (-> (db/sel :one PulseChannel :pulse_id id)
           (hydrate :recipients)
-          (dissoc :id :pulse_id :created_at :updated_at)))))
+          (dissoc :id :pulse_id :created_at :updated_at)
+          (m/dissoc-in [:details :emails])))))
 
 ;; create-pulse
 ;; simple example with a single card
 (expect
   {:creator_id (user->id :rasta)
    :name       "Booyah!"
-   :channels   [{:schedule_type :daily,
-                 :schedule_hour 18,
-                 :channel_type :email,
-                 :recipients [{:email "foo@bar.com"}],
-                 :details {},
-                 :schedule_day nil}]
+   :channels   [{:schedule_type :daily
+                 :schedule_hour 18
+                 :channel_type  :email
+                 :recipients    [{:email "foo@bar.com"}]
+                 :schedule_day  nil}]
    :cards      [{:name        "Test Card"
                  :description nil
                  :display     "table"}]}
@@ -230,7 +236,6 @@
    :channels     [{:schedule_type :daily,
                    :schedule_hour 18,
                    :channel_type  :email,
-                   :details       {},
                    :schedule_day  nil,
                    :recipients    [{:email "foo@bar.com"}
                                    (dissoc (user-details :crowberto) :is_superuser)]}]}
