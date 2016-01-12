@@ -48,22 +48,24 @@
      :xml              :UnknownField
      (keyword "int identity") :IntegerField} column-type)) ; auto-incrementing integer (ie pk) field
 
-(defn- connection-details->spec [_ {:keys [instance ssl], :as details}]
+(defn- connection-details->spec [_ {:keys [domain instance ssl], :as details}]
   (-> (kdb/mssql details)
       ;; swap out Microsoft Driver details for jTDS ones
       (assoc :classname   "net.sourceforge.jtds.jdbc.Driver"
              :subprotocol "jtds:sqlserver")
 
       ;; adjust the connection URL to match up with the jTDS format (see http://jtds.sourceforge.net/faq.html#urlFormat)
-      (update :subname #(-> %
-                            ;; jTDS uses a "/" instead of ";database="
-                            (s/replace #";database=" "/")
-                            ;; and add the ;instance= option if applicable
-                            (str (when (seq instance)
-                                   (str ";instance=" instance)))
-                            ;; If SSL is specified append ;ssl=require, which enables SSL and throws exception if SSL connection cannot be made
-                            (str (when ssl
-                                   ";ssl=require"))))))
+      (update :subname (fn [subname]
+                         ;; jTDS uses a "/" instead of ";database="
+                         (cond-> (s/replace subname #";database=" "/")
+                           ;; and add the ;instance= option if applicable
+                           (seq instance) (str ";instance=" instance)
+
+                           ;; add Windows domain for Windows domain authentication if applicable. useNTLMv2 = send LMv2/NTLMv2 responses when using Windows auth
+                           (seq domain) (str ";domain=" domain ";useNTLMv2=true")
+
+                           ;; If SSL is specified append ;ssl=require, which enables SSL and throws exception if SSL connection cannot be made
+                           ssl (str ";ssl=require"))))))
 
 (defn- date-part [unit expr]
   (k/sqlfn :DATEPART (k/raw (name unit)) expr))
@@ -145,6 +147,9 @@
                                         :required     true}
                                        {:name         "instance"
                                         :display-name "Database instance name"
+                                        :placeholder  "N/A"}
+                                       {:name         "domain"
+                                        :display-name "Windows domain"
                                         :placeholder  "N/A"}
                                        {:name         "user"
                                         :display-name "Database username"
