@@ -6,7 +6,7 @@
             [metabase.config :as config]
             [metabase.db :refer [sel del]]
             [metabase.models [common :as common]
-                             [interface :refer :all]]
+                             [interface :as i]]
             [metabase.setup :as setup]
             [metabase.util :as u]
             [metabase.util.password :as password])
@@ -232,9 +232,9 @@
   "Map of setting name (keyword) -> string value, as they exist in the DB."
   (atom nil))
 
-(defentity ^{:doc "The model that underlies `defsetting`."}
-  Setting
-  [(k/table :setting)])
+(i/defentity Setting
+  "The model that underlies `defsetting`."
+  :setting)
 
 (defn- settings-list
   "Return a list of all Settings (as created with `defsetting`).
@@ -254,5 +254,6 @@
                                                              (s/replace "-" "_")
                                                              s/upper-case)))
                                 default)}))))
+
 
 (u/require-dox-in-this-namespace)
