@@ -10,8 +10,8 @@ angular
     'metabase.directives',
     'metabase.forms'
 ])
-.controller('MetadataEditor', ['$scope', '$route', '$routeParams', '$location', '$q', '$timeout', 'databases', 'Metabase', 'ForeignKey', 'Segment',
-function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metabase, ForeignKey, Segment) {
+.controller('MetadataEditor', ['$scope', '$route', '$routeParams', '$location', '$q', '$timeout', 'databases', 'Metabase', 'ForeignKey', 'Segment', 'Metric',
+function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metabase, ForeignKey, Segment, Metric) {
     // inject the React component to be rendered
     $scope.MetadataEditor = MetadataEditor;
 
@@ -187,7 +187,8 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
         loadDatabaseMetadata();
     };
 
-    $scope.onRetireMetric = function(metric) {
-
+    $scope.onRetireMetric = async function(metric) {
+        await Metric.delete(metric).$promise;
+        loadDatabaseMetadata();
     };
 }]);

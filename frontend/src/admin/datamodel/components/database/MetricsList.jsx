@@ -12,6 +12,7 @@ export default class MetricsList extends Component {
         let { tableMetadata } = this.props;
 
         tableMetadata.metrics = tableMetadata.metrics || [];
+        tableMetadata.metrics = tableMetadata.metrics.filter((mtrc) => mtrc.is_active === true);
 
         return (
             <div className="my3">

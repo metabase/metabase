@@ -11,6 +11,9 @@ export default class SegmentsList extends Component {
     render() {
         let { tableMetadata } = this.props;
 
+        tableMetadata.segments = tableMetadata.segments || [];
+        tableMetadata.segments = tableMetadata.segments.filter((sgmt) => sgmt.is_active === true);
+
         return (
             <div className="my3">
                 <div className="flex mb1">
