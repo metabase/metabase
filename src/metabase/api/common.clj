@@ -434,7 +434,8 @@
    {:pre [(models/metabase-entity? entity)
           (integer? id)]}
    (if (satisfies? models/ICanReadWrite entity)
-       (read-check (entity id)))))
+     (models/can-read? entity id)
+     (read-check (entity id)))))
 
 (defn write-check
   "Check whether we can write an existing OBJ, or ENTITY with ID."
@@ -445,5 +446,6 @@
   ([entity id]
    {:pre [(models/metabase-entity? entity)
           (integer? id)]}
-   (if (satisfies? models/ICanReadWrite entity) (models/can-write? entity id)
-       (write-check (entity id)))))
+   (if (satisfies? models/ICanReadWrite entity)
+     (models/can-write? entity id)
+     (write-check (entity id)))))
