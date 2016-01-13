@@ -168,11 +168,8 @@ export default class Tutorial extends Component {
                 { portalTarget &&
                     <Portal className="z2" target={portalTarget} />
                 }
-                { modal && (step.getModalTarget ?
-                    <Popover getTriggerTarget={step.getModalTarget} targetOffsetY={25} onClose={onClose} className="TutorialModal">{modal}</Popover>
-                :
-                    <Modal style={{ backgroundColor: "transparent" }} className="Modal TutorialModal" onClose={onClose}>{modal}</Modal>
-                )}
+                <Modal isOpen={!!(modal && !step.getModalTarget)} style={{ backgroundColor: "transparent" }} className="Modal TutorialModal" onClose={onClose}>{modal}</Modal>
+                <Popover isOpen={!!(modal && step.getModalTarget)} getTriggerTarget={step.getModalTarget} targetOffsetY={25} onClose={onClose} className="TutorialModal">{modal}</Popover>
             </div>
         );
     }
