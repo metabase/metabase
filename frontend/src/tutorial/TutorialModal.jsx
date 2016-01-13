@@ -12,7 +12,9 @@ export default class TutorialModal extends Component {
                         <Icon name='close' width="16px" height="16px"/>
                     </a>
                 </div>
-                <div>{this.props.children}</div>
+                <div className="px4">
+                    {this.props.children}
+                </div>
                 <div className="flex">
                     { modalStepIndex > 0 &&
                         <a className="text-grey-4 cursor-pointer" onClick={this.props.onBack}>back</a>
