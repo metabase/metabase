@@ -380,17 +380,37 @@
                   ~@body)
                 ~collection)))
 
-(defn indecies-satisfying
-  "Return a set of indencies in COLL that satisfy PRED.
+(defn first-index-satisfying
+  "Return the index of the first item in COLL where `(pred item)` is logically `true`.
 
-    (indecies-satisfying keyword? ['a 'b :c 3 :e])
-      -> #{2 4}"
+     (first-index-satisfying keyword? ['a 'b :c 3 \"e\"]) -> 2"
   [pred coll]
-  (->> (for [[i item] (m/indexed coll)]
-         (when (pred item)
-           i))
-       (filter identity)
-       set))
+  (loop [i 0, [item & more] coll]
+    (cond
+      (pred item) i
+      (seq more)  (recur (inc i) more))))
+
+(defmacro prog1
+  "Execute FORM, then any other expressions in BODY, presumably for side-effects; return the result of FORM.
+
+     (def numbers (atom []))
+
+     (defn find-or-add [n]
+       (or (first-index-satisfying (partial = n) @numbers)
+           (prog1 (count @numbers)
+             (swap! numbers conj n))))
+
+     (find-or-add 100) -> 0
+     (find-or-add 200) -> 1
+     (find-or-add 100) -> 0
+
+  `prog1` is exactly like the traditional function of the same name in [Emacs Lisp](http://www.gnu.org/software/emacs/manual/html_node/elisp/Sequencing.html#index-prog1)
+   or [Common Lisp](http://www.lispworks.com/documentation/HyperSpec/Body/m_prog1c.htm#prog1)."
+  {:style/indent 1}
+  [form & body]
+  `(let [result# ~form]
+     ~@body
+     result#))
 
 (defn format-color
   "Like `format`, but uses a function in `colorize.core` to colorize the output.

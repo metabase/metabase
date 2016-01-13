@@ -214,10 +214,9 @@
   "Cumulative sum the values of the aggregate `Field` in RESULTS."
   [cum-sum-field {rows :rows, cols :cols, :as results}]
   (let [ ;; Determine the index of the field we need to cumulative sum
-        cum-sum-field-index (->> cols
-                                 (u/indecies-satisfying #(or (= (:name %) "sum")
-                                                             (= (:id %) (:field-id cum-sum-field))))
-                                 first)
+        cum-sum-field-index (u/first-index-satisfying #(or (= (:name %) "sum")
+                                                           (= (:id %) (:field-id cum-sum-field)))
+                                                      cols)
         _                   (assert (integer? cum-sum-field-index))
         ;; Now make a sequence of cumulative sum values for each row
         values              (->> rows
