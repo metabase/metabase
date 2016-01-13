@@ -9,11 +9,6 @@
     :Mt1
     :MtM})
 
-(def ^:const relationship->name
-  {:1t1 "One to One"
-   :Mt1 "Many to One"
-   :MtM "Many to Many"})
-
 (defentity ForeignKey
   [(table :metabase_foreignkey)
    (types :relationship :keyword)
