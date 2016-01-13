@@ -9,7 +9,8 @@
             metabase.driver.query-processor.interface
             [metabase.models.field :as field]
             [metabase.util :as u]
-            [metabase.util.korma-extensions :as kx])
+            [metabase.util.korma-extensions :as kx]
+            [metabase.driver.sync :as sync])
   (:import java.util.Map
            clojure.lang.Keyword))
 
@@ -276,8 +277,11 @@
 
 
 (defn analyze-table
-  [driver table]
-  {})
+  [driver table new-table-ids]
+  ((sync/generic-analyze-table driver)
+    driver
+    table
+    new-table-ids))
 
 
 (defn ISQLDriverDefaultsMixin

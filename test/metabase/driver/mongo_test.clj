@@ -75,7 +75,7 @@
     (driver/describe-database (MongoDriver.) (mongo-db)))
 
 ;; DESCRIBE-TABLE
-(expect
+(expect-when-testing-mongo
   {:name   "venues"
    :fields #{{:name "name",
               :base-type :TextField}

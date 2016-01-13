@@ -46,7 +46,7 @@
 
      Return a map of string names of active child `Fields` of FIELD -> `Field.base_type`.")
 
-  (analyze-table ^java.util.Map [this, ^TableInstance table]
+  (analyze-table ^java.util.Map [this, ^TableInstance table, ^java.util.Set new-field-ids]
     "Return a map containing information that provides optional analysis values for TABLE.
 
      Each map should be structured as follows:
@@ -205,7 +205,7 @@
                                   more)))))
 
 
-(defn- default-field-percent-urls
+(defn default-field-percent-urls
   "Default implementation for optional driver fn `:field-percent-urls` that calculates percentage in Clojure-land."
   [driver field]
   (->> (field-values-lazy-seq driver field)
@@ -213,7 +213,7 @@
        (take max-sync-lazy-seq-results)
        percent-valid-urls))
 
-(defn- default-field-avg-length [driver field]
+(defn default-field-avg-length [driver field]
   (let [field-values        (->> (field-values-lazy-seq driver field)
                                  (filter identity)
                                  (take max-sync-lazy-seq-results))

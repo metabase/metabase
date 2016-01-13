@@ -15,7 +15,8 @@
             (metabase.driver.mongo [query-processor :as qp]
                                    [util :refer [*mongo-connection* with-mongo-connection values->base-type]])
             [metabase.util :as u]
-            [cheshire.core :as json]))
+            [cheshire.core :as json]
+            [metabase.driver.sync :as sync]))
 
 (declare driver field-values-lazy-seq)
 
@@ -85,6 +86,28 @@
                                    (update special-types st safe-inc)
                                    special-types))))))
 
+;(defn- sync-field-nested-fields! [driver field]
+;  (when (and (= (:base_type field) :DictionaryField)
+;             (contains? (driver/features driver) :nested-fields))
+;    (let [nested-field-name->type (driver/active-nested-field-name->type driver field)]
+;      ;; fetch existing nested fields
+;      (let [existing-nested-field-name->id (sel :many :field->id [Field :name], :table_id (:table_id field), :active true, :parent_id (:id field))]
+;
+;        ;; mark existing nested fields as inactive if they didn't come back from active-nested-field-name->type
+;        (doseq [[nested-field-name nested-field-id] existing-nested-field-name->id]
+;          (when-not (contains? (set (map keyword (keys nested-field-name->type))) (keyword nested-field-name))
+;            (log/info (u/format-color 'cyan "Marked nested field '%s.%s' as inactive." @(:qualified-name field) nested-field-name))
+;            (upd Field nested-field-id :active false)))
+;
+;        ;; OK, now create new Field objects for ones that came back from active-nested-field-name->type but *aren't* in existing-nested-field-name->id
+;        (doseq [[nested-field-name nested-field-type] nested-field-name->type]
+;          (when-not (contains? (set (map keyword (keys existing-nested-field-name->id))) (keyword nested-field-name))
+;            (log/debug (u/format-color 'blue "Found new nested field: '%s.%s'" @(:qualified-name field) (name nested-field-name)))
+;            (let [nested-field (ins Field, :table_id (:table_id field), :parent_id (:id field), :name (name nested-field-name) :base_type (name nested-field-type), :active true)]
+;              ;; Now recursively sync this nested Field
+;              ;; Replace parent so deref doesn't need to do a DB call
+;              (sync-field! driver (assoc nested-field :parent (delay field))))))))))
+
 ;; TODO: nesting?
 (defn- describe-table-field [field-kw field-def]
   ;; TODO: indicate preview-display status based on :len
@@ -126,8 +149,8 @@
                       (describe-table-field field (field parsed-rows))))})))
 
 (defn analyze-table
-  [driver table]
-  {})
+  [driver table new-field-ids]
+  {:row_count (sync/table-row-count table)})
 
 (defn- field-values-lazy-seq [_ {:keys [qualified-name-components table], :as field}]
   (assert (and (map? field)

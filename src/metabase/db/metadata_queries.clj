@@ -29,10 +29,13 @@
 (defn field-distinct-values
   "Return the distinct values of FIELD.
    This is used to create a `FieldValues` object for `:category` Fields."
-  [{field-id :id :as field}]
-  (mapv first (field-query field (-> {}
-                                     (ql/breakout (ql/field-id field-id))
-                                     (ql/limit @(resolve 'metabase.driver.sync/low-cardinality-threshold))))))
+  ([field]
+    (field-distinct-values field @(resolve 'metabase.driver.sync/low-cardinality-threshold)))
+  ([{field-id :id :as field} max-results]
+   {:pre [(integer? max-results)]}
+   (mapv first (field-query field (-> {}
+                                      (ql/breakout (ql/field-id field-id))
+                                      (ql/limit max-results))))))
 
 (defn field-distinct-count
   "Return the distinct count of FIELD."

@@ -39,6 +39,21 @@
 ;;; ## ---------------------------------------- PUBLIC API ----------------------------------------
 
 
+(def ^:const percent-valid-url-threshold
+  "Fields that have at least this percent of values that are valid URLs should be marked as `special_type = :url`."
+  0.95)
+
+
+(def ^:const low-cardinality-threshold
+  "Fields with less than this many distinct values should automatically be marked with `special_type = :category`."
+  40)
+
+
+(def ^:const average-length-no-preview-threshold
+  "Fields whose values' average length is greater than this amount should be marked as `preview_display = false`."
+  50)
+
+
 (defn sync-database!
   "Sync DATABASE and all its Tables and Fields."
   [driver database & {:keys [full-sync?]
@@ -141,18 +156,32 @@
   "Sync the given table, optionally skipping the more time & resource intensive part of the process by specifying `:analyze? false`."
   [driver table & {:keys [analyze?]
                    :or {analyze? true}}]
-  (let [table-def (driver/describe-table driver table)]
-    ;; create all the Fields / PKs
+  (let [active-field-ids         #(set (sel :many :field [Field :id], :table_id (:id table), :active true, :parent_id nil))
+        table-def                (driver/describe-table driver table)
+        current-active-field-ids (active-field-ids)]
+
+    ;; Run basic schema syncing to create all the Fields / PKs
     (u/try-apply sync-table-active-fields-and-pks! table table-def)
 
     ;; If we are doing a FULL sync then call functions which require querying the table
     (when analyze?
-      (when-let [table-stats (driver/analyze-table driver table)]
-        ;; update the row counts for every Table
-        (u/try-apply update-table-row-count! table)
+      (let [new-field-ids (set/difference (active-field-ids) current-active-field-ids)]
+        (when-let [table-stats (driver/analyze-table driver table new-field-ids)]
 
-        ;; do field level analysis which requires row data
-        (sync-table-fields-metadata! driver table)))))
+          ;; update table row count
+          (when (:row_count table-stats)
+            (upd Table (:id table) :rows (:row_count table-stats)))
+
+          ;; update individual fields
+          (doseq [{:keys [id preview-display special-type values]} (:fields table-stats)]
+            ;; set Field metadata we may have detected
+            (when (and id (or preview-display special-type))
+              (upd-non-nil-keys Field id
+                :preview_display preview-display
+                :special_type    special-type))
+            ;; looks like we found some field values
+            (when (and id values)
+              (field-values/save-field-values id values))))))))
 
 
 (defn- sync-database-active-tables!
@@ -369,33 +398,7 @@ infer-field-special-type
         (insert-or-update-active-field! field-def (existing-field-name->field (:name field-def)) table)))))
 
 
-;; ### 2) update-table-row-count!  (full sync ONLY)
-
-(defn- update-table-row-count!
-  "Update the row count of TABLE if it has changed."
-  [table]
-  {:pre [(integer? (:id table))]}
-  (try
-    (let [table-row-count (queries/table-row-count table)]
-      (when-not (= (:rows table) table-row-count)
-        (upd Table (:id table) :rows table-row-count)))
-    (catch Throwable e
-      (log/error (u/format-color 'red "Unable to update row_count for '%s': %s" (:name table) (.getMessage e))))))
-
-
-;; ### 3) sync-table-fields-metadata!  (full sync ONLY)
-
-(defn- sync-table-fields-metadata!
-  "Call `sync-field!` for every active Field for TABLE."
-  [driver table]
-  {:pre [(map? table)]}
-  (let [active-fields (sel :many Field, :table_id (:id table), :active true, :parent_id nil, (k/order :name))]
-    (doseq [field active-fields]
-      ;; replace the normal delay for the Field with one that just returns the existing Table so we don't need to re-fetch
-      (u/try-apply sync-field! driver (assoc field :table (delay table))))))
-
-
-;; ### 4) sync-table-fks!
+;; ### 2) sync-table-fks!
 
 (defn- determine-fk-type
   "Determine whether a FK is `:1t1`, or `:Mt1`.
@@ -434,95 +437,62 @@ infer-field-special-type
                   (upd Field fk-column-id :special_type :fk))))))))))
 
 
-;; ## sync-field
+;; ## Analyze Table
 
-(defn- sync-field!
-  "Sync the metadata for FIELD, marking urls, categories, etc. when applicable."
-  [driver field]
-  {:pre [driver field]}
-  (loop [field field, [f & more] [(partial mark-url-field! driver)
-                                  (partial mark-no-preview-display-field! driver)
-                                  mark-category-field-or-update-field-values!
-                                  (partial mark-json-field! driver)
-                                  (partial sync-field-nested-fields! driver)]]
-    (let [field (or (u/try-apply f field)
-                    field)]
-      (when (seq more)
-        (recur field more)))))
+(defn table-row-count
+  "Determine the count of rows in TABLE by running a simple structured MBQL query."
+  [table]
+  {:pre [(integer? (:id table))]}
+  (try
+    (queries/table-row-count table)
+    (catch Throwable e
+      (log/error (u/format-color 'red "Unable to determine row_count for '%s': %s" (:name table) (.getMessage e))))))
 
+(defn test-cardinality-and-extract-field-values
+  "Extract field-values for FIELD.  If number of values exceeds `low-cardinality-threshold` then we return an empty set of values."
+  [field field-stats]
+  ;; TODO: we need some way of marking a field as not allowing field-values so that we can skip this work if it's not appropriate
+  ;;       for example, :category fields with more than MAX values don't need to be rescanned all the time
+  (let [distinct-values (let [values (queries/field-distinct-values field (inc low-cardinality-threshold))]
+                          ;; only return the list if we didn't exceed our MAX values
+                          (when-not (< low-cardinality-threshold (count values))
+                            values))]
+    (cond-> (assoc field-stats :values distinct-values)
+            (and (nil? (:special_type field))
+                 (< 0 (count distinct-values))) (assoc :special-type :category))))
 
-;; Each field-syncing function below should return FIELD with any updates that we made, or nil.
-;; That way the next fn in the 'pipeline' won't trample over changes made by the last.
-
-
-;; ### mark-url-field!
-
-(def ^:const ^:private percent-valid-url-threshold
-  "Fields that have at least this percent of values that are valid URLs should be marked as `special_type = :url`."
-  0.95)
-
-(defn- mark-url-field!
-  "If FIELD is texual, doesn't have a `special_type`, and its non-nil values are primarily URLs, mark it as `special_type` `url`."
-  [driver field]
-  (when (and (not (:special_type field))
-             (contains? #{:CharField :TextField} (:base_type field)))
-    (when-let [percent-urls (driver/field-percent-urls driver field)]
-      (assert (float? percent-urls))
-      (assert (>= percent-urls 0.0))
-      (assert (<= percent-urls 100.0))
-      (when (> percent-urls percent-valid-url-threshold)
-        (log/debug (u/format-color 'green "Field '%s' is %d%% URLs. Marking it as a URL." @(:qualified-name field) (int (math/round (* 100 percent-urls)))))
-        (upd Field (:id field) :special_type :url)
-        (assoc field :special_type :url)))))
-
-
-;; ### mark-category-field-or-update-field-values!
-
-(def ^:const low-cardinality-threshold
-  "Fields with less than this many distinct values should automatically be marked with `special_type = :category`."
-  40)
-
-(defn- mark-category-field!
-  "If FIELD doesn't yet have a `special_type`, and has low cardinality, mark it as a category."
-  [field]
-  (let [cardinality (queries/field-distinct-count field low-cardinality-threshold)]
-    (when (and (> cardinality 0)
-               (< cardinality low-cardinality-threshold))
-      (log/debug (u/format-color 'green "Field '%s' has %d unique values. Marking it as a category." @(:qualified-name field) cardinality))
-      (upd Field (:id field) :special_type :category)
-      (assoc field :special_type :category))))
-
-(defn- mark-category-field-or-update-field-values!
-  "If FIELD doesn't yet have a `special_type` and isn't very long (i.e., `preview_display` is `true`), call `mark-category-field!`
-   to (possibly) mark it as a `:category`. Otherwise if FIELD is already a `:category` update its `FieldValues`."
-  [field]
-  (cond
-    (and (not (:special_type field))
-         (:preview_display field))                       (mark-category-field! field)
-    (field-values/field-should-have-field-values? field) (do (field-values/update-field-values! field)
-                                                             field)))
-
-
-;; ### mark-no-preview-display-field!
-
-(def ^:const ^:private average-length-no-preview-threshold
-  "Fields whose values' average length is greater than this amount should be marked as `preview_display = false`."
-  50)
-
-(defn- mark-no-preview-display-field!
+(defn test-no-preview-display
   "If FIELD's is textual and its average length is too great, mark it so it isn't displayed in the UI."
-  [driver field]
-  (when (and (:preview_display field)
-             (contains? #{:CharField :TextField} (:base_type field)))
-    (let [avg-len (driver/field-avg-length driver field)]
-      (assert (integer? avg-len) "field-avg-length should return an integer.")
-      (when (> avg-len average-length-no-preview-threshold)
-        (log/debug (u/format-color 'green "Field '%s' has an average length of %d. Not displaying it in previews." @(:qualified-name field) avg-len))
-        (upd Field (:id field) :preview_display false)
-        (assoc field :preview_display false)))))
+  [field field-avg-length-fn field-stats]
+  (if-not (and (:preview_display field)
+               (contains? #{:CharField :TextField} (:base_type field)))
+    ;; this field isn't suited for this test
+    field-stats
+    ;; test for avg length
+    (let [avg-len (field-avg-length-fn field)]
+      (if-not (> avg-len average-length-no-preview-threshold)
+        field-stats
+        (do
+          (log/debug (u/format-color 'green "Field '%s' has an average length of %d. Not displaying it in previews." @(:qualified-name field) avg-len))
+          (assoc field-stats :preview-display false))))))
 
-
-;; ### mark-json-field!
+(defn test-url-special-type
+  "If FIELD is texual, doesn't have a `special_type`, and its non-nil values are primarily URLs, mark it as `special_type` `url`."
+  [field percent-urls-fn field-stats]
+  (if-not (and (not (:special_type field))
+               (contains? #{:CharField :TextField} (:base_type field)))
+    ;; this field isn't suited for this test
+    field-stats
+    ;; test for url values
+    (let [percent-urls (percent-urls-fn field)]
+      (if-not (and (float? percent-urls)
+                   (>= percent-urls 0.0)
+                   (<= percent-urls 100.0)
+                   (> percent-urls percent-valid-url-threshold))
+        field-stats
+        (do
+          (log/debug (u/format-color 'green "Field '%s' is %d%% URLs. Marking it as a URL." @(:qualified-name field) (int (math/round (* 100 percent-urls)))))
+          (assoc field-stats :special-type :url))))))
 
 (defn- values-are-valid-json?
   "`true` if at every item in VALUES is `nil` or a valid string-encoded JSON dictionary or array, and at least one of those is non-nil."
@@ -543,39 +513,39 @@ infer-field-special-type
     (catch Throwable _
       false)))
 
-(defn- mark-json-field!
+(defn test-json-special-type
   "Mark FIELD as `:json` if it's textual, doesn't already have a special type, the majority of it's values are non-nil, and all of its non-nil values
    are valid serialized JSON dictionaries or arrays."
-  [driver field]
-  (when (and (not (:special_type field))
-             (contains? #{:CharField :TextField} (:base_type field))
-             (values-are-valid-json? (->> (driver/field-values-lazy-seq driver field)
-                                          (take driver/max-sync-lazy-seq-results))))
-    (log/debug (u/format-color 'green "Field '%s' looks like it contains valid JSON objects. Setting special_type to :json." @(:qualified-name field)))
-    (upd Field (:id field) :special_type :json, :preview_display false)
-    (assoc field :special_type :json, :preview_display false)))
+  [driver field field-stats]
+  (if-not (and (not (:special_type field))
+               (contains? #{:CharField :TextField} (:base_type field)))
+    ;; this field isn't suited for this test
+    field-stats
+    ;; check for json values
+    (if-not (values-are-valid-json? (->> (driver/field-values-lazy-seq driver field)
+                                         (take driver/max-sync-lazy-seq-results)))
+      field-stats
+      (do
+        (log/debug (u/format-color 'green "Field '%s' looks like it contains valid JSON objects. Setting special_type to :json." @(:qualified-name field)))
+        (assoc field-stats :special-type :json, :preview-display false)))))
 
-
-;; ### sync-field-nested-fields!
-
-(defn- sync-field-nested-fields! [driver field]
-  (when (and (= (:base_type field) :DictionaryField)
-             (contains? (driver/features driver) :nested-fields))
-    (let [nested-field-name->type (driver/active-nested-field-name->type driver field)]
-      ;; fetch existing nested fields
-      (let [existing-nested-field-name->id (sel :many :field->id [Field :name], :table_id (:table_id field), :active true, :parent_id (:id field))]
-
-        ;; mark existing nested fields as inactive if they didn't come back from active-nested-field-name->type
-        (doseq [[nested-field-name nested-field-id] existing-nested-field-name->id]
-          (when-not (contains? (set (map keyword (keys nested-field-name->type))) (keyword nested-field-name))
-            (log/info (u/format-color 'cyan "Marked nested field '%s.%s' as inactive." @(:qualified-name field) nested-field-name))
-            (upd Field nested-field-id :active false)))
-
-        ;; OK, now create new Field objects for ones that came back from active-nested-field-name->type but *aren't* in existing-nested-field-name->id
-        (doseq [[nested-field-name nested-field-type] nested-field-name->type]
-          (when-not (contains? (set (map keyword (keys existing-nested-field-name->id))) (keyword nested-field-name))
-            (log/debug (u/format-color 'blue "Found new nested field: '%s.%s'" @(:qualified-name field) (name nested-field-name)))
-            (let [nested-field (ins Field, :table_id (:table_id field), :parent_id (:id field), :name (name nested-field-name) :base_type (name nested-field-type), :active true)]
-              ;; Now recursively sync this nested Field
-              ;; Replace parent so deref doesn't need to do a DB call
-              (sync-field! driver (assoc nested-field :parent (delay field))))))))))
+(defn generic-analyze-table [driver & {:keys [field-avg-length-fn field-percent-urls-fn]
+                                       :or   {field-avg-length-fn   (partial driver/default-field-avg-length driver)
+                                              field-percent-urls-fn (partial driver/default-field-percent-urls driver)}}]
+  (fn [_ table new-field-ids]
+    ;; NOTE: we only run most of the field analysis work when the field is NEW in order to favor performance of the sync process
+    (let [do-field-values? #(or (field-values/field-should-have-field-values? %)
+                                (and (nil? (:special_type %))
+                                     (contains? new-field-ids (:id %))
+                                     (not (contains? #{:DateField :DateTimeField :TimeField} (:base_type %)))))
+          test-field       (fn [field field-stats]
+                             (->> field-stats
+                                  (test-no-preview-display field field-avg-length-fn)
+                                  (test-url-special-type field field-percent-urls-fn)
+                                  (test-json-special-type driver field)))
+          field-stats (for [{:keys [id] :as field} @(:fields table)]
+                        (cond->> {:id id}
+                                 (do-field-values? field)     (test-cardinality-and-extract-field-values field)
+                                 (contains? new-field-ids id) (test-field field)))]
+      {:row_count (u/try-apply table-row-count table)
+       :fields    field-stats})))
