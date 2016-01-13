@@ -267,9 +267,7 @@
                               (- (System/currentTimeMillis) start-time)))))
 
 
-;; ## sync-table steps.
-
-;; ### 1) sync-table-active-fields-and-pks!
+;; ## Describe Table
 
 (def ^{:arglists '([field-def])}
 infer-field-special-type
@@ -398,8 +396,6 @@ infer-field-special-type
         (insert-or-update-active-field! field-def (existing-field-name->field (:name field-def)) table)))))
 
 
-;; ### 2) sync-table-fks!
-
 (defn- determine-fk-type
   "Determine whether a FK is `:1t1`, or `:Mt1`.
    Do this by getting the count and distinct counts of source `Field`.
@@ -447,6 +443,14 @@ infer-field-special-type
     (queries/table-row-count table)
     (catch Throwable e
       (log/error (u/format-color 'red "Unable to determine row_count for '%s': %s" (:name table) (.getMessage e))))))
+
+(defn test-for-cardinality?
+  "Predicate function which returns `true` if FIELD should be tested for cardinality, `false` otherwise."
+  [field is-new?]
+  (or (field-values/field-should-have-field-values? field)
+       (and (nil? (:special_type field))
+            is-new?
+            (not (contains? #{:DateField :DateTimeField :TimeField} (:base_type field))))))
 
 (defn test-cardinality-and-extract-field-values
   "Extract field-values for FIELD.  If number of values exceeds `low-cardinality-threshold` then we return an empty set of values."
@@ -534,18 +538,14 @@ infer-field-special-type
                                               field-percent-urls-fn (partial driver/default-field-percent-urls driver)}}]
   (fn [_ table new-field-ids]
     ;; NOTE: we only run most of the field analysis work when the field is NEW in order to favor performance of the sync process
-    (let [do-field-values? #(or (field-values/field-should-have-field-values? %)
-                                (and (nil? (:special_type %))
-                                     (contains? new-field-ids (:id %))
-                                     (not (contains? #{:DateField :DateTimeField :TimeField} (:base_type %)))))
-          test-field       (fn [field field-stats]
+    (let [test-field       (fn [field field-stats]
                              (->> field-stats
                                   (test-no-preview-display field field-avg-length-fn)
                                   (test-url-special-type field field-percent-urls-fn)
                                   (test-json-special-type driver field)))
           field-stats (for [{:keys [id] :as field} @(:fields table)]
                         (cond->> {:id id}
-                                 (do-field-values? field)     (test-cardinality-and-extract-field-values field)
-                                 (contains? new-field-ids id) (test-field field)))]
+                                 (test-for-cardinality? field (contains? new-field-ids (:id field))) (test-cardinality-and-extract-field-values field)
+                                 (contains? new-field-ids id)                                        (test-field field)))]
       {:row_count (u/try-apply table-row-count table)
        :fields    field-stats})))

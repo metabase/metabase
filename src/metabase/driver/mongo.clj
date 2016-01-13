@@ -149,8 +149,12 @@
                       (describe-table-field field (field parsed-rows))))})))
 
 (defn analyze-table
-  [driver table new-field-ids]
-  {:row_count (sync/table-row-count table)})
+  [_ table new-field-ids]
+  ;; We only care about 1) table counts and 2) field values
+  {:row_count (sync/table-row-count table)
+   :fields    (for [{:keys [id] :as field} @(:fields table)
+                    :when (sync/test-for-cardinality? field (contains? new-field-ids (:id field)))]
+                (sync/test-cardinality-and-extract-field-values field {:id id}))})
 
 (defn- field-values-lazy-seq [_ {:keys [qualified-name-components table], :as field}]
   (assert (and (map? field)
