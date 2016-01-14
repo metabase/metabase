@@ -46,7 +46,9 @@
 
 
 (defn sync-database!
-  "Sync DATABASE and all its Tables and Fields."
+  "Sync DATABASE and all its Tables and Fields.
+
+   Takes an optional kwarg `:full-sync?` (default = `true`).  A full sync includes more in depth table analysis work."
   [driver database & {:keys [full-sync?]
                       :or {full-sync? true}}]
   (binding [qp/*disable-qp-logging* true
@@ -54,8 +56,10 @@
     (driver/sync-in-context driver database (partial sync-database-with-tracking! driver database full-sync?))))
 
 (defn sync-table!
-  "Sync a *single* TABLE by running all the sync steps for it.
-   This is used *instead* of `sync-database!` when syncing just one Table is desirable."
+  "Sync a *single* TABLE and all of its Fields.
+   This is used *instead* of `sync-database!` when syncing just one Table is desirable.
+
+   Takes an optional kwarg `:full-sync?` (default = `true`).  A full sync includes more in depth table analysis work."
   [driver table & {:keys [full-sync?]
                    :or {full-sync? true}}]
   (binding [qp/*disable-qp-logging* true]
