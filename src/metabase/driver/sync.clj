@@ -20,20 +20,11 @@
                              [table :refer [Table]])
             [metabase.util :as u]))
 
-(declare mark-category-field-or-update-field-values!
-         mark-json-field!
-         mark-no-preview-display-field!
-         mark-url-field!
-         set-field-display-name-if-needed!
-         sync-database-active-tables!
+(declare sync-database-active-tables!
          sync-database-with-tracking!
-         sync-field!
          sync-table-active-fields-and-pks!
          sync-table-fks!
-         sync-table-fields-metadata!
-         update-table-display-name!
-         sync-field-nested-fields!
-         update-table-row-count!)
+         sync-table-nested-fields!)
 
 
 ;;; ## ---------------------------------------- PUBLIC API ----------------------------------------
@@ -104,7 +95,7 @@
                                                                                   table)))))))
 
     ;; Create new Tables, update existing ones if needed
-    (doseq [table-def active-tables]
+    (doseq [table-def (sort-by :name active-tables)]
       (let [existing-table (existing-table-def->table table-def)
             display-name   (common/name->human-readable-name (:name table-def))]
         (if-not existing-table
@@ -160,8 +151,17 @@
         table-def                (driver/describe-table driver table)
         current-active-field-ids (active-field-ids)]
 
+    ;; validate that the table description returned is sensibly formatted
+    (assert (every? map? (:fields table-def)) "table-def should describe each field using a map.")
+    (assert (every? string? (map :name (:fields table-def))) "The :name of each field in table-def should be a string.")
+    (assert (every? (partial contains? field/base-types) (map :base-type (:fields table-def))) "The :base-type of each field in table-def should be a valid Field base type.")
+
     ;; Run basic schema syncing to create all the Fields / PKs
     (u/try-apply sync-table-active-fields-and-pks! table table-def)
+
+    ;; If this driver supports nested fields then lets sync those now as well
+    (when (contains? (driver/features driver) :nested-fields)
+      (u/try-apply sync-table-nested-fields! table table-def))
 
     ;; If we are doing a FULL sync then call functions which require querying the table
     (when analyze?
@@ -339,7 +339,7 @@ infer-field-special-type
             (last matching-pattern))))))
 
 (defn- insert-or-update-active-field!
-  [field-def existing-field table]
+  [field-def existing-field table-id]
   (let [{field-name :name, field-base-type :base-type}  field-def
         {existing-base-type    :base_type
          existing-special-type :special_type
@@ -354,7 +354,8 @@ infer-field-special-type
     (if-not existing-field
       ;; Field doesn't exist, so create it.
       (ins Field
-        :table_id     (:id table)
+        :table_id     table-id
+        :parent_id    (:parent_id field-def)
         :name         field-name
         :display_name field-display-name
         :base_type    field-base-type
@@ -363,7 +364,7 @@ infer-field-special-type
       (when-not (and (= field-display-name existing-display-name)
                      (= field-base-type existing-base-type)
                      (= field-special-type existing-special-type))
-        (log/debug (u/format-color 'blue "Updating field '%s.%s' :base_type %s, :special_type %s, :display_name." (:name table) field-name field-base-type field-special-type field-display-name))
+        (log/debug (u/format-color 'blue "Updating field '%s' :base_type %s, :special_type %s, :display_name." field-name field-base-type field-special-type field-display-name))
         (upd Field (:id existing-field)
           :display_name field-display-name
           :base_type    field-base-type
@@ -373,20 +374,77 @@ infer-field-special-type
   "Create new Fields (and mark old ones as inactive) for TABLE, and update PK fields."
   [table table-def]
 
-  (assert (every? map? (:fields table-def)) "table-def should describe each field using a map.")
-  (assert (every? string? (map :name (:fields table-def))) "The :name of each field in table-def should be a string.")
-  (assert (every? (partial contains? field/base-types) (map :base-type (:fields table-def))) "The :base-type of each field in table-def should be a valid Field base type.")
-
   (let [existing-field-name->field (sel :many :field->fields [Field :name :base_type :special_type :display_name :id], :table_id (:id table), :active true, :parent_id nil)]
     ;; As above, first mark inactive Fields
     (let [active-column-names (set (map :name (:fields table-def)))]
       (doseq [[field-name {field-id :id}] existing-field-name->field]
         (when-not (contains? active-column-names field-name)
           (upd Field field-id :active false)
+          ;; We need to inactivate any nested fields as well
+          (k/update Field
+                    (k/where {:parent_id field-id})
+                    (k/set-fields {:active false}))
           (log/info (u/format-color 'cyan "Marked field '%s.%s' as inactive." (:name table) field-name)))))
 
     ;; Create new Fields, update existing types if needed
-    ;; TODO - we need to add functionality to update nested Field base types as well!
+    (let [existing-field-names (set (keys existing-field-name->field))
+          new-field-names      (set/difference (set (map :name (:fields table-def))) existing-field-names)]
+      (when (seq new-field-names)
+        (log/debug (u/format-color 'blue "Found new fields for table '%s': %s" (:name table) new-field-names)))
+
+      (doseq [field-def (sort-by :name (:fields table-def))]
+        (insert-or-update-active-field! (assoc field-def :parent_id nil) (existing-field-name->field (:name field-def)) (:id table))))))
+
+
+(defn- sync-field-nested-fields! [parent-field nested-field-defs table-id]
+  (let [existing-field-name->field (sel :many :field->fields [Field :name :base_type :special_type :display_name :id], :active true, :parent_id (:id parent-field))]
+    ;; NOTE: this is intentionally disabled because we don't want to remove valid nested fields simply because we scanned different data this time :/
+    ;; As above, first mark inactive Fields
+    ;(let [active-column-names (set (map :name nested-field-defs))]
+    ;  (doseq [[field-name {field-id :id}] existing-field-name->field]
+    ;    (when-not (contains? active-column-names field-name)
+    ;      (upd Field field-id :active false)
+    ;      ;; We need to inactivate any nested fields as well
+    ;      (k/update Field
+    ;                (k/where {:parent_id field-id})
+    ;                (k/set-fields {:active false}))
+    ;      (log/info (u/format-color 'cyan "Marked nested field '%s.%s' as inactive." (:name parent-field) field-name)))))
+
+    ;; Create new Fields, update existing types if needed
+    (let [existing-field-names (set (keys existing-field-name->field))
+          new-field-names      (set/difference (set (map :name nested-field-defs)) existing-field-names)]
+      (when (seq new-field-names)
+        (log/debug (u/format-color 'blue "Found new nested fields for field '%s': %s" (:name parent-field) new-field-names)))
+
+      (doseq [nested-field-def nested-field-defs]
+        (let [nested-field-def (assoc nested-field-def :parent_id (:id parent-field))
+              existing-field   (existing-field-name->field (:name nested-field-def))]
+          (insert-or-update-active-field! nested-field-def existing-field table-id)
+          (when (:nested-fields nested-field-def)
+            ;; TODO: we can recur here and sync the next level of nesting if we want
+            (let [new-parent-field (sel :one Field :name (:name nested-field-def) :table_id table-id, :active true, :parent_id (:id parent-field))]
+              (sync-field-nested-fields! new-parent-field (:nested-fields nested-field-def) table-id))))))))
+
+(defn- sync-table-nested-fields! [{table-id :id :as table} table-def]
+
+  (doseq [field-def (:fields table-def)]
+    (when (:nested-fields field-def)
+      (let [parent-field (sel :one Field :name (:name field-def) :table_id table-id, :active true, :parent_id nil)]
+        (sync-field-nested-fields! parent-field (:nested-fields field-def) table-id))))
+
+  (let [existing-field-name->field (sel :many :field->fields [Field :name :base_type :special_type :display_name :id], :table_id table-id, :active true, :parent_id nil)]
+    ;; As above, first mark inactive Fields
+    (let [active-column-names (set (map :name (:fields table-def)))]
+      (doseq [[field-name {field-id :id}] existing-field-name->field]
+        (when-not (contains? active-column-names field-name)
+          (upd Field field-id :active false)
+          ;; We need to inactivate any nested fields as well
+          (k/update Field
+                    (k/where {:parent_id field-id})
+                    (k/set-fields {:active false}))
+          (log/info (u/format-color 'cyan "Marked field '%s.%s' as inactive." (:name table) field-name)))))
+
+    ;; Create new Fields, update existing types if needed
     (let [existing-field-names (set (keys existing-field-name->field))
           new-field-names      (set/difference (set (map :name (:fields table-def))) existing-field-names)]
       (when (seq new-field-names)
