@@ -209,23 +209,20 @@
 
 ;;; ## Etc
 
-(defmacro -assoc*
-  "Internal. Don't use this directly; use `assoc*` instead."
-  [k v & more]
- `(let [~'<> (assoc ~'<> ~k ~v)]
-    ~(if (empty? more) `~'<>
-         `(-assoc* ~@more))))
-
-(defmacro assoc*
+(defmacro assoc<>
   "Like `assoc`, but associations happen sequentially; i.e. each successive binding can build
    upon the result of the previous one using `<>`.
 
-    (assoc* {}
-            :a 100
-            :b (+ 100 (:a <>)) ; -> {:a 100 :b 200}"
+    (assoc<> {}
+       :a 100
+       :b (+ 100 (:a <>)) ; -> {:a 100 :b 200}"
+  {:style/indent 1}
   [object & kvs]
-  `((fn [~'<>] ; wrap in a `fn` so this can be used in `->`/`->>` forms
-      (-assoc* ~@kvs))
+  ;; wrap in a `fn` so this can be used in `->`/`->>` forms
+  `((fn [~'<>]
+      (let [~@(apply concat (for [[k v] (partition 2 kvs)]
+                              ['<> `(assoc ~'<> ~k ~v)]))]
+        ~'<>))
     ~object))
 
 (defn format-num

@@ -421,7 +421,7 @@
   "Save QueryExecution state and construct a completed (successful) query response"
   [query-execution query-result]
   ;; record our query execution and format response
-  (-> (u/assoc* query-execution
+  (-> (u/assoc<> query-execution
         :status       :completed
         :finished_at  (u/new-sql-timestamp)
         :running_time (- (System/currentTimeMillis) (:start_time_millis <>))

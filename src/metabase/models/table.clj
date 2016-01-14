@@ -31,7 +31,7 @@
 
   (post-select [_ {:keys [id db db_id description] :as table}]
     (map->TableInstance
-     (u/assoc* table
+     (assoc table
        :db                  (or db (delay (sel :one db/Database :id db_id)))
        :fields              (delay (sel :many Field :table_id id :active true (order :position :ASC) (order :name :ASC)))
        :field_values        (delay
