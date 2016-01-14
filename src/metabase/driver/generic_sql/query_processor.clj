@@ -13,7 +13,8 @@
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.query-processor :as qp]
             metabase.driver.query-processor.interface
-            [metabase.util :as u])
+            [metabase.util :as u]
+            [metabase.util.korma-extensions :as kx])
   (:import java.sql.Timestamp
            java.util.Date
            (metabase.driver.query_processor.interface AgFieldRef
@@ -37,7 +38,7 @@
      (formatted this false))
     ([{:keys [schema-name table-name special-type field-name], :as field} include-as?]
      (let [->timestamp (partial sql/unix-timestamp->timestamp (:driver *query*))
-           field       (cond-> (keyword (str (when schema-name (str schema-name \.)) table-name \. field-name))
+           field       (cond-> (keyword (kx/combine+escape-name-components [schema-name table-name field-name]))
                          (= special-type :timestamp_seconds)      (->timestamp :seconds)
                          (= special-type :timestamp_milliseconds) (->timestamp :milliseconds))]
        (if include-as? [field (keyword field-name)]
@@ -187,8 +188,8 @@
   [korma-form]
   (when (config/config-bool :mb-db-logging)
     (when-not qp/*disable-qp-logging*
-      ;; (log/debug
-      ;;  (u/format-color 'green "\nKORMA FORM: 😋\n%s" (u/pprint-to-str (dissoc korma-form :db :ent :from :options :aliases :results :type :alias))))
+      (log/debug
+       (u/format-color 'green "\nKORMA FORM: 😋\n%s" (u/pprint-to-str (dissoc korma-form :db :ent :from :options :aliases :results :type :alias))))
       (try
         (log/debug
          (u/format-color 'blue "\nSQL: 😈\n%s\n" (-> (k/as-sql korma-form)
@@ -253,8 +254,7 @@
         entity        ((resolve 'metabase.driver.generic-sql/korma-entity) database source-table)
         korma-query   (binding [*query* outer-query]
                         (apply-clauses driver (k/select* entity) query))
-        f             (fn []
-                        (k/exec korma-query))
+        f             (partial k/exec korma-query)
         f             (fn []
                         (kdb/with-db (:db entity)
                           (if set-timezone?

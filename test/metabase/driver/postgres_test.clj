@@ -66,3 +66,21 @@
         (data/run-query users
           (ql/filter (ql/= $user_id "4652b2e7-d940-4d55-a971-7e484566663e"))))
       :data :rows))
+
+
+;;; # Make sure that Tables / Fields with dots in their names get escaped properly
+(def-database-definition ^:const ^:private dots-in-names
+  ["objects.stuff"
+   [{:field-name "dotted.name", :base-type :TextField}]
+   [["toucan_cage"]
+    ["four_loko"]
+    ["ouija_board"]]])
+
+(expect-with-engine :postgres
+  {:columns ["id" "dotted.name"]
+   :rows    [[1 "toucan_cage"]
+             [2 "four_loko"]
+             [3 "ouija_board"]]}
+  (-> (data/dataset metabase.driver.postgres-test/dots-in-names
+        (data/run-query objects.stuff))
+      :data (dissoc :cols)))
