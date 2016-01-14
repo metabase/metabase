@@ -171,7 +171,47 @@
                             :base_type       "TextField"
                             :parent_id       nil
                             :parent          nil})]
-       :field_values    {}
+       :field_values    {(keyword (str (id :categories :name)))
+                         ["African"
+                          "American"
+                          "Artisan"
+                          "Asian"
+                          "BBQ"
+                          "Bakery"
+                          "Bar"
+                          "Beer Garden"
+                          "Breakfast / Brunch"
+                          "Brewery"
+                          "Burger"
+                          "Café"
+                          "Café Sweets"
+                          "Caribbean"
+                          "Chinese"
+                          "Coffee Shop"
+                          "Comedy Club"
+                          "Deli"
+                          "Dim Sum"
+                          "Diner"
+                          "Donut Shop"
+                          "English"
+                          "Entertainment"
+                          "Fashion"
+                          "Fast Food"
+                          "Food Truck"
+                          "French"
+                          "Gay Bar"
+                          "German"
+                          "Gluten-free"
+                          "Greek"
+                          "Grocery"
+                          "Health & Beauty"
+                          "Home"
+                          "Hostel"
+                          "Hot Dog"
+                          "Hotel"
+                          "Indian"
+                          "Italian"
+                          "Japanese"]}
        :rows            75
        :updated_at      $
        :entity_name     nil
@@ -239,7 +279,7 @@
                          (match-$ (sel :one Field :id (id :users :last_login))
                            {:description     nil
                             :table_id        (id :users)
-                            :special_type    "category"
+                            :special_type    nil
                             :name            "LAST_LOGIN"
                             :display_name    "Last Login"
                             :updated_at      $
@@ -256,7 +296,7 @@
                          (match-$ (sel :one Field :id (id :users :name))
                            {:description     nil
                             :table_id        (id :users)
-                            :special_type    "category"
+                            :special_type    "name"
                             :name            "NAME"
                             :display_name    "Name"
                             :updated_at      $
@@ -351,7 +391,7 @@
                          (match-$ (Field (id :users :last_login))
                            {:description     nil
                             :table_id        (id :users)
-                            :special_type    "category"
+                            :special_type    nil
                             :name            "LAST_LOGIN"
                             :display_name    "Last Login"
                             :updated_at      $
@@ -368,7 +408,7 @@
                          (match-$ (Field (id :users :name))
                            {:description     nil
                             :table_id        (id :users)
-                            :special_type    "category"
+                            :special_type    "name"
                             :name            "NAME"
                             :display_name    "Name"
                             :updated_at      $

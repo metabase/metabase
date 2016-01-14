@@ -112,8 +112,8 @@
       {:special_type :category,  :base_type :IntegerField, :name "user_id"}
       {:special_type nil,        :base_type :IntegerField, :name "venue_id"}]
      [{:special_type :id,        :base_type :IntegerField, :name "_id"}
-      {:special_type :category,  :base_type :DateField,    :name "last_login"}
-      {:special_type :category,  :base_type :TextField,    :name "name"}
+      {:special_type nil,        :base_type :DateField,    :name "last_login"}
+      {:special_type :name,      :base_type :TextField,    :name "name"}
       {:special_type :category,  :base_type :TextField,    :name "password"}]
      [{:special_type :id,        :base_type :IntegerField, :name "_id"}
       {:special_type :category,  :base_type :IntegerField, :name "category_id"}

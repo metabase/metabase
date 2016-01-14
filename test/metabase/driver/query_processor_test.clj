@@ -96,11 +96,11 @@
                   :base_type    (id-field-type)
                   :name         (format-name "id")
                   :display_name "Id"}
-     :name       {:special_type :category
+     :name       {:special_type :name
                   :base_type    (expected-base-type->actual :TextField)
                   :name         (format-name "name")
                   :display_name "Name"}
-     :last_login {:special_type :category
+     :last_login {:special_type nil
                   :base_type    (expected-base-type->actual :DateTimeField)
                   :name         (format-name "last_login")
                   :display_name "Last Login"
@@ -793,10 +793,10 @@
 ;;; ## :sensitive fields
 ;;; Make sure :sensitive information fields are never returned by the QP
 (qp-expect-with-all-engines
-    {:columns (->columns "id" "last_login" "name")
+    {:columns (->columns "id" "name" "last_login")
      :cols    [(users-col :id)
-               (users-col :last_login)
-               (users-col :name)],
+               (users-col :name)
+               (users-col :last_login)],
      :rows    [[ 1 "Plato Yeshua"]
                [ 2 "Felipinho Asklepios"]
                [ 3 "Kaneonuskatew Eiran"]
@@ -815,7 +815,7 @@
   ;; Filter out the timestamps from the results since they're hard to test :/
   (-> (run-query users
         (ql/order-by (ql/asc $id)))
-      (update-in [:data :rows] (partial mapv (fn [[id last-login name]]
+      (update-in [:data :rows] (partial mapv (fn [[id name last-login]]
                                                [(int id) name])))))
 
 
