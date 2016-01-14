@@ -13,7 +13,6 @@
                             (define-clojure-indent
                               (api-let 2)
                               (assert 1)
-                              (assoc* 1)
                               (auto-parse 1)
                               (catch-api-exceptions 0)
                               (check 1)

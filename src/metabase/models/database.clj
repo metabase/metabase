@@ -31,7 +31,7 @@
 
   (post-select [_ {:keys [id] :as database}]
     (map->DatabaseInstance
-      (u/assoc* database
+      (assoc database
         :tables (delay (sel :many 'metabase.models.table/Table :db_id id :active true (order :display_name :ASC))))))
 
   (pre-cascade-delete [_ {:keys [id] :as database}]
