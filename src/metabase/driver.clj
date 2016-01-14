@@ -57,10 +57,7 @@
                     :field-type      <field-field-type>
                     :special-type    <field-special-type>
                     :preview-display <true|false>
-                    :parent          <parent-table-name>
-                    :pk?             <true|false>
-                    :fk              {:dest-table <target-table-name>
-                                      :dest-field <target-table-field-name>}]}")
+                    :pk?             <true|false>]}")
 
   (can-connect? ^Boolean [this, ^Map details-map]
     "Check whether we can connect to a `Database` with DETAILS-MAP and perform a simple query. For example, a SQL database might
@@ -95,8 +92,7 @@
                      :special-type    <field-special-type>
                      :preview-display <true|false>
                      :pk?             <true|false>
-                     :fk              {:dest-table <target-table-name>
-                                       :dest-field <target-table-field-name>}}}")
+                     :nested-fields   #{ same structure as a field }}}")
 
   (describe-table-fks ^java.util.Set [this, ^TableInstance table]
     "*OPTIONAL*, BUT REQUIRED FOR DRIVERS THAT SUPPORT `:foreign-keys`*
