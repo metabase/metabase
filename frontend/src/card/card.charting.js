@@ -162,15 +162,9 @@ function applyChartLegend(dcjsChart, card) {
     // I'm sure it made sense to somebody at some point to make this setting live in two different places depending on the type of chart.
     var settings = card.visualization_settings,
         legendEnabled = false;
-
-    if (card.display === "pie" && settings.pie) {
-        legendEnabled = settings.pie.legend_enabled;
-    } else if (card.display === "bar" && settings.bar) {
-        legendEnabled = settings.bar.legend_enabled;
-    } else if (card.display === "line" && settings.line) {
-        legendEnabled = settings.line.legend_enabled;
-    } else if (card.display === "area" && settings.area) {
-        legendEnabled = settings.area.legend_enabled;
+    
+    if (card.display && settings[card.display]) {
+        legendEnabled = settings[card.display].legend_enabled;
     } else if (settings.chart) {
         legendEnabled = settings.chart.legend_enabled;
     }
