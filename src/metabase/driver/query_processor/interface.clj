@@ -67,7 +67,8 @@
                     description        :- (s/maybe s/Str)
                     parent-id          :- (s/maybe IntGreaterThanZero)
                     ;; Field once its resolved; FieldPlaceholder before that
-                    parent             :- s/Any]
+                    parent             :- s/Any
+                    preview-display    :- (s/maybe s/Bool)]
   IField
   (qualified-name-components [this]
     (conj (if parent
