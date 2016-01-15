@@ -289,9 +289,9 @@
         java.util.Date               :DateField
         java.util.UUID               :TextField
         org.postgresql.util.PGobject :UnknownField} klass)
-      (cond
-        (isa? klass clojure.lang.IPersistentMap)    :DictionaryField
-        (isa? klass clojure.lang.IPersistentVector) :ArrayField)
+      (condp isa? klass
+        clojure.lang.IPersistentMap    :DictionaryField
+        clojure.lang.IPersistentVector :ArrayField)
       (do (log/warn (format "Don't know how to map class '%s' to a Field base_type, falling back to :UnknownField." klass))
           :UnknownField)))
 
