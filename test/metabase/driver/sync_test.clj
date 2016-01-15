@@ -287,17 +287,17 @@
        (driver/sync-table! table)
        (get-special-type-and-fk-exists?))]))
 
-;; ## Tests for DETERMINE-FK-TYPE
-;; Since COUNT(category_id) > COUNT(DISTINCT(category_id)) the FK relationship should be Mt1
-(def determine-fk-type @(resolve 'metabase.driver.sync/determine-fk-type))
-
-(expect :Mt1
-  (determine-fk-type (Field (id :venues :category_id))))
-
-;; Since COUNT(id) == COUNT(DISTINCT(id)) the FK relationship should be 1t1
-;; (yes, ID isn't really a FK field, but determine-fk-type doesn't need to know that)
-(expect :1t1
-  (determine-fk-type (Field (id :venues :id))))
+;;; ## Tests for DETERMINE-FK-TYPE
+;;; Since COUNT(category_id) > COUNT(DISTINCT(category_id)) the FK relationship should be Mt1
+;(def determine-fk-type @(resolve 'metabase.driver.sync/determine-fk-type))
+;
+;(expect :Mt1
+;  (determine-fk-type (Field (id :venues :category_id))))
+;
+;;; Since COUNT(id) == COUNT(DISTINCT(id)) the FK relationship should be 1t1
+;;; (yes, ID isn't really a FK field, but determine-fk-type doesn't need to know that)
+;(expect :1t1
+;  (determine-fk-type (Field (id :venues :id))))
 
 
 ;;; ## FieldValues Syncing
