@@ -58,9 +58,6 @@
   (with-mongo-connection [_ database]
     (do-sync-fn)))
 
-(defmacro swallow-exceptions [& body]
-  `(try ~@body (catch Exception e#)))
-
 (defn- val->special-type [val]
   (cond
     ;; 1. url?
@@ -69,7 +66,7 @@
     ;; 2. json?
     (and (string? val)
          (or (.startsWith "{" val)
-             (.startsWith "[" val))) (when-let [j (swallow-exceptions (json/parse-string val))]
+             (.startsWith "[" val))) (when-let [j (u/try-apply json/parse-string val)]
                                            (when (or (map? j)
                                                      (sequential? j))
                                              :json))))

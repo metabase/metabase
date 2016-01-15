@@ -80,18 +80,6 @@
                     :display_name    (common/name->human-readable-name (:name field))}]
       (merge defaults field)))
 
-  ;(post-insert [_ field]
-  ;  (when (field-should-have-field-values? field)
-  ;    (create-field-values-if-needed field))
-  ;  field)
-
-  ;(post-update [this {:keys [id] :as field}]
-  ;  ;; if base_type or special_type were affected then we should asynchronously create corresponding FieldValues objects if need be
-  ;  (when (or (contains? field :base_type)
-  ;            (contains? field :field_type)
-  ;            (contains? field :special_type))
-  ;    (create-field-values-if-needed (sel :one [this :id :table_id :base_type :special_type :field_type] :id id))))
-
   (post-select [this {:keys [id table_id parent_id] :as field}]
     (map->FieldInstance
      (u/assoc<> field
