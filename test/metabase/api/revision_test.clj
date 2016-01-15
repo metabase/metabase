@@ -29,8 +29,7 @@
       :display                "table"
       :dataset_query          {:database (id)
                                :type     "query"
-                               :query    {:aggregation ["rows"]
-                                          :source_table (id :categories)}}
+                               :query    {:source_table (id :categories)}}
       :visualization_settings {}
       :creator_id             (user->id :rasta))))
 

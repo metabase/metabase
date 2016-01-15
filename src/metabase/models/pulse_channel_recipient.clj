@@ -1,6 +1,4 @@
 (ns metabase.models.pulse-channel-recipient
-  (:require [korma.core :as k]
-            [metabase.models.interface :refer :all]))
+  (:require [metabase.models.interface :as i]))
 
-(defentity PulseChannelRecipient
-  [(k/table :pulse_channel_recipient)])
+(i/defentity PulseChannelRecipient :pulse_channel_recipient)

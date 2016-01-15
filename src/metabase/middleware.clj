@@ -10,7 +10,7 @@
             [metabase.api.common :refer [*current-user* *current-user-id*]]
             [metabase.config :as config]
             [metabase.db :refer [sel]]
-            (metabase.models [interface :refer [api-serialize]]
+            (metabase.models [interface :as models]
                              [session :refer [Session]]
                              [setting :refer [defsetting]]
                              [user :refer [User]])
@@ -83,7 +83,6 @@
       (handler request)
       response-unauthentic)))
 
-
 (defn bind-current-user
   "Middleware that binds `metabase.api.common/*current-user*` and `*current-user-id*`
 
@@ -93,7 +92,7 @@
   (fn [request]
     (if-let [current-user-id (:metabase-user-id request)]
       (binding [*current-user-id* current-user-id
-                *current-user*    (delay (sel :one `[User ~@(:metabase.models.interface/default-fields User) :is_active :is_staff], :id current-user-id))]
+                *current-user*    (delay (sel :one `[User ~@(models/default-fields User) :is_active :is_staff], :id current-user-id))]
         (handler request))
       (handler request))))
 
@@ -198,8 +197,10 @@
 
 ;;; # ------------------------------------------------------------ JSON SERIALIZATION CONFIG ------------------------------------------------------------
 
-;; Tell the JSON middleware to use a date format that includes milliseconds
-(intern 'cheshire.factory 'default-date-format "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+;; Tell the JSON middleware to use a date format that includes milliseconds (why?)
+(def ^:private ^:const default-date-format "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+(intern 'cheshire.factory 'default-date-format default-date-format)
+(intern 'cheshire.generate '*date-format* default-date-format)
 
 ;; ## Custom JSON encoders
 
@@ -227,29 +228,29 @@
                                     (.writeString json-generator ^String (apply str "0x" (for [b (take 4 byte-ar)]
                                                                                            (format "%02X" b))))))
 
+(defprotocol ^:private IRemoveFnsAndDelays
+  (^:private remove-fns-and-delays [this]))
 
-(defn- remove-fns-and-delays
-  "Remove values that are fns or delays from map M."
-  [m]
-  (filter-vals #(not (or (delay? %)
-                         (fn? %)))
-               ;; Convert typed maps such as metabase.models.database/DatabaseInstance to plain maps because empty, which is used internally by filter-vals,
-               ;; will fail otherwise
-               (into {} m)))
+(extend-protocol IRemoveFnsAndDelays
+  nil                         (remove-fns-and-delays [_]    nil)
+  Object                      (remove-fns-and-delays [this] this)
+  clojure.lang.IPersistentMap (remove-fns-and-delays [m]
+                                (loop [m m, [k & more] (keys m)]
+                                  (if-not k
+                                    m
+                                    (let [v (get m k)]
+                                      (recur (if (or (delay? v) (fn? v))
+                                               (dissoc m k)
+                                               (assoc m k (remove-fns-and-delays v)))
+                                             more)))))
+  clojure.lang.Sequential    (remove-fns-and-delays [this]
+                               (map remove-fns-and-delays this)))
 
 (defn format-response
   "Middleware that recurses over Clojure object before it gets converted to JSON and makes adjustments neccessary so the formatter doesn't barf.
    e.g. functions and delays are stripped and H2 Clobs are converted to strings."
   [handler]
-  (let [-format-response (fn -format-response [obj]
-                           (cond
-                             (map? obj)  (->> (api-serialize obj)
-                                              remove-fns-and-delays
-                                              (map-vals -format-response)) ; recurse over all vals in the map
-                             (coll? obj) (map -format-response obj)        ; recurse over all items in the collection
-                             :else       obj))]
-    (fn [request]
-      (-format-response (handler request)))))
+  (comp remove-fns-and-delays handler))
 
 
 

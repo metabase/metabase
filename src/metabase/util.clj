@@ -1,10 +1,11 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:require [clj-time.coerce :as coerce]
-            [clj-time.format :as time]
-            [clojure.java.jdbc :as jdbc]
-            [clojure.pprint :refer [pprint]]
+  (:require [clojure.java.jdbc :as jdbc]
+            (clojure [pprint :refer [pprint]]
+                     [string :as s])
             [clojure.tools.logging :as log]
+            [clj-time.coerce :as coerce]
+            [clj-time.format :as time]
             [colorize.core :as color]
             [medley.core :as m])
   (:import clojure.lang.Keyword
@@ -244,7 +245,7 @@
 
 (extend-protocol IClobToStr
   nil     (jdbc-clob->str [_]    nil)
-  String  (jdbc-clob->str [this] this)
+  Object  (jdbc-clob->str [this] this)
 
   org.postgresql.util.PGobject
   (jdbc-clob->str [this] (.getValue this))
@@ -302,7 +303,7 @@
   [string]
   (boolean (when string
              (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
-                         (clojure.string/lower-case string)))))
+                         (s/lower-case string)))))
 
 (defn is-url?
   "Is STRING a valid HTTP/HTTPS URL?"
@@ -388,7 +389,7 @@
       (seq more)  (recur (inc i) more))))
 
 (defmacro prog1
-  "Execute FORM, then any other expressions in BODY, presumably for side-effects; return the result of FORM.
+  "Execute FIRST-FORM, then any other expressions in BODY, presumably for side-effects; return the result of FIRST-FORM.
 
      (def numbers (atom []))
 
@@ -401,13 +402,19 @@
      (find-or-add 200) -> 1
      (find-or-add 100) -> 0
 
-  `prog1` is exactly like the traditional function of the same name in [Emacs Lisp](http://www.gnu.org/software/emacs/manual/html_node/elisp/Sequencing.html#index-prog1)
-   or [Common Lisp](http://www.lispworks.com/documentation/HyperSpec/Body/m_prog1c.htm#prog1)."
+   The result of FIRST-FIRST is bound to the anaphor `<>`, which is convenient for logging:
+
+     (prog1 (some-expression)
+       (println \"RESULTS:\" <>))
+
+  `prog1` is an anaphoric version of the traditional macro of the same name in
+   [Emacs Lisp](http://www.gnu.org/software/emacs/manual/html_node/elisp/Sequencing.html#index-prog1)
+   and [Common Lisp](http://www.lispworks.com/documentation/HyperSpec/Body/m_prog1c.htm#prog1)."
   {:style/indent 1}
-  [form & body]
-  `(let [result# ~form]
+  [first-form & body]
+  `(let [~'<> ~first-form]
      ~@body
-     result#))
+     ~'<>))
 
 (defn format-color
   "Like `format`, but uses a function in `colorize.core` to colorize the output.

@@ -1,10 +1,10 @@
 (ns metabase.models.revision
-  (:require [korma.core :refer :all, :exclude [defentity update], :as k]
+  (:require [korma.core :as k]
             [medley.core :as m]
             [metabase.db :refer [sel ins upd] :as db]
             [metabase.api.common :refer [*current-user-id* let-404]]
             (metabase.models [hydrate :refer [hydrate]]
-                             [interface :refer :all]
+                             [interface :as i]
                              [user :refer [User]])
             [metabase.models.revision.diff :refer [diff-str]]
             [metabase.util :as u]))
@@ -42,25 +42,23 @@
 
 ;;; # Revision Entity
 
-(defentity Revision
-  [(table :revision)
-   (types :object :json)]
+(i/defentity Revision :revision)
 
-  (pre-insert [_ revision]
-    (assoc revision :timestamp (u/new-sql-timestamp)))
-
-  (pre-update [_ _]
-    (throw (Exception. "You cannot update a Revision!"))))
-
+(extend (class Revision)
+  i/IEntity
+  (merge i/IEntityDefaults
+         {:types      (constantly {:object :json})
+          :pre-insert (u/rpartial assoc :timestamp (u/new-sql-timestamp))
+          :pre-update (fn [& _] (throw (Exception. "You cannot update a Revision!")))}))
 
 ;;; # Functions
 
 (defn revisions
   "Get the revisions for ENTITY with ID in reverse chronological order."
   [entity id]
-  {:pre [(metabase-entity? entity)
+  {:pre [(i/metabase-entity? entity)
          (integer? id)]}
-  (sel :many Revision :model (:name entity), :model_id id, (order :id :DESC)))
+  (sel :many Revision :model (:name entity), :model_id id, (k/order :id :DESC)))
 
 (defn- revisions-add-diff-strs
   "Add string descriptions of the change to each revision.  It's assumed revisions are in reverse chronological order."
@@ -95,12 +93,12 @@
 (defn- delete-old-revisions
   "Delete old revisions of ENTITY with ID when there are more than `max-revisions` in the DB."
   [entity id]
-  {:pre [(metabase-entity? entity)
+  {:pre [(i/metabase-entity? entity)
          (integer? id)]}
   ;; for some reason (offset max-revisions isn't working)
-  (let [old-revisions (drop max-revisions (sel :many :id Revision, :model (:name entity), :model_id id, (order :timestamp :DESC)))]
+  (let [old-revisions (drop max-revisions (sel :many :id Revision, :model (:name entity), :model_id id, (k/order :timestamp :DESC)))]
     (when (seq old-revisions)
-      (delete Revision (where {:id [in old-revisions]})))))
+      (k/delete Revision (k/where {:id [in old-revisions]})))))
 
 (defn push-revision
   "Record a new `Revision` for ENTITY with ID.
@@ -109,7 +107,7 @@
   [& {object :object,
       :keys [entity id user-id is-creation? skip-serialization? is-reversion?],
       :or {id (:id object), is-creation? false, skip-serialization? false, is-reversion? false}}]
-  {:pre [(metabase-entity? entity)
+  {:pre [(i/metabase-entity? entity)
          (integer? user-id)
          (db/exists? User :id user-id)
          (integer? id)
@@ -125,7 +123,7 @@
 (defn revert
   "Revert ENTITY with ID to a given `Revision`."
   [& {:keys [entity id user-id revision-id], :or {user-id *current-user-id*}}]
-  {:pre [(metabase-entity? entity)
+  {:pre [(i/metabase-entity? entity)
          (integer? id)
          (db/exists? entity :id id)
          (integer? user-id)
@@ -135,3 +133,6 @@
     (revert-to-revision entity id serialized-instance)
     ;; Push a new revision to record this reversion
     (push-revision :entity entity, :id id, :object serialized-instance, :user-id user-id, :skip-serialization? true, :is-reversion? true)))
+
+
+(u/require-dox-in-this-namespace)

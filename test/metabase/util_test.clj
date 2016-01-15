@@ -45,7 +45,6 @@
     :b (+ 100 (:a <>))
     :c (+ 100 (:b <>))))
 
-
 ;;; ## tests for HOST-UP?
 
 (expect true

@@ -1,7 +1,6 @@
 (ns metabase.models.foreign-key
-  (:require [korma.core :refer :all, :exclude [defentity update]]
-            [metabase.db :refer :all]
-            [metabase.models.interface :refer :all]))
+  (:require [metabase.db :refer [sel]]
+            [metabase.models.interface :as i]))
 
 (def ^:const relationships
   "Valid values for `ForeginKey.relationship`."
@@ -9,14 +8,16 @@
     :Mt1
     :MtM})
 
-(defentity ForeignKey
-  [(table :metabase_foreignkey)
-   (types :relationship :keyword)
-   timestamped]
+(i/defentity ForeignKey :metabase_foreignkey)
 
-  (post-select [_ {:keys [origin_id destination_id] :as fk}]
-    (assoc fk
-           :origin      (delay (sel :one 'metabase.models.field/Field :id origin_id))
-           :destination (delay (sel :one 'metabase.models.field/Field :id destination_id)))))
+(defn- post-select [{:keys [origin_id destination_id] :as fk}]
+  (assoc fk
+         :origin      (delay (sel :one 'Field :id origin_id))
+         :destination (delay (sel :one 'Field :id destination_id))))
 
-(extend-ICanReadWrite ForeignKeyEntity :read :always, :write :superuser)
+(extend (class ForeignKey)
+  i/IEntity
+  (merge i/IEntityDefaults
+         {:types        (constantly {:relationship :keyword})
+          :timestamped? (constantly true)
+          :post-select  post-select}))

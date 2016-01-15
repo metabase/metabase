@@ -434,6 +434,8 @@
 
 ;;; ## BATCHED HYDRATION TESTS
 
+(resolve-private-fns metabase.middleware remove-fns-and-delays)
+
 ;; Just double-check that batched hydration can hydrate fields with no delays
 (expect (match-$ (fetch-user :rasta)
           {:email "rasta@metabase.com"
@@ -446,7 +448,7 @@
            :common_name "Rasta Toucan"})
   (->> (hydrate {:user_id (user->id :rasta)} :user)
        :user
-       (m/filter-vals #(not (or (fn? %) (delay? %))))))
+       remove-fns-and-delays))
 
 ;; Check that batched hydration doesn't try to hydrate fields that already exist and are not delays
 (expect {:user_id (user->id :rasta)

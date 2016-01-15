@@ -1,19 +1,21 @@
 (ns metabase.models.field-values
   (:require [clojure.tools.logging :as log]
-            [korma.core :refer :all, :exclude [defentity update]]
-            (metabase [db :refer :all]
-                      [util :as u])
-            [metabase.models.interface :refer :all]))
+            [metabase.db :refer [ins sel upd]]
+            [metabase.models.interface :as i]))
 
 ;; ## Entity + DB Multimethods
 
-(defentity FieldValues
-  [(table :metabase_fieldvalues)
-   timestamped
-   (types :human_readable_values :json, :values :json)]
+(i/defentity FieldValues :metabase_fieldvalues)
 
-  (post-select [_ field-values]
-    (update-in field-values [:human_readable_values] #(or % {}))))
+(defn- post-select [field-values]
+  (update-in field-values [:human_readable_values] #(or % {})))
+
+(extend (class FieldValues)
+  i/IEntity
+  (merge i/IEntityDefaults
+         {:timestamped? (constantly true)
+          :types        (constantly {:human_readable_values :json, :values :json})
+          :post-select  post-select}))
 
 ;; columns:
 ;; *  :id
