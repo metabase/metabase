@@ -391,7 +391,8 @@
         (when-not (contains? query-result :status)
           (throw (Exception. "invalid response from database driver. no :status provided")))
         (when (= :failed (:status query-result))
-          (throw (Exception. ^String (get query-result :error "general error"))))
+          (log/error (u/pprint-to-str 'red query-result))
+          (throw (Exception. (str (get query-result :error "general error")))))
         (query-complete query-execution query-result))
       (catch Exception e
         (log/error (u/format-color 'red "Query failure: %s" (.getMessage e)))
@@ -420,7 +421,7 @@
   "Save QueryExecution state and construct a completed (successful) query response"
   [query-execution query-result]
   ;; record our query execution and format response
-  (-> (u/assoc* query-execution
+  (-> (u/assoc<> query-execution
         :status       :completed
         :finished_at  (u/new-sql-timestamp)
         :running_time (- (System/currentTimeMillis) (:start_time_millis <>))

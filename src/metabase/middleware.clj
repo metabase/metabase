@@ -14,7 +14,8 @@
                              [session :refer [Session]]
                              [setting :refer [defsetting]]
                              [user :refer [User]])
-            [metabase.util :as u]))
+            [metabase.util :as u])
+  (:import com.fasterxml.jackson.core.JsonGenerator))
 
 ;;; # ------------------------------------------------------------ UTIL FNS ------------------------------------------------------------
 
@@ -202,24 +203,30 @@
 
 ;; ## Custom JSON encoders
 
+;; Always fall back to `.toString` instead of barfing.
+;; In some cases we should be able to improve upon this behavior; `.toString` may just return the Class and address, e.g. `net.sourceforge.jtds.jdbc.ClobImpl@72a8b25e`
+;; The following are known few classes where `.toString` is the optimal behavior:
+;; *  `org.postgresql.jdbc4.Jdbc4Array` (Postgres arrays)
+;; *  `org.bson.types.ObjectId`         (Mongo BSON IDs)
+;; *  `java.sql.Date`                   (SQL Dates -- .toString returns YYYY-MM-DD)
+(add-encoder Object encode-str)
+
+(defn- encode-jdbc-clob [clob, ^JsonGenerator json-generator]
+  (.writeString json-generator (u/jdbc-clob->str clob)))
+
 ;; stringify JDBC clobs
-(add-encoder org.h2.jdbc.JdbcClob (fn [clob ^com.fasterxml.jackson.core.JsonGenerator json-generator]
-                                    (.writeString json-generator (u/jdbc-clob->str clob))))
+(add-encoder org.h2.jdbc.JdbcClob               encode-jdbc-clob) ; H2
+(add-encoder net.sourceforge.jtds.jdbc.ClobImpl encode-jdbc-clob) ; SQLServer
+(add-encoder org.postgresql.util.PGobject       encode-jdbc-clob) ; Postgres
 
-;; stringify Postgres binary objects (e.g. PostGIS geometries)
-(add-encoder org.postgresql.util.PGobject encode-str)
-
-;; Do the same for PG arrays
-(add-encoder org.postgresql.jdbc4.Jdbc4Array encode-str)
-
-;; Encode BSON IDs like strings
-(add-encoder org.bson.types.ObjectId encode-str)
-
-;; Encode BSON undefined like nil
+;; Encode BSON undefined like `nil`
 (add-encoder org.bson.BsonUndefined encode-nil)
 
-;; serialize sql dates (i.e., QueryProcessor results) like YYYY-MM-DD instead of as a full-blown timestamp
-(add-encoder java.sql.Date encode-str)
+;; Binary arrays ("[B") -- hex-encode their first four bytes, e.g. "0xC42360D7"
+(add-encoder (Class/forName "[B") (fn [byte-ar, ^JsonGenerator json-generator]
+                                    (.writeString json-generator ^String (apply str "0x" (for [b (take 4 byte-ar)]
+                                                                                           (format "%02X" b))))))
+
 
 (defn- remove-fns-and-delays
   "Remove values that are fns or delays from map M."

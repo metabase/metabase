@@ -31,7 +31,9 @@
 
 
 (defn- populate-query-fields [card]
-  (let [{{table-id :source_table} :query database-id :database query-type :type} (:dataset_query card)
+  (let [{query :query, database-id :database, query-type :type} (:dataset_query card)
+        table-id (or (:source_table query)  ; legacy (MBQL '95)
+                     (:source-table query))
         defaults {:database_id database-id
                   :table_id    table-id
                   :query_type  (keyword query-type)}]

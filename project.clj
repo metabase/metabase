@@ -48,6 +48,7 @@
                  [org.yaml/snakeyaml "1.16"]                          ; YAML parser (required by liquibase)
                  [org.xerial/sqlite-jdbc "3.8.11.2"]                  ; SQLite driver
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
+                 [prismatic/schema "1.0.4"]                           ; Data schema declaration and validation library
                  [ring/ring-jetty-adapter "1.4.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
