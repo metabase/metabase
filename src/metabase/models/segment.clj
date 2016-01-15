@@ -32,14 +32,7 @@
     (map->SegmentInstance
       (assoc segment
         :creator     (delay (when creator_id (db/sel :one User :id creator_id)))
-        :description (u/jdbc-clob->str description))))
-
-  (pre-cascade-delete [_ {:keys [id]}]
-    (if (config/is-prod?)
-      ;; in prod we prevent any deleting
-      (throw (Exception. "deleting a Segment is not supported."))
-      ;; in test we allow deleting
-      (db/cascade-delete revision/Revision :model "Segment" :model_id id))))
+        :description (u/jdbc-clob->str description)))))
 
 (extend-ICanReadWrite SegmentEntity :read :always, :write :superuser)
 
