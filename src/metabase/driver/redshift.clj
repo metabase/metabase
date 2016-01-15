@@ -30,17 +30,17 @@
 (defn- describe-table-fks [_ table]
   (set (for [fk (jdbc/query (sql/db->jdbc-connection-spec @(:db table))
                             ["SELECT source_column.attname AS \"fk-column-name\",
-                                     dest_table.relname  AS \"dest-table-name\",
+                                     dest_table.relname    AS \"dest-table-name\",
                                      dest_table_ns.nspname AS \"dest-table-schema\",
-                                     dest_column.attname AS \"dest-column-name\"
+                                     dest_column.attname   AS \"dest-column-name\"
                               FROM pg_constraint c
-                                     JOIN pg_namespace n             ON c.connamespace = n.oid
-                                     JOIN pg_class source_table      ON c.conrelid     = source_table.oid
-                                     JOIN pg_attribute source_column ON c.conrelid     = source_column.attrelid
-                                     JOIN pg_class dest_table        ON c.confrelid    = dest_table.oid
+                                     JOIN pg_namespace n             ON c.connamespace          = n.oid
+                                     JOIN pg_class source_table      ON c.conrelid              = source_table.oid
+                                     JOIN pg_attribute source_column ON c.conrelid              = source_column.attrelid
+                                     JOIN pg_class dest_table        ON c.confrelid             = dest_table.oid
                                      JOIN pg_namespace dest_table_ns ON dest_table.relnamespace = dest_table_ns.oid
-                                     JOIN pg_attribute dest_column   ON c.confrelid    = dest_column.attrelid
-                              WHERE c.contype            = 'f'::char
+                                     JOIN pg_attribute dest_column   ON c.confrelid             = dest_column.attrelid
+                              WHERE c.contype                 = 'f'::char
                                      AND source_table.relname = ?
                                      AND n.nspname            = ?
                                      AND source_column.attnum = ANY(c.conkey)
