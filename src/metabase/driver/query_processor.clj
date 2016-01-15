@@ -13,6 +13,7 @@
             (metabase.driver.query-processor [annotate :as annotate]
                                              [expand :as expand]
                                              [interface :refer :all]
+                                             [macros :as macros]
                                              [resolve :as resolve])
             (metabase.models [field :refer [Field], :as field]
                              [foreign-key :refer [ForeignKey]])
@@ -109,7 +110,7 @@
 (defn- pre-expand [qp]
   (fn [query]
     (qp (if (structured-query? query)
-          (let [macro-expanded-query (expand/expand-macros query)]
+          (let [macro-expanded-query (macros/expand-macros query)]
             (when (not *disable-qp-logging*)
               (log/debug (u/format-color 'cyan "\n\nMACRO/SUBSTITUTED: 😻\n%s" (u/pprint-to-str macro-expanded-query))))
             (-> macro-expanded-query

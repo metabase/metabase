@@ -1,6 +1,6 @@
-(ns metabase.driver.query-processor.expand-test
+(ns metabase.driver.query-processor.macros-test
   (:require [expectations :refer :all]
-            [metabase.driver.query-processor.expand :refer :all]
+            [metabase.driver.query-processor.macros :refer :all]
             [metabase.models.database :refer [Database]]
             [metabase.models.metric :refer [Metric]]
             [metabase.models.segment :refer [Segment]]
