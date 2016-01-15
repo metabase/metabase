@@ -291,7 +291,8 @@
         org.postgresql.util.PGobject :UnknownField} klass)
       (condp isa? klass
         clojure.lang.IPersistentMap    :DictionaryField
-        clojure.lang.IPersistentVector :ArrayField)
+        clojure.lang.IPersistentVector :ArrayField
+        nil)
       (do (log/warn (format "Don't know how to map class '%s' to a Field base_type, falling back to :UnknownField." klass))
           :UnknownField)))
 
