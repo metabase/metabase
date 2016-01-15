@@ -24,7 +24,7 @@
    :post [(integer? %)]}
   (-> (qp-query (:db_id table) (ql/query (ql/source-table (:id table))
                                          (ql/aggregation (ql/count))))
-      first first int))
+      first first long))
 
 (defn field-distinct-values
   "Return the distinct values of FIELD.
