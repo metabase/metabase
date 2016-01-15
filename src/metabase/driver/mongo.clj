@@ -58,15 +58,15 @@
   (with-mongo-connection [_ database]
     (do-sync-fn)))
 
-(defn- val->special-type [val]
+(defn- val->special-type [field-value]
   (cond
     ;; 1. url?
-    (and (string? val)
-         (u/is-url? val)) :url
+    (and (string? field-value)
+         (u/is-url? field-value)) :url
     ;; 2. json?
-    (and (string? val)
-         (or (.startsWith "{" val)
-             (.startsWith "[" val))) (when-let [j (u/try-apply json/parse-string val)]
+    (and (string? field-value)
+         (or (.startsWith "{" field-value)
+             (.startsWith "[" field-value))) (when-let [j (u/try-apply json/parse-string field-value)]
                                            (when (or (map? j)
                                                      (sequential? j))
                                              :json))))
