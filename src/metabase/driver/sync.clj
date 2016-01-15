@@ -458,17 +458,17 @@ infer-field-special-type
         (insert-or-update-active-field! field-def (existing-field-name->field (:name field-def)) table)))))
 
 
-(defn- determine-fk-type
-  "Determine whether a FK is `:1t1`, or `:Mt1`.
-   Do this by getting the count and distinct counts of source `Field`.
-
-   *  If count and distinct count are equal, we have a one-to-one foreign key relationship.
-   *  If count is > distinct count, we have a many-to-one foreign key relationship."
-  [field]
-  (let [field-count          (queries/field-count field)
-        field-distinct-count (queries/field-distinct-count field)]
-    (if (= field-count field-distinct-count) :1t1
-                                             :Mt1)))
+;(defn- determine-fk-type
+;  "Determine whether a FK is `:1t1`, or `:Mt1`.
+;   Do this by getting the count and distinct counts of source `Field`.
+;
+;   *  If count and distinct count are equal, we have a one-to-one foreign key relationship.
+;   *  If count is > distinct count, we have a many-to-one foreign key relationship."
+;  [field]
+;  (let [field-count          (queries/field-count field)
+;        field-distinct-count (queries/field-distinct-count field)]
+;    (if (= field-count field-distinct-count) :1t1
+;                                             :Mt1)))
 
 (defn- sync-table-fks! [driver table]
   (when (contains? (driver/features driver) :foreign-keys)
