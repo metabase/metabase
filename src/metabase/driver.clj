@@ -41,11 +41,6 @@
 
    This name should be a \"nice-name\" that we'll display to the user."
 
-  (active-nested-field-name->type ^java.util.Map [this, ^FieldInstance field]
-    "*OPTIONAL, BUT REQUIRED FOR DRIVERS THAT SUPPORT `:nested-fields`*
-
-     Return a map of string names of active child `Fields` of FIELD -> `Field.base_type`.")
-
   (analyze-table ^java.util.Map [this, ^TableInstance table, ^java.util.Set new-field-ids]
     "Return a map containing information that provides optional analysis values for TABLE.
 
@@ -224,8 +219,7 @@
 
 (def IDriverDefaultsMixin
   "Default implementations of `IDriver` methods marked *OPTIONAL*."
-  {:active-nested-field-name->type    (constantly nil)
-   :date-interval                     (fn [_ unit amount] (u/relative-date unit amount))
+  {:date-interval                     (fn [_ unit amount] (u/relative-date unit amount))
    :describe-table-fks                (constantly nil)
    :driver-specific-sync-field!       (constantly nil)
    :features                          (constantly nil)
@@ -296,7 +290,8 @@
         java.util.UUID               :TextField
         org.postgresql.util.PGobject :UnknownField} klass)
       (cond
-        (isa? klass clojure.lang.IPersistentMap) :DictionaryField)
+        (isa? klass clojure.lang.IPersistentMap)    :DictionaryField
+        (isa? klass clojure.lang.IPersistentVector) :ArrayField)
       (do (log/warn (format "Don't know how to map class '%s' to a Field base_type, falling back to :UnknownField." klass))
           :UnknownField)))
 

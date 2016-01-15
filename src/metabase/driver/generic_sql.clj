@@ -278,7 +278,9 @@
 
 (defn analyze-table
   [driver table new-table-ids]
-  ((sync/generic-analyze-table driver)
+  ((sync/generic-analyze-table driver
+                               :field-avg-length-fn (partial field-avg-length driver)
+                               :field-percent-urls-fn (partial field-percent-urls driver))
     driver
     table
     new-table-ids))

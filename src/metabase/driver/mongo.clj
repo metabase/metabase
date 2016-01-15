@@ -163,22 +163,6 @@
           (mq/with-collection *mongo-connection* (:name table)
             (mq/fields [(apply str (interpose "." name-components))]))))))
 
-(defn- active-nested-field-name->type [_ field]
-  ;; Build a map of nested-field-key -> type -> count
-  ;; TODO - using an atom isn't the *fastest* thing in the world (but is the easiest); consider alternate implementation
-  (let [field->type->count (atom {})]
-    (doseq [val (take driver/max-sync-lazy-seq-results (field-values-lazy-seq nil field))]
-      (when (map? val)
-        (doseq [[k v] val]
-          (swap! field->type->count update-in [k (type v)] #(if % (inc %) 1)))))
-    ;; (seq types) will give us a seq of pairs like [java.lang.String 500]
-    (->> @field->type->count
-         (m/map-vals (fn [type->count]
-                       (->> (seq type->count)             ; convert to pairs of [type count]
-                            (sort-by second)              ; source by count
-                            last                          ; take last item (highest count)
-                            first                         ; keep just the type
-                            driver/class->base-type))))))
 
 (defrecord MongoDriver []
   clojure.lang.Named
@@ -187,8 +171,7 @@
 (extend MongoDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:active-nested-field-name->type    active-nested-field-name->type
-          :analyze-table                     analyze-table
+         {:analyze-table                     analyze-table
           :can-connect?                      can-connect?
           :describe-database                 describe-database
           :describe-table                    describe-table

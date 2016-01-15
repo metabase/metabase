@@ -184,7 +184,7 @@
                 :preview_display preview-display
                 :special_type    special-type))
             ;; looks like we found some field values
-            (when (and id values)
+            (when (and id values (< 0 (count (filter identity values))))
               (field-values/save-field-values id values))))))))
 
 
@@ -509,20 +509,28 @@ infer-field-special-type
 (defn test-for-cardinality?
   "Predicate function which returns `true` if FIELD should be tested for cardinality, `false` otherwise."
   [field is-new?]
-  (or (field-values/field-should-have-field-values? field)
-       (and (nil? (:special_type field))
-            is-new?
-            (not (contains? #{:DateField :DateTimeField :TimeField} (:base_type field))))))
+  (let [not-field-values-elligible #{:ArrayField
+                                     :DateField
+                                     :DateTimeField
+                                     :DictionaryField
+                                     :TimeField
+                                     :UnknownField}]
+    (or (field-values/field-should-have-field-values? field)
+        (and (nil? (:special_type field))
+             is-new?
+             (not (contains? not-field-values-elligible (:base_type field)))))))
 
 (defn test-cardinality-and-extract-field-values
   "Extract field-values for FIELD.  If number of values exceeds `low-cardinality-threshold` then we return an empty set of values."
   [field field-stats]
   ;; TODO: we need some way of marking a field as not allowing field-values so that we can skip this work if it's not appropriate
   ;;       for example, :category fields with more than MAX values don't need to be rescanned all the time
-  (let [distinct-values (let [values (queries/field-distinct-values field (inc low-cardinality-threshold))]
+  (let [distinct-values (let [values         (queries/field-distinct-values field (inc low-cardinality-threshold))
+                              non-nil-values (filter identity values)]
                           ;; only return the list if we didn't exceed our MAX values
-                          (when-not (< low-cardinality-threshold (count values))
-                            values))]
+                          (when-not (< low-cardinality-threshold (count non-nil-values))
+                            non-nil-values))]
+    ;; TODO: eventually we can check for :nullable? based on the original values above
     (cond-> (assoc field-stats :values distinct-values)
             (and (nil? (:special_type field))
                  (< 0 (count distinct-values))) (assoc :special-type :category))))
@@ -535,8 +543,8 @@ infer-field-special-type
     ;; this field isn't suited for this test
     field-stats
     ;; test for avg length
-    (let [avg-len (field-avg-length-fn field)]
-      (if-not (> avg-len average-length-no-preview-threshold)
+    (let [avg-len (u/try-apply field-avg-length-fn field)]
+      (if-not (and avg-len (> avg-len average-length-no-preview-threshold))
         field-stats
         (do
           (log/debug (u/format-color 'green "Field '%s' has an average length of %d. Not displaying it in previews." @(:qualified-name field) avg-len))
@@ -550,7 +558,7 @@ infer-field-special-type
     ;; this field isn't suited for this test
     field-stats
     ;; test for url values
-    (let [percent-urls (percent-urls-fn field)]
+    (let [percent-urls (u/try-apply percent-urls-fn field)]
       (if-not (and (float? percent-urls)
                    (>= percent-urls 0.0)
                    (<= percent-urls 100.0)
