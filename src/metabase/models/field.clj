@@ -93,16 +93,16 @@
 
   (post-select [this {:keys [id table_id parent_id] :as field}]
     (map->FieldInstance
-      (u/assoc* field
-        :table                     (delay (sel :one 'metabase.models.table/Table :id table_id))
-        :db                        (delay @(:db @(:table <>)))
-        :target                    (delay (field->fk-field field))
-        :parent                    (when parent_id
-                                     (delay (this parent_id)))
-        :children                  (delay (sel :many this :parent_id (:id field)))
-        :values                    (delay (sel :many [FieldValues :field_id :values] :field_id id))
-        :qualified-name-components (delay (qualified-name-components <>))
-        :qualified-name            (delay (apply str (interpose "." @(:qualified-name-components <>)))))))
+     (u/assoc<> field
+       :table                     (delay (sel :one 'metabase.models.table/Table :id table_id))
+       :db                        (delay @(:db @(:table <>)))
+       :target                    (delay (field->fk-field field))
+       :parent                    (when parent_id
+                                    (delay (this parent_id)))
+       :children                  (delay (sel :many this :parent_id (:id field)))
+       :values                    (delay (sel :many [FieldValues :field_id :values] :field_id id))
+       :qualified-name-components (delay (qualified-name-components <>))
+       :qualified-name            (delay (apply str (interpose "." @(:qualified-name-components <>)))))))
 
   (pre-cascade-delete [this {:keys [id]}]
     (cascade-delete this :parent_id id)

@@ -59,10 +59,6 @@
 
     metabase.driver.query_processor.interface.Field
     (if-let [parent (:parent this)]
-      ;; Nested Mongo fields come back inside of their parent when you specify them in the fields clause
-      ;; e.g. (Q fields venue...name) will return rows like {:venue {:name "Kyle's Low-Carb Grill"}}
-      ;; Until we fix this the right way we'll just include the parent Field in the :query-fields list so the pattern
-      ;; matching works correctly.
       [this parent]
       [this])
 

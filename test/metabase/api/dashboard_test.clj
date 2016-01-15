@@ -3,6 +3,7 @@
   (:require [expectations :refer :all]
             [metabase.api.card-test :refer [post-card]]
             [metabase.db :refer :all]
+            [metabase.driver.query-processor.expand :as ql]
             (metabase.models [hydrate :refer [hydrate]]
                              [card :refer [Card]]
                              [common :as common]
@@ -11,8 +12,7 @@
                              [user :refer [User]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp]]
-            [metabase.test.util.q :refer [Q-expand]]))
+            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp obj->json->obj]]))
 
 ;; # DASHBOARD LIFECYCLE
 
@@ -112,38 +112,40 @@
       (let [{card-id :id :as card} (sel :one Card :name card-name)
             dash-id (sel :one :id Dashboard :name dash-name)]
         [(match-$ (sel :one DashboardCard :dashboard_id dash-id :card_id card-id)
-           {:sizeX 2
-            :card (match-$ card
-                    {:description nil
-                     :creator (-> (User (user->id :rasta))
-                                  (select-keys [:date_joined :last_name :id :is_superuser :last_login :first_name :email :common_name]))
-                     :organization_id nil
-                     :name $
-                     :creator_id (user->id :rasta)
-                     :updated_at $
-                     :dataset_query (Q-expand aggregate count of categories)
-                     :id card-id
-                     :display "scalar"
-                     :visualization_settings {:global {:title nil}}
-                     :public_perms 0
-                     :created_at $
-                     :database_id (id)
-                     :table_id (id :categories)
-                     :query_type "query"})
-            :updated_at $
-            :col nil
-            :id $
-            :card_id card-id
+           {:sizeX        2
+            :card         (match-$ card
+                            {:description            nil
+                             :creator                (-> (User (user->id :rasta))
+                                                         (select-keys [:date_joined :last_name :id :is_superuser :last_login :first_name :email :common_name]))
+                             :organization_id        nil
+                             :name                   $
+                             :creator_id             (user->id :rasta)
+                             :updated_at             $
+                             :dataset_query          (obj->json->obj (ql/wrap-inner-query
+                                                                       (query categories
+                                                                         (ql/aggregation (ql/count)))))
+                             :id                     card-id
+                             :display                "scalar"
+                             :visualization_settings {:global {:title nil}}
+                             :public_perms           0
+                             :created_at             $
+                             :database_id            (id)
+                             :table_id               (id :categories)
+                             :query_type             "query"})
+            :updated_at   $
+            :col          nil
+            :id           $
+            :card_id      card-id
             :dashboard_id dash-id
-            :created_at $
-            :sizeY 2
-            :row nil})])
-    (let [{card-id :id} (post-card card-name)
-          {dash-id :id} (create-dash dash-name)]
-      ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dash-id) {:cardId card-id})
-      (->> ((user->client :rasta) :get 200 (format "dashboard/%d" dash-id))
-           :dashboard
-           :ordered_cards))))
+            :created_at   $
+            :sizeY        2
+            :row          nil})])
+      (let [{card-id :id} (post-card card-name)
+            {dash-id :id} (create-dash dash-name)]
+        ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dash-id) {:cardId card-id})
+        (->> ((user->client :rasta) :get 200 (format "dashboard/%d" dash-id))
+             :dashboard
+             :ordered_cards))))
 
 ;; ## DELETE /api/dashboard/:id/cards
 (let [card-name (random-name)

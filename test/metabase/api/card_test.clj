@@ -3,13 +3,13 @@
   (:require [expectations :refer :all]
             [metabase.db :refer :all]
             [metabase.http-client :refer :all]
+            [metabase.driver.query-processor.expand :as ql]
             (metabase.models [card :refer [Card]]
                              [common :as common]
                              [database :refer [Database]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp]]
-            [metabase.test.util.q :refer [Q-expand]]))
+            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp obj->json->obj]]))
 
 ;; # CARD LIFECYCLE
 
@@ -20,17 +20,20 @@
                                            :can_read               true
                                            :can_write              true
                                            :display                "scalar"
-                                           :dataset_query          (Q-expand aggregate count of categories)
+                                           :dataset_query          (obj->json->obj (ql/wrap-inner-query
+                                                                                    (query categories
+                                                                                      (ql/aggregation (ql/count)))))
                                            :visualization_settings {:global {:title nil}}}))
 
 ;; ## GET /api/card
 ;; Filter cards by database
-(expect [true
-         false
-         true]
+(expect
+  [true
+   false
+   true]
   (with-temp Database [{dbid :id} {:name    (random-name)
-                                    :engine  :h2
-                                    :details {}}]
+                                   :engine  :h2
+                                   :details {}}]
     (with-temp Card [{id1 :id} {:name                   (random-name)
                                 :public_perms           common/perms-none
                                 :creator_id             (user->id :crowberto)
@@ -111,20 +114,22 @@
 ;; Test that we can make a card
 (let [card-name (random-name)]
   (expect-eval-actual-first (match-$ (sel :one Card :name card-name)
-                              {:description nil
-                               :organization_id nil
-                               :name card-name
-                               :creator_id (user->id :rasta)
-                               :updated_at $
-                               :dataset_query (Q-expand aggregate count of categories)
-                               :id $
-                               :display "scalar"
+                              {:description            nil
+                               :organization_id        nil
+                               :name                   card-name
+                               :creator_id             (user->id :rasta)
+                               :updated_at             $
+                               :dataset_query          (obj->json->obj (ql/wrap-inner-query
+                                                                        (query categories
+                                                                          (ql/aggregation (ql/count)))))
+                               :id                     $
+                               :display                "scalar"
                                :visualization_settings {:global {:title nil}}
-                               :public_perms 0
-                               :created_at $
-                               :database_id (id)
-                               :table_id (id :categories)
-                               :query_type "query"})
+                               :public_perms           0
+                               :created_at             $
+                               :database_id            (id)
+                               :table_id               (id :categories)
+                               :query_type             "query"})
     (post-card card-name)))
 
 ;; ## GET /api/card/:id
@@ -149,7 +154,9 @@
                      :email "rasta@metabase.com",
                      :id $})
          :updated_at $
-         :dataset_query (Q-expand aggregate count of categories)
+         :dataset_query (obj->json->obj (ql/wrap-inner-query
+                                         (query categories
+                                           (ql/aggregation (ql/count)))))
          :id $
          :display "scalar"
          :visualization_settings {:global {:title nil}}

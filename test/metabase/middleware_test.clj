@@ -1,13 +1,14 @@
 (ns metabase.middleware-test
-  (:require [expectations :refer :all]
+  (:require [cheshire.core :as json]
+            [expectations :refer :all]
             [korma.core :as k]
-            [ring.mock.request :as mock]
             [metabase.api.common :refer [*current-user-id* *current-user*]]
             [metabase.middleware :refer :all]
             [metabase.models.session :refer [Session]]
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [ring.mock.request :as mock]))
 
 ;;  ===========================  TEST wrap-session-id middleware  ===========================
 
@@ -200,3 +201,11 @@
 (expect [{:a [{:b 1}]}]
         (fmt [{:a [{:b 1
                     :c (fn [] 2)} ]}]))
+
+
+;;; JSON encoding tests
+
+;; Check that we encode byte arrays as the hex values of their first four bytes
+(expect "{\"my-bytes\":\"0xC42360D7\"}"
+        (json/generate-string {:my-bytes (byte-array [196 35  96 215  8 106 108 248 183 215 244 143  17 160 53 186
+                                                      213 30 116  25 87  31 123 172 207 108  47 107 191 215 76  92])}))
