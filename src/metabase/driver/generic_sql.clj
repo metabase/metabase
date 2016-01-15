@@ -314,10 +314,10 @@
            'metabase.driver.generic-sql.query-processor)
   (merge driver/IDriverDefaultsMixin
          {:analyze-table             analyze-table
+          :can-connect?              can-connect?
           :describe-database         describe-database
           :describe-table            describe-table
           :describe-table-fks        describe-table-fks
-          :can-connect?              can-connect?
           :features                  features
           :field-avg-length          field-avg-length
           :field-percent-urls        field-percent-urls
