@@ -456,40 +456,6 @@
        rows (format-rows-by [int ->bool str] :format-nil-values)))
 
 
-(defn- ->bool [x] ; SQLite returns 0/1 for false/true;
-  (condp = x      ; Redshift returns nil/true.
-    0   false     ; convert to false/true and restore sanity.
-    1   true
-    nil false
-    x))
-
-;;; filter = true
-(datasets/expect-with-all-engines
-  [[1 true "Tempest"]
-   [2 true "Bullit"]]
-  (Q dataset places-cam-likes
-     aggregate rows of places
-     filter = liked true, order id+
-     return rows (format-rows-by [int ->bool str] :format-nil-values)))
-
-;;; filter != false
-(datasets/expect-with-all-engines
-  [[1 true "Tempest"]
-   [2 true "Bullit"]]
-  (Q dataset places-cam-likes
-     aggregate rows of places
-     filter != liked false, order id+
-     return rows (format-rows-by [int ->bool str] :format-nil-values)))
-
-;;; filter != true
-(datasets/expect-with-all-engines
-  [[3 false "The Dentist"]]
-  (Q dataset places-cam-likes
-     aggregate rows of places
-     filter != liked true, order id+
-     return rows (format-rows-by [int ->bool str] :format-nil-values)))
-
-
 ;; ### FILTER -- "BETWEEN", single subclause (neither "AND" nor "OR")
 (datasets/expect-with-all-engines
   [[21 "PizzaHacker"    58 37.7441 -122.421 2]
