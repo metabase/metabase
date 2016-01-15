@@ -173,6 +173,7 @@
 (defn- field-avg-length [driver field]
   (or (some-> (korma-entity @(:table field))
               (k/select (k/aggregate (avg (k/sqlfn* (string-length-fn driver)
+                                                    ;; TODO: multi-byte data on postgres causes exception
                                                     (kx/cast :CHAR (escape-field-name (:name field)))))
                                      :len))
               first

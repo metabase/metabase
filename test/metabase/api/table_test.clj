@@ -171,47 +171,7 @@
                             :base_type       "TextField"
                             :parent_id       nil
                             :parent          nil})]
-       :field_values    {(keyword (str (id :categories :name)))
-                         ["African"
-                          "American"
-                          "Artisan"
-                          "Asian"
-                          "BBQ"
-                          "Bakery"
-                          "Bar"
-                          "Beer Garden"
-                          "Breakfast / Brunch"
-                          "Brewery"
-                          "Burger"
-                          "Café"
-                          "Café Sweets"
-                          "Caribbean"
-                          "Chinese"
-                          "Coffee Shop"
-                          "Comedy Club"
-                          "Deli"
-                          "Dim Sum"
-                          "Diner"
-                          "Donut Shop"
-                          "English"
-                          "Entertainment"
-                          "Fashion"
-                          "Fast Food"
-                          "Food Truck"
-                          "French"
-                          "Gay Bar"
-                          "German"
-                          "Gluten-free"
-                          "Greek"
-                          "Grocery"
-                          "Health & Beauty"
-                          "Home"
-                          "Hostel"
-                          "Hot Dog"
-                          "Hotel"
-                          "Indian"
-                          "Italian"
-                          "Japanese"]}
+       :field_values    {}
        :rows            75
        :updated_at      $
        :entity_name     nil

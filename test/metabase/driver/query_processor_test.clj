@@ -428,32 +428,32 @@
 
 ;;; filter = true
 (datasets/expect-with-all-engines
-  [[1 true "Tempest"]
-   [2 true "Bullit"]]
+  [[1 "Tempest" true]
+   [2 "Bullit"  true]]
   (->> (dataset places-cam-likes
          (run-query places
            (ql/filter (ql/= $liked true))
            (ql/order-by (ql/asc $id))))
-       rows (format-rows-by [int ->bool str] :format-nil-values)))
+       rows (format-rows-by [int str ->bool] :format-nil-values)))
 
 ;;; filter != false
 (datasets/expect-with-all-engines
-  [[1 true "Tempest"]
-   [2 true "Bullit"]]
+  [[1 "Tempest" true]
+   [2 "Bullit"  true]]
   (->> (dataset places-cam-likes
          (run-query places
            (ql/filter (ql/!= $liked false))
            (ql/order-by (ql/asc $id))))
-       rows (format-rows-by [int ->bool str] :format-nil-values)))
+       rows (format-rows-by [int str ->bool] :format-nil-values)))
 
 ;;; filter != true
 (datasets/expect-with-all-engines
-  [[3 false "The Dentist"]]
+  [[3 "The Dentist" false]]
   (->> (dataset places-cam-likes
          (run-query places
            (ql/filter (ql/!= $liked true))
            (ql/order-by (ql/asc $id))))
-       rows (format-rows-by [int ->bool str] :format-nil-values)))
+       rows (format-rows-by [int str ->bool] :format-nil-values)))
 
 
 ;; ### FILTER -- "BETWEEN", single subclause (neither "AND" nor "OR")
