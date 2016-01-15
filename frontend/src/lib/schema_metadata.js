@@ -363,7 +363,7 @@ var Aggregators = [{
 }, {
     "name": "Standard deviation of ...",
     "short": "stddev",
-    "description": "Number which expresses how much the values of a colum vary among all rows in the answer.",
+    "description": "Number which expresses how much the values of a column vary among all rows in the answer.",
     "validFieldsFilters": [summableFields]
 }];
 
