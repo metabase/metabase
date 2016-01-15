@@ -140,17 +140,17 @@
                                          :db_id  database-id
                                          :active true}]
       (tu/with-temp Metric [{:keys [id]} {:creator_id  (user->id :rasta)
-                                           :table_id    table-id
-                                           :name        "Droids in the desert"
-                                           :description "Lookin' for a jedi"
-                                           :definition  {}}]
+                                          :table_id    table-id
+                                          :name        "Droids in the desert"
+                                          :description "Lookin' for a jedi"
+                                          :definition  {}}]
         (metric-response ((user->client :crowberto) :put 200 (format "metric/%d" id) {:id               id
-                                                                                        :name             "Tatooine"
-                                                                                        :description      nil
-                                                                                        :table_id         456
-                                                                                        :revision_message "I got me some revisions"
-                                                                                        :definition       {:database 2
-                                                                                                           :query    {:filter ["not" "the droids you're looking for"]}}}))))))
+                                                                                      :name             "Tatooine"
+                                                                                      :description      nil
+                                                                                      :table_id         456
+                                                                                      :revision_message "I got me some revisions"
+                                                                                      :definition       {:database 2
+                                                                                                         :query    {:filter ["not" "the droids you're looking for"]}}}))))))
 
 
 ;; ## DELETE /api/metric/:id

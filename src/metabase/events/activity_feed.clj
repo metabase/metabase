@@ -4,7 +4,8 @@
             [metabase.db :as db]
             [metabase.config :as config]
             [metabase.events :as events]
-            (metabase.models [activity :refer [Activity] :as activity]
+            (metabase.models [activity :refer [Activity], :as activity]
+                             [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
                              [database :refer [Database]]
                              [interface :as models]
@@ -56,11 +57,9 @@
         add-remove-card-details (fn [{:keys [dashcards] :as obj}]
                                   ;; we expect that the object has just a dashboard :id at the top level
                                   ;; plus a `:dashcards` attribute which is a vector of the cards added/removed
-                                  (-> (db/sel :one Dashboard :id (events/object->model-id topic obj))
-                                      (select-keys [:description :name :public_perms])
+                                  (-> (db/sel :one [Dashboard :description :name :public_perms], :id (events/object->model-id topic obj))
                                       (assoc :dashcards (for [{:keys [id card_id], :as dashcard} dashcards]
-                                                          (-> (models/card dashcard)
-                                                              (select-keys [:name :description :public_perms])
+                                                          (-> (db/sel :one [Card :name :description :public_perms], :id card_id)
                                                               (assoc :id id)
                                                               (assoc :card_id card_id))))))]
     (activity/record-activity

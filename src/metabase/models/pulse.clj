@@ -11,7 +11,8 @@
                              [interface :as i]
                              [pulse-card :refer [PulseCard]]
                              [pulse-channel :refer [PulseChannel] :as pulse-channel]
-                             [user :refer [User]])))
+                             [user :refer [User]])
+            [metabase.util :as u]))
 
 
 (i/defentity Pulse :pulse)
@@ -20,23 +21,23 @@
   (let [defaults {:public_perms perms-readwrite}]
     (merge defaults pulse)))
 
-(defn- ^:hydrate channels [{:keys [id]}]
+(defn ^:hydrate channels
+  "Return the `PulseChannels` associated with this PULSE."
+  [{:keys [id]}]
   (db/sel :many PulseChannel, :pulse_id id))
 
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete PulseCard :pulse_id id)
   (db/cascade-delete PulseChannel :pulse_id id))
 
-(defn- ^:hydrate cards [{:keys [id]}]
+(defn ^:hydrate cards
+  "Return the `Cards` assoicated with this PULSE."
+  [{:keys [id]}]
   (k/select Card
             (k/join PulseCard (= :pulse_card.card_id :id))
             (k/fields :id :name :description :display)
             (k/where {:pulse_card.pulse_id id})
             (k/order :pulse_card.position :asc)))
-
-(defn- creator [{:keys [creator_id]}]
-  (when creator_id
-    (User creator_id)))
 
 (extend (class Pulse)
   i/IEntity
@@ -46,8 +47,7 @@
           :can-read?          i/publicly-readable?
           :can-write?         i/publicly-writeable?
           :pre-insert         pre-insert
-          :pre-cascade-delete pre-cascade-delete
-          :creator            (comp User :creator_id)}))
+          :pre-cascade-delete pre-cascade-delete}))
 
 
 ;; ## Persistence Functions
@@ -173,3 +173,6 @@
       ;; return the full Pulse (and record our create event)
       (->> (retrieve-pulse id)
            (events/publish-event :pulse-create)))))
+
+
+(u/require-dox-in-this-namespace)

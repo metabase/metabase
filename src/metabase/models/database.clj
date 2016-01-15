@@ -16,7 +16,8 @@
   (cascade-delete 'Card  :database_id id)
   (cascade-delete 'Table :db_id id))
 
-(defn- ^:hydrate tables
+(defn ^:hydrate tables
+  "Return the `Tables` associated with this `Database`."
   [{:keys [id]}]
   (sel :many 'Table :db_id id, :active true, (k/order :display_name :ASC)))
 
@@ -26,6 +27,8 @@
          {:hydration-keys     (constantly [:database :db])
           :types              (constantly {:details :json, :engine :keyword})
           :timestamped?       (constantly true)
+          :can-read?          (constantly true)
+          :can-write?         i/superuser?
           :pre-cascade-delete pre-cascade-delete}))
 
 

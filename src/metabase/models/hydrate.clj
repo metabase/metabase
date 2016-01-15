@@ -1,7 +1,6 @@
 (ns metabase.models.hydrate
   "Functions for deserializing and hydrating fields in objects fetched from the DB."
   (:require [clojure.java.classpath :as classpath]
-            [clojure.set :as set]
             [clojure.tools.namespace.find :as ns-find]
             [medley.core :as m]
             [metabase.db :refer [sel]]
@@ -141,32 +140,23 @@
   (if (can-batched-hydrate? results k) (batched-hydrate results k)
       (simple-hydrate results k)))
 
-(def ^:private used-fn-keys (atom #{}))
-
 (def ^:private k->f
-  (delay (into {} (for [ns          (all-ns)
-                        [symb varr] (ns-interns ns)
-                        :let        [hydration-key (:hydrate (meta varr))]
-                        :when       hydration-key]
-                    {(if (m/boolean? hydration-key)
-                       (keyword (name symb))
-                       hydration-key) varr}))))
+  (delay (loop [m {}, [[k f] & more] (for [ns          (all-ns)
+                                           [symb varr] (ns-interns ns)
+                                           :let        [hydration-key (:hydrate (meta varr))]
+                                           :when       hydration-key]
+                                       [(if (m/boolean? hydration-key)
+                                          (keyword (name symb))
+                                          hydration-key) varr])]
+           (cond
+             (not k) m
+             (m k)   (throw (Exception. (format "Duplicate `^:hydrate` functions for key '%s': %s and %s." k (m k) f)))
+             :else   (recur (assoc m k f) more)))))
 
 (defn- hydration-key->f
   "Get the function marked `^:hydrate` for K."
   [k]
-  (swap! used-fn-keys conj k)
   (@k->f k))
-
-(defn- check-all-hydration-keys-used
-  "Warn about hydration functions that go unused."
-  {:expectations-options :after-run}
-  []
-  (let [available-keys (set (keys @k->f))
-        used-keys      @used-fn-keys
-        unused-keys    (set/difference available-keys used-keys)]
-    (doseq [k unused-keys]
-      (println (u/format-color 'red "%s is marked `^:hydrate` but is never used for hydration." k)))))
 
 (defn- simple-hydrate
   "Hydrate keyword K in results by dereferencing corresponding delays when applicable."
@@ -338,3 +328,6 @@
                      f
                      (counts-unflatten k counts))]
     (map merge coll new-vals)))
+
+
+(u/require-dox-in-this-namespace)

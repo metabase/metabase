@@ -2,7 +2,7 @@
   "Predefined QP queries for getting metadata about an external database."
   (:require [metabase.driver :as driver]
             [metabase.driver.query-processor.expand :as ql]
-            [metabase.models.interface :as models]
+            [metabase.models.field :as field]
             [metabase.util :as u]))
 
 (defn- qp-query [db-id query]
@@ -14,7 +14,7 @@
       :rows))
 
 (defn- field-query [field query]
-  (let [table (models/table field)]
+  (let [table (field/table field)]
     (qp-query (:db_id table)
               (ql/query (merge query)
                         (ql/source-table (:id table))))))

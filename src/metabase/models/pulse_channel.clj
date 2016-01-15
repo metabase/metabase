@@ -103,7 +103,9 @@
 
 (i/defentity PulseChannel :pulse_channel)
 
-(defn- ^:hydrate recipients [{:keys [id creator_id details] :as pulse-channel}]
+(defn ^:hydrate recipients
+  "Return the `PulseChannelRecipients` associated with this PULSE-CHANNEL."
+  [{:keys [id creator_id details] :as pulse-channel}]
   (into (mapv (partial array-map :email) (:emails details))
         (db/sel :many [User :id :email :first_name :last_name]
                 (k/where {:id [in (k/subselect PulseChannelRecipient (k/fields :user_id) (k/where {:pulse_channel_id id}))]}))))

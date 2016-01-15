@@ -39,7 +39,8 @@
   (partial publicly-? common/perms-readwrite))
 
 (defprotocol IEntity
-  "Methods entity classes should implement; all have default implementations in `IEntityDefaults`."
+  "Methods model classes should implement; all except for `can-read?` and `can-write?` have default implementations in `IEntityDefaults`.
+   Internal models that don't participate in permissions checking don't need to implement `can-read?`/`can-write?`."
   (pre-insert [this]
     "Gets called by `ins` immediately before inserting a new object immediately before the korma `insert` call.
      This provides an opportunity to do things like encode JSON or provide default values for certain fields.
@@ -110,25 +111,7 @@
      *  `:keyword` calls `name` before going into the DB, and `keyword` when coming out
      *  `:clob` converts clobs to Strings (via `metabase.util/jdbc-clob->str`) when coming out
 
-       (types [_] {:cards :json}) ; encode `:cards` as JSON when stored in the DB")
-
-;;; Fetching Related Models (Hydration Methods)
-
-  ;; The following hydration methods are defined here because they are used by multiple models. Ones only used by a single model live in that model's namespace.
-  ;; Since you can't define multiple methods to hydrate the same key, move those functions into this protocol as needed. Be sure to update docstrs and add a default
-  ;; implementation that throws an `UnsupportedOperationException` as well.
-
-  (^{:hydrate :db} database [table-field-or-activity]
-    "Fetch the `Database` for this `Table`, `Field`, or `Activitiy.`")
-
-  (^:hydrate table [field-or-activity]
-    "Fetch the `Table` for this `Field` or `Activity`.")
-
-  (^:hydrate creator [card-pulse-or-dashboard]
-    "Fetch the `User` who created this `Card`, `Pulse`, or `Dashboard`.")
-
-  (^:hydrate card [card-favorite-or-dashboard-card]
-     "Fetch the `Card` for this `CardFavorite` or `DashboardCard`."))
+       (types [_] {:cards :json}) ; encode `:cards` as JSON when stored in the DB"))
 
 
 (def ^:private type-fns
@@ -202,22 +185,18 @@
 
 (def IEntityDefaults
   "Default implementations for `IEntity` methods."
-  {:default-fields            (constantly nil)
-   :timestamped?              (constantly false)
-   :hydration-keys            (constantly nil)
-   :types                     (constantly nil)
-   :can-read?                 (constantly true)
-   :can-write?                superuser?
-   :pre-insert                identity
-   :post-insert               identity
-   :pre-update                identity
-   :post-update               (constantly nil)
-   :post-select               identity
-   :pre-cascade-delete        (constantly nil)
-   :database                  (fn [this] (throw (UnsupportedOperationException. (str "No implementation of metabase.models.interface/database for " (class this)))))
-   :table                     (fn [this] (throw (UnsupportedOperationException. (str "No implementation of metabase.models.interface/table for "    (class this)))))
-   :creator                   (fn [this] (throw (UnsupportedOperationException. (str "No implementation of metabase.models.interface/creator for "  (class this)))))
-   :card                      (fn [this] (throw (UnsupportedOperationException. (str "No implementation of metabase.models.interface/card for "     (class this)))))})
+  {:default-fields     (constantly nil)
+   :timestamped?       (constantly false)
+   :hydration-keys     (constantly nil)
+   :types              (constantly nil)
+   :can-read?          (fn [this & _] (throw (UnsupportedOperationException. (format "No implementation of can-read? for %s; please provide one."  (class this)))))
+   :can-write?         (fn [this & _] (throw (UnsupportedOperationException. (format "No implementation of can-write? for %s; please provide one." (class this)))))
+   :pre-insert         identity
+   :post-insert        identity
+   :pre-update         identity
+   :post-update        (constantly nil)
+   :post-select        identity
+   :pre-cascade-delete (constantly nil)})
 
 (defn- invoke-entity
   "Fetch an object with a specific ID or all objects of type ENTITY from the DB.
@@ -306,5 +285,6 @@
              ~@korma-forms
              (assoc ::entity true)
              ~map->instance)))))
+
 
 (u/require-dox-in-this-namespace)

@@ -13,8 +13,9 @@
 
 (i/defentity Dashboard :report_dashboard)
 
-(defn- ordered-cards
-  {:hydrate :ordered_cards}
+(defn ordered-cards
+  "Return the `DashboardCards` associated with DASHBOARD, in the order they were created."
+  {:hydrate :ordered_cards, :arglists '([dashboard])}
   [{:keys [id]}]
   (sel :many DashboardCard, :dashboard_id id, (k/order :created_at :asc)))
 
@@ -29,7 +30,6 @@
          {:timestamped?       (constantly true)
           :can-read?          i/publicly-readable?
           :can-write?         i/publicly-writeable?
-          :post-select        post-select
           :pre-cascade-delete pre-cascade-delete}))
 
 
@@ -97,11 +97,14 @@
           :types              (constantly {:description :clob})
           :can-read?          i/publicly-readable?
           :can-write?         i/publicly-writeable?
-          :pre-cascade-delete pre-cascade-delete
-          :creator            (comp User :creator_id)})
+          :pre-cascade-delete pre-cascade-delete})
 
   revision/IRevisioned
   {:serialize-instance serialize-instance
    :revert-to-revision revert-to-revision
    :diff-map           revision/default-diff-map
-   :diff-str           describe-diff})
+   :diff-str           describe-diff
+   :describe-diff      describe-diff})
+
+
+(u/require-dox-in-this-namespace)

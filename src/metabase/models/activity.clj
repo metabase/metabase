@@ -20,13 +20,10 @@
                   :details {}}]
     (merge defaults activity)))
 
-(defn- database [{:keys [database_id]}]
-  (db/sel :one [Database :id :name :description], :id database_id))
-
-(defn- table [{:keys [table_id]}]
-  (db/sel :one [Table :id :name :display_name :description], :id table_id))
-
-(defn- ^{:hydrate :model_exists} model-exists? [{:keys [model model_id]}]
+(defn model-exists?
+  "Does the object associated with this `Activity` exist in the DB?"
+  {:hydrate :model_exists, :arglists '([activity])}
+  [{:keys [model model_id]}]
   (case model
     "card"      (db/exists? Card,      :id model_id)
     "dashboard" (db/exists? Dashboard, :id model_id)
@@ -35,18 +32,13 @@
     "segment"   (db/exists? Segment,   :id model_id, :is_active true)
                  nil))
 
-(defn- ^:hydrate user [{:keys [user_id]}]
-  (User user_id))
-
 (extend (class Activity)
   i/IEntity
   (merge i/IEntityDefaults
          {:types       (constantly {:details :json, :topic :keyword})
           :can-read?   i/publicly-readable?
           :can-write?  i/publicly-writeable?
-          :pre-insert  pre-insert
-          :database    database
-          :table       table}))
+          :pre-insert  pre-insert}))
 
 
 ;; ## Persistence Functions

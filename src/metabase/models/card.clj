@@ -36,8 +36,9 @@
       (merge defaults card)
       card)))
 
-(defn ^{:hydrate :dashboard_count} dashboard-count
+(defn dashboard-count
   "Return the number of Dashboards this Card is in."
+  {:hydrate :dashboard_count}
   [{:keys [id]}]
   (-> (k/select @(ns-resolve 'metabase.models.dashboard-card 'DashboardCard)
                 (k/aggregate (count :*) :dashboards)
@@ -84,8 +85,7 @@
           :can-write?         i/publicly-writeable?
           :pre-update         populate-query-fields
           :pre-insert         populate-query-fields
-          :pre-cascade-delete pre-cascade-delete
-          :creator            (comp User :creator_id)})
+          :pre-cascade-delete pre-cascade-delete})
 
   revision/IRevisioned
   {:serialize-instance serialize-instance
@@ -94,7 +94,7 @@
    :diff-str           revision/default-diff-str}
 
   dependency/IDependent
-  {:dependencies       card-dependencies})
+  {:dependencies card-dependencies})
 
 
 (u/require-dox-in-this-namespace)

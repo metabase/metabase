@@ -1,10 +1,35 @@
 (ns metabase.models.hydrate-test
-  (:require [expectations :refer :all]
+  (:require [clojure.set :as set]
+            [expectations :refer :all]
             [medley.core :as m]
             [metabase.models.hydrate :refer :all]
             (metabase.test [data :refer :all]
                            [util :refer :all])
-            [metabase.test.data.users :refer :all]))
+            [metabase.test.data.users :refer :all]
+            [metabase.util :as u]))
+
+;; we'll swap out hydration-key-> with one that will track the keys used, and we'll warn about unused ones at the end
+
+(def ^:private used-fn-keys (atom #{}))
+
+(let [hydration-key->f @(resolve 'metabase.models.hydrate/hydration-key->f)]
+  (intern 'metabase.models.hydrate 'hydration-key->f
+          (fn [k]
+            (swap! used-fn-keys conj k)
+            (hydration-key->f k))))
+
+(defn- check-all-hydration-keys-used
+  {:expectations-options :after-run}
+  []
+  (let [hydrate-k->f   @@(resolve 'metabase.models.hydrate/k->f)
+        available-keys (set (keys hydrate-k->f))
+        used-keys      @used-fn-keys
+        unused-keys    (set/difference available-keys used-keys)]
+    (when (seq unused-keys)
+      (doseq [k unused-keys]
+        (println (u/format-color 'red "%s is marked `^:hydrate` but is never used for hydration." (hydrate-k->f k))))
+      (System/exit -1))))
+
 
 (defn- ^:hydrate x [{:keys [id]}]
   id)

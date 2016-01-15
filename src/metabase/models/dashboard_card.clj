@@ -17,5 +17,7 @@
   (merge i/IEntityDefaults
          {:timestamped? (constantly true)
           :pre-insert   pre-insert
-          :post-select  (u/rpartial set/rename-keys {:sizex :sizeX, :sizey :sizeY}) ;; TODO - frontend expects mixed-case names here, should change that
-          :card         (comp Card :card_id)}))
+          :post-select  (u/rpartial set/rename-keys {:sizex :sizeX, :sizey :sizeY})})) ; TODO - frontend expects mixed-case names here, should change that
+
+
+(u/require-dox-in-this-namespace)

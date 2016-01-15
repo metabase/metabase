@@ -17,8 +17,7 @@
                              [field :refer [Field] :as field]
                              [field-values :as field-values]
                              [foreign-key :refer [ForeignKey]]
-                             [interface :as models]
-                             [table :refer [Table]])
+                             [table :refer [Table], :as table])
             [metabase.util :as u]))
 
 (declare auto-assign-field-special-type-by-name!
@@ -151,9 +150,9 @@
    This is used *instead* of `sync-database!` when syncing just one Table is desirable."
   [driver table]
   (binding [qp/*disable-qp-logging* true]
-    (driver/sync-in-context driver (models/database table) (fn []
-                                                             (sync-database-active-tables! driver [table])
-                                                             (events/publish-event :table-sync {:table_id (:id table)})))))
+    (driver/sync-in-context driver (table/database table) (fn []
+                                                            (sync-database-active-tables! driver [table])
+                                                            (events/publish-event :table-sync {:table_id (:id table)})))))
 
 
 ;; ### sync-database-active-tables! -- runs the sync-table steps over sequence of Tables

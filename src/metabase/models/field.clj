@@ -80,7 +80,9 @@
                                           (= :destination_id id))))
   (cascade-delete 'FieldValues :field_id id))
 
-(defn- ^:hydrate values [{:keys [id]}]
+(defn ^:hydrate values
+  "Return the `FieldValues` associated with this FIELD."
+  [{:keys [id]}]
   (sel :many [FieldValues :field_id :values], :field_id id))
 
 (defn qualified-name-components
@@ -96,29 +98,34 @@
   [field]
   (apply str (interpose \. (qualified-name-components field))))
 
-(defn- table [{:keys [table_id]}]
+(defn table
+  "Return the `Table` associated with this `Field`."
+  {:arglists '([field])}
+  [{:keys [table_id]}]
   (sel :one 'Table, :id table_id))
 
 (extend (class Field)
   i/IEntity (merge i/IEntityDefaults
-                   {:hydration-keys            (constantly [:destination :field :origin])
-                    :types                     (constantly {:base_type :keyword, :field_type :keyword, :special_type :keyword})
-                    :timestamped?              (constantly true)
-                    :pre-insert                pre-insert
-                    :post-insert               post-insert
-                    :post-update               post-update
-                    :pre-cascade-delete        pre-cascade-delete
-                    :qualified-name-components qualified-name-components
-                    :table                     table
-                    :database                  (comp i/database table)}))
+                   {:hydration-keys     (constantly [:destination :field :origin])
+                    :types              (constantly {:base_type :keyword, :field_type :keyword, :special_type :keyword})
+                    :timestamped?       (constantly true)
+                    :can-read?          (constantly true)
+                    :can-write?         i/superuser?
+                    :pre-insert         pre-insert
+                    :post-insert        post-insert
+                    :post-update        post-update
+                    :pre-cascade-delete pre-cascade-delete}))
 
 
-(defn- field->fk-field
-  "Attempts to follow a `ForeignKey` from the the given `Field` to a destination `Field`.
+(defn field->fk-field
+  "Attempts to follow a `ForeignKey` from the the given FIELD to a destination `Field`.
 
    Only evaluates if the given field has :special_type `fk`, otherwise does nothing."
   {:hydrate :target}
-  [{:keys [id special_type] :as field}]
+  [{:keys [id special_type]}]
   (when (= :fk special_type)
     (let [dest-id (sel :one :field [ForeignKey :destination_id] :origin_id id)]
       (Field dest-id))))
+
+
+(u/require-dox-in-this-namespace)
