@@ -150,4 +150,3 @@
     (events/publish-event :segment-delete (assoc segment :actor_id user-id :revision_message revision-message))
     ;; return the updated segment
     segment))
-
