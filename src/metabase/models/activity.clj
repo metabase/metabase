@@ -1,7 +1,6 @@
 (ns metabase.models.activity
-  (:require [korma.core :refer :all, :exclude [defentity update]]
-            [metabase.db :as db]
-            [metabase.events :as events]
+  (:require (metabase [db :as db]
+                      [events :as events])
             (metabase.models [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
                              [database :refer [Database]]
@@ -21,18 +20,17 @@
                   :details {}}]
     (merge defaults activity)))
 
-(defn- post-select [{:keys [user_id database_id table_id model model_id] :as activity}]
-  (assoc activity
-         :user         (delay (User user_id))
-         :database     (delay (select-keys (Database database_id) [:id :name :description]))
-         :table        (delay (select-keys (Table table_id) [:id :name :display_name :description]))
-         :model_exists (delay (case model
-                                "card"      (db/exists? Card :id model_id)
-                                "dashboard" (db/exists? Dashboard :id model_id)
-                                "metric"    (db/exists? Metric :id model_id)
-                                "pulse"     (db/exists? Pulse :id model_id)
-                                "segment"   (db/exists? Segment :id model_id :is_active true)
-                                nil))))
+(defn model-exists?
+  "Does the object associated with this `Activity` exist in the DB?"
+  {:hydrate :model_exists, :arglists '([activity])}
+  [{:keys [model model_id]}]
+  (case model
+    "card"      (db/exists? Card,      :id model_id)
+    "dashboard" (db/exists? Dashboard, :id model_id)
+    "metric"    (db/exists? Metric,    :id model_id)
+    "pulse"     (db/exists? Pulse,     :id model_id)
+    "segment"   (db/exists? Segment,   :id model_id, :is_active true)
+                 nil))
 
 (extend (class Activity)
   i/IEntity
@@ -40,8 +38,7 @@
          {:types       (constantly {:details :json, :topic :keyword})
           :can-read?   i/publicly-readable?
           :can-write?  i/publicly-writeable?
-          :pre-insert  pre-insert
-          :post-select post-select}))
+          :pre-insert  pre-insert}))
 
 
 ;; ## Persistence Functions

@@ -1,7 +1,5 @@
 (ns metabase.models.metric
-  (:require [clojure.core.match :refer [match]]
-            [korma.core :as k]
-            [medley.core :as m]
+  (:require [korma.core :as k]
             [metabase.config :as config]
             [metabase.db :as db]
             [metabase.events :as events]
@@ -17,28 +15,20 @@
 
 (i/defentity Metric :metric)
 
-(defn- post-select [{:keys [creator_id description] :as metric}]
-  (assoc metric
-    :creator     (delay (when creator_id (db/sel :one User :id creator_id)))
-    :description (u/jdbc-clob->str description)))
-
 (extend (class Metric)
   i/IEntity
   (merge i/IEntityDefaults
-         {:types         (constantly {:definition :json})
+         {:types         (constantly {:definition :json, :description :clob})
           :timestamped?  (constantly true)
           :can-read?     (constantly true)
-          :can-write?    i/superuser?
-          :post-select   post-select}))
+          :can-write?    i/superuser?}))
 
 
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
 
 
-(defn serialize-metric [this id instance]
-  (->> (dissoc instance :created_at :updated_at)
-       (into {})                                 ; if it's a record type like MetricInstance we need to convert it to a regular map or filter-vals won't work
-       (m/filter-vals (complement delay?))))
+(defn serialize-metric [_ _ instance]
+  (dissoc instance :created_at :updated_at))
 
 (defn diff-metrics [this metric1 metric2]
   (if-not metric1

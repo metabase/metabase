@@ -48,22 +48,13 @@
    [:venues :name]
    [:venues :price]])
 
-(defn- table-name->fake-table
-  "Return an object that can be passed like a `Table` to driver sync functions."
+(defn- table-name->table
+  "Return the `Table` matching TABLE-NAME in the Mongo `Test Data` DB."
   [table-name]
   {:pre [(keyword? table-name)]}
-  {:db   (delay (mongo-db))
-   :name (name table-name)})
+  (Table (datasets/with-engine :mongo
+           (data/id table-name))))
 
-(defn- field-name->fake-field
-  "Return an object that can be passed like a `Field` to driver sync functions."
-  [table-name field-name]
-  {:pre [(keyword? table-name)
-         (keyword? field-name)]}
-  (let [table-delay (delay (table-name->fake-table table-name))]
-    {:name                      (name field-name)
-     :table                     table-delay
-     :qualified-name-components (delay [(name (:name @table-delay)) (name field-name)])}))
 
 ;; ## Tests for connection functions
 
@@ -113,9 +104,8 @@
      #{:_id :date :venue_id :user_id}                        ; checkins
      #{:_id :name :last_login :password}                     ; users
      #{:_id :name :longitude :latitude :price :category_id}] ; venues
-  (->> table-names
-       (map table-name->fake-table)
-       (map table->column-names)))
+  (for [nm table-names]
+    (table->column-names (table-name->table nm))))
 
 ;; ### field->base-type
 (expect-when-testing-mongo
@@ -134,9 +124,9 @@
      :FloatField    ; venues.longitude
      :TextField     ; venues.name
      :IntegerField] ; venues.price
-  (->> field-names
-       (map (partial apply field-name->fake-field))
-       (mapv field->base-type)))
+  (for [[table-name field-name] field-names]
+    (field->base-type (Field (datasets/with-engine :mongo
+                               (data/id table-name field-name))))))
 
 ;; ### active-column-names->type
 (expect-when-testing-mongo
@@ -144,16 +134,14 @@
      {"_id" :IntegerField, "date" :DateField, "venue_id" :IntegerField, "user_id" :IntegerField}                                                    ; checkins
      {"_id" :IntegerField, "password" :TextField, "name" :TextField, "last_login" :DateField}                                                       ; users
      {"_id" :IntegerField, "name" :TextField, "longitude" :FloatField, "latitude" :FloatField, "price" :IntegerField, "category_id" :IntegerField}] ; venues
-  (->> table-names
-       (map table-name->fake-table)
-       (mapv (partial driver/active-column-names->type (MongoDriver.)))))
+  (for [nm table-names]
+    (driver/active-column-names->type (MongoDriver.) (table-name->table nm))))
 
 ;; ### table-pks
 (expect-when-testing-mongo
     [#{"_id"} #{"_id"} #{"_id"} #{"_id"}] ; _id for every table
-  (->> table-names
-       (map table-name->fake-table)
-       (mapv (partial driver/table-pks (MongoDriver.)))))
+  (for [nm table-names]
+    (driver/table-pks (MongoDriver.) (table-name->table nm))))
 
 
 ;; ## Big-picture tests for the way data should look post-sync
@@ -184,9 +172,6 @@
       {:special_type :longitude, :base_type :FloatField,   :name "longitude"}
       {:special_type :name,      :base_type :TextField,    :name "name"}
       {:special_type :category,  :base_type :IntegerField, :name "price"}]]
-  (let [table->fields (fn [table-name]
-                        (sel :many :fields [Field :name :base_type :special_type]
-                             :active true
-                             :table_id (sel :one :id Table :db_id (:id (mongo-db)), :name (name table-name))
-                             (k/order :name)))]
-    (map table->fields table-names)))
+    (for [nm table-names]
+      (sel :many :fields [Field :name :base_type :special_type], :active true, :table_id (:id (table-name->table nm))
+           (k/order :name))))

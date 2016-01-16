@@ -2,6 +2,7 @@
   (:require [clojure.tools.logging :as log]
             (korma [core :as k]
                    [db :as kdb])
+            [medley.core :as m]
             [metabase.db :as db]
             [metabase.events :as events]
             (metabase.models [card :refer [Card]]
@@ -10,7 +11,8 @@
                              [interface :as i]
                              [pulse-card :refer [PulseCard]]
                              [pulse-channel :refer [PulseChannel] :as pulse-channel]
-                             [user :refer [User]])))
+                             [user :refer [User]])
+            [metabase.util :as u]))
 
 
 (i/defentity Pulse :pulse)
@@ -19,19 +21,23 @@
   (let [defaults {:public_perms perms-readwrite}]
     (merge defaults pulse)))
 
-(defn- post-select [{:keys [id creator_id] :as pulse}]
-  (assoc pulse
-         :cards    (delay (k/select Card
-                                    (k/join PulseCard (= :pulse_card.card_id :id))
-                                    (k/fields :id :name :description :display)
-                                    (k/where {:pulse_card.pulse_id id})
-                                    (k/order :pulse_card.position :asc)))
-         :channels (delay (db/sel :many PulseChannel (k/where {:pulse_id id})))
-         :creator  (delay (when creator_id (db/sel :one User :id creator_id)))))
+(defn ^:hydrate channels
+  "Return the `PulseChannels` associated with this PULSE."
+  [{:keys [id]}]
+  (db/sel :many PulseChannel, :pulse_id id))
 
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete PulseCard :pulse_id id)
   (db/cascade-delete PulseChannel :pulse_id id))
+
+(defn ^:hydrate cards
+  "Return the `Cards` assoicated with this PULSE."
+  [{:keys [id]}]
+  (k/select Card
+            (k/join PulseCard (= :pulse_card.card_id :id))
+            (k/fields :id :name :description :display)
+            (k/where {:pulse_card.pulse_id id})
+            (k/order :pulse_card.position :asc)))
 
 (extend (class Pulse)
   i/IEntity
@@ -41,7 +47,6 @@
           :can-read?          i/publicly-readable?
           :can-write?         i/publicly-writeable?
           :pre-insert         pre-insert
-          :post-select        post-select
           :pre-cascade-delete pre-cascade-delete}))
 
 
@@ -110,13 +115,15 @@
   [id]
   {:pre [(integer? id)]}
   (-> (db/sel :one Pulse :id id)
-      (hydrate :creator :cards [:channels :recipients])))
+      (hydrate :creator :cards [:channels :recipients])
+      (m/dissoc-in [:details :emails])))
 
 (defn retrieve-pulses
   "Fetch all `Pulses`."
   []
-  (-> (db/sel :many Pulse (k/order :name :ASC))
-      (hydrate :creator :cards [:channels :recipients])))
+  (for [pulse (-> (db/sel :many Pulse (k/order :name :ASC))
+                  (hydrate :creator :cards [:channels :recipients]))]
+    (m/dissoc-in pulse [:details :emails])))
 
 (defn update-pulse
   "Update an existing `Pulse`, including all associated data such as: `PulseCards`, `PulseChannels`, and `PulseChannelRecipients`.
@@ -166,3 +173,6 @@
       ;; return the full Pulse (and record our create event)
       (->> (retrieve-pulse id)
            (events/publish-event :pulse-create)))))
+
+
+(u/require-dox-in-this-namespace)

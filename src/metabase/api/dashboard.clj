@@ -74,7 +74,7 @@
   {cardId [Required Integer]}
   (write-check Dashboard id)
   (check-400 (exists? Card :id cardId))
-  (let [result (ins DashboardCard :card_id cardId :dashboard_id id)]
+  (let [result (ins DashboardCard :card_id cardId, :dashboard_id id)]
     (events/publish-event :dashboard-add-cards {:id id :actor_id *current-user-id* :dashcards [result]})
     result))
 

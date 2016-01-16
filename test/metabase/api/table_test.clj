@@ -11,7 +11,9 @@
             (metabase.test.data [dataset-definitions :as defs]
                                 [datasets :as datasets]
                                 [users :refer :all])
-            [metabase.test.util :refer [match-$ expect-eval-actual-first]]))
+            [metabase.test.util :refer [match-$ expect-eval-actual-first resolve-private-fns]]))
+
+(resolve-private-fns metabase.models.table pk-field-id)
 
 
 ;; ## /api/org/* AUTHENTICATION Tests
@@ -76,7 +78,7 @@
        :updated_at      $
        :entity_name     nil
        :active          true
-       :pk_field        (deref $pk_field)
+       :pk_field        (pk-field-id $$)
        :id              (id :venues)
        :db_id           (id)
        :created_at      $})
@@ -97,8 +99,7 @@
             :preview_display     true
             :created_at          $
             :base_type           "BigIntegerField"
-            :parent_id           nil
-            :parent              nil})
+            :parent_id           nil})
          (match-$ (Field (id :categories :name))
            {:description         nil
             :table_id            (id :categories)
@@ -113,8 +114,7 @@
             :preview_display     true
             :created_at          $
             :base_type           "TextField"
-            :parent_id           nil
-            :parent              nil})]
+            :parent_id           nil})]
   ((user->client :rasta) :get 200 (format "table/%d/fields" (id :categories))))
 
 ;; ## GET /api/table/:id/query_metadata
@@ -150,8 +150,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "BigIntegerField"
-                            :parent_id       nil
-                            :parent          nil})
+                            :parent_id       nil})
                          (match-$ (Field (id :categories :name))
                            {:description     nil
                             :table_id        (id :categories)
@@ -167,8 +166,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "TextField"
-                            :parent_id       nil
-                            :parent          nil})]
+                            :parent_id       nil})]
        :field_values    {}
        :rows            75
        :updated_at      $
@@ -234,8 +232,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "BigIntegerField"
-                            :parent_id       nil
-                            :parent          nil})
+                            :parent_id       nil})
                          (match-$ (sel :one Field :id (id :users :last_login))
                            {:description     nil
                             :table_id        (id :users)
@@ -251,8 +248,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "DateTimeField"
-                            :parent_id       nil
-                            :parent          nil})
+                            :parent_id       nil})
                          (match-$ (sel :one Field :id (id :users :name))
                            {:description     nil
                             :table_id        (id :users)
@@ -268,8 +264,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "TextField"
-                            :parent_id       nil
-                            :parent          nil})
+                            :parent_id       nil})
                          (match-$ (sel :one Field :table_id (id :users) :name "PASSWORD")
                            {:description     nil
                             :table_id        (id :users)
@@ -285,8 +280,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "TextField"
-                            :parent_id       nil
-                            :parent          nil})]
+                            :parent_id       nil})]
        :rows            15
        :updated_at      $
        :entity_name     nil
@@ -348,8 +342,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "BigIntegerField"
-                            :parent_id       nil
-                            :parent          nil})
+                            :parent_id       nil})
                          (match-$ (Field (id :users :last_login))
                            {:description     nil
                             :table_id        (id :users)
@@ -365,8 +358,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "DateTimeField"
-                            :parent_id       nil
-                            :parent          nil})
+                            :parent_id       nil})
                          (match-$ (Field (id :users :name))
                            {:description     nil
                             :table_id        (id :users)
@@ -382,8 +374,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "TextField"
-                            :parent_id       nil
-                            :parent          nil})]
+                            :parent_id       nil})]
        :rows            15
        :updated_at      $
        :entity_name     nil
@@ -438,7 +429,7 @@
        :entity_name     nil
        :display_name    "Userz"
        :active          true
-       :pk_field        (deref $pk_field)
+       :pk_field        (pk-field-id $$)
        :id              $
        :db_id           (id)
        :created_at      $})
@@ -464,7 +455,6 @@
                         {:id              $
                          :table_id        $
                          :parent_id       nil
-                         :parent          nil
                          :name            "USER_ID"
                          :display_name    "User Id"
                          :description     nil
@@ -503,7 +493,6 @@
                         {:id              $
                          :table_id        $
                          :parent_id       nil
-                         :parent          nil
                          :name            "ID"
                          :display_name    "Id"
                          :description     nil

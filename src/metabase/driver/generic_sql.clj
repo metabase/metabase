@@ -7,7 +7,8 @@
                    [db :as kdb])
             [metabase.driver :as driver]
             metabase.driver.query-processor.interface
-            [metabase.models.field :as field]
+            (metabase.models [field :as field]
+                             [table :as table])
             [metabase.util :as u]
             [metabase.util.korma-extensions :as kx])
   (:import java.util.Map
@@ -160,7 +161,7 @@
 
 
 (defn- active-column-names->type [driver table]
-  (with-metadata [md driver @(:db table)]
+  (with-metadata [md driver (table/database table)]
     (into {} (for [{:keys [column_name type_name]} (jdbc/result-set-seq (.getColumns md nil (:schema table) (:name table) nil))]
                {column_name (or (column->base-type driver (keyword type_name))
                                 (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :UnknownField." type_name))
@@ -177,7 +178,7 @@
           (seq more)                    (recur more))))))
 
 (defn- table-pks [driver table]
-  (with-metadata [md driver @(:db table)]
+  (with-metadata [md driver (table/database table)]
     (->> (.getPrimaryKeys md nil nil (:name table))
          jdbc/result-set-seq
          (map :column_name)
@@ -191,13 +192,9 @@
   ;; 3. Not fetching too many results for things like mark-json-field! which will fail after the first result that isn't valid JSON
   500)
 
-(defn- field-values-lazy-seq [driver {:keys [qualified-name-components table], :as field}]
-  (assert (and (map? field)
-               (delay? qualified-name-components)
-               (delay? table))
-    (format "Field is missing required information:\n%s" (u/pprint-to-str 'red field)))
-  (let [table           @table
-        name-components (rest @qualified-name-components)
+(defn- field-values-lazy-seq [driver field]
+  (let [table           (field/table field)
+        name-components (field/qualified-name-components field)
         transform-fn    (if (contains? #{:TextField :CharField} (:base_type field))
                           u/jdbc-clob->str
                           identity)
@@ -226,7 +223,7 @@
 
 
 (defn- table-fks [driver table]
-  (with-metadata [md driver @(:db table)]
+  (with-metadata [md driver (table/database table)]
     (->> (.getImportedKeys md nil nil (:name table))
          jdbc/result-set-seq
          (map (fn [result]
@@ -236,7 +233,7 @@
          set)))
 
 (defn- field-avg-length [driver field]
-  (or (some-> (korma-entity @(:table field))
+  (or (some-> (korma-entity (field/table field))
               (k/select (k/aggregate (avg (k/sqlfn* (string-length-fn driver)
                                                     (kx/cast :CHAR (escape-field-name (:name field)))))
                                      :len))
@@ -246,7 +243,7 @@
       0))
 
 (defn- field-percent-urls [_ field]
-  (or (let [korma-table (korma-entity @(:table field))]
+  (or (let [korma-table (korma-entity (field/table field))]
         (when-let [total-non-null-count (:count (first (k/select korma-table
                                                                  (k/aggregate (count (k/raw "*")) :count)
                                                                  (k/where {(escape-field-name (:name field)) [not= nil]}))))]
@@ -303,8 +300,7 @@
         korma-entity
         (select (aggregate (count :*) :count)))"
   ([table]
-   {:pre [(delay? (:db table))]}
-   (korma-entity @(:db table) table))
+   (korma-entity (table/database table) table))
 
   ([db table]             (table+db->entity table (db->korma-db db)))
   ([driver details table] (table+db->entity table (db->korma-db driver details))))

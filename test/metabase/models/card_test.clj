@@ -10,7 +10,7 @@
 ;; Check that the :dashboard_count delay returns the correct count of Dashboards a Card is in
 (expect [0 1 2]
   (let [{card-id :id}       (post-card (random-name))
-        get-dashboard-count (fn [] @(:dashboard_count (Card card-id)))]
+        get-dashboard-count (fn [] (dashboard-count (Card card-id)))]
 
     [(get-dashboard-count)
      (do (ins DashboardCard :card_id card-id, :dashboard_id (:id (create-dash (random-name))))

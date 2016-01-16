@@ -134,7 +134,6 @@
                    :schedule_type "daily"
                    :schedule_hour 12
                    :schedule_day  nil
-                   :details       {}
                    :recipients    []}]}
   (-> (pulse-response ((user->client :rasta) :post 200 "pulse" {:name     "A Pulse"
                                                                 :cards    [{:id (:id card1)} {:id (:id card2)}]

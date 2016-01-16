@@ -2,6 +2,7 @@
   "Functions for deserializing and hydrating fields in objects fetched from the DB."
   (:require [clojure.java.classpath :as classpath]
             [clojure.tools.namespace.find :as ns-find]
+            [medley.core :as m]
             [metabase.db :refer [sel]]
             [metabase.models.interface :as i]
             [metabase.util :as u]))
@@ -27,7 +28,7 @@
 
   **Batched Hydration**
 
-  Hydration attempts to do a *batched hydration* where possible.
+  `hydrate` attempts to do a *batched hydration* where possible.
   If the key being hydrated is defined as one of some entity's `hydration-keys`,
   `hydrate` will do a batched `sel` if a corresponding key ending with `_id`
   is found in the objects being hydrated.
@@ -43,12 +44,23 @@
 
   **Simple Hydration**
 
-  If the key is *not* eligible for batched hydration, `hydrate` will look for delays
-  in objects being hydrated whose keys match the hydration key. These will be
-  evaluated and their values will replace the delays.
+  If the key is *not* eligible for batched hydration, `hydrate` will look for a method or
+  function tagged with `:hydrate` in its metadata, and use that instead; if a matching function
+  is found, it is called on the object being hydrated and the result is `assoc`ed:
 
-    (hydrate [{:fish (delay 1)} {:fish (delay 2)}] :fish)
-      -> [{:fish 1} {:fish 2}]
+    (defn ^:hydrate dashboard [{:keys [dashboard_id]}]
+      (Dashboard dashboard_id))
+
+    (let [dc (DashboardCard ...)]
+      (hydrate dc :dashboard))    ; roughly equivalent to (assoc dc :dashboard (dashboard dc))
+
+  By default, the function will be used to hydrate keys that match its name; you
+  can specify a different key to hydrate instead as the metadata value of `:hydrate`:
+
+    (defn ^{:hydrate :pk_field} pk-field-id [obj] ...) ; hydrate :pk_field with pk-field-id
+
+  Keep in mind that you can only define a single function/method to hydrate each key; move functions into the
+  `IEntity` interface as needed.
 
   **Hydrating Multiple Keys**
 
@@ -128,29 +140,35 @@
   (if (can-batched-hydrate? results k) (batched-hydrate results k)
       (simple-hydrate results k)))
 
-(def ^:private hydration-k->method
-  "Methods that can be used to hydrate corresponding keys."
-  {:can_read  #'i/can-read?    ; Not sure why but these don't work if they're not vars
-   :can_write #'i/can-write?})
+(def ^:private k->f
+  (delay (loop [m {}, [[k f] & more] (for [ns          (all-ns)
+                                           [symb varr] (ns-interns ns)
+                                           :let        [hydration-key (:hydrate (meta varr))]
+                                           :when       hydration-key]
+                                       [(if (m/boolean? hydration-key)
+                                          (keyword (name symb))
+                                          hydration-key) varr])]
+           (cond
+             (not k) m
+             (m k)   (throw (Exception. (format "Duplicate `^:hydrate` functions for key '%s': %s and %s." k (m k) f)))
+             :else   (recur (assoc m k f) more)))))
+
+(defn- hydration-key->f
+  "Get the function marked `^:hydrate` for K."
+  [k]
+  (@k->f k))
 
 (defn- simple-hydrate
   "Hydrate keyword K in results by dereferencing corresponding delays when applicable."
   [results k]
   {:pre [(keyword? k)]}
-  (map (fn [result]
-         (let [v (k result)]
-           (cond
-             (delay? v)                    (assoc result k @v)                               ; hydrate delay if possible
-             (and (not v)
-                  (hydration-k->method k)) (assoc result k ((hydration-k->method k) result)) ; otherwise if no value exists look for a method we can use for hydration
-             :else                         result)))                                         ; otherwise don't barf, v may already be hydrated
-       results))
-
-(defn- already-hydrated?
-  "Is `(obj k)` a non-nil value that is not a delay?"
-  [obj k]
-  (let [{v k} obj]
-    (and v (not (delay? v)))))
+  (for [result results]
+    ;; don't try to hydrate if they key is already present. If we find a matching fn, hydrate with it
+    (when result
+      (or (when-not (k result)
+            (when-let [f (hydration-key->f k)]
+              (assoc result k (f result))))
+          result))))
 
 (defn- batched-hydrate
   "Hydrate keyword DEST-KEY across all RESULTS by aggregating corresponding source keys (`DEST-KEY_id`),
@@ -159,25 +177,15 @@
    {:pre [(keyword? dest-key)]}
    (let [entity     (@hydration-key->entity dest-key)
          source-key (k->k_id dest-key)
-         results    (map (fn [{dest-obj dest-key :as result}]   ; if there are realized delays for `dest-key`
-                           (if (and (delay? dest-obj)          ; in any of the objects replace delay with its value
-                                    (realized? dest-obj))
-                             (assoc result dest-key @dest-obj)
-                             result))
-                         results)
-         ids        (->> results
-                         (filter (u/rpartial (complement already-hydrated?) dest-key)) ; filter out results that are already hydrated
-                         (map source-key)
-                         set)
-         objs       (->> (sel :many entity :id [in ids])
-                         (map (fn [obj]
-                                {(:id obj) obj}))
-                         (into {}))]
-     (map (fn [{source-id source-key :as result}]
-            (if (already-hydrated? result dest-key) result
-                (let [obj (objs source-id)]
-                  (assoc result dest-key obj))))
-          results))))
+         ids        (set (for [result results
+                               :when  (not (get result dest-key))]
+                           (source-key result)))
+         objs       (into {} (for [obj (sel :many entity :id [in ids])]
+                               {(:id obj) obj}))]
+     (for [{source-id source-key :as result} results]
+       (if (get result dest-key)
+         result
+         (assoc result dest-key (objs source-id)))))))
 
 
 ;; ### Helper Fns
@@ -320,3 +328,6 @@
                      f
                      (counts-unflatten k counts))]
     (map merge coll new-vals)))
+
+
+(u/require-dox-in-this-namespace)

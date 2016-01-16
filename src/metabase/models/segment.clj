@@ -1,7 +1,5 @@
 (ns metabase.models.segment
-  (:require [clojure.core.match :refer [match]]
-            [korma.core :as k]
-            [medley.core :as m]
+  (:require [korma.core :as k]
             [metabase.db :as db]
             [metabase.events :as events]
             (metabase.models [common :refer [perms-readwrite]]
@@ -14,29 +12,21 @@
 
 (i/defentity Segment :segment)
 
-(defn- post-select [{:keys [creator_id description] :as segment}]
-  (assoc segment
-    :creator     (delay (when creator_id (db/sel :one User :id creator_id)))
-    :description (u/jdbc-clob->str description)))
-
 (extend (class Segment)
   i/IEntity
   (merge i/IEntityDefaults
-         {:types           (constantly {:definition :json})
+         {:types           (constantly {:definition :json, :description :clob})
           :timestamped?    (constantly true)
           :hydration-keys  (constantly [:segment])
           :can-read?       (constantly true)
-          :can-write?      i/superuser?
-          :post-select     post-select}))
+          :can-write?      i/superuser?}))
 
 
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
 
 
-(defn serialize-segment [this id instance]
-  (->> (dissoc instance :created_at :updated_at)
-       (into {})                                 ; if it's a record type like SegmentInstance we need to convert it to a regular map or filter-vals won't work
-       (m/filter-vals (complement delay?))))
+(defn serialize-segment [_ _ instance]
+  (dissoc instance :created_at :updated_at))
 
 (defn diff-segments [this segment1 segment2]
   (if-not segment1

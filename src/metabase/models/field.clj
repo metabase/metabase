@@ -8,9 +8,6 @@
                              [interface :as i])
             [metabase.util :as u]))
 
-(declare field->fk-field
-         qualified-name-components)
-
 (def ^:const special-types
   "Possible values for `Field.special_type`."
   #{:avatar
@@ -55,7 +52,6 @@
     :info        ; Non-numerical value that is not meant to be used
     :sensitive}) ; A Fields that should *never* be shown *anywhere*
 
-
 (i/defentity Field :metabase_field)
 
 (defn- pre-insert [field]
@@ -78,23 +74,35 @@
             (contains? field :special_type))
     (create-field-values-if-needed (sel :one [Field :id :table_id :base_type :special_type :field_type] :id id))))
 
-(defn- post-select [{:keys [id table_id parent_id] :as field}]
-  (u/assoc<> field
-    :table                     (delay (sel :one 'Table :id table_id))
-    :db                        (delay @(:db @(:table <>)))
-    :target                    (delay (field->fk-field field))
-    :parent                    (when parent_id
-                                 (delay (Field parent_id)))
-    :children                  (delay (sel :many Field :parent_id (:id field)))
-    :values                    (delay (sel :many [FieldValues :field_id :values] :field_id id))
-    :qualified-name-components (delay (qualified-name-components <>))
-    :qualified-name            (delay (apply str (interpose "." @(:qualified-name-components <>))))))
-
 (defn- pre-cascade-delete [{:keys [id]}]
   (cascade-delete Field :parent_id id)
   (cascade-delete ForeignKey (k/where (or (= :origin_id id)
                                           (= :destination_id id))))
   (cascade-delete 'FieldValues :field_id id))
+
+(defn ^:hydrate values
+  "Return the `FieldValues` associated with this FIELD."
+  [{:keys [id]}]
+  (sel :many [FieldValues :field_id :values], :field_id id))
+
+(defn qualified-name-components
+  "Return the pieces that represent a path to FIELD, of the form `[table-name parent-fields-name* field-name]`."
+  [{field-name :name, table-id :table_id, parent-id :parent_id, :as field}]
+  (conj (if-let [parent (Field parent-id)]
+          (qualified-name-components parent)
+          [(sel :one :field ['Table :name], :id table-id)])
+        field-name))
+
+(defn qualified-name
+  "Return a combined qualified name for FIELD, e.g. `table_name.parent_field_name.field_name`."
+  [field]
+  (apply str (interpose \. (qualified-name-components field))))
+
+(defn table
+  "Return the `Table` associated with this `Field`."
+  {:arglists '([field])}
+  [{:keys [table_id]}]
+  (sel :one 'Table, :id table_id))
 
 (extend (class Field)
   i/IEntity (merge i/IEntityDefaults
@@ -106,41 +114,18 @@
                     :pre-insert         pre-insert
                     :post-insert        post-insert
                     :post-update        post-update
-                    :post-select        post-select
                     :pre-cascade-delete pre-cascade-delete}))
 
 
 (defn field->fk-field
-  "Attempts to follow a `ForeignKey` from the the given `Field` to a destination `Field`.
+  "Attempts to follow a `ForeignKey` from the the given FIELD to a destination `Field`.
 
    Only evaluates if the given field has :special_type `fk`, otherwise does nothing."
-  [{:keys [id special_type] :as field}]
+  {:hydrate :target}
+  [{:keys [id special_type]}]
   (when (= :fk special_type)
     (let [dest-id (sel :one :field [ForeignKey :destination_id] :origin_id id)]
       (Field dest-id))))
 
-(defn unflatten-nested-fields
-  "Take a sequence of both top-level and nested FIELDS, and return a sequence of top-level `Fields`
-   with nested `Fields` moved into sequences keyed by `:children` in their parents.
 
-     (unflatten-nested-fields [{:id 1, :parent_id nil}, {:id 2, :parent_id 1}])
-       -> [{:id 1, :parent_id nil, :children [{:id 2, :parent_id 1, :children nil}]}]
-
-   You may optionally specify a different PARENT-ID-KEY; the default is `:parent_id`."
-  ([fields]
-   (unflatten-nested-fields fields :parent_id))
-  ([fields parent-id-key]
-   (let [parent-id->fields (group-by parent-id-key fields)
-         resolve-children  (fn resolve-children [field]
-                             (assoc field :children (map resolve-children
-                                                         (parent-id->fields (:id field)))))]
-     (map resolve-children (parent-id->fields nil)))))
-
-(defn- qualified-name-components
-  "Return the pieces that represent a path to FIELD, of the form `[table-name parent-fields-name* field-name]`."
-  [{:keys [table parent], :as field}]
-  {:pre [(delay? table)]}
-  (conj (if parent
-          (qualified-name-components @parent)
-          [(:name @table)])
-        (:name field)))
+(u/require-dox-in-this-namespace)
