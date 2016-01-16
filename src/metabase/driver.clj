@@ -138,8 +138,7 @@
 
   (field-values-lazy-seq ^clojure.lang.Sequential [this, ^FieldInstance field]
     "Return a lazy sequence of all values of FIELD.
-     This is used to implement `mark-json-field!`, and fallback implentations of `mark-no-preview-display-field!` and `mark-url-field!`
-     if drivers *don't* implement `field-avg-length` and `field-percent-urls`, respectively.")
+     This is used to implement some methods of the database sync process which require rows of data during execution.")
 
   (humanize-connection-error-message ^String [this, ^String message]
     "*OPTIONAL*. Return a humanized (user-facing) version of an connection error message string.
@@ -213,10 +212,7 @@
   "Default implementations of `IDriver` methods marked *OPTIONAL*."
   {:date-interval                     (fn [_ unit amount] (u/relative-date unit amount))
    :describe-table-fks                (constantly nil)
-   :driver-specific-sync-field!       (constantly nil)
    :features                          (constantly nil)
-   :field-avg-length                  default-field-avg-length
-   :field-percent-urls                default-field-percent-urls
    :humanize-connection-error-message (fn [_ message] message)
    :process-query-in-context          (fn [_ qp]      qp)
    :sync-in-context                   (fn [_ _ f] (f))
