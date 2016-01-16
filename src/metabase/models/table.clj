@@ -1,7 +1,7 @@
 (ns metabase.models.table
   (:require [korma.core :as k]
             [metabase.db :as db]
-            (metabase.models [common :refer :all]
+            (metabase.models [common :as common]
                              [database :as database]
                              [field :refer [Field]]
                              [field-values :refer [FieldValues]]
@@ -23,7 +23,7 @@
 
 (defn- post-select [{:keys [id db db_id description] :as table}]
   (u/assoc<> table
-    :db           (or db (delay (db/sel :one db/Database :id db_id)))
+    :db           (or db (delay (db/sel :one database/Database :id db_id)))
     :description  (u/jdbc-clob->str description)
     :fields       (delay (db/sel :many Field :table_id id :active true (k/order :position :ASC) (k/order :name :ASC)))
     :field_values (delay

@@ -27,8 +27,9 @@
      :common_name $}))
 
 (defn metric-response [{:keys [created_at updated_at] :as metric}]
-  (-> (into {} metric)                                     ; model class -> map
+  (-> (into {} metric)
       (dissoc :id :table_id)
+      (update :creator #(into {} %))
       (assoc :created_at (not (nil? created_at)))
       (assoc :updated_at (not (nil? updated_at)))))
 

@@ -55,16 +55,18 @@
 
 ;;; # Revision Entity
 
+(defn- post-select [{:keys [message] :as revision}]
+  (assoc revision :message (u/jdbc-clob->str message)))
+
 (i/defentity Revision :revision)
 
 (extend (class Revision)
   i/IEntity
   (merge i/IEntityDefaults
-         {:types      (constantly {:object :json})
-          :post-select (fn [_ {:keys [message] :as revision}]
-                         (assoc revision :message (u/jdbc-clob->str message)))
-          :pre-insert (u/rpartial assoc :timestamp (u/new-sql-timestamp))
-          :pre-update (fn [& _] (throw (Exception. "You cannot update a Revision!")))}))
+         {:types        (constantly {:object :json})
+          :post-select  post-select
+          :pre-insert   (u/rpartial assoc :timestamp (u/new-sql-timestamp))
+          :pre-update   (fn [& _] (throw (Exception. "You cannot update a Revision!")))}))
 
 
 ;;; # Functions
@@ -86,7 +88,7 @@
   [entity id]
   {:pre [(i/metabase-entity? entity)
          (integer? id)]}
-  (db/sel :many Revision :model (:name entity), :model_id id, (order :id :DESC)))
+  (db/sel :many Revision :model (:name entity), :model_id id, (k/order :id :DESC)))
 
 (defn revisions+details
   "Fetch `revisions` for ENTITY with ID and add details."

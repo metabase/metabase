@@ -2,7 +2,7 @@
   (:require [clojure.set :as set]
             [korma.core :as k]
             [metabase.db :as db]
-            (metabase.models [interface :refer :all])
+            [metabase.models.interface :as i]
             [metabase.util :as u]))
 
 ;;; # IRevisioned Protocl
@@ -21,8 +21,7 @@
 
 ;;; # Dependency Entity
 
-(defentity Dependency
-  [(k/table :dependency)])
+(i/defentity Dependency :dependency)
 
 
 ;;; ## Persistence Functions
@@ -31,14 +30,14 @@
 (defn retrieve-dependencies
   "Get the list of dependencies for a given object."
   [entity id]
-  {:pre [(metabase-entity? entity)
+  {:pre [(i/metabase-entity? entity)
          (integer? id)]}
   (db/sel :many Dependency :model (:name entity) :model_id id))
 
 (defn update-dependencies
   "Update the set of `Dependency` objects for a given entity."
   [entity id deps]
-  {:pre [(metabase-entity? entity)
+  {:pre [(i/metabase-entity? entity)
          (integer? id)
          (map? deps)]}
   (let [entity-name      (:name entity)

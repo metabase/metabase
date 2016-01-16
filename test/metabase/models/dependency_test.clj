@@ -3,15 +3,15 @@
             [korma.core :as k]
             [metabase.db :as db]
             (metabase.models [dependency :refer :all]
-                             [interface :refer :all])
+                             [interface :as i])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
             [metabase.test.util :as tu]
             [metabase.util :as u]))
 
-(defentity Mock [(k/table :mock)])
+(i/defentity Mock :mock)
 
-(extend MockEntity
+(extend (class Mock)
   IDependent
   {:dependencies (fn [_ id instance]
                    {:a [1 2]
@@ -30,6 +30,7 @@
 
 (defn format-dependencies [deps]
   (->> deps
+       (map #(into {} %))
        (map #(dissoc % :id :created_at))
        set))
 

@@ -2,7 +2,7 @@
   (:require [clojure.string :as s]
             [cemerick.friend.credentials :as creds]
             [korma.core :as k]
-            [metabase.db :refer [cascade-delete ins upd]]
+            [metabase.db :as db]
             [metabase.email.messages :as email]
             (metabase.models [interface :as i]
                              [setting :as setting])
@@ -43,14 +43,14 @@
     (or first_name last_name) (assoc :common_name (str first_name " " last_name))))
 
 (defn- pre-cascade-delete [{:keys [id]}]
-  (cascade-delete 'Session :user_id id)
-  (cascade-delete 'Dashboard :creator_id id)
-  (cascade-delete 'Card :creator_id id)
-  (cascade-delete 'Pulse :creator_id id)
-  (cascade-delete 'Activity :user_id id)
-  (cascade-delete 'ViewLog :user_id id)
-  (cascade-delete 'Segment :creator_id id)
-  (cascade-delete 'Metric :creator_id id))
+  (db/cascade-delete 'Session :user_id id)
+  (db/cascade-delete 'Dashboard :creator_id id)
+  (db/cascade-delete 'Card :creator_id id)
+  (db/cascade-delete 'Pulse :creator_id id)
+  (db/cascade-delete 'Activity :user_id id)
+  (db/cascade-delete 'ViewLog :user_id id)
+  (db/cascade-delete 'Segment :creator_id id)
+  (db/cascade-delete 'Metric :creator_id id))
 
 (extend (class User)
   i/IEntity
@@ -77,7 +77,7 @@
   {:pre [(string? first-name)
          (string? last-name)
          (string? email-address)]}
-  (when-let [new-user (ins User
+  (when-let [new-user (db/ins User
                         :email email-address
                         :first_name first-name
                         :last_name last-name
@@ -96,7 +96,7 @@
   "Retrieve a single `User` by ID."
   [id]
   {:pre [(integer? id)]}
-  (sel :one User :id id))
+  (db/sel :one User :id id))
 
 (defn set-user-password
   "Updates the stored password for a specified `User` by hashing the password with a random salt."
@@ -104,7 +104,7 @@
   (let [salt (.toString (java.util.UUID/randomUUID))
         password (creds/hash-bcrypt (str salt password))]
     ;; NOTE: any password change expires the password reset token
-    (upd User user-id
+    (db/upd User user-id
       :password_salt salt
       :password password
       :reset_token nil
@@ -115,7 +115,7 @@
   [user-id]
   {:pre [(integer? user-id)]}
   (let [reset-token (str user-id \_ (java.util.UUID/randomUUID))]
-    (upd User user-id, :reset_token reset-token, :reset_triggered (System/currentTimeMillis))
+    (db/upd User user-id, :reset_token reset-token, :reset_triggered (System/currentTimeMillis))
     ;; return the token
     reset-token))
 

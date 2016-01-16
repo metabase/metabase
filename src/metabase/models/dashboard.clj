@@ -24,6 +24,16 @@
   (cascade-delete DashboardCard :dashboard_id id))
 
 
+(extend (class Dashboard)
+  i/IEntity
+  (merge i/IEntityDefaults
+         {:timestamped?       (constantly true)
+          :can-read?          i/publicly-readable?
+          :can-write?         i/publicly-writeable?
+          :post-select        post-select
+          :pre-cascade-delete pre-cascade-delete}))
+
+
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
 
 
@@ -82,14 +92,6 @@
 
 
 (extend (class Dashboard)
-  i/IEntity
-  (merge i/IEntityDefaults
-         {:timestamped?       (constantly true)
-          :can-read?          i/publicly-readable?
-          :can-write?         i/publicly-writeable?
-          :post-select        post-select
-          :pre-cascade-delete pre-cascade-delete})
-
   revision/IRevisioned
   {:serialize-instance serialize-instance
    :revert-to-revision revert-to-revision

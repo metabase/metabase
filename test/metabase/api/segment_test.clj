@@ -27,8 +27,9 @@
      :common_name $}))
 
 (defn segment-response [{:keys [created_at updated_at] :as segment}]
-  (-> (into {} segment)                                     ; model class -> map
+  (-> (into {} segment)
       (dissoc :id :table_id)
+      (update :creator #(into {} %))
       (assoc :created_at (not (nil? created_at)))
       (assoc :updated_at (not (nil? updated_at)))))
 

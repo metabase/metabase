@@ -2,39 +2,64 @@
   (:require [clojure.core.match :refer [match]]
             [korma.core :as k]
             [medley.core :as m]
-            [metabase.config :as config]
             [metabase.db :as db]
             [metabase.events :as events]
             (metabase.models [common :refer [perms-readwrite]]
                              [hydrate :refer :all]
-                             [interface :refer :all]
+                             [interface :as i]
                              [revision :as revision]
                              [user :refer [User]])
             [metabase.util :as u]))
 
 
-(defrecord SegmentInstance []
-  ;; preserve normal IFn behavior so things like ((sel :one Database) :id) work correctly
-  clojure.lang.IFn
-  (invoke [this k]
-    (get this k)))
+(i/defentity Segment :segment)
 
-(extend-ICanReadWrite SegmentInstance :read :always, :write :superuser)
+(defn- post-select [{:keys [creator_id description] :as segment}]
+  (assoc segment
+    :creator     (delay (when creator_id (db/sel :one User :id creator_id)))
+    :description (u/jdbc-clob->str description)))
+
+(extend (class Segment)
+  i/IEntity
+  (merge i/IEntityDefaults
+         {:types           (constantly {:definition :json})
+          :timestamped?    (constantly true)
+          :hydration-keys  (constantly [:segment])
+          :can-read?       (constantly true)
+          :can-write?      i/superuser?
+          :post-select     post-select}))
 
 
-(defentity Segment
-  [(k/table :segment)
-   (hydration-keys segment)
-   (types :definition :json)
-   timestamped]
+;;; ## ---------------------------------------- REVISIONS ----------------------------------------
 
-  (post-select [_ {:keys [creator_id description] :as segment}]
-    (map->SegmentInstance
-      (assoc segment
-        :creator     (delay (when creator_id (db/sel :one User :id creator_id)))
-        :description (u/jdbc-clob->str description)))))
 
-(extend-ICanReadWrite SegmentEntity :read :always, :write :superuser)
+(defn serialize-segment [this id instance]
+  (->> (dissoc instance :created_at :updated_at)
+       (into {})                                 ; if it's a record type like SegmentInstance we need to convert it to a regular map or filter-vals won't work
+       (m/filter-vals (complement delay?))))
+
+(defn diff-segments [this segment1 segment2]
+  (if-not segment1
+    ;; this is the first version of the segment
+    (u/update-values (select-keys segment2 [:name :description :definition]) (fn [v] {:after v}))
+    ;; do our diff logic
+    (let [base-diff (revision/default-diff-map this
+                                               (select-keys segment1 [:name :description :definition])
+                                               (select-keys segment2 [:name :description :definition]))]
+      (cond-> (merge-with merge
+                          (u/update-values (:after base-diff) (fn [v] {:after v}))
+                          (u/update-values (:before base-diff) (fn [v] {:before v})))
+              (or (get-in base-diff [:after :definition])
+                  (get-in base-diff [:before :definition])) (assoc :definition {:before (get-in segment1 [:definition])
+                                                                                :after  (get-in segment2 [:definition])})))))
+
+
+(extend (class Segment)
+  revision/IRevisioned
+  {:serialize-instance serialize-segment
+   :revert-to-revision revision/default-revert-to-revision
+   :diff-map           diff-segments
+   :diff-str           revision/default-diff-str})
 
 
 ;; ## Persistence Functions
@@ -126,33 +151,3 @@
     ;; return the updated segment
     segment))
 
-
-;;; ## ---------------------------------------- REVISIONS ----------------------------------------
-
-
-(defn serialize-segment [this id instance]
-  (->> (dissoc instance :created_at :updated_at)
-       (into {})                                 ; if it's a record type like SegmentInstance we need to convert it to a regular map or filter-vals won't work
-       (m/filter-vals (complement delay?))))
-
-(defn diff-segments [this segment1 segment2]
-  (if-not segment1
-    ;; this is the first version of the segment
-    (u/update-values (select-keys segment2 [:name :description :definition]) (fn [v] {:after v}))
-    ;; do our diff logic
-    (let [base-diff (revision/default-diff-map this
-                                               (select-keys segment1 [:name :description :definition])
-                                               (select-keys segment2 [:name :description :definition]))]
-      (cond-> (merge-with merge
-                          (u/update-values (:after base-diff) (fn [v] {:after v}))
-                          (u/update-values (:before base-diff) (fn [v] {:before v})))
-              (or (get-in base-diff [:after :definition])
-                  (get-in base-diff [:before :definition])) (assoc :definition {:before (get-in segment1 [:definition])
-                                                                                :after  (get-in segment2 [:definition])})))))
-
-(extend SegmentEntity
-  revision/IRevisioned
-  {:serialize-instance serialize-segment
-   :revert-to-revision revision/default-revert-to-revision
-   :diff-map           diff-segments
-   :diff-str           revision/default-diff-str})
