@@ -1,41 +1,27 @@
 (ns metabase.models.dashboard
-  (:require (clojure [data :refer [diff]]
-                     [string :as s])
-            [korma.core :refer :all, :exclude [defentity update]]
+  (:require [clojure.data :refer [diff]]
+            [korma.core :as k]
             [medley.core :as m]
             [metabase.db :refer :all]
             (metabase.models [common :refer :all]
                              [dashboard-card :refer [DashboardCard]]
-                             [interface :refer :all]
+                             [interface :as i]
                              [revision :as revision]
                              [user :refer [User]])
             [metabase.models.revision.diff :refer [build-sentence]]
             [metabase.util :as u]))
 
-(defrecord DashboardInstance []
-  clojure.lang.IFn
-  (invoke [this k]
-    (get this k)))
+(i/defentity Dashboard :report_dashboard)
 
-(extend-ICanReadWrite DashboardInstance :read :public-perms, :write :public-perms)
+(defn- post-select [{:keys [id creator_id description] :as dash}]
+  (assoc dash
+         :creator       (delay (User creator_id))
+         :description   (u/jdbc-clob->str description)
+         :ordered_cards (delay (sel :many DashboardCard :dashboard_id id (k/order :created_at :asc)))))
 
-
-(defentity Dashboard
-  [(table :report_dashboard)
-   timestamped]
-
-  (post-select [_ {:keys [id creator_id description] :as dash}]
-    (-> dash
-        (assoc :creator       (delay (User creator_id))
-               :description   (u/jdbc-clob->str description)
-               :ordered_cards (delay (sel :many DashboardCard :dashboard_id id (order :created_at :asc))))
-        map->DashboardInstance))
-
-  (pre-cascade-delete [_ {:keys [id]}]
-    (cascade-delete 'Revision :model "Dashboard" :model_id id)
-    (cascade-delete DashboardCard :dashboard_id id)))
-
-(extend-ICanReadWrite DashboardEntity :read :public-perms, :write :public-perms)
+(defn- pre-cascade-delete [{:keys [id]}]
+  (cascade-delete 'Revision :model "Dashboard" :model_id id)
+  (cascade-delete DashboardCard :dashboard_id id))
 
 
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
@@ -94,7 +80,16 @@
            (filter identity)
            build-sentence))))
 
-(extend DashboardEntity
+
+(extend (class Dashboard)
+  i/IEntity
+  (merge i/IEntityDefaults
+         {:timestamped?       (constantly true)
+          :can-read?          i/publicly-readable?
+          :can-write?         i/publicly-writeable?
+          :post-select        post-select
+          :pre-cascade-delete pre-cascade-delete})
+
   revision/IRevisioned
   {:serialize-instance serialize-instance
    :revert-to-revision revert-to-revision

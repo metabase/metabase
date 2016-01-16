@@ -1,59 +1,66 @@
 (ns metabase.models.user
   (:require [clojure.string :as s]
             [cemerick.friend.credentials :as creds]
-            [korma.core :refer :all, :exclude [defentity update]]
-            [metabase.db :refer :all]
+            [korma.core :as k]
+            [metabase.db :refer [cascade-delete ins upd]]
             [metabase.email.messages :as email]
-            (metabase.models [interface :refer :all]
+            (metabase.models [interface :as i]
                              [setting :as setting])
             [metabase.util :as u]))
 
 ;; ## Enity + DB Multimethods
 
-(defentity User
-  [(table :core_user)
-   (default-fields id email date_joined first_name last_name last_login is_superuser)
-   (hydration-keys author creator user)]
+(i/defentity User :core_user)
 
-  (pre-insert [_ {:keys [email password reset_token] :as user}]
-    (assert (u/is-email? email))
-    (assert (and (string? password)
-                 (not (s/blank? password))))
-    (assert (not (:password_salt user))
-      "Don't try to pass an encrypted password to (ins User). Password encryption is handled by pre-insert.")
-    (let [salt     (.toString (java.util.UUID/randomUUID))
-          defaults {:date_joined  (u/new-sql-timestamp)
-                    :last_login   nil
-                    :is_staff     true
-                    :is_active    true
-                    :is_superuser false}]
-      ;; always salt + encrypt the password before putting new User in the DB
-      ;; TODO - we should do password encryption in pre-update too instead of in the session code
-      (merge defaults user
-             {:password_salt salt
-              :password      (creds/hash-bcrypt (str salt password))}
-             (when reset_token
-               {:reset_token (creds/hash-bcrypt reset_token)}))))
+(defn- pre-insert [{:keys [email password reset_token] :as user}]
+  (assert (u/is-email? email))
+  (assert (and (string? password)
+               (not (s/blank? password))))
+  (assert (not (:password_salt user))
+    "Don't try to pass an encrypted password to (ins User). Password encryption is handled by pre-insert.")
+  (let [salt     (.toString (java.util.UUID/randomUUID))
+        defaults {:date_joined  (u/new-sql-timestamp)
+                  :last_login   nil
+                  :is_staff     true
+                  :is_active    true
+                  :is_superuser false}]
+    ;; always salt + encrypt the password before putting new User in the DB
+    ;; TODO - we should do password encryption in pre-update too instead of in the session code
+    (merge defaults user
+           {:password_salt salt
+            :password      (creds/hash-bcrypt (str salt password))}
+           (when reset_token
+             {:reset_token (creds/hash-bcrypt reset_token)}))))
 
-  (pre-update [_ {:keys [email reset_token] :as user}]
-    (when email
-      (assert (u/is-email? email)))
-    (cond-> user
-      reset_token (assoc :reset_token (creds/hash-bcrypt reset_token))))
+(defn- pre-update [{:keys [email reset_token] :as user}]
+  (when email
+    (assert (u/is-email? email)))
+  (cond-> user
+    reset_token (assoc :reset_token (creds/hash-bcrypt reset_token))))
 
-  (post-select [_ {:keys [first_name last_name], :as user}]
-    (cond-> user
-      (or first_name last_name) (assoc :common_name (str first_name " " last_name))))
+(defn- post-select [{:keys [first_name last_name], :as user}]
+  (cond-> user
+    (or first_name last_name) (assoc :common_name (str first_name " " last_name))))
 
-  (pre-cascade-delete [_ {:keys [id]}]
-    (cascade-delete 'Session :user_id id)
-    (cascade-delete 'Dashboard :creator_id id)
-    (cascade-delete 'Card :creator_id id)
-    (cascade-delete 'Pulse :creator_id id)
-    (cascade-delete 'Activity :user_id id)
-    (cascade-delete 'ViewLog :user_id id)
-    (cascade-delete 'Segment :creator_id id)
-    (cascade-delete 'Metric :creator_id id)))
+(defn- pre-cascade-delete [{:keys [id]}]
+  (cascade-delete 'Session :user_id id)
+  (cascade-delete 'Dashboard :creator_id id)
+  (cascade-delete 'Card :creator_id id)
+  (cascade-delete 'Pulse :creator_id id)
+  (cascade-delete 'Activity :user_id id)
+  (cascade-delete 'ViewLog :user_id id)
+  (cascade-delete 'Segment :creator_id id)
+  (cascade-delete 'Metric :creator_id id))
+
+(extend (class User)
+  i/IEntity
+  (merge i/IEntityDefaults
+         {:default-fields     (constantly [:id :email :date_joined :first_name :last_name :last_login :is_superuser])
+          :hydration-keys     (constantly [:author :creator :user])
+          :pre-insert         pre-insert
+          :pre-update         pre-update
+          :post-select        post-select
+          :pre-cascade-delete pre-cascade-delete}))
 
 
 ;; ## Related Functions
@@ -117,3 +124,6 @@
   [reset-token]
   {:pre [(string? reset-token)]}
   (str (setting/get :-site-url) "/auth/reset_password/" reset-token))
+
+
+(u/require-dox-in-this-namespace)

@@ -1,11 +1,11 @@
 (ns metabase.models.revision
   (:require [clojure.data :as data]
-            [korma.core :refer :all, :exclude [defentity update], :as k]
+            [korma.core :as k]
             [medley.core :as m]
             [metabase.db :as db]
             [metabase.api.common :refer [*current-user-id* let-404]]
             (metabase.models [hydrate :refer [hydrate]]
-                             [interface :refer :all]
+                             [interface :as i]
                              [user :refer [User]])
             [metabase.models.revision.diff :refer [diff-string]]
             [metabase.util :as u]
@@ -55,19 +55,16 @@
 
 ;;; # Revision Entity
 
-(defentity Revision
-  [(table :revision)
-   (types :object :json)]
+(i/defentity Revision :revision)
 
-  (post-select [_ {:keys [message user_id] :as revision}]
-    (assoc revision
-      :message (u/jdbc-clob->str message)))
-
-  (pre-insert [_ revision]
-    (assoc revision :timestamp (u/new-sql-timestamp)))
-
-  (pre-update [_ _]
-    (throw (Exception. "You cannot update a Revision!"))))
+(extend (class Revision)
+  i/IEntity
+  (merge i/IEntityDefaults
+         {:types      (constantly {:object :json})
+          :post-select (fn [_ {:keys [message] :as revision}]
+                         (assoc revision :message (u/jdbc-clob->str message)))
+          :pre-insert (u/rpartial assoc :timestamp (u/new-sql-timestamp))
+          :pre-update (fn [& _] (throw (Exception. "You cannot update a Revision!")))}))
 
 
 ;;; # Functions
@@ -87,7 +84,7 @@
 (defn revisions
   "Get the revisions for ENTITY with ID in reverse chronological order."
   [entity id]
-  {:pre [(metabase-entity? entity)
+  {:pre [(i/metabase-entity? entity)
          (integer? id)]}
   (db/sel :many Revision :model (:name entity), :model_id id, (order :id :DESC)))
 
@@ -104,12 +101,12 @@
 (defn- delete-old-revisions
   "Delete old revisions of ENTITY with ID when there are more than `max-revisions` in the DB."
   [entity id]
-  {:pre [(metabase-entity? entity)
+  {:pre [(i/metabase-entity? entity)
          (integer? id)]}
   ;; for some reason (offset max-revisions isn't working)
-  (let [old-revisions (drop max-revisions (db/sel :many :id Revision, :model (:name entity), :model_id id, (order :timestamp :DESC)))]
+  (let [old-revisions (drop max-revisions (db/sel :many :id Revision, :model (:name entity), :model_id id, (k/order :timestamp :DESC)))]
     (when (seq old-revisions)
-      (delete Revision (where {:id [in old-revisions]})))))
+      (k/delete Revision (k/where {:id [in old-revisions]})))))
 
 (defn push-revision
   "Record a new `Revision` for ENTITY with ID.
@@ -118,7 +115,7 @@
   [& {object :object,
       :keys [entity id user-id is-creation? message],
       :or {id (:id object), is-creation? false}}]
-  {:pre [(metabase-entity? entity)
+  {:pre [(i/metabase-entity? entity)
          (integer? user-id)
          (db/exists? User :id user-id)
          (integer? id)
@@ -142,7 +139,7 @@
 (defn revert
   "Revert ENTITY with ID to a given `Revision`."
   [& {:keys [entity id user-id revision-id]}]
-  {:pre [(metabase-entity? entity)
+  {:pre [(i/metabase-entity? entity)
          (integer? id)
          (db/exists? entity :id id)
          (integer? user-id)
@@ -162,3 +159,6 @@
                             :is_creation  false
                             :is_reversion true)]
         (add-revision-details entity new-revision last-revision)))))
+
+
+(u/require-dox-in-this-namespace)

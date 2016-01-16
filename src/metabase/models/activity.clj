@@ -5,7 +5,7 @@
             (metabase.models [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
                              [database :refer [Database]]
-                             [interface :refer :all]
+                             [interface :as i]
                              [metric :refer [Metric]]
                              [pulse :refer [Pulse]]
                              [segment :refer [Segment]]
@@ -14,40 +14,34 @@
             [metabase.util :as u]))
 
 
-(defrecord ActivityFeedItemInstance []
-  clojure.lang.IFn
-  (invoke [this k]
-    (get this k)))
+(i/defentity Activity :activity)
 
-(extend-ICanReadWrite ActivityFeedItemInstance :read :public-perms, :write :public-perms)
+(defn- pre-insert [{:keys [details] :as activity}]
+  (let [defaults {:timestamp (u/new-sql-timestamp)
+                  :details {}}]
+    (merge defaults activity)))
 
+(defn- post-select [{:keys [user_id database_id table_id model model_id] :as activity}]
+  (assoc activity
+         :user         (delay (User user_id))
+         :database     (delay (select-keys (Database database_id) [:id :name :description]))
+         :table        (delay (select-keys (Table table_id) [:id :name :display_name :description]))
+         :model_exists (delay (case model
+                                "card"      (db/exists? Card :id model_id)
+                                "dashboard" (db/exists? Dashboard :id model_id)
+                                "metric"    (db/exists? Metric :id model_id)
+                                "pulse"     (db/exists? Pulse :id model_id)
+                                "segment"   (db/exists? Segment :id model_id :is_active true)
+                                nil))))
 
-(defentity Activity
-  [(table :activity)
-   (types :details :json, :topic :keyword)]
-
-  (pre-insert [_ {:keys [details] :as activity}]
-    (let [defaults {:timestamp (u/new-sql-timestamp)
-                    :details {}}]
-      (merge defaults activity)))
-
-  (post-select [_ {:keys [user_id database_id table_id model model_id] :as activity}]
-    (-> (map->ActivityFeedItemInstance activity)
-        (assoc
-          :database     (delay (-> (Database database_id)
-                                   (select-keys [:id :name :description])))
-          :model_exists (delay (case model
-                                 "card"      (db/exists? Card :id model_id)
-                                 "dashboard" (db/exists? Dashboard :id model_id)
-                                 "metric"    (db/exists? Metric :id model_id)
-                                 "pulse"     (db/exists? Pulse :id model_id)
-                                 "segment"   (db/exists? Segment :id model_id :is_active true)
-                                 nil))
-          :table        (delay (-> (Table table_id)
-                                   (select-keys [:id :name :display_name :description])))
-          :user         (delay (User user_id))))))
-
-(extend-ICanReadWrite ActivityEntity :read :public-perms, :write :public-perms)
+(extend (class Activity)
+  i/IEntity
+  (merge i/IEntityDefaults
+         {:types       (constantly {:details :json, :topic :keyword})
+          :can-read?   i/publicly-readable?
+          :can-write?  i/publicly-writeable?
+          :pre-insert  pre-insert
+          :post-select post-select}))
 
 
 ;; ## Persistence Functions
@@ -85,3 +79,6 @@
       :details     (if (fn? details-fn)
                      (details-fn object)
                      object))))
+
+
+(u/require-dox-in-this-namespace)

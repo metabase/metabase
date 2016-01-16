@@ -1,7 +1,9 @@
 (ns metabase.models.hydrate
   "Functions for deserializing and hydrating fields in objects fetched from the DB."
-  (:require [metabase.db :refer [sel]]
-            [metabase.models.interface :as models]
+  (:require [clojure.java.classpath :as classpath]
+            [clojure.tools.namespace.find :as ns-find]
+            [metabase.db :refer [sel]]
+            [metabase.models.interface :as i]
             [metabase.util :as u]))
 
 (declare batched-hydrate
@@ -26,7 +28,7 @@
   **Batched Hydration**
 
   Hydration attempts to do a *batched hydration* where possible.
-  If the key being hydrated is defined as one of some entity's `:metabase.models.interface/hydration-keys`,
+  If the key being hydrated is defined as one of some entity's `hydration-keys`,
   `hydrate` will do a batched `sel` if a corresponding key ending with `_id`
   is found in the objects being hydrated.
 
@@ -128,8 +130,8 @@
 
 (def ^:private hydration-k->method
   "Methods that can be used to hydrate corresponding keys."
-  {:can_read  #(models/can-read? %)
-   :can_write #(models/can-write? %)})
+  {:can_read  #'i/can-read?    ; Not sure why but these don't work if they're not vars
+   :can_write #'i/can-write?})
 
 (defn- simple-hydrate
   "Hydrate keyword K in results by dereferencing corresponding delays when applicable."
@@ -184,18 +186,17 @@
   "Delay that returns map of `hydration-key` -> korma entity.
    e.g. `:user -> User`.
 
-   This is built pulling the `::hydration-keys` set from all of our entities."
-  (delay (->> (all-ns)
-              (mapcat ns-publics)
-              vals
-              (map var-get)
-              (filter :metabase.models.interface/hydration-keys)
-              (mapcat (fn [{hydration-keys :metabase.models.interface/hydration-keys, :as entity}]
-                        (assert (and (set? hydration-keys) (every? keyword? hydration-keys))
-                                (str "::hydration-keys should be a set of keywords. In: " entity))
-                        (map (u/rpartial vector entity)
-                             hydration-keys)))
-              (into {}))))
+   This is built pulling the `hydration-keys` set from all of our entities."
+  (delay (for [ns-symb (ns-find/find-namespaces (classpath/classpath))               ; Seems to work fine without this but better safe than sorry IMO
+               :when   (re-matches #"^metabase\.models\.[a-z0-9]+$" (name ns-symb))]
+           (require ns-symb))
+         (into {} (for [ns       (all-ns)
+                        [_ varr] (ns-publics ns)
+                        :let     [entity (var-get varr)]
+                        :when    (i/metabase-entity? entity)
+                        :let     [hydration-keys (i/hydration-keys entity)]
+                        k        hydration-keys]
+                    {k entity}))))
 
 (def ^:private batched-hydration-keys
   "Delay that returns set of keys that are elligible for batched hydration."

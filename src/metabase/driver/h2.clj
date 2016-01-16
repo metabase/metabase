@@ -83,7 +83,8 @@
 
     (connection-string->file+options \"file:my-crazy-db;OPTION=100;OPTION_X=TRUE\")
       -> [\"file:my-crazy-db\" {\"OPTION\" \"100\", \"OPTION_X\" \"TRUE\"}]"
-  [connection-string]
+  [^String connection-string]
+  {:pre [connection-string]}
   (let [[file & options] (s/split connection-string #";+")
         options          (into {} (for [option options]
                                     (s/split option #"=")))]

@@ -158,7 +158,10 @@
 ;;; ## filter
 
 (s/defn ^:private ^:always-validate compound-filter :- i/Filter
-  ([_ subclause :- i/Filter] subclause)
+  ([compound-type subclause :- i/Filter]
+   (log/warn (u/format-color 'yellow "You shouldn't specify an %s filter with only one subclause." compound-type))
+   subclause)
+
   ([compound-type, subclause :- i/Filter, & more :- [i/Filter]]
    (i/map->CompoundFilter {:compound-type compound-type, :subclauses (cons subclause more)})))
 

@@ -26,21 +26,21 @@
     :bool          :BooleanField
     :boolean       :BooleanField
     :box           :UnknownField
-    :bpchar        :CharField ; "blank-padded char" is the internal name of "character"
-    :bytea         :UnknownField        ; byte array
-    :cidr          :TextField           ; IPv4/IPv6 network address
+    :bpchar        :CharField       ; "blank-padded char" is the internal name of "character"
+    :bytea         :UnknownField    ; byte array
+    :cidr          :TextField       ; IPv4/IPv6 network address
     :circle        :UnknownField
     :date          :DateField
     :decimal       :DecimalField
     :float4        :FloatField
     :float8        :FloatField
     :geometry      :UnknownField
-    :inet          :TextField ; This was `GenericIPAddressField` in some places in the Django code but not others ...
+    :inet          :TextField
     :int           :IntegerField
     :int2          :IntegerField
     :int4          :IntegerField
     :int8          :BigIntegerField
-    :interval      :UnknownField        ; time span
+    :interval      :UnknownField    ; time span
     :json          :TextField
     :jsonb         :TextField
     :line          :UnknownField
@@ -49,7 +49,7 @@
     :money         :DecimalField
     :numeric       :DecimalField
     :path          :UnknownField
-    :pg_lsn        :IntegerField        ; PG Log Sequence #
+    :pg_lsn        :IntegerField    ; PG Log Sequence #
     :point         :UnknownField
     :real          :FloatField
     :serial        :IntegerField

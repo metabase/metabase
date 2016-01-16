@@ -1,41 +1,38 @@
 (ns metabase.models.database
-  (:require [korma.core :refer :all, :exclude [defentity update]]
+  (:require [cheshire.generate :refer [add-encoder encode-map]]
+            [korma.core :as k]
             [metabase.api.common :refer [*current-user*]]
-            [metabase.db :refer :all]
-            [metabase.models.interface :refer :all]
+            [metabase.db :refer [cascade-delete sel]]
+            [metabase.models.interface :as i]
             [metabase.util :as u]))
 
 (def ^:const protected-password
+  "The string to replace passwords with when serializing Databases."
   "**MetabasePass**")
 
-(defrecord DatabaseInstance []
-  ;; preserve normal IFn behavior so things like ((sel :one Database) :id) work correctly
-  clojure.lang.IFn
-  (invoke [this k]
-    (get this k))
+(i/defentity Database :metabase_database)
 
-  IModelInstanceApiSerialize
-  (api-serialize [this]
-    ;; If current user isn't an admin strip out DB details which may include things like password
-    (cond-> this
-      (get-in this [:details :password])    (assoc-in [:details :password] protected-password)
-      (not (:is_superuser @*current-user*)) (dissoc :details))))
+(defn- post-select [{:keys [id] :as database}]
+  (assoc database :tables (delay (sel :many 'Table :db_id id :active true (k/order :display_name :ASC)))))
 
-(extend-ICanReadWrite DatabaseInstance :read :always, :write :superuser)
+(defn- pre-cascade-delete [{:keys [id] :as database}]
+  (cascade-delete 'Card  :database_id id)
+  (cascade-delete 'Table :db_id id))
 
-(defentity Database
-  [(table :metabase_database)
-   (hydration-keys database db)
-   (types :details :json, :engine :keyword)
-   timestamped]
+(extend (class Database)
+  i/IEntity
+  (merge i/IEntityDefaults
+         {:hydration-keys     (constantly [:database :db])
+          :types              (constantly {:details :json, :engine :keyword})
+          :timestamped?       (constantly true)
+          :post-select        post-select
+          :pre-cascade-delete pre-cascade-delete}))
 
-  (post-select [_ {:keys [id] :as database}]
-    (map->DatabaseInstance
-      (assoc database
-        :tables (delay (sel :many 'metabase.models.table/Table :db_id id :active true (order :display_name :ASC))))))
+(add-encoder DatabaseInstance (fn [db json-generator]
+                                (encode-map (cond
+                                              (not (:is_superuser @*current-user*)) (dissoc db :details)
+                                              (get-in db [:details :password])      (assoc-in db [:details :password] protected-password)
+                                              :else                                 db)
+                                            json-generator)))
 
-  (pre-cascade-delete [_ {:keys [id] :as database}]
-    (cascade-delete 'metabase.models.card/Card :database_id id)
-    (cascade-delete 'metabase.models.table/Table :db_id id)))
-
-(extend-ICanReadWrite DatabaseEntity :read :always, :write :superuser)
+(u/require-dox-in-this-namespace)
