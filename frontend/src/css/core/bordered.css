@@ -8,10 +8,6 @@
   border: var(--border-size) var(--border-style) var(--border-color);
 }
 
-.border-brand-hover:hover {
-    border-color: var(--brand-color);
-}
-
 .border-bottom {
   border-bottom: var(--border-size) var(--border-style) var(--border-color);
 }
@@ -76,6 +72,14 @@
 
 .border-success {
     border-color: var(--success-color) !important;
+}
+
+.border-brand {
+    border-color: var(--brand-color) !important;
+}
+
+.border-brand-hover:hover {
+    border-color: var(--brand-color);
 }
 
 .border-hover:hover {

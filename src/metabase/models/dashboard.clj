@@ -6,7 +6,7 @@
             (metabase.models [common :refer :all]
                              [dashboard-card :refer [DashboardCard]]
                              [interface :as i]
-                             [revision :refer [IRevisioned]]
+                             [revision :as revision]
                              [user :refer [User]])
             [metabase.models.revision.diff :refer [build-sentence]]
             [metabase.util :as u]))
@@ -22,6 +22,16 @@
 (defn- pre-cascade-delete [{:keys [id]}]
   (cascade-delete 'Revision :model "Dashboard" :model_id id)
   (cascade-delete DashboardCard :dashboard_id id))
+
+
+(extend (class Dashboard)
+  i/IEntity
+  (merge i/IEntityDefaults
+         {:timestamped?       (constantly true)
+          :can-read?          i/publicly-readable?
+          :can-write?         i/publicly-writeable?
+          :post-select        post-select
+          :pre-cascade-delete pre-cascade-delete}))
 
 
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
@@ -60,36 +70,30 @@
   serialized-dashboard)
 
 (defn- describe-diff [_ dashboard₁ dashboard₂]
-  (let [[removals changes] (diff dashboard₁ dashboard₂)]
-    (->> [(when (:name changes)
-            (format "renamed it from \"%s\" to \"%s\"" (:name dashboard₁) (:name dashboard₂)))
-          (when (:description changes)
-            (format "changed the description from \"%s\" to \"%s\"" (:description dashboard₁) (:description dashboard₂)))
-          (when (:public_perms changes)
-            (if (zero? (:public_perms dashboard₂))
-              "made it private"
-              "made it public")) ; TODO - are both 1 and 2 "public" now ?
-          (when (or (:cards changes) (:cards removals))
-            (let [num-cards₁ (count (:cards dashboard₁))
-                  num-cards₂ (count (:cards dashboard₂))]
-              (cond
-                (< num-cards₁ num-cards₂) "added a card"
-                (> num-cards₁ num-cards₂) "removed a card"
-                :else                     "rearranged the cards")))]
-         (filter identity)
-         build-sentence)))
+  (when dashboard₁
+    (let [[removals changes] (diff dashboard₁ dashboard₂)]
+      (->> [(when (:name changes)
+              (format "renamed it from \"%s\" to \"%s\"" (:name dashboard₁) (:name dashboard₂)))
+            (when (:description changes)
+              (format "changed the description from \"%s\" to \"%s\"" (:description dashboard₁) (:description dashboard₂)))
+            (when (:public_perms changes)
+              (if (zero? (:public_perms dashboard₂))
+                "made it private"
+                "made it public")) ; TODO - are both 1 and 2 "public" now ?
+            (when (or (:cards changes) (:cards removals))
+              (let [num-cards₁ (count (:cards dashboard₁))
+                    num-cards₂ (count (:cards dashboard₂))]
+                (cond
+                  (< num-cards₁ num-cards₂) "added a card"
+                  (> num-cards₁ num-cards₂) "removed a card"
+                  :else                     "rearranged the cards")))]
+           (filter identity)
+           build-sentence))))
 
 
 (extend (class Dashboard)
-  i/IEntity
-  (merge i/IEntityDefaults
-         {:timestamped?       (constantly true)
-          :can-read?          i/publicly-readable?
-          :can-write?         i/publicly-writeable?
-          :post-select        post-select
-          :pre-cascade-delete pre-cascade-delete})
-
-  IRevisioned
+  revision/IRevisioned
   {:serialize-instance serialize-instance
    :revert-to-revision revert-to-revision
-   :describe-diff      describe-diff})
+   :diff-map           revision/default-diff-map
+   :diff-str           describe-diff})

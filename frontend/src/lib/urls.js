@@ -22,8 +22,18 @@ var Urls = {
         return "/pulse/#"+pulse_id;
     },
 
-    tableRowsQuery: function(database_id, table_id) {
-        return "/q/?db="+database_id+"&table="+table_id;
+    tableRowsQuery: function(database_id, table_id, metric_id, segment_id) {
+        let url = "/q/?db="+database_id+"&table="+table_id;
+
+        if (metric_id) {
+            url = url + "&metric="+metric_id;
+        }
+
+        if (segment_id) {
+            url = url + "&segment="+segment_id;
+        }
+
+        return url;
     }
 }
 

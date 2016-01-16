@@ -65,20 +65,22 @@ export default class MetadataEditor extends Component {
     }
 
     render() {
-        var table = (this.props.databaseMetadata) ? _.findWhere(this.props.databaseMetadata.tables, {id: this.props.tableId}) : null;
+        var tableMetadata = (this.props.databaseMetadata) ? _.findWhere(this.props.databaseMetadata.tables, {id: this.props.tableId}) : null;
         var content;
-        if (table) {
+        if (tableMetadata) {
             if (this.state.isShowingSchema) {
-                content = (<MetadataSchema table={table} />);
+                content = (<MetadataSchema tableMetadata={tableMetadata} />);
             } else {
                 content = (
                     <MetadataTable
-                        table={table}
+                        tableMetadata={tableMetadata}
                         idfields={this.props.idfields}
                         updateTable={this.updateTable}
                         updateField={this.updateField}
                         updateFieldSpecialType={this.updateFieldSpecialType}
                         updateFieldTarget={this.updateFieldTarget}
+                        onRetireSegment={this.props.onRetireSegment}
+                        onRetireMetric={this.props.onRetireMetric}
                     />
                 );
             }

@@ -6,7 +6,8 @@
             [metabase.driver.query-processor.expand :as ql]
             (metabase.models [card :refer [Card]]
                              [common :as common]
-                             [database :refer [Database]])
+                             [database :refer [Database]]
+                             [table :refer [Table]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
             [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp obj->json->obj]]))
@@ -65,28 +66,38 @@
 (expect [true
          false
          true]
-  (with-temp Card [{id1 :id} {:name                   (random-name)
-                              :public_perms           common/perms-none
-                              :creator_id             (user->id :crowberto)
-                              :display                :table
-                              :dataset_query          {}
-                              :visualization_settings {}
-                              :table_id               1}]
-    (with-temp Card [{id2 :id} {:name                   (random-name)
-                                :public_perms           common/perms-none
-                                :creator_id             (user->id :crowberto)
-                                :display                :table
-                                :dataset_query          {}
-                                :visualization_settings {}
-                                :table_id               2}]
-      (let [card-returned? (fn [table-id card-id]
-                             (contains? (->> ((user->client :crowberto) :get 200 "card" :f :table :model_id table-id)
-                                             (map :id)
-                                             set)
-                                        card-id))]
-      [(card-returned? 1 id1)
-       (card-returned? 2 id1)
-       (card-returned? 2 id2)]))))
+  (with-temp Database [{database-id :id} {:name      "Card API Test"
+                                          :engine    :yeehaw
+                                          :details   {}
+                                          :is_sample false}]
+    (with-temp Table [{table1 :id} {:name   "Card API Table 1"
+                                      :db_id  database-id
+                                      :active true}]
+      (with-temp Table [{table2 :id} {:name   "Card API Table 2"
+                                        :db_id  database-id
+                                        :active true}]
+        (with-temp Card [{id1 :id} {:name                   (random-name)
+                                    :public_perms           common/perms-none
+                                    :creator_id             (user->id :crowberto)
+                                    :display                :table
+                                    :dataset_query          {}
+                                    :visualization_settings {}
+                                    :table_id               table1}]
+          (with-temp Card [{id2 :id} {:name                   (random-name)
+                                      :public_perms           common/perms-none
+                                      :creator_id             (user->id :crowberto)
+                                      :display                :table
+                                      :dataset_query          {}
+                                      :visualization_settings {}
+                                      :table_id               table2}]
+            (let [card-returned? (fn [table-id card-id]
+                                   (contains? (->> ((user->client :crowberto) :get 200 "card" :f :table :model_id table-id)
+                                                   (map :id)
+                                                   set)
+                                              card-id))]
+              [(card-returned? table1 id1)
+               (card-returned? table2 id1)
+               (card-returned? table2 id2)])))))))
 
 ;; Make sure `id` is required when `f` is :table
 (expect {:errors {:id "id is required parameter when filter mode is 'table'"}}

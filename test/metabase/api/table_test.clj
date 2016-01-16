@@ -25,34 +25,32 @@
 ;; ## GET /api/table?org
 ;; These should come back in alphabetical order and include relevant metadata
 (expect
-  (do (destroy-loaded-temp-dbs!)
-      (set (reduce concat (for [engine datasets/test-engines]
-                            (datasets/with-engine-when-testing engine
-                              [{:name                (format-name "categories")
-                                :display_name        "Categories"
-                                :db_id               (id)
-                                :active              true
-                                :rows                75
-                                :id                  (id :categories)}
-                               {:name                (format-name "checkins")
-                                :display_name        "Checkins"
-                                :db_id               (id)
-                                :active              true
-                                :rows                1000
-                                :id                  (id :checkins)}
-                               {:name                (format-name "users")
-                                :display_name        "Users"
-                                :db_id               (id)
-                                :active              true
-                                :rows                15
-                                :id                  (id :users)}
-                               {:name                (format-name "venues")
-                                :display_name        "Venues"
-                                :db_id               (id)
-                                :active              true
-                                :rows                100
-                                :id                  (id :venues)}])))))
+  #{{:name                (format-name "categories")
+     :display_name        "Categories"
+     :db_id               (id)
+     :active              true
+     :rows                75
+     :id                  (id :categories)}
+    {:name                (format-name "checkins")
+     :display_name        "Checkins"
+     :db_id               (id)
+     :active              true
+     :rows                1000
+     :id                  (id :checkins)}
+    {:name                (format-name "users")
+     :display_name        "Users"
+     :db_id               (id)
+     :active              true
+     :rows                15
+     :id                  (id :users)}
+    {:name                (format-name "venues")
+     :display_name        "Venues"
+     :db_id               (id)
+     :active              true
+     :rows                100
+     :id                  (id :venues)}}
   (->> ((user->client :rasta) :get 200 "table")
+       (filter #(= (:db_id %) (id)))                        ; prevent stray tables from affecting unit test results
        (map #(dissoc % :db :created_at :updated_at :schema :entity_name :description :entity_type :visibility_type))
        set))
 
@@ -178,6 +176,8 @@
        :active          true
        :id              (id :categories)
        :db_id           (id)
+       :segments        []
+       :metrics         []
        :created_at      $})
     ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :categories))))
 
@@ -309,6 +309,8 @@
                           "Simcha Yan"
                           "Spiros Teofil"
                           "Szymon Theutrich"]}
+       :segments        []
+       :metrics         []
        :created_at      $})
     ((user->client :rasta) :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (id :users))))
 
@@ -404,6 +406,8 @@
                           "Simcha Yan"
                           "Spiros Teofil"
                           "Szymon Theutrich"]}
+       :segments        []
+       :metrics         []
        :created_at      $})
     ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :users))))
 

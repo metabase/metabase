@@ -90,7 +90,7 @@ export default React.createClass({
             "Button--primary": this.isFormReady()
         });
 
-        var name = this.props.card.name || Query.generateQueryDescription(this.props.card.dataset_query, this.props.tableMetadata);
+        var name = this.props.card.name || Query.generateQueryDescription(this.props.tableMetadata, this.props.card.dataset_query.query);
 
         return (
             <ModalContent

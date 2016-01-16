@@ -191,6 +191,8 @@
                                         :parent_id       nil
                                         :parent          nil
                                         :values          []})]
+                   :segments        []
+                   :metrics         []
                    :rows            75
                    :updated_at      $
                    :entity_name     nil

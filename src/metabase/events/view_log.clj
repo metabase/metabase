@@ -7,7 +7,7 @@
             [metabase.models.view-log :refer [ViewLog]]))
 
 
-(def view-counts-topics
+(def ^:const view-counts-topics
   "The `Set` of event topics which we subscribe to for view counting."
   #{:card-create
     :card-read

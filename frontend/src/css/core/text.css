@@ -95,3 +95,7 @@
 .text-underline {
     text-decoration: underline;;
 }
+
+.text-ellipsis {
+    text-overflow: ellipsis;
+}
