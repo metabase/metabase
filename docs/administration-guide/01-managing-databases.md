@@ -12,7 +12,7 @@ Now you’ll see a list of your databases. To connect another database to Metaba
 
 * Amazon Redshift
 * H2
-* MongoDB
+* MongoDB (version 3.0 or higher)
 * MySQL
 * Postgres
 * SQLite

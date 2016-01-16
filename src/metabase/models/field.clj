@@ -1,13 +1,11 @@
 (ns metabase.models.field
-  (:require [korma.core :refer :all, :exclude [defentity update]]
-            [metabase.api.common :refer [check]]
+  (:require [korma.core :as k]
             [metabase.db :refer :all]
             (metabase.models [common :as common]
                              [database :refer [Database]]
                              [field-values :refer [FieldValues field-should-have-field-values? create-field-values-if-needed]]
                              [foreign-key :refer [ForeignKey]]
-                             [hydrate :refer [hydrate]]
-                             [interface :refer :all])
+                             [interface :as i])
             [metabase.util :as u]))
 
 (declare field->fk-field
@@ -58,48 +56,45 @@
     :info        ; Non-numerical value that is not meant to be used
     :sensitive}) ; A Fields that should *never* be shown *anywhere*
 
-(defrecord FieldInstance []
-  clojure.lang.IFn
-  (invoke [this k]
-    (get this k)))
 
-(extend-ICanReadWrite FieldInstance :read :always, :write :superuser)
+(i/defentity Field :metabase_field)
 
+(defn- pre-insert [field]
+  (let [defaults {:active          true
+                  :preview_display true
+                  :field_type      :info
+                  :position        0
+                  :display_name    (common/name->human-readable-name (:name field))}]
+    (merge defaults field)))
 
-(defentity Field
-  [(table :metabase_field)
-   (hydration-keys destination field origin)
-   (types :base_type :keyword, :field_type :keyword, :special_type :keyword)
-   timestamped]
+(defn- post-select [{:keys [id table_id parent_id] :as field}]
+  (u/assoc<> field
+    :table                     (delay (sel :one 'Table :id table_id))
+    :db                        (delay @(:db @(:table <>)))
+    :target                    (delay (field->fk-field field))
+    :parent                    (when parent_id
+                                 (delay (Field parent_id)))
+    :children                  (delay (sel :many Field :parent_id (:id field)))
+    :values                    (delay (sel :many [FieldValues :field_id :values] :field_id id))
+    :qualified-name-components (delay (qualified-name-components <>))
+    :qualified-name            (delay (apply str (interpose "." @(:qualified-name-components <>))))))
 
-  (pre-insert [_ field]
-    (let [defaults {:active          true
-                    :preview_display true
-                    :field_type      :info
-                    :position        0
-                    :display_name    (common/name->human-readable-name (:name field))}]
-      (merge defaults field)))
-
-  (post-select [this {:keys [id table_id parent_id] :as field}]
-    (map->FieldInstance
-     (u/assoc<> field
-       :table                     (delay (sel :one 'metabase.models.table/Table :id table_id))
-       :db                        (delay @(:db @(:table <>)))
-       :target                    (delay (field->fk-field field))
-       :parent                    (when parent_id
-                                    (delay (this parent_id)))
-       :children                  (delay (sel :many this :parent_id (:id field)))
-       :values                    (delay (sel :many [FieldValues :field_id :values] :field_id id))
-       :qualified-name-components (delay (qualified-name-components <>))
-       :qualified-name            (delay (apply str (interpose "." @(:qualified-name-components <>)))))))
-
-  (pre-cascade-delete [this {:keys [id]}]
-    (cascade-delete this :parent_id id)
-    (cascade-delete ForeignKey (where (or (= :origin_id id)
+(defn- pre-cascade-delete [{:keys [id]}]
+  (cascade-delete Field :parent_id id)
+  (cascade-delete ForeignKey (k/where (or (= :origin_id id)
                                           (= :destination_id id))))
-    (cascade-delete 'metabase.models.field-values/FieldValues :field_id id)))
+  (cascade-delete 'FieldValues :field_id id))
 
-(extend-ICanReadWrite FieldEntity :read :always, :write :superuser)
+(extend (class Field)
+  i/IEntity (merge i/IEntityDefaults
+                   {:hydration-keys     (constantly [:destination :field :origin])
+                    :types              (constantly {:base_type :keyword, :field_type :keyword, :special_type :keyword})
+                    :timestamped?       (constantly true)
+                    :can-read?          (constantly true)
+                    :can-write?         i/superuser?
+                    :pre-insert         pre-insert
+                    :post-select        post-select
+                    :pre-cascade-delete pre-cascade-delete}))
 
 
 (defn field->fk-field
