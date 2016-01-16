@@ -136,14 +136,6 @@
     "*OPTIONAL*. A set of keyword names of optional features supported by this driver, such as `:foreign-keys`.
      Valid features are: `:foreign-keys :nested-fields :set-timezone :standard-deviation-aggregations`")
 
-  (field-avg-length ^Float [this, ^FieldInstance field]
-    "*OPTIONAL*. If possible, provide an efficent DB-level function to calculate the average length of non-nil values of textual FIELD, which is used to determine whether a `Field`
-     should be marked as a `:category`. If this function is not provided, a fallback implementation that iterates over results in Clojure-land is used instead.")
-
-  (field-percent-urls ^Float [this, ^FieldInstance field]
-    "*OPTIONAL*. If possible, provide an efficent DB-level function to calculate what percentage of non-nil values of textual FIELD are valid URLs, which is used to determine
-     whether a `Field` should be marked as a `:url`. If this function is not provided, a fallback implementation that iterates over results in Clojure-land is used instead.")
-
   (field-values-lazy-seq ^clojure.lang.Sequential [this, ^FieldInstance field]
     "Return a lazy sequence of all values of FIELD.
      This is used to implement `mark-json-field!`, and fallback implentations of `mark-no-preview-display-field!` and `mark-url-field!`
@@ -182,6 +174,7 @@
     "*OPTIONAL*. Return a sequence of all the rows in a table with a given TABLE-NAME.
      Currently, this is only used for iterating over the values in a `_metabase_metadata` table. As such, the results are not expected to be returned lazily."))
 
+
 (defn- percent-valid-urls
   "Recursively count the values of non-nil values in VS that are valid URLs, and return it as a percentage."
   [vs]
@@ -194,7 +187,6 @@
                            (recur (if valid? (inc valid-count) valid-count)
                                   (inc non-nil-count)
                                   more)))))
-
 
 (defn default-field-percent-urls
   "Default implementation for optional driver fn `:field-percent-urls` that calculates percentage in Clojure-land."

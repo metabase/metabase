@@ -66,8 +66,3 @@
 
 
 ;; ANALYZE-TABLE
-
-
-;; ## TEST FIELD-AVG-LENGTH
-(expect 13
-  (driver/field-avg-length (H2Driver.) @users-name-field))

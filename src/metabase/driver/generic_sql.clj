@@ -320,8 +320,6 @@
           :describe-table            describe-table
           :describe-table-fks        describe-table-fks
           :features                  features
-          :field-avg-length          field-avg-length
-          :field-percent-urls        field-percent-urls
           :field-values-lazy-seq     field-values-lazy-seq
           :process-native            (resolve 'metabase.driver.generic-sql.native/process-and-run)
           :process-structured        (resolve 'metabase.driver.generic-sql.query-processor/process-structured)

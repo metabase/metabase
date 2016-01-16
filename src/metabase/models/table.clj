@@ -2,7 +2,7 @@
   (:require [korma.core :as k]
             [metabase.db :refer [cascade-delete sel]]
             (metabase.models [common :as common]
-                             [database :as db]
+                             [database :as database]
                              [field :refer [Field]]
                              [field-values :refer [FieldValues]]
                              [interface :as i])
@@ -21,7 +21,7 @@
 
 (defn- post-select [{:keys [id db db_id description] :as table}]
   (u/assoc<> table
-    :db           (or db (delay (sel :one db/Database :id db_id)))
+    :db           (or db (delay (sel :one database/Database :id db_id)))
     :fields       (delay (sel :many Field :table_id id :active true (k/order :position :ASC) (k/order :name :ASC)))
     :field_values (delay
                    (let [field-ids (sel :many :field [Field :id]
