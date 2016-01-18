@@ -2,7 +2,8 @@
   "The Query Processor is responsible for translating the Metabase Query Language into korma SQL forms."
   (:require [clojure.core.match :refer [match]]
             [clojure.java.jdbc :as jdbc]
-            [clojure.string :as s]
+            (clojure [string :as s]
+                     [walk :as walk])
             [clojure.tools.logging :as log]
             (korma [core :as k]
                    [db :as kdb])
@@ -189,7 +190,10 @@
   (when (config/config-bool :mb-db-logging)
     (when-not qp/*disable-qp-logging*
       (log/debug
-       (u/format-color 'green "\nKORMA FORM: 😋\n%s" (u/pprint-to-str (dissoc korma-form :db :ent :from :options :aliases :results :type :alias))))
+       (u/format-color 'green "\nKORMA FORM: 😋\n%s" (u/pprint-to-str (walk/postwalk (fn [x] (if (keyword? x)
+                                                                                               (keyword (name x)) ; strip ns qualifiers, e.g. (keyword (name :korma.sql.utils/func)) -> :func
+                                                                                               x))
+                                                                                    (dissoc korma-form :db :ent :from :options :aliases :results :type :alias)))))
       (try
         (log/debug
          (u/format-color 'blue "\nSQL: 😈\n%s\n" (-> (k/as-sql korma-form)

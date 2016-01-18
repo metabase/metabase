@@ -4,13 +4,16 @@
             [metabase.db :as db]
             [metabase.config :as config]
             [metabase.events :as events]
-            (metabase.models [activity :refer [Activity]]
+            (metabase.models [activity :refer [Activity], :as activity]
+                             [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
                              [database :refer [Database]]
-                             [session :refer [Session first-session-for-user]])))
+                             [interface :as models]
+                             [session :refer [Session first-session-for-user]]
+                             [table :as table])))
 
 
-(def activity-feed-topics
+(def ^:const activity-feed-topics
   "The `Set` of event topics which are subscribed to for use in the Metabase activity feed."
   #{:card-create
     :card-update
@@ -20,8 +23,14 @@
     :dashboard-add-cards
     :dashboard-remove-cards
     :install
+    :metric-create
+    :metric-update
+    :metric-delete
     :pulse-create
     :pulse-delete
+    :segment-create
+    :segment-update
+    :segment-delete
     :user-login})
 
 (def ^:private activity-feed-channel
@@ -32,52 +41,35 @@
 ;;; ## ---------------------------------------- EVENT PROCESSING ----------------------------------------
 
 
-(defn- record-activity
-  "Simple base function for recording activity using defaults.
-  Allows caller to specify a custom serialization function to apply to `object` to generate the activity `:details`."
-  ([topic object details-fn database-table-fn]
-   (let [{:keys [table-id database-id]} (when (fn? database-table-fn)
-                                          (database-table-fn object))]
-     (db/ins Activity
-          :topic       topic
-          :user_id     (events/object->user-id object)
-          :model       (events/topic->model topic)
-          :model_id    (events/object->model-id topic object)
-          :database_id database-id
-          :table_id    table-id
-          :custom_id   (:custom_id object)
-          :details     (if (fn? details-fn)
-                         (details-fn object)
-                         object))))
-  ([topic object details-fn]
-   (record-activity topic object details-fn nil))
-  ([topic object]
-   (record-activity topic object nil)))
-
 (defn- process-card-activity [topic object]
-  (let [details-fn #(select-keys % [:name :description :public_perms])
-        database-table-fn (fn [obj]
-                            {:database-id (get-in obj [:dataset_query :database])
-                             :table-id    (get-in obj [:dataset_query :query :source_table])})]
-    (record-activity topic object details-fn database-table-fn)))
+  (let [details-fn  #(select-keys % [:name :description :public_perms])
+        database-id (get-in object [:dataset_query :database])
+        table-id    (get-in object [:dataset_query :query :source_table])]
+    (activity/record-activity
+      :topic       topic
+      :object      object
+      :details-fn  details-fn
+      :database-id database-id
+      :table-id    table-id)))
 
 (defn- process-dashboard-activity [topic object]
   (let [create-delete-details #(select-keys % [:description :name :public_perms])
         add-remove-card-details (fn [{:keys [dashcards] :as obj}]
                                   ;; we expect that the object has just a dashboard :id at the top level
                                   ;; plus a `:dashcards` attribute which is a vector of the cards added/removed
-                                  (-> (db/sel :one Dashboard :id (events/object->model-id topic obj))
-                                      (select-keys [:description :name :public_perms])
-                                      (assoc :dashcards (for [{:keys [id card_id card]} dashcards]
-                                                          (-> @card
-                                                              (select-keys [:name :description :public_perms])
+                                  (-> (db/sel :one [Dashboard :description :name :public_perms], :id (events/object->model-id topic obj))
+                                      (assoc :dashcards (for [{:keys [id card_id], :as dashcard} dashcards]
+                                                          (-> (db/sel :one [Card :name :description :public_perms], :id card_id)
                                                               (assoc :id id)
                                                               (assoc :card_id card_id))))))]
-    (case topic
-      :dashboard-create       (record-activity topic object create-delete-details)
-      :dashboard-delete       (record-activity topic object create-delete-details)
-      :dashboard-add-cards    (record-activity topic object add-remove-card-details)
-      :dashboard-remove-cards (record-activity topic object add-remove-card-details))))
+    (activity/record-activity
+      :topic      topic
+      :object     object
+      :details-fn (case topic
+                    :dashboard-create       create-delete-details
+                    :dashboard-delete       create-delete-details
+                    :dashboard-add-cards    add-remove-card-details
+                    :dashboard-remove-cards add-remove-card-details))))
 
 ;; disabled for now as it's overly verbose in the feed
 ;(defn- process-database-activity [topic object]
@@ -97,19 +89,43 @@
 ;                                              (assoc :status "completed")
 ;                                              (dissoc :database_id :custom_id))))))))
 
+(defn- process-metric-activity [topic object]
+  (let [details-fn  #(select-keys % [:name :description :revision_message])
+        table-id    (:table_id object)
+        database-id (table/table-id->database-id table-id)]
+    (activity/record-activity
+      :topic       topic
+      :object      object
+      :details-fn  details-fn
+      :database-id database-id
+      :table-id    table-id)))
+
 (defn- process-pulse-activity [topic object]
   (let [details-fn #(select-keys % [:name :public_perms])]
-    (record-activity topic object details-fn)))
+    (activity/record-activity
+      :topic       topic
+      :object      object
+      :details-fn  details-fn)))
+
+(defn- process-segment-activity [topic object]
+  (let [details-fn  #(select-keys % [:name :description :revision_message])
+        table-id    (:table_id object)
+        database-id (table/table-id->database-id table-id)]
+    (activity/record-activity
+      :topic       topic
+      :object      object
+      :details-fn  details-fn
+      :database-id database-id
+      :table-id    table-id)))
 
 (defn- process-user-activity [topic object]
   ;; we only care about login activity when its the users first session (a.k.a. new user!)
   (when (and (= :user-login topic)
              (= (:session_id object) (first-session-for-user (:user_id object))))
-    (db/ins Activity
+    (activity/record-activity
       :topic    :user-joined
-      :user_id  (:user_id object)
-      :model    (events/topic->model topic)
-      :model_id (:user_id object))))
+      :user-id  (:user_id object)
+      :model-id (:user_id object))))
 
 (defn process-activity-event
   "Handle processing for a single event notification received on the activity-feed-channel"
@@ -122,7 +138,9 @@
         "dashboard" (process-dashboard-activity topic object)
         "install"   (when-not (db/sel :one :fields [Activity :id])
                       (db/ins Activity :topic "install" :model "install"))
+        "metric"    (process-metric-activity topic object)
         "pulse"     (process-pulse-activity topic object)
+        "segment"   (process-segment-activity topic object)
         "user"      (process-user-activity topic object)))
     (catch Throwable e
       (log/warn (format "Failed to process activity event. %s" (:topic activity-event)) e))))

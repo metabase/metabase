@@ -57,7 +57,6 @@
   (-> routes/routes
       (mb-middleware/log-api-call :request :response)
       mb-middleware/add-security-headers              ; [METABASE] Add HTTP headers to API responses to prevent them from being cached
-      mb-middleware/format-response                   ; [METABASE] Do formatting before converting to JSON so serializer doesn't barf
       (wrap-json-body                                 ; extracts json POST body and makes it avaliable on request
         {:keywords? true})
       wrap-json-response                              ; middleware to automatically serialize suitable objects as JSON in responses

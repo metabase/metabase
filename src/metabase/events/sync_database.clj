@@ -8,7 +8,7 @@
             [metabase.models.database :refer [Database]]))
 
 
-(def sync-database-topics
+(def ^:const sync-database-topics
   "The `Set` of event topics which are subscribed to for use in database syncing."
   #{:database-create
     :database-trigger-sync})

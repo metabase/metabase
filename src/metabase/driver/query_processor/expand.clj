@@ -11,6 +11,7 @@
             [metabase.driver.query-processor.interface :refer [*driver*], :as i]
             [metabase.models.table :refer [Table]]
             [metabase.util :as u])
+
   (:import (metabase.driver.query_processor.interface AgFieldRef
                                                       BetweenFilter
                                                       ComparisonFilter
@@ -58,7 +59,9 @@
 
 (s/defn ^:ql ^:always-validate datetime-field :- FieldPlaceholder
   "Reference to a `DateTimeField`. This is just a `Field` reference with an associated datetime UNIT."
-  ([f _ unit] (datetime-field f unit))
+  ([f _ unit] (log/warn (u/format-color 'yellow (str "The syntax for datetime-field has changed in MBQL '98. [:datetime-field <field> :as <unit>] is deprecated. "
+                                                     "Prefer [:datetime-field <field> <unit>] instead.")))
+              (datetime-field f unit))
   ([f unit]   (assoc (field f) :datetime-unit (normalize-token unit))))
 
 (s/defn ^:ql ^:always-validate fk-> :- FieldPlaceholder

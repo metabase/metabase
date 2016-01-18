@@ -11,7 +11,9 @@
             (metabase.test.data [dataset-definitions :as defs]
                                 [datasets :as datasets]
                                 [users :refer :all])
-            [metabase.test.util :refer [match-$ expect-eval-actual-first]]))
+            [metabase.test.util :refer [match-$ expect-eval-actual-first resolve-private-fns]]))
+
+(resolve-private-fns metabase.models.table pk-field-id)
 
 
 ;; ## /api/org/* AUTHENTICATION Tests
@@ -25,34 +27,32 @@
 ;; ## GET /api/table?org
 ;; These should come back in alphabetical order and include relevant metadata
 (expect
-  (do (destroy-loaded-temp-dbs!)
-      (set (reduce concat (for [engine datasets/test-engines]
-                            (datasets/with-engine-when-testing engine
-                              [{:name                (format-name "categories")
-                                :display_name        "Categories"
-                                :db_id               (id)
-                                :active              true
-                                :rows                75
-                                :id                  (id :categories)}
-                               {:name                (format-name "checkins")
-                                :display_name        "Checkins"
-                                :db_id               (id)
-                                :active              true
-                                :rows                1000
-                                :id                  (id :checkins)}
-                               {:name                (format-name "users")
-                                :display_name        "Users"
-                                :db_id               (id)
-                                :active              true
-                                :rows                15
-                                :id                  (id :users)}
-                               {:name                (format-name "venues")
-                                :display_name        "Venues"
-                                :db_id               (id)
-                                :active              true
-                                :rows                100
-                                :id                  (id :venues)}])))))
+  #{{:name                (format-name "categories")
+     :display_name        "Categories"
+     :db_id               (id)
+     :active              true
+     :rows                75
+     :id                  (id :categories)}
+    {:name                (format-name "checkins")
+     :display_name        "Checkins"
+     :db_id               (id)
+     :active              true
+     :rows                1000
+     :id                  (id :checkins)}
+    {:name                (format-name "users")
+     :display_name        "Users"
+     :db_id               (id)
+     :active              true
+     :rows                15
+     :id                  (id :users)}
+    {:name                (format-name "venues")
+     :display_name        "Venues"
+     :db_id               (id)
+     :active              true
+     :rows                100
+     :id                  (id :venues)}}
   (->> ((user->client :rasta) :get 200 "table")
+       (filter #(= (:db_id %) (id)))                        ; prevent stray tables from affecting unit test results
        (map #(dissoc % :db :created_at :updated_at :schema :entity_name :description :entity_type :visibility_type))
        set))
 
@@ -78,7 +78,7 @@
        :updated_at      $
        :entity_name     nil
        :active          true
-       :pk_field        (deref $pk_field)
+       :pk_field        (pk-field-id $$)
        :id              (id :venues)
        :db_id           (id)
        :created_at      $})
@@ -99,8 +99,7 @@
             :preview_display     true
             :created_at          $
             :base_type           "BigIntegerField"
-            :parent_id           nil
-            :parent              nil})
+            :parent_id           nil})
          (match-$ (Field (id :categories :name))
            {:description         nil
             :table_id            (id :categories)
@@ -115,8 +114,7 @@
             :preview_display     true
             :created_at          $
             :base_type           "TextField"
-            :parent_id           nil
-            :parent              nil})]
+            :parent_id           nil})]
   ((user->client :rasta) :get 200 (format "table/%d/fields" (id :categories))))
 
 ;; ## GET /api/table/:id/query_metadata
@@ -152,8 +150,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "BigIntegerField"
-                            :parent_id       nil
-                            :parent          nil})
+                            :parent_id       nil})
                          (match-$ (Field (id :categories :name))
                            {:description     nil
                             :table_id        (id :categories)
@@ -169,8 +166,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "TextField"
-                            :parent_id       nil
-                            :parent          nil})]
+                            :parent_id       nil})]
        :field_values    {}
        :rows            75
        :updated_at      $
@@ -178,6 +174,8 @@
        :active          true
        :id              (id :categories)
        :db_id           (id)
+       :segments        []
+       :metrics         []
        :created_at      $})
     ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :categories))))
 
@@ -234,8 +232,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "BigIntegerField"
-                            :parent_id       nil
-                            :parent          nil})
+                            :parent_id       nil})
                          (match-$ (sel :one Field :id (id :users :last_login))
                            {:description     nil
                             :table_id        (id :users)
@@ -251,8 +248,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "DateTimeField"
-                            :parent_id       nil
-                            :parent          nil})
+                            :parent_id       nil})
                          (match-$ (sel :one Field :id (id :users :name))
                            {:description     nil
                             :table_id        (id :users)
@@ -268,8 +264,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "TextField"
-                            :parent_id       nil
-                            :parent          nil})
+                            :parent_id       nil})
                          (match-$ (sel :one Field :table_id (id :users) :name "PASSWORD")
                            {:description     nil
                             :table_id        (id :users)
@@ -285,8 +280,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "TextField"
-                            :parent_id       nil
-                            :parent          nil})]
+                            :parent_id       nil})]
        :rows            15
        :updated_at      $
        :entity_name     nil
@@ -309,6 +303,8 @@
                           "Simcha Yan"
                           "Spiros Teofil"
                           "Szymon Theutrich"]}
+       :segments        []
+       :metrics         []
        :created_at      $})
     ((user->client :rasta) :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (id :users))))
 
@@ -346,8 +342,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "BigIntegerField"
-                            :parent_id       nil
-                            :parent          nil})
+                            :parent_id       nil})
                          (match-$ (Field (id :users :last_login))
                            {:description     nil
                             :table_id        (id :users)
@@ -363,8 +358,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "DateTimeField"
-                            :parent_id       nil
-                            :parent          nil})
+                            :parent_id       nil})
                          (match-$ (Field (id :users :name))
                            {:description     nil
                             :table_id        (id :users)
@@ -380,8 +374,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "TextField"
-                            :parent_id       nil
-                            :parent          nil})]
+                            :parent_id       nil})]
        :rows            15
        :updated_at      $
        :entity_name     nil
@@ -404,6 +397,8 @@
                           "Simcha Yan"
                           "Spiros Teofil"
                           "Szymon Theutrich"]}
+       :segments        []
+       :metrics         []
        :created_at      $})
     ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :users))))
 
@@ -434,7 +429,7 @@
        :entity_name     nil
        :display_name    "Userz"
        :active          true
-       :pk_field        (deref $pk_field)
+       :pk_field        (pk-field-id $$)
        :id              $
        :db_id           (id)
        :created_at      $})
@@ -460,7 +455,6 @@
                         {:id              $
                          :table_id        $
                          :parent_id       nil
-                         :parent          nil
                          :name            "USER_ID"
                          :display_name    "User Id"
                          :description     nil
@@ -499,7 +493,6 @@
                         {:id              $
                          :table_id        $
                          :parent_id       nil
-                         :parent          nil
                          :name            "ID"
                          :display_name    "Id"
                          :description     nil

@@ -3,7 +3,7 @@ import React, { Component, PropTypes } from "react";
 import AggregationWidget from './AggregationWidget.jsx';
 import DataSelector from './DataSelector.jsx';
 import FieldWidget from './FieldWidget.jsx';
-import FilterWidget from './filters/FilterWidget.jsx';
+import FilterList from './filters/FilterList.jsx';
 import FilterPopover from './filters/FilterPopover.jsx';
 import Icon from "metabase/components/Icon.jsx";
 import IconBorder from 'metabase/components/IconBorder.jsx';
@@ -15,6 +15,8 @@ import Query from "metabase/lib/query";
 
 import cx from "classnames";
 import _ from "underscore";
+
+const LIMIT_OPTIONS = [undefined, 1, 10, 25, 100, 1000];
 
 export default class GuiQueryEditor extends Component {
     constructor(props, context) {
@@ -42,7 +44,18 @@ export default class GuiQueryEditor extends Component {
         setQueryFn: PropTypes.func.isRequired,
         setDatabaseFn: PropTypes.func.isRequired,
         setSourceTableFn: PropTypes.func.isRequired,
-        toggleExpandCollapseFn: PropTypes.func.isRequired
+        features: PropTypes.object
+    };
+
+    static defaultProps = {
+        features: {
+            data: true,
+            filter: true,
+            aggregation: true,
+            breakout: true,
+            sort: true,
+            limit: true
+        }
     };
 
     setQuery(dataset_query) {
@@ -168,6 +181,10 @@ export default class GuiQueryEditor extends Component {
     }
 
     renderFilters() {
+        if (!this.props.features.filter) {
+            return;
+        }
+
         let enabled;
         let filterList;
         let addFilterButton;
@@ -175,23 +192,14 @@ export default class GuiQueryEditor extends Component {
         if (this.props.tableMetadata) {
             enabled = true;
 
-            let queryFilters = Query.getFilters(this.props.query.query);
-            if (queryFilters && queryFilters.length > 0) {
-                filterList = queryFilters.map((filter, index) => {
-                    if(index > 0) {
-                        return (
-                            <FilterWidget
-                                key={index}
-                                placeholder="Item"
-                                filter={filter}
-                                tableMetadata={this.props.tableMetadata}
-                                index={index}
-                                removeFilter={this.removeFilter}
-                                updateFilter={this.updateFilter}
-                            />
-                        );
-                    }
-                });
+            let filters = Query.getFilters(this.props.query.query);
+            if (filters && filters.length > 0) {
+                filterList = <FilterList
+                    filters={filters}
+                    tableMetadata={this.props.tableMetadata}
+                    removeFilter={this.removeFilter}
+                    updateFilter={this.updateFilter}
+                />
             }
 
             // TODO: proper check for isFilterComplete(filter)
@@ -231,6 +239,10 @@ export default class GuiQueryEditor extends Component {
     }
 
     renderAggregation() {
+        if (!this.props.features.aggregation) {
+            return;
+        }
+
         // aggregation clause.  must have table details available
         if (this.props.tableMetadata) {
             return (
@@ -251,6 +263,10 @@ export default class GuiQueryEditor extends Component {
     }
 
     renderBreakouts() {
+        if (!this.props.features.breakout) {
+            return;
+        }
+
         var enabled;
         var breakoutList;
         var addBreakoutButton;
@@ -327,6 +343,10 @@ export default class GuiQueryEditor extends Component {
     }
 
     renderSort() {
+        if (!this.props.features.limit) {
+            return;
+        }
+
         var sortFieldOptions;
 
         if (this.props.tableMetadata) {
@@ -371,41 +391,52 @@ export default class GuiQueryEditor extends Component {
     }
 
     renderLimit() {
-        var limitOptions = [undefined, 1, 10, 25, 100, 1000].map((count) => {
-            var name = count || "None";
-            var classes = cx({
-                "Button": true,
-                "Button--active":  count == this.props.query.query.limit
-            });
-            return (
-                <li key={name} className={classes} onClick={this.updateLimit.bind(null, count)}>{name}</li>
-            );
-        });
+        if (!this.props.features.limit) {
+            return;
+        }
         return (
-            <ul className="Button-group Button-group--blue">
-                {limitOptions}
-            </ul>
-        )
+            <div className="py1">
+                <div className="Query-label mb1">Limit:</div>
+                <ul className="Button-group Button-group--blue">
+                    {LIMIT_OPTIONS.map(count =>
+                        <li key={count || "None"} className={cx("Button", { "Button--active":  count == this.props.query.query.limit })} onClick={this.updateLimit.bind(null, count)}>
+                            {count || "None"}
+                        </li>
+                    )}
+                </ul>
+            </div>
+        );
     }
 
     renderDataSection() {
-        var isInitiallyOpen = !this.props.query.database || !this.props.query.query.source_table;
         return (
-            <DataSelector
-                ref="dataSection"
-                className="arrow-right"
-                includeTables={true}
-                query={this.props.query}
-                databases={this.props.databases}
-                tables={this.props.tables}
-                setDatabaseFn={this.props.setDatabaseFn}
-                setSourceTableFn={this.props.setSourceTableFn}
-                isInitiallyOpen={isInitiallyOpen}
-            />
+            <div className={"GuiBuilder-section GuiBuilder-data flex align-center arrow-right"}>
+                <span className="GuiBuilder-section-label Query-label">Data</span>
+                { this.props.features.data ?
+                    <DataSelector
+                        ref="dataSection"
+                        includeTables={true}
+                        query={this.props.query}
+                        databases={this.props.databases}
+                        tables={this.props.tables}
+                        setDatabaseFn={this.props.setDatabaseFn}
+                        setSourceTableFn={this.props.setSourceTableFn}
+                        isInitiallyOpen={!this.props.query.database || !this.props.query.query.source_table}
+                    />
+                :
+                    <span className="flex align-center px2 py2 text-bold text-grey">
+                        {this.props.tableMetadata && this.props.tableMetadata.display_name}
+                    </span>
+                }
+            </div>
         );
     }
 
     renderFilterSection() {
+        if (!this.props.features.filter) {
+            return;
+        }
+
         return (
             <div className="GuiBuilder-section GuiBuilder-filtered-by flex align-center" ref="filterSection">
                 <span className="GuiBuilder-section-label Query-label">Filtered by</span>
@@ -415,6 +446,11 @@ export default class GuiQueryEditor extends Component {
     }
 
     renderViewSection() {
+        const { features } = this.props;
+        if (!features.aggregation && !features.breakout) {
+            return;
+        }
+
         return (
             <div className="GuiBuilder-section GuiBuilder-view flex align-center px1" ref="viewSection">
                 <span className="GuiBuilder-section-label Query-label">View</span>
@@ -425,16 +461,12 @@ export default class GuiQueryEditor extends Component {
     }
 
     renderSortLimitSection() {
-        var triggerElement = (<span className="EllipsisButton no-decoration text-grey-1 px1">…</span>);
-
-        // TODO: use this logic
-        if (this.props.tableMetadata && !Query.hasEmptyAggregation(this.props.query.query) &&
-                (this.props.query.query.limit !== undefined || this.props.query.query.order_by !== undefined)) {
-
-        } else if (Query.canAddLimitAndSort(this.props.query.query)) {
-
+        const { features } = this.props;
+        if (!features.sort && !features.limit) {
+            return;
         }
 
+        var triggerElement = (<span className="EllipsisButton no-decoration text-grey-1 px1">…</span>);
         return (
             <div className="GuiBuilder-section GuiBuilder-sort-limit flex align-center" ref="sortLimitSection">
 
@@ -442,10 +474,7 @@ export default class GuiQueryEditor extends Component {
                                     triggerClasses="flex align-center">
                     <div className="px3 py1">
                         {this.renderSort()}
-                        <div className="py1">
-                            <div className="Query-label mb1">Limit:</div>
-                            {this.renderLimit()}
-                        </div>
+                        {this.renderLimit()}
                     </div>
                 </PopoverWithTrigger>
             </div>
@@ -454,7 +483,10 @@ export default class GuiQueryEditor extends Component {
 
     componentDidUpdate() {
         // HACK: magic number "5" accounts for the borders between the sections?
-        let contentWidth = ["data", "filter", "view", "sortLimit"].reduce((acc, ref) => acc + React.findDOMNode(this.refs[`${ref}Section`]).offsetWidth, 0) + 5;
+        let contentWidth = ["data", "filter", "view", "sortLimit"].reduce((acc, ref) => {
+            let node = React.findDOMNode(this.refs[`${ref}Section`]);
+            return acc + (node ? node.offsetWidth : 0);
+        }, 0) + 5;
         let guiBuilderWidth = React.findDOMNode(this.refs.guiBuilder).offsetWidth;
 
         let expanded = (contentWidth < guiBuilderWidth);
@@ -464,24 +496,17 @@ export default class GuiQueryEditor extends Component {
     }
 
     render() {
-        var classes = cx({
-            'GuiBuilder': true,
-            'GuiBuilder--expand': this.state.expanded,
-            'rounded': true,
-            'shadowed': true
-        });
         return (
-            <div className="wrapper">
-                <div className={classes} ref="guiBuilder">
-                    <div className="GuiBuilder-row flex">
-                        {this.renderDataSection()}
-                        {this.renderFilterSection()}
-                    </div>
-                    <div className="GuiBuilder-row flex flex-full">
-                        {this.renderViewSection()}
-                        <div className="flex-full"></div>
-                        {this.renderSortLimitSection()}
-                    </div>
+            <div className={cx("GuiBuilder rounded shadowed", { "GuiBuilder--expand": this.state.expanded })} ref="guiBuilder">
+                <div className="GuiBuilder-row flex">
+                    {this.renderDataSection()}
+                    {this.renderFilterSection()}
+                </div>
+                <div className="GuiBuilder-row flex flex-full">
+                    {this.renderViewSection()}
+                    <div className="flex-full"></div>
+                    {this.props.children}
+                    {this.renderSortLimitSection()}
                 </div>
             </div>
         );

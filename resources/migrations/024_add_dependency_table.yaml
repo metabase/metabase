@@ -1,0 +1,69 @@
+databaseChangeLog:
+  - changeSet:
+      id: 24
+      author: agilliland
+      changes:
+        - createTable:
+            tableName: dependency
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: model
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dependent_on_model
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dependent_on_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_model
+            columns:
+              column:
+                name: model
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_model_id
+            columns:
+              column:
+                name: model_id
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_dependent_on_model
+            columns:
+              column:
+                name: dependent_on_model
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_dependent_on_id
+            columns:
+              column:
+                name: dependent_on_id
+        - modifySql:
+            dbms: postgresql
+            replace:
+              replace: WITHOUT
+              with: WITH

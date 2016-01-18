@@ -33,6 +33,12 @@
    :users
    :venues])
 
+(defn- table-name->table
+  "Return the `Table` matching TABLE-NAME in the Mongo `Test Data` DB."
+  [table-name]
+  {:pre [(keyword? table-name)]}
+  (Table (datasets/with-engine :mongo
+           (data/id table-name))))
 
 ;; ## Tests for connection functions
 
@@ -90,7 +96,7 @@
              {:name "_id",
               :base-type :IntegerField,
               :pk? true}}}
-  (driver/describe-table (MongoDriver.) (venues-table)))
+  (driver/describe-table (MongoDriver.) (table-name->table :venues)))
 
 
 ;; ## Big-picture tests for the way data should look post-sync
@@ -121,9 +127,6 @@
       {:special_type :longitude, :base_type :FloatField,   :name "longitude"}
       {:special_type :name,      :base_type :TextField,    :name "name"}
       {:special_type :category,  :base_type :IntegerField, :name "price"}]]
-  (let [table->fields (fn [table-name]
-                        (sel :many :fields [Field :name :base_type :special_type]
-                             :active true
-                             :table_id (sel :one :id Table :db_id (:id (mongo-db)), :name (name table-name))
-                             (k/order :name)))]
-    (map table->fields table-names)))
+    (for [nm table-names]
+      (sel :many :fields [Field :name :base_type :special_type], :active true, :table_id (:id (table-name->table nm))
+           (k/order :name))))

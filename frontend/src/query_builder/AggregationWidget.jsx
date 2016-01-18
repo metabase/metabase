@@ -1,7 +1,12 @@
 import React, { Component, PropTypes } from "react";
 
-import SelectionModule from './SelectionModule.jsx';
 import FieldWidget from './FieldWidget.jsx';
+import AccordianList from "./AccordianList.jsx";
+import QueryDefinitionTooltip from "./QueryDefinitionTooltip.jsx";
+
+import Icon from "metabase/components/Icon.jsx";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
+import Tooltip from "metabase/components/Tooltip.jsx";
 
 import Query from "metabase/lib/query";
 
@@ -51,20 +56,9 @@ export default class AggregationWidget extends Component {
         });
     }
 
-    setAggregation(aggregation) {
-        var queryAggregation = [aggregation];
-
-        // check to see if this aggregation type requires another choice
-        _.map(this.props.tableMetadata.aggregation_options, function (option) {
-            if (option.short === aggregation &&
-                option.fields.length > 0) {
-
-                // extend aggregation array by 1
-                queryAggregation[1] = null;
-            }
-        });
-
-        this.props.updateAggregation(queryAggregation);
+    setAggregation(item) {
+        this.props.updateAggregation(item.value);
+        this.refs.aggregation.close();
     }
 
     setAggregationTarget(target) {
@@ -74,51 +68,114 @@ export default class AggregationWidget extends Component {
         this.props.updateAggregation(queryAggregation);
     }
 
-    render() {
-        if (this.props.aggregation.length === 0) {
-            // we can't do anything without a valid aggregation
-            return;
-        }
+    renderSectionIcon(section) {
+        return <Icon name={section.icon} width="18" height="18" />
+    }
 
-        // aggregation clause.  must have table details available
-        var aggregationListOpen = this.props.aggregation[0] == null;
+    itemIsSelected(item) {
+        const { aggregation } = this.props;
+        return (aggregation[0] === item.value[0] && (aggregation[0] !== "METRIC" || aggregation[1] === item.value[1]));
+    }
 
-        // if there's a value in the second aggregation slot render another selector
-        var aggregationTarget;
-        if(this.props.aggregation.length > 1) {
-            var aggregationTargetListOpen = this.props.aggregation[1] == null;
-
-            aggregationTarget = (
-                <div className="flex align-center">
-                    <span className="text-bold">of</span>
-                    <FieldWidget
-                        color="green"
-                        className="View-section-aggregation-target SelectionModule p1"
-                        tableMetadata={this.props.tableMetadata}
-                        field={this.props.aggregation[1]}
-                        fieldOptions={this.state.aggregationFieldOptions}
-                        setField={this.setAggregationTarget}
-                        isInitiallyOpen={aggregationTargetListOpen}
-                    />
+    renderItemExtra(item, itemIndex) {
+        if (item.aggregation && item.aggregation.description) {
+            return (
+                <div className="p1">
+                    <Tooltip tooltipElement={item.aggregation.description}>
+                        <span className="QuestionTooltipTarget" />
+                    </Tooltip>
                 </div>
             );
+        } else if (item.metric) {
+            return this.renderMetricTooltip(item.metric);
+        }
+    }
+
+    renderMetricTooltip(metric) {
+        let { tableMetadata } = this.props;
+        return (
+            <div className="p1">
+                <Tooltip tooltipElement={<QueryDefinitionTooltip object={metric} tableMetadata={tableMetadata} />}>
+                    <span className="QuestionTooltipTarget" />
+                </Tooltip>
+            </div>
+        );
+    }
+
+    render() {
+        const { aggregation, tableMetadata } = this.props;
+        const { availableAggregations } = this.state;
+
+        if (!aggregation || aggregation.length === 0) {
+            // we can't do anything without a valid aggregation
+            return <span/>;
+        }
+
+        let selectedAggregation;
+        if (aggregation[0] === "METRIC") {
+            selectedAggregation = _.findWhere(tableMetadata.metrics, { id: aggregation[1] });
+        } else if (aggregation[0]) {
+            selectedAggregation = _.findWhere(availableAggregations, { short: aggregation[0] });
+        }
+
+        let sections = [{
+            name: "Metabasics",
+            items: availableAggregations.map(aggregation => ({
+                name: aggregation.name,
+                value: [aggregation.short].concat(aggregation.fields.map(field => null)),
+                aggregation: aggregation
+            })),
+            icon: "table2"
+        }];
+        if (tableMetadata.metrics && tableMetadata.metrics.length > 0) {
+            sections.push({
+                name: "Common Metrics",
+                items: tableMetadata.metrics.filter((mtrc) => mtrc.is_active === true || (selectedAggregation && selectedAggregation.id === mtrc.id)).map(metric => ({
+                    name: metric.name,
+                    value: ["METRIC", metric.id],
+                    metric: metric
+                })),
+                icon: "star-outline"
+            });
+        }
+
+        if (sections.length === 1) {
+            sections[0].name = null
         }
 
         return (
             <div className='Query-section'>
-                <SelectionModule
-                    className="View-section-aggregation"
-                    placeholder="..."
-                    items={this.state.availableAggregations}
-                    display="name"
-                    descriptionKey="description"
-                    expandFilter={(item) => !item.advanced}
-                    selectedValue={this.props.aggregation[0]}
-                    selectedKey="short"
-                    isInitiallyOpen={aggregationListOpen}
-                    action={this.setAggregation}
-                />
-                {aggregationTarget}
+                <div className="flex align-center">
+                    <PopoverWithTrigger
+                        ref="aggregation"
+                        triggerClasses="View-section-aggregation p1 selected"
+                        triggerElement={<span className="QueryOption">{selectedAggregation ? selectedAggregation.name.replace(" of ...", "") : "Choose an aggregation"}</span>}
+                        isInitiallyOpen={!selectedAggregation}
+                    >
+                        <AccordianList
+                            className="text-green"
+                            sections={sections}
+                            onChange={this.setAggregation}
+                            itemIsSelected={this.itemIsSelected.bind(this)}
+                            renderSectionIcon={this.renderSectionIcon}
+                            renderItemExtra={this.renderItemExtra.bind(this)}
+                        />
+                    </PopoverWithTrigger>
+                </div>
+                {aggregation[0] !== "METRIC" && aggregation.length > 1 &&
+                    <div className="flex align-center">
+                        <span className="text-bold">of</span>
+                        <FieldWidget
+                            color="green"
+                            className="View-section-aggregation-target SelectionModule p1"
+                            tableMetadata={this.props.tableMetadata}
+                            field={this.props.aggregation[1]}
+                            fieldOptions={this.state.aggregationFieldOptions}
+                            setField={this.setAggregationTarget}
+                            isInitiallyOpen={this.props.aggregation[1] == null}
+                        />
+                    </div>
+                }
             </div>
         );
     }

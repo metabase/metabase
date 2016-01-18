@@ -14,9 +14,12 @@
             [metabase.driver :as driver]
             (metabase.driver.mongo [query-processor :as qp]
                                    [util :refer [*mongo-connection* with-mongo-connection values->base-type]])
+            [metabase.models.field :as field]
+            [metabase.models.table :as table]
             [metabase.util :as u]
             [cheshire.core :as json]
-            [metabase.driver.sync :as sync]))
+            [metabase.driver.sync :as sync])
+  (:import com.mongodb.DB))
 
 (declare driver field-values-lazy-seq)
 
@@ -24,7 +27,7 @@
 ;;; ## MongoDriver
 
 (defn- can-connect? [_ details]
-  (with-mongo-connection [^com.mongodb.DB conn details]
+  (with-mongo-connection [^DB conn, details]
     (= (-> (cmd/db-stats conn)
            (conv/from-db-object :keywordize)
            :ok)
@@ -46,7 +49,7 @@
 
 (defn- process-query-in-context [_ qp]
   (fn [query]
-    (with-mongo-connection [^com.mongodb.DB conn (:database query)]
+    (with-mongo-connection [^DB conn, (:database query)]
       (qp query))))
 
 
@@ -121,7 +124,7 @@
 
 (defn describe-table
   [_ table]
-  (with-mongo-connection [^com.mongodb.DB conn @(:db table)]
+  (with-mongo-connection [^com.mongodb.DB conn (table/database table)]
     ;; TODO: ideally this would take the LAST set of rows added to the table so we could ensure this data changes on reruns
     (let [parsed-rows (->> (mc/find-maps conn (:name table))
                            (take driver/max-sync-lazy-seq-results)
@@ -153,12 +156,12 @@
   (lazy-seq
    (assert *mongo-connection*
      "You must have an open Mongo connection in order to get lazy results with field-values-lazy-seq.")
-   (let [table           @table
-         name-components (rest @qualified-name-components)]
+   (let [table           (field/table field)
+         name-components (rest (field/qualified-name-components field))]
      (assert (seq name-components))
-     (map #(get-in % (map keyword name-components))
-          (mq/with-collection *mongo-connection* (:name table)
-            (mq/fields [(apply str (interpose "." name-components))]))))))
+     (for [row (mq/with-collection *mongo-connection* (:name table)
+                 (mq/fields [(apply str (interpose "." name-components))]))]
+       (get-in row (map keyword name-components))))))
 
 
 (defrecord MongoDriver []

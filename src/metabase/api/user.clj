@@ -1,7 +1,6 @@
 (ns metabase.api.user
   (:require [cemerick.friend.credentials :as creds]
             [compojure.core :refer [defroutes GET DELETE POST PUT]]
-            [medley.core :refer [mapply]]
             [metabase.api.common :refer :all]
             [metabase.db :refer [sel upd upd-non-nil-keys exists?]]
             [metabase.email.messages :as email]

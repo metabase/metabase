@@ -297,6 +297,12 @@
   (if (pred? (first args)) [(first args) (next args)]
       [default args]))
 
+;; provided courtesy of Jay Fields http://blog.jayfields.com/2011/08/clojure-apply-function-to-each-value-of.html
+(defn update-values
+  "Update the values of a map by applying the given function.
+   Function expects the map value as an arg and optionally accepts additional args as passed."
+  [m f & args]
+  (reduce (fn [r [k v]] (assoc r k (apply f v args))) {} m))
 
 (defn is-email?
   "Is STRING a valid email address?"

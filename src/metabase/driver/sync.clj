@@ -17,7 +17,7 @@
                              [field :refer [Field] :as field]
                              [field-values :as field-values]
                              [foreign-key :refer [ForeignKey]]
-                             [table :refer [Table]])
+                             [table :refer [Table], :as table])
             [metabase.util :as u]))
 
 (declare sync-database-active-tables!
@@ -63,9 +63,9 @@
   [driver table & {:keys [full-sync?]
                    :or {full-sync? true}}]
   (binding [qp/*disable-qp-logging* true]
-    (driver/sync-in-context driver @(:db table) (fn []
-                                                  (sync-database-active-tables! driver [table] :analyze? full-sync?)
-                                                  (events/publish-event :table-sync {:table_id (:id table)})))))
+    (driver/sync-in-context driver (table/database table) (fn []
+                                                            (sync-database-active-tables! driver [table] :analyze? full-sync?)
+                                                            (events/publish-event :table-sync {:table_id (:id table)})))))
 
 
 ;;; ## ---------------------------------------- IMPLEMENTATION ----------------------------------------
@@ -536,7 +536,7 @@ infer-field-special-type
       (if-not (and avg-len (> avg-len average-length-no-preview-threshold))
         field-stats
         (do
-          (log/debug (u/format-color 'green "Field '%s' has an average length of %d. Not displaying it in previews." @(:qualified-name field) avg-len))
+          (log/debug (u/format-color 'green "Field '%s' has an average length of %d. Not displaying it in previews." (field/qualified-name field) avg-len))
           (assoc field-stats :preview-display false))))))
 
 (defn test-url-special-type
@@ -554,7 +554,7 @@ infer-field-special-type
                    (> percent-urls percent-valid-url-threshold))
         field-stats
         (do
-          (log/debug (u/format-color 'green "Field '%s' is %d%% URLs. Marking it as a URL." @(:qualified-name field) (int (math/round (* 100 percent-urls)))))
+          (log/debug (u/format-color 'green "Field '%s' is %d%% URLs. Marking it as a URL." (field/qualified-name field) (int (math/round (* 100 percent-urls)))))
           (assoc field-stats :special-type :url))))))
 
 (defn- values-are-valid-json?

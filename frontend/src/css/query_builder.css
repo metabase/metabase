@@ -72,17 +72,19 @@
 }
 
 .Query-filters {
+  max-width: 400px;
+}
+
+.Query-filterList {
     display: flex;
     overflow-x: auto;
     overflow-y: hidden;
-    max-width: 400px;
     white-space: nowrap;
-    height: 55px;
+    min-height: 55px;
 }
 
 .Query-filter {
     display: flex;
-    align-items: center;
     font-size: 0.75em;
     border: 2px solid transparent;
     border-radius: var(--default-border-radius);
@@ -111,6 +113,19 @@
     margin-bottom: 3px; /* we need a small amount of margin here for the box shadow to show */
     overflow: scroll;
     border-top: 1px solid #E8E8E8;
+}
+
+.TooltipFilterList .Query-filter {
+  padding-left: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.TooltipFilterList .Query-filterList {
+  flex-direction: column;
+}
+
+.TooltipFilterList .Query-section {
+  margin-left: -0.5rem;
 }
 
 /*
@@ -415,6 +430,7 @@
 
 .Filter-section-value {
     padding-right: 0.5em;
+    padding-bottom: 0.25em;
 }
 
 .Filter-section-sort-field.selected .QueryOption,
@@ -645,6 +661,11 @@
     margin-bottom: 2px;
 }
 
+.List-item--segment .Icon,
+.List-item--segment .List-item-title {
+  color: var(--purple-color);
+}
+
 .List-item:hover,
 .List-item--selected {
     background-color: currentColor;
@@ -675,4 +696,26 @@
     display: flex;
     border-left: 2px solid rgba(0,0,0,0.1);
     color: rgba(255,255,255,0.5);
+}
+
+.QuestionTooltipTarget {
+  color: rgb(225,225,225);
+  display: inline-block;
+  border: 2px solid currentColor;
+  border-radius: 99px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+
+  cursor: pointer;
+}
+
+.QuestionTooltipTarget:after {
+  content: "?";
+  font-size: 13px;
+  font-weight: bold;
 }

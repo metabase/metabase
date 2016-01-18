@@ -1,0 +1,28 @@
+#!/usr/bin/env node
+
+var fs = require('fs');
+
+function clean(module) {
+
+    // remove module.from
+    delete module.from;
+
+    // remove module.resolved unless it points to a git repo
+    if (module.resolved && module.resolved.indexOf("https://registry.npmjs.org/") === 0) {
+        delete module.resolved;
+    }
+
+    // sort module.dependencies keys, and recursively clean them
+    if (module.dependencies) {
+        module.dependencies = Object.keys(module.dependencies).sort().reduce(function(deps, name) {
+            deps[name] = clean(module.dependencies[name]);
+            return deps;
+        }, {});
+    }
+
+    return module;
+}
+
+var path = require('path').join(__dirname, '..', 'npm-shrinkwrap.json');
+
+fs.writeFileSync(path, JSON.stringify(clean(JSON.parse(fs.readFileSync(path))), null, 2) + "\n");

@@ -8,7 +8,8 @@
             [metabase.models.setting :as setting]
             [metabase.pulse :as p, :refer [render-pulse-section]]
             [metabase.util :as u]
-            [metabase.util.quotation :as q]))
+            [metabase.util.quotation :as q]
+            [metabase.util.urls :as url]))
 
 ;; NOTE: uncomment this in development to disable template caching
 ;; (loader/set-cache (clojure.core.cache/ttl-cache-factory {} :ttl 0))
@@ -54,6 +55,39 @@
      :recipients   [email]
      :message-type :html
      :message      message-body)))
+
+(defn send-notification-email
+  "Format and Send an email informing the user about changes to objects in the system."
+  [email context]
+  {:pre [(string? email)
+         (u/is-email? email)
+         (map? context)]}
+  (let [model->url-fn #(case %
+                        "Card"      url/question-url
+                        "Dashboard" url/dashboard-url
+                        "Pulse"     url/pulse-url
+                        "Segment"   url/segment-url)
+        add-url       (fn [{:keys [id model] :as obj}]
+                        (assoc obj :url (apply (model->url-fn model) [id])))
+        data-quote    (rand-nth q/quotations)
+        context       (-> context
+                          (update :dependencies (fn [deps-by-model]
+                                                  (for [model (sort (set (keys deps-by-model)))
+                                                        deps  (mapv add-url (get deps-by-model model))]
+                                                    {:model   (case model
+                                                                "Card" "Saved Question"
+                                                                model)
+                                                     :objects deps})))
+                          (assoc :emailType "notification"
+                                 :logoHeader true
+                                 :quotation (:quote data-quote)
+                                 :quotationAuthor (:author data-quote)))
+        message-body  (stencil/render-file "metabase/email/notification" context)]
+    (email/send-message
+      :subject      "[Metabase] Notification"
+      :recipients   [email]
+      :message-type :html
+      :message      message-body)))
 
 ;; HACK: temporary workaround to postal requiring a file as the attachment
 (defn- write-byte-array-to-temp-file

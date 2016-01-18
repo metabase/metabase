@@ -8,15 +8,15 @@
                              [dashboard :refer [Dashboard]]
                              [dashboard-card :refer [DashboardCard]]
                              [database :refer [Database]]
+                             [metric :refer [Metric]]
                              [pulse :refer [Pulse]]
+                             [segment :refer [Segment]]
                              [session :refer [Session]]
+                             [table :refer [Table]]
                              [user :refer [User]])
             [metabase.test.data :refer :all]
             [metabase.test.util :refer [expect-eval-actual-first with-temp random-name]]
             [metabase.test-setup :refer :all]))
-
-;; TODO - we can simplify the cleanup work we do by using the :in-context :expectations-options
-;;        the only downside is that it then runs the annotated function on ALL tests :/
 
 
 (defn- create-test-objects
@@ -52,12 +52,37 @@
         pulse     (db/ins Pulse
                     :creator_id   (:id user)
                     :name         rand-name
-                    :public_perms 2)]
+                    :public_perms 2)
+        database  (db/ins Database
+                    :name      "Activity Database"
+                    :engine    :yeehaw
+                    :details   {}
+                    :is_sample false)
+        table     (db/ins Table
+                    :name   "Activity Table"
+                    :db_id  (:id database)
+                    :active true)
+        segment   (db/ins Segment
+                    :creator_id  (:id user)
+                    :table_id    (:id table)
+                    :name        "Activity Segment"
+                    :description "Something worth reading"
+                    :definition  {:a "b"})
+        metric   (db/ins Metric
+                    :creator_id  (:id user)
+                    :table_id    (:id table)
+                    :name        "Activity Metric"
+                    :description "Whoot!"
+                    :definition  {:a "b"})]
     {:card      card
      :dashboard dashboard
      :dashcard  dashcard
+     :database  database
+     :metric    metric
      :pulse     pulse
+     :segment   segment
      :session   {:id rand-name}
+     :table     table
      :user      user}))
 
 
@@ -243,6 +268,64 @@
     (-> (db/sel :one Activity :topic "install")
         (select-keys [:topic :user_id :model :model_id :details]))))
 
+;; `:metric-create`
+(expect-let [{:keys [database table metric user]} (create-test-objects)]
+  {:topic       :metric-create
+   :user_id     (:id user)
+   :model       "metric"
+   :model_id    (:id metric)
+   :database_id (:id database)
+   :table_id    (:id table)
+   :details     {:name        (:name metric)
+                 :description (:description metric)}}
+  (do
+    (k/delete Activity)
+    (process-activity-event {:topic :metric-create
+                             :item  metric})
+    (-> (db/sel :one Activity :topic "metric-create")
+        (select-keys [:topic :user_id :model :model_id :database_id :table_id :details]))))
+
+;; `:metric-update`
+(expect-let [{:keys [database table metric user]} (create-test-objects)]
+  {:topic       :metric-update
+   :user_id     (:id user)
+   :model       "metric"
+   :model_id    (:id metric)
+   :database_id (:id database)
+   :table_id    (:id table)
+   :details     {:name             (:name metric)
+                 :description      (:description metric)
+                 :revision_message "update this mofo"}}
+  (do
+    (k/delete Activity)
+    (process-activity-event {:topic :metric-update
+                             :item  (-> metric
+                                        (assoc :actor_id         (:id user)
+                                               :revision_message "update this mofo")
+                                        ;; doing this specifically to ensure :actor_id is utilized
+                                        (dissoc :creator_id))})
+    (-> (db/sel :one Activity :topic "metric-update")
+        (select-keys [:topic :user_id :model :model_id :database_id :table_id :details]))))
+
+;; `:metric-delete`
+(expect-let [{:keys [database table metric user]} (create-test-objects)]
+  {:topic       :metric-delete
+   :user_id     (:id user)
+   :model       "metric"
+   :model_id    (:id metric)
+   :database_id (:id database)
+   :table_id    (:id table)
+   :details     {:name             (:name metric)
+                 :description      (:description metric)
+                 :revision_message "deleted"}}
+  (do
+    (k/delete Activity)
+    (process-activity-event {:topic :metric-delete
+                             :item  (assoc metric :actor_id         (:id user)
+                                                   :revision_message "deleted")})
+    (-> (db/sel :one Activity :topic "metric-delete")
+        (select-keys [:topic :user_id :model :model_id :database_id :table_id :details]))))
+
 ;; `:pulse-create` event
 (expect-let [{:keys [pulse user]} (create-test-objects)]
   {:topic       :pulse-create
@@ -275,6 +358,64 @@
     (process-activity-event {:topic :pulse-delete
                              :item  pulse})
     (-> (db/sel :one Activity :topic "pulse-delete")
+        (select-keys [:topic :user_id :model :model_id :database_id :table_id :details]))))
+
+;; `:segment-create`
+(expect-let [{:keys [database table segment user]} (create-test-objects)]
+  {:topic       :segment-create
+   :user_id     (:id user)
+   :model       "segment"
+   :model_id    (:id segment)
+   :database_id (:id database)
+   :table_id    (:id table)
+   :details     {:name        (:name segment)
+                 :description (:description segment)}}
+  (do
+    (k/delete Activity)
+    (process-activity-event {:topic :segment-create
+                             :item  segment})
+    (-> (db/sel :one Activity :topic "segment-create")
+        (select-keys [:topic :user_id :model :model_id :database_id :table_id :details]))))
+
+;; `:segment-update`
+(expect-let [{:keys [database table segment user]} (create-test-objects)]
+  {:topic       :segment-update
+   :user_id     (:id user)
+   :model       "segment"
+   :model_id    (:id segment)
+   :database_id (:id database)
+   :table_id    (:id table)
+   :details     {:name             (:name segment)
+                 :description      (:description segment)
+                 :revision_message "update this mofo"}}
+  (do
+    (k/delete Activity)
+    (process-activity-event {:topic :segment-update
+                             :item  (-> segment
+                                        (assoc :actor_id         (:id user)
+                                               :revision_message "update this mofo")
+                                        ;; doing this specifically to ensure :actor_id is utilized
+                                        (dissoc :creator_id))})
+    (-> (db/sel :one Activity :topic "segment-update")
+        (select-keys [:topic :user_id :model :model_id :database_id :table_id :details]))))
+
+;; `:segment-delete`
+(expect-let [{:keys [database table segment user]} (create-test-objects)]
+  {:topic       :segment-delete
+   :user_id     (:id user)
+   :model       "segment"
+   :model_id    (:id segment)
+   :database_id (:id database)
+   :table_id    (:id table)
+   :details     {:name             (:name segment)
+                 :description      (:description segment)
+                 :revision_message "deleted"}}
+  (do
+    (k/delete Activity)
+    (process-activity-event {:topic :segment-delete
+                             :item  (assoc segment :actor_id         (:id user)
+                                                   :revision_message "deleted")})
+    (-> (db/sel :one Activity :topic "segment-delete")
         (select-keys [:topic :user_id :model :model_id :database_id :table_id :details]))))
 
 ;; `:user-login` event

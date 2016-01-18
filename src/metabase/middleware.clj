@@ -228,32 +228,6 @@
                                     (.writeString json-generator ^String (apply str "0x" (for [b (take 4 byte-ar)]
                                                                                            (format "%02X" b))))))
 
-(defprotocol ^:private IRemoveFnsAndDelays
-  (^:private remove-fns-and-delays [this]))
-
-(extend-protocol IRemoveFnsAndDelays
-  nil                         (remove-fns-and-delays [_]    nil)
-  Object                      (remove-fns-and-delays [this] this)
-  clojure.lang.IPersistentMap (remove-fns-and-delays [m]
-                                (loop [m m, [k & more] (keys m)]
-                                  (if-not k
-                                    m
-                                    (let [v (get m k)]
-                                      (recur (if (or (delay? v) (fn? v))
-                                               (dissoc m k)
-                                               (assoc m k (remove-fns-and-delays v)))
-                                             more)))))
-  clojure.lang.Sequential    (remove-fns-and-delays [this]
-                               (map remove-fns-and-delays this)))
-
-(defn format-response
-  "Middleware that recurses over Clojure object before it gets converted to JSON and makes adjustments neccessary so the formatter doesn't barf.
-   e.g. functions and delays are stripped and H2 Clobs are converted to strings."
-  [handler]
-  (comp remove-fns-and-delays handler))
-
-
-
 ;;; # ------------------------------------------------------------ LOGGING ------------------------------------------------------------
 
 (def ^:private ^:const sensitive-fields

@@ -39,7 +39,8 @@
   (partial publicly-? common/perms-readwrite))
 
 (defprotocol IEntity
-  "Methods entity classes should implement; all have default implementations in `IEntityDefaults`."
+  "Methods model classes should implement; all except for `can-read?` and `can-write?` have default implementations in `IEntityDefaults`.
+   Internal models that don't participate in permissions checking don't need to implement `can-read?`/`can-write?`."
   (pre-insert [this]
     "Gets called by `ins` immediately before inserting a new object immediately before the korma `insert` call.
      This provides an opportunity to do things like encode JSON or provide default values for certain fields.
@@ -79,15 +80,15 @@
           (cascade-delete Card :database_id database-id)
           ...)")
 
-  (can-read? ^Boolean [instance], ^Boolean [entity, ^Integer id]
-    "Return whether `*current-user*` has *read* permissions for an object. You should use one of these implmentations:
+  (^{:hydrate :can_read} can-read? ^Boolean [instance], ^Boolean [entity, ^Integer id]
+   "Return whether `*current-user*` has *read* permissions for an object. You should use one of these implmentations:
 
      *  `(constantly true)` (default)
      *  `superuser?`
      *  `publicly-readable?`")
 
-  (can-write? ^Boolean [instance], ^Boolean [entity, ^Integer id]
-    "Return whether `*current-user*` has *write* permissions for an object. You should use one of these implmentations:
+  (^{:hydrate :can_write} can-write? ^Boolean [instance], ^Boolean [entity, ^Integer id]
+   "Return whether `*current-user*` has *write* permissions for an object. You should use one of these implmentations:
 
      *  `(constantly true)`
      *  `superuser?` (default)
@@ -104,18 +105,14 @@
      will look for `:creator_id` in other objects and fetch the corresponding `Users`.")
 
   (types ^clojure.lang.IPersistentMap [this]
-    "Return a map of keyword field names to their types for fields that should be serialized/deserialized in a special way. Valid types are either `:json` or `:keyword`.
+    "Return a map of keyword field names to their types for fields that should be serialized/deserialized in a special way. Valid types are `:json`, `:keyword`, or `:clob`.
 
      *  `:json` serializes objects as JSON strings before going into the DB, and parses JSON strings when coming out
      *  `:keyword` calls `name` before going into the DB, and `keyword` when coming out
+     *  `:clob` converts clobs to Strings (via `metabase.util/jdbc-clob->str`) when coming out
 
        (types [_] {:cards :json}) ; encode `:cards` as JSON when stored in the DB"))
 
-
-(defprotocol ICreateFromMap
-  "Used by internal functions like `do-post-select`."
-  (^:private map-> [klass, ^clojure.lang.IPersistentMap m]
-   "Convert map M to instance of record type KLASS."))
 
 (def ^:private type-fns
   "The functions that should be invoked for corresponding `types` when an object comes `:in` or `:out` of the DB."
@@ -129,7 +126,9 @@
                         (json/parse-string s keyword)
                         obj)))}
    :keyword {:in  name
-             :out keyword}})
+             :out keyword}
+   :clob    {:in  identity
+             :out u/jdbc-clob->str}})
 
 (defn- apply-type-fns
   "Apply the appropriate `type-fns` for OBJ."
@@ -146,6 +145,12 @@
     (let [ts (u/new-sql-timestamp)]
       (into obj (for [k ks]
                   {k ts})))))
+
+
+(defprotocol ICreateFromMap
+  "Used by internal functions like `do-post-select`."
+  (^:private map-> [klass, ^clojure.lang.IPersistentMap m]
+   "Convert map M to instance of record type KLASS."))
 
 ;; these functions call (map-> entity ...) twice to make sure functions like pre-insert/post-select didn't do something that accidentally removed the typing
 
@@ -178,21 +183,20 @@
     (post-select <>)
     (map-> entity <>)))
 
-
 (def IEntityDefaults
   "Default implementations for `IEntity` methods."
-  {:default-fields       (constantly nil)
-   :timestamped?         (constantly false)
-   :hydration-keys       (constantly nil)
-   :types                (constantly nil)
-   :can-read?            (constantly true)
-   :can-write?           superuser?
-   :pre-insert           identity
-   :post-insert          identity
-   :pre-update           identity
-   :post-update          (constantly nil)
-   :post-select          identity
-   :pre-cascade-delete   (constantly nil)})
+  {:default-fields     (constantly nil)
+   :timestamped?       (constantly false)
+   :hydration-keys     (constantly nil)
+   :types              (constantly nil)
+   :can-read?          (fn [this & _] (throw (UnsupportedOperationException. (format "No implementation of can-read? for %s; please provide one."  (class this)))))
+   :can-write?         (fn [this & _] (throw (UnsupportedOperationException. (format "No implementation of can-write? for %s; please provide one." (class this)))))
+   :pre-insert         identity
+   :post-insert        identity
+   :pre-update         identity
+   :post-update        (constantly nil)
+   :post-select        identity
+   :pre-cascade-delete (constantly nil)})
 
 (defn- invoke-entity
   "Fetch an object with a specific ID or all objects of type ENTITY from the DB.
@@ -281,5 +285,6 @@
              ~@korma-forms
              (assoc ::entity true)
              ~map->instance)))))
+
 
 (u/require-dox-in-this-namespace)

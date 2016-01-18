@@ -1,10 +1,13 @@
 (ns metabase.models.card
-  (:require [korma.core :as k]
+  (:require [clojure.core.match :refer [match]]
+            [korma.core :as k]
             [medley.core :as m]
-            [metabase.db :refer [cascade-delete]]
-            (metabase.models [interface :as i]
+            [metabase.db :as db]
+            (metabase.models [dependency :as dependency]
+                             [interface :as i]
                              [revision :as revision]
                              [user :refer [User]])
+            [metabase.query :as q]
             [metabase.util :as u]))
 
 (def ^:const display-types
@@ -33,25 +36,44 @@
       (merge defaults card)
       card)))
 
-(defn- post-select [{:keys [creator_id] :as card}]
-  (assoc card
-         :creator         (delay (User creator_id))
-         :dashboard_count (delay (-> (k/select @(ns-resolve 'metabase.models.dashboard-card 'DashboardCard)
-                                               (k/aggregate (count :*) :dashboards)
-                                               (k/where {:card_id (:id card)}))
-                                     first
-                                     :dashboards))))
+(defn dashboard-count
+  "Return the number of Dashboards this Card is in."
+  {:hydrate :dashboard_count}
+  [{:keys [id]}]
+  (-> (k/select @(ns-resolve 'metabase.models.dashboard-card 'DashboardCard)
+                (k/aggregate (count :*) :dashboards)
+                (k/where {:card_id id}))
+      first
+      :dashboards))
 
 (defn- pre-cascade-delete [{:keys [id]}]
-  (cascade-delete 'PulseCard :card_id id)
-  (cascade-delete 'Revision :model "Card" :model_id id)
-  (cascade-delete 'DashboardCard :card_id id)
-  (cascade-delete 'CardFavorite :card_id id))
+  (db/cascade-delete 'PulseCard :card_id id)
+  (db/cascade-delete 'Revision :model "Card" :model_id id)
+  (db/cascade-delete 'DashboardCard :card_id id)
+  (db/cascade-delete 'CardFavorite :card_id id))
 
-(defn- serialize-instance [_ _ instance]
+
+;;; ## ---------------------------------------- REVISIONS ----------------------------------------
+
+
+(defn serialize-instance
+  "Serialize a `Card` for use in a `Revision`."
+  [_ _ instance]
   (->> (dissoc instance :created_at :updated_at)
        (into {})                                 ; if it's a record type like CardInstance we need to convert it to a regular map or filter-vals won't work
        (m/filter-vals (complement delay?))))
+
+
+;;; ## ---------------------------------------- DEPENDENCIES ----------------------------------------
+
+(defn card-dependencies
+  "Calculate any dependent objects for a given `Card`."
+  [this id {:keys [dataset_query] :as instance}]
+  (when (and dataset_query
+             (= :query (keyword (:type dataset_query))))
+    {:Metric  (q/extract-metric-ids (:query dataset_query))
+     :Segment (q/extract-segment-ids (:query dataset_query))}))
+
 
 (extend (class Card)
   i/IEntity
@@ -63,13 +85,16 @@
           :can-write?         i/publicly-writeable?
           :pre-update         populate-query-fields
           :pre-insert         populate-query-fields
-          :post-select        post-select
           :pre-cascade-delete pre-cascade-delete})
 
   revision/IRevisioned
   {:serialize-instance serialize-instance
    :revert-to-revision revision/default-revert-to-revision
-   :describe-diff      revision/default-describe-diff})
+   :diff-map           revision/default-diff-map
+   :diff-str           revision/default-diff-str}
+
+  dependency/IDependent
+  {:dependencies card-dependencies})
 
 
 (u/require-dox-in-this-namespace)

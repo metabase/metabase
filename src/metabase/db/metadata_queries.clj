@@ -2,6 +2,7 @@
   "Predefined QP queries for getting metadata about an external database."
   (:require [metabase.driver :as driver]
             [metabase.driver.query-processor.expand :as ql]
+            [metabase.models.field :as field]
             [metabase.util :as u]))
 
 (defn- qp-query [db-id query]
@@ -13,9 +14,10 @@
       :rows))
 
 (defn- field-query [field query]
-  (qp-query ((u/deref-> field :table :db) :id)
-            (ql/query (merge query)
-                      (ql/source-table ((u/deref-> field :table) :id)))))
+  (let [table (field/table field)]
+    (qp-query (:db_id table)
+              (ql/query (merge query)
+                        (ql/source-table (:id table))))))
 
 (defn table-row-count
   "Fetch the row count of TABLE via the query processor."

@@ -9,7 +9,8 @@
                    [name :as name])
             [incanter.distributions :as dist]
             (korma [core :as k]
-                   [db :as kdb]))
+                   [db :as kdb])
+            [metabase.util :as u])
   (:import java.util.Date))
 
 (def ^:private ^:const sample-dataset-filename
@@ -33,12 +34,7 @@
       (* 360)
       (- 180)))
 
-(defn ^Date years-ago [n]
-  (let [d (Date.)]
-    (.setYear d (- (.getYear d) n))
-    d))
-
-(defn ^Date random-date-between [^Date min ^Date max]
+(defn ^Date random-date-between [^Date min, ^Date max]
   (let [min-ms (.getTime min)
         max-ms (.getTime max)
         range  (- max-ms min-ms)
@@ -52,7 +48,7 @@
     {:name       (format "%s %s" first last)
      :email      (internet/free-email (format "%s.%s" first last))
      :password   (str (java.util.UUID/randomUUID))
-     :birth_date (random-date-between (years-ago 60) (years-ago 18))
+     :birth_date (random-date-between (u/relative-date :year -60) (u/relative-date :year -18))
      :address    (address/street-address)
      :city       (address/city)
      :zip        (apply str (take 5 (address/zip-code)))
@@ -60,7 +56,7 @@
      :latitude   (random-latitude)
      :longitude  (random-longitude)
      :source     (rand-nth ["Google" "Twitter" "Facebook" "Organic" "Affiliate"])
-     :created_at (random-date-between (years-ago 1) (Date.))}))
+     :created_at (random-date-between (u/relative-date :year -1) (u/relative-date :year 1))}))
 
 ;;; ## PRODUCTS
 
@@ -76,7 +72,7 @@
 (def ^:private ^:const product-names
   {:adjective '[Small, Ergonomic, Rustic, Intelligent, Gorgeous, Incredible, Fantastic, Practical, Sleek, Awesome, Enormous, Mediocre, Synergistic, Heavy-Duty, Lightweight, Aerodynamic, Durable]
    :material  '[Steel, Wooden, Concrete, Plastic, Cotton, Granite, Rubber, Leather, Silk, Wool, Linen, Marble, Iron, Bronze, Copper, Aluminum, Paper]
-   :product   '[Chair, Car, Computer, Gloves, Pants, Shirt, Table, Shoes, Hat, Plate, Knife, Bottle, Coat, Lamp, Keyboard, Bag, Bench, Clock, Watch, Wallet]})
+   :product   '[Chair, Car, Computer, Gloves, Pants, Shirt, Table, Shoes, Hat, Plate, Knife, Bottle, Coat, Lamp, Keyboard, Bag, Bench, Clock, Watch, Wallet, Toucan]})
 
 (defn- random-product-name []
   (format "%s %s %s"
@@ -110,7 +106,7 @@
    :category   (rand-nth ["Widget" "Gizmo" "Gadget" "Doohickey"])
    :vendor     (random-company-name)
    :price      (random-price 12 100)
-   :created_at (random-date-between (years-ago 1) (Date.))})
+   :created_at (random-date-between (u/relative-date :year -1) (u/relative-date :year 1))})
 
 
 ;;; ## ORDERS
@@ -211,7 +207,7 @@
      :subtotal   price
      :tax        tax
      :total      (+ price tax)
-     :created_at (random-date-between (min-date (:created_at person) (:created_at product)) (Date.))}))
+     :created_at (random-date-between (min-date (:created_at person) (:created_at product)) (u/relative-date :year 1))}))
 
 
 ;;; ## REVIEWS
@@ -225,7 +221,7 @@
                           4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4 4
                           5 5 5 5 5 5 5 5 5 5 5 5 5])
    :body       (first (lorem/paragraphs))
-   :created_at (random-date-between (:created_at product) (Date.))})
+   :created_at (random-date-between (:created_at product) (u/relative-date :year 1))})
 
 (defn- create-randoms [n f]
   (vec (map-indexed (fn [id obj]

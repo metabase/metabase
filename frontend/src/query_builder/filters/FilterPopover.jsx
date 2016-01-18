@@ -36,8 +36,8 @@ export default class FilterPopover extends Component {
         tableMetadata: PropTypes.object.isRequired
     };
 
-    commitFilter() {
-        this.props.onCommitFilter(this.state.filter);
+    commitFilter(filter) {
+        this.props.onCommitFilter(filter);
         this.props.onClose();
     }
 
@@ -139,8 +139,7 @@ export default class FilterPopover extends Component {
 
     clearField() {
         let { filter } = this.state;
-        filter[1] = null;
-        this.setState({ filter });
+        this.setState({ filter: [...filter.slice(0, 1), null, ...filter.slice(2)] });
     }
 
     renderPicker(filter, field) {
@@ -190,15 +189,17 @@ export default class FilterPopover extends Component {
 
     render() {
         let { filter } = this.state;
-        if (filter[1] == undefined) {
+        if (filter[0] === "SEGMENT" || filter[1] == undefined) {
             return (
                 <div className="FilterPopover">
                     <FieldList
+                        className="text-purple"
                         field={this.state.filter[1]}
                         fieldOptions={Query.getFieldOptions(this.props.tableMetadata.fields, true)}
+                        segmentOptions={this.props.tableMetadata.segments && this.props.tableMetadata.segments.filter((sgmt) => sgmt.is_active === true)}
                         tableMetadata={this.props.tableMetadata}
                         onFieldChange={this.setField}
-                        className="text-purple"
+                        onFilterChange={this.commitFilter}
                     />
                 </div>
             );
@@ -234,7 +235,7 @@ export default class FilterPopover extends Component {
                         </div>
                     }
                     <div className="FilterPopover-footer p1">
-                        <button className={cx("Button Button--purple full", { "disabled": !this.isValid() })} onClick={this.commitFilter}>
+                        <button className={cx("Button Button--purple full", { "disabled": !this.isValid() })} onClick={() => this.commitFilter(this.state.filter)}>
                             {this.props.isNew ? "Add filter" : "Update filter"}
                         </button>
                     </div>
