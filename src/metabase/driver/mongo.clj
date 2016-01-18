@@ -144,7 +144,7 @@
   [_ table new-field-ids]
   ;; We only care about 1) table counts and 2) field values
   {:row_count (sync/table-row-count table)
-   :fields    (for [{:keys [id] :as field} @(:fields table)
+   :fields    (for [{:keys [id] :as field} (table/fields table)
                     :when (sync/test-for-cardinality? field (contains? new-field-ids (:id field)))]
                 (sync/test-cardinality-and-extract-field-values field {:id id}))})
 

@@ -589,7 +589,7 @@ infer-field-special-type
                                          (take driver/max-sync-lazy-seq-results)))
       field-stats
       (do
-        (log/debug (u/format-color 'green "Field '%s' looks like it contains valid JSON objects. Setting special_type to :json." @(:qualified-name field)))
+        (log/debug (u/format-color 'green "Field '%s' looks like it contains valid JSON objects. Setting special_type to :json." (field/qualified-name field)))
         (assoc field-stats :special-type :json, :preview-display false)))))
 
 (defn generic-analyze-table [driver & {:keys [field-avg-length-fn field-percent-urls-fn]
@@ -602,7 +602,7 @@ infer-field-special-type
                                   (test-no-preview-display field field-avg-length-fn)
                                   (test-url-special-type field field-percent-urls-fn)
                                   (test-json-special-type driver field)))
-          field-stats (for [{:keys [id] :as field} @(:fields table)]
+          field-stats (for [{:keys [id] :as field} (table/fields table)]
                         (cond->> {:id id}
                                  (test-for-cardinality? field (contains? new-field-ids (:id field))) (test-cardinality-and-extract-field-values field)
                                  (contains? new-field-ids id)                                        (test-field field)))]

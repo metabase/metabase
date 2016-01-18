@@ -85,7 +85,6 @@
     :rows   nil
     :active true
     :fields [{:description nil,
-              :parent nil,
               :special_type :id,
               :name "id",
               :active true,
@@ -96,7 +95,6 @@
               :display_name "Id",
               :base_type :IntegerField}
              {:description nil,
-              :parent nil,
               :special_type nil,
               :name "studio",
               :active true,
@@ -107,7 +105,6 @@
               :display_name "Studio",
               :base_type :TextField}
              {:description nil,
-              :parent nil,
               :special_type nil,
               :name "title",
               :active true,
@@ -127,7 +124,6 @@
     :rows   nil
     :active true
     :fields [{:description nil,
-              :parent nil,
               :special_type :name,
               :name "name",
               :active true,
@@ -138,7 +134,6 @@
               :display_name "Name",
               :base_type :TextField}
              {:description nil,
-              :parent nil,
               :special_type :id,
               :name "studio",
               :active true,
@@ -169,7 +164,6 @@
    :rows   nil
    :active true
    :fields [{:description nil,
-             :parent nil,
              :special_type :id,
              :name "id",
              :active true,
@@ -180,7 +174,6 @@
              :display_name "Id",
              :base_type :IntegerField}
             {:description nil,
-             :parent nil,
              :special_type nil,
              :name "studio",
              :active true,
@@ -191,7 +184,6 @@
              :display_name "Studio",
              :base_type :TextField}
             {:description nil,
-             :parent nil,
              :special_type nil,
              :name "title",
              :active true,
