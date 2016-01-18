@@ -76,7 +76,7 @@ export default class Activity extends Component {
         }
     }
 
-    activityDescription(item, user) {
+    activityHeader(item, user) {
 
         // this is a base to start with
         const description = {
@@ -84,8 +84,6 @@ export default class Activity extends Component {
             subject: "did some super awesome stuff thats hard to describe",
             subjectRefLink: null,
             subjectRefName: null,
-            body: null,
-            bodyLink: null,
             timeSince: item.timestamp.fromNow()
         };
 
@@ -106,62 +104,154 @@ export default class Activity extends Component {
         switch (item.topic) {
             case "card-create":
             case "card-update":
-                description.subject = handleSubject(item).subject;
-                description.subjectRefLink = Urls.tableRowsQuery(item.database_id, item.table_id);
-                description.subjectRefName = handleSubject(item).subjectRefName;
-                description.body = item.details.name;
-                description.bodyLink = (item.model_exists) ? Urls.modelToUrl(item.model, item.model_id) : null;
+                if(item.table) {
+                    description.summary = (<span>saved a question about <a className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id)}>{item.table.display_name}</a></span>);
+                } else {
+                    description.summary = "saved a question";
+                }
                 break;
             case "card-delete":
-                description.subject = "deleted a question";
-                description.body = item.details.name;
+                description.summary = "deleted a question";
                 break;
             case "dashboard-create":
-                description.subject = "created a dashboard";
-                description.body = item.details.name;
-                description.bodyLink = (item.model_exists) ? Urls.modelToUrl(item.model, item.model_id) : null;
+                description.summary = "created a dashboard";
                 break;
             case "dashboard-delete":
-                description.subject = "deleted a dashboard";
-                description.body = item.details.name;
+                description.summary = "deleted a dashboard";
                 break;
             case "dashboard-add-cards":
-                description.subject = "added a question to the dashboard -";
-                description.subjectRefLink = (item.model_exists) ? Urls.dashboard(item.model_id) : null;
-                description.subjectRefName = item.details.name;
-                description.body = item.details.dashcards[0].name;
-                description.bodyLink = Urls.card(item.details.dashcards[0].card_id);
+                if(item.model_exists) {
+                    description.summary = (<span>added a question to the dashboard - <a className="link text-dark" href={Urls.dashboard(item.model_id)}>{item.details.name}</a></span>);
+                } else {
+                    description.summary = (<span>added a question to the dashboard - <span className="text-dark">{item.details.name}</span></span>);
+                }
                 break;
             case "dashboard-remove-cards":
-                description.subject = "removed a question from the dashboard -";
-                description.subjectRefLink = (item.model_exists) ? Urls.dashboard(item.model_id) : null;
-                description.subjectRefName = item.details.name;
-                description.body = item.details.dashcards[0].name;
-                description.bodyLink = Urls.card(item.details.dashcards[0].card_id);
+                if(item.model_exists) {
+                    description.summary = (<span>removed a question from the dashboard - <a className="link text-dark" href={Urls.dashboard(item.model_id)}>{item.details.name}</a></span>);
+                } else {
+                    description.summary = (<span>removed a question from the dashboard - <span className="text-dark">{item.details.name}</span></span>);
+                }
                 break;
             case "database-sync":
                 // NOTE: this is a relic from the very early days of the activity feed when we accidentally didn't
                 //       capture the name/description/engine of a Database properly in the details and so it was
                 //       possible for a database to be deleted and we'd lose any way of knowing what it's name was :(
                 const oldName = (item.database && 'name' in item.database) ? item.database.name : "Unknown";
-                description.subject = "received the latest data from";
-                description.subjectRefName = (item.details.name) ? item.details.name : oldName;
+                if(item.details.name) {
+                    description.summary = (<span>received the latest data from <span className="text-dark">{item.details.name}</span></span>);
+                } else {
+                    description.summary = (<span>received the latest data from <span className="text-dark">{oldName}</span></span>);
+                }
                 break;
             case "install":
                 description.userName = "Hello World!";
-                description.subject = "Metabase is up and running.";
+                description.summary = "Metabase is up and running.";
+                break;
+            case "metric-create":
+                if(item.model_exists) {
+                    description.summary = (<span>added the metric <a className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id, item.model_id)}>{item.details.name}</a> to the <a className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id)}>{item.table.display_name}</a> table</span>);
+                } else {
+                    description.summary = (<span>added the metric <span className="text-dark">{item.details.name}</span></span>);
+                }
+                break;
+            case "metric-update":
+                if(item.model_exists) {
+                    description.summary = (<span>made changes to the metric <a className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id, item.model_id)}>{item.details.name}</a> in the <a className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id)}>{item.table.display_name}</a> table</span>);
+                } else {
+                    description.summary = (<span>made changes to the metric <span className="text-dark">{item.details.name}</span></span>);
+                }
+                break;
+            case "metric-delete":
+                description.summary = "removed the metric "+item.details.name;
                 break;
             case "pulse-create":
-                description.subject = "created a pulse";
+                description.summary = "created a pulse";
+                break;
+            case "pulse-delete":
+                description.summary = "deleted a pulse";
+                break;
+            case "segment-create":
+                if(item.model_exists) {
+                    description.summary = (<span>added the filter <a className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id, null, item.model_id)}>{item.details.name}</a> to the <a className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id)}>{item.table.display_name}</a> table</span>);
+                } else {
+                    description.summary = (<span>added the filter <span className="text-dark">{item.details.name}</span></span>);
+                }
+                break;
+            case "segment-update":
+                if(item.model_exists) {
+                    description.summary = (<span>made changes to the filter <a className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id, null, item.model_id)}>{item.details.name}</a> in the <a className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id)}>{item.table.display_name}</a> table</span>);
+                } else {
+                    description.summary = (<span>made changes to the filter <span className="text-dark">{item.details.name}</span></span>);
+                }
+                break;
+            case "segment-delete":
+                description.summary = "removed the filter "+item.details.name;
+                break;
+            case "user-joined":
+                description.summary = "joined!";
+                break;
+        };
+
+        return description;
+    }
+
+    activityStory(item) {
+
+        // this is a base to start with
+        const description = {
+            body: null,
+            bodyLink: null
+        };
+
+        switch (item.topic) {
+            case "card-create":
+            case "card-update":
+                description.body = item.details.name;
+                description.bodyLink = (item.model_exists) ? Urls.modelToUrl(item.model, item.model_id) : null;
+                break;
+            case "card-delete":
+                description.body = item.details.name;
+                break;
+            case "dashboard-create":
+                description.body = item.details.name;
+                description.bodyLink = (item.model_exists) ? Urls.modelToUrl(item.model, item.model_id) : null;
+                break;
+            case "dashboard-delete":
+                description.body = item.details.name;
+                break;
+            case "dashboard-add-cards":
+                description.body = item.details.dashcards[0].name;
+                description.bodyLink = Urls.card(item.details.dashcards[0].card_id);
+                break;
+            case "dashboard-remove-cards":
+                description.body = item.details.dashcards[0].name;
+                description.bodyLink = Urls.card(item.details.dashcards[0].card_id);
+                break;
+            case "metric-create":
+                description.body = item.details.description;
+                break;
+            case "metric-update":
+                description.body = item.details.revision_message;
+                break;
+            case "metric-delete":
+                description.body = item.details.revision_message;
+                break;
+            case "pulse-create":
                 description.body = item.details.name;
                 description.bodyLink = (item.model_exists) ? Urls.modelToUrl(item.model, item.model_id) : null;
                 break;
             case "pulse-delete":
-                description.subject = "deleted a pulse";
                 description.body = item.details.name;
                 break;
-            case "user-joined":
-                description.subject = "joined!";
+            case "segment-create":
+                description.body = item.details.description;
+                break;
+            case "segment-update":
+                description.body = item.details.revision_message;
+                break;
+            case "segment-delete":
+                description.body = item.details.revision_message;
                 break;
         };
 
@@ -200,10 +290,10 @@ export default class Activity extends Component {
                                     <li key={item.id} className="mt3">
                                         <ActivityItem
                                             item={item}
-                                            description={this.activityDescription(item, user)}
+                                            description={this.activityHeader(item, user)}
                                             userColors={this.initialsCssClasses(item.user)}
                                         />
-                                        <ActivityStory story={this.activityDescription(item, item.user)} />
+                                        <ActivityStory story={this.activityStory(item)} />
                                     </li>
                                 )}
                             </ul>

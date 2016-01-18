@@ -1,17 +1,45 @@
 (ns metabase.models.hydrate-test
-  (:require [expectations :refer :all]
+  (:require [clojure.set :as set]
+            [expectations :refer :all]
             [medley.core :as m]
             [metabase.models.hydrate :refer :all]
             (metabase.test [data :refer :all]
                            [util :refer :all])
-            [metabase.test.data.users :refer :all]))
+            [metabase.test.data.users :refer :all]
+            [metabase.util :as u]))
 
-(def d1 (delay 1))
-(def d2 (delay 2))
-(def d3 (delay 3))
-(def d4 (delay 4))
-(def d5 (delay 5))
-(def d6 (delay 6))
+;; we'll swap out hydration-key-> with one that will track the keys used, and we'll warn about unused ones at the end
+
+(def ^:private used-fn-keys (atom #{}))
+
+(let [hydration-key->f @(resolve 'metabase.models.hydrate/hydration-key->f)]
+  (intern 'metabase.models.hydrate 'hydration-key->f
+          (fn [k]
+            (swap! used-fn-keys conj k)
+            (hydration-key->f k))))
+
+(defn- check-all-hydration-keys-used
+  {:expectations-options :after-run}
+  []
+  (let [hydrate-k->f   @@(resolve 'metabase.models.hydrate/k->f)
+        available-keys (set (keys hydrate-k->f))
+        used-keys      @used-fn-keys
+        unused-keys    (set/difference available-keys used-keys)]
+    (when (seq unused-keys)
+      (doseq [k unused-keys]
+        (println (u/format-color 'red "%s is marked `^:hydrate` but is never used for hydration." (hydrate-k->f k))))
+      (System/exit -1))))
+
+
+(defn- ^:hydrate x [{:keys [id]}]
+  id)
+
+(defn- ^:hydrate y [{:keys [id2]}]
+  id2)
+
+(defn- ^:hydrate z [{:keys [n]}]
+  (vec (for [i (range n)]
+         {:id i})))
 
 ;; ## TESTS FOR HYDRATION HELPER FNS
 
@@ -60,21 +88,21 @@
 (def counts-of (ns-resolve 'metabase.models.hydrate 'counts-of))
 
 (expect [:atom :atom]
-  (counts-of [{:f d1}
-              {:f d2}]
+  (counts-of [{:f {:id 1}}
+              {:f {:id 2}}]
              :f))
 
 (expect [2 2]
-  (counts-of [{:f [d1 d2]}
-              {:f [d3 d4]}]
+  (counts-of [{:f [{:id 1} {:id 2}]}
+              {:f [{:id 3} {:id 4}]}]
              :f))
 
 (expect [3 2]
-  (counts-of [{:f [{:g {:i d1}}
-                   {:g {:i d2}}
-                   {:g {:i d3}}]}
-              {:f [{:g {:i d4}}
-                   {:g {:i d5}}]}]
+  (counts-of [{:f [{:g {:i {:id 1}}}
+                   {:g {:i {:id 2}}}
+                   {:g {:i {:id 3}}}]}
+              {:f [{:g {:i {:id 4}}}
+                   {:g {:i {:id 5}}}]}]
              :f))
 
 (expect [2 :atom :nil]
@@ -87,32 +115,32 @@
          :atom
          :nil
          :atom]
-    (counts-of [{:f {:g d1}}
-                {:f {:g d2}}
+    (counts-of [{:f {:id 1}}
+                {:f {:id 2}}
                 {:f nil}
-                {:f {:g d4}}]
+                {:f {:id 4}}]
                :f))
 
 (expect [:atom nil :nil :atom]
-  (counts-of [{:h {:i d1}}
+  (counts-of [{:h {:i {:id 1}}}
               {}
               {:h nil}
-              {:h {:i d3}}]
+              {:h {:i {:id 3}}}]
              :h))
 
 ;; ### counts-flatten
 (def counts-flatten (ns-resolve 'metabase.models.hydrate 'counts-flatten))
 
-(expect [{:g {:i d1}}
-         {:g {:i d2}}
-         {:g {:i d3}}
-         {:g {:i d4}}
-         {:g {:i d5}}]
-  (counts-flatten [{:f [{:g {:i d1}}
-                        {:g {:i d2}}
-                        {:g {:i d3}}]}
-                   {:f [{:g {:i d4}}
-                        {:g {:i d5}}]}]
+(expect [{:g {:i {:id 1}}}
+         {:g {:i {:id 2}}}
+         {:g {:i {:id 3}}}
+         {:g {:i {:id 4}}}
+         {:g {:i {:id 5}}}]
+  (counts-flatten [{:f [{:g {:i {:id 1}}}
+                        {:g {:i {:id 2}}}
+                        {:g {:i {:id 3}}}]}
+                   {:f [{:g {:i {:id 4}}}
+                        {:g {:i {:id 5}}}]}]
                   :f))
 
 (expect [1 2 nil]
@@ -131,16 +159,16 @@
 ;; ### counts-unflatten
 (def counts-unflatten (ns-resolve 'metabase.models.hydrate 'counts-unflatten))
 
-(expect [{:f [{:g {:i d1}}
-              {:g {:i d2}}
-              {:g {:i d3}}]}
-         {:f [{:g {:i d4}}
-              {:g {:i d5}}]}]
-  (counts-unflatten [{:g {:i d1}}
-                     {:g {:i d2}}
-                     {:g {:i d3}}
-                     {:g {:i d4}}
-                     {:g {:i d5}}] :f [3 2]))
+(expect [{:f [{:g {:i {:id 1}}}
+              {:g {:i {:id 2}}}
+              {:g {:i {:id 3}}}]}
+         {:f [{:g {:i {:id 4}}}
+              {:g {:i {:id 5}}}]}]
+  (counts-unflatten [{:g {:i {:id 1}}}
+                     {:g {:i {:id 2}}}
+                     {:g {:i {:id 3}}}
+                     {:g {:i {:id 4}}}
+                     {:g {:i {:id 5}}}] :f [3 2]))
 
 (expect [{:f {:g 1}}
                    {:f {:g 2}}
@@ -153,30 +181,30 @@
 ;; ### counts-apply
 (def counts-apply (ns-resolve 'metabase.models.hydrate 'counts-apply))
 
-(expect [{:f d1}
-         {:f d2}]
-  (counts-apply [{:f d1}
-                 {:f d2}]
+(expect [{:f {:id 1}}
+         {:f {:id 2}}]
+  (counts-apply [{:f {:id 1}}
+                 {:f {:id 2}}]
                 :f
                 identity))
 
-(expect [{:f [d1 d2]}
-         {:f [d3 d4]}]
-  (counts-apply [{:f [d1 d2]}
-                 {:f [d3 d4]}]
+(expect [{:f [{:id 1} {:id 2}]}
+         {:f [{:id 3} {:id 4}]}]
+  (counts-apply [{:f [{:id 1} {:id 2}]}
+                 {:f [{:id 3} {:id 4}]}]
                 :f
                 identity))
 
-(expect [{:f [{:g {:i d1}}
-              {:g {:i d2}}
-              {:g {:i d3}}]}
-         {:f [{:g {:i d4}}
-              {:g {:i d5}}]}]
-  (counts-apply [{:f [{:g {:i d1}}
-                      {:g {:i d2}}
-                      {:g {:i d3}}]}
-                 {:f [{:g {:i d4}}
-                      {:g {:i d5}}]}]
+(expect [{:f [{:g {:i {:id 1}}}
+              {:g {:i {:id 2}}}
+              {:g {:i {:id 3}}}]}
+         {:f [{:g {:i {:id 4}}}
+              {:g {:i {:id 5}}}]}]
+  (counts-apply [{:f [{:g {:i {:id 1}}}
+                      {:g {:i {:id 2}}}
+                      {:g {:i {:id 3}}}]}
+                 {:f [{:g {:i {:id 4}}}
+                      {:g {:i {:id 5}}}]}]
                 :f
                 identity))
 
@@ -196,257 +224,257 @@
 ;; ## TESTS FOR HYDRATE INTERNAL FNS
 
 ;; ### hydrate-vector (nested hydration)
-(def hydrate-vector (ns-resolve 'metabase.models.hydrate 'hydrate-vector))
+(def hydrate-vector (resolve 'metabase.models.hydrate/hydrate-vector))
 
 ;; check with a nested hydration that returns one result
-(expect [{:f {:g 1}}]
-    (hydrate-vector [{:f (delay {:g d1})}]
-                    [:f :g]))
+(expect
+  [{:f {:id 1, :x 1}}]
+  (hydrate-vector [{:f {:id 1}}]
+                  [:f :x]))
 
-(expect [{:f {:g 1}}
-         {:f {:g 2}}]
-  (hydrate-vector [{:f (delay {:g d1})}
-                   {:f (delay {:g d2})}]
-                  [:f :g]))
+(expect
+  [{:f {:id 1, :x 1}}
+   {:f {:id 2, :x 2}}]
+  (hydrate-vector [{:f {:id 1}}
+                   {:f {:id 2}}]
+                  [:f :x]))
 
 ;; check with a nested hydration that returns multiple results
-(expect [{:f [{:g 1}
-              {:g 2}
-              {:g 3}]}]
-  (hydrate-vector [{:f (delay [{:g d1}
-                               {:g d2}
-                               {:g d3}])}]
-                  [:f :g]))
+(expect
+  [{:f [{:id 1, :x 1}
+        {:id 2, :x 2}
+        {:id 3, :x 3}]}]
+  (hydrate-vector [{:f [{:id 1}
+                        {:id 2}
+                        {:id 3}]}]
+                  [:f :x]))
 
 ;; ### hydrate-kw
 (def hydrate-kw (ns-resolve 'metabase.models.hydrate 'hydrate-kw))
-(expect [{:g 1}
-         {:g 2}
-         {:g 3}]
-    (hydrate-kw [{:g d1}
-                 {:g d2}
-                 {:g d3}] :g))
+(expect
+  [{:id 1, :x 1}
+   {:id 2, :x 2}
+   {:id 3, :x 3}]
+  (hydrate-kw [{:id 1}
+               {:id 2}
+               {:id 3}] :x))
 
 ;; ### batched-hydrate
 
 ;; ### hydrate - tests for overall functionality
 
 ;; make sure we can do basic hydration
-(expect {:a 1 :b 2}
-        (hydrate {:a 1
-                  :b d2}
-                 :b))
+(expect
+  {:a 1, :id 2, :x 2}
+  (hydrate {:a 1, :id 2}
+           :x))
 
 ;; specifying "nested" hydration with no "nested" keys should throw an exception and tell you not to do it
 (expect "Assert failed: Replace '[:b]' with ':b'. Vectors are for nested hydration. There's no need to use one when you only have a single key.\n(> (count vect) 1)"
-  (try (hydrate {:a 1
-                 :b d2}
+  (try (hydrate {:a 1, :id 2}
                 [:b])
        (catch Throwable e
          (.getMessage e))))
 
 ;; check that returning an array works correctly
-(expect {:c [1 2 3]}
-        (hydrate {:c (delay [1 2 3])} :c))
+(expect {:n 3
+         :z [{:id 0}
+             {:id 1}
+             {:id 2}]}
+        (hydrate {:n 3} :z))
 
 ;; check that nested keys aren't hydrated if we don't ask for it
-(expect {:d {:e d1}}
-  (hydrate {:d (delay {:e d1})}
+(expect {:d {:id 1}}
+  (hydrate {:d {:id 1}}
            :d))
 
 ;; check that nested keys can be hydrated if we DO ask for it
-(expect {:d {:e 1}}
-  (hydrate {:d (delay {:e d1})}
-           [:d :e]))
+(expect {:d {:id 1, :x 1}}
+  (hydrate {:d {:id 1}}
+           [:d :x]))
 
 ;; check that nested hydration also works if one step returns multiple results
-(expect {:f [{:g 1}
-             {:g 2}
-             {:g 3}]}
-  (hydrate {:f (delay [{:g d1}
-                       {:g d2}
-                       {:g d3}])}
-           [:f :g]))
+(expect {:n 3
+         :z [{:id 0, :x 0}
+             {:id 1, :x 1}
+             {:id 2, :x 2}]}
+  (hydrate {:n 3} [:z :x]))
 
 ;; check nested hydration with nested maps
-(expect [{:f {:g 1}}
-         {:f {:g 2}}
-         {:f {:g 3}}
-         {:f {:g 4}}]
-  (hydrate [{:f {:g d1}}
-            {:f {:g d2}}
-            {:f {:g d3}}
-            {:f {:g d4}}] [:f :g]))
+(expect [{:f {:id 1, :x 1}}
+         {:f {:id 2, :x 2}}
+         {:f {:id 3, :x 3}}
+         {:f {:id 4, :x 4}}]
+  (hydrate [{:f {:id 1}}
+            {:f {:id 2}}
+            {:f {:id 3}}
+            {:f {:id 4}}] [:f :x]))
 
 ;; check with a nasty mix of maps and seqs
-(expect [{:f [{:g 1} {:g 2} {:g 3}]}
-         {:f {:g 1}}
-         {:f [{:g 4} {:g 5} {:g 6}]}]
-  (hydrate [{:f [{:g d1}
-                 {:g d2}
-                 {:g d3}]}
-            {:f {:g d1}}
-            {:f [{:g d4}
-                 {:g d5}
-                 {:g d6}]}] [:f :g]))
+(expect [{:f [{:id 1, :x 1} {:id 2, :x 2} {:id 3, :x 3}]}
+         {:f {:id 1, :x 1}}
+         {:f [{:id 4, :x 4} {:id 5, :x 5} {:id 6, :x 6}]}]
+  (hydrate [{:f [{:id 1}
+                 {:id 2}
+                 {:id 3}]}
+            {:f {:id 1}}
+            {:f [{:id 4}
+                 {:id 5}
+                 {:id 6}]}] [:f :x]))
 
 ;; check that hydration works with top-level nil values
-(expect [{:f 1}
-         {:f 2}
+(expect [{:id 1, :x 1}
+         {:id 2, :x 2}
          nil
-         {:f 4}]
-    (hydrate [{:f d1}
-              {:f d2}
+         {:id 4, :x 4}]
+    (hydrate [{:id 1}
+              {:id 2}
               nil
-              {:f d4}] :f))
+              {:id 4}] :x))
 
 ;; check nested hydration with top-level nil values
-(expect [{:f {:g 1}}
-         {:f {:g 2}}
+(expect [{:f {:id 1, :x 1}}
+         {:f {:id 2, :x 2}}
          nil
-         {:f {:g 4}}]
-  (hydrate [{:f {:g d1}}
-            {:f {:g d2}}
+         {:f {:id 4, :x 4}}]
+  (hydrate [{:f {:id 1}}
+            {:f {:id 2}}
             nil
-            {:f {:g d4}}] [:f :g]))
+            {:f {:id 4}}] [:f :x]))
 
 ;; check that nested hydration w/ nested nil values
-(expect [{:f {:g 1}}
-         {:f {:g 2}}
+(expect [{:f {:id 1, :x 1}}
+         {:f {:id 2, :x 2}}
          {:f nil}
-         {:f {:g 4}}]
-  (hydrate [{:f {:g d1}}
-            {:f {:g d2}}
+         {:f {:id 4, :x 4}}]
+  (hydrate [{:f {:id 1}}
+            {:f {:id 2}}
             {:f nil}
-            {:f {:g d4}}] [:f :g]))
+            {:f {:id 4}}] [:f :x]))
 
-(expect [{:f {:g 1}}
-         {:f {:g 2}}
-         {:f {:g nil}}
-         {:f {:g 4}}]
-  (hydrate [{:f {:g d1}}
-            {:f {:g d2}}
-            {:f {:g nil}}
-            {:f {:g d4}}] [:f :g]))
+(expect [{:f {:id 1, :x 1}}
+         {:f {:id 2, :x 2}}
+         {:f {:id nil, :x nil}}
+         {:f {:id 4, :x 4}}]
+  (hydrate [{:f {:id 1}}
+            {:f {:id 2}}
+            {:f {:id nil}}
+            {:f {:id 4}}] [:f :x]))
 
 ;; check that it works with some objects missing the key
-(expect [{:f [{:g 1} {:g 2} {:h d3}]}
-         {:f {:g 1}}
-         {:f [{:g 4} {:h d5} {:g 6}]}]
-    (hydrate [{:f [{:g d1}
-                   {:g d2}
-                   {:h d3}]}
-              {:f  {:g d1}}
-              {:f [{:g d4}
-                   {:h d5}
-                   {:g d6}]}] [:f :g]))
+(expect
+  [{:f [{:id 1, :x 1}
+        {:id 2, :x 2}
+        {:g 3, :x nil}]}
+   {:f {:id 1, :x 1}}
+   {:f [{:id 4, :x 4}
+        {:g 5, :x nil}
+        {:id 6, :x 6}]}]
+  (hydrate [{:f [{:id 1}
+                 {:id 2}
+                 {:g 3}]}
+            {:f  {:id 1}}
+            {:f [{:id 4}
+                 {:g 5}
+                 {:id 6}]}] [:f :x]))
 
 ;; check that we can handle wonky results: :f is [sequence, map sequence] respectively
-(expect [{:f [{:g 1, :h 1} {:g 2} {:g 3, :h 3}]}
-         {:f {:g 1, :h 1}}
-         {:f [{:g 4} {:g 5, :h 5} {:g 6}]}]
-  (hydrate [{:f [{:g d1 :h d1}
-                 {:g d2}
-                 {:g d3 :h d3}]}
-            {:f  {:g d1 :h d1}}
-            {:f [{:g d4}
-                 {:g d5 :h d5}
-                 {:g d6}]}] [:f :g :h]))
+(expect
+  [{:f [{:id 1, :id2 10, :x 1, :y 10}
+        {:id 2, :x 2, :y nil}
+        {:id 3, :id2 30, :x 3, :y 30}]}
+   {:f {:id 1, :id2 10, :x 1, :y 10}}
+   {:f [{:id 4, :x 4, :y nil}
+        {:id 5, :id2 50, :x 5, :y 50}
+        {:id 6, :x 6, :y nil}]}]
+  (hydrate [{:f [{:id 1, :id2 10}
+                 {:id 2}
+                 {:id 3, :id2 30}]}
+            {:f  {:id 1, :id2 10}}
+            {:f [{:id 4}
+                 {:id 5, :id2 50}
+                 {:id 6}]}] [:f :x :y]))
 
 ;; nested-nested hydration
-(expect [{:f [{:g {:i 1}}
-              {:g {:i 2}}
-              {:g {:i 3}}]}
-         {:f [{:g {:i 4}}
-              {:g {:i 5}}]}]
-  (hydrate [{:f [{:g {:i d1}}
-                 {:g {:i d2}}
-                 {:g {:i d3}}]}
-            {:f [{:g {:i d4}}
-                 {:g {:i d5}}]}]
-           [:f [:g :i]]))
+(expect
+  [{:f [{:g {:id 1, :x 1}}
+        {:g {:id 2, :x 2}}
+        {:g {:id 3, :x 3}}]}
+   {:f [{:g {:id 4, :x 4}}
+        {:g {:id 5, :x 5}}]}]
+  (hydrate [{:f [{:g {:id 1}}
+                 {:g {:id 2}}
+                 {:g {:id 3}}]}
+            {:f [{:g {:id 4}}
+                 {:g {:id 5}}]}]
+           [:f [:g :x]]))
 
 ;; nested + nested-nested hydration
-(expect [{:f [{:g 1 :h {:i 1}}]}
-         {:f [{:g 2 :h {:i 4}}
-              {:g 3 :h {:i 5}}]}]
-  (hydrate [{:f [{:g d1 :h {:i d1}}]}
-            {:f [{:g d2 :h {:i d4}}
-                 {:g d3 :h {:i d5}}]}]
-           [:f :g [:h :i]]))
+(expect
+  [{:f [{:id 1, :g {:id 1, :x 1}, :x 1}]}
+   {:f [{:id 2, :g {:id 4, :x 4}, :x 2}
+        {:id 3, :g {:id 5, :x 5}, :x 3}]}]
+  (hydrate [{:f [{:id 1, :g {:id 1}}]}
+            {:f [{:id 2, :g {:id 4}}
+                 {:id 3, :g {:id 5}}]}]
+           [:f :x [:g :x]]))
 
 ;; make sure nested-nested hydration doesn't accidentally return maps where there were none
-(expect {:f [{:h {:i 1}}
-             {}
-             {:h {:i 3}}]}
-  (hydrate {:f [{:h {:i d1}}
+(expect
+  {:f [{:h {:id 1, :x 1}}
+       {}
+       {:h {:id 3, :x 3}}]}
+  (hydrate {:f [{:h {:id 1}}
                 {}
-                {:h {:i d3}}]}
-           [:f [:h :i]]))
+                {:h {:id 3}}]}
+           [:f [:h :x]]))
 
 ;; check nested hydration with several keys
-(expect [{:f [{:g 1
-               :h {:i 1, :j 1}}]}
-         {:f [{:g 2
-               :h {:i 4, :j 2}}
-              {:g 3
-               :h {:i 5, :j 3}}]}]
-  (hydrate [{:f [{:g d1 :h {:i d1 :j d1}}]}
-            {:f [{:g d2 :h {:i d4 :j d2}}
-                 {:g d3 :h {:i d5 :j d3}}]}]
-           [:f :g [:h :i :j]]))
+(expect
+  [{:f [{:id 1, :h {:id 1, :id2 1, :x 1, :y 1}, :x 1}]}
+   {:f [{:id 2, :h {:id 4, :id2 2, :x 4, :y 2}, :x 2}
+        {:id 3, :h {:id 5, :id2 3, :x 5, :y 3}, :x 3}]}]
+  (hydrate [{:f [{:id 1, :h {:id 1, :id2 1}}]}
+            {:f [{:id 2, :h {:id 4, :id2 2}}
+                 {:id 3, :h {:id 5, :id2 3}}]}]
+           [:f :x [:h :x :y]]))
 
 ;; multiple nested-nested hydrations
-(expect [{:f [{:g {:k 1}
-               :h {:i {:j 1}}}]}
-         {:f [{:g {:k 2}
-               :h {:i {:j 2}}}
-              {:g {:k 3}
-               :h {:i {:j 3}}}]}]
-  (hydrate [{:f [{:g {:k d1}
-                  :h (delay {:i {:j d1}})}]}
-            {:f [{:g {:k d2}
-                  :h (delay {:i {:j d2}})}
-                 {:g {:k d3}
-                  :h (delay {:i {:j d3}})}]}]
-           [:f [:g :k] [:h [:i :j]]]))
+(expect
+  [{:f [{:g {:id 1, :x 1}, :h {:i {:id2 1, :y 1}}}]}
+   {:f [{:g {:id 2, :x 2}, :h {:i {:id2 2, :y 2}}}
+        {:g {:id 3, :x 3}, :h {:i {:id2 3, :y 3}}}]}]
+  (hydrate [{:f [{:g {:id 1}
+                  :h {:i {:id2 1}}}]}
+            {:f [{:g {:id 2}
+                  :h {:i {:id2 2}}}
+                 {:g {:id 3}
+                  :h {:i {:id2 3}}}]}]
+           [:f [:g :x] [:h [:i :y]]]))
 
 ;; *nasty* nested-nested hydration
-(expect [{:f [{:g 1 :h {:i 1}}
-              {:g 2}
-              {:g 3 :h {:i 3}}]}
-         {:f  {:g 1 :h {:i 1}}}
-         {:f [{:g 4}
-              {:g 5 :h {:i 5}}
-              {:g 6}]}]
-  (hydrate [{:f [{:g d1 :h {:i d1}}
-                 {:g d2}
-                 {:g d3 :h {:i d3}}]}
-            {:f  {:g d1 :h {:i d1}}}
-            {:f [{:g d4}
-                 {:g d5 :h {:i d5}}
-                 {:g d6}]}]
-           [:f :g [:h :i]]))
+(expect
+  [{:f [{:id 1, :h {:id2 1, :y 1}, :x 1}
+        {:id 2, :x 2}
+        {:id 3, :h {:id2 3, :y 3}, :x 3}]}
+   {:f {:id 1, :h {:id2 1, :y 1}, :x 1}}
+   {:f [{:id 4, :x 4}
+        {:id 5, :h {:id2 5, :y 5}, :x 5}
+        {:id 6, :x 6}]}]
+  (hydrate [{:f [{:id 1, :h {:id2 1}}
+                 {:id 2}
+                 {:id 3, :h {:id2 3}}]}
+            {:f  {:id 1, :h {:id2 1}}}
+            {:f [{:id 4}
+                 {:id 5, :h {:id2 5}}
+                 {:id 6}]}]
+           [:f :x [:h :y]]))
 
 ;; check that hydration doesn't barf if we ask it to hydrate an object that's not there
 (expect {:f [:a 100]}
-  (hydrate {:f [:a 100]} :x))
+  (hydrate {:f [:a 100]} :p))
 
 ;;; ## BATCHED HYDRATION TESTS
-
-;; Just double-check that batched hydration can hydrate fields with no delays
-(expect (match-$ (fetch-user :rasta)
-          {:email "rasta@metabase.com"
-           :first_name "Rasta"
-           :last_login $
-           :is_superuser false
-           :id $
-           :last_name "Toucan"
-           :date_joined $
-           :common_name "Rasta Toucan"})
-  (->> (hydrate {:user_id (user->id :rasta)} :user)
-       :user
-       (m/filter-vals #(not (or (fn? %) (delay? %))))))
 
 ;; Check that batched hydration doesn't try to hydrate fields that already exist and are not delays
 (expect {:user_id (user->id :rasta)
@@ -454,12 +482,3 @@
   (hydrate {:user_id (user->id :rasta)
             :user "OK <3"}
            :user))
-
-;; Check that batched hydration just re-uses values of delays that have been realized
-(expect {:user_id (user->id :rasta)
-         :user "OK <3"}
-  (let [user-delay (delay "OK <3")]
-    @user-delay
-    (hydrate {:user_id (user->id :rasta)
-              :user user-delay}
-             :user)))

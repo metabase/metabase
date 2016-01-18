@@ -14,32 +14,30 @@
 ;;
 ;; These users have permissions for the Test. They are lazily created as needed.
 ;; Three test users are defined:
-;; *  rasta     - an admin
-;; *  crowberto - an admin + superuser
+;; *  rasta
+;; *  crowberto - superuser
 ;; *  lucky
-;; *  trashbird
+;; *  trashbird - inactive
 
-(def ^:private user->info
-  {:rasta {:email "rasta@metabase.com"
-           :first "Rasta"
-           :last "Toucan"
-           :password "blueberries"
-           :admin true}
-   :crowberto {:email "crowberto@metabase.com"
-               :first "Crowberto"
-               :last "Corv"
-               :password "blackjet"
-               :admin true
+(def ^:private ^:const user->info
+  {:rasta     {:email    "rasta@metabase.com"
+               :first    "Rasta"
+               :last     "Toucan"
+               :password "blueberries"}
+   :crowberto {:email     "crowberto@metabase.com"
+               :first     "Crowberto"
+               :last      "Corv"
+               :password  "blackjet"
                :superuser true}
-   :lucky {:email "lucky@metabase.com"
-           :first "Lucky"
-           :last "Pigeon"
-           :password "almonds"}
-   :trashbird {:email "trashbird@metabase.com"
-               :first "Trash"
-               :last "Bird"
+   :lucky     {:email    "lucky@metabase.com"
+               :first    "Lucky"
+               :last     "Pigeon"
+               :password "almonds"}
+   :trashbird {:email    "trashbird@metabase.com"
+               :first    "Trash"
+               :last     "Bird"
                :password "birdseed"
-               :active false}})
+               :active   false}})
 
 (def ^:private usernames
   (set (keys user->info)))
@@ -123,22 +121,19 @@
 
 (defn- fetch-or-create-user
   "Create User if they don't already exist and return User."
-  [& {:keys [email first last password admin superuser active]
-      :or {admin false
-           superuser false
-           active true}}]
+  [& {:keys [email first last password superuser active]
+      :or {superuser false
+           active    true}}]
   {:pre [(string? email)
          (string? first)
          (string? last)
          (string? password)
-         (m/boolean? admin)
          (m/boolean? superuser)]}
   (or (sel :one User :email email)
-      (let [user (ins User
-                   :email email
-                   :first_name first
-                   :last_name last
-                   :password password
-                   :is_superuser superuser
-                   :is_active active)]
-        user)))
+      (ins User
+        :email        email
+        :first_name   first
+        :last_name    last
+        :password     password
+        :is_superuser superuser
+        :is_active    active)))

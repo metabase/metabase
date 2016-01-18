@@ -334,43 +334,36 @@ var Aggregators = [{
     "name": "Raw data",
     "short": "rows",
     "description": "Just a table with the rows in the answer, no additional operations.",
-    "advanced": false,
     "validFieldsFilters": []
 }, {
-    "name": "Count",
+    "name": "Row count",
     "short": "count",
     "description": "Total number of rows in the answer.",
-    "advanced": false,
     "validFieldsFilters": []
 }, {
-    "name": "Sum",
+    "name": "Sum of ...",
     "short": "sum",
     "description": "Sum of all the values of a column.",
-    "advanced": false,
     "validFieldsFilters": [summableFields]
 }, {
-    "name": "Average",
+    "name": "Average of ...",
     "short": "avg",
     "description": "Average of all the values of a column",
-    "advanced": false,
     "validFieldsFilters": [summableFields]
 }, {
-    "name": "Number of distinct values",
+    "name": "Number of distinct values of ...",
     "short": "distinct",
     "description":  "Number of unique values of a column among all the rows in the answer.",
-    "advanced": true,
     "validFieldsFilters": [allFields]
 }, {
-    "name": "Cumulative sum",
+    "name": "Cumulative sum of ...",
     "short": "cum_sum",
     "description": "Additive sum of all the values of a column.\ne.x. total revenue over time.",
-    "advanced": true,
     "validFieldsFilters": [summableFields]
 }, {
-    "name": "Standard deviation",
+    "name": "Standard deviation of ...",
     "short": "stddev",
-    "description": "Number which expresses how much the values of a colum vary among all rows in the answer.",
-    "advanced": true,
+    "description": "Number which expresses how much the values of a column vary among all rows in the answer.",
     "validFieldsFilters": [summableFields]
 }];
 

@@ -1,12 +1,10 @@
 (ns metabase.api.user
   (:require [cemerick.friend.credentials :as creds]
             [compojure.core :refer [defroutes GET DELETE POST PUT]]
-            [medley.core :refer [mapply]]
             [metabase.api.common :refer :all]
             [metabase.db :refer [sel upd upd-non-nil-keys exists?]]
             [metabase.email.messages :as email]
-            (metabase.models [hydrate :refer [hydrate]]
-                             [user :refer [User create-user set-user-password set-user-password-reset-token form-password-reset-url]])))
+            [metabase.models.user :refer [User create-user set-user-password set-user-password-reset-token form-password-reset-url]]))
 
 (defn ^:private check-self-or-superuser
   "Check that USER-ID is `*current-user-id*` or that `*current-user*` is a superuser, or throw a 403."
@@ -29,20 +27,19 @@
    email      [Required Email]}
   (check-superuser)
   (let [existing-user (sel :one [User :id :is_active] :email email)]
-    (-> (cond
-          ;; new user account, so create it
-          (nil? existing-user) (create-user first_name last_name email :password password :send-welcome true :invitor @*current-user*)
-          ;; this user already exists but is inactive, so simply reactivate the account
-          (not (:is_active existing-user)) (do
-                                             (upd User (:id existing-user)
-                                               :first_name first_name
-                                               :last_name last_name
-                                               :is_active true
-                                               :is_superuser false)
-                                             (User (:id existing-user)))
-          ;; account already exists and is active, so do nothing and just return the account
-          :else (User (:id existing-user)))
-        (hydrate :user :organization))))
+    (cond
+      ;; new user account, so create it
+      (nil? existing-user) (create-user first_name last_name email :password password :send-welcome true :invitor @*current-user*)
+      ;; this user already exists but is inactive, so simply reactivate the account
+      (not (:is_active existing-user)) (do
+                                         (upd User (:id existing-user)
+                                           :first_name first_name
+                                           :last_name last_name
+                                           :is_active true
+                                           :is_superuser false)
+                                         (User (:id existing-user)))
+      ;; account already exists and is active, so do nothing and just return the account
+      :else (User (:id existing-user)))))
 
 
 (defendpoint GET "/current"

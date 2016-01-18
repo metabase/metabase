@@ -2,16 +2,16 @@ import React, { Component, PropTypes } from "react";
 
 export default class MetadataSchema extends Component {
     static propTypes = {
-        table: PropTypes.object
+        tableMetadata: PropTypes.object
     };
 
     render() {
-        var table = this.props.table;
-        if (!table) {
+        const { tableMetadata } = this.props;
+        if (!tableMetadata) {
             return false;
         }
 
-        var fields = this.props.table.fields.map((field) => {
+        var fields = tableMetadata.fields.map((field) => {
             return (
                 <li key={field.id} className="px1 py2 flex border-bottom">
                     <div className="flex-full flex flex-column mr1">
@@ -29,7 +29,7 @@ export default class MetadataSchema extends Component {
         return (
             <div className="MetadataTable px2 flex-full">
                 <div className="flex flex-column px1">
-                    <div className="TableEditor-table-name text-bold">{this.props.table.name}</div>
+                    <div className="TableEditor-table-name text-bold">{tableMetadata.name}</div>
                 </div>
                 <div className="mt2 ">
                     <div className="text-uppercase text-grey-3 py1 flex">

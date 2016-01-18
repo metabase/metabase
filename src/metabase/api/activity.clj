@@ -23,21 +23,19 @@
   ;; expected output of the query is a single row per unique model viewed by the current user
   ;; including a `:max_ts` which has the most recent view timestamp of the item and `:cnt` which has total views
   ;; and we order the results by most recently viewed then hydrate the basic details of the model
-  (-> (->> (k/select ViewLog
-             (k/fields :user_id :model :model_id)
-             (k/aggregate (count :*) :cnt)
-             (k/aggregate (max :timestamp) :max_ts)
-             (k/where (= :user_id *current-user-id*))
-             (k/group :user_id :model :model_id)
-             (k/order :max_ts :desc)
-             (k/limit 10))
-           (map #(assoc % :model_object (delay (case (:model %)
-                                         "card" (-> (Card (:model_id %))
-                                                    (select-keys [:id :name :description :display]))
-                                         "dashboard" (-> (Dashboard (:model_id %))
-                                                         (select-keys [:id :name :description]))
-                                         nil)))))
-      (hydrate :model_object)
-      (->> (filter (fn [v] (not (empty? (:model_object v))))))))
+  (for [view-log (k/select ViewLog
+                           (k/fields :user_id :model :model_id)
+                           (k/aggregate (count :*) :cnt)
+                           (k/aggregate (max :timestamp) :max_ts)
+                           (k/where (= :user_id *current-user-id*))
+                           (k/group :user_id :model :model_id)
+                           (k/order :max_ts :desc)
+                           (k/limit 10))
+        :let     [model-object (case (:model view-log)
+                                 "card"      (db/sel :one [Card :id :name :description :display], :id (:model_id view-log))
+                                 "dashboard" (db/sel :one [Dashboard :id :name :description],     :id (:model_id view-log))
+                                 nil)]
+        :when    model-object]
+    (assoc view-log :model_object model-object)))
 
 (define-routes)

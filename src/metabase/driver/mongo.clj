@@ -14,7 +14,9 @@
             [metabase.driver :as driver]
             (metabase.driver.mongo [query-processor :as qp]
                                    [util :refer [*mongo-connection* with-mongo-connection values->base-type]])
-            [metabase.util :as u]))
+            (metabase.models [field :as field]
+                             [table :as table]))
+  (:import com.mongodb.DB))
 
 (declare driver field-values-lazy-seq)
 
@@ -23,7 +25,7 @@
 (defn- table->column-names
   "Return a set of the column names for TABLE."
   [table]
-  (with-mongo-connection [^com.mongodb.DB conn @(:db table)]
+  (with-mongo-connection [^DB conn, (table/database table)]
     (->> (mc/find-maps conn (:name table))
          (take driver/max-sync-lazy-seq-results)
          (map keys)
@@ -35,14 +37,14 @@
   [field]
   {:pre [(map? field)]
    :post [(keyword? %)]}
-  (with-mongo-connection [_ @(:db @(:table field))]
+  (with-mongo-connection [_ (table/database (field/table field))]
     (values->base-type (field-values-lazy-seq nil field))))
 
 
 ;;; ## MongoDriver
 
 (defn- can-connect? [_ details]
-  (with-mongo-connection [^com.mongodb.DB conn details]
+  (with-mongo-connection [^DB conn, details]
     (= (-> (cmd/db-stats conn)
            (conv/from-db-object :keywordize)
            :ok)
@@ -64,7 +66,7 @@
 
 (defn- process-query-in-context [_ qp]
   (fn [query]
-    (with-mongo-connection [^com.mongodb.DB conn (:database query)]
+    (with-mongo-connection [^DB conn, (:database query)]
       (qp query))))
 
 
@@ -75,32 +77,27 @@
     (do-sync-fn)))
 
 (defn- active-tables [_ database]
-  (with-mongo-connection [^com.mongodb.DB conn database]
+  (with-mongo-connection [^DB conn, database]
     (set (for [collection (set/difference (mdb/get-collection-names conn) #{"system.indexes"})]
            {:name collection}))))
 
 (defn- active-column-names->type [_ table]
-  (with-mongo-connection [_ @(:db table)]
+  (with-mongo-connection [_ (table/database table)]
     (into {} (for [column-name (table->column-names table)]
                {(name column-name)
-                (field->base-type {:name                      (name column-name)
-                                   :table                     (delay table)
-                                   :qualified-name-components (delay [(:name table) (name column-name)])})}))))
+                (field->base-type (field/map->FieldInstance {:name (name column-name), :table_id (:id table)}))}))))
 
-(defn- field-values-lazy-seq [_ {:keys [qualified-name-components table], :as field}]
-  (assert (and (map? field)
-               (delay? qualified-name-components)
-               (delay? table))
-    (format "Field is missing required information:\n%s" (u/pprint-to-str 'red field)))
+(defn- field-values-lazy-seq [_ field]
+  {:pre [(map? field)]}
   (lazy-seq
    (assert *mongo-connection*
      "You must have an open Mongo connection in order to get lazy results with field-values-lazy-seq.")
-   (let [table           @table
-         name-components (rest @qualified-name-components)]
+   (let [table           (field/table field)
+         name-components (rest (field/qualified-name-components field))]
      (assert (seq name-components))
-     (map #(get-in % (map keyword name-components))
-          (mq/with-collection *mongo-connection* (:name table)
-            (mq/fields [(apply str (interpose "." name-components))]))))))
+     (for [row (mq/with-collection *mongo-connection* (:name table)
+                 (mq/fields [(apply str (interpose "." name-components))]))]
+       (get-in row (map keyword name-components))))))
 
 (defn- active-nested-field-name->type [_ field]
   ;; Build a map of nested-field-key -> type -> count
@@ -110,7 +107,7 @@
       (when (map? val)
         (doseq [[k v] val]
           (swap! field->type->count update-in [k (type v)] #(if % (inc %) 1)))))
-    ;; (seq types) will give us a seq of pairs like [java.lang.String 500]
+    ;; (seq type->count) will give us a seq of pairs like [java.lang.String 500]
     (->> @field->type->count
          (m/map-vals (fn [type->count]
                        (->> (seq type->count)             ; convert to pairs of [type count]

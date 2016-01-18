@@ -71,10 +71,8 @@ const QUERY_BUILDER_STEPS = [
     },
     {
         getPortalTarget: () => qs(".Query-section-aggregation"),
-        // NOTE: this will be the correct selector once the segment/metrics branch is merged:
-        // getPageFlagTarget: () => qsWithContent(".List-item", "Row count"),
-        getPageFlagTarget: () => qsWithContent(".SelectionItem", "CountTotal number of rows in the answer."),
-        shouldAllowEvent: (e) => qsWithContent(".SelectionItem", "CountTotal number of rows in the answer.").contains(e.target)
+        getPageFlagTarget: () => qsWithContent(".List-item", "Row count"),
+        shouldAllowEvent: (e) => qsWithContent(".List-item", "Row count").contains(e.target)
     },
     {
         getPortalTarget: () => qs(".Query-section-breakout"),

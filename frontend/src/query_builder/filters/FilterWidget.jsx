@@ -27,30 +27,13 @@ export default class FilterWidget extends Component {
         filter: PropTypes.array.isRequired,
         tableMetadata: PropTypes.object.isRequired,
         index: PropTypes.number.isRequired,
-        updateFilter: PropTypes.func.isRequired,
-        removeFilter: PropTypes.func.isRequired
+        updateFilter: PropTypes.func,
+        removeFilter: PropTypes.func
     };
 
-    componentWillMount() {
-        this.componentWillReceiveProps(this.props);
-    }
-
-    componentWillReceiveProps(newProps) {
-        let { filter } = newProps;
-        let [operator, field, ...values] = filter;
-
-        let target = Query.getFieldTarget(field, newProps.tableMetadata);
-        let fieldDef = target && target.field;
-        let operatorDef = fieldDef && fieldDef.operators_lookup[operator];
-
-        this.setState({
-            field: field,
-            fieldDef: fieldDef,
-            operator: operator,
-            operatorDef: operatorDef,
-            values: values
-        });
-    }
+    static defaultProps = {
+        maxDisplayValues: 1
+    };
 
     removeFilter() {
         this.props.removeFilter(this.props.index);
@@ -64,32 +47,15 @@ export default class FilterWidget extends Component {
         this.setState({ isOpen: false });
     }
 
-    renderField() {
-        return (
-            <FieldName
-                className="Filter-section Filter-section-field"
-                tableMetadata={this.props.tableMetadata}
-                field={this.state.field}
-                fieldOptions={Query.getFieldOptions(this.props.tableMetadata.fields, true)}
-                onClick={this.open}
-            />
-        );
-    }
+    renderOperatorFilter() {
+        const { filter, tableMetadata, maxDisplayValues } = this.props;
+        let [operator, field, ...values] = filter;
 
-    renderOperator() {
-        var { operatorDef } = this.state;
-        return (
-            <div className="Filter-section Filter-section-operator" onClick={this.open}>
-                &nbsp;
-                <a className="QueryOption flex align-center">{operatorDef && operatorDef.moreVerboseName}</a>
-            </div>
-        );
-    }
+        let target = Query.getFieldTarget(field, tableMetadata);
+        let fieldDef = target && target.field;
+        let operatorDef = fieldDef && fieldDef.operators_lookup[operator];
 
-    renderValues() {
-        let { operatorDef, fieldDef, values } = this.state;
-
-        if (operatorDef && operatorDef.multi && values.length > 1) {
+        if (operatorDef && operatorDef.multi && values.length > maxDisplayValues) {
             values = [values.length + " selections"];
         }
 
@@ -97,14 +63,51 @@ export default class FilterWidget extends Component {
             values = generateTimeFilterValuesDescriptions(this.props.filter);
         }
 
-        return values.map((value, valueIndex) => {
-            var valueString = value != null ? value.toString() : null;
-            return value != undefined && (
-                <div key={valueIndex} className="Filter-section Filter-section-value" onClick={this.open}>
-                    <span className="QueryOption">{valueString}</span>
+        return (
+            <div onClick={this.open}>
+                <div className="flex align-center" style={{padding: "0.5em", paddingTop: "0.3em", paddingBottom: "0.3em", paddingLeft: 0}}>
+                    <FieldName
+                        className="Filter-section Filter-section-field"
+                        tableMetadata={this.props.tableMetadata}
+                        field={field}
+                        fieldOptions={Query.getFieldOptions(this.props.tableMetadata.fields, true)}
+                    />
+                    <div className="Filter-section Filter-section-operator">
+                        &nbsp;
+                        <a className="QueryOption flex align-center">{operatorDef && operatorDef.moreVerboseName}</a>
+                    </div>
                 </div>
-            );
-        });
+                <div className="flex align-center flex-wrap">
+                    {values.map((value, valueIndex) => {
+                        var valueString = value != null ? value.toString() : null;
+                        return value != undefined && (
+                            <div key={valueIndex} className="Filter-section Filter-section-value">
+                                <span className="QueryOption">{valueString}</span>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        )
+    }
+
+    renderSegmentFilter() {
+        const { filter, tableMetadata } = this.props;
+        const segment = _.find(tableMetadata.segments, (s) => s.id === filter[1]);
+        return (
+            <div onClick={this.open}>
+                <div className="flex align-center" style={{padding: "0.5em", paddingTop: "0.3em", paddingBottom: "0.3em", paddingLeft: 0}}>
+                    <div className="Filter-section Filter-section-field">
+                        <span className="QueryOption">Matches</span>
+                    </div>
+                </div>
+                <div className="flex align-center flex-wrap">
+                    <div className="Filter-section Filter-section-value">
+                        <span className="QueryOption">{segment && segment.name}</span>
+                    </div>
+                </div>
+            </div>
+        )
     }
 
     renderPopover() {
@@ -113,7 +116,7 @@ export default class FilterWidget extends Component {
                 <Popover
                     ref="filterPopover"
                     className="FilterPopover"
-                    isInitiallyOpen={this.state.field === null}
+                    isInitiallyOpen={this.props.filter[1] === null}
                     onClose={this.close}
                 >
                     <FilterPopover
@@ -128,21 +131,22 @@ export default class FilterWidget extends Component {
     }
 
     render() {
+        const { filter } = this.props;
         return (
-            <div className={cx("Query-filter px1", { "selected": this.state.isOpen })}>
-                <div className="ml1">
-                    <div className="flex align-center" style={{"padding": "0.5em", "paddingTop": "0.3em", "paddingBottom": "0.3em"}}>
-                        {this.renderField()}
-                        {this.renderOperator()}
-                    </div>
-                    <div className="flex align-center">
-                        {this.renderValues()}
-                    </div>
+            <div className={cx("Query-filter p1 pl2", { "selected": this.state.isOpen })}>
+                <div>
+                    {filter[0] === "SEGMENT" ?
+                        this.renderSegmentFilter()
+                    :
+                        this.renderOperatorFilter()
+                    }
                     {this.renderPopover()}
                 </div>
-                <a className="text-grey-2 no-decoration px1 flex align-center" href="#" onClick={this.removeFilter}>
-                    <Icon name='close' width="14px" height="14px" />
-                </a>
+                { this.props.removeFilter &&
+                    <a className="text-grey-2 no-decoration px1 flex align-center" href="#" onClick={this.removeFilter}>
+                        <Icon name='close' width="14px" height="14px" />
+                    </a>
+                }
             </div>
         );
     }

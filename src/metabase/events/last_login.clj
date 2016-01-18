@@ -8,7 +8,7 @@
             [metabase.util :as u]))
 
 
-(def last-login-topics
+(def ^:const last-login-topics
   "The `Set` of event topics which are subscribed to for use in last login tracking."
   #{:user-login})
 

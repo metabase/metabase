@@ -7,7 +7,7 @@ import MetabaseCore from "metabase/lib/core";
 
 import _  from "underscore";
 
-export default class MetadataField extends Component {
+export default class Column extends Component {
     constructor(props, context) {
         super(props, context);
         this.isVisibilityType = this.isVisibilityType.bind(this);

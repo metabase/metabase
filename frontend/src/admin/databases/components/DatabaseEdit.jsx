@@ -4,6 +4,7 @@ import DeleteDatabaseModal from "./DeleteDatabaseModal.jsx";
 import DatabaseEditForms from "./DatabaseEditForms.jsx";
 
 import ActionButton from "metabase/components/ActionButton.jsx";
+import Breadcrumbs from "metabase/components/Breadcrumbs.jsx"
 import Icon from "metabase/components/Icon.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 
@@ -20,15 +21,10 @@ export default class DatabaseEdit extends Component {
         let { database } = this.props;
         return (
             <div className="wrapper">
-                <section className="Breadcrumbs">
-                    <a className="Breadcrumb Breadcrumb--path" href="/admin/databases/">Databases</a>
-                    <Icon name="chevronright" className="Breadcrumb-divider" width={12} height={12} />
-                    { database && database.id ?
-                        <h2 className="Breadcrumb Breadcrumb--page" ng-if="database.id">{database.name}</h2>
-                    :
-                        <h2 className="Breadcrumb Breadcrumb--page">Add Database</h2>
-                    }
-                </section>
+                <Breadcrumbs crumbs={[
+                    ["Databases", "/admin/databases/"],
+                    [database && database.id != null ? database.name : "Add Database"]
+                ]} />
                 <section className="Grid Grid--gutters Grid--2-of-3">
                     <div className="Grid-cell">
                         <div className="Form-new bordered rounded shadowed">

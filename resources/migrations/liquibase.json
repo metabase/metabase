@@ -19,6 +19,10 @@
       {"include": {"file": "migrations/018_add_data_migrations_table.yaml"}},
       {"include": {"file": "migrations/019_add_schema_column_to_table.yaml"}},
       {"include": {"file": "migrations/020_add_pulse_tables.yaml"}},
-      {"include": {"file": "migrations/023_modify_table_rows_to_bigint.yaml"}}
+      {"include": {"file": "migrations/021_add_segment_table.yaml"}},
+      {"include": {"file": "migrations/022_add_revision_message_field.yaml"}},
+      {"include": {"file": "migrations/023_modify_table_rows_to_bigint.yaml"}},
+      {"include": {"file": "migrations/024_add_dependency_table.yaml"}},
+      {"include": {"file": "migrations/025_add_metric_table.yaml"}}
   ]
 }

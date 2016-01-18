@@ -1,45 +1,81 @@
 (ns metabase.models.activity
-  (:require [korma.core :refer :all, :exclude [defentity update]]
-            [metabase.db :refer [exists?]]
-            [metabase.events :as events]
+  (:require (metabase [db :as db]
+                      [events :as events])
             (metabase.models [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
                              [database :refer [Database]]
-                             [interface :refer :all]
+                             [interface :as i]
+                             [metric :refer [Metric]]
                              [pulse :refer [Pulse]]
+                             [segment :refer [Segment]]
                              [table :refer [Table]]
                              [user :refer [User]])
             [metabase.util :as u]))
 
 
-(defrecord ActivityFeedItemInstance []
-  clojure.lang.IFn
-  (invoke [this k]
-    (get this k)))
+(i/defentity Activity :activity)
 
-(extend-ICanReadWrite ActivityFeedItemInstance :read :public-perms, :write :public-perms)
+(defn- pre-insert [{:keys [details] :as activity}]
+  (let [defaults {:timestamp (u/new-sql-timestamp)
+                  :details {}}]
+    (merge defaults activity)))
+
+(defn model-exists?
+  "Does the object associated with this `Activity` exist in the DB?"
+  {:hydrate :model_exists, :arglists '([activity])}
+  [{:keys [model model_id]}]
+  (case model
+    "card"      (db/exists? Card,      :id model_id)
+    "dashboard" (db/exists? Dashboard, :id model_id)
+    "metric"    (db/exists? Metric,    :id model_id)
+    "pulse"     (db/exists? Pulse,     :id model_id)
+    "segment"   (db/exists? Segment,   :id model_id, :is_active true)
+                 nil))
+
+(extend (class Activity)
+  i/IEntity
+  (merge i/IEntityDefaults
+         {:types       (constantly {:details :json, :topic :keyword})
+          :can-read?   i/publicly-readable?
+          :can-write?  i/publicly-writeable?
+          :pre-insert  pre-insert}))
 
 
-(defentity Activity
-           [(table :activity)
-            (types :details :json, :topic :keyword)]
+;; ## Persistence Functions
 
-           (pre-insert [_ {:keys [details] :as activity}]
-                       (let [defaults {:timestamp (u/new-sql-timestamp)
-                                       :details {}}]
-                         (merge defaults activity)))
+(defn record-activity
+  "Inserts a new `Activity` entry.
 
-           (post-select [_ {:keys [user_id database_id table_id model model_id] :as activity}]
-                        (-> (map->ActivityFeedItemInstance activity)
-                            (assoc :user (delay (User user_id)))
-                            (assoc :database (delay (-> (Database database_id)
-                                                        (select-keys [:id :name :description]))))
-                            (assoc :table (delay (-> (Table table_id)
-                                                     (select-keys [:id :name :display_name :description]))))
-                            (assoc :model_exists (delay (case model
-                                                          "card"      (exists? Card :id model_id)
-                                                          "dashboard" (exists? Dashboard :id model_id)
-                                                          "pulse"     (exists? Pulse :id model_id)
-                                                          nil))))))
+   Takes the following kwargs:
+     :topic          Required.  The activity topic.
+     :object         Optional.  The activity object being saved.
+     :database-id    Optional.  ID of the `Database` related to the activity.
+     :table-id       Optional.  ID of the `Table` related to the activity.
+     :details-fn     Optional.  Gets called with `object` as the arg and the result is saved as the `:details` of the Activity.
+     :user-id        Optional.  ID of the `User` responsible for the activity.  defaults to (events/object->user-id object)
+     :model          Optional.  name of the model representing the activity.  defaults to (events/topic->model topic)
+     :model-id       Optional.  ID of the model representing the activity.  defaults to (events/object->model-id topic object)
 
-(extend-ICanReadWrite ActivityEntity :read :public-perms, :write :public-perms)
+   ex: (record-activity
+         :topic       :segment-update
+         :object      segment
+         :database-id 1
+         :table-id    13
+         :details-fn  #(dissoc % :some-key))"
+  [& {:keys [topic object details-fn database-id table-id user-id model model-id]}]
+  {:pre [(keyword? topic)]}
+  (let [object (or object {})]
+    (db/ins Activity
+      :topic       topic
+      :user_id     (or user-id (events/object->user-id object))
+      :model       (or model (events/topic->model topic))
+      :model_id    (or model-id (events/object->model-id topic object))
+      :database_id database-id
+      :table_id    table-id
+      :custom_id   (:custom_id object)
+      :details     (if (fn? details-fn)
+                     (details-fn object)
+                     object))))
+
+
+(u/require-dox-in-this-namespace)

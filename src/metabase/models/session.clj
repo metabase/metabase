@@ -1,18 +1,19 @@
 (ns metabase.models.session
   (:require [korma.core :as k]
-            (metabase.models [common :refer :all]
-                             [interface :refer :all]
+            (metabase.models [interface :as i]
                              [user :refer [User]])
             [metabase.util :as u]))
 
-(defentity Session
-  [(k/table :core_session)
-   (k/belongs-to User {:fk :user_id})]
+(i/defentity Session :core_session
+  (k/belongs-to User {:fk :user_id}))
 
-  (pre-insert [_ session]
-    (let [defaults {:created_at (u/new-sql-timestamp)}]
-      (merge defaults session))))
+(defn- pre-insert [session]
+  (assoc session :created_at (u/new-sql-timestamp)))
 
+(extend (class Session)
+  i/IEntity
+  (merge i/IEntityDefaults
+         {:pre-insert pre-insert}))
 
 ;; Persistence Functions
 
@@ -27,3 +28,6 @@
         (k/limit 1))
       first
       :id))
+
+
+(u/require-dox-in-this-namespace)

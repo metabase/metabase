@@ -1,15 +1,17 @@
 import _ from "underscore";
 
-import MetadataEditor from './components/MetadataEditor.jsx';
+import MetadataEditor from './components/database/MetadataEditor.jsx';
+
+import { augmentTable } from "metabase/lib/table";
 
 angular
-.module('metabase.admin.metadata.controllers', [
+.module('metabase.admin.datamodel.controllers', [
     'metabase.services',
     'metabase.directives',
     'metabase.forms'
 ])
-.controller('MetadataEditor', ['$scope', '$route', '$routeParams', '$location', '$q', '$timeout', 'databases', 'Metabase', 'ForeignKey',
-function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metabase, ForeignKey) {
+.controller('MetadataEditor', ['$scope', '$route', '$routeParams', '$location', '$q', '$timeout', 'databases', 'Metabase', 'ForeignKey', 'Segment', 'Metric',
+function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metabase, ForeignKey, Segment, Metric) {
     // inject the React component to be rendered
     $scope.MetadataEditor = MetadataEditor;
 
@@ -55,15 +57,17 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
                 await loadDatabaseMetadata();
                 $timeout(() => $scope.$digest());
             } catch (error) {
-                console.warn("error loading tables", error)
+                console.error("error loading tables", error)
             }
         }
     }, true);
 
     async function loadDatabaseMetadata() {
         $scope.databaseMetadata = await Metabase.db_metadata({ 'dbId': $scope.databaseId }).$promise;
-        $scope.databaseMetadata.tables.map(function(table, index) {
+        $scope.databaseMetadata.tables = await * $scope.databaseMetadata.tables.map(async (table) => {
+            table = await augmentTable(table);
             table.metadataStrength = computeMetadataStrength(table);
+            return table;
         });
     }
 
@@ -80,14 +84,18 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
     }
 
     $scope.selectDatabase = function(db) {
-        $location.path('/admin/metadata/'+db.id);
+        $location.path('/admin/datamodel/database/'+db.id);
     };
 
     $scope.selectTable = function(table) {
-        $location.path('/admin/metadata/'+table.db_id+'/table/'+table.id);
+        $location.path('/admin/datamodel/database/'+table.db_id+'/table/'+table.id);
     };
 
     $scope.updateTable = function(table) {
+        // make sure we don't send all the computed metadata
+        table = { ...table };
+        delete table.fields, table.fields_lookup, table.aggregation_options, table.breakout_options, table.metrics, table.segments;
+
         return Metabase.table_update(table).$promise.then(function(result) {
             _.each(result, (value, key) => { if (key.charAt(0) !== "$") { table[key] = value } });
             table.metadataStrength = computeMetadataStrength(table);
@@ -96,6 +104,10 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
     };
 
     $scope.updateField = function(field) {
+        // make sure we don't send all the computed metadata
+        field = { ...field };
+        delete field.operators_lookup, field.valid_operators, field.values;
+
         return Metabase.field_update(field).$promise.then(function(result) {
             _.each(result, (value, key) => { if (key.charAt(0) !== "$") { field[key] = value } });
             let table = _.findWhere($scope.databaseMetadata.tables, {id: field.table_id});
@@ -169,4 +181,14 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
             return ForeignKey.delete({ 'fkID': fk.id }).$promise;
         });
     }
+
+    $scope.onRetireSegment = async function(segment) {
+        await Segment.delete(segment).$promise;
+        loadDatabaseMetadata();
+    };
+
+    $scope.onRetireMetric = async function(metric) {
+        await Metric.delete(metric).$promise;
+        loadDatabaseMetadata();
+    };
 }]);
