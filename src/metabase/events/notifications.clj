@@ -13,7 +13,7 @@
                              [pulse :refer [Pulse]]
                              [pulse-card :refer [PulseCard]]
                              [segment :refer [Segment]]
-                             [user :as user])))
+                             [user :refer [User]])))
 
 
 (def ^:const notifications-topics
@@ -61,7 +61,7 @@
       (flatten deps-with-details))))
 
 (defn- send-notification-message [user-id object updated-by deps]
-  (let [recipient     (:email (user/retrieve-user user-id))
+  (let [recipient     (:email (User user-id))
         deps-by-model (group-by :model deps)]
     (messages/send-notification-email recipient {:object       object
                                                  :updated-by   updated-by
@@ -70,7 +70,7 @@
 (defn send-notification [model object]
   (when-let [deps (pull-dependencies model (:id object))]
     (let [deps-by-user (group-by :creator_id deps)
-          updated-by   (user/retrieve-user (events/object->user-id object))]
+          updated-by   (User (events/object->user-id object))]
       ;; send a separate email to each user containing just affected items they created
       (doseq [user-id (keys deps-by-user)]
         (send-notification-message user-id object updated-by (get deps-by-user user-id))))))

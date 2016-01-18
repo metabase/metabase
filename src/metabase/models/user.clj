@@ -92,12 +92,6 @@
     ;; return the newly created user
     new-user))
 
-(defn retrieve-user
-  "Retrieve a single `User` by ID."
-  [id]
-  {:pre [(integer? id)]}
-  (db/sel :one User :id id))
-
 (defn set-user-password
   "Updates the stored password for a specified `User` by hashing the password with a random salt."
   [user-id password]
