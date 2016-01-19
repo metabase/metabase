@@ -40,7 +40,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(255, 255, 255, .6);
+    background-color: rgba(255, 255, 255, 0.6);
 }
 
 .Modal-body {
@@ -61,4 +61,50 @@
     display: flex;
     flex-direction: column;
     flex: 1;
+}
+
+/* TRANSITIONS */
+
+/* backdrop */
+
+.Modal-backdrop.Modal-enter {
+  transition: background-color 200ms ease-in-out;
+  background-color: rgba(255, 255, 255, 0.01);
+}
+
+.Modal-backdrop.Modal-enter-active {
+  background-color: rgba(255, 255, 255, 0.6);
+}
+
+.Modal-backdrop.Modal-leave {
+  transition: background-color 200ms ease-in-out;
+  background-color: rgba(255, 255, 255, 0.6);
+}
+
+.Modal-backdrop.Modal-leave-active {
+  background-color: rgba(255, 255, 255, 0.01);
+}
+
+/* modal */
+
+.Modal-backdrop.Modal-enter .Modal {
+  transition: opacity 200ms linear, transform 200ms ease-in-out;
+  opacity: 0.01;
+  transform: translate(-50%, -55%);
+}
+
+.Modal-backdrop.Modal-enter-active .Modal {
+  opacity: 1;
+  transform: translate(-50%, -50%);
+}
+
+.Modal-backdrop.Modal-leave .Modal {
+  transition: opacity 200ms linear, transform 200ms ease-in-out;
+  opacity: 1;
+  transform: translate(-50%, -50%);
+}
+
+.Modal-backdrop.Modal-leave-active .Modal {
+  opacity: 0.01;
+  transform: translate(-50%, -55%);
 }

@@ -10,7 +10,7 @@ export default class AccordianList extends Component {
     constructor(props, context) {
         super(props, context);
         this.state = {
-            openSection: undefined
+            openSection: props.initiallyOpenSection || undefined
         };
     }
 

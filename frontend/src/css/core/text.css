@@ -96,6 +96,10 @@
     text-decoration: underline;;
 }
 
+.text-underline-hover:hover {
+    text-decoration: underline;;
+}
+
 .text-ellipsis {
     text-overflow: ellipsis;
 }

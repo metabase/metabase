@@ -63,9 +63,11 @@ export default class DataSelector extends Component {
     }
 
     render() {
+        const { databases } = this.props;
+
         let dbId = this.getDatabaseId();
         let tableId = this.getTableId();
-        var database = _.find(this.props.databases, (db) => db.id === dbId);
+        var database = _.find(databases, (db) => db.id === dbId);
         var table = _.find(database.tables, (table) => table.id === tableId);
 
         var content;
@@ -91,8 +93,9 @@ export default class DataSelector extends Component {
         )
 
         let sections;
+        let initiallyOpenSection;
         if (this.props.includeTables) {
-            sections = this.props.databases.map(database => ({
+            sections = databases.map(database => ({
                 name: database.name,
                 items: database.tables.filter(isQueryable).map(table => ({
                     name: table.display_name || table.name,
@@ -102,10 +105,12 @@ export default class DataSelector extends Component {
                     return a.name.localeCompare(b.name);
                 })
             }));
-
+            if (database) {
+                initiallyOpenSection = databases.indexOf(database);
+            }
         } else {
             sections = [{
-                items: this.props.databases.map(database => ({
+                items: databases.map(database => ({
                     name: database.name,
                     database: database
                 }))
@@ -126,6 +131,7 @@ export default class DataSelector extends Component {
                     itemIsSelected={this.itemIsSelected}
                     renderSectionIcon={this.renderSectionIcon}
                     renderItemIcon={this.renderItemIcon}
+                    initiallyOpenSection={initiallyOpenSection}
                 />
             </PopoverWithTrigger>
         );
