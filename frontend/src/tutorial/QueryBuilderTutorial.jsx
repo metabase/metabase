@@ -11,7 +11,7 @@ const QUERY_BUILDER_STEPS = [
             <div className="text-centered">
                 <RetinaImage className="mb2" forceOriginalDimensions={false} src="/app/img/qb_tutorial/question_builder.png" width={186} />
                 <h3>Welcome to the Query Builder!</h3>
-                <p>The Query Builder lets you assemble question (or "queries") to ask questions about your data.</p>
+                <p>The Query Builder lets you assemble question (or "queries") to ask about your data.</p>
                 <a className="Button Button--primary" onClick={props.onNext}>Tell me more</a>
             </div>
     },
