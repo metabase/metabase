@@ -3,13 +3,14 @@
             [cheshire.core :as cheshire]
             [clojure.tools.logging :as log]
             [clojure.string :refer [join]]
+            [clj-time.core :as t]
             [instaparse.core :as insta]
             (korma [core :as k])
             [manifold.deferred :as d]
             [manifold.stream :as s]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
-            [metabase.integrations.slack :refer [chat-post-message get-websocket-url]]
+            [metabase.integrations.slack :refer [metabot-enabled? chat-post-message get-websocket-url]]
             (metabase.models [database :refer [Database]]
                              [hydrate :refer [hydrate]])
             [metabase.task.send-pulses :refer [send-pulse-slack]]))
@@ -115,27 +116,43 @@
 
 (defn start
   []
-  (let [ws-url (get-websocket-url)
-        stream @(aleph.http/websocket-client ws-url)]
+  (let [ws-url     (get-websocket-url)
+        stream     @(aleph.http/websocket-client ws-url)
+        start-time (t/plus (t/now) (t/seconds 1))]
     @(d/loop []
       (d/chain (s/take! stream ::drained)
 
         ;; if we got a message, process it
         (fn [msg]
           (log/info msg)
-          (if (identical? ::drained msg)
-            ::drained
-            (try
-              (let [body (-> (cheshire/parse-string msg) (clojure.walk/keywordize-keys))
-                    command (second (re-matches #"(?i)@?(?:mb|metabot)\W(.*)" (or (:text body) "")))]
-                (if (and (= (:type body) "message") command)
-                  (process-metabot-command (:channel body) command)
-                  (log/info msg)))
-            (catch Throwable e
-              (log/warn (str e))))))
+          (cond
+            (t/before? (t/now) start-time) ::initializing ; skip initial messages since it replays the last message
+            (not (metabot-enabled?))       ::disabled
+            (identical? ::drained msg)     ::drained
+            :else (try
+                    (let [body (-> (cheshire/parse-string msg) (clojure.walk/keywordize-keys))
+                          command (second (re-matches #"(?i)@?(?:mb|metabot)\W(.*)" (or (:text body) "")))]
+                      (if (and (= (:type body) "message") command)
+                        (process-metabot-command (:channel body) command)
+                        (log/info msg)))
+                  (catch Throwable e
+                    (log/warn (str e))))))
 
         ;; wait for the result from `f` to be realized, and
         ;; recur, unless the stream is already drained
         (fn [result]
-          (when-not (identical? ::drained result)
+          (when-not (or (identical? ::disabled result) (identical? ::drained result))
             (d/recur)))))))
+
+(defn start-metabot!
+  []
+  (future (loop []
+            (if (metabot-enabled?)
+              (try
+                (log/info "🤖 Metabot Starting...")
+                (start)
+              (catch Throwable e
+                (log/warn (str "🤖 Metabot terminated: " e))
+                (Thread/sleep 10000))))
+            (Thread/sleep 1000)
+            (recur))))
