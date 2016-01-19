@@ -102,12 +102,16 @@
 (defn- process-metabot-command
   [channel command]
   (log/info (str "🤖 COMMAND: " command))
-  (let [parsed        (parse-with-table-metadata command)
-        dataset_query (first parsed)
-        fake-card     {:id 0 :name "" :dataset_query dataset_query}
-        result        {:card fake-card :result (driver/dataset-query dataset_query {:executed_by 1})}]
-    ; (chat-post-message channel (str "```\n" (cheshire/generate-string parsed {:pretty true}) "\n```"))
-    (send-pulse-slack {:id 0 :name "🤖"} [result] {:channel channel})))
+  (try
+    (let [parsed        (parse-with-table-metadata command)
+          dataset_query (first parsed)
+          fake-card     {:id 0 :name "" :dataset_query dataset_query}
+          result        {:card fake-card :result (driver/dataset-query dataset_query {:executed_by 1})}]
+      ; (chat-post-message channel (str "```\n" (cheshire/generate-string parsed {:pretty true}) "\n```"))
+      (send-pulse-slack {:id 0 :name "🤖"} [result] {:channel channel}))
+  (catch Throwable e
+    (log/warn (str e))
+    (chat-post-message channel "Sorry, an error occured."))))
 
 (defn start
   []
@@ -121,11 +125,14 @@
           (log/info msg)
           (if (identical? ::drained msg)
             ::drained
-            (let [body (-> (cheshire/parse-string msg) (clojure.walk/keywordize-keys))
-                  command (second (re-matches #"(?i)@?(?:mb|metabot)\W(.*)" (or (:text body) "")))]
-              (if (and (= (:type body) "message") command)
-                (process-metabot-command (:channel body) command)
-                (log/info msg)))))
+            (try
+              (let [body (-> (cheshire/parse-string msg) (clojure.walk/keywordize-keys))
+                    command (second (re-matches #"(?i)@?(?:mb|metabot)\W(.*)" (or (:text body) "")))]
+                (if (and (= (:type body) "message") command)
+                  (process-metabot-command (:channel body) command)
+                  (log/info msg)))
+            (catch Throwable e
+              (log/warn (str e))))))
 
         ;; wait for the result from `f` to be realized, and
         ;; recur, unless the stream is already drained
