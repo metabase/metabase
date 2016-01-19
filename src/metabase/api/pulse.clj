@@ -86,21 +86,21 @@
   (let [card (Card id)]
     (read-check Database (:database (:dataset_query card)))
     (let [data (:data (driver/dataset-query (:dataset_query card) {:executed_by *current-user-id*}))]
-      {:status 200 :body (html [:html [:body {:style "margin: 0;"} (p/render-pulse-card card data p/render-img-data-uri true true)]])})))
+      {:status 200, :body (html [:html [:body {:style "margin: 0;"} (p/render-pulse-card card data p/render-img-data-uri :include-title :include-buttons)]])})))
 
 (defendpoint GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a `Card` with ID and other information."
   [id]
   (let [card (Card id)]
     (read-check Database (:database (:dataset_query card)))
-    (let [result (driver/dataset-query (:dataset_query card) {:executed_by *current-user-id*})
-          data (:data result)
+    (let [result    (driver/dataset-query (:dataset_query card) {:executed_by *current-user-id*})
+          data      (:data result)
           card-type (p/detect-pulse-card-type card data)
-          card-html (html (p/render-pulse-card card data p/render-img-data-uri true false))]
-      {:status 200 :body {:id id
-                          :pulse_card_type card-type
-                          :pulse_card_html card-html
-                          :row_count (:row_count result)}})))
+          card-html (html (p/render-pulse-card card data p/render-img-data-uri :include-title (not :include-buttons)))]
+      {:id              id
+       :pulse_card_type card-type
+       :pulse_card_html card-html
+       :row_count       (:row_count result)})))
 
 (defendpoint GET "/preview_card_png/:id"
   "Get PNG rendering of a `Card` with ID."
@@ -109,7 +109,7 @@
     (read-check Database (:database (:dataset_query card)))
     (let [data (:data (driver/dataset-query (:dataset_query card) {:executed_by *current-user-id*}))
           ba (p/render-pulse-card-to-png card data true)]
-      {:status 200 :headers {"Content-Type" "image/png"} :body (new java.io.ByteArrayInputStream ba) })))
+      {:status 200, :headers {"Content-Type" "image/png"}, :body (new java.io.ByteArrayInputStream ba) })))
 
 (defendpoint POST "/test"
   "Test send an unsaved pulse"
@@ -118,6 +118,6 @@
    cards    [Required ArrayOfMaps]
    channels [Required ArrayOfMaps]}
   (send-pulse body)
-  {:status 200 :body {:ok true}})
+  {:ok true})
 
 (define-routes)

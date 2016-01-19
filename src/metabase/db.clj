@@ -203,15 +203,13 @@
    Returns true if update modified rows, false otherwise."
   [entity entity-id & {:as kwargs}]
   {:pre [(integer? entity-id)]}
-  (let [obj (->> (assoc kwargs :id entity-id)
-                 (models/pre-update entity)
-                 (models/internal-pre-update entity)
-                 (#(dissoc % :id)))
-        result (-> (k/update entity (k/set-fields obj) (k/where {:id entity-id}))
-                   (> 0))]
-    (when result
-      (models/post-update entity (assoc obj :id entity-id)))
-    result))
+  (let [obj           (models/do-pre-update entity (assoc kwargs :id entity-id))
+        rows-affected (k/update entity
+                                (k/set-fields (dissoc obj :id))
+                                (k/where {:id entity-id}))]
+    (when (> rows-affected 0)
+      (models/post-update obj))
+    (> rows-affected 0)))
 
 (defn upd-non-nil-keys
   "Calls `upd`, but filters out KWARGS with `nil` values."
@@ -320,14 +318,12 @@
 
    Returns newly created object by calling `sel`."
   [entity & {:as kwargs}]
-  (let [vals (->> kwargs
-                  (models/pre-insert entity)
-                  (models/internal-pre-insert entity))
-        {:keys [id]} (-> (k/insert entity (k/values vals))
-                         ;; this takes database specific keys returned from a jdbc insert and maps them to :id
-                         (set/rename-keys {(keyword "scope_identity()") :id
-                                           :generated_key               :id}))]
-    (models/post-insert entity (entity id))))
+  (let [vals         (models/do-pre-insert entity kwargs)
+        ;; take database-specific keys returned from a jdbc insert and map them to :id
+        {:keys [id]} (set/rename-keys (k/insert entity (k/values vals))
+                                      {(keyword "scope_identity()") :id
+                                       :generated_key               :id})]
+    (some-> id entity models/post-insert)))
 
 
 ;; ## EXISTS?
@@ -347,8 +343,8 @@
 (defn -cascade-delete [entity f]
   (let [entity  (i/entity->korma entity)
         results (i/sel-exec entity f)]
-    (dorun (for [obj results]
-             (do (models/pre-cascade-delete entity obj)
+    (dorun (for [obj (map (partial models/do-post-select entity) results)]
+             (do (models/pre-cascade-delete obj)
                  (del entity :id (:id obj))))))
   {:status 204, :body nil})
 

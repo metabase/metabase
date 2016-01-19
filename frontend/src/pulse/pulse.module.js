@@ -1,19 +1,9 @@
-import { createStore, applyMiddleware, combineReducers, compose } from 'redux';
-import promiseMiddleware from 'redux-promise';
-import thunkMidleware from "redux-thunk";
+import { createStore, combineReducers } from "metabase/lib/redux";
 
 import PulseListApp from './containers/PulseListApp.jsx';
 import PulseEditApp from './containers/PulseEditApp.jsx';
 
 import * as reducers from './reducers';
-
-const finalCreateStore = compose(
-  applyMiddleware(
-      thunkMidleware,
-      promiseMiddleware
-  ),
-  createStore
-);
 
 const reducer = combineReducers(reducers);
 
@@ -32,7 +22,7 @@ Pulse.config(['$routeProvider', function ($routeProvider) {
                         $scope.$apply(() => $location.url(url));
                     }
                 };
-                $scope.store = finalCreateStore(reducer, {});
+                $scope.store = createStore(reducer, {});
             }
         ],
         resolve: {
@@ -53,7 +43,7 @@ Pulse.config(['$routeProvider', function ($routeProvider) {
                         $scope.$apply(() => $location.url(url));
                     }
                 };
-                $scope.store = finalCreateStore(reducer, {});
+                $scope.store = createStore(reducer, {});
             }
         ],
         resolve: {
@@ -75,7 +65,7 @@ Pulse.config(['$routeProvider', function ($routeProvider) {
                         $scope.$apply(() => $location.url(url));
                     }
                 };
-                $scope.store = finalCreateStore(reducer, {});
+                $scope.store = createStore(reducer, {});
             }
         ],
         resolve: {

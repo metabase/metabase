@@ -10,7 +10,6 @@
                              [card-favorite :refer [CardFavorite]]
                              [common :as common]
                              [database :refer [Database]]
-                             [revision :refer [push-revision]]
                              [table :refer [Table]]
                              [user :refer [User]])))
 

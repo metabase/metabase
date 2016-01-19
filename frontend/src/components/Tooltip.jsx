@@ -24,7 +24,7 @@ export default class Tooltip extends Component {
                 <Popover
                     isOpen={this.state.isOpen}
                     className="PopoverBody--tooltip"
-                    verticalAttachments={["bottom", "top"]}
+                    verticalAttachments={["top", "bottom"]}
                     targetOffsetY={10}
                 >
                     { typeof tooltipElement === "string" ?

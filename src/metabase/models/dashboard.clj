@@ -1,50 +1,45 @@
 (ns metabase.models.dashboard
-  (:require (clojure [data :refer [diff]]
-                     [string :as s])
-            [korma.core :refer :all, :exclude [defentity update]]
+  (:require [clojure.data :refer [diff]]
+            [korma.core :as k]
             [medley.core :as m]
             [metabase.db :refer :all]
             (metabase.models [common :refer :all]
                              [dashboard-card :refer [DashboardCard]]
-                             [interface :refer :all]
-                             [revision :refer [IRevisioned]]
+                             [interface :as i]
+                             [revision :as revision]
                              [user :refer [User]])
             [metabase.models.revision.diff :refer [build-sentence]]
             [metabase.util :as u]))
 
-(defrecord DashboardInstance []
-  clojure.lang.IFn
-  (invoke [this k]
-    (get this k)))
+(i/defentity Dashboard :report_dashboard)
 
-(extend-ICanReadWrite DashboardInstance :read :public-perms, :write :public-perms)
+(defn ordered-cards
+  "Return the `DashboardCards` associated with DASHBOARD, in the order they were created."
+  {:hydrate :ordered_cards, :arglists '([dashboard])}
+  [{:keys [id]}]
+  (sel :many DashboardCard, :dashboard_id id, (k/order :created_at :asc)))
+
+(defn- pre-cascade-delete [{:keys [id]}]
+  (cascade-delete 'Revision :model "Dashboard" :model_id id)
+  (cascade-delete DashboardCard :dashboard_id id))
 
 
-(defentity Dashboard
-  [(table :report_dashboard)
-   timestamped]
-
-  (post-select [_ {:keys [id creator_id description] :as dash}]
-    (-> dash
-        (assoc :creator       (delay (User creator_id))
-               :description   (u/jdbc-clob->str description)
-               :ordered_cards (delay (sel :many DashboardCard :dashboard_id id (order :created_at :asc))))
-        map->DashboardInstance))
-
-  (pre-cascade-delete [_ {:keys [id]}]
-    (cascade-delete 'Revision :model "Dashboard" :model_id id)
-    (cascade-delete DashboardCard :dashboard_id id)))
-
-(extend-ICanReadWrite DashboardEntity :read :public-perms, :write :public-perms)
+(extend (class Dashboard)
+  i/IEntity
+  (merge i/IEntityDefaults
+         {:timestamped?       (constantly true)
+          :can-read?          i/publicly-readable?
+          :can-write?         i/publicly-writeable?
+          :pre-cascade-delete pre-cascade-delete}))
 
 
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
 
 
-(defn- serialize-instance [_ id {:keys [ordered_cards], :as dashboard}]
+(defn- serialize-instance [_ id dashboard]
   (-> dashboard
       (select-keys [:description :name :public_perms])
-      (assoc :cards (for [card @ordered_cards]
+      (assoc :cards (for [card (ordered-cards dashboard)]
                       (select-keys card [:sizeX :sizeY :row :col :id :card_id])))))
 
 (defn- revert-to-revision [_ dashboard-id serialized-dashboard]
@@ -74,27 +69,42 @@
   serialized-dashboard)
 
 (defn- describe-diff [_ dashboard₁ dashboard₂]
-  (let [[removals changes] (diff dashboard₁ dashboard₂)]
-    (->> [(when (:name changes)
-            (format "renamed it from \"%s\" to \"%s\"" (:name dashboard₁) (:name dashboard₂)))
-          (when (:description changes)
-            (format "changed the description from \"%s\" to \"%s\"" (:description dashboard₁) (:description dashboard₂)))
-          (when (:public_perms changes)
-            (if (zero? (:public_perms dashboard₂))
-              "made it private"
-              "made it public")) ; TODO - are both 1 and 2 "public" now ?
-          (when (or (:cards changes) (:cards removals))
-            (let [num-cards₁ (count (:cards dashboard₁))
-                  num-cards₂ (count (:cards dashboard₂))]
-              (cond
-                (< num-cards₁ num-cards₂) "added a card"
-                (> num-cards₁ num-cards₂) "removed a card"
-                :else                     "rearranged the cards")))]
-         (filter identity)
-         build-sentence)))
+  (when dashboard₁
+    (let [[removals changes] (diff dashboard₁ dashboard₂)]
+      (->> [(when (:name changes)
+              (format "renamed it from \"%s\" to \"%s\"" (:name dashboard₁) (:name dashboard₂)))
+            (when (:description changes)
+              (format "changed the description from \"%s\" to \"%s\"" (:description dashboard₁) (:description dashboard₂)))
+            (when (:public_perms changes)
+              (if (zero? (:public_perms dashboard₂))
+                "made it private"
+                "made it public")) ; TODO - are both 1 and 2 "public" now ?
+            (when (or (:cards changes) (:cards removals))
+              (let [num-cards₁ (count (:cards dashboard₁))
+                    num-cards₂ (count (:cards dashboard₂))]
+                (cond
+                  (< num-cards₁ num-cards₂) "added a card"
+                  (> num-cards₁ num-cards₂) "removed a card"
+                  :else                     "rearranged the cards")))]
+           (filter identity)
+           build-sentence))))
 
-(extend DashboardEntity
-  IRevisioned
+
+(extend (class Dashboard)
+  i/IEntity
+  (merge i/IEntityDefaults
+         {:timestamped?       (constantly true)
+          :types              (constantly {:description :clob})
+          :can-read?          i/publicly-readable?
+          :can-write?         i/publicly-writeable?
+          :pre-cascade-delete pre-cascade-delete})
+
+  revision/IRevisioned
   {:serialize-instance serialize-instance
    :revert-to-revision revert-to-revision
+   :diff-map           revision/default-diff-map
+   :diff-str           describe-diff
    :describe-diff      describe-diff})
+
+
+(u/require-dox-in-this-namespace)

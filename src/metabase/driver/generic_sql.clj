@@ -7,7 +7,8 @@
                    [db :as kdb])
             [metabase.driver :as driver]
             metabase.driver.query-processor.interface
-            [metabase.models.field :as field]
+            (metabase.models [field :as field]
+                             [table :as table])
             [metabase.util :as u]
             [metabase.util.korma-extensions :as kx])
   (:import java.util.Map
@@ -113,6 +114,11 @@
    :set-timezone-sql        (constantly nil)
    :stddev-fn               (constantly :STDDEV)})
 
+(defn escape-field-name
+  "Escape dots in a field name so Korma doesn't get confused and separate them. Returns a keyword."
+  ^clojure.lang.Keyword [k]
+  (keyword (kx/escape-name (name k))))
+
 
 (defn- can-connect? [driver details]
   (let [connection (connection-details->spec driver details)]
@@ -155,7 +161,7 @@
 
 
 (defn- active-column-names->type [driver table]
-  (with-metadata [md driver @(:db table)]
+  (with-metadata [md driver (table/database table)]
     (into {} (for [{:keys [column_name type_name]} (jdbc/result-set-seq (.getColumns md nil (:schema table) (:name table) nil))]
                {column_name (or (column->base-type driver (keyword type_name))
                                 (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :UnknownField." type_name))
@@ -172,7 +178,7 @@
           (seq more)                    (recur more))))))
 
 (defn- table-pks [driver table]
-  (with-metadata [md driver @(:db table)]
+  (with-metadata [md driver (table/database table)]
     (->> (.getPrimaryKeys md nil nil (:name table))
          jdbc/result-set-seq
          (map :column_name)
@@ -186,24 +192,19 @@
   ;; 3. Not fetching too many results for things like mark-json-field! which will fail after the first result that isn't valid JSON
   500)
 
-(defn- field-values-lazy-seq [driver {:keys [qualified-name-components table], :as field}]
-  (assert (and (map? field)
-               (delay? qualified-name-components)
-               (delay? table))
-    (format "Field is missing required information:\n%s" (u/pprint-to-str 'red field)))
-  (let [table           @table
-        name-components (rest @qualified-name-components)
+(defn- field-values-lazy-seq [driver field]
+  (let [table           (field/table field)
+        name-components (field/qualified-name-components field)
         transform-fn    (if (contains? #{:TextField :CharField} (:base_type field))
                           u/jdbc-clob->str
                           identity)
 
+        field-k         (keyword (:name field))
+        select*         (-> (k/select* (korma-entity table))
+                            (k/fields (escape-field-name field-k)))
         fetch-one-page  (fn [page-num]
-                          (let [query (as-> (k/select* (korma-entity table)) <>
-                                        (k/fields <> (:name field))
-                                        (apply-page driver <> {:page {:items field-values-lazy-seq-chunk-size, :page page-num}}))]
-                            (->> (k/exec query)
-                                 (map (keyword (:name field)))
-                                 (map transform-fn))))
+                          (for [row (k/exec (apply-page driver select* {:page {:items field-values-lazy-seq-chunk-size, :page page-num}}))]
+                            (transform-fn (row field-k))))
 
         ;; This function returns a chunked lazy seq that will fetch some range of results, e.g. 0 - 500, then concat that chunk of results
         ;; with a recursive call to (lazily) fetch the next chunk of results, until we run out of results or hit the limit.
@@ -218,12 +219,11 @@
     (fetch-page 0)))
 
 (defn- table-rows-seq [_ database table-name]
-  (k/select (-> (k/create-entity table-name)
-                (k/database (db->korma-db database)))))
+  (k/select (korma-entity database {:table-name table-name})))
 
 
 (defn- table-fks [driver table]
-  (with-metadata [md driver @(:db table)]
+  (with-metadata [md driver (table/database table)]
     (->> (.getImportedKeys md nil nil (:name table))
          jdbc/result-set-seq
          (map (fn [result]
@@ -233,9 +233,9 @@
          set)))
 
 (defn- field-avg-length [driver field]
-  (or (some-> (korma-entity @(:table field))
+  (or (some-> (korma-entity (field/table field))
               (k/select (k/aggregate (avg (k/sqlfn* (string-length-fn driver)
-                                                    (kx/cast :CHAR (keyword (:name field)))))
+                                                    (kx/cast :CHAR (escape-field-name (:name field)))))
                                      :len))
               first
               :len
@@ -243,14 +243,14 @@
       0))
 
 (defn- field-percent-urls [_ field]
-  (or (let [korma-table (korma-entity @(:table field))]
+  (or (let [korma-table (korma-entity (field/table field))]
         (when-let [total-non-null-count (:count (first (k/select korma-table
                                                                  (k/aggregate (count (k/raw "*")) :count)
-                                                                 (k/where {(keyword (:name field)) [not= nil]}))))]
+                                                                 (k/where {(escape-field-name (:name field)) [not= nil]}))))]
           (when (> total-non-null-count 0)
             (when-let [url-count (:count (first (k/select korma-table
                                                           (k/aggregate (count (k/raw "*")) :count)
-                                                          (k/where {(keyword (:name field)) [like "http%://_%.__%"]}))))]
+                                                          (k/where {(escape-field-name (:name field)) [like "http%://_%.__%"]}))))]
               (float (/ url-count total-non-null-count))))))
       0.0))
 
@@ -282,18 +282,16 @@
 
 ;;; ### Util Fns
 
-(defn db->korma-db
+(defn- db->korma-db
   "Return a Korma DB spec for Metabase DATABASE."
   ([database]
    (db->korma-db (driver/engine->driver (:engine database)) (:details database)))
   ([driver details]
-   {:pool    (db->jdbc-connection-spec driver details)
-    :options (korma.config/extract-options (connection-details->spec driver details))}))
+   (assoc (kx/create-db (connection-details->spec driver details))
+          :pool (db->jdbc-connection-spec driver details))))
 
-(defn- table->qualified-name [{schema :schema, table-name :name}]
-  (if (seq schema)
-    (str schema \. table-name)
-    table-name))
+(defn- table+db->entity [{schema :schema, table-name :name} db]
+  (k/database (kx/create-entity [schema table-name]) db))
 
 (defn korma-entity
   "Return a Korma entity for [DB and] TABLE.
@@ -302,16 +300,7 @@
         korma-entity
         (select (aggregate (count :*) :count)))"
   ([table]
-   {:pre [(delay? (:db table))]}
-   (korma-entity @(:db table) table))
+   (korma-entity (table/database table) table))
 
-  ([db table]
-   {:pre [(map? db)]}
-   {:table (table->qualified-name table)
-    :pk    :id
-    :db    (db->korma-db db)})
-
-  ([driver details table]
-   {:table (table->qualified-name table)
-    :pk    :id
-    :db    (db->korma-db driver details)}))
+  ([db table]             (table+db->entity table (db->korma-db db)))
+  ([driver details table] (table+db->entity table (db->korma-db driver details))))

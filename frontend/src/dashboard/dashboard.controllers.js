@@ -1,24 +1,7 @@
-import { createStore, applyMiddleware, combineReducers, compose } from 'redux';
-import promiseMiddleware from 'redux-promise';
-import thunkMidleware from "redux-thunk";
+import { createStore, combineReducers } from "metabase/lib/redux";
 
 import DashboardApp from './containers/DashboardApp.jsx';
 import * as reducers from './reducers';
-
-// import { devTools, persistState } from 'redux-devtools';
-// import { LogMonitor } from 'redux-devtools/lib/react';
-// import loggerMiddleware from 'redux-logger';
-
-const finalCreateStore = compose(
-  applyMiddleware(
-      thunkMidleware,
-      promiseMiddleware
-      //,loggerMiddleware
-  ),
-  // devTools(),
-  // persistState(window.location.href.match(/[?&]debug_session=([^&]+)\b/)),
-  createStore
-);
 
 const reducer = combineReducers(reducers);
 
@@ -36,6 +19,6 @@ DashboardControllers.controller('Dashboard', ['$scope', '$rootScope', '$routePar
             $scope.$apply(() => $rootScope.$broadcast("dashboard:delete", id));
         }
     };
-    $scope.store = finalCreateStore(reducer, { selectedDashboard: $routeParams.dashId });
+    $scope.store = createStore(reducer, { selectedDashboard: $routeParams.dashId });
     // $scope.monitor = LogMonitor;
 }]);

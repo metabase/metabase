@@ -171,7 +171,6 @@
                                         :created_at      $
                                         :base_type       "BigIntegerField"
                                         :parent_id       nil
-                                        :parent          nil
                                         :values          []})
                                      (match-$ (Field (id :categories :name))
                                        {:description     nil
@@ -189,8 +188,9 @@
                                         :created_at      $
                                         :base_type       "TextField"
                                         :parent_id       nil
-                                        :parent          nil
                                         :values          []})]
+                   :segments        []
+                   :metrics         []
                    :rows            75
                    :updated_at      $
                    :entity_name     nil

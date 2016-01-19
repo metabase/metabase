@@ -175,14 +175,14 @@
 ;; These are basically the same as the `api-` versions but with RESPONSE-PAIR already bound
 
 ;; #### GENERIC 400 RESPONSE HELPERS
-(def generic-400 [400 "Invalid Request."])
+(def ^:private ^:const generic-400 [400 "Invalid Request."])
 (defn     check-400 [tst]     (check tst generic-400))
 (defmacro let-400   [& args] `(api-let   ~generic-400 ~@args))
 (defmacro ->400     [& args] `(api->     ~generic-400 ~@args))
 (defmacro ->>400    [& args] `(api->>    ~generic-400 ~@args))
 
 ;; #### GENERIC 404 RESPONSE HELPERS
-(def generic-404 [404 "Not found."])
+(def ^:private ^:const generic-404 [404 "Not found."])
 (defn     check-404 [tst]     (check tst generic-404))
 (defmacro let-404   [& args] `(api-let   ~generic-404 ~@args))
 (defmacro ->404     [& args] `(api->     ~generic-404 ~@args))
@@ -190,7 +190,7 @@
 
 ;; #### GENERIC 403 RESPONSE HELPERS
 ;; If you can't be bothered to write a custom error message
-(def generic-403 [403 "You don't have permissions to do that."])
+(def ^:private ^:const generic-403 [403 "You don't have permissions to do that."])
 (defn     check-403 [tst]     (check tst generic-403))
 (defmacro let-403   [& args] `(api-let   ~generic-403 ~@args))
 (defmacro ->403     [& args] `(api->     ~generic-403 ~@args))
@@ -198,7 +198,7 @@
 
 ;; #### GENERIC 500 RESPONSE HELPERS
 ;; For when you don't feel like writing something useful
-(def generic-500 [500 "Internal server error."])
+(def ^:private ^:const generic-500 [500 "Internal server error."])
 (defn     check-500 [tst]     (check tst generic-500))
 (defmacro let-500   [& args] `(api-let   ~generic-500 ~@args))
 (defmacro ->500     [& args] `(api->     ~generic-500 ~@args))
@@ -423,7 +423,6 @@
                         (map first))]
     `(defroutes ~'routes ~@api-routes ~@additional-routes)))
 
-
 (defn read-check
   "Check whether we can read an existing OBJ, or ENTITY with ID."
   ([obj]
@@ -431,10 +430,7 @@
    (check-403 (models/can-read? obj))
    obj)
   ([entity id]
-   {:pre [(models/metabase-entity? entity)
-          (integer? id)]}
-   (if (satisfies? models/ICanReadWrite entity)
-       (read-check (entity id)))))
+   (check-403 (models/can-read? entity id))))
 
 (defn write-check
   "Check whether we can write an existing OBJ, or ENTITY with ID."
@@ -443,7 +439,4 @@
    (check-403 (models/can-write? obj))
    obj)
   ([entity id]
-   {:pre [(models/metabase-entity? entity)
-          (integer? id)]}
-   (if (satisfies? models/ICanReadWrite entity) (models/can-write? entity id)
-       (write-check (entity id)))))
+   (check-403 (models/can-write? entity id))))
