@@ -142,8 +142,7 @@
 (extend MySQLDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:active-tables                     sql/post-filtered-active-tables
-          :date-interval                     date-interval
+         {:date-interval                     date-interval
           :details-fields                    (constantly [{:name         "host"
                                                            :display-name "Host"
                                                            :default      "localhost"}
@@ -167,7 +166,8 @@
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
-         {:column->base-type         (u/drop-first-arg column->base-type)
+         {:active-tables             sql/post-filtered-active-tables
+          :column->base-type         (u/drop-first-arg column->base-type)
           :connection-details->spec  connection-details->spec
           :date                      date
           :excluded-schemas          (constantly #{"INFORMATION_SCHEMA"})

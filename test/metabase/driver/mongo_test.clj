@@ -5,7 +5,7 @@
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             (metabase.models [field :refer [Field]]
-                             [table :refer [Table]])
+                             [table :refer [Table] :as table])
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
             [metabase.test.util :refer [expect-eval-actual-first resolve-private-fns]])
@@ -30,31 +30,12 @@
    :users
    :venues])
 
-(def ^:private ^:const field-names
-  "Names of various test data `Fields`, as `[table-name field-name]` pairs."
-  [[:categories :_id]
-   [:categories :name]
-   [:checkins :_id]
-   [:checkins :date]
-   [:checkins :user_id]
-   [:checkins :venue_id]
-   [:users :_id]
-   [:users :last_login]
-   [:users :name]
-   [:venues :_id]
-   [:venues :category_id]
-   [:venues :latitude]
-   [:venues :longitude]
-   [:venues :name]
-   [:venues :price]])
-
 (defn- table-name->table
   "Return the `Table` matching TABLE-NAME in the Mongo `Test Data` DB."
   [table-name]
   {:pre [(keyword? table-name)]}
   (Table (datasets/with-engine :mongo
            (data/id table-name))))
-
 
 ;; ## Tests for connection functions
 
@@ -88,61 +69,44 @@
 
 ;; ## Tests for individual syncing functions
 
-(resolve-private-fns metabase.driver.mongo field->base-type table->column-names)
-
-;; ### active-tables
+;; DESCRIBE-DATABASE
 (expect-when-testing-mongo
-    #{{:name "checkins"}
-      {:name "categories"}
-      {:name "users"}
-      {:name "venues"}}
-    (driver/active-tables (MongoDriver.) (mongo-db)))
+    {:tables #{{:name "checkins"}
+               {:name "categories"}
+               {:name "users"}
+               {:name "venues"}}}
+    (driver/describe-database (MongoDriver.) (mongo-db)))
 
-;; ### table->column-names
+;; DESCRIBE-TABLE
 (expect-when-testing-mongo
-    [#{:_id :name}                                           ; categories
-     #{:_id :date :venue_id :user_id}                        ; checkins
-     #{:_id :name :last_login :password}                     ; users
-     #{:_id :name :longitude :latitude :price :category_id}] ; venues
-  (for [nm table-names]
-    (table->column-names (table-name->table nm))))
+  {:name   "venues"
+   :fields #{{:name "name",
+              :base-type :TextField}
+             {:name "latitude",
+              :base-type :FloatField}
+             {:name "longitude",
+              :base-type :FloatField}
+             {:name "price",
+              :base-type :IntegerField}
+             {:name "category_id",
+              :base-type :IntegerField}
+             {:name "_id",
+              :base-type :IntegerField,
+              :pk? true}}}
+  (driver/describe-table (MongoDriver.) (table-name->table :venues)))
 
-;; ### field->base-type
+;; ANALYZE-TABLE
 (expect-when-testing-mongo
-    [:IntegerField  ; categories._id
-     :TextField     ; categories.name
-     :IntegerField  ; checkins._id
-     :DateField     ; checkins.date
-     :IntegerField  ; checkins.user_id
-     :IntegerField  ; checkins.venue_id
-     :IntegerField  ; users._id
-     :DateField     ; users.last_login
-     :TextField     ; users.name
-     :IntegerField  ; venues._id
-     :IntegerField  ; venues.category_id
-     :FloatField    ; venues.latitude
-     :FloatField    ; venues.longitude
-     :TextField     ; venues.name
-     :IntegerField] ; venues.price
-  (for [[table-name field-name] field-names]
-    (field->base-type (Field (datasets/with-engine :mongo
-                               (data/id table-name field-name))))))
-
-;; ### active-column-names->type
-(expect-when-testing-mongo
-    [{"_id" :IntegerField, "name" :TextField}                                                                                                       ; categories
-     {"_id" :IntegerField, "date" :DateField, "venue_id" :IntegerField, "user_id" :IntegerField}                                                    ; checkins
-     {"_id" :IntegerField, "password" :TextField, "name" :TextField, "last_login" :DateField}                                                       ; users
-     {"_id" :IntegerField, "name" :TextField, "longitude" :FloatField, "latitude" :FloatField, "price" :IntegerField, "category_id" :IntegerField}] ; venues
-  (for [nm table-names]
-    (driver/active-column-names->type (MongoDriver.) (table-name->table nm))))
-
-;; ### table-pks
-(expect-when-testing-mongo
-    [#{"_id"} #{"_id"} #{"_id"} #{"_id"}] ; _id for every table
-  (for [nm table-names]
-    (driver/table-pks (MongoDriver.) (table-name->table nm))))
-
+  (let [field-name->field (->> (table/fields (table-name->table :venues))
+                               (group-by :name)
+                               clojure.walk/keywordize-keys)
+        field-id          #(:id (first (% field-name->field)))]
+    {:row_count 100,
+     :fields    [{:id (field-id :category_id) :values [2 3 4 5 6 7 10 11 12 13 14 15 18 19 20 29 40 43 44 46 48 49 50 58 64 67 71 74]}
+                 {:id (field-id :name), :values nil}
+                 {:id (field-id :price), :values [1 2 3 4]}]})
+  (let [venues-table (table-name->table :venues)]
+    (driver/analyze-table (MongoDriver.) venues-table (set (mapv :id (table/fields venues-table))))))
 
 ;; ## Big-picture tests for the way data should look post-sync
 
@@ -163,8 +127,8 @@
       {:special_type :category,  :base_type :IntegerField, :name "user_id"}
       {:special_type nil,        :base_type :IntegerField, :name "venue_id"}]
      [{:special_type :id,        :base_type :IntegerField, :name "_id"}
-      {:special_type :category,  :base_type :DateField,    :name "last_login"}
-      {:special_type :category,  :base_type :TextField,    :name "name"}
+      {:special_type nil,        :base_type :DateField,    :name "last_login"}
+      {:special_type :name,      :base_type :TextField,    :name "name"}
       {:special_type :category,  :base_type :TextField,    :name "password"}]
      [{:special_type :id,        :base_type :IntegerField, :name "_id"}
       {:special_type :category,  :base_type :IntegerField, :name "category_id"}

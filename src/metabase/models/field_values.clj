@@ -34,7 +34,7 @@
          (contains? field :special_type)]}
   (and (not= (keyword field_type) :sensitive)
        (not (contains? #{:DateField :DateTimeField :TimeField} (keyword base_type)))
-       (or (contains? #{:category :city :state :country} (keyword special_type))
+       (or (contains? #{:category :city :state :country :name} (keyword special_type))
            (= (keyword base_type) :BooleanField))))
 
 (defn- create-field-values
@@ -68,6 +68,15 @@
   (when (field-should-have-field-values? field)
     (or (sel :one FieldValues :field_id field-id)
         (create-field-values field human-readable-values))))
+
+(defn save-field-values
+  "Save the `FieldValues` for FIELD-ID, creating them if needed, otherwise updating them."
+  [field-id values]
+  {:pre [(integer? field-id)
+         (coll? values)]}
+  (if-let [field-values (sel :one FieldValues :field_id field-id)]
+    (upd FieldValues (:id field-values) :values values)
+    (ins FieldValues :field_id field-id, :values values)))
 
 
 (u/require-dox-in-this-namespace)

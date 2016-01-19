@@ -26,6 +26,7 @@
                                                :updated_at      $
                                                :name            "test-data"
                                                :is_sample       false
+                                               :is_full_sync    true
                                                :organization_id nil
                                                :description     nil})
                            :schema          "PUBLIC"
@@ -38,7 +39,7 @@
                            :id              (id :users)
                            :db_id           (id)
                            :created_at      $})
-       :special_type    "category" ; metabase.driver.generic-sql.sync/check-for-low-cardinality should have marked this as such because it had no other special_type
+       :special_type    "name"
        :name            "NAME"
        :display_name    "Name"
        :updated_at      $

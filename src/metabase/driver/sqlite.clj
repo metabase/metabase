@@ -108,8 +108,7 @@
 (extend SQLiteDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:active-tables  sql/post-filtered-active-tables
-          :date-interval  date-interval
+         {:date-interval  date-interval
           :details-fields (constantly [{:name         "db"
                                         :display-name "Filename"
                                         :placeholder  "/home/camsaul/toucan_sightings.sqlite 😋"
@@ -124,7 +123,8 @@
                                               #{:foreign-keys})))})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
-         {:column->base-type         (sql/pattern-based-column->base-type pattern->type)
+         {:active-tables             sql/post-filtered-active-tables
+          :column->base-type         (sql/pattern-based-column->base-type pattern->type)
           :connection-details->spec  (fn [_ details]
                                        (kdb/sqlite3 details))
           :current-datetime-fn       (constantly (k/raw "DATETIME('now')"))

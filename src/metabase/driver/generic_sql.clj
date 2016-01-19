@@ -10,7 +10,8 @@
             (metabase.models [field :as field]
                              [table :as table])
             [metabase.util :as u]
-            [metabase.util.korma-extensions :as kx])
+            [metabase.util.korma-extensions :as kx]
+            [metabase.driver.sync :as sync])
   (:import java.util.Map
            clojure.lang.Keyword))
 
@@ -20,6 +21,12 @@
 (defprotocol ISQLDriver
   "Methods SQL-based drivers should implement in order to use `IDriverSQLDefaultsMixin`.
    Methods marked *OPTIONAL* have default implementations in `ISQLDriverDefaultsMixin`."
+
+  (active-tables ^java.util.Set [this, ^java.sql.DatabaseMetaData metadata]
+    "Return a set of maps containing information about the active tables/views, collections, or equivalent that currently exist in DATABASE.
+     Each map should contain the key `:name`, which is the string name of the table. For databases that have a concept of schemas,
+     this map should also include the string name of the table's `:schema`.")
+
   ;; The following apply-* methods define how the SQL Query Processor handles given query clauses. Each method is called when a matching clause is present
   ;; in QUERY, and should return an appropriately modified version of KORMA-QUERY. Most drivers can use the default implementations for all of these methods,
   ;; but some may need to override one or more (e.g. SQL Server needs to override the behavior of `apply-limit`, since T-SQL uses `TOP` instead of `LIMIT`).
@@ -34,6 +41,10 @@
 
   (column->base-type ^clojure.lang.Keyword [this, ^Keyword column-type]
     "Given a native DB column type, return the corresponding `Field` `base-type`.")
+
+  (column->special-type ^clojure.lang.Keyword [this, ^String column-name, ^Keyword column-type]
+    "*OPTIONAL*. Attempt to determine the special-type of a field given the column name and native type.
+     For example, the Postgres driver can mark Postgres JSON type columns as `:json` special type.")
 
   (connection-details->spec [this, ^Map details-map]
     "Given a `Database` DETAILS-MAP, return a JDBC connection spec.")
@@ -96,24 +107,6 @@
   (comp jdbc/get-connection db->jdbc-connection-spec))
 
 
-(defn ISQLDriverDefaultsMixin
-  "Default implementations for methods in `ISQLDriver`."
-  []
-  (require 'metabase.driver.generic-sql.query-processor)
-  {:apply-aggregation       (resolve 'metabase.driver.generic-sql.query-processor/apply-aggregation) ; don't resolve the vars yet so during interactive dev if the
-   :apply-breakout          (resolve 'metabase.driver.generic-sql.query-processor/apply-breakout) ; underlying impl changes we won't have to reload all the drivers
-   :apply-fields            (resolve 'metabase.driver.generic-sql.query-processor/apply-fields)
-   :apply-filter            (resolve 'metabase.driver.generic-sql.query-processor/apply-filter)
-   :apply-join-tables       (resolve 'metabase.driver.generic-sql.query-processor/apply-join-tables)
-   :apply-limit             (resolve 'metabase.driver.generic-sql.query-processor/apply-limit)
-   :apply-order-by          (resolve 'metabase.driver.generic-sql.query-processor/apply-order-by)
-   :apply-page              (resolve 'metabase.driver.generic-sql.query-processor/apply-page)
-   :current-datetime-fn     (constantly (k/sqlfn* :NOW))
-   :excluded-schemas        (constantly nil)
-   :get-connection-for-sync db->connection
-   :set-timezone-sql        (constantly nil)
-   :stddev-fn               (constantly :STDDEV)})
-
 (defn escape-field-name
   "Escape dots in a field name so Korma doesn't get confused and separate them. Returns a keyword."
   ^clojure.lang.Keyword [k]
@@ -127,46 +120,6 @@
              vals
              first))))
 
-(defmacro with-metadata
-  "Execute BODY with `java.sql.DatabaseMetaData` for DATABASE."
-  [[binding driver database] & body]
-  `(with-open [^java.sql.Connection conn# (get-connection-for-sync ~driver (:details ~database))]
-     (let [~binding (.getMetaData conn#)]
-       ~@body)))
-
-
-(defn fast-active-tables
-  "Default, fast implementation of `IDriver/active-tables` best suited for DBs with lots of system tables (like Oracle).
-   Fetch list of schemas, then for each one not in `excluded-schemas`, fetch its Tables, and combine the results.
-
-   This is as much as 15x faster for Databases with lots of system tables than `post-filtered-active-tables` (4 seconds vs 60)."
-  [driver database]
-  (with-metadata [md driver database]
-    (let [all-schemas (set (map :table_schem (jdbc/result-set-seq (.getSchemas md))))
-          schemas     (set/difference all-schemas (excluded-schemas driver))]
-      (set (for [schema     schemas
-                 table-name (mapv :table_name (jdbc/result-set-seq (.getTables md nil schema nil (into-array String ["TABLE", "VIEW"]))))]
-             {:name   table-name
-              :schema schema})))))
-
-(defn post-filtered-active-tables
-  "Alternative implementation of `IDriver/active-tables` best suited for DBs with little or no support for schemas.
-   Fetch *all* Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
-  [driver database]
-  (with-metadata [md driver database]
-    (set (for [table (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
-                             (jdbc/result-set-seq (.getTables md nil nil nil (into-array String ["TABLE", "VIEW"]))))]
-           {:name   (:table_name table)
-            :schema (:table_schem table)}))))
-
-
-(defn- active-column-names->type [driver table]
-  (with-metadata [md driver (table/database table)]
-    (into {} (for [{:keys [column_name type_name]} (jdbc/result-set-seq (.getColumns md nil (:schema table) (:name table) nil))]
-               {column_name (or (column->base-type driver (keyword type_name))
-                                (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :UnknownField." type_name))
-                                    :UnknownField))}))))
-
 (defn pattern-based-column->base-type
   "Return a `column->base-type` function that matches types based on a sequence of pattern / base-type pairs."
   [pattern->type]
@@ -176,13 +129,6 @@
         (cond
           (re-find pattern column-type) base-type
           (seq more)                    (recur more))))))
-
-(defn- table-pks [driver table]
-  (with-metadata [md driver (table/database table)]
-    (->> (.getPrimaryKeys md nil nil (:name table))
-         jdbc/result-set-seq
-         (map :column_name)
-         set)))
 
 (def ^:private ^:const field-values-lazy-seq-chunk-size
   "How many Field values should we fetch at a time for `field-values-lazy-seq`?"
@@ -221,20 +167,10 @@
 (defn- table-rows-seq [_ database table-name]
   (k/select (korma-entity database {:table-name table-name})))
 
-
-(defn- table-fks [driver table]
-  (with-metadata [md driver (table/database table)]
-    (->> (.getImportedKeys md nil nil (:name table))
-         jdbc/result-set-seq
-         (map (fn [result]
-                {:fk-column-name   (:fkcolumn_name result)
-                 :dest-table-name  (:pktable_name result)
-                 :dest-column-name (:pkcolumn_name result)}))
-         set)))
-
 (defn- field-avg-length [driver field]
   (or (some-> (korma-entity (field/table field))
               (k/select (k/aggregate (avg (k/sqlfn* (string-length-fn driver)
+                                                    ;; TODO: multi-byte data on postgres causes exception
                                                     (kx/cast :CHAR (escape-field-name (:name field)))))
                                      :len))
               first
@@ -259,23 +195,131 @@
                 :standard-deviation-aggregations]
          (set-timezone-sql driver) (conj :set-timezone))))
 
+
+;;; ## Database introspection methods used by sync process
+
+(defmacro with-metadata
+  "Execute BODY with `java.sql.DatabaseMetaData` for DATABASE."
+  [[binding driver database] & body]
+  `(with-open [^java.sql.Connection conn# (get-connection-for-sync ~driver (:details ~database))]
+     (let [~binding (.getMetaData conn#)]
+       ~@body)))
+
+(defn fast-active-tables
+  "Default, fast implementation of `IDriver/active-tables` best suited for DBs with lots of system tables (like Oracle).
+   Fetch list of schemas, then for each one not in `excluded-schemas`, fetch its Tables, and combine the results.
+
+   This is as much as 15x faster for Databases with lots of system tables than `post-filtered-active-tables` (4 seconds vs 60)."
+  [driver metadata]
+  (let [all-schemas (set (map :table_schem (jdbc/result-set-seq (.getSchemas metadata))))
+        schemas     (set/difference all-schemas (excluded-schemas driver))]
+    (set (for [schema     schemas
+               table-name (mapv :table_name (jdbc/result-set-seq (.getTables metadata nil schema nil (into-array String ["TABLE", "VIEW"]))))]
+           {:name   table-name
+            :schema schema}))))
+
+(defn post-filtered-active-tables
+  "Alternative implementation of `IDriver/active-tables` best suited for DBs with little or no support for schemas.
+   Fetch *all* Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
+  [driver metadata]
+  (set (for [table (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
+                           (jdbc/result-set-seq (.getTables metadata nil nil nil (into-array String ["TABLE", "VIEW"]))))]
+         {:name   (:table_name table)
+          :schema (:table_schem table)})))
+
+(defn- describe-table-fields
+  [metadata driver {:keys [schema name]}]
+  (set (for [{:keys [column_name type_name]} (jdbc/result-set-seq (.getColumns metadata nil schema name nil))
+             :let [calculated-special-type (column->special-type driver column_name (keyword type_name))]]
+         (merge {:name        column_name
+                 :column-type type_name
+                 :base-type   (or (column->base-type driver (keyword type_name))
+                                  (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :UnknownField." type_name))
+                                      :UnknownField))}
+                (when calculated-special-type
+                  {:special-type calculated-special-type})))))
+
+(defn- add-table-pks
+  [metadata table]
+  (let [pks (->> (.getPrimaryKeys metadata nil nil (:name table))
+                 jdbc/result-set-seq
+                 (mapv :column_name)
+                 set)]
+    (update table :fields (fn [fields]
+                            (set (for [field fields]
+                                   (if-not (contains? pks (:name field)) field
+                                                                         (assoc field :pk? true))))))))
+
+(defn describe-database
+  [driver database]
+  (with-metadata [metadata driver database]
+    {:tables (active-tables driver metadata)}))
+
+(defn describe-table
+  [driver table]
+  (with-metadata [metadata driver (table/database table)]
+    (->> (assoc (select-keys table [:name :schema]) :fields (describe-table-fields metadata driver table))
+         ;; find PKs and mark them
+         (add-table-pks metadata))))
+
+(defn describe-table-fks
+  [driver table]
+  (with-metadata [metadata driver (table/database table)]
+    (set (->> (.getImportedKeys metadata nil nil (:name table))
+              jdbc/result-set-seq
+              (mapv (fn [result]
+                      {:fk-column-name   (:fkcolumn_name result)
+                       :dest-table       {:name   (:pktable_name result)
+                                          :schema (:pktable_schem result)}
+                       :dest-column-name (:pkcolumn_name result)}))))))
+
+
+(defn analyze-table
+  [driver table new-table-ids]
+  ((sync/generic-analyze-table driver
+                               :field-avg-length-fn (partial field-avg-length driver)
+                               :field-percent-urls-fn (partial field-percent-urls driver))
+    driver
+    table
+    new-table-ids))
+
+
+(defn ISQLDriverDefaultsMixin
+  "Default implementations for methods in `ISQLDriver`."
+  []
+  (require 'metabase.driver.generic-sql.query-processor)
+  {:active-tables           fast-active-tables
+   :apply-aggregation       (resolve 'metabase.driver.generic-sql.query-processor/apply-aggregation) ; don't resolve the vars yet so during interactive dev if the
+   :apply-breakout          (resolve 'metabase.driver.generic-sql.query-processor/apply-breakout) ; underlying impl changes we won't have to reload all the drivers
+   :apply-fields            (resolve 'metabase.driver.generic-sql.query-processor/apply-fields)
+   :apply-filter            (resolve 'metabase.driver.generic-sql.query-processor/apply-filter)
+   :apply-join-tables       (resolve 'metabase.driver.generic-sql.query-processor/apply-join-tables)
+   :apply-limit             (resolve 'metabase.driver.generic-sql.query-processor/apply-limit)
+   :apply-order-by          (resolve 'metabase.driver.generic-sql.query-processor/apply-order-by)
+   :apply-page              (resolve 'metabase.driver.generic-sql.query-processor/apply-page)
+   :column->special-type    (constantly nil)
+   :current-datetime-fn     (constantly (k/sqlfn* :NOW))
+   :excluded-schemas        (constantly nil)
+   :get-connection-for-sync db->connection
+   :set-timezone-sql        (constantly nil)
+   :stddev-fn               (constantly :STDDEV)})
+
+
 (defn IDriverSQLDefaultsMixin
   "Default implementations of methods in `IDriver` for SQL drivers."
   []
   (require 'metabase.driver.generic-sql.native
            'metabase.driver.generic-sql.query-processor)
   (merge driver/IDriverDefaultsMixin
-         {:active-column-names->type active-column-names->type
-          :active-tables             fast-active-tables
+         {:analyze-table             analyze-table
           :can-connect?              can-connect?
+          :describe-database         describe-database
+          :describe-table            describe-table
+          :describe-table-fks        describe-table-fks
           :features                  features
-          :field-avg-length          field-avg-length
-          :field-percent-urls        field-percent-urls
           :field-values-lazy-seq     field-values-lazy-seq
           :process-native            (resolve 'metabase.driver.generic-sql.native/process-and-run)
           :process-structured        (resolve 'metabase.driver.generic-sql.query-processor/process-structured)
-          :table-fks                 table-fks
-          :table-pks                 table-pks
           :table-rows-seq            table-rows-seq}))
 
 
