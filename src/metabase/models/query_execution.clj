@@ -12,5 +12,5 @@
   i/IEntity
   (merge i/IEntityDefaults
          {:default-fields (constantly [:id :uuid :version :json_query :raw_query :status :started_at :finished_at :running_time :error :result_rows])
-          :types          (constantly {:json_query :json, :result_data :json, :status :keyword})
+          :types          (constantly {:json_query :json, :result_data :json, :status :keyword, :raw_query :clob, :error :clob, :additional_info :clob})
           :post-select    post-select}))
