@@ -7,7 +7,8 @@
                              [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])
             [metabase.test.data :refer :all]
-            [metabase.test.util :refer [resolve-private-fns]])
+            [metabase.test.util :refer [resolve-private-fns]]
+            [metabase.models.table :as table])
   (:import metabase.driver.h2.H2Driver))
 
 (def users-table
@@ -66,3 +67,13 @@
 
 
 ;; ANALYZE-TABLE
+
+(expect
+  {:row_count 100,
+   :fields    [{:id (id :venues :category_id)}
+               {:id (id :venues :id)}
+               {:id (id :venues :latitude)}
+               {:id (id :venues :longitude)}
+               {:id (id :venues :name), :values nil}
+               {:id (id :venues :price), :values [1 2 3 4]}]}
+  (driver/analyze-table (H2Driver.) @venues-table (set (mapv :id (table/fields @venues-table)))))

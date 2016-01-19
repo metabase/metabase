@@ -5,7 +5,7 @@
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             (metabase.models [field :refer [Field]]
-                             [table :refer [Table]])
+                             [table :refer [Table] :as table])
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
             [metabase.test.util :refer [expect-eval-actual-first resolve-private-fns]])
@@ -20,9 +20,6 @@
 
 (defn- mongo-db []
   (data/get-or-create-test-data-db! (driver/engine->driver :mongo)))
-
-(defn- venues-table []
-  (sel :one Table :db_id (:id (mongo-db)) :name "venues"))
 
 ;; ## Constants + Helper Fns/Macros
 ;; TODO - move these to metabase.test-data ?
@@ -98,6 +95,18 @@
               :pk? true}}}
   (driver/describe-table (MongoDriver.) (table-name->table :venues)))
 
+;; ANALYZE-TABLE
+(expect-when-testing-mongo
+  (let [field-name->field (->> (table/fields (table-name->table :venues))
+                               (group-by :name)
+                               clojure.walk/keywordize-keys)
+        field-id          #(:id (first (% field-name->field)))]
+    {:row_count 100,
+     :fields    [{:id (field-id :category_id) :values [2 3 4 5 6 7 10 11 12 13 14 15 18 19 20 29 40 43 44 46 48 49 50 58 64 67 71 74]}
+                 {:id (field-id :name), :values nil}
+                 {:id (field-id :price), :values [1 2 3 4]}]})
+  (let [venues-table (table-name->table :venues)]
+    (driver/analyze-table (MongoDriver.) venues-table (set (mapv :id (table/fields venues-table))))))
 
 ;; ## Big-picture tests for the way data should look post-sync
 
