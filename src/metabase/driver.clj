@@ -264,22 +264,25 @@
 (defn class->base-type
   "Return the `Field.base_type` that corresponds to a given class returned by the DB."
   [klass]
-  (or ({Boolean                      :BooleanField
-        Double                       :FloatField
-        Float                        :FloatField
-        Integer                      :IntegerField
-        Long                         :IntegerField
-        String                       :TextField
-        java.math.BigDecimal         :DecimalField
-        java.math.BigInteger         :BigIntegerField
-        java.sql.Date                :DateField
-        java.sql.Timestamp           :DateTimeField
-        java.util.Date               :DateField
-        java.util.UUID               :TextField
-        org.postgresql.util.PGobject :UnknownField} klass)
+  (or ({Boolean                         :BooleanField
+        Double                          :FloatField
+        Float                           :FloatField
+        Integer                         :IntegerField
+        Long                            :IntegerField
+        String                          :TextField
+        java.math.BigDecimal            :DecimalField
+        java.math.BigInteger            :BigIntegerField
+        java.sql.Date                   :DateField
+        java.sql.Timestamp              :DateTimeField
+        java.util.Date                  :DateField
+        java.util.UUID                  :TextField
+        clojure.lang.PersistentArrayMap :DictionaryField
+        clojure.lang.PersistentHashMap  :DictionaryField
+        clojure.lang.PersistentVector   :ArrayField
+        org.postgresql.util.PGobject    :UnknownField} klass)
       (condp isa? klass
-        clojure.lang.IPersistentMap    :DictionaryField
-        clojure.lang.IPersistentVector :ArrayField
+        clojure.lang.IPersistentMap     :DictionaryField
+        clojure.lang.IPersistentVector  :ArrayField
         nil)
       (do (log/warn (format "Don't know how to map class '%s' to a Field base_type, falling back to :UnknownField." klass))
           :UnknownField)))
