@@ -140,7 +140,7 @@ export default class DatabaseDetailsForm extends Component {
                         <div className="Grid-cell--top">
                             <Toggle value={on} onChange={(val) => this.onChange("is_full_sync", val)}/>
                         </div>
-                        <div className="pl2">
+                        <div className="px2">
                             <h3>Enable in-depth database analysis</h3>
                             <div style={{maxWidth: "40rem"}} className="pt1">
                                 This allows us to present you with better metadata for your tables and is required for some features of Metabase.
