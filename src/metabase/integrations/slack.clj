@@ -128,7 +128,7 @@
     ;; TODO: it would be nice to have an emoji or icon image to use here
    (-> (slack-api-post (slack-token) "chat.postMessage" {:channel     channel
                                                          :username    "MetaBot"
-                                                         :icon_url    "http://static.metabase.com/mb_slack_avatar.png"
+                                                         :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
                                                          :text        text
                                                          :attachments attachments})
        (handle-api-response))))
