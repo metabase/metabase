@@ -69,6 +69,7 @@
                            :updated_at      $
                            :name            "test-data"
                            :is_sample       false
+                           :is_full_sync    true
                            :organization_id nil
                            :description     nil})
        :schema          "PUBLIC"
@@ -130,6 +131,7 @@
                            :updated_at      $
                            :name            "test-data"
                            :is_sample       false
+                           :is_full_sync    true
                            :organization_id nil
                            :description     nil})
        :schema          "PUBLIC"
@@ -212,6 +214,7 @@
                            :updated_at      $
                            :name            "test-data"
                            :is_sample       false
+                           :is_full_sync    true
                            :organization_id nil
                            :description     nil})
        :schema          "PUBLIC"
@@ -322,6 +325,7 @@
                            :updated_at      $
                            :name            "test-data"
                            :is_sample       false
+                           :is_full_sync    true
                            :organization_id nil
                            :description     nil})
        :schema          "PUBLIC"
@@ -417,6 +421,7 @@
                            :organization_id $
                            :name            "test-data"
                            :is_sample       false
+                           :is_full_sync    true
                            :updated_at      $
                            :details         $
                            :id              $
@@ -485,6 +490,7 @@
                                                                  :organization_id nil,
                                                                  :name            "test-data",
                                                                  :is_sample       false,
+                                                                 :is_full_sync    true,
                                                                  :updated_at      $,
                                                                  :id              $,
                                                                  :engine          "h2",

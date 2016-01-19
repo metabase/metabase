@@ -26,6 +26,7 @@
                                                :updated_at      $
                                                :name            "test-data"
                                                :is_sample       false
+                                               :is_full_sync    true
                                                :organization_id nil
                                                :description     nil})
                            :schema          "PUBLIC"

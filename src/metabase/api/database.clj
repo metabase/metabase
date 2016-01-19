@@ -56,10 +56,10 @@
 
 (defendpoint POST "/"
   "Add a new `Database`."
-  [:as {{:keys [name engine details] :as body} :body}]
-  {name    [Required NonEmptyString]
-   engine  [Required DBEngine]
-   details [Required Dict]}
+  [:as {{:keys [name engine details is_full_sync] :as body} :body}]
+  {name         [Required NonEmptyString]
+   engine       [Required DBEngine]
+   details      [Required Dict]}
   (check-superuser)
   ;; this function tries connecting over ssl and non-ssl to establish a connection
   ;; if it succeeds it returns the `details` that worked, otherwise it returns an error
@@ -72,10 +72,13 @@
         details          (if (supports-ssl? engine)
                            (assoc details :ssl true)
                            details)
-        details-or-error (try-connection engine details)]
+        details-or-error (try-connection engine details)
+        is_full_sync     (if (nil? is_full_sync)
+                           true
+                           (boolean is_full_sync))]
     (if-not (false? (:valid details-or-error))
       ;; no error, proceed with creation
-      (let-500 [new-db (ins Database :name name :engine engine :details details-or-error)]
+      (let-500 [new-db (ins Database :name name :engine engine :details details-or-error :is_full_sync is_full_sync)]
         (events/publish-event :database-create new-db))
       ;; failed to connect, return error
       {:status 400
@@ -95,16 +98,19 @@
 
 (defendpoint PUT "/:id"
   "Update a `Database`."
-  [id :as {{:keys [name engine details]} :body}]
-  {name    [Required NonEmptyString]
-   engine  [Required DBEngine]
-   details [Required Dict]}
+  [id :as {{:keys [name engine details is_full_sync]} :body}]
+  {name         [Required NonEmptyString]
+   engine       [Required DBEngine]
+   details      [Required Dict]}
   (check-superuser)
   (let-404 [database (Database id)]
-    (let [details    (if-not (= protected-password (:password details))
-                       details
-                       (assoc details :password (get-in database [:details :password])))
-          conn-error (test-database-connection engine details)]
+    (let [details      (if-not (= protected-password (:password details))
+                         details
+                         (assoc details :password (get-in database [:details :password])))
+          conn-error   (test-database-connection engine details)
+          is_full_sync (if (nil? is_full_sync)
+                         nil
+                         (boolean is_full_sync))]
       (if-not conn-error
         ;; no error, proceed with update
         (do
@@ -113,7 +119,8 @@
           (check-500 (upd-non-nil-keys Database id
                                        :name name
                                        :engine engine
-                                       :details details))
+                                       :details details
+                                       :is_full_sync is_full_sync))
           (Database id))
         ;; failed to connect, return error
         {:status 400
