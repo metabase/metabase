@@ -688,12 +688,13 @@
 }
 
 .FieldList-grouping-trigger {
-    display: none;
+    display: flex;
+    visibility: hidden;
 }
 
 .List-item:hover .FieldList-grouping-trigger,
 .List-item--selected .FieldList-grouping-trigger {
-    display: flex;
+    visibility: visible;
     border-left: 2px solid rgba(0,0,0,0.1);
     color: rgba(255,255,255,0.5);
 }
