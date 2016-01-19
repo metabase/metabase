@@ -131,6 +131,7 @@ export default class DataSelector extends Component {
                     itemIsSelected={this.itemIsSelected}
                     renderSectionIcon={this.renderSectionIcon}
                     renderItemIcon={this.renderItemIcon}
+                    initiallyOpenSection={initiallyOpenSection}
                 />
             </PopoverWithTrigger>
         );
