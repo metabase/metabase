@@ -48,24 +48,31 @@
 (defn sync-database!
   "Sync DATABASE and all its Tables and Fields.
 
-   Takes an optional kwarg `:full-sync?` (default = `true`).  A full sync includes more in depth table analysis work."
-  [driver database & {:keys [full-sync?]
-                      :or {full-sync? true}}]
+   Takes an optional kwarg `:full-sync?` which determines if we execute our table analysis work.  If this is not specified
+   then we default to using the `:is_full_sync` attribute of the database."
+  [driver database & {:keys [full-sync?]}]
   (binding [qp/*disable-qp-logging* true
             *sel-disable-logging*   true]
-    (driver/sync-in-context driver database (partial sync-database-with-tracking! driver database full-sync?))))
+    (let [full-sync? (if-not (nil? full-sync?)
+                       full-sync?
+                       (:is_full_sync database))]
+      (driver/sync-in-context driver database (partial sync-database-with-tracking! driver database full-sync?)))))
 
 (defn sync-table!
   "Sync a *single* TABLE and all of its Fields.
    This is used *instead* of `sync-database!` when syncing just one Table is desirable.
 
-   Takes an optional kwarg `:full-sync?` (default = `true`).  A full sync includes more in depth table analysis work."
-  [driver table & {:keys [full-sync?]
-                   :or {full-sync? true}}]
+   Takes an optional kwarg `:full-sync?` which determines if we execute our table analysis work.  If this is not specified
+   then we default to using the `:is_full_sync` attribute of the tables parent database."
+  [driver table & {:keys [full-sync?]}]
   (binding [qp/*disable-qp-logging* true]
-    (driver/sync-in-context driver (table/database table) (fn []
-                                                            (sync-database-active-tables! driver [table] :analyze? full-sync?)
-                                                            (events/publish-event :table-sync {:table_id (:id table)})))))
+    (let [database   (table/database table)
+          full-sync? (if-not (nil? full-sync?)
+                       full-sync?
+                       (:is_full_sync database))]
+      (driver/sync-in-context driver database (fn []
+                                                (sync-database-active-tables! driver [table] :analyze? full-sync?)
+                                                (events/publish-event :table-sync {:table_id (:id table)}))))))
 
 
 ;;; ## ---------------------------------------- IMPLEMENTATION ----------------------------------------
