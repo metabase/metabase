@@ -8,7 +8,7 @@ export default class TutorialModal extends Component {
         return (
             <div className="TutorialModalContent p2">
                 <div className="flex">
-                    <a className="text-grey-4 p1 flex-align-right" onClick={this.props.onClose}>
+                    <a className="text-grey-4 p1 cursor-pointer flex-align-right" onClick={this.props.onClose}>
                         <Icon name='close' width="16px" height="16px"/>
                     </a>
                 </div>
