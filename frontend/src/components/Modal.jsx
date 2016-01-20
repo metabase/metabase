@@ -1,11 +1,15 @@
 import React, { Component, PropTypes } from "react";
 
+import TimeoutTransitionGroup from "react-components/timeout-transition-group";
+
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper.jsx";
 
 export default class Modal extends Component {
     constructor(props, context) {
         super(props, context);
-        this.state = {};
+        this.state = {
+            isOpen: false
+        };
     }
 
     static propTypes = {
@@ -17,11 +21,21 @@ export default class Modal extends Component {
         isOpen: true
     };
 
+    componentWillReceiveProps(nextProps) {
+        this.setState({
+            isOpen: nextProps.isOpen
+        });
+    }
+
     componentWillMount() {
         this._modalElement = document.createElement('span');
         this._modalElement.className = 'ModalContainer';
         this._modalElement.id = Math.floor((Math.random() * 698754) + 1);
         document.querySelector('body').appendChild(this._modalElement);
+
+        // HACK: TimeoutTransitionGroup doesn't support "appear" transition
+        // NOTE: Use "appear" transition in ReactCSSTransitionGroup once upgraded to React 0.14+
+        setTimeout(() => this.setState({ isOpen: this.props.isOpen }), 1);
     }
 
     componentDidMount() {
@@ -56,17 +70,15 @@ export default class Modal extends Component {
     }
 
     _renderPopover() {
-        if (this.props.isOpen) {
-            // modal is open, lets do this!
-            React.render(
-                <div className="Modal-backdrop">
-                    {this._modalComponent()}
-                </div>
-            , this._modalElement);
-        } else {
-            // if the modal isn't open then actively unmount our popover
-            React.unmountComponentAtNode(this._modalElement);
-        }
+        React.render(
+            <TimeoutTransitionGroup transitionName="Modal" enterTimeout={250} leaveTimeout={250}>
+                { this.state.isOpen &&
+                    <div key="modal" className="Modal-backdrop" style={this.props.style}>
+                        {this._modalComponent()}
+                    </div>
+                }
+            </TimeoutTransitionGroup>
+        , this._modalElement);
     }
 
     render() {

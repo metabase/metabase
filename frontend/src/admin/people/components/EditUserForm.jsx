@@ -51,7 +51,8 @@ export default class EditUserForm extends Component {
         let formErrors = {data:{errors:{}}};
 
         // validate email address
-        if (!MetabaseUtils.validEmail(React.findDOMNode(this.refs.email).value)) {
+        let email = React.findDOMNode(this.refs.email).value ? React.findDOMNode(this.refs.email).value.trim() : null;
+        if (!MetabaseUtils.validEmail(email)) {
             formErrors.data.errors.email = "Not a valid formatted email address";
         }
 
@@ -66,7 +67,7 @@ export default class EditUserForm extends Component {
 
         user.first_name = React.findDOMNode(this.refs.firstName).value;
         user.last_name = React.findDOMNode(this.refs.lastName).value;
-        user.email = React.findDOMNode(this.refs.email).value;
+        user.email = email;
 
         this.props.submitFn(user);
     }

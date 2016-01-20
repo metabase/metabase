@@ -5,6 +5,7 @@
    actual physical RDMS database. This functionality allows us to easily test with multiple datasets."
   (:require [clojure.string :as s]
             [metabase.db :refer :all]
+            [metabase.driver :as driver]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field] :as field]
                              [table :refer [Table]]))
@@ -60,7 +61,8 @@
 ;; ## IDatasetLoader
 
 (defprotocol IDatasetLoader
-  "Methods for creating, deleting, and populating *pyhsical* DBMS databases, tables, and fields."
+  "Methods for creating, deleting, and populating *pyhsical* DBMS databases, tables, and fields.
+   Methods marked *OPTIONAL* have default implementations in `IDatasetLoaderDefaultsMixin`."
   (engine [this]
     "Return the engine keyword associated with this database, e.g. `:h2` or `:mongo`.")
 
@@ -79,7 +81,36 @@
   (destroy-db! [this ^DatabaseDefinition database-definition]
     "Destroy database, if any, associated with DATABASE-DEFINITION.
      This refers to destroying a *DBMS* database -- removing an H2 file, dropping a Postgres database, etc.
-     This does not need to remove corresponding Metabase definitions -- this is handled by `DatasetLoader`."))
+     This does not need to remove corresponding Metabase definitions -- this is handled by `DatasetLoader`.")
+
+  (default-schema [this]
+    "*OPTIONAL* Return the default schema name that tables for this DB should be expected to have.")
+
+  (expected-base-type->actual [this base-type]
+    "*OPTIONAL*. Return the base type type that is actually used to store `Fields` of BASE-TYPE.
+     The default implementation of this method is an identity fn. This is provided so DBs that don't support a given BASE-TYPE used in the test data
+     can specifiy what type we should expect in the results instead.
+     For example, Oracle has `INTEGER` data types, so `:IntegerField` test values are instead stored as `NUMBER`, which we map to `:DecimalField`.")
+
+  (format-name [this table-or-field-name]
+    "*OPTIONAL* Transform a lowercase string `Table` or `Field` name in a way appropriate for this dataset
+     (e.g., `h2` would want to upcase these names; `mongo` would want to use `\"_id\"` in place of `\"id\"`.")
+
+  (has-questionable-timezone-support? [this]
+    "*OPTIONAL*. Does this driver have \"questionable\" timezone support? (i.e., does it group things by UTC instead of the `US/Pacific` when we're testing?)
+     Defaults to `(not (contains? (metabase.driver/features this) :set-timezone)`")
+
+  (id-field-type [this]
+    "*OPTIONAL* Return the `base_type` of the `id` `Field` (e.g. `:IntegerField` or `:BigIntegerField`). Defaults to `:IntegerField`."))
+
+(def IDatasetLoaderDefaultsMixin
+  {:expected-base-type->actual         (fn [_ base-type] base-type)
+   :default-schema                     (constantly nil)
+   :format-name                        (fn [_ table-or-field-name]
+                                         table-or-field-name)
+   :has-questionable-timezone-support? (fn [driver]
+                                         (not (contains? (driver/features driver) :set-timezone)))
+   :id-field-type                      (constantly :IntegerField)})
 
 
 ;; ## Helper Functions for Creating New Definitions

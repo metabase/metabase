@@ -1,23 +1,12 @@
-import { createStore, applyMiddleware, combineReducers, compose } from 'redux';
-import promiseMiddleware from 'redux-promise';
-import thunkMidleware from "redux-thunk";
+import { createStore, combineReducers } from "metabase/lib/redux";
 
 import AdminPeopleApp from './containers/AdminPeopleApp.jsx';
 import * as reducers from './reducers';
 
-
-const finalCreateStore = compose(
-  applyMiddleware(
-      thunkMidleware,
-      promiseMiddleware
-  ),
-  createStore
-);
-
 const reducer = combineReducers(reducers);
 
 
-var PeopleControllers = angular.module('metabaseadmin.people.controllers', ['metabase.services']);
+var PeopleControllers = angular.module('metabase.admin.people.controllers', ['metabase.services']);
 
 PeopleControllers.controller('PeopleList', ['$scope', '$location', '$route', '$routeParams',
     function($scope, $location, $route, $routeParams) {
@@ -29,6 +18,6 @@ PeopleControllers.controller('PeopleList', ['$scope', '$location', '$route', '$r
                 $scope.$apply(() => $location.url(url));
             }
         };
-        $scope.store = finalCreateStore(reducer, {});
+        $scope.store = createStore(reducer, {});
     }
 ]);

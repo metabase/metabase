@@ -3,8 +3,10 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as s]
             [environ.core :refer [env]]
-            [metabase.driver.generic-sql :as sql]
-            (metabase.test.data [generic-sql :as generic]
+            (metabase.driver [generic-sql :as sql]
+                             sqlserver)
+            (metabase.test.data [datasets :as datasets]
+                                [generic-sql :as generic]
                                 [interface :as i]))
   (:import metabase.driver.sqlserver.SQLServerDriver))
 
@@ -94,7 +96,9 @@
                                             (swap! db-name-counter inc)
                                             (create-db! this dbdef))
             :database->connection-details database->connection-details
-            :engine                       (constantly :sqlserver)})))
+            :default-schema               (constantly "dbo")
+            :engine                       (constantly :sqlserver)
+            :sum-field-type               (constantly :IntegerField)})))
 
 
 (defn- cleanup-leftover-dbs
@@ -102,7 +106,7 @@
    This is important because we're limited to a quota of 30 DBs on RDS."
   {:expectations-options :before-run}
   []
-  (when (contains? @(resolve 'metabase.test.data.datasets/test-engines) :sqlserver)
+  (datasets/when-testing-engine :sqlserver
     (let [connection-spec (sql/connection-details->spec (SQLServerDriver.) (database->connection-details nil :server nil))
           leftover-dbs    (mapv :name (jdbc/query connection-spec "SELECT name
                                                                    FROM   master.dbo.sysdatabases

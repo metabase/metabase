@@ -636,6 +636,48 @@ CoreServices.factory('Pulse', ['$resource', '$cookies', function($resource, $coo
     });
 }]);
 
+CoreServices.factory('Segment', ['$resource', '$cookies', function($resource, $cookies) {
+    return $resource('/api/segment/:segmentId', {}, {
+        create: {
+            url: '/api/segment',
+            method: 'POST'
+        },
+        get: {
+            method: 'GET',
+            params: { segmentId: '@segmentId' },
+        },
+        update: {
+            method: 'PUT',
+            params: { segmentId: '@id' }
+        },
+        delete: {
+            method: 'DELETE',
+            params: { segmentId: '@segmentId' }
+        }
+    });
+}]);
+
+CoreServices.factory('Metric', ['$resource', '$cookies', function($resource, $cookies) {
+    return $resource('/api/metric/:metricId', {}, {
+        create: {
+            url: '/api/metric',
+            method: 'POST'
+        },
+        get: {
+            method: 'GET',
+            params: { metricId: '@metricId' },
+        },
+        update: {
+            method: 'PUT',
+            params: { metricId: '@id' }
+        },
+        delete: {
+            method: 'DELETE',
+            params: { metricId: '@metricId' }
+        }
+    });
+}]);
+
 CoreServices.factory('Revision', ['$resource', function($resource) {
     return $resource('/api/revision', {}, {
         list: {
@@ -654,6 +696,20 @@ CoreServices.factory('Revision', ['$resource', function($resource) {
                 'entity': '@entity',
                 'id': '@id',
                 'revision_id': '@revision_id'
+            }
+        }
+    });
+}]);
+
+// Revisions V2
+CoreServices.factory('Revisions', ['$resource', function($resource) {
+    return $resource('/api/:entity/:id/revisions', {}, {
+        get: {
+            method: 'GET',
+            isArray: true,
+            params: {
+                'entity': '@entity',
+                'id': '@id'
             }
         }
     });

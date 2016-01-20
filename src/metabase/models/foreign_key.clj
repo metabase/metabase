@@ -1,7 +1,6 @@
 (ns metabase.models.foreign-key
-  (:require [korma.core :refer :all, :exclude [defentity update]]
-            [metabase.db :refer :all]
-            [metabase.models.interface :refer :all]))
+  (:require [metabase.models.interface :as i]
+            [metabase.util :as u]))
 
 (def ^:const relationships
   "Valid values for `ForeginKey.relationship`."
@@ -9,19 +8,13 @@
     :Mt1
     :MtM})
 
-(def ^:const relationship->name
-  {:1t1 "One to One"
-   :Mt1 "Many to One"
-   :MtM "Many to Many"})
+(i/defentity ForeignKey :metabase_foreignkey)
 
-(defentity ForeignKey
-  [(table :metabase_foreignkey)
-   (types :relationship :keyword)
-   timestamped]
+(extend (class ForeignKey)
+  i/IEntity
+  (merge i/IEntityDefaults
+         {:types        (constantly {:relationship :keyword})
+          :timestamped? (constantly true)}))
 
-  (post-select [_ {:keys [origin_id destination_id] :as fk}]
-    (assoc fk
-           :origin      (delay (sel :one 'metabase.models.field/Field :id origin_id))
-           :destination (delay (sel :one 'metabase.models.field/Field :id destination_id)))))
 
-(extend-ICanReadWrite ForeignKeyEntity :read :always, :write :superuser)
+(u/require-dox-in-this-namespace)

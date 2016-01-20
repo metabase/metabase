@@ -62,8 +62,8 @@ export default class Navbar extends Component {
                             </a>
                         </li>
                         <li>
-                            <a className={cx(classes, {"is--selected": this.isActive("/admin/metadata")})} href="/admin/metadata/">
-                                Metadata
+                            <a className={cx(classes, {"is--selected": this.isActive("/admin/datamodel")})} href="/admin/datamodel/database">
+                                Data Model
                             </a>
                         </li>
                         <li>

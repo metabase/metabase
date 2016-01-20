@@ -9,8 +9,7 @@
                              [card :refer [Card]]
                              [common :as common]
                              [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]]
-                             [revision :refer [push-revision]])))
+                             [dashboard-card :refer [DashboardCard]])))
 
 (defendpoint GET "/"
   "Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
@@ -75,7 +74,7 @@
   {cardId [Required Integer]}
   (write-check Dashboard id)
   (check-400 (exists? Card :id cardId))
-  (let [result (ins DashboardCard :card_id cardId :dashboard_id id)]
+  (let [result (ins DashboardCard :card_id cardId, :dashboard_id id)]
     (events/publish-event :dashboard-add-cards {:id id :actor_id *current-user-id* :dashcards [result]})
     result))
 

@@ -5,30 +5,21 @@ import GuiQueryEditor from '../query_builder/GuiQueryEditor.jsx';
 import NativeQueryEditor from '../query_builder/NativeQueryEditor.jsx';
 import QueryHeader from '../query_builder/QueryHeader.jsx';
 import QueryVisualization from '../query_builder/QueryVisualization.jsx';
+import QueryBuilderTutorial from '../tutorial/QueryBuilderTutorial.jsx';
 
 import SavedQuestionsApp from './containers/SavedQuestionsApp.jsx';
 
-import { createStore, applyMiddleware, combineReducers, compose } from 'redux';
-import promiseMiddleware from 'redux-promise';
-import thunkMidleware from "redux-thunk";
+import { createStore, combineReducers } from "metabase/lib/redux";
 import _ from "underscore";
 
 import MetabaseAnalytics from '../lib/analytics';
 import DataGrid from "metabase/lib/data_grid";
-import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
 
 import Query from "metabase/lib/query";
 import { serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
+import { loadTable } from "metabase/lib/table";
 
 import * as reducers from './reducers';
-
-const finalCreateStore = compose(
-  applyMiddleware(
-      thunkMidleware,
-      promiseMiddleware
-  ),
-  createStore
-);
 
 const reducer = combineReducers(reducers);
 
@@ -43,12 +34,12 @@ CardControllers.controller('CardList', ['$scope', '$location', function($scope, 
             $scope.$apply(() => $location.url(url));
         }
     };
-    $scope.store = finalCreateStore(reducer, {});
+    $scope.store = createStore(reducer, {});
 }]);
 
 CardControllers.controller('CardDetail', [
-    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'Metabase', 'VisualizationSettings', 'QueryUtils', 'Revision',
-    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, Metabase, VisualizationSettings, QueryUtils, Revision) {
+    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'Metabase', 'VisualizationSettings', 'Revision',
+    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, Metabase, VisualizationSettings, Revision) {
         // promise helper
         $q.resolve = function(object) {
             var deferred = $q.defer();
@@ -95,7 +86,8 @@ CardControllers.controller('CardDetail', [
                 visualization_settings: {},
                 dataset_query: {},
             },
-            savedCardSerialized = null;
+            savedCardSerialized = null,
+            isShowingTutorial = !!$routeParams.tutorial;
 
         resetDirty();
 
@@ -174,10 +166,6 @@ CardControllers.controller('CardDetail', [
                     prefix: prefix
                 });
                 return apiCall.$promise;
-            },
-            toggleExpandCollapseFn: function() {
-                editorModel.isExpanded = !editorModel.isExpanded;
-                renderAll();
             }
         };
 
@@ -312,6 +300,11 @@ CardControllers.controller('CardDetail', [
 
                 // run it
                 runQuery();
+            },
+            onStartTutorial() {
+                isShowingTutorial = true;
+                setSampleDataset();
+                renderAll();
             }
         };
 
@@ -341,6 +334,7 @@ CardControllers.controller('CardDetail', [
             // ensure rendering model is up to date
             editorModel.isRunning = isRunning;
             editorModel.isShowingDataReference = $scope.isShowingDataReference;
+            editorModel.isShowingTutorial = isShowingTutorial;
             editorModel.databases = databases;
             editorModel.tableMetadata = tableMetadata;
             editorModel.tableForeignKeys = tableForeignKeys;
@@ -349,7 +343,7 @@ CardControllers.controller('CardDetail', [
             if (card.dataset_query && card.dataset_query.type === "native") {
                 React.render(<NativeQueryEditor {...editorModel}/>, document.getElementById('react_qb_editor'));
             } else {
-                React.render(<GuiQueryEditor {...editorModel}/>, document.getElementById('react_qb_editor'));
+                React.render(<div className="wrapper"><GuiQueryEditor {...editorModel}/></div>, document.getElementById('react_qb_editor'));
             }
         }
 
@@ -378,11 +372,26 @@ CardControllers.controller('CardDetail', [
             React.render(<DataReference {...dataReferenceModel}/>, document.getElementById('react_data_reference'));
         }
 
+        let tutorialModel = {
+            onClose: () => {
+                isShowingTutorial = false;
+                renderAll();
+            }
+        }
+
+        function renderTutorial() {
+            tutorialModel.isShowingTutorial = isShowingTutorial;
+            React.render(
+                <span>{isShowingTutorial && <QueryBuilderTutorial {...tutorialModel} /> }</span>
+            , document.getElementById('react_qb_tutorial'));
+        }
+
         var renderAll = _.debounce(function() {
             renderHeader();
             renderEditor();
             renderVisualization();
             renderDataReference();
+            renderTutorial();
         }, 10);
 
 
@@ -489,34 +498,6 @@ CardControllers.controller('CardDetail', [
             return angular.copy(newQueryTemplates[card.dataset_query.type]);
         }
 
-        function loadTable(tableId) {
-            return $q.all([
-                Metabase.table_query_metadata({
-                    'tableId': tableId
-                }).$promise.then(function (table) {
-                    // Decorate with valid operators
-                    // TODO: would be better if this was in our component
-                    table = markupTableMetadata(table);
-                    // Load joinable tables
-                    return $q.all(table.fields.filter((f) => f.target != null).map((field) => {
-                        return Metabase.table_query_metadata({
-                            'tableId': field.target.table_id
-                        }).$promise.then((targetTable) => {
-                            field.target.table = markupTableMetadata(targetTable);
-                        });
-                    })).then(() => table);
-                }),
-                Metabase.table_fks({
-                    'tableId': tableId
-                }).$promise
-            ]).then(function(results) {
-                return {
-                    metadata: results[0],
-                    foreignKeys: results[1]
-                }
-            });
-        }
-
         function loadTableInfo(tableId) {
             if (tableMetadata && tableMetadata.id === tableId) {
                 return;
@@ -526,7 +507,7 @@ CardControllers.controller('CardDetail', [
             tableForeignKeys = null;
 
             loadTable(tableId).then(function (results) {
-                tableMetadata = results.metadata;
+                tableMetadata = results.table;
                 tableForeignKeys = results.foreignKeys;
                 renderAll();
             }, function (error) {
@@ -658,11 +639,6 @@ CardControllers.controller('CardDetail', [
             }
         }
 
-        function markupTableMetadata(table) {
-            var updatedTable = addValidOperatorsToFields(table);
-            return QueryUtils.populateQueryOptions(updatedTable);
-        }
-
         function toggleDataReference() {
             $scope.$apply(function() {
                 $scope.isShowingDataReference = !$scope.isShowingDataReference;
@@ -722,6 +698,16 @@ CardControllers.controller('CardDetail', [
             }
             if ($routeParams.table != undefined && card.dataset_query.query) {
                 card.dataset_query.query.source_table = parseInt($routeParams.table);
+                card.isDirty = true;
+            }
+
+            if ($routeParams.segment != undefined && card.dataset_query.query) {
+                card.dataset_query.query.filter = ["AND", ["SEGMENT", parseInt($routeParams.segment)]];
+                card.isDirty = true;
+            }
+
+            if ($routeParams.metric != undefined && card.dataset_query.query) {
+                card.dataset_query.query.aggregation = ["METRIC", parseInt($routeParams.metric)];
                 card.isDirty = true;
             }
 
@@ -816,6 +802,11 @@ CardControllers.controller('CardDetail', [
             loadAndSetCard();
         }
 
+        function setSampleDataset() {
+            let sampleDataset = _.findWhere(databases, { name: "Sample Dataset" });
+            setDatabase(sampleDataset.id);
+        }
+
         // needs to be performed asynchronously otherwise we get weird infinite recursion
         var updateUrl = (replaceState) => setTimeout(function() {
             var copy = cleanCopyCard(card);
@@ -902,19 +893,26 @@ CardControllers.controller('CardDetail', [
             });
         }
 
-        loadDatabasesAndTables().then(function(dbs) {
-            databases = dbs;
+        async function init() {
+            try {
+                databases = await loadDatabasesAndTables();
 
-            if (dbs.length < 1) {
-                // TODO: some indication that setting up a db is required
-                return;
+                if (databases.length < 1) {
+                    // TODO: some indication that setting up a db is required
+                    return;
+                }
+
+                // finish initializing our page and render
+                await loadAndSetCard();
+
+                if (isShowingTutorial) {
+                    setSampleDataset();
+                }
+            } catch (error) {
+                console.log('error getting database list', error);
             }
+        }
 
-            // finish initializing our page and render
-            loadAndSetCard();
-
-        }, function (error) {
-            console.log('error getting database list', error);
-        });
+        init();
     }
 ]);

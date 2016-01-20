@@ -5,7 +5,7 @@ import DatabaseList from "./components/DatabaseList.jsx";
 import DatabaseEdit from "./components/DatabaseEdit.jsx";
 
 
-var DatabasesControllers = angular.module('metabaseadmin.databases.controllers', ['metabase.services']);
+var DatabasesControllers = angular.module('metabase.admin.databases.controllers', ['metabase.services']);
 
 DatabasesControllers.controller('DatabaseList', ['$scope', '$routeParams', 'Metabase', function($scope, $routeParams, Metabase) {
 

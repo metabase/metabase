@@ -8,11 +8,11 @@
   :aliases {"test" ["with-profile" "+expectations" "expectations"]
             "generate-sample-dataset" ["with-profile" "+generate-sample-dataset" "run"]}
   :dependencies [[org.clojure/clojure "1.7.0"]
-                 [org.clojure/core.async "0.1.346.0-17112a-alpha"]
+                 [org.clojure/core.async "0.2.374"]
                  [org.clojure/core.match "0.3.0-alpha4"]              ; optimized pattern matching library for Clojure
-                 [org.clojure/core.memoize "0.5.7"]                   ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
+                 [org.clojure/core.memoize "0.5.8"]                   ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
                  [org.clojure/data.csv "0.1.3"]                       ; CSV parsing / generation
-                 [org.clojure/java.classpath "0.2.2"]
+                 [org.clojure/java.classpath "0.2.3"]
                  [org.clojure/java.jdbc "0.4.2"]                      ; basic jdbc access from clojure
                  [org.clojure/math.numeric-tower "0.0.4"]             ; math functions like `ceil`
                  [org.clojure/tools.logging "0.3.1"]                  ; logging framework
@@ -39,42 +39,42 @@
                                com.sun.jdmk/jmxtools
                                com.sun.jmx/jmxri]]
                  [medley "0.7.0"]                                     ; lightweight lib of useful functions
-                 [mysql/mysql-connector-java "5.1.37"]                ; MySQL JDBC driver
+                 [mysql/mysql-connector-java "5.1.38"]                ; MySQL JDBC driver
                  [net.sf.cssbox/cssbox "4.10"]
                  [net.sourceforge.jtds/jtds "1.3.1"]                  ; Open Source SQL Server driver
                  [org.xhtmlrenderer/flying-saucer-core "9.0.8"]
-                 [org.liquibase/liquibase-core "3.4.1"]               ; migration management (Java lib)
-                 [org.slf4j/slf4j-log4j12 "1.7.12"]
+                 [org.liquibase/liquibase-core "3.4.2"]               ; migration management (Java lib)
+                 [org.slf4j/slf4j-log4j12 "1.7.13"]
                  [org.yaml/snakeyaml "1.16"]                          ; YAML parser (required by liquibase)
                  [org.xerial/sqlite-jdbc "3.8.11.2"]                  ; SQLite driver
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
+                 [prismatic/schema "1.0.4"]                           ; Data schema declaration and validation library
                  [ring/ring-jetty-adapter "1.4.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
                  [swiss-arrows "1.0.0"]]                              ; 'Magic wand' macro -<>, etc.
-  :plugins [[lein-environ "1.0.0"]                                    ; easy access to environment variables
-            [lein-ring "0.9.3"]]                                      ; start the HTTP server with 'lein ring server'
+  :plugins [[lein-environ "1.0.1"]                                    ; easy access to environment variables
+            [lein-ring "0.9.7"]]                                      ; start the HTTP server with 'lein ring server'
   :main ^:skip-aot metabase.core
   :manifest {"Liquibase-Package" "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"}
   :target-path "target/%s"
   :javac-options ["-target" "1.6" "-source" "1.6"]
   :uberjar-name "metabase.jar"
   :ring {:handler metabase.core/app
-         :init metabase.core/init
+         :init metabase.core/init!
          :destroy metabase.core/destroy}
   :eastwood {:exclude-namespaces [:test-paths]
              :add-linters [:unused-private-vars]
              :exclude-linters [:constant-test                         ; korma macros generate some forms with if statements that are always logically true or false
                                :suspicious-expression                 ; core.match macros generate some forms like (and expr) which is "suspicious"
                                :unused-ret-vals]}                     ; gives too many false positives for functions with side-effects like conj!
-  :profiles {:dev {:dependencies [[org.clojure/tools.nrepl "0.2.11"]  ; REPL <3
+  :profiles {:dev {:dependencies [[org.clojure/tools.nrepl "0.2.12"]  ; REPL <3
                                   [org.clojure/tools.reader "0.10.0"] ; Need to explictly specify this dep otherwise expectations doesn't seem to work right :'(
                                   [expectations "2.1.3"]              ; unit tests
                                   [ring/ring-mock "0.3.0"]]
-                   :plugins [[jonase/eastwood "0.2.1"]                ; Linting
-                             [lein-ancient "0.6.7"]                   ; Check project for outdated dependencies + plugins w/ 'lein ancient'
+                   :plugins [[jonase/eastwood "0.2.2"]                ; Linting
+                             [lein-ancient "0.6.8"]                   ; Check project for outdated dependencies + plugins w/ 'lein ancient'
                              [lein-bikeshed "0.2.0"]                  ; Linting
-                             [lein-environ "1.0.0"]                   ; Specify env-vars in project.clj
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'
                              [lein-instant-cheatsheet "2.1.4"]        ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
                              [michaelblume/lein-marginalia "0.9.0"]]  ; generate documentation with 'lein marg'

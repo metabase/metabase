@@ -40,18 +40,19 @@
      (name (PostgresDriver.)) -> \"PostgreSQL\"
 
    This name should be a \"nice-name\" that we'll display to the user."
-  (active-column-names->type ^java.util.Map [this, ^TableInstance table]
-    "Return a map of string names of active columns (or equivalent) -> `Field` `base_type` for TABLE (or equivalent).")
 
-  (active-nested-field-name->type ^java.util.Map [this, ^FieldInstance field]
-    "*OPTIONAL, BUT REQUIRED FOR DRIVERS THAT SUPPORT `:nested-fields`*
+  (analyze-table ^java.util.Map [this, ^TableInstance table, ^java.util.Set new-field-ids]
+    "Return a map containing information that provides optional analysis values for TABLE.
 
-     Return a map of string names of active child `Fields` of FIELD -> `Field.base_type`.")
+     Each map should be structured as follows:
 
-  (active-tables ^java.util.Set [this, ^DatabaseInstance database]
-    "Return a set of maps containing information about the active tables/views, collections, or equivalent that currently exist in DATABASE.
-     Each map should contain the key `:name`, which is the string name of the table. For databases that have a concept of schemas,
-     this map should also include the string name of the table's `:schema`.")
+         {:rows   <row-count>
+          :fields [{:name            <field-name>
+                    :base-type       <field-base-type>
+                    :field-type      <field-field-type>
+                    :special-type    <field-special-type>
+                    :preview-display <true|false>
+                    :pk?             <true|false>]}")
 
   (can-connect? ^Boolean [this, ^Map details-map]
     "Check whether we can connect to a `Database` with DETAILS-MAP and perform a simple query. For example, a SQL database might
@@ -63,6 +64,41 @@
      return a Korma form to call the appropriate SQL fns:
 
        (date-interval (PostgresDriver.) :month 1) -> (k/raw* \"(NOW() + INTERVAL '1 month')\")")
+
+  (describe-database ^java.util.Map [this, ^DatabaseInstance database]
+    "Return a map containing information that describes all of the schema settings in DATABASE, most notably a set of tables.
+     It is expected that this function will be peformant and avoid draining meaningful resources of the database.
+
+     Each map should be structured as follows (NOTE that :tables is a Set):
+
+         {:tables #{{:name   <table-name>
+                     :schema <table-schema|nil>}}}")
+
+  (describe-table ^java.util.Map [this, ^TableInstance table]
+    "Return a map containing information that describes the physical schema of TABLE.
+     It is expected that this function will be peformant and avoid draining meaningful resources of the database.
+
+     Each map should be structured as follows (NOTE that :fields is a Set):
+
+         {:name   <table-name>
+          :schema <table-schema|nil>
+          :fields #{{:name            <field-name>
+                     :base-type       <field-base-type>
+                     :special-type    <field-special-type>
+                     :preview-display <true|false>
+                     :pk?             <true|false>
+                     :nested-fields   #{ same structure as a field }}}")
+
+  (describe-table-fks ^java.util.Set [this, ^TableInstance table]
+    "*OPTIONAL*, BUT REQUIRED FOR DRIVERS THAT SUPPORT `:foreign-keys`*
+
+     Return a set of maps containing info about FK columns for TABLE.
+     Each map should be structured as follows:
+
+         {:fk-column-name    <column-name-of-fk-origin>
+          :dest-table        {:name   <name-of-destination-table>,
+                              :schema <schema-of-destination-table>}
+          :dest-column-name  <column-name-of-fk-destination>}")
 
   (details-fields ^clojure.lang.Sequential [this]
     "A vector of maps that contain information about connection properties that should
@@ -96,27 +132,13 @@
 
           Is this property required? Defaults to `false`.")
 
-  (driver-specific-sync-field! ^metabase.models.field.FieldInstance [this, ^FieldInstance field]
-    "*OPTIONAL*. This is a chance for drivers to do custom `Field` syncing specific to their database.
-     For example, the Postgres driver can mark Postgres JSON fields as `special_type = json`.
-     As with the other Field syncing functions in `metabase.driver.sync`, this method should return the modified FIELD, if any, or `nil`.")
-
   (features ^java.util.Set [this]
     "*OPTIONAL*. A set of keyword names of optional features supported by this driver, such as `:foreign-keys`.
      Valid features are: `:foreign-keys :nested-fields :set-timezone :standard-deviation-aggregations`")
 
-  (field-avg-length ^Float [this, ^FieldInstance field]
-    "*OPTIONAL*. If possible, provide an efficent DB-level function to calculate the average length of non-nil values of textual FIELD, which is used to determine whether a `Field`
-     should be marked as a `:category`. If this function is not provided, a fallback implementation that iterates over results in Clojure-land is used instead.")
-
-  (field-percent-urls ^Float [this, ^FieldInstance field]
-    "*OPTIONAL*. If possible, provide an efficent DB-level function to calculate what percentage of non-nil values of textual FIELD are valid URLs, which is used to determine
-     whether a `Field` should be marked as a `:url`. If this function is not provided, a fallback implementation that iterates over results in Clojure-land is used instead.")
-
   (field-values-lazy-seq ^clojure.lang.Sequential [this, ^FieldInstance field]
     "Return a lazy sequence of all values of FIELD.
-     This is used to implement `mark-json-field!`, and fallback implentations of `mark-no-preview-display-field!` and `mark-url-field!`
-     if drivers *don't* implement `field-avg-length` and `field-percent-urls`, respectively.")
+     This is used to implement some methods of the database sync process which require rows of data during execution.")
 
   (humanize-connection-error-message ^String [this, ^String message]
     "*OPTIONAL*. Return a humanized (user-facing) version of an connection error message string.
@@ -144,25 +166,13 @@
      operation itself is encapsulated as the lambda F, which must be called with no arguments.
 
        (defn sync-in-context [driver database f]
-         (with-jdbc-metadata [_ database]
+         (with-connection [_ database]
            (f)))")
-
-  (table-fks ^java.util.Set [this, ^TableInstance table]
-    "*OPTIONAL*, BUT REQUIRED FOR DRIVERS THAT SUPPORT `:foreign-keys`*
-
-     Return a set of maps containing info about FK columns for TABLE.
-     Each map should contain the following keys:
-
-       *  `fk-column-name`
-       *  `dest-table-name`
-       *  `dest-column-name`")
-
-  (table-pks ^java.util.Set [this, ^TableInstance table]
-    "Return a set of string names of active Fields that are primary keys for TABLE (or equivalent).")
 
   (table-rows-seq ^clojure.lang.Sequential [this, ^DatabaseInstance database, ^String table-name]
     "*OPTIONAL*. Return a sequence of all the rows in a table with a given TABLE-NAME.
      Currently, this is only used for iterating over the values in a `_metabase_metadata` table. As such, the results are not expected to be returned lazily."))
+
 
 (defn- percent-valid-urls
   "Recursively count the values of non-nil values in VS that are valid URLs, and return it as a percentage."
@@ -177,8 +187,7 @@
                                   (inc non-nil-count)
                                   more)))))
 
-
-(defn- default-field-percent-urls
+(defn default-field-percent-urls
   "Default implementation for optional driver fn `:field-percent-urls` that calculates percentage in Clojure-land."
   [driver field]
   (->> (field-values-lazy-seq driver field)
@@ -186,7 +195,7 @@
        (take max-sync-lazy-seq-results)
        percent-valid-urls))
 
-(defn- default-field-avg-length [driver field]
+(defn default-field-avg-length [driver field]
   (let [field-values        (->> (field-values-lazy-seq driver field)
                                  (filter identity)
                                  (take max-sync-lazy-seq-results))
@@ -201,16 +210,12 @@
 
 (def IDriverDefaultsMixin
   "Default implementations of `IDriver` methods marked *OPTIONAL*."
-  {:active-nested-field-name->type    (constantly nil)
-   :date-interval                     (fn [_ unit amount] (u/relative-date unit amount))
-   :driver-specific-sync-field!       (constantly nil)
+  {:date-interval                     (fn [_ unit amount] (u/relative-date unit amount))
+   :describe-table-fks                (constantly nil)
    :features                          (constantly nil)
-   :field-avg-length                  default-field-avg-length
-   :field-percent-urls                default-field-percent-urls
    :humanize-connection-error-message (fn [_ message] message)
    :process-query-in-context          (fn [_ qp]      qp)
    :sync-in-context                   (fn [_ _ f] (f))
-   :table-fks                         (constantly nil)
    :table-rows-seq                    (constantly nil)})
 
 
@@ -259,21 +264,26 @@
 (defn class->base-type
   "Return the `Field.base_type` that corresponds to a given class returned by the DB."
   [klass]
-  (or ({Boolean                      :BooleanField
-        Double                       :FloatField
-        Float                        :FloatField
-        Integer                      :IntegerField
-        Long                         :IntegerField
-        String                       :TextField
-        java.math.BigDecimal         :DecimalField
-        java.math.BigInteger         :BigIntegerField
-        java.sql.Date                :DateField
-        java.sql.Timestamp           :DateTimeField
-        java.util.Date               :DateField
-        java.util.UUID               :TextField
-        org.postgresql.util.PGobject :UnknownField} klass)
-      (cond
-        (isa? klass clojure.lang.IPersistentMap) :DictionaryField)
+  (or ({Boolean                         :BooleanField
+        Double                          :FloatField
+        Float                           :FloatField
+        Integer                         :IntegerField
+        Long                            :IntegerField
+        String                          :TextField
+        java.math.BigDecimal            :DecimalField
+        java.math.BigInteger            :BigIntegerField
+        java.sql.Date                   :DateField
+        java.sql.Timestamp              :DateTimeField
+        java.util.Date                  :DateField
+        java.util.UUID                  :TextField
+        clojure.lang.PersistentArrayMap :DictionaryField
+        clojure.lang.PersistentHashMap  :DictionaryField
+        clojure.lang.PersistentVector   :ArrayField
+        org.postgresql.util.PGobject    :UnknownField} klass)
+      (condp isa? klass
+        clojure.lang.IPersistentMap     :DictionaryField
+        clojure.lang.IPersistentVector  :ArrayField
+        nil)
       (do (log/warn (format "Don't know how to map class '%s' to a Field base_type, falling back to :UnknownField." klass))
           :UnknownField)))
 
@@ -330,18 +340,22 @@
         false))))
 
 (defn sync-database!
-  "Sync a `Database`, its `Tables`, and `Fields`."
-  [database]
+  "Sync a `Database`, its `Tables`, and `Fields`.
+
+   Takes an optional kwarg `:full-sync?` (default = `true`).  A full sync includes more in depth table analysis work."
+  [database & {:keys [full-sync?]}]
   {:pre [(map? database)]}
   (require 'metabase.driver.sync)
-  (@(resolve 'metabase.driver.sync/sync-database!) (engine->driver (:engine database)) database))
+  (@(resolve 'metabase.driver.sync/sync-database!) (engine->driver (:engine database)) database :full-sync? full-sync?))
 
 (defn sync-table!
-  "Sync a `Table` and its `Fields`."
-  [table]
+  "Sync a `Table` and its `Fields`.
+
+   Takes an optional kwarg `:full-sync?` (default = `true`).  A full sync includes more in depth table analysis work."
+  [table & {:keys [full-sync?]}]
   {:pre [(map? table)]}
   (require 'metabase.driver.sync)
-  (@(resolve 'metabase.driver.sync/sync-table!) (database-id->driver (:db_id table)) table))
+  (@(resolve 'metabase.driver.sync/sync-table!) (database-id->driver (:db_id table)) table :full-sync? full-sync?))
 
 (defn process-query
   "Process a structured or native query, and return the result."
@@ -391,7 +405,8 @@
         (when-not (contains? query-result :status)
           (throw (Exception. "invalid response from database driver. no :status provided")))
         (when (= :failed (:status query-result))
-          (throw (Exception. ^String (get query-result :error "general error"))))
+          (log/error (u/pprint-to-str 'red query-result))
+          (throw (Exception. (str (get query-result :error "general error")))))
         (query-complete query-execution query-result))
       (catch Exception e
         (log/error (u/format-color 'red "Query failure: %s" (.getMessage e)))
@@ -420,7 +435,7 @@
   "Save QueryExecution state and construct a completed (successful) query response"
   [query-execution query-result]
   ;; record our query execution and format response
-  (-> (u/assoc* query-execution
+  (-> (u/assoc<> query-execution
         :status       :completed
         :finished_at  (u/new-sql-timestamp)
         :running_time (- (System/currentTimeMillis) (:start_time_millis <>))

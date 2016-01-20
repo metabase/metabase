@@ -5,13 +5,13 @@
                      [string :as s])
             (korma [core :as k]
                    [db :as kdb])
-            [korma.sql.utils :as utils]
+            [korma.sql.utils :as kutils]
             [swiss.arrows :refer :all]
             [metabase.db :refer [upd]]
             [metabase.models.field :refer [Field]]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
-            [metabase.driver.generic-sql.util :refer [with-jdbc-metadata]])
+            [metabase.util.korma-extensions :as kx])
   ;; This is necessary for when NonValidatingFactory is passed in the sslfactory connection string argument,
   ;; e.x. when connecting to a Heroku Postgres database from outside of Heroku.
   (:import org.postgresql.ssl.NonValidatingFactory))
@@ -26,21 +26,21 @@
     :bool          :BooleanField
     :boolean       :BooleanField
     :box           :UnknownField
-    :bpchar        :CharField ; "blank-padded char" is the internal name of "character"
-    :bytea         :UnknownField        ; byte array
-    :cidr          :TextField           ; IPv4/IPv6 network address
+    :bpchar        :CharField       ; "blank-padded char" is the internal name of "character"
+    :bytea         :UnknownField    ; byte array
+    :cidr          :TextField       ; IPv4/IPv6 network address
     :circle        :UnknownField
     :date          :DateField
     :decimal       :DecimalField
     :float4        :FloatField
     :float8        :FloatField
     :geometry      :UnknownField
-    :inet          :TextField ; This was `GenericIPAddressField` in some places in the Django code but not others ...
+    :inet          :TextField
     :int           :IntegerField
     :int2          :IntegerField
     :int4          :IntegerField
     :int8          :BigIntegerField
-    :interval      :UnknownField        ; time span
+    :interval      :UnknownField    ; time span
     :json          :TextField
     :jsonb         :TextField
     :line          :UnknownField
@@ -49,7 +49,7 @@
     :money         :DecimalField
     :numeric       :DecimalField
     :path          :UnknownField
-    :pg_lsn        :IntegerField        ; PG Log Sequence #
+    :pg_lsn        :IntegerField    ; PG Log Sequence #
     :point         :UnknownField
     :real          :FloatField
     :serial        :IntegerField
@@ -78,6 +78,13 @@
     (keyword "timestamp with timezone")    :DateTimeField
     (keyword "timestamp without timezone") :DateTimeField} column-type))
 
+(defn- column->special-type
+  "Attempt to determine the special-type of a Field given its name and Postgres column type."
+  [_ column-name column-type]
+  ;; this is really, really simple right now.  if its postgres :json type then it's :json special-type
+  (when (= column-type :json)
+    :json))
+
 (def ^:const ssl-params
   "Params to include in the JDBC connection spec for an SSL connection."
   {:ssl        true
@@ -95,44 +102,44 @@
       (rename-keys {:dbname :db})
       kdb/postgres))
 
-(defn- unix-timestamp->timestamp [_ field-or-value seconds-or-milliseconds]
-  (utils/func (case seconds-or-milliseconds
-                :seconds      "TO_TIMESTAMP(%s)"
-                :milliseconds "TO_TIMESTAMP(%s / 1000)")
-              [field-or-value]))
 
-(defn- driver-specific-sync-field! [_ {:keys [table], :as field}]
-  (with-jdbc-metadata [^java.sql.DatabaseMetaData md @(:db @table)]
-    (let [[{:keys [type_name]}] (->> (.getColumns md nil nil (:name @table) (:name field))
-                                     jdbc/result-set-seq)]
-      (when (= type_name "json")
-        (upd Field (:id field) :special_type :json)
-        (assoc field :special_type :json)))))
+(defn- unix-timestamp->timestamp [_ expr seconds-or-milliseconds]
+  (case seconds-or-milliseconds
+    :seconds      (k/sqlfn :TO_TIMESTAMP expr)
+    :milliseconds (recur nil (kx// expr 1000) :seconds)))
 
-(defn- date [_ unit field-or-value]
-  (utils/func (case unit
-                :default         "CAST(%s AS TIMESTAMP)"
-                :minute          "DATE_TRUNC('minute', %s)"
-                :minute-of-hour  "CAST(EXTRACT(MINUTE FROM %s) AS INTEGER)"
-                :hour            "DATE_TRUNC('hour', %s)"
-                :hour-of-day     "CAST(EXTRACT(HOUR FROM %s) AS INTEGER)"
-                :day             "CAST(%s AS DATE)"
-                ;; Postgres DOW is 0 (Sun) - 6 (Sat); increment this to be consistent with Java, H2, MySQL, and Mongo (1-7)
-                :day-of-week     "(CAST(EXTRACT(DOW FROM %s) AS INTEGER) + 1)"
-                :day-of-month    "CAST(EXTRACT(DAY FROM %s) AS INTEGER)"
-                :day-of-year     "CAST(EXTRACT(DOY FROM %s) AS INTEGER)"
-                ;; Postgres weeks start on Monday, so shift this date into the proper bucket and then decrement the resulting day
-                :week            "(DATE_TRUNC('week', (%s + INTERVAL '1 day')) - INTERVAL '1 day')"
-                :week-of-year    "CAST(EXTRACT(WEEK FROM (%s + INTERVAL '1 day')) AS INTEGER)"
-                :month           "DATE_TRUNC('month', %s)"
-                :month-of-year   "CAST(EXTRACT(MONTH FROM %s) AS INTEGER)"
-                :quarter         "DATE_TRUNC('quarter', %s)"
-                :quarter-of-year "CAST(EXTRACT(QUARTER FROM %s) AS INTEGER)"
-                :year            "CAST(EXTRACT(YEAR FROM %s) AS INTEGER)")
-              [field-or-value]))
+(defn- date-trunc [unit expr] (k/sqlfn :DATE_TRUNC (kx/literal unit) expr))
+(defn- extract    [unit expr] (kutils/func (format "EXTRACT(%s FROM %%s)" (name unit))
+                                           [expr]))
+
+(def ^:private extract-integer (comp kx/->integer extract))
+
+(def ^:private ^:const one-day (k/raw "INTERVAL '1 day'"))
+
+(defn- date [_ unit expr]
+  (case unit
+    :default         (kx/->timestamp expr)
+    :minute          (date-trunc :minute expr)
+    :minute-of-hour  (extract-integer :minute expr)
+    :hour            (date-trunc :hour expr)
+    :hour-of-day     (extract-integer :hour expr)
+    :day             (kx/->date expr)
+    ;; Postgres DOW is 0 (Sun) - 6 (Sat); increment this to be consistent with Java, H2, MySQL, and Mongo (1-7)
+    :day-of-week     (kx/inc (extract-integer :dow expr))
+    :day-of-month    (extract-integer :day expr)
+    :day-of-year     (extract-integer :doy expr)
+    ;; Postgres weeks start on Monday, so shift this date into the proper bucket and then decrement the resulting day
+    :week            (kx/- (date-trunc :week (kx/+ expr one-day))
+                           one-day)
+    :week-of-year    (extract-integer :week (kx/+ expr one-day))
+    :month           (date-trunc :month expr)
+    :month-of-year   (extract-integer :month expr)
+    :quarter         (date-trunc :quarter expr)
+    :quarter-of-year (extract-integer :quarter expr)
+    :year            (extract-integer :year expr)))
 
 (defn- date-interval [_ unit amount]
-  (utils/generated (format "(NOW() + INTERVAL '%d %s')" amount (name unit))))
+  (k/raw (format "(NOW() + INTERVAL '%d %s')" (int amount) (name unit))))
 
 (defn- humanize-connection-error-message [_ message]
   (condp re-matches message
@@ -166,6 +173,7 @@
   "Implementations of `ISQLDriver` methods for `PostgresDriver`."
   (merge (sql/ISQLDriverDefaultsMixin)
          {:column->base-type         column->base-type
+          :column->special-type      column->special-type
           :connection-details->spec  connection-details->spec
           :date                      date
           :set-timezone-sql          (constantly "UPDATE pg_settings SET setting = ? WHERE name ILIKE 'timezone';")
@@ -199,7 +207,6 @@
                                                            :display-name "Use a secure connection (SSL)?"
                                                            :type         :boolean
                                                            :default      false}])
-          :driver-specific-sync-field!       driver-specific-sync-field!
           :humanize-connection-error-message humanize-connection-error-message})
 
   sql/ISQLDriver PostgresISQLDriverMixin)

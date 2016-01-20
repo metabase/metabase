@@ -6,16 +6,19 @@
             [clojure.walk :as walk]
             [korma.core :as k]
             [medley.core :as m]
+            schema.utils
             [swiss.arrows :refer [<<-]]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             (metabase.driver.query-processor [annotate :as annotate]
                                              [expand :as expand]
                                              [interface :refer :all]
+                                             [macros :as macros]
                                              [resolve :as resolve])
             (metabase.models [field :refer [Field], :as field]
                              [foreign-key :refer [ForeignKey]])
-            [metabase.util :as u]))
+            [metabase.util :as u])
+  (:import (schema.utils NamedError ValidationError)))
 
 ;; # CONSTANTS
 
@@ -53,26 +56,66 @@
        (or (not ag-type)
            (= ag-type :rows))))
 
+(defn- fail [query, ^Throwable e, & [additional-info]]
+  (merge {:status         :failed
+          :class          (class e)
+          :error          (or (.getMessage e) (str e))
+          :stacktrace     (u/filtered-stacktrace e)
+          :query          (dissoc query :database :driver)
+          :expanded-query (when (structured-query? query)
+                            (try (dissoc (resolve/resolve (expand/expand query)) :database :driver)
+                                 (catch Throwable _)))}
+         (when-let [data (ex-data e)]
+           {:ex-data data})
+         additional-info))
+
+;; TODO - should this be moved to metabase.util ?
+(defn- explain-schema-validation-error
+  "Return a nice error message to explain the schema validation error."
+  [error]
+  (cond
+    (instance? NamedError error)      (let [nested-error (.error ^NamedError error)] ; recurse until we find the innermost nested named error, which is the reason we actually failed
+                                        (if (instance? NamedError nested-error)
+                                          (recur nested-error)
+                                          (or (when (map? nested-error)
+                                                (explain-schema-validation-error nested-error))
+                                              (.name ^NamedError error))))
+    (map? error)                      (first (for [e     (vals error)
+                                                   :when (or (instance? NamedError e)
+                                                             (instance? ValidationError e))
+                                                   :let  [explanation (explain-schema-validation-error e)]
+                                                   :when explanation]
+                                               explanation))
+    ;; When an exception is thrown, a ValidationError comes back like (throws? ("foreign-keys is not supported by this driver." 10))
+    ;; Extract the message if applicable
+    (instance? ValidationError error) (let [explanation (schema.utils/validation-error-explain error)]
+                                        (or (when (list? explanation)
+                                              (let [[reason [msg]] explanation]
+                                                (when (= reason 'throws?)
+                                                  msg)))
+                                            explanation))))
 
 (defn- wrap-catch-exceptions [qp]
   (fn [query]
     (try (qp query)
+         (catch clojure.lang.ExceptionInfo e
+           (fail query e (when-let [data (ex-data e)]
+                           (when (= (:type data) :schema.core/error)
+                             (when-let [error (explain-schema-validation-error (:error data))]
+                               {:error error})))))
          (catch Throwable e
-           {:status         :failed
-            :class          (class e)
-            :error          (or (.getMessage e) (str e))
-            :stacktrace     (u/filtered-stacktrace e)
-            :query          (dissoc query :database :driver)
-            :expanded-query (try (dissoc (resolve/resolve (expand/expand query)) :database :driver)
-                                 (catch Throwable e
-                                   {:error      (or (.getMessage e) (str e))
-                                    :stacktrace (u/filtered-stacktrace e) }))}))))
+           (fail query e)))))
 
 
 (defn- pre-expand [qp]
   (fn [query]
     (qp (if (structured-query? query)
-          (resolve/resolve (expand/expand query))
+          (let [macro-expanded-query (macros/expand-macros query)]
+            (when (not *disable-qp-logging*)
+              (log/debug (u/format-color 'cyan "\n\nMACRO/SUBSTITUTED: 😻\n%s" (u/pprint-to-str macro-expanded-query))))
+            (-> macro-expanded-query
+                expand/expand
+                resolve/resolve))
           query))))
 
 
@@ -93,10 +136,7 @@
         (= num-results results-limit) (assoc-in [:data :rows_truncated] results-limit)))))
 
 (defn- should-add-implicit-fields? [{{:keys [fields breakout], {ag-type :aggregation-type} :aggregation} :query}]
-  (and (or (not ag-type)
-           (= ag-type :rows))
-       (not breakout)
-       (not fields)))
+  (not (or ag-type breakout fields)))
 
 (defn- pre-add-implicit-fields
   "Add an implicit `fields` clause to queries with `rows` aggregations."
@@ -138,8 +178,7 @@
                                                       breakout-fields)]
         (qp (cond-> query
               (seq implicit-breakout-order-by-fields) (update-in [:query :order-by] concat (for [field implicit-breakout-order-by-fields]
-                                                                                             (map->OrderBySubclause {:field     field
-                                                                                                                     :direction :ascending}))))))
+                                                                                             {:field field, :direction :ascending})))))
       ;; for non-structured queries we do nothing
       (qp query))))
 
@@ -149,7 +188,7 @@
    (Cumulative sum is a special case; it is implemented in post-processing).
 
    Return a pair of [`cumulative-sum-field?` `query`]."
-  [{{{ag-type :aggregation-type, ag-field :field} :aggregation, breakout-fields :breakout, order-by :order_by} :query, :as query}]
+  [{{{ag-type :aggregation-type, ag-field :field} :aggregation, breakout-fields :breakout} :query, :as query}]
   (let [cum-sum?                    (= ag-type :cumulative-sum)
         cum-sum-with-breakout?      (and cum-sum?
                                          (seq breakout-fields))
@@ -164,15 +203,14 @@
       ;; If there's only one breakout field that is the same as the cum_sum field, re-write this as a "rows" aggregation
       ;; to just fetch all the values of the field in question.
       cum-sum-with-same-breakout? [ag-field (update-in query [:query] #(-> %
-                                                                           (dissoc :breakout)
-                                                                           (assoc :aggregation (map->Aggregation {:aggregation-type :rows})
-                                                                                  :fields      [ag-field])))]
+                                                                           (dissoc :breakout :aggregation)
+                                                                           (assoc :fields [ag-field])))]
 
       ;; Otherwise if we're breaking out on different fields, rewrite the query as a "sum" aggregation
-      cum-sum-with-breakout? [ag-field (assoc-in query [:query :aggregation] (map->Aggregation {:aggregation-type :sum, :field ag-field}))]
+      cum-sum-with-breakout? [ag-field (assoc-in query [:query :aggregation] {:aggregation-type :sum, :field ag-field})]
 
       ;; Cumulative sum without any breakout fields should just be treated the same way as "sum". Rewrite query as such
-      cum-sum? [false (assoc-in query [:query :aggregation] (map->Aggregation {:aggregation-type :sum, :field ag-field}))]
+      cum-sum? [false (assoc-in query [:query :aggregation] {:aggregation-type :sum, :field ag-field})]
 
       ;; Otherwise if this isn't a cum_sum query return it as-is
       :else [false query])))
@@ -182,10 +220,9 @@
   "Cumulative sum the values of the aggregate `Field` in RESULTS."
   [cum-sum-field {rows :rows, cols :cols, :as results}]
   (let [ ;; Determine the index of the field we need to cumulative sum
-        cum-sum-field-index (->> cols
-                                 (u/indecies-satisfying #(or (= (:name %) "sum")
-                                                             (= (:id %) (:field-id cum-sum-field))))
-                                 first)
+        cum-sum-field-index (u/first-index-satisfying #(or (= (:name %) "sum")
+                                                           (= (:id %) (:field-id cum-sum-field)))
+                                                      cols)
         _                   (assert (integer? cum-sum-field-index))
         ;; Now make a sequence of cumulative sum values for each row
         values              (->> rows
@@ -285,18 +322,19 @@
   [driver query]
   (when-not *disable-qp-logging*
     (log/debug (u/format-color 'blue "\nQUERY: 😎\n%s" (u/pprint-to-str query))))
-  (let [driver-process-query (partial (if (structured-query? query)
-                                        driver/process-structured
-                                        driver/process-native) driver)]
-    ((<<- wrap-catch-exceptions
-          pre-expand
-          (driver/process-query-in-context driver)
-          post-add-row-count-and-status
-          pre-add-implicit-fields
-          pre-add-implicit-breakout-order-by
-          cumulative-sum
-          limit
-          annotate/post-annotate
-          pre-log-query
-          wrap-guard-multiple-calls
-          driver-process-query) (assoc query :driver driver))))
+  (binding [*driver* driver]
+    (let [driver-process-query (partial (if (structured-query? query)
+                                          driver/process-structured
+                                          driver/process-native) driver)]
+      ((<<- wrap-catch-exceptions
+            pre-expand
+            (driver/process-query-in-context driver)
+            post-add-row-count-and-status
+            pre-add-implicit-fields
+            pre-add-implicit-breakout-order-by
+            cumulative-sum
+            limit
+            annotate/post-annotate
+            pre-log-query
+            wrap-guard-multiple-calls
+            driver-process-query) (assoc query :driver driver)))))

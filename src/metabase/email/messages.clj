@@ -2,13 +2,14 @@
   "Convenience functions for sending templated email messages.  Each function here should represent a single email.
    NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails."
   (:require [hiccup.core :refer [html]]
+            [stencil.core :as stencil]
+            [stencil.loader :as loader]
             [metabase.email :as email]
             [metabase.models.setting :as setting]
-            [metabase.pulse :as p :refer [render-pulse-section]]
+            [metabase.pulse :as p, :refer [render-pulse-section]]
             [metabase.util :as u]
             [metabase.util.quotation :as q]
-            [stencil.core :as stencil]
-            [stencil.loader :as loader]))
+            [metabase.util.urls :as url]))
 
 ;; NOTE: uncomment this in development to disable template caching
 ;; (loader/set-cache (clojure.core.cache/ttl-cache-factory {} :ttl 0))
@@ -21,21 +22,21 @@
   (let [data-quote   (rand-nth q/quotations)
         company      (or (setting/get :site-name) "Unknown")
         message-body (stencil/render-file "metabase/email/new_user_invite"
-                                          {:emailType "new_user_invite"
-                                           :invitedName (:first_name invited)
-                                           :invitorName (:first_name invitor)
-                                           :invitorEmail (:email invitor)
-                                           :company company
-                                           :joinUrl join-url
-                                           :quotation (:quote data-quote)
+                                          {:emailType       "new_user_invite"
+                                           :invitedName     (:first_name invited)
+                                           :invitorName     (:first_name invitor)
+                                           :invitorEmail    (:email invitor)
+                                           :company         company
+                                           :joinUrl         join-url
+                                           :quotation       (:quote data-quote)
                                            :quotationAuthor (:author data-quote)
-                                           :today (u/format-date "MMM'&nbsp;'dd,'&nbsp;'yyyy" (System/currentTimeMillis))
-                                           :logoHeader true})]
+                                           :today           (u/format-date "MMM'&nbsp;'dd,'&nbsp;'yyyy" (System/currentTimeMillis))
+                                           :logoHeader      true})]
     (email/send-message
-      :subject     (str "You're invited to join " company "'s Metabase")
-      :recipients   [(:email invited)]
-      :message-type :html
-      :message      message-body)))
+     :subject      (str "You're invited to join " company "'s Metabase")
+     :recipients   [(:email invited)]
+     :message-type :html
+     :message      message-body)))
 
 (defn send-password-reset-email
   "Format and Send an email informing the user how to reset their password."
@@ -55,42 +56,74 @@
      :message-type :html
      :message      message-body)))
 
+(defn send-notification-email
+  "Format and Send an email informing the user about changes to objects in the system."
+  [email context]
+  {:pre [(string? email)
+         (u/is-email? email)
+         (map? context)]}
+  (let [model->url-fn #(case %
+                        "Card"      url/question-url
+                        "Dashboard" url/dashboard-url
+                        "Pulse"     url/pulse-url
+                        "Segment"   url/segment-url)
+        add-url       (fn [{:keys [id model] :as obj}]
+                        (assoc obj :url (apply (model->url-fn model) [id])))
+        data-quote    (rand-nth q/quotations)
+        context       (-> context
+                          (update :dependencies (fn [deps-by-model]
+                                                  (for [model (sort (set (keys deps-by-model)))
+                                                        deps  (mapv add-url (get deps-by-model model))]
+                                                    {:model   (case model
+                                                                "Card" "Saved Question"
+                                                                model)
+                                                     :objects deps})))
+                          (assoc :emailType "notification"
+                                 :logoHeader true
+                                 :quotation (:quote data-quote)
+                                 :quotationAuthor (:author data-quote)))
+        message-body  (stencil/render-file "metabase/email/notification" context)]
+    (email/send-message
+      :subject      "[Metabase] Notification"
+      :recipients   [email]
+      :message-type :html
+      :message      message-body)))
+
 ;; HACK: temporary workaround to postal requiring a file as the attachment
 (defn- write-byte-array-to-temp-file
-  [img-bytes]
-  (let [file (java.io.File/createTempFile "metabase_pulse_image_" ".png")
-        fos (new java.io.FileOutputStream file)]
-    (.deleteOnExit file)
-    (.write fos img-bytes)
-    (.close fos)
+  [^bytes img-bytes]
+  (let [file (doto (java.io.File/createTempFile "metabase_pulse_image_" ".png")
+               .deleteOnExit)]
+    (with-open [fos (java.io.FileOutputStream. file)]
+      (.write fos img-bytes))
     file))
 
-(defn- find-byte-array
-  [needle haystack]
-  (first (keep-indexed #(when (java.util.Arrays/equals %2 needle) %1) haystack)))
+(defn- render-image [images-atom, ^bytes image-bytes]
+  (str "cid:IMAGE" (or (u/first-index-satisfying (fn [^bytes item]
+                                                   (java.util.Arrays/equals item image-bytes))
+                                                 @images-atom)
+                       (u/prog1 (count @images-atom)
+                         (swap! images-atom conj image-bytes)))))
 
 (defn render-pulse-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
   [pulse results]
   (let [images       (atom [])
-        render-img   (fn [bytes]
-                        (let [index (or (find-byte-array bytes @images) (count @images))]
-                          (if (= index (count @images)) (reset! images (conj @images bytes)))
-                          (str "cid:IMAGE" index)))
-        body         (apply vector :div (mapv (partial render-pulse-section render-img true) results))
+        body         (apply vector :div (for [result results]
+                                          (render-pulse-section (partial render-image images) :include-buttons result)))
         data-quote   (rand-nth q/quotations)
         message-body (stencil/render-file "metabase/email/pulse"
-                                          {:emailType "pulse"
-                                           :pulse (html body)
-                                          ;  :pulseName (:name pulse)
-                                           :sectionStyle p/section-style
-                                           :colorGrey4 p/color-grey-4
-                                           :quotation (:quote data-quote)
+                                          {:emailType       "pulse"
+                                           :pulse           (html body)
+                                           :pulseName       (:name pulse)
+                                           :sectionStyle    p/section-style
+                                           :colorGrey4      p/color-grey-4
+                                           :quotation       (:quote data-quote)
                                            :quotationAuthor (:author data-quote)
-                                           :logoFooter true})]
+                                           :logoFooter      true})]
     (apply vector {:type "text/html" :content message-body}
-                  (map-indexed (fn [idx bytes] {:type :inline
-                                                :content-id (str "IMAGE" idx)
-                                                :content-type "image/png"
-                                                :content (write-byte-array-to-temp-file bytes)})
-                               @images))))
+           (map-indexed (fn [idx bytes] {:type         :inline
+                                         :content-id   (str "IMAGE" idx)
+                                         :content-type "image/png"
+                                         :content      (write-byte-array-to-temp-file bytes)})
+                        @images))))

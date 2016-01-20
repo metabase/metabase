@@ -1,25 +1,35 @@
 (ns metabase.test.data
   "Code related to creating and deleting test databases + datasets."
-  (:require [clojure.tools.logging :as log]
+  (:require (clojure [string :as s]
+                     [walk :as walk])
+            [clojure.tools.logging :as log]
             (metabase [db :refer :all]
                       [driver :as driver])
+            [metabase.driver.query-processor.expand :as ql]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field] :as field]
                              [table :refer [Table]])
-            (metabase.test.data [datasets :as datasets :refer [*data-loader*]]
+            (metabase.test.data [datasets :refer [*data-loader*]]
+                                [dataset-definitions :as defs]
                                 [h2 :as h2]
-                                [interface :refer :all])
+                                [interface :as i])
             [metabase.util :as u])
   (:import clojure.lang.Keyword
            (metabase.test.data.interface DatabaseDefinition
                                          FieldDefinition
                                          TableDefinition)))
 
+(declare get-or-create-database!)
+
 ;;; ## ---------------------------------------- Dataset-Independent Data Fns ----------------------------------------
 ;; These functions offer a generic way to get bits of info like Table + Field IDs from any of our many driver/dataset combos.
 
-(def ^:dynamic *get-db*
-  (fn [] (datasets/db *data-loader*)))
+(defn get-or-create-test-data-db!
+  "Get or create the Test Data database for DATA-LOADER, which defaults to `*data-loader*`."
+  ([]            (get-or-create-test-data-db! *data-loader*))
+  ([data-loader] (get-or-create-database! data-loader defs/test-data)))
+
+(def ^:dynamic ^:private *get-db* get-or-create-test-data-db!)
 
 (defn db
   "Return the current database.
@@ -27,16 +37,67 @@
   []
   (*get-db*))
 
+(defn do-with-db [db f]
+  (binding [*get-db* (constantly db)]
+    (f)))
+
 (defmacro with-db
   "Run body with DB as the current database.
    Calls to `db` and `id` use this value."
   [db & body]
-  `(let [db# ~db]
-     (binding [*get-db* (constantly db#)]
-       ~@body)))
+  `(do-with-db ~db (fn [] ~@body)))
+
+(defn- parts->id [table-name ])
+
+(defn- $->id
+  "Convert symbols like `$field` to `id` fn calls. Input is split into separate args by splitting the token on `.`.
+   With no `.` delimiters, it is assumed we're referring to a Field belonging to TABLE-NAME, which is passed implicitly as the first arg.
+   With one or more `.` delimiters, no implicit TABLE-NAME arg is passed to `id`:
+
+    $venue_id  -> (id :sightings :venue_id) ; TABLE-NAME is implicit first arg
+    $cities.id -> (id :cities :id)          ; specify non-default Table"
+  [table-name body]
+  (let [->id (fn [s]
+               (let [parts (s/split s #"\.")]
+                 (if (= (count parts) 1)
+                   `(id ~table-name ~(keyword (first parts)))
+                   `(id ~@(map keyword parts)))))]
+    (walk/postwalk (fn [form]
+                     (or (when (symbol? form)
+                           (let [[first-char & rest-chars] (name form)]
+                             (when (= first-char \$)
+                               (let [token (apply str rest-chars)]
+                                 (if-let [[_ token-1 token-2] (re-matches #"(^.*)->(.*$)" token)]
+                                   `(ql/fk-> ~(->id token-1) ~(->id token-2))
+                                   `(ql/field-id ~(->id token)))))))
+                         form))
+                   body)))
+
+(defmacro query
+  "Build a query, expands symbols like `$field` into calls to `id`.
+   Internally, this wraps `metabase.driver.query-processor.expand/query` and includes a call to `source-table`.
+   See the dox for `$->id` for more information on how `$`-prefixed expansion behaves.
+
+     (query venues
+       (ql/filter (ql/= $id 1)))
+
+      -> (ql/query
+           (ql/source-table (id :venues))
+           (ql/filter (ql/= (id :venues :id) 1)))"
+  {:style/indent 1}
+  [table & forms]
+  `(ql/query (ql/source-table (id ~(keyword table)))
+             ~@(map (partial $->id (keyword table)) forms)))
+
+(defmacro run-query
+  "Like `query`, but runs the query as well."
+  {:style/indent 1}
+  [table & forms]
+  `(ql/run-query* (query ~table ~@forms)))
+
 
 (defn format-name [nm]
-  (datasets/format-name *data-loader* (name nm)))
+  (i/format-name *data-loader* (name nm)))
 
 (defn- get-table-id-or-explode [db-id table-name]
   (let [table-name (format-name table-name)]
@@ -75,10 +136,11 @@
   []
   (contains? (driver/features *data-loader*) :foreign-keys))
 
-(defn default-schema []       (datasets/default-schema *data-loader*))
-(defn id-field-type []        (datasets/id-field-type *data-loader*))
-(defn sum-field-type []       (datasets/sum-field-type *data-loader*))
-(defn timestamp-field-type [] (datasets/timestamp-field-type *data-loader*))
+(defn default-schema [] (i/default-schema *data-loader*))
+(defn id-field-type  [] (i/id-field-type *data-loader*))
+
+(defn expected-base-type->actual [base-type]
+  (i/expected-base-type->actual *data-loader* base-type))
 
 
 ;; ## Loading / Deleting Test Datasets
@@ -90,17 +152,17 @@
   ([^DatabaseDefinition database-definition]
    (get-or-create-database! *data-loader* database-definition))
   ([dataset-loader {:keys [database-name], :as ^DatabaseDefinition database-definition}]
-   (let [engine (engine dataset-loader)]
-     (or (metabase-instance database-definition engine)
+   (let [engine (i/engine dataset-loader)]
+     (or (i/metabase-instance database-definition engine)
          (do
            ;; Create the database
-           (create-db! dataset-loader database-definition)
+           (i/create-db! dataset-loader database-definition)
 
            ;; Add DB object to Metabase DB
            (let [db (ins Database
                       :name    database-name
                       :engine  (name engine)
-                      :details (database->connection-details dataset-loader :db database-definition))]
+                      :details (i/database->connection-details dataset-loader :db database-definition))]
 
              ;; Sync the database
              (driver/sync-database! db)
@@ -108,13 +170,13 @@
              ;; Add extra metadata like Field field-type, base-type, etc.
              (doseq [^TableDefinition table-definition (:table-definitions database-definition)]
                (let [table-name (:table-name table-definition)
-                     table      (delay (or  (metabase-instance table-definition db)
+                     table      (delay (or  (i/metabase-instance table-definition db)
                                             (throw (Exception. (format "Table '%s' not loaded from definiton:\n%s\nFound:\n%s"
                                                                        table-name
                                                                        (u/pprint-to-str (dissoc table-definition :rows))
                                                                        (u/pprint-to-str (sel :many :fields [Table :schema :name], :db_id (:id db))))))))]
                  (doseq [{:keys [field-name field-type special-type], :as field-definition} (:field-definitions table-definition)]
-                   (let [field (delay (or (metabase-instance field-definition @table)
+                   (let [field (delay (or (i/metabase-instance field-definition @table)
                                           (throw (Exception. (format "Field '%s' not loaded from definition:\n"
                                                                      field-name
                                                                      (u/pprint-to-str field-definition))))))]
@@ -134,10 +196,10 @@
    (remove-database! *data-loader* database-definition))
   ([dataset-loader ^DatabaseDefinition database-definition]
    ;; Delete the Metabase Database and associated objects
-   (cascade-delete Database :id (:id (metabase-instance database-definition (engine dataset-loader))))
+   (cascade-delete Database :id (:id (i/metabase-instance database-definition (i/engine dataset-loader))))
 
    ;; now delete the DBMS database
-   (destroy-db! dataset-loader database-definition)))
+   (i/destroy-db! dataset-loader database-definition)))
 
 
 (def ^:private loader->loaded-db-def
@@ -156,9 +218,9 @@
   (reset! loader->loaded-db-def #{}))
 
 
-(defn -with-temp-db [^DatabaseDefinition dbdef f]
+(defn do-with-temp-db [^DatabaseDefinition dbdef f]
   (let [loader *data-loader*
-        dbdef  (map->DatabaseDefinition (assoc dbdef :short-lived? true))]
+        dbdef  (i/map->DatabaseDefinition (assoc dbdef :short-lived? true))]
     (swap! loader->loaded-db-def conj [loader dbdef])
     (with-db (binding [*sel-disable-logging* true]
                (let [db (get-or-create-database! loader dbdef)]
@@ -181,6 +243,24 @@
                                           :aggregation  [\"count\"]
                                           :filter       [\"<\" (:id &events.timestamp) \"1765-01-01\"]}}))"
   [[db-binding ^DatabaseDefinition database-definition] & body]
-  `(-with-temp-db ~database-definition
+  `(do-with-temp-db ~database-definition
      (fn [~db-binding]
        ~@body)))
+
+(defn resolve-dbdef [symb]
+  @(or (resolve symb)
+       (ns-resolve 'metabase.test.data.dataset-definitions symb)
+       (throw (Exception. (format "Dataset definition not found: '%s' or 'metabase.test.data.dataset-definitions/%s'" symb symb)))))
+
+(defmacro dataset
+  "Bind temp `Database` for DATASET as the current DB and execute BODY.
+
+   Like `with-temp-db`, but takes an unquoted symbol naming a `DatabaseDefinition` rather than the dbef itself.
+   DATASET is optionally namespace-qualified; if not, `metabase.test.data.dataset-definitions` is assumed.
+
+     (dataset sad-toucan-incidents
+       ...)"
+  {:style/indent 1}
+  [dataset & body]
+  `(with-temp-db [_# (resolve-dbdef '~dataset)]
+     ~@body))

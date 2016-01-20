@@ -57,7 +57,7 @@ export default class DatabaseEditForms extends Component {
 
                         { database.engine ?
                           <DatabaseDetailsForm
-                              details={{ ...details, name: database.name }}
+                              details={{ ...details, name: database.name, is_full_sync: database.is_full_sync }}
                               engine={database.engine}
                               engines={engines}
                               formError={formError}

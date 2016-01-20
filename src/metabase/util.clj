@@ -1,10 +1,11 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:require [clj-time.coerce :as coerce]
-            [clj-time.format :as time]
-            [clojure.java.jdbc :as jdbc]
-            [clojure.pprint :refer [pprint]]
+  (:require [clojure.java.jdbc :as jdbc]
+            (clojure [pprint :refer [pprint]]
+                     [string :as s])
             [clojure.tools.logging :as log]
+            [clj-time.coerce :as coerce]
+            [clj-time.format :as time]
             [colorize.core :as color]
             [medley.core :as m])
   (:import clojure.lang.Keyword
@@ -209,23 +210,20 @@
 
 ;;; ## Etc
 
-(defmacro -assoc*
-  "Internal. Don't use this directly; use `assoc*` instead."
-  [k v & more]
- `(let [~'<> (assoc ~'<> ~k ~v)]
-    ~(if (empty? more) `~'<>
-         `(-assoc* ~@more))))
-
-(defmacro assoc*
+(defmacro assoc<>
   "Like `assoc`, but associations happen sequentially; i.e. each successive binding can build
    upon the result of the previous one using `<>`.
 
-    (assoc* {}
-            :a 100
-            :b (+ 100 (:a <>)) ; -> {:a 100 :b 200}"
+    (assoc<> {}
+       :a 100
+       :b (+ 100 (:a <>)) ; -> {:a 100 :b 200}"
+  {:style/indent 1}
   [object & kvs]
-  `((fn [~'<>] ; wrap in a `fn` so this can be used in `->`/`->>` forms
-      (-assoc* ~@kvs))
+  ;; wrap in a `fn` so this can be used in `->`/`->>` forms
+  `((fn [~'<>]
+      (let [~@(apply concat (for [[k v] (partition 2 kvs)]
+                              ['<> `(assoc ~'<> ~k ~v)]))]
+        ~'<>))
     ~object))
 
 (defn format-num
@@ -241,22 +239,43 @@
       ;; otherwise this is a whole number
       :else (format "%,d" number))))
 
-(defn jdbc-clob->str
-  "Convert a `JdbcClob` or `PGobject` to a `String`."
-  (^String
-   [clob]
-   (when clob
-     (condp = (type clob)
-       java.lang.String             clob
-       org.postgresql.util.PGobject (.getValue ^org.postgresql.util.PGobject clob)
-       org.h2.jdbc.JdbcClob         (->> (jdbc-clob->str (.getCharacterStream ^org.h2.jdbc.JdbcClob clob) [])
-                                         (interpose "\n")
-                                         (apply str)))))
-  ([^java.io.BufferedReader reader acc]
-   (if-let [line (.readLine reader)]
-     (recur reader (conj acc line))
-     (do (.close reader)
-         acc))))
+(defprotocol ^:private IClobToStr
+  (jdbc-clob->str ^String [this]
+   "Convert a Postgres/H2/SQLServer JDBC Clob to a string."))
+
+(extend-protocol IClobToStr
+  nil     (jdbc-clob->str [_]    nil)
+  Object  (jdbc-clob->str [this] this)
+
+  org.postgresql.util.PGobject
+  (jdbc-clob->str [this] (.getValue this))
+
+  ;; H2 + SQLServer clobs both have methods called `.getCharacterStream` that officially return a `Reader`,
+  ;; but in practice I've only seen them return a `BufferedReader`. Just to be safe include a method to convert
+  ;; a plain `Reader` to a `BufferedReader` so we don't get caught with our pants down
+  java.io.Reader
+  (jdbc-clob->str [this]
+    (jdbc-clob->str (java.io.BufferedReader. this)))
+
+  ;; Read all the lines for the `BufferedReader` and combine into a single `String`
+  java.io.BufferedReader
+  (jdbc-clob->str [this]
+    (with-open [_ this]
+      (loop [acc []]
+        (if-let [line (.readLine this)]
+          (recur (conj acc line))
+          (apply str (interpose "\n" acc))))))
+
+  ;; H2 -- See also http://h2database.com/javadoc/org/h2/jdbc/JdbcClob.html
+  org.h2.jdbc.JdbcClob
+  (jdbc-clob->str [this]
+    (jdbc-clob->str (.getCharacterStream this)))
+
+  ;; SQL Server -- See also http://jtds.sourceforge.net/doc/net/sourceforge/jtds/jdbc/ClobImpl.html
+  net.sourceforge.jtds.jdbc.ClobImpl
+  (jdbc-clob->str [this]
+    (jdbc-clob->str (.getCharacterStream this))))
+
 
 (defn optional
   "Helper function for defining functions that accept optional arguments.
@@ -278,13 +297,19 @@
   (if (pred? (first args)) [(first args) (next args)]
       [default args]))
 
+;; provided courtesy of Jay Fields http://blog.jayfields.com/2011/08/clojure-apply-function-to-each-value-of.html
+(defn update-values
+  "Update the values of a map by applying the given function.
+   Function expects the map value as an arg and optionally accepts additional args as passed."
+  [m f & args]
+  (reduce (fn [r [k v]] (assoc r k (apply f v args))) {} m))
 
 (defn is-email?
   "Is STRING a valid email address?"
   [string]
   (boolean (when string
              (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
-                         (clojure.string/lower-case string)))))
+                         (s/lower-case string)))))
 
 (defn is-url?
   "Is STRING a valid HTTP/HTTPS URL?"
@@ -302,11 +327,11 @@
 
 (defn host-port-up?
   "Returns true if the port is active on a given host, false otherwise"
-  [^String hostname ^Integer port]
+  [^String hostname, ^Integer port]
   (try
     (let [sock-addr (InetSocketAddress. hostname port)]
       (with-open [sock (Socket.)]
-        (. sock connect sock-addr host-up-timeout)
+        (.connect sock sock-addr host-up-timeout)
         true))
     (catch Exception _ false)))
 
@@ -359,17 +384,43 @@
                   ~@body)
                 ~collection)))
 
-(defn indecies-satisfying
-  "Return a set of indencies in COLL that satisfy PRED.
+(defn first-index-satisfying
+  "Return the index of the first item in COLL where `(pred item)` is logically `true`.
 
-    (indecies-satisfying keyword? ['a 'b :c 3 :e])
-      -> #{2 4}"
+     (first-index-satisfying keyword? ['a 'b :c 3 \"e\"]) -> 2"
   [pred coll]
-  (->> (for [[i item] (m/indexed coll)]
-         (when (pred item)
-           i))
-       (filter identity)
-       set))
+  (loop [i 0, [item & more] coll]
+    (cond
+      (pred item) i
+      (seq more)  (recur (inc i) more))))
+
+(defmacro prog1
+  "Execute FIRST-FORM, then any other expressions in BODY, presumably for side-effects; return the result of FIRST-FORM.
+
+     (def numbers (atom []))
+
+     (defn find-or-add [n]
+       (or (first-index-satisfying (partial = n) @numbers)
+           (prog1 (count @numbers)
+             (swap! numbers conj n))))
+
+     (find-or-add 100) -> 0
+     (find-or-add 200) -> 1
+     (find-or-add 100) -> 0
+
+   The result of FIRST-FIRST is bound to the anaphor `<>`, which is convenient for logging:
+
+     (prog1 (some-expression)
+       (println \"RESULTS:\" <>))
+
+  `prog1` is an anaphoric version of the traditional macro of the same name in
+   [Emacs Lisp](http://www.gnu.org/software/emacs/manual/html_node/elisp/Sequencing.html#index-prog1)
+   and [Common Lisp](http://www.lispworks.com/documentation/HyperSpec/Body/m_prog1c.htm#prog1)."
+  {:style/indent 1}
+  [first-form & body]
+  `(let [~'<> ~first-form]
+     ~@body
+     ~'<>))
 
 (defn format-color
   "Like `format`, but uses a function in `colorize.core` to colorize the output.
@@ -512,6 +563,22 @@
                                   ~form
                                   ~nm)]))]
      ~nm))
+
+(defn round-to-decimals
+  "Round (presumabily floating-point) NUMBER to DECIMAL-PLACE. Returns a `Double`.
+
+     (round-to-decimals 2 35.5058998M) -> 35.51"
+  ^Double [^Integer decimal-place, ^Number number]
+  {:pre [(integer? decimal-place) (number? number)]}
+  (double (.setScale (bigdec number) decimal-place BigDecimal/ROUND_HALF_UP)))
+
+(defn drop-first-arg
+  "Returns a new fn that drops its first arg and applies the rest to the original.
+   Useful for creating `extend` method maps when you don't care about the `this` param.
+
+     ((drop-first-arg :value) xyz {:value 100}) -> (apply :value [{:value 100}]) -> 100"
+  ^clojure.lang.IFn [^clojure.lang.IFn f]
+  (comp (partial apply f) rest list))
 
 
 (require-dox-in-this-namespace)

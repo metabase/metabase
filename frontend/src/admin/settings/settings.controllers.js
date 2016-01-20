@@ -3,7 +3,7 @@ import _ from "underscore";
 import SettingsEditor from './components/SettingsEditor.jsx';
 
 
-var SettingsAdminControllers = angular.module('metabaseadmin.settings.controllers', ['metabase.services']);
+var SettingsAdminControllers = angular.module('metabase.admin.settings.controllers', ['metabase.services']);
 
 // from common.clj
 var TIMEZONES = [

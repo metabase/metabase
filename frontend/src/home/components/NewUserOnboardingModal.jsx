@@ -12,8 +12,8 @@ export default class NewUserOnboardingModal extends Component {
         user: PropTypes.object.isRequired
     }
 
-    stepTwo() {
-        this.setState({step: 2});
+    step(step) {
+        this.setState({ step });
     }
 
     closeModal() {
@@ -37,11 +37,11 @@ export default class NewUserOnboardingModal extends Component {
                             <p>It’s easy to use, because it’s designed so you don’t need any analytics knowledge to get started.</p>
                         </div>
                         <div className="px4 py2 text-grey-2 flex align-center">
-                            STEP 1 of 2
-                            <button className="Button Button--primary flex-align-right" onClick={() => (this.stepTwo())}>Continue</button>
+                            STEP 1 of 3
+                            <button className="Button Button--primary flex-align-right" onClick={() => (this.step(2))}>Continue</button>
                         </div>
                     </div>
-                :
+                : step === 2 ?
                     <div className="bordered rounded shadowed">
                         <div className="pl4 pr4 pt4 pb1 border-bottom">
                             <h2>Just 3 things worth knowing</h2>
@@ -53,8 +53,23 @@ export default class NewUserOnboardingModal extends Component {
                             <p className="clearfix"><img className="float-left mr2" width="40" height="40" src="/app/home/partials/onboarding_illustration_dashboards.png" />You (and anyone on your team) can save answers in Dashboards, so you can check them often. It's a great way to quickly see a snapshot of your business.</p>
                         </div>
                         <div className="px4 py2 text-grey-2 flex align-center">
-                            STEP 2 of 2
-                            <a className="Button Button--primary flex-align-right" href="/" onClick={() => (this.closeModal())}>Continue</a>
+                            STEP 2 of 3
+                            <button className="Button Button--primary flex-align-right" onClick={() => (this.step(3))}>Continue</button>
+                        </div>
+                    </div>
+                :
+                    <div className="bordered rounded shadowed">
+                        <div className="pl4 pr4 pt4 pb1 border-bottom">
+                            <h2>Let's try asking a question!</h2>
+
+                            <p>We'll take a quick look at the Query Builder, the main tool you'll use in Metabase to ask questions.</p>
+                        </div>
+                        <div className="px4 py2 text-grey-2 flex align-center">
+                            STEP 3 of 3
+                            <span className="flex-align-right">
+                                <a className="text-underline-hover cursor-pointer mr3" onClick={() => (this.closeModal())}>skip for now</a>
+                                <a className="Button Button--primary" href="/q?tutorial">Let's do it!</a>
+                            </span>
                         </div>
                     </div>
                 }

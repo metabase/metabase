@@ -5,16 +5,54 @@
             [metabase.driver :as driver]
             (metabase.driver [h2 :as h2]
                              [sync :as sync])
-            [metabase.driver.generic-sql.util :refer [korma-entity]]
-            (metabase.models [field :refer [Field]]
+            [metabase.driver.generic-sql :refer [korma-entity]]
+            (metabase.models [database :refer [Database]]
+                             [field :refer [Field]]
                              [field-values :refer [FieldValues]]
                              [foreign-key :refer [ForeignKey]]
+                             [hydrate :refer :all]
                              [table :refer [Table]])
             (metabase.test [data :refer :all]
-                           [util :refer [resolve-private-fns]])
+                           [util :refer [resolve-private-fns] :as tu])
             (metabase.test.data [datasets :as datasets]
                                 [interface :refer [create-database-definition]])
             [metabase.util :as u]))
+
+(def sync-test-tables
+  {"movie"  {:name "movie"
+             :schema "default"
+             :fields #{{:name      "id"
+                        :base-type :IntegerField}
+                       {:name      "title"
+                        :base-type :TextField}
+                       {:name      "studio"
+                        :base-type :TextField}}}
+   "studio" {:name "studio"
+             :schema nil
+             :fields #{{:name         "studio"
+                        :base-type    :TextField
+                        :special-type :id}
+                       {:name      "name"
+                        :base-type :TextField}}}})
+
+(defrecord SyncTestDriver []
+  clojure.lang.Named
+  (getName [_] "SyncTestDriver"))
+
+(extend SyncTestDriver
+  driver/IDriver
+  (merge driver/IDriverDefaultsMixin
+         {:analyze-table       (constantly nil)
+          :describe-database   (fn [_ _]
+                                 {:tables (set (vals sync-test-tables))})
+          :describe-table      (fn [_ table]
+                                 (get sync-test-tables (:name table)))
+          :descrite-table-fks  (fn [_ _]
+                                 #{{:fk-column-name   "studio"
+                                    :dest-table-name  "studio"
+                                    :dest-column-name "studio"}})}))
+
+;(driver/register-driver! :sync-test (SyncTestDriver.))
 
 (def users-table
   (delay (sel :one Table :name "USERS")))
@@ -27,6 +65,163 @@
 
 (def users-name-field
   (delay (Field (id :users :name))))
+
+
+(defn table-details [table]
+  (into {} (-> (dissoc table :id :db :db_id :created_at :updated_at :pk_field :field_values)
+               (assoc :fields (->> (sel :many Field :table_id (:id table) (k/order :name))
+                                   (map #(dissoc % :table_id :table :db :children :qualified-name :qualified-name-components :created_at :updated_at :id :values :target))
+                                   (map #(into {} %)))))))
+
+;; ## SYNC DATABASE
+(expect
+  [{:schema "default"
+    :name   "movie"
+    :display_name "Movie"
+    :description nil
+    :entity_type nil
+    :entity_name nil
+    :visibility_type nil
+    :rows   nil
+    :active true
+    :fields [{:description nil,
+              :special_type :id,
+              :name "id",
+              :active true,
+              :parent_id nil,
+              :field_type :info,
+              :position 0,
+              :preview_display true,
+              :display_name "Id",
+              :base_type :IntegerField}
+             {:description nil,
+              :special_type nil,
+              :name "studio",
+              :active true,
+              :parent_id nil,
+              :field_type :info,
+              :position 0,
+              :preview_display true,
+              :display_name "Studio",
+              :base_type :TextField}
+             {:description nil,
+              :special_type nil,
+              :name "title",
+              :active true,
+              :parent_id nil,
+              :field_type :info,
+              :position 0,
+              :preview_display true,
+              :display_name "Title",
+              :base_type :TextField}]}
+   {:schema nil
+    :name   "studio"
+    :display_name "Studio"
+    :description nil
+    :entity_type nil
+    :entity_name nil
+    :visibility_type nil
+    :rows   nil
+    :active true
+    :fields [{:description nil,
+              :special_type :name,
+              :name "name",
+              :active true,
+              :parent_id nil,
+              :field_type :info,
+              :position 0,
+              :preview_display true,
+              :display_name "Name",
+              :base_type :TextField}
+             {:description nil,
+              :special_type :id,
+              :name "studio",
+              :active true,
+              :parent_id nil,
+              :field_type :info,
+              :position 0,
+              :preview_display true,
+              :display_name "Studio",
+              :base_type :TextField}]}]
+  (tu/with-temp Database [fake-db {:name    "sync-test"
+                                   :engine  :sync-test
+                                   :details {}}]
+    (sync/sync-database! (SyncTestDriver.) fake-db)
+    (->> (sel :many Table :db_id (:id fake-db) (k/order :name))
+         (mapv table-details))))
+
+
+;; ## SYNC TABLE
+
+(expect
+  {:schema "default"
+   :name   "movie"
+   :display_name "Movie"
+   :description nil
+   :entity_type nil
+   :entity_name nil
+   :visibility_type nil
+   :rows   nil
+   :active true
+   :fields [{:description nil,
+             :special_type :id,
+             :name "id",
+             :active true,
+             :parent_id nil,
+             :field_type :info,
+             :position 0,
+             :preview_display true,
+             :display_name "Id",
+             :base_type :IntegerField}
+            {:description nil,
+             :special_type nil,
+             :name "studio",
+             :active true,
+             :parent_id nil,
+             :field_type :info,
+             :position 0,
+             :preview_display true,
+             :display_name "Studio",
+             :base_type :TextField}
+            {:description nil,
+             :special_type nil,
+             :name "title",
+             :active true,
+             :parent_id nil,
+             :field_type :info,
+             :position 0,
+             :preview_display true,
+             :display_name "Title",
+             :base_type :TextField}]}
+  (tu/with-temp Database [fake-db {:name    "sync-test"
+                                   :engine  :sync-test
+                                   :details {}}]
+    (tu/with-temp Table [fake-table {:name "movie"
+                                     :schema "default"
+                                     :db_id (:id fake-db)
+                                     :active true}]
+      (sync/sync-table! (SyncTestDriver.) fake-table)
+      (table-details (sel :one Table :id (:id fake-table))))))
+
+
+;; ## Individual Helper Fns
+
+;; infer-field-special-type
+
+(expect nil (sync/infer-field-special-type {:name      "whatever"
+                                            :base-type :foo}))
+(expect :id (sync/infer-field-special-type {:name      "whatever"
+                                            :base-type :TextField
+                                            :pk?       :id}))
+(expect :id (sync/infer-field-special-type {:name      "id"
+                                            :base-type :IntegerField}))
+(expect :category (sync/infer-field-special-type {:name         "whatever"
+                                                  :base-type    :IntegerField
+                                                  :special-type :category}))
+(expect :country (sync/infer-field-special-type {:name      "country"
+                                                 :base-type :TextField}))
+(expect :state (sync/infer-field-special-type {:name      "state"
+                                               :base-type :TextField}))
 
 
 ;; ## TEST PK SYNCING
@@ -84,17 +279,17 @@
        (driver/sync-table! table)
        (get-special-type-and-fk-exists?))]))
 
-;; ## Tests for DETERMINE-FK-TYPE
-;; Since COUNT(category_id) > COUNT(DISTINCT(category_id)) the FK relationship should be Mt1
-(def determine-fk-type @(resolve 'metabase.driver.sync/determine-fk-type))
-
-(expect :Mt1
-  (determine-fk-type (Field (id :venues :category_id))))
-
-;; Since COUNT(id) == COUNT(DISTINCT(id)) the FK relationship should be 1t1
-;; (yes, ID isn't really a FK field, but determine-fk-type doesn't need to know that)
-(expect :1t1
-  (determine-fk-type (Field (id :venues :id))))
+;;; ## Tests for DETERMINE-FK-TYPE
+;;; Since COUNT(category_id) > COUNT(DISTINCT(category_id)) the FK relationship should be Mt1
+;(def determine-fk-type @(resolve 'metabase.driver.sync/determine-fk-type))
+;
+;(expect :Mt1
+;  (determine-fk-type (Field (id :venues :category_id))))
+;
+;;; Since COUNT(id) == COUNT(DISTINCT(id)) the FK relationship should be 1t1
+;;; (yes, ID isn't really a FK field, but determine-fk-type doesn't need to know that)
+;(expect :1t1
+;  (determine-fk-type (Field (id :venues :id))))
 
 
 ;;; ## FieldValues Syncing
