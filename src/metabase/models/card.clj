@@ -79,7 +79,7 @@
   i/IEntity
   (merge i/IEntityDefaults
          {:hydration-keys     (constantly [:card])
-          :types              (constantly {:display :keyword, :query_type :keyword, :dataset_query :json, :visualization_settings :json})
+          :types              (constantly {:display :keyword, :query_type :keyword, :dataset_query :json, :visualization_settings :json, :description :clob})
           :timestamped?       (constantly true)
           :can-read?          i/publicly-readable?
           :can-write?         i/publicly-writeable?

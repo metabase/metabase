@@ -217,16 +217,25 @@
       (log/error "Metabase Initialization FAILED: " (.getMessage e))
       (System/exit 1))))
 
+(def ^:private cmd->fn
+  {:migrate      (fn [direction]
+                   (db/migrate @db/db-connection-details (keyword direction)))
+   :load-from-h2 (fn [& [h2-connection-string-or-nil]]
+                   (require 'metabase.cmd.load-from-h2)
+                   ((resolve 'metabase.cmd.load-from-h2/load-from-h2) h2-connection-string-or-nil))})
+
 (defn- run-cmd [cmd & args]
-  (let [cmd->fn {:migrate (fn [direction]
-                            (db/migrate @db/db-connection-details (keyword direction)))}]
-    (if-let [f (cmd->fn cmd)]
-      (do (apply f args)
-          (println "Success.")
-          (System/exit 0))
-      (do (println "Unrecognized command:" (name cmd))
-          (println "Valid commands are:\n" (u/pprint-to-str (map name (keys cmd->fn))))
-          (System/exit 1)))))
+  (let [f (or (cmd->fn cmd)
+              (do (println (u/format-color 'red "Unrecognized command: %s" (name cmd)))
+                  (println "Valid commands are:\n" (u/pprint-to-str (map name (keys cmd->fn))))
+                  (System/exit 1)))]
+    (try (apply f args)
+         (catch Throwable e
+           (.printStackTrace e)
+           (println (u/format-color 'red "Command failed with exception: %s" (.getMessage e)))
+           (System/exit 1)))
+    (println "Success.")
+    (System/exit 0)))
 
 (defn -main
   "Launch Metabase in standalone mode."
