@@ -10,29 +10,46 @@ export default class AccordianList extends Component {
     constructor(props, context) {
         super(props, context);
         this.state = {
-            openSection: props.initiallyOpenSection || undefined
+            openSection: props.initiallyOpenSection
         };
     }
 
     static propTypes = {
         sections: PropTypes.array.isRequired,
+        initiallyOpenSection: PropTypes.number,
+        openSection: PropTypes.number,
         onChange: PropTypes.func,
+        onChangeSection: PropTypes.func,
         itemIsSelected: PropTypes.func,
         renderItem: PropTypes.func,
         renderSectionIcon: PropTypes.func,
         getItemClasses: PropTypes.func
     };
 
+    static defaultProps = {
+        initiallyOpenSection: 0
+    };
+
     toggleSection(sectionIndex) {
+        if (this.props.onChangeSection) {
+            if (this.props.onChangeSection(sectionIndex) === false) {
+                return;
+            }
+        }
+
         let openSection = this.getOpenSection();
         if (openSection === sectionIndex) {
-            this.setState({ openSection: null });
-        } else {
-            this.setState({ openSection: sectionIndex });
+            sectionIndex = null;
         }
+        this.setState({ openSection: sectionIndex });
+
     }
 
     getOpenSection() {
+        if (this.props.sections.length === 1) {
+            return 0;
+        }
+
         let { openSection } = this.state;
         if (openSection === undefined) {
             for (let [index, section] of this.props.sections.entries()) {
@@ -41,16 +58,13 @@ export default class AccordianList extends Component {
                     break;
                 }
             }
-            if (openSection === undefined) {
-                openSection = 0;
-            }
         }
         return openSection;
     }
 
     sectionIsSelected(section, sectionIndex) {
         let { sections } = this.props;
-        let selectedSection = 0;
+        let selectedSection = null;
         for (let i = 0; i < sections.length; i++) {
             if (_.some(sections[i].items, (item) => this.itemIsSelected(item))) {
                 selectedSection = i;
@@ -92,7 +106,7 @@ export default class AccordianList extends Component {
 
     renderSectionIcon(section, sectionIndex) {
         if (this.props.renderSectionIcon) {
-            return <span className="mr2">{this.props.renderSectionIcon(section, sectionIndex)}</span>;
+            return <span className="List-section-icon mr2">{this.props.renderSectionIcon(section, sectionIndex)}</span>;
         } else {
             return null;
         }
@@ -103,7 +117,7 @@ export default class AccordianList extends Component {
     }
 
     render() {
-        let { sections } = this.props;
+        let { sections, showItemArrows } = this.props;
         let openSection = this.getOpenSection();
 
         return (
@@ -114,34 +128,44 @@ export default class AccordianList extends Component {
                             <div className="p1 border-bottom">
                                 { sections.length > 1 ?
                                     <div className="List-section-header px1 py1 cursor-pointer full flex align-center" onClick={() => this.toggleSection(sectionIndex)}>
-                                        <span className="List-section-icon">{ this.renderSectionIcon(section, sectionIndex) }</span>
-                                        <h4 className="List-section-title">{section.name}</h4>
-                                        <span className="flex-align-right">
-                                            <Icon name={openSection === sectionIndex ? "chevronup" : "chevrondown"} width={12} height={12} />
-                                        </span>
+                                        { this.renderSectionIcon(section, sectionIndex) }
+                                        <h3 className="List-section-title">{section.name}</h3>
+                                        { section.items.length > 0 &&
+                                            <span className="flex-align-right">
+                                                <Icon name={openSection === sectionIndex ? "chevronup" : "chevrondown"} width={12} height={12} />
+                                            </span>
+                                        }
                                     </div>
                                 :
-                                    <h4 className="px2 py1 text-default">{section.name}</h4>
+                                    <div className="px1 py1 flex align-center">
+                                        { this.renderSectionIcon(section, sectionIndex) }
+                                        <h3 className="text-default">{section.name}</h3>
+                                    </div>
                                 }
                             </div>
                         : null }
-                        { openSection === sectionIndex ?
+                        { openSection === sectionIndex && section.items.length > 0 &&
                             <ul style={{maxHeight: 400}} className="p1 border-bottom scroll-y scroll-show">
-                              {section.items.map((item, itemIndex) => {
-                                  return (
-                                      <li key={itemIndex} className={cx("List-item flex", { 'List-item--selected': this.itemIsSelected(item, itemIndex) }, this.getItemClasses(item, itemIndex))}>
-                                          <a className="flex-full flex align-center px1 py1 cursor-pointer"
-                                               onClick={this.onChange.bind(this, item)}
-                                          >
-                                              { this.renderItemIcon(item, itemIndex) }
-                                              <h4 className="List-item-title ml2">{item.name}</h4>
-                                          </a>
-                                          { this.renderItemExtra(item, itemIndex) }
-                                      </li>
-                                  )
-                              })}
+                                { section.items.map((item, itemIndex) =>
+                                    <li key={itemIndex} className={cx("List-item flex", { 'List-item--selected': this.itemIsSelected(item, itemIndex) }, this.getItemClasses(item, itemIndex))}>
+                                        <a
+                                            className="flex-full flex align-center px1 cursor-pointer"
+                                            style={{ paddingTop: "0.25rem", paddingBottom: "0.25rem" }}
+                                            onClick={this.onChange.bind(this, item)}
+                                        >
+                                            { this.renderItemIcon(item, itemIndex) }
+                                            <h4 className="List-item-title ml2">{item.name}</h4>
+                                        </a>
+                                        { this.renderItemExtra(item, itemIndex) }
+                                        { showItemArrows &&
+                                            <div className="List-item-arrow flex align-center px1">
+                                                <Icon name="chevronright" width={8} height={8} />
+                                            </div>
+                                        }
+                                    </li>
+                                )}
                             </ul>
-                        : null }
+                        }
                     </section>
                 )}
             </div>

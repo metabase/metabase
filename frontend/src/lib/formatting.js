@@ -98,6 +98,14 @@ export function capitalize(...args) {
     return inflection.capitalize(...args);
 }
 
+export function titleize(...args) {
+    return inflection.titleize(...args);
+}
+
+export function humanize(...args) {
+    return inflection.humanize(...args);
+}
+
 // Removes trailing "id" from field names
 export function stripId(name) {
     return name && name.replace(/ id$/i, "");
