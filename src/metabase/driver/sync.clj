@@ -353,6 +353,7 @@ infer-field-special-type
   [field-def existing-field table-id]
   (let [{field-name :name, field-base-type :base-type}  field-def
         {existing-base-type    :base_type
+         existing-field-type   :field_type
          existing-special-type :special_type
          existing-display-name :display_name}           existing-field
         field-special-type                              (or existing-special-type
@@ -361,7 +362,9 @@ infer-field-special-type
                                                             (common/name->human-readable-name field-name))
         field-base-type                                 (if (= field-base-type existing-base-type)
                                                           existing-base-type
-                                                          field-base-type)]
+                                                          field-base-type)
+        field-field-type                                (or existing-field-type
+                                                            (:field-type field-def))]
     (if-not existing-field
       ;; Field doesn't exist, so create it.
       (ins Field
@@ -370,6 +373,7 @@ infer-field-special-type
         :name         field-name
         :display_name field-display-name
         :base_type    field-base-type
+        :field_type   field-field-type
         :special_type field-special-type)
       ;; Otherwise update the Field if needed
       (when-not (and (= field-display-name existing-display-name)
@@ -379,6 +383,7 @@ infer-field-special-type
         (upd Field (:id existing-field)
           :display_name field-display-name
           :base_type    field-base-type
+          :field_type   field-field-type
           :special_type field-special-type)))))
 
 (defn- sync-table-active-fields-and-pks!

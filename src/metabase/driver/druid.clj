@@ -9,7 +9,9 @@
             [metabase.driver.util :as driver-util]
             [metabase.driver.druid.query-processor :as qp]
             [metabase.models.database :refer [Database]]
-            [metabase.util :as u]))
+            [metabase.models.table :as table]
+            [metabase.util :as u]
+            [metabase.models.table :as table]))
 
 ;;; ### Request helper fns
 
@@ -86,27 +88,34 @@
 
 ;;; ### Sync
 
-(defn- active-tables
-  ([_ database]
-   (active-tables (:details database)))
-  ([details]
-   {:pre [(map? details)]}
-   (set (for [table-name (GET (details->url details "/druid/v2/datasources"))]
-          {:name table-name}))))
+(defn- describe-table-field [druid-field-type field-name]
+  (merge {:name field-name}
+         ;; all dimensions are Strings, and all metrics as JS Numbers, I think (?)
+         ;; string-encoded booleans + dates are treated as strings (!)
+         (if (= :metric druid-field-type)
+           {:field-type :metric, :base-type :FloatField}
+           {:field-type :dimension, :base-type :TextField})))
 
-;; TODO - probably just makes sense to mark all dimensions as :TextField and all metrics as :FloatField
-;; since that's what they're going to end up being anyway
-(defn- table->column-names
-  ([_ table]
-   (table->column-names _ (:details @(:db table)) (:name table)))
-  ([_ details table-name]
-   {:pre [(map? details) (u/string-or-keyword? table-name)]}
-   ;; TODO -- all dimensions are Strings, and all metrics as JS Numbers, I think (?)
-   ;; 1) string-encoded booleans + dates are treated as strings (!)
-   ;; 2) it would be a lot faster just to skip the whole `field-values-lazy-seq` stuff if it ends up giving us
-   ;;    the same results as if we just mapped all `dimensions` -> `:TextField` and all `:metrics` -> `:FloatField`
-   (let [{:keys [dimensions metrics]} (GET (details->url details "/druid/v2/datasources/" table-name))]
-     (concat dimensions metrics))))
+(defn describe-table [_ table]
+  (let [details                      (:details (table/database table))
+        {:keys [dimensions metrics]} (GET (details->url details "/druid/v2/datasources/" (:name table)))]
+    (clojure.pprint/pprint dimensions)
+    {:name   (:name table)
+     :fields (set (concat
+                    ;; every Druid table is an event stream w/ a timestamp field
+                    [{:name       "timestamp"
+                      :base-type  :DateTimeField
+                      :field-type :dimension
+                      :pk?        true}]
+                    (map (partial describe-table-field :dimension) dimensions)
+                    (map (partial describe-table-field :metric) metrics)))}))
+
+(defn describe-database [_ database]
+  {:pre [(map? (:details database))]}
+  (let [details           (:details database)
+        druid-datasources (GET (details->url details "/druid/v2/datasources"))]
+    {:tables (set (for [table-name druid-datasources]
+                    {:name table-name}))}))
 
 
 ;;; ### field-values-lazy-seq
@@ -157,15 +166,11 @@
   (getName [_] "Druid"))
 
 (extend DruidDriver
-  driver-util/IDriverTableToColumnNames
-  {:table->column-names table->column-names}
-
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:active-column-names->type (fn [driver table]
-                                       (assoc (driver-util/ghetto-active-column-names->type driver table)
-                                              "timestamp" :DateTimeField))
-          :active-tables             active-tables
+         {:analyze-table             (constantly nil)       ; TODO: we should fill this out at some point
+          :describe-database         describe-database
+          :describe-table            describe-table
           :can-connect?              can-connect?
           :details-fields            (constantly [{:name         "host"
                                                    :display-name "Host"
@@ -176,8 +181,7 @@
                                                    :default      8082}])
           :field-values-lazy-seq     field-values-lazy-seq
           :process-native            process-native
-          :process-structured        process-structured
-          :table-pks                 (constantly #{"timestamp"})}))
+          :process-structured        process-structured}))
 
 (driver/register-driver! :druid (DruidDriver.))
 
