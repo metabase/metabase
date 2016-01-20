@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: 22
+      author: agilliland
+      changes:
+        - addColumn:
+            tableName: revision
+            columns:
+              - column:
+                  name: message
+                  type: text
+                  constraints:
+                    nullable: true

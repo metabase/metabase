@@ -34,16 +34,16 @@
 (expect #inst "2015-11-01"       (date-trunc :month   friday-the-13th))
 (expect #inst "2015-10-01"       (date-trunc :quarter friday-the-13th))
 
-;;; ## tests for ASSOC*
+;;; ## tests for ASSOC<>
 
-(expect {:a 100
-         :b 200
-         :c 300}
-  (assoc* {}
-          :a 100
-          :b (+ 100 (:a <>))
-          :c (+ 100 (:b <>))))
-
+(expect
+  {:a 100
+   :b 200
+   :c 300}
+  (assoc<> {}
+    :a 100
+    :b (+ 100 (:a <>))
+    :c (+ 100 (:b <>))))
 
 ;;; ## tests for HOST-UP?
 

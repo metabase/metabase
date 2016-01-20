@@ -18,7 +18,6 @@
   (str "http://localhost:" (config/config-str :mb-jetty-port) "/api/"))
 
 (defn
-  ^{:arglists ([credentials? method expected-status-code? url http-body-map? & url-kwargs])}
   client
   "Perform an API call and return the response (for test purposes).
    The first arg after URL will be passed as a JSON-encoded body if it is a map.
@@ -38,6 +37,7 @@
    *  URL                   Base URL of the request, which will be appended to `*url-prefix*`. e.g. `card/1/favorite`
    *  HTTP-BODY-MAP         Optional map to send a the JSON-serialized HTTP body of the request
    *  URL-KWARGS            key-value pairs that will be encoded and added to the URL as GET params"
+  {:arglists '([credentials? method expected-status-code? url http-body-map? & url-kwargs])}
   [& args]
   (let [[credentials [method & args]] (u/optional #(or (map? %)
                                                        (string? %)) args)

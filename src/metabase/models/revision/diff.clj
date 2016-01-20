@@ -3,7 +3,7 @@
             (clojure [data :as data]
                      [string :as s])))
 
-(defn- diff-str* [t k v1 v2]
+(defn- diff-string* [t k v1 v2]
   (match [t k v1 v2]
     [_ :name _ _]
     (format "renamed it from \"%s\" to \"%s\"" v1 v2)
@@ -35,14 +35,13 @@
       (= (count parts) 2) (format "%s and %s." (first parts) (second parts))
       :else               (format "%s, %s" (first parts) (build-sentence (rest parts))))))
 
-(defn diff-str
+(defn diff-string
   "Create a string describing how `o1` is different from `o2`.
    The directionality of the statement should indicate that `o1` changed into `o2`."
-  [t o1 o2]
-  (let [[before after] (data/diff o1 o2)]
-    (when before
-      (let [ks (keys before)]
-        (some-> (filter identity (for [k ks]
-                                   (diff-str* t k (k before) (k after))))
-                build-sentence
-                (s/replace-first #" it " (format " this %s " t)))))))
+  [t before after]
+  (when before
+    (let [ks (keys before)]
+      (some-> (filter identity (for [k ks]
+                                 (diff-string* t k (k before) (k after))))
+              build-sentence
+              (s/replace-first #" it " (format " this %s " t))))))

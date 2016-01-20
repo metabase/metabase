@@ -1,6 +1,7 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
-  (:require [expectations :refer :all]
+  (:require [cheshire.core :as json]
+            [expectations :refer :all]
             [medley.core :as m]
             (metabase [db :refer :all]
                       [util :as u])))
@@ -10,22 +11,22 @@
 ;; ## match-$
 
 (defmacro match-$
-  "Walk over map DEST-OBJECT and replace values of the form `$` or `$key` as follows:
+  "Walk over map DEST-OBJECT and replace values of the form `$`, `$key`, or `$$` as follows:
 
-    {k $} -> {k (k SOURCE-OBJECT)}
+    {k $}     -> {k (k SOURCE-OBJECT)}
     {k $symb} -> {k (:symb SOURCE-OBJECT)}
-
+    $$        -> {k SOURCE-OBJECT}
   ex.
 
     (match-$ m {:a $, :b 3, :c $b}) -> {:a (:a m), b 3, :c (:b m)}"
   [source-obj dest-object]
   {:pre [(map? dest-object)]}
-  (let [source## (gensym)
-        dest-object (->> dest-object
-                         (map (fn [[k v]]
-                                {k (if (= v '$) `(~k ~source##)
-                                       v)}))
-                         (into {}))]
+  (let [source##    (gensym)
+        dest-object (into {} (for [[k v] dest-object]
+                               {k (condp = v
+                                    '$ `(~k ~source##)
+                                    '$$ source##
+                                        v)}))]
     `(let [~source## ~source-obj]
        ~(clojure.walk/prewalk (partial $->prop source##)
                               dest-object))))
@@ -36,14 +37,12 @@
     ($->prop my-obj 'fish)  -> 'fish
     ($->prop my-obj '$fish) -> '(:fish my-obj)"
   [source-obj form]
-  (or (when (symbol? form)
-        (let [[first-char & rest-chars] (name form)]
-          (when (and (= first-char \$)
-                     (not (empty? rest-chars))) ; don't match just `$`
-            (let [kw (->> rest-chars
-                          (apply str)
-                          keyword)]
-              `(~kw ~source-obj)))))
+  (or (when (and (symbol? form)
+                 (= (first (name form)) \$)
+                 (not= form '$))
+        (if (= form '$$)
+          source-obj
+          `(~(keyword (apply str (rest (name form)))) ~source-obj)))
       form))
 
 
@@ -118,6 +117,15 @@
          (symbol? fn-name)
          (every? symbol? more)]}
   `(do (require '~namespc)
-       (def ~(vary-meta fn-name assoc :private true) (ns-resolve '~namespc '~fn-name))
+       (def ~(vary-meta fn-name assoc :private true) (or (ns-resolve '~namespc '~fn-name)
+                                                         (throw (Exception. ~(str namespc "/" fn-name " doesn't exist!")))))
        ~(when (seq more)
           `(resolve-private-fns ~namespc ~(first more) ~@(rest more)))))
+
+(defn obj->json->obj
+  "Convert an object to JSON and back again. This can be done to ensure something will match its serialized + deserialized form,
+   e.g. keywords that aren't map keys:
+
+     (obj->json->obj {:type :query}) -> {:type \"query\"}"
+  [obj]
+  (json/parse-string (json/generate-string obj) keyword))

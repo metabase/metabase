@@ -1,5 +1,5 @@
-var SettingsAdmin = angular.module('metabaseadmin.settings', [
-    'metabaseadmin.settings.controllers',
+var SettingsAdmin = angular.module('metabase.admin.settings', [
+    'metabase.admin.settings.controllers',
     'metabase.services'
 ]);
 

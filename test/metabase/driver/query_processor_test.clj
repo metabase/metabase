@@ -1,20 +1,22 @@
 (ns metabase.driver.query-processor-test
   "Query processing tests that can be ran between any of the available drivers, and should give the same results."
   (:require [clojure.math.numeric-tower :as math]
-            [clojure.set :as set]
+            (clojure [set :as set]
+                     [string :as s])
             [expectations :refer :all]
             [korma.core :as k]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.query-processor :refer :all]
+            [metabase.driver.query-processor.expand :as ql]
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
             (metabase.test.data [dataset-definitions :as defs]
                                 [datasets :as datasets :refer [*data-loader* *engine*]]
                                 [interface :refer [create-database-definition], :as i])
             [metabase.test.data :refer :all]
-            [metabase.test.util.q :refer [Q]]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.util.quotation :as q]))
 
 
 ;; ## Dataset-Independent QP Tests
@@ -94,11 +96,11 @@
                   :base_type    (id-field-type)
                   :name         (format-name "id")
                   :display_name "Id"}
-     :name       {:special_type :category
+     :name       {:special_type :name
                   :base_type    (expected-base-type->actual :TextField)
                   :name         (format-name "name")
                   :display_name "Name"}
-     :last_login {:special_type :category
+     :last_login {:special_type nil
                   :base_type    (expected-base-type->actual :DateTimeField)
                   :name         (format-name "last_login")
                   :display_name "Last Login"
@@ -230,17 +232,29 @@
   "Format the values in result ROWS with the fns at the corresponding indecies in FORMAT-FNS.
    ROWS can be a sequence or any of the common map formats we expect in QP tests.
 
-     (format-rows-by [int str double] [[1 1 1]]) -> [[1 \"1\" 1.0]]"
-  [format-fns rows]
-  (cond
-    (:data rows) (update-in rows [:data :rows] (partial format-rows-by format-fns))
-    (:rows rows) (update    rows :rows         (partial format-rows-by format-fns))
-    :else        (vec (for [row rows]
-                        (vec (for [[f v] (partition 2 (interleave format-fns row))]
-                               (when v
-                                 (f v))))))))
+     (format-rows-by [int str double] [[1 1 1]]) -> [[1 \"1\" 1.0]]
+
+   By default, does't call fns on `nil` values; pass a truthy value as optional param FORMAT-NIL-VALUES? to override this behavior."
+  ([format-fns rows]
+   (format-rows-by format-fns (not :format-nil-values?) rows))
+  ([format-fns format-nil-values? rows]
+   (cond
+     (:data rows) (update-in rows [:data :rows] (partial format-rows-by format-fns))
+     (:rows rows) (update    rows :rows         (partial format-rows-by format-fns))
+     :else        (vec (for [row rows]
+                         (vec (for [[f v] (partition 2 (interleave format-fns row))]
+                                (when (or v format-nil-values?)
+                                  (f v)))))))))
 
 (def ^:private formatted-venues-rows (partial format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]))
+
+
+(defn- rows [results]
+  (vec (or (-> results :data :rows)
+           (throw (ex-info "Error!" results)))))
+
+(defn- first-row [results]
+  (first (rows results)))
 
 
 ;; # THE TESTS THEMSELVES (!)
@@ -264,8 +278,9 @@
     {:rows    [[100]]
      :columns ["count"]
      :cols    [(aggregate-col :count)]}
-  (Q aggregate count of venues
-     return (format-rows-by [int])))
+  (->> (run-query venues
+         (ql/aggregation (ql/count)))
+       (format-rows-by [int])))
 
 
 ;; ### "SUM" AGGREGATION
@@ -273,8 +288,9 @@
     {:rows    [[203]]
      :columns ["sum"]
      :cols    [(aggregate-col :sum (venues-col :price))]}
-  (Q aggregate sum price of venues
-     return (format-rows-by [int])))
+  (->> (run-query venues
+         (ql/aggregation (ql/sum $price)))
+       (format-rows-by [int])))
 
 
 ;; ## "AVG" AGGREGATION
@@ -282,8 +298,9 @@
     {:rows    [[35.5059]]
      :columns ["avg"]
      :cols    [(aggregate-col :avg (venues-col :latitude))]}
-  (Q aggregate avg latitude of venues
-     return (format-rows-by [(partial u/round-to-decimals 4)])))
+  (->> (run-query venues
+         (ql/aggregation (ql/avg $latitude)))
+       (format-rows-by [(partial u/round-to-decimals 4)])))
 
 
 ;; ### "DISTINCT COUNT" AGGREGATION
@@ -291,8 +308,8 @@
     {:rows    [[15]]
      :columns ["count"]
      :cols    [(aggregate-col :count)]}
-  (Q aggregate distinct user_id of checkins
-     return (format-rows-by [int])))
+  (format-rows-by [int] (run-query checkins
+                          (ql/aggregation (ql/distinct $user_id)))))
 
 
 ;; ## "ROWS" AGGREGATION
@@ -310,10 +327,9 @@
                [10 "Fred 62"                      20 34.1046 -118.292 2]]
      :columns (venues-columns)
      :cols    (venues-cols)}
-  (Q aggregate rows of venues
-     limit 10
-     order id+
-     return formatted-venues-rows))
+  (formatted-venues-rows (run-query venues
+                           (ql/limit 10)
+                           (ql/order-by (ql/asc $id)))))
 
 
 ;; ## "PAGE" CLAUSE
@@ -321,27 +337,27 @@
 
 ;; ### PAGE - Get the first page
 (datasets/expect-with-all-engines
-    [[1 "African"]
-     [2 "American"]
-     [3 "Artisan"]
-     [4 "Asian"]
-     [5 "BBQ"]]
-    (Q aggregate rows of categories
-       return rows (format-rows-by [int str])
-       page 1 items 5
-       order id+))
+  [[1 "African"]
+   [2 "American"]
+   [3 "Artisan"]
+   [4 "Asian"]
+   [5 "BBQ"]]
+  (->> (run-query categories
+         (ql/page {:page 1, :items 5})
+         (ql/order-by (ql/asc $id)))
+       rows (format-rows-by [int str])))
 
 ;; ### PAGE - Get the second page
 (datasets/expect-with-all-engines
-    [[ 6 "Bakery"]
-     [ 7 "Bar"]
-     [ 8 "Beer Garden"]
-     [ 9 "Breakfast / Brunch"]
-     [10 "Brewery"]]
-    (Q aggregate rows of categories
-       page 2 items 5
-       order id+
-       return rows (format-rows-by [int str])))
+  [[ 6 "Bakery"]
+   [ 7 "Bar"]
+   [ 8 "Beer Garden"]
+   [ 9 "Breakfast / Brunch"]
+   [10 "Brewery"]]
+  (->> (run-query categories
+         (ql/page {:page 2, :items 5})
+         (ql/order-by (ql/asc $id)))
+       rows (format-rows-by [int str])))
 
 
 ;; ## "ORDER_BY" CLAUSE
@@ -357,11 +373,13 @@
    [2  9 833]
    [2  8 380]
    [2  5 719]]
-  (Q aggregate rows of checkins
-     fields venue_id user_id id
-     order venue_id+ user_id- id+
-     limit 10
-     return rows (format-rows-by [int int int])))
+  (->> (run-query checkins
+         (ql/fields $venue_id $user_id $id)
+         (ql/order-by (ql/asc $venue_id)
+                      (ql/desc $user_id)
+                      (ql/asc $id))
+         (ql/limit 10))
+       rows (format-rows-by [int int int])))
 
 
 ;; ## "FILTER" CLAUSE
@@ -373,50 +391,88 @@
    [77 "Sushi Nakazawa"           40 40.7318 -74.0045 4]
    [79 "Sushi Yasuda"             40 40.7514 -73.9736 4]
    [81 "Tanoshi Sushi & Sake Bar" 40 40.7677 -73.9533 4]]
-  (Q aggregate rows of venues
-     filter and > id 50, >= price 4
-     order id+
-     return rows formatted-venues-rows))
-
-(defmacro compaare [a b]
-  `(compare-expr ~a ~b '~a '~b))
+  (-> (run-query venues
+        (ql/filter (ql/and (ql/>  $id    50)
+                           (ql/>= $price  4)))
+        (ql/order-by (ql/asc $id)))
+      rows formatted-venues-rows))
 
 ;; ### FILTER -- "AND", "<", ">", "!="
 (datasets/expect-with-all-engines
   [[21 "PizzaHacker"          58 37.7441 -122.421 2]
    [23 "Taqueria Los Coyotes" 50 37.765  -122.42  2]]
-  (Q aggregate rows of venues
-     filter and < id 24, > id 20, != id 22
-     order id+
-     return rows formatted-venues-rows))
+  (-> (run-query venues
+        (ql/filter (ql/and (ql/<  $id 24)
+                           (ql/>  $id 20)
+                           (ql/!= $id 22)))
+        (ql/order-by (ql/asc $id)))
+      rows formatted-venues-rows))
 
 ;; ### FILTER WITH A FALSE VALUE
 ;; Check that we're checking for non-nil values, not just logically true ones.
 ;; There's only one place (out of 3) that I don't like
 (datasets/expect-with-all-engines
   [[1]]
- (Q dataset places-cam-likes
-    return rows (format-rows-by [int])
-    aggregate count of places
-    filter = liked false))
+  (->> (dataset places-cam-likes
+         (run-query places
+           (ql/aggregation (ql/count))
+           (ql/filter (ql/= $liked false))))
+       rows (format-rows-by [int])))
+
+(defn- ->bool [x] ; SQLite returns 0/1 for false/true;
+  (condp = x      ; Redshift returns nil/true.
+    0   false     ; convert to false/true and restore sanity.
+    1   true
+    nil false
+    x))
+
+;;; filter = true
+(datasets/expect-with-all-engines
+  [[1 "Tempest" true]
+   [2 "Bullit"  true]]
+  (->> (dataset places-cam-likes
+         (run-query places
+           (ql/filter (ql/= $liked true))
+           (ql/order-by (ql/asc $id))))
+       rows (format-rows-by [int str ->bool] :format-nil-values)))
+
+;;; filter != false
+(datasets/expect-with-all-engines
+  [[1 "Tempest" true]
+   [2 "Bullit"  true]]
+  (->> (dataset places-cam-likes
+         (run-query places
+           (ql/filter (ql/!= $liked false))
+           (ql/order-by (ql/asc $id))))
+       rows (format-rows-by [int str ->bool] :format-nil-values)))
+
+;;; filter != true
+(datasets/expect-with-all-engines
+  [[3 "The Dentist" false]]
+  (->> (dataset places-cam-likes
+         (run-query places
+           (ql/filter (ql/!= $liked true))
+           (ql/order-by (ql/asc $id))))
+       rows (format-rows-by [int str ->bool] :format-nil-values)))
+
 
 ;; ### FILTER -- "BETWEEN", single subclause (neither "AND" nor "OR")
 (datasets/expect-with-all-engines
   [[21 "PizzaHacker"    58 37.7441 -122.421 2]
    [22 "Gordo Taqueria" 50 37.7822 -122.484 1]]
-  (Q aggregate rows of venues
-     return rows formatted-venues-rows
-     filter between id 21 22
-     order id+))
+  (-> (run-query venues
+        (ql/filter (ql/between $id 21 22))
+        (ql/order-by (ql/asc $id)))
+      rows formatted-venues-rows))
 
 ;; ### FILTER -- "BETWEEN" with dates
 (qp-expect-with-all-engines
     {:rows    [[29]]
      :columns ["count"]
      :cols    [(aggregate-col :count)]}
-  (Q aggregate count of checkins
-     filter and between date "2015-04-01" "2015-05-01"
-     return (format-rows-by [int])))
+  (format-rows-by [int] (run-query checkins
+                          (ql/aggregation (ql/count))
+                          (ql/filter (ql/between $date "2015-04-01" "2015-05-01")))))
 
 ;; ### FILTER -- "OR", "<=", "="
 (datasets/expect-with-all-engines
@@ -424,18 +480,18 @@
    [2 "Stout Burgers & Beers"        11 34.0996 -118.329 2]
    [3 "The Apple Pan"                11 34.0406 -118.428 2]
    [5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]]
-  (Q aggregate rows of venues
-     filter or <= id 3 = id 5
-     order id+
-     return rows formatted-venues-rows))
+  (-> (run-query venues
+        (ql/filter (ql/or (ql/<= $id 3)
+                          (ql/= $id 5)))
+        (ql/order-by (ql/asc $id)))
+      rows formatted-venues-rows))
 
 ;; ### FILTER -- "INSIDE"
 (datasets/expect-with-all-engines
   [[1 "Red Medicine" 4 10.0646 -165.374 3]]
-  (Q aggregate rows of venues
-     filter inside {:lat {:field latitude,  :min 10.0641,  :max 10.0649}
-                    :lon {:field longitude, :min -165.379, :max -165.371}}
-     return rows formatted-venues-rows))
+  (-> (run-query venues
+        (ql/filter (ql/inside $latitude $longitude 10.0649 -165.379 10.0641 -165.371)))
+      rows formatted-venues-rows))
 
 
 ;; ## "FIELDS" CLAUSE
@@ -454,11 +510,10 @@
      :columns (->columns "name" "id")
      :cols    [(venues-col :name)
                (venues-col :id)]}
-  (Q aggregate rows of venues
-     return (format-rows-by [str int])
-     fields name id
-     limit 10
-     order id+))
+  (format-rows-by [str int] (run-query venues
+                              (ql/fields $name $id)
+                              (ql/limit 10)
+                              (ql/order-by (ql/asc $id)))))
 
 
 ;; ## "BREAKOUT"
@@ -469,10 +524,10 @@
                "count"]
      :cols    [(checkins-col :user_id)
                (aggregate-col :count)]}
-  (Q aggregate count of checkins
-     return (format-rows-by [int int])
-     breakout user_id
-     order user_id+))
+  (format-rows-by [int int] (run-query checkins
+                              (ql/aggregation (ql/count))
+                              (ql/breakout $user_id)
+                              (ql/order-by (ql/asc $user_id)))))
 
 ;; ### BREAKOUT w/o AGGREGATION
 ;; This should act as a "distinct values" query and return ordered results
@@ -480,9 +535,9 @@
     {:cols    [(checkins-col :user_id)]
      :columns [(format-name "user_id")]
      :rows    [[1] [2] [3] [4] [5] [6] [7] [8] [9] [10]]}
-  (Q breakout user_id of checkins
-     return (format-rows-by [int])
-     limit 10))
+  (format-rows-by [int] (run-query checkins
+                          (ql/breakout $user_id)
+                          (ql/limit 10))))
 
 
 ;; ### "BREAKOUT" - MULTIPLE COLUMNS W/ IMPLICT "ORDER_BY"
@@ -495,10 +550,10 @@
      :cols    [(checkins-col :user_id)
                (checkins-col :venue_id)
                (aggregate-col :count)]}
-  (Q aggregate count of checkins
-     return (format-rows-by [int int int])
-     breakout user_id venue_id
-     limit 10))
+  (format-rows-by [int int int] (run-query checkins
+                                  (ql/aggregation (ql/count))
+                                  (ql/breakout $user_id $venue_id)
+                                  (ql/limit 10))))
 
 ;; ### "BREAKOUT" - MULTIPLE COLUMNS W/ EXPLICIT "ORDER_BY"
 ;; `breakout` should not implicitly order by any fields specified in `order_by`
@@ -510,11 +565,11 @@
      :cols    [(checkins-col :user_id)
                (checkins-col :venue_id)
                (aggregate-col :count)]}
-  (Q aggregate count of checkins
-     return (format-rows-by [int int int])
-     breakout user_id venue_id
-     order user_id- venue_id+
-     limit 10))
+  (format-rows-by [int int int] (run-query checkins
+                                  (ql/aggregation (ql/count))
+                                  (ql/breakout $user_id $venue_id)
+                                  (ql/order-by (ql/desc $user_id))
+                                  (ql/limit 10))))
 
 
 
@@ -552,8 +607,8 @@
     {:rows    [[120]]
      :columns ["sum"]
      :cols    [(aggregate-col :sum (users-col :id))]}
-  (Q aggregate cum-sum id of users
-     return (format-rows-by [int])))
+  (format-rows-by [int] (run-query users
+                          (ql/aggregation (ql/cum-sum $id)))))
 
 
 ;; ### Simple cumulative sum where breakout field is same as cum_sum field
@@ -561,9 +616,9 @@
     {:rows    [[1] [3] [6] [10] [15] [21] [28] [36] [45] [55] [66] [78] [91] [105] [120]]
      :columns (->columns "id")
      :cols    [(users-col :id)]}
-  (Q aggregate cum-sum id of users
-     breakout id
-     return (format-rows-by [int])))
+  (format-rows-by [int] (run-query users
+                          (ql/aggregation (ql/cum-sum $id))
+                          (ql/breakout $id))))
 
 
 ;; ### Cumulative sum w/ a different breakout field
@@ -587,9 +642,9 @@
                "sum"]
      :cols    [(users-col :name)
                (aggregate-col :sum (users-col :id))]}
-  (Q aggregate cum-sum id of users
-     breakout name
-     return (format-rows-by [str int])))
+  (format-rows-by [str int] (run-query users
+                              (ql/aggregation (ql/cum-sum $id))
+                              (ql/breakout $name))))
 
 
 ;; ### Cumulative sum w/ a different breakout field that requires grouping
@@ -602,9 +657,9 @@
                [2 4066]
                [3 4681]
                [4 5050]]}
-  (Q aggregate cum-sum id of venues
-     breakout price
-     return (format-rows-by [int int])))
+  (format-rows-by [int int] (run-query venues
+                              (ql/aggregation (ql/cum-sum $id))
+                              (ql/breakout $price))))
 
 
 ;;; ## STDDEV AGGREGATION
@@ -615,7 +670,8 @@
   {:columns ["stddev"]
    :cols    [(aggregate-col :stddev (venues-col :latitude))]
    :rows    [[3.4]]}
-  (-> (Q aggregate stddev latitude of venues)
+  (-> (run-query venues
+        (ql/aggregation (ql/stddev $latitude)))
       (update-in [:data :rows] (fn [[[v]]]
                                  [[(u/round-to-decimals 1 v)]]))))
 
@@ -623,7 +679,9 @@
 (datasets/expect-with-engines (engines-that-dont-support :standard-deviation-aggregations)
   {:status :failed
    :error  "standard-deviation-aggregations is not supported by this driver."}
-  (select-keys (Q aggregate stddev latitude of venues) [:status :error]))
+  (select-keys (run-query venues
+                 (ql/aggregation (ql/stddev $latitude)))
+               [:status :error]))
 
 
 ;;; ## order_by aggregate fields
@@ -638,10 +696,10 @@
              [2 59]]
    :cols    [(venues-col :price)
              (aggregate-col :count)]}
-  (Q aggregate count of venues
-     breakout price
-     order ag.0+
-     return (format-rows-by [int int])))
+  (format-rows-by [int int] (run-query venues
+                              (ql/aggregation (ql/count))
+                              (ql/breakout $price)
+                              (ql/order-by (ql/asc (ql/aggregate-field 0))))))
 
 
 ;;; ### order_by aggregate ["sum" field-id]
@@ -654,16 +712,15 @@
              [4  369]]
    :cols    [(venues-col :price)
              (aggregate-col :sum (venues-col :id))]}
-  (Q aggregate sum id of venues
-     breakout price
-     order ag.0-
-     return (format-rows-by [int int])))
+  (format-rows-by [int int] (run-query venues
+                              (ql/aggregation (ql/sum $id))
+                              (ql/breakout $price)
+                              (ql/order-by (ql/desc (ql/aggregate-field 0))))))
 
 
 ;;; ### order_by aggregate ["distinct" field-id]
 (qp-expect-with-all-engines
   {:columns [(format-name "price")
-
              "count"]
    :rows    [[4  6]
              [3 13]
@@ -671,10 +728,10 @@
              [2 59]]
    :cols    [(venues-col :price)
              (aggregate-col :count)]}
-  (Q aggregate distinct id of venues
-     breakout price
-     order ag.0+
-     return (format-rows-by [int int])))
+  (format-rows-by [int int] (run-query venues
+                              (ql/aggregation (ql/distinct $id))
+                              (ql/breakout $price)
+                              (ql/order-by (ql/asc (ql/aggregate-field 0))))))
 
 
 ;;; ### order_by aggregate ["avg" field-id]
@@ -687,10 +744,11 @@
              [4 53]]
    :cols    [(venues-col :price)
              (aggregate-col :avg (venues-col :category_id))]}
-  (Q aggregate avg category_id of venues
-     breakout price
-     order ag.0+
-     return :data (format-rows-by [int int])))
+  (->> (run-query venues
+         (ql/aggregation (ql/avg $category_id))
+         (ql/breakout $price)
+         (ql/order-by (ql/asc (ql/aggregate-field 0))))
+       :data (format-rows-by [int int])))
 
 ;;; ### order_by aggregate ["stddev" field-id]
 ;; MySQL has a nasty tendency to return different results on different systems so just round everything to the nearest int.
@@ -704,10 +762,11 @@
              [4 (if (= *engine* :mysql) 14 15)]]
    :cols    [(venues-col :price)
              (aggregate-col :stddev (venues-col :category_id))]}
-  (-> (Q aggregate stddev category_id of venues
-         breakout price
-         order ag.0-
-         return :data (format-rows-by [int (comp int math/round)]))))
+  (->> (run-query venues
+         (ql/aggregation (ql/stddev $category_id))
+         (ql/breakout $price)
+         (ql/order-by (ql/desc (ql/aggregate-field 0))))
+       :data (format-rows-by [int (comp int math/round)])))
 
 ;;; ### make sure that rows where preview_display = false are included and properly marked up
 (datasets/expect-with-all-engines
@@ -720,10 +779,10 @@
     (-> (venues-col :price)
         (assoc :preview_display false))}
   (set (venues-cols))]
- (let [get-col-names (fn [] (Q aggregate rows of venues
-                               order id+
-                               limit 1
-                               return :data :cols set))]
+ (let [get-col-names (fn [] (-> (run-query venues
+                                  (ql/order-by (ql/asc $id))
+                                  (ql/limit 1))
+                                :data :cols set))]
    [(get-col-names)
     (do (upd Field (id :venues :price) :preview_display false)
         (get-col-names))
@@ -734,10 +793,10 @@
 ;;; ## :sensitive fields
 ;;; Make sure :sensitive information fields are never returned by the QP
 (qp-expect-with-all-engines
-    {:columns (->columns "id" "last_login" "name")
+    {:columns (->columns "id" "name" "last_login")
      :cols    [(users-col :id)
-               (users-col :last_login)
-               (users-col :name)],
+               (users-col :name)
+               (users-col :last_login)],
      :rows    [[ 1 "Plato Yeshua"]
                [ 2 "Felipinho Asklepios"]
                [ 3 "Kaneonuskatew Eiran"]
@@ -754,9 +813,9 @@
                [14 "Broen Olujimi"]
                [15 "Rüstem Hebel"]]}
   ;; Filter out the timestamps from the results since they're hard to test :/
-  (-> (Q aggregate rows of users
-         order id+)
-      (update-in [:data :rows] (partial mapv (fn [[id last-login name]]
+  (-> (run-query users
+        (ql/order-by (ql/asc $id)))
+      (update-in [:data :rows] (partial mapv (fn [[id name last-login]]
                                                [(int id) name])))))
 
 
@@ -769,12 +828,11 @@
   (if (i/has-questionable-timezone-support? *data-loader*)
     10
     9)
-  (Q dataset sad-toucan-incidents
-     of incidents
-     filter and > timestamp "2015-06-01"
-                < timestamp "2015-06-03"
-     order timestamp+
-     return rows count))
+  (count (rows (dataset sad-toucan-incidents
+                 (run-query incidents
+                   (ql/filter (ql/and (ql/> $timestamp "2015-06-01")
+                                      (ql/< $timestamp "2015-06-03")))
+                   (ql/order-by (ql/asc $timestamp)))))))
 
 (datasets/expect-with-all-engines
   (cond
@@ -815,11 +873,12 @@
      [#inst "2015-06-08T07" 10]
      [#inst "2015-06-09T07"  6]
      [#inst "2015-06-10T07" 10]])
-  (Q dataset sad-toucan-incidents
-     aggregate count of incidents
-     breakout timestamp
-     limit 10
-     return rows (format-rows-by [identity int])))
+  (->> (dataset sad-toucan-incidents
+         (run-query incidents
+           (ql/aggregation (ql/count))
+           (ql/breakout $timestamp)
+           (ql/limit 10)))
+        rows (format-rows-by [identity int])))
 
 
 ;; +------------------------------------------------------------------------------------------------------------------------+
@@ -839,12 +898,13 @@
    ["Houston"      11]
    ["Irvine"       11]
    ["Lakeland"     11]]
-  (Q dataset tupac-sightings
-     aggregate count of sightings
-     breakout city_id->cities.name
-     order ag.0-
-     limit 10
-     return rows (format-rows-by [str int])))
+  (->> (dataset tupac-sightings
+         (run-query sightings
+           (ql/aggregation (ql/count))
+           (ql/breakout $city_id->cities.name)
+           (ql/order-by (ql/desc (ql/aggregate-field 0)))
+           (ql/limit 10)))
+       rows (format-rows-by [str int])))
 
 
 ;; Number of Tupac sightings in the Expa office
@@ -852,10 +912,11 @@
 ;; Test that we can filter on an FK field
 (datasets/expect-with-engines (engines-that-support :foreign-keys)
   [[60]]
-  (Q dataset tupac-sightings
-     return rows (format-rows-by [int])
-     aggregate count of sightings
-     filter = category_id->categories.id 8))
+  (->> (dataset tupac-sightings
+         (run-query sightings
+           (ql/aggregation (ql/count))
+           (ql/filter (ql/= $category_id->categories.id 8))))
+       rows (format-rows-by [int])))
 
 
 ;; THE 10 MOST RECENT TUPAC SIGHTINGS (!)
@@ -872,11 +933,12 @@
    [996 "At a Restaurant"]
    [897 "Wearing a Biggie Shirt"]
    [499 "In the Expa Office"]]
-  (Q dataset tupac-sightings of sightings
-     return rows (format-rows-by [int str])
-     fields id category_id->categories.name
-     order timestamp-
-     limit 10))
+  (->> (dataset tupac-sightings
+         (run-query sightings
+           (ql/fields $id $category_id->categories.name)
+           (ql/order-by (ql/desc $timestamp))
+           (ql/limit 10)))
+       rows (format-rows-by [int str])))
 
 
 ;; 1. Check that we can order by Foreign Keys
@@ -896,21 +958,25 @@
    [2 11 524]
    [2 13  77]
    [2 13 202]]
-  (Q dataset tupac-sightings
-     return rows (map butlast) (map reverse) (format-rows-by [int int int]) ; drop timestamps. reverse ordering to make the results columns order match order_by
-     of sightings
-     order city_id->cities.name+ category_id->categories.name- id+
-     limit 10))
+  (->> (dataset tupac-sightings
+         (run-query sightings
+           (ql/order-by (ql/asc $city_id->cities.name)
+                        (ql/desc $category_id->categories.name)
+                        (ql/asc $id))
+           (ql/limit 10)))
+       rows (map butlast) (map reverse) (format-rows-by [int int int]))) ; drop timestamps. reverse ordering to make the results columns order match order_by
 
 
 ;; Check that trying to use a Foreign Key fails for Mongo
 (datasets/expect-with-engines (engines-that-dont-support :foreign-keys)
   {:status :failed
    :error "foreign-keys is not supported by this driver."}
-  (select-keys (Q dataset tupac-sightings
-                  of sightings
-                  order city_id->cities.name+ category_id->categories.name- id+
-                  limit 10)
+  (select-keys (dataset tupac-sightings
+                 (run-query sightings
+                   (ql/order-by (ql/asc $city_id->cities.name)
+                                (ql/desc $category_id->categories.name)
+                                (ql/asc $id))
+                   (ql/limit 10)))
                [:status :error]))
 
 
@@ -921,21 +987,21 @@
 ;;; Nested Field in FILTER
 ;; Get the first 10 tips where tip.venue.name == "Kyle's Low-Carb Grill"
 (datasets/expect-with-engines (engines-that-support :nested-fields)
-    [[8   "Kyle's Low-Carb Grill"]
-     [67  "Kyle's Low-Carb Grill"]
-     [80  "Kyle's Low-Carb Grill"]
-     [83  "Kyle's Low-Carb Grill"]
-     [295 "Kyle's Low-Carb Grill"]
-     [342 "Kyle's Low-Carb Grill"]
-     [417 "Kyle's Low-Carb Grill"]
-     [426 "Kyle's Low-Carb Grill"]
-     [470 "Kyle's Low-Carb Grill"]]
-  (Q dataset geographical-tips
-     return rows (map (fn [[id _ _ _ {venue-name :name}]] [id venue-name]))
-     aggregate rows of tips
-     filter = venue...name "Kyle's Low-Carb Grill"
-     order id
-     limit 10))
+  [[8   "Kyle's Low-Carb Grill"]
+   [67  "Kyle's Low-Carb Grill"]
+   [80  "Kyle's Low-Carb Grill"]
+   [83  "Kyle's Low-Carb Grill"]
+   [295 "Kyle's Low-Carb Grill"]
+   [342 "Kyle's Low-Carb Grill"]
+   [417 "Kyle's Low-Carb Grill"]
+   [426 "Kyle's Low-Carb Grill"]
+   [470 "Kyle's Low-Carb Grill"]]
+  (->> (dataset geographical-tips
+         (run-query tips
+           (ql/filter (ql/= $tips.venue.name "Kyle's Low-Carb Grill"))
+           (ql/order-by (ql/asc $id))
+           (ql/limit 10)))
+       rows (mapv (fn [[id _ _ _ {venue-name :name}]] [id venue-name]))))
 
 ;;; Nested Field in ORDER
 ;; Let's get all the tips Kyle posted on Twitter sorted by tip.venue.name
@@ -968,27 +1034,26 @@
      :medium "http://cloudfront.net/cedd4221-dbdb-46c3-95a9-935cce6b3fe5/med.jpg",
      :small  "http://cloudfront.net/cedd4221-dbdb-46c3-95a9-935cce6b3fe5/small.jpg"}
     {:phone "415-901-6541", :name "Pacific Heights Free-Range Eatery", :categories ["Free-Range" "Eatery"], :id "88b361c8-ce69-4b2e-b0f2-9deedd574af6"}]]
-  (Q dataset geographical-tips
-     return rows
-     aggregate rows of tips
-     filter and = source...service "twitter"
-                = source...username "kyle"
-     order venue...name))
+  (rows (dataset geographical-tips
+          (run-query tips
+            (ql/filter (ql/and (ql/= $tips.source.service "twitter")
+                               (ql/= $tips.source.username "kyle")))
+            (ql/order-by (ql/asc $tips.venue.name))))))
 
 ;; Nested Field in AGGREGATION
 ;; Let's see how many *distinct* venue names are mentioned
 (datasets/expect-with-engines (engines-that-support :nested-fields)
-  99
-  (Q dataset geographical-tips
-     return first-row first
-     aggregate distinct venue...name of tips))
+  [99]
+  (first-row (dataset geographical-tips
+               (run-query tips
+                 (ql/aggregation (ql/distinct $tips.venue.name))))))
 
 ;; Now let's just get the regular count
 (datasets/expect-with-engines (engines-that-support :nested-fields)
-  500
-  (Q dataset geographical-tips
-     return first-row first
-     aggregate count venue...name of tips))
+  [500]
+  (first-row (dataset geographical-tips
+               (run-query tips
+                 (ql/aggregation (ql/count $tips.venue.name))))))
 
 ;;; Nested Field in BREAKOUT
 ;; Let's see how many tips we have by source.service
@@ -999,10 +1064,11 @@
              ["twitter"     98]
              ["yelp"        90]]
    :columns ["source.service" "count"]}
-  (Q dataset geographical-tips
-     return :data (#(dissoc % :cols)) (format-rows-by [str int])
-     aggregate count of tips
-     breakout source...service))
+  (->> (dataset geographical-tips
+         (run-query tips
+           (ql/aggregation (ql/count))
+           (ql/breakout $tips.source.service)))
+       :data (#(dissoc % :cols)) (format-rows-by [str int])))
 
 ;;; Nested Field in FIELDS
 ;; Return the first 10 tips with just tip.venue.name
@@ -1018,12 +1084,11 @@
              ["Kyle's Low-Carb Grill"]
              ["Mission Homestyle Churros"]
              ["Sameer's Pizza Liquor Store"]]}
-  (select-keys (Q dataset geographical-tips
-                  return :data
-                  aggregate rows of tips
-                  order id
-                  fields venue...name
-                  limit 10)
+  (select-keys (:data (dataset geographical-tips
+                        (run-query tips
+                          (ql/fields $tips.venue.name)
+                          (ql/order-by (ql/asc $id))
+                          (ql/limit 10))))
                [:columns :rows]))
 
 
@@ -1043,11 +1108,12 @@
    ["cam_saul"      10]
    ["rasta_toucan"  13]
    [nil            400]]
-  (Q dataset geographical-tips
-     aggregate count of tips
-     breakout source...mayor
-     order ag.0
-     return rows (format-rows-by [identity int])))
+  (->> (dataset geographical-tips
+         (run-query tips
+           (ql/aggregation (ql/count))
+           (ql/breakout $tips.source.mayor)
+           (ql/order-by (ql/asc (ql/aggregate-field 0)))))
+       rows (format-rows-by [identity int])))
 
 
 ;;; # New Filter Types - CONTAINS, STARTS_WITH, ENDS_WITH
@@ -1056,10 +1122,10 @@
 (datasets/expect-with-all-engines
  [[41 "Cheese Steak Shop" 18 37.7855 -122.44  1]
   [74 "Chez Jay"           2 34.0104 -118.493 2]]
- (Q aggregate rows of venues
-    filter starts-with name "Che"
-    order id
-    return rows formatted-venues-rows))
+ (-> (run-query venues
+       (ql/filter (ql/starts-with $name "Che"))
+       (ql/order-by (ql/asc $id)))
+     rows formatted-venues-rows))
 
 
 ;;; ## ENDS_WITH
@@ -1069,45 +1135,48 @@
   [17 "Ruen Pair Thai Restaurant"    71 34.1021 -118.306 2]
   [45 "Tu Lan Restaurant"             4 37.7821 -122.41  1]
   [55 "Dal Rae Restaurant"           67 33.983  -118.096 4]]
- (Q aggregate rows of venues
-    filter ends-with name "Restaurant"
-    order id
-    return rows formatted-venues-rows))
+ (-> (run-query venues
+       (ql/filter (ql/ends-with $name "Restaurant"))
+       (ql/order-by (ql/asc $id)))
+     rows formatted-venues-rows))
 
 ;;; ## CONTAINS
 (datasets/expect-with-all-engines
   [[31 "Bludso's BBQ"             5 33.8894 -118.207 2]
    [34 "Beachwood BBQ & Brewing" 10 33.7701 -118.191 2]
    [39 "Baby Blues BBQ"           5 34.0003 -118.465 2]]
-  (Q aggregate rows of venues
-     filter contains name "BBQ"
-     order id
-     return rows formatted-venues-rows))
+  (-> (run-query venues
+        (ql/filter (ql/contains $name "BBQ"))
+        (ql/order-by (ql/asc $id)))
+      rows formatted-venues-rows))
 
 ;;; ## Nested AND / OR
 
 (datasets/expect-with-all-engines
   [[81]]
-  (Q aggregate count of venues
-     filter and != price 3
-                or = price 1
-                or = price 2
-     return rows (format-rows-by [int])))
+  (->> (run-query venues
+         (ql/aggregation (ql/count))
+         (ql/filter (ql/and (ql/!= $price 3)
+                            (ql/or (ql/= $price 1)
+                                   (ql/= $price 2)))))
+       rows (format-rows-by [int])))
 
 
 ;;; ## = / != with multiple values
 
 (datasets/expect-with-all-engines
   [[81]]
-  (Q aggregate count of venues
-     filter = price 1 2
-     return rows (format-rows-by [int])))
+  (->> (run-query venues
+         (ql/aggregation (ql/count))
+         (ql/filter (ql/= $price 1 2)))
+       rows (format-rows-by [int])))
 
 (datasets/expect-with-all-engines
   [[19]]
-  (Q aggregate count of venues
-     filter != price 1 2
-     return rows (format-rows-by [int])))
+  (->> (run-query venues
+         (ql/aggregation (ql/count))
+         (ql/filter (ql/!= $price 1 2)))
+     rows (format-rows-by [int])))
 
 
 ;; +-------------------------------------------------------------------------------------------------------------+
@@ -1118,12 +1187,13 @@
 ;; ## BUCKETING
 
 (defn- sad-toucan-incidents-with-bucketing [unit]
-  (vec (Q dataset sad-toucan-incidents
-          aggregate count of incidents
-          breakout ["datetime_field" (id :incidents :timestamp) "as" unit]
-          limit 10
-          return rows (format-rows-by [(fn [x] (if (number? x) (int x) x))
-                                       int]))))
+  (->> (with-db (get-or-create-database! defs/sad-toucan-incidents)
+         (run-query incidents
+           (ql/aggregation (ql/count))
+           (ql/breakout (ql/datetime-field $timestamp unit))
+           (ql/limit 10)))
+       rows (format-rows-by [(fn [x] (if (number? x) (int x) x))
+                             int])))
 
 (datasets/expect-with-all-engines
   (cond
@@ -1390,10 +1460,12 @@
 (def ^:private checkins:1-per-day    (partial database-def-with-timestamps (* 60 60 24)))
 
 (defn- count-of-grouping [db field-grouping & relative-datetime-args]
-  (with-temp-db [_ db]
-    (Q aggregate count of checkins
-       filter = ["datetime_field" (id :checkins :timestamp) "as" (name field-grouping)] (apply vector "relative_datetime" relative-datetime-args)
-       return first-row first int)))
+  (-> (with-temp-db [_ db]
+        (run-query checkins
+          (ql/aggregation (ql/count))
+          (ql/filter (ql/= (ql/datetime-field $timestamp field-grouping)
+                           (apply ql/relative-datetime relative-datetime-args)))))
+      first-row first int))
 
 (datasets/expect-with-all-engines 4 (count-of-grouping (checkins:4-per-minute) :minute "current"))
 (datasets/expect-with-all-engines 4 (count-of-grouping (checkins:4-per-minute) :minute -1 "minute"))
@@ -1412,41 +1484,32 @@
 ;; SYNTACTIC SUGAR
 (datasets/expect-with-all-engines
   1
-  (with-temp-db [_ (checkins:1-per-day)]
-    (-> (driver/process-query
-         {:database (id)
-          :type     :query
-          :query    {:source_table (id :checkins)
-                     :aggregation  ["count"]
-                     :filter       ["TIME_INTERVAL" (id :checkins :timestamp) "current" "day"]}})
-        :data :rows first first int)))
+  (-> (with-temp-db [_ (checkins:1-per-day)]
+        (run-query checkins
+          (ql/aggregation (ql/count))
+          (ql/filter (ql/time-interval $timestamp :current :day))))
+      first-row first int))
 
 (datasets/expect-with-all-engines
   7
-  (with-temp-db [_ (checkins:1-per-day)]
-    (-> (driver/process-query
-         {:database (id)
-          :type     :query
-          :query    {:source_table (id :checkins)
-                     :aggregation  ["count"]
-                     :filter       ["TIME_INTERVAL" (id :checkins :timestamp) "last" "week"]}})
-        :data :rows first first int)))
+  (-> (with-temp-db [_ (checkins:1-per-day)]
+        (run-query checkins
+          (ql/aggregation (ql/count))
+          (ql/filter (ql/time-interval $timestamp :last :week))))
+      first-row first int))
 
 ;; Make sure that when referencing the same field multiple times with different units we return the one
 ;; that actually reflects the units the results are in.
 ;; eg when we breakout by one unit and filter by another, make sure the results and the col info
 ;; use the unit used by breakout
 (defn- date-bucketing-unit-when-you [& {:keys [breakout-by filter-by]}]
-  (with-temp-db [_ (checkins:1-per-day)]
-    (let [results (driver/process-query
-                   {:database (id)
-                    :type     :query
-                    :query     {:source_table (id :checkins)
-                                :aggregation  ["count"]
-                                :breakout     [["datetime_field" (id :checkins :timestamp) "as" breakout-by]]
-                                :filter       ["TIME_INTERVAL" (id :checkins :timestamp) "current" filter-by]}})]
-      {:rows (-> results :row_count)
-       :unit (-> results :data :cols first :unit)})))
+  (let [results (with-temp-db [_ (checkins:1-per-day)]
+                  (run-query checkins
+                    (ql/aggregation (ql/count))
+                    (ql/breakout (ql/datetime-field $timestamp breakout-by))
+                    (ql/filter (ql/time-interval $timestamp :current filter-by))))]
+    {:rows (-> results :row_count)
+     :unit (-> results :data :cols first :unit)}))
 
 (datasets/expect-with-all-engines
   {:rows 1, :unit :day}

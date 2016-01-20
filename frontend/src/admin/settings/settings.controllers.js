@@ -1,24 +1,10 @@
 import _ from "underscore";
 
 import SettingsEditor from './components/SettingsEditor.jsx';
+import MetabaseSettings from 'metabase/lib/settings';
 
 
-var SettingsAdminControllers = angular.module('metabaseadmin.settings.controllers', ['metabase.services']);
-
-// from common.clj
-var TIMEZONES = [
-    { name: "Database Default", value: "" },
-    "GMT",
-    "UTC",
-    "US/Alaska",
-    "US/Arizona",
-    "US/Central",
-    "US/Eastern",
-    "US/Hawaii",
-    "US/Mountain",
-    "US/Pacific",
-    "America/Costa_Rica",
-];
+var SettingsAdminControllers = angular.module('metabase.admin.settings.controllers', ['metabase.services']);
 
 const SECTIONS = [
     {
@@ -43,7 +29,10 @@ const SECTIONS = [
                 key: "report-timezone",
                 display_name: "Report Timezone",
                 type: "select",
-                options: TIMEZONES,
+                options: [
+                    { name: "Database Default", value: "" },
+                    ...MetabaseSettings.get('timezones')
+                ],
                 placeholder: "Select a timezone"
             },
             {

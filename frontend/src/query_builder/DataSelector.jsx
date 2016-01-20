@@ -12,7 +12,7 @@ export default class DataSelector extends Component {
     constructor(props, context) {
         super(props, context);
 
-        _.bindAll(this, "onChange", "itemIsSelected", "sectionIsSelected", "renderSectionIcon", "renderItemIcon");
+        _.bindAll(this, "onChange", "itemIsSelected", "renderSectionIcon", "renderItemIcon");
     }
 
     static propTypes = {
@@ -20,13 +20,10 @@ export default class DataSelector extends Component {
         databases: PropTypes.array.isRequired,
         setDatabaseFn: PropTypes.func.isRequired,
         setSourceTableFn: PropTypes.func,
-        isInitiallyOpen: PropTypes.bool,
-        name: PropTypes.string
+        isInitiallyOpen: PropTypes.bool
     };
 
     static defaultProps = {
-        name: "Data",
-        className: "",
         isInitiallyOpen: false,
         includeTables: false
     };
@@ -39,14 +36,6 @@ export default class DataSelector extends Component {
             this.props.setSourceTableFn(item.table.id);
         }
         this.refs.popover.toggle();
-    }
-
-    sectionIsSelected(section, sectionIndex) {
-        if (this.props.includeTables) {
-            return section.items[0].database.id === this.getDatabaseId();
-        } else {
-            return true;
-        }
     }
 
     itemIsSelected(item) {
@@ -74,9 +63,11 @@ export default class DataSelector extends Component {
     }
 
     render() {
+        const { databases } = this.props;
+
         let dbId = this.getDatabaseId();
         let tableId = this.getTableId();
-        var database = _.find(this.props.databases, (db) => db.id === dbId);
+        var database = _.find(databases, (db) => db.id === dbId);
         var table = _.find(database.tables, (table) => table.id === tableId);
 
         var content;
@@ -102,8 +93,9 @@ export default class DataSelector extends Component {
         )
 
         let sections;
+        let initiallyOpenSection;
         if (this.props.includeTables) {
-            sections = this.props.databases.map(database => ({
+            sections = databases.map(database => ({
                 name: database.name,
                 items: database.tables.filter(isQueryable).map(table => ({
                     name: table.display_name || table.name,
@@ -113,10 +105,12 @@ export default class DataSelector extends Component {
                     return a.name.localeCompare(b.name);
                 })
             }));
-
+            if (database) {
+                initiallyOpenSection = databases.indexOf(database);
+            }
         } else {
             sections = [{
-                items: this.props.databases.map(database => ({
+                items: databases.map(database => ({
                     name: database.name,
                     database: database
                 }))
@@ -124,25 +118,22 @@ export default class DataSelector extends Component {
         }
 
         return (
-            <div className={"GuiBuilder-section GuiBuilder-data flex align-center " + this.props.className}>
-                <span className="GuiBuilder-section-label Query-label">{this.props.name}</span>
-                <PopoverWithTrigger
-                    ref="popover"
-                    isInitiallyOpen={this.props.isInitiallyOpen}
-                    triggerElement={triggerElement}
-                    triggerClasses="flex align-center"
-                >
-                    <AccordianList
-                        className="text-brand"
-                        sections={sections}
-                        onChange={this.onChange}
-                        sectionIsSelected={this.sectionIsSelected}
-                        itemIsSelected={this.itemIsSelected}
-                        renderSectionIcon={this.renderSectionIcon}
-                        renderItemIcon={this.renderItemIcon}
-                    />
-                </PopoverWithTrigger>
-            </div>
+            <PopoverWithTrigger
+                ref="popover"
+                isInitiallyOpen={this.props.isInitiallyOpen}
+                triggerElement={triggerElement}
+                triggerClasses="flex align-center"
+            >
+                <AccordianList
+                    className="text-brand"
+                    sections={sections}
+                    onChange={this.onChange}
+                    itemIsSelected={this.itemIsSelected}
+                    renderSectionIcon={this.renderSectionIcon}
+                    renderItemIcon={this.renderItemIcon}
+                    initiallyOpenSection={initiallyOpenSection}
+                />
+            </PopoverWithTrigger>
         );
     }
 }

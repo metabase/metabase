@@ -27,37 +27,37 @@
 
 ;;; # IMPLEMENTATION
 
-(defn- column->base-type [_ column-type]
-  ({:BIGINT     :BigIntegerField
-     :BINARY     :UnknownField
-     :BIT        :UnknownField
-     :BLOB       :UnknownField
-     :CHAR       :CharField
-     :DATE       :DateField
-     :DATETIME   :DateTimeField
-     :DECIMAL    :DecimalField
-     :DOUBLE     :FloatField
-     :ENUM       :UnknownField
-     :FLOAT      :FloatField
-     :INT        :IntegerField
-     :INTEGER    :IntegerField
-     :LONGBLOB   :UnknownField
-     :LONGTEXT   :TextField
-     :MEDIUMBLOB :UnknownField
-     :MEDIUMINT  :IntegerField
-     :MEDIUMTEXT :TextField
-     :NUMERIC    :DecimalField
-     :REAL       :FloatField
-     :SET        :UnknownField
-     :TEXT       :TextField
-     :TIME       :TimeField
-     :TIMESTAMP  :DateTimeField
-     :TINYBLOB   :UnknownField
-     :TINYINT    :IntegerField
-     :TINYTEXT   :TextField
-     :VARBINARY  :UnknownField
-     :VARCHAR    :TextField
-     :YEAR       :IntegerField} column-type))
+(def ^:private ^:const column->base-type
+  {:BIGINT     :BigIntegerField
+   :BINARY     :UnknownField
+   :BIT        :BooleanField
+   :BLOB       :UnknownField
+   :CHAR       :CharField
+   :DATE       :DateField
+   :DATETIME   :DateTimeField
+   :DECIMAL    :DecimalField
+   :DOUBLE     :FloatField
+   :ENUM       :UnknownField
+   :FLOAT      :FloatField
+   :INT        :IntegerField
+   :INTEGER    :IntegerField
+   :LONGBLOB   :UnknownField
+   :LONGTEXT   :TextField
+   :MEDIUMBLOB :UnknownField
+   :MEDIUMINT  :IntegerField
+   :MEDIUMTEXT :TextField
+   :NUMERIC    :DecimalField
+   :REAL       :FloatField
+   :SET        :UnknownField
+   :TEXT       :TextField
+   :TIME       :TimeField
+   :TIMESTAMP  :DateTimeField
+   :TINYBLOB   :UnknownField
+   :TINYINT    :IntegerField
+   :TINYTEXT   :TextField
+   :VARBINARY  :UnknownField
+   :VARCHAR    :TextField
+   :YEAR       :IntegerField})
 
 (defn- connection-details->spec [_ details]
   (-> details
@@ -134,6 +134,7 @@
         #".*" ; default
         message))
 
+
 (defrecord MySQLDriver []
   clojure.lang.Named
   (getName [_] "MySQL"))
@@ -141,8 +142,7 @@
 (extend MySQLDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:active-tables                     sql/post-filtered-active-tables
-          :date-interval                     date-interval
+         {:date-interval                     date-interval
           :details-fields                    (constantly [{:name         "host"
                                                            :display-name "Host"
                                                            :default      "localhost"}
@@ -166,7 +166,8 @@
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
-         {:column->base-type         column->base-type
+         {:active-tables             sql/post-filtered-active-tables
+          :column->base-type         (u/drop-first-arg column->base-type)
           :connection-details->spec  connection-details->spec
           :date                      date
           :excluded-schemas          (constantly #{"INFORMATION_SCHEMA"})

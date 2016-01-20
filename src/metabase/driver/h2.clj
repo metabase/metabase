@@ -83,7 +83,8 @@
 
     (connection-string->file+options \"file:my-crazy-db;OPTION=100;OPTION_X=TRUE\")
       -> [\"file:my-crazy-db\" {\"OPTION\" \"100\", \"OPTION_X\" \"TRUE\"}]"
-  [connection-string]
+  [^String connection-string]
+  {:pre [connection-string]}
   (let [[file & options] (s/split connection-string #";+")
         options          (into {} (for [option options]
                                     (s/split option #"=")))]
@@ -148,7 +149,7 @@
     :day-of-week     (k/sqlfn :DAY_OF_WEEK expr)
     :day-of-month    (k/sqlfn :DAY_OF_MONTH expr)
     :day-of-year     (k/sqlfn :DAY_OF_YEAR expr)
-    :week            (trunc-with-format "yyyyww" expr) ; ww = week of year
+    :week            (trunc-with-format "YYYYww" expr) ; Y = week year; w = week in year
     :week-of-year    (kx/week expr)
     :month           (trunc-with-format "yyyyMM" expr)
     :month-of-year   (kx/month expr)
@@ -198,8 +199,7 @@
 (extend H2Driver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:active-tables                     sql/post-filtered-active-tables
-          :date-interval                     date-interval
+         {:date-interval                     date-interval
           :details-fields                    (constantly [{:name         "db"
                                                            :display-name "Connection String"
                                                            :placeholder  "file:/Users/camsaul/bird_sightings/toucans;AUTO_SERVER=TRUE"
@@ -209,7 +209,8 @@
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
-         {:column->base-type         column->base-type
+         {:active-tables             sql/post-filtered-active-tables
+          :column->base-type         column->base-type
           :connection-details->spec  connection-details->spec
           :date                      date
           :date-interval             date-interval
