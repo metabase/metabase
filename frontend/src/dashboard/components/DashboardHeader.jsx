@@ -90,7 +90,7 @@ export default class DashboardHeader extends Component {
                 failedText="Save failed"
                 successText="Saved"
             />,
-            <a key="cancel" className="Button Button--small text-uppercase" onClick={() => this.onCancel()}>
+            <a data-metabase-event="Dashboard;Cancel Edits" key="cancel" className="Button Button--small text-uppercase" onClick={() => this.onCancel()}>
                 Cancel
             </a>,
             <ModalWithTrigger
