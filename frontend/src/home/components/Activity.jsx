@@ -87,20 +87,6 @@ export default class Activity extends Component {
             timeSince: item.timestamp.fromNow()
         };
 
-        function handleSubject(item) {
-            if(item.table) {
-                return {
-                    subject: "saved a question about",
-                    subjectRefName: item.table.display_name,
-                }
-            } else {
-                return {
-                    subject: "saved a question",
-                    subjectRefName: null
-                }
-            }
-        }
-
         switch (item.topic) {
             case "card-create":
             case "card-update":

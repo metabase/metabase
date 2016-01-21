@@ -9,8 +9,8 @@
 ;; Define a setting which captures our Slack api token
 (defsetting slack-token "Slack API bearer token obtained from https://api.slack.com/web#authentication")
 
-(def ^:const slack-api-baseurl "https://slack.com/api")
-(def ^:const metabase-slack-files-channel "metabase_files")
+(def ^:private ^:const slack-api-baseurl "https://slack.com/api")
+(def ^:private ^:const metabase-slack-files-channel "metabase_files")
 
 
 (defn slack-configured?
