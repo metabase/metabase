@@ -31,13 +31,14 @@ export default class MetadataTablePicker extends Component {
         let schemas = {};
         let selectedSchema;
         for (let table of tables) {
-            schemas[table.schema] = schemas[table.schema] || {
-                name: titleize(humanize(table.schema)),
+            let name = table.schema || ""; // possibly null
+            schemas[name] = schemas[name] || {
+                name: titleize(humanize(name)),
                 tables: []
             }
-            schemas[table.schema].tables.push(table);
+            schemas[name].tables.push(table);
             if (table.id === newProps.tableId) {
-                selectedSchema = schemas[table.schema];
+                selectedSchema = schemas[name];
             }
         }
         this.setState({

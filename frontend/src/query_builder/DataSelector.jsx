@@ -46,14 +46,15 @@ export default class DataSelector extends Component {
         let databases = newProps.databases && newProps.databases.map(database => {
             let schemas = {};
             for (let table of database.tables.filter(isQueryable)) {
-                schemas[table.schema] = schemas[table.schema] || {
-                    name: titleize(humanize(table.schema)),
+                let name = table.schema || "";
+                schemas[name] = schemas[name] || {
+                    name: titleize(humanize(name)),
                     database: database,
                     tables: []
                 }
-                schemas[table.schema].tables.push(table);
+                schemas[name].tables.push(table);
                 if (table.id === tableId) {
-                    selectedSchema = schemas[table.schema];
+                    selectedSchema = schemas[name];
                 }
             }
             schemas = Object.values(schemas);
