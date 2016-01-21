@@ -56,7 +56,7 @@ export default class RecentViews extends Component {
                             {recentViews.map((item, index) =>
                                 <li key={index} className="py1 ml1 flex align-center clearfix">
                                     {this.renderIllustration(item)}
-                                    <a className="ml1 flex-full link" href={Urls.modelToUrl(item.model, item.model_id)}>{item.model_object.name}</a>
+                                    <a data-metabase-event={"Recent Views;"+item.model+";"+item.cnt} className="ml1 flex-full link" href={Urls.modelToUrl(item.model, item.model_id)}>{item.model_object.name}</a>
                                 </li>
                             )}
                         </ul>
