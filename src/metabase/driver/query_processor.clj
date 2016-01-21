@@ -111,7 +111,8 @@
   (fn [query]
     (qp (if (structured-query? query)
           (let [macro-expanded-query (macros/expand-macros query)]
-            (when (not *disable-qp-logging*)
+            (when (and (not *disable-qp-logging*)
+                       (not= macro-expanded-query query))
               (log/debug (u/format-color 'cyan "\n\nMACRO/SUBSTITUTED: 😻\n%s" (u/pprint-to-str macro-expanded-query))))
             (-> macro-expanded-query
                 expand/expand
