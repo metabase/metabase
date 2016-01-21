@@ -1,5 +1,6 @@
 import React, { Component, PropTypes } from "react";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseUtils from "metabase/lib/utils";
 import SettingsEmailFormElement from "./SettingsEmailFormElement.jsx";
 
@@ -131,6 +132,8 @@ export default class SettingsSlackForm extends Component {
                     submitting: "success"
                 });
 
+                MetabaseAnalytics.trackEvent("Slack Settings", "Update", "success");
+
                 // show a confirmation for 3 seconds, then return to normal
                 setTimeout(() => this.setState({submitting: "default"}), 3000);
             }, (error) => {
@@ -138,6 +141,8 @@ export default class SettingsSlackForm extends Component {
                     submitting: "default",
                     formErrors: this.handleFormErrors(error)
                 });
+
+                MetabaseAnalytics.trackEvent("Slack Settings", "Update", "error");
             });
         }
     }

@@ -1,3 +1,6 @@
+
+import { registerAnalyticsClickListener } from "metabase/lib/analytics";
+
 // Declare app level module which depends on filters, and services
 var Metabase = angular.module('metabase', [
     'ngRoute',
@@ -53,4 +56,7 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
 Metabase.run(["AppState", function(AppState) {
     // initialize app state
     AppState.init();
+
+    // start our analytics click listener
+    registerAnalyticsClickListener();
 }]);
