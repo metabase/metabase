@@ -14,7 +14,9 @@
   i/IEntity
   (merge i/IEntityDefaults
          {:types        (constantly {:relationship :keyword})
-          :timestamped? (constantly true)}))
+          :timestamped? (constantly true)
+          :can-read?    (constantly true)
+          :can-write?   i/superuser?}))
 
 
 (u/require-dox-in-this-namespace)
