@@ -1,9 +1,11 @@
 import React, { Component, PropTypes } from "react";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
 import ModalContent from "metabase/components/ModalContent.jsx";
 import Toggle from 'metabase/components/Toggle.jsx';
 
 import { removeCardFromDashboard } from '../actions';
+
 
 export default class RemoveFromDashboardModal extends Component {
     constructor(props, context) {
@@ -28,6 +30,8 @@ export default class RemoveFromDashboardModal extends Component {
             // this.props.dispatch(markCardForDeletion(this.props.dashcard.card_id))
         }
         this.props.onClose();
+
+        MetabaseAnalytics.trackEvent("Dashboard", "Remove Card");
     }
 
     render() {

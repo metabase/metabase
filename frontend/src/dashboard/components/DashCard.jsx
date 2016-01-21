@@ -90,7 +90,7 @@ export default class DashCard extends Component {
         return (
             <div className={"Card bordered rounded flex flex-column " + cx({ "Card--recent": recent })}>
                 <div className="Card-heading my1 px2">
-                    <a className="Card-title link" href={"/card/"+card.id+"?clone"}>
+                    <a data-metabase-event={"Dashboard;Card Link;"+card.display} className="Card-title link" href={"/card/"+card.id+"?clone"}>
                         <div ref="title" className="h3 text-normal my1">
                             {card.name}
                         </div>

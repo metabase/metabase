@@ -2,6 +2,7 @@ import React, { Component, PropTypes } from 'react';
 
 import OnClickOut from 'react-onclickout';
 
+import MetabaseAnalytics from "metabase/lib/analytics";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal.jsx";
 import Modal from "metabase/components/Modal.jsx";
 
@@ -43,6 +44,8 @@ export default class DashboardsDropdown extends Component {
                 dropdownOpen: false,
                 modalOpen: false
             });
+
+            MetabaseAnalytics.trackEvent("Dashboard", "Create");
         }.bind(this));
     }
 

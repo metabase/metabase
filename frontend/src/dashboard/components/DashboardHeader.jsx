@@ -137,7 +137,7 @@ export default class DashboardHeader extends Component {
 
         if (dashboard && dashboard.can_write && !this.props.isEditing) {
             buttonSections[0].push(
-                <a key="edit" title="Edit Dashboard Layout" className="text-brand-hover cursor-pointer" onClick={() => this.onEdit()}>
+                <a data-metabase-event="Dashboard;Edit" key="edit" title="Edit Dashboard Layout" className="text-brand-hover cursor-pointer" onClick={() => this.onEdit()}>
                     <Icon name="pencil" width="16px" height="16px" />
                 </a>
             );
@@ -149,7 +149,7 @@ export default class DashboardHeader extends Component {
                 key="add"
                 ref="addQuestionModal"
                 triggerElement={
-                    <a title="Add a question to this dashboard">
+                    <a data-metabase-event="Dashboard;Add Card Modal" title="Add a question to this dashboard">
                         <Icon className={cx("text-brand-hover", { "Icon--pulse": isEmpty })} name="add" width="16px" height="16px" />
                     </a>
                 }
