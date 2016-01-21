@@ -3,6 +3,8 @@ import { AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
 import { createAction } from "redux-actions";
 import { normalize, Schema, arrayOf } from "normalizr";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 import moment from "moment";
 
 const user = new Schema('user');
@@ -38,6 +40,8 @@ export const createUser = createThunkAction(CREATE_USER, function(user) {
         newUser.date_joined = (newUser.date_joined) ? moment(newUser.date_joined) : null;
         newUser.last_login = (newUser.last_login) ? moment(newUser.last_login) : null;
 
+        MetabaseAnalytics.trackEvent("People Admin", "User Added", (user.password !== null) ? "password" : "email");
+
         return newUser;
     };
 });
@@ -47,6 +51,8 @@ export const deleteUser = createThunkAction(DELETE_USER, function(user) {
         await UserApi.delete({
             userId: user.id
         });
+
+        MetabaseAnalytics.trackEvent("People Admin", "User Removed");
         return user;
     };
 });
@@ -74,24 +80,29 @@ export const grantAdmin = createThunkAction(GRANT_ADMIN, function(user) {
         updatedUser.date_joined = (updatedUser.date_joined) ? moment(updatedUser.date_joined) : null;
         updatedUser.last_login = (updatedUser.last_login) ? moment(updatedUser.last_login) : null;
 
+        MetabaseAnalytics.trackEvent("People Admin", "Grant Admin");
+
         return updatedUser;
     };
 });
 
 export const resendInvite = createThunkAction(RESEND_INVITE, function(user) {
     return async function(dispatch, getState) {
+        MetabaseAnalytics.trackEvent("People Admin", "Resent Invite");
         return await UserApi.send_invite({id: user.id});
     };
 });
 
 export const resetPasswordManually = createThunkAction(RESET_PASSWORD_MANUAL, function(user, password) {
     return async function(dispatch, getState) {
+        MetabaseAnalytics.trackEvent("People Admin", "Manual Password Reset");
         return await UserApi.update_password({id: user.id, password: password});
     };
 });
 
 export const resetPasswordViaEmail = createThunkAction(RESET_PASSWORD_EMAIL, function(user) {
     return async function(dispatch, getState) {
+        MetabaseAnalytics.trackEvent("People Admin", "Trigger User Password Reset");
         return await SessionApi.forgot_password({email: user.email});
     };
 });
@@ -106,6 +117,8 @@ export const revokeAdmin = createThunkAction(REVOKE_ADMIN, function(user) {
         updatedUser.date_joined = (updatedUser.date_joined) ? moment(updatedUser.date_joined) : null;
         updatedUser.last_login = (updatedUser.last_login) ? moment(updatedUser.last_login) : null;
 
+        MetabaseAnalytics.trackEvent("People Admin", "Revoke Admin");
+
         return updatedUser;
     };
 });
@@ -116,6 +129,8 @@ export const updateUser = createThunkAction(UPDATE_USER, function(user) {
 
         updatedUser.date_joined = (updatedUser.date_joined) ? moment(updatedUser.date_joined) : null;
         updatedUser.last_login = (updatedUser.last_login) ? moment(updatedUser.last_login) : null;
+
+        MetabaseAnalytics.trackEvent("People Admin", "Update Updated");
 
         return updatedUser;
     };
