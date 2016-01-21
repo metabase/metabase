@@ -42,7 +42,7 @@ export function registerAnalyticsClickListener() {
         while (node) {
             if (node.dataset && node.dataset.metabaseEvent) {
                 // we expect our event to be a semicolon delimited string
-                const parts = node.dataset.metabaseEvent.split(";");
+                const parts = node.dataset.metabaseEvent.split(";").map(p => p.trim());
                 MetabaseAnalytics.trackEvent(...parts);
             }
             node = node.parentNode;
