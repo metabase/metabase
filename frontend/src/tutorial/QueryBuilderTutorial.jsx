@@ -28,6 +28,11 @@ const QUERY_BUILDER_STEPS = [
     },
     {
         getPortalTarget: () => qs(".GuiBuilder-data"),
+        getPageFlagTarget: () => qsWithContent(".List-section-header", "Sample Dataset"),
+        shouldAllowEvent: (e) => qsWithContent(".List-section-header", "Sample Dataset").contains(e.target)
+    },
+    {
+        getPortalTarget: () => qs(".GuiBuilder-data"),
         getPageFlagTarget: () => qsWithContent(".List-item", "Orders"),
         shouldAllowEvent: (e) => qsWithContent(".List-item", "Orders").contains(e.target)
     },
