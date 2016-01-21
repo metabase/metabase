@@ -113,26 +113,36 @@ export default class DataSelector extends Component {
         return this.props.query.query && this.props.query.query.source_table;
     }
 
+    renderDatabasePicker() {
+        let sections = [{
+            items: this.state.databases.map(database => ({
+                name: database.name,
+                database: database
+            }))
+        }];
+
+        return (
+            <AccordianList
+                key="schemaPicker"
+                className="text-brand"
+                sections={sections}
+                onChange={this.onChangeTable}
+                itemIsSelected={(item) => this.getDatabaseId() === item.database.id}
+                renderItemIcon={() => <Icon className="Icon text-default" name="database" width="18" height="18" />}
+                showItemArrows={false}
+            />
+        );
+    }
+
     renderDatabaseSchemaPicker() {
-        const { databases } = this.props;
         const { selectedSchema } = this.state;
 
-        let sections;
-        if (this.props.includeTables) {
-            sections = this.state.databases.map(database => {
-                return {
-                    name: database.name,
-                    items: database.schemas.length > 1 ? database.schemas : []
-                };
-            });
-        } else {
-            sections = [{
-                items: databases.map(database => ({
-                    name: database.name,
-                    database: database
-                }))
-            }];
-        }
+        let sections = this.state.databases.map(database => {
+            return {
+                name: database.name,
+                items: database.schemas.length > 1 ? database.schemas : []
+            };
+        });
 
         return (
             <AccordianList
@@ -221,7 +231,9 @@ export default class DataSelector extends Component {
                 triggerClasses="flex align-center"
                 horizontalAttachments={["left"]}
             >
-                { this.state.selectedSchema && this.state.showTablePicker ?
+                { !this.props.includeTables ?
+                    this.renderDatabasePicker()
+                : this.state.selectedSchema && this.state.showTablePicker ?
                     this.renderTablePicker()
                 :
                     this.renderDatabaseSchemaPicker()
