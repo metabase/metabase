@@ -55,7 +55,7 @@
 (def app
   "The primary entry point to the HTTP server"
   (-> routes/routes
-      (mb-middleware/log-api-call :request :response)
+      (mb-middleware/log-api-call)
       mb-middleware/add-security-headers              ; [METABASE] Add HTTP headers to API responses to prevent them from being cached
       (wrap-json-body                                 ; extracts json POST body and makes it avaliable on request
         {:keywords? true})

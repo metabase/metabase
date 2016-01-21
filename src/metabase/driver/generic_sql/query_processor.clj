@@ -193,7 +193,10 @@
        (u/format-color 'green "\nKORMA FORM: 😋\n%s" (u/pprint-to-str (walk/postwalk (fn [x] (if (keyword? x)
                                                                                                (keyword (name x)) ; strip ns qualifiers, e.g. (keyword (name :korma.sql.utils/func)) -> :func
                                                                                                x))
-                                                                                    (dissoc korma-form :db :ent :from :options :aliases :results :type :alias)))))
+                                                                                    (into {} (for [[k v] (dissoc korma-form :db :ent :from :options :aliases :results :type :alias)
+                                                                                                   :when (or (not (sequential? v))
+                                                                                                             (seq v))] ; remove keys where values are just []
+                                                                                               {k v}))))))
       (try
         (log/debug
          (u/format-color 'blue "\nSQL: 😈\n%s\n" (-> (k/as-sql korma-form)
