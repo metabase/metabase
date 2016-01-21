@@ -16,7 +16,7 @@ export default class DataSelector extends Component {
         this.state = {
             databases: null,
             selectedSchema: null,
-            showTablePane: true
+            showTablePicker: true
         }
 
         _.bindAll(this, "onChangeDatabase", "onChangeSchema", "onChangeTable", "onBack");
@@ -63,8 +63,7 @@ export default class DataSelector extends Component {
             }
             return {
                 ...database,
-                schemas: schemas.sort((a, b) => a.name.localeCompare(b.name)),
-                schemas_lookup: schemas
+                schemas: schemas.sort((a, b) => a.name.localeCompare(b.name))
             };
         });
         this.setState({ databases });
@@ -86,13 +85,13 @@ export default class DataSelector extends Component {
     onChangeSchema(schema) {
         this.setState({
             selectedSchema: schema,
-            showTablePane: true
+            showTablePicker: true
         });
     }
 
     onBack() {
         this.setState({
-            showTablePane: false
+            showTablePicker: false
         });
     }
 
@@ -101,7 +100,7 @@ export default class DataSelector extends Component {
         let schema = database && (database.schemas.length > 1 ? null : database.schemas[0]);
         this.setState({
             selectedSchema: schema,
-            showTablePane: !!schema
+            showTablePicker: !!schema
         });
     }
 
@@ -221,7 +220,7 @@ export default class DataSelector extends Component {
                 triggerClasses="flex align-center"
                 horizontalAttachments={["left"]}
             >
-                { this.state.selectedSchema && this.state.showTablePane ?
+                { this.state.selectedSchema && this.state.showTablePicker ?
                     this.renderTablePicker()
                 :
                     this.renderDatabaseSchemaPicker()

@@ -1,0 +1,65 @@
+import React, { Component, PropTypes } from "react";
+
+import MetadataTableList from "./MetadataTableList.jsx";
+import MetadataSchemaList from "./MetadataSchemaList.jsx";
+
+import { titleize, humanize } from "metabase/lib/formatting";
+
+export default class MetadataTablePicker extends Component {
+    constructor(props, context) {
+        super(props, context);
+
+        this.state = {
+            schemas: null,
+            selectedSchema: null,
+            showTablePicker: true
+        };
+    }
+
+    static propTypes = {
+        tableId: PropTypes.number,
+        tables: PropTypes.array.isRequired,
+        selectTable: PropTypes.func.isRequired
+    };
+
+    componentWillMount() {
+        this.componentWillReceiveProps(this.props);
+    }
+
+    componentWillReceiveProps(newProps) {
+        const { tables } = newProps;
+        let schemas = {};
+        let selectedSchema;
+        for (let table of tables) {
+            schemas[table.schema] = schemas[table.schema] || {
+                name: titleize(humanize(table.schema)),
+                tables: []
+            }
+            schemas[table.schema].tables.push(table);
+            if (table.id === newProps.tableId) {
+                selectedSchema = schemas[table.schema];
+            }
+        }
+        this.setState({
+            schemas: Object.values(schemas).sort((a, b) => a.name.localeCompare(b.name)),
+            selectedSchema: selectedSchema
+        });
+    }
+
+    render() {
+        const { schemas } = this.state;
+        if (schemas.length === 1) {
+            return <MetadataTableList {...this.props} tables={schemas[0].tables} />;
+        }
+        if (this.state.selectedSchema && this.state.showTablePicker) {
+            return <MetadataTableList {...this.props} tables={this.state.selectedSchema.tables} schema={this.state.selectedSchema} onBack={() => this.setState({ showTablePicker: false })} />;
+        }
+        return (
+            <MetadataSchemaList
+                schemas={schemas}
+                selectedSchema={this.state.schema}
+                onChangeSchema={(schema) => this.setState({ selectedSchema: schema, showTablePicker: true })}
+            />
+        );
+    }
+}

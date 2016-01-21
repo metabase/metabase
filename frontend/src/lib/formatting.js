@@ -94,8 +94,16 @@ export function singularize(...args) {
     return inflection.singularize(...args);
 }
 
+export function pluralize(...args) {
+    return inflection.pluralize(...args);
+}
+
 export function capitalize(...args) {
     return inflection.capitalize(...args);
+}
+
+export function inflect(...args) {
+    return inflection.inflect(...args);
 }
 
 export function titleize(...args) {
