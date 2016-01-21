@@ -86,7 +86,7 @@
     (-> field-def
         (update :count safe-inc)
         (update :len #(if (string? field-value)
-                       (+ (or % 0) (.length field-value))
+                       (+ (or % 0) (count field-value))
                        %))
         (update :types (fn [types]
                          (update types (type field-value) safe-inc)))
