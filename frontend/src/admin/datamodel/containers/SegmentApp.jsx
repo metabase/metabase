@@ -1,5 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 import SegmentForm from "./SegmentForm.jsx";
 
 import { segmentEditSelectors } from "../selectors";
@@ -30,8 +32,10 @@ export default class SegmentApp extends Component {
         let { tableMetadata } = this.props;
         if (segment.id != null) {
             await this.props.updateSegment(segment);
+            MetabaseAnalytics.trackEvent("Data Model", "Segment Updated");
         } else {
             await this.props.createSegment(segment);
+            MetabaseAnalytics.trackEvent("Data Model", "Segment Created");
         }
 
         this.onLocationChange("/admin/datamodel/database/" + tableMetadata.db_id + "/table/" + tableMetadata.id);

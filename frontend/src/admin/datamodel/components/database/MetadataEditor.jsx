@@ -1,6 +1,8 @@
 import React, { Component, PropTypes } from "react";
 import _ from "underscore";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 import MetadataHeader from './MetadataHeader.jsx';
 import MetadataTableList from './MetadataTableList.jsx';
 import MetadataTable from './MetadataTable.jsx';
@@ -37,6 +39,7 @@ export default class MetadataEditor extends Component {
 
     toggleShowSchema() {
         this.setState({ isShowingSchema: !this.state.isShowingSchema });
+        MetabaseAnalytics.trackEvent("Data Model", "Show OG Schema", !this.state.isShowingSchema);
     }
 
     handleSaveResult(promise) {
@@ -50,18 +53,22 @@ export default class MetadataEditor extends Component {
 
     updateTable(table) {
         this.handleSaveResult(this.props.updateTable(table));
+        MetabaseAnalytics.trackEvent("Data Model", "Update Table");
     }
 
     updateField(field) {
         this.handleSaveResult(this.props.updateField(field));
+        MetabaseAnalytics.trackEvent("Data Model", "Update Field");
     }
 
     updateFieldSpecialType(field) {
         this.handleSaveResult(this.props.updateFieldSpecialType(field));
+        MetabaseAnalytics.trackEvent("Data Model", "Update Field Special-Type", field.special_type);
     }
 
     updateFieldTarget(field) {
         this.handleSaveResult(this.props.updateFieldTarget(field));
+        MetabaseAnalytics.trackEvent("Data Model", "Update Field Target");
     }
 
     render() {
