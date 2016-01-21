@@ -12,7 +12,7 @@
 
 (i/defentity Database :metabase_database)
 
-(defn- pre-cascade-delete [{:keys [id] :as database}]
+(defn- pre-cascade-delete [{:keys [id]}]
   (cascade-delete 'Card  :database_id id)
   (cascade-delete 'Table :db_id id))
 
@@ -29,6 +29,7 @@
           :timestamped?       (constantly true)
           :can-read?          (constantly true)
           :can-write?         i/superuser?
+          :post-select        #(assoc % :features ((resolve 'metabase.driver/features) ((resolve 'metabase.driver/engine->driver) (:engine %))))
           :pre-cascade-delete pre-cascade-delete}))
 
 
