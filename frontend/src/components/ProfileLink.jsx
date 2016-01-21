@@ -4,6 +4,7 @@ import cx from 'classnames';
 import _ from "underscore";
 
 import MetabaseSettings from "metabase/lib/settings";
+import A from "metabase/components/A.jsx"
 import Modal from "metabase/components/Modal.jsx";
 
 import UserAvatar from './UserAvatar.jsx';
@@ -57,54 +58,54 @@ export default class ProfileLink extends Component {
         return (
             <OnClickOut onClickOut={this.closeDropdown}>
                 <div className={dropDownClasses}>
-                    <a className="NavDropdown-button NavItem flex align-center p2 transition-background" onClick={this.toggleDropdown}>
+                    <A metabaseEvent={["Navbar", "Profile Dropdown"]} className="NavDropdown-button NavItem flex align-center p2 transition-background" functions={this.toggleDropdown}>
                         <div className="NavDropdown-button-layer">
                             <div className="flex align-center">
                                 <UserAvatar user={user} style={{backgroundColor: 'transparent'}}/>
                                 <Icon name="chevrondown" className="Dropdown-chevron ml1" width="8px" height="8px" />
                             </div>
                         </div>
-                    </a>
+                    </A>
 
                     { dropdownOpen ?
                         <div className="NavDropdown-content right">
                             <ul className="NavDropdown-content-layer">
                                 <li>
-                                    <a onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration" href="/user/edit_current">
+                                    <A metabaseEvent={["Navbar", "Edit Profile"]} functions={this.closeDropdown} className="Dropdown-item block text-white no-decoration" href="/user/edit_current">
                                         Account Settings
-                                    </a>
+                                    </A>
                                 </li>
 
                                 { user.is_superuser && context !== 'admin' ?
                                     <li>
-                                        <a onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration" href="/admin/">
+                                        <A metabaseEvent={["Navbar", "Enter Admin"]} functions={this.closeDropdown} className="Dropdown-item block text-white no-decoration" href="/admin/">
                                             Admin Panel
-                                        </a>
+                                        </A>
                                     </li>
                                 : null }
 
                                 { user.is_superuser && context === 'admin' ?
                                     <li>
-                                        <a onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration" href="/">
+                                        <A metabaseEvent={["Navbar", "Exit Admin"]} functions={this.closeDropdown} className="Dropdown-item block text-white no-decoration" href="/">
                                             Exit Admin
-                                        </a>
+                                        </A>
                                     </li>
                                 : null }
 
                                 <li>
-                                    <a className="Dropdown-item block text-white no-decoration" href={"http://www.metabase.com/docs/"+tag} target="_blank">
+                                    <A metabaseEvent={["Navbar", "Help", tag]} className="Dropdown-item block text-white no-decoration" href={"http://www.metabase.com/docs/"+tag} target="_blank">
                                         Help
-                                    </a>
+                                    </A>
                                 </li>
 
                                 <li>
-                                    <a onClick={this.openModal} className="Dropdown-item block text-white no-decoration">
+                                    <A metabaseEvent={["Navbar", "About Metabase", tag]} functions={this.openModal} className="Dropdown-item block text-white no-decoration">
                                         About Metabase
-                                    </a>
+                                    </A>
                                 </li>
 
                                 <li className="border-top border-light">
-                                    <a className="Dropdown-item block text-white no-decoration" href="/auth/logout">Logout</a>
+                                    <A metabaseEvent={["Navbar", "Logout"]} className="Dropdown-item block text-white no-decoration" href="/auth/logout">Logout</A>
                                 </li>
                             </ul>
                         </div>

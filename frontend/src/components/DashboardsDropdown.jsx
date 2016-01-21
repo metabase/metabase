@@ -2,6 +2,7 @@ import React, { Component, PropTypes } from 'react';
 
 import OnClickOut from 'react-onclickout';
 
+import A from "metabase/components/A.jsx";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal.jsx";
 import Modal from "metabase/components/Modal.jsx";
 
@@ -107,7 +108,7 @@ export default class DashboardsDropdown extends Component {
                                     <ul className="NavDropdown-content-layer">
                                         { dashboards.map(dash =>
                                             <li className="block">
-                                                <a className="Dropdown-item block text-white no-decoration" href={"/dash/"+dash.id} onClick={this.closeDropdown}>
+                                                <A metabaseEvent={["Navbar", "Dashboard Dropdown", "Open Dashboard", dash.id]} className="Dropdown-item block text-white no-decoration" href={"/dash/"+dash.id} functions={this.closeDropdown}>
                                                     <div className="flex text-bold">
                                                         {dash.name}
                                                     </div>
@@ -116,7 +117,7 @@ export default class DashboardsDropdown extends Component {
                                                             {dash.description}
                                                         </div>
                                                     : null }
-                                                </a>
+                                                </A>
                                             </li>
                                         )}
                                         <li className="block border-top border-light">
