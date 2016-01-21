@@ -12,7 +12,8 @@
             [metabase.util :as u]
             [metabase.util.korma-extensions :as kx]
             [metabase.driver.sync :as sync])
-  (:import java.util.Map
+  (:import java.sql.DatabaseMetaData
+           java.util.Map
            clojure.lang.Keyword))
 
 (declare db->korma-db
@@ -210,7 +211,7 @@
    Fetch list of schemas, then for each one not in `excluded-schemas`, fetch its Tables, and combine the results.
 
    This is as much as 15x faster for Databases with lots of system tables than `post-filtered-active-tables` (4 seconds vs 60)."
-  [driver metadata]
+  [driver, ^DatabaseMetaData metadata]
   (let [all-schemas (set (map :table_schem (jdbc/result-set-seq (.getSchemas metadata))))
         schemas     (set/difference all-schemas (excluded-schemas driver))]
     (set (for [schema     schemas
@@ -221,14 +222,14 @@
 (defn post-filtered-active-tables
   "Alternative implementation of `IDriver/active-tables` best suited for DBs with little or no support for schemas.
    Fetch *all* Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
-  [driver metadata]
+  [driver, ^DatabaseMetaData metadata]
   (set (for [table (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
                            (jdbc/result-set-seq (.getTables metadata nil nil nil (into-array String ["TABLE", "VIEW"]))))]
          {:name   (:table_name table)
           :schema (:table_schem table)})))
 
 (defn- describe-table-fields
-  [metadata driver {:keys [schema name]}]
+  [^DatabaseMetaData metadata, driver, {:keys [schema name]}]
   (set (for [{:keys [column_name type_name]} (jdbc/result-set-seq (.getColumns metadata nil schema name nil))
              :let [calculated-special-type (column->special-type driver column_name (keyword type_name))]]
          (merge {:name        column_name
@@ -240,7 +241,7 @@
                   {:special-type calculated-special-type})))))
 
 (defn- add-table-pks
-  [metadata table]
+  [^DatabaseMetaData metadata, table]
   (let [pks (->> (.getPrimaryKeys metadata nil nil (:name table))
                  jdbc/result-set-seq
                  (mapv :column_name)
@@ -253,7 +254,7 @@
 (defn describe-database
   [driver database]
   (with-metadata [metadata driver database]
-    {:tables (active-tables driver metadata)}))
+    {:tables (active-tables driver, ^DatabaseMetaData metadata)}))
 
 (defn describe-table
   [driver table]
