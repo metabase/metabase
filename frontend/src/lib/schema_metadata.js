@@ -364,7 +364,8 @@ var Aggregators = [{
     "name": "Standard deviation of ...",
     "short": "stddev",
     "description": "Number which expresses how much the values of a column vary among all rows in the answer.",
-    "validFieldsFilters": [summableFields]
+    "validFieldsFilters": [summableFields],
+    "requiredDriverFeature": "standard-deviation-aggregations"
 }];
 
 var BreakoutAggregator = {
@@ -386,9 +387,16 @@ function populateFields(aggregator, fields) {
     };
 }
 
-function getAggregators(fields) {
-    return _.map(Aggregators, function(aggregator) {
-        return populateFields(aggregator, fields);
+function getAggregators(table) {
+    const supportedAggregations = Aggregators.filter(function (agg) {
+        if (agg.requiredDriverFeature && !_.contains(table.db.features, agg.requiredDriverFeature)) {
+            return false;
+        } else {
+            return true;
+        }
+    });
+    return _.map(supportedAggregations, function(aggregator) {
+        return populateFields(aggregator, table.fields);
     });
 }
 
@@ -403,7 +411,7 @@ export function addValidOperatorsToFields(table) {
     for (let field of table.fields) {
         field.valid_operators = getOperators(field, table);
     }
-    table.aggregation_options = getAggregators(table.fields);
+    table.aggregation_options = getAggregators(table);
     table.breakout_options = getBreakouts(table.fields);
     return table;
 }
