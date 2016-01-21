@@ -207,6 +207,16 @@
      (contains? date-trunc-units unit)
      (date-trunc unit date))))
 
+(defn format-nanoseconds
+  "Format a time interval in nanoseconds to something more readable (µs/ms/etc.)
+   Useful for logging elapsed time when using `(System/nanotime)`"
+  [nanoseconds]
+  (loop [n nanoseconds, [[unit divisor] & more] [[:ns 1000] [:µs 1000] [:ms 1000] [:s 1000] [:mins 60] [:hours 60]]]
+    (if (and (> n divisor)
+             (seq more))
+      (recur (/ n divisor) more)
+      (format "%.0f %s" (double n) (name unit)))))
+
 
 ;;; ## Etc
 
