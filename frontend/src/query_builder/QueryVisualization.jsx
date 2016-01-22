@@ -188,6 +188,13 @@ export default class QueryVisualization extends Component {
         }
     }
 
+    showDetailError() {
+        if (this._detailErrorLink && this._detailErrorBody ) {
+            this._detailErrorLink.getDOMNode().style.display = "none";
+            this._detailErrorBody.getDOMNode().style.display = "inherit";
+        }
+    }
+
     render() {
         var loading,
             viz;
@@ -211,9 +218,9 @@ export default class QueryVisualization extends Component {
         } else {
             let { result } = this.props;
             let error = result.error;
+            let adminEmail = MetabaseSettings.adminEmail();
             if (error) {
                 if (typeof error.status === "number") {
-                    let adminEmail = MetabaseSettings.adminEmail();
                     // Assume if the request took more than 15 seconds it was due to a timeout
                     // Some platforms like Heroku return a 503 for numerous types of errors so we can't use the status code to distinguish between timeouts and other failures.
                     if (result.duration > 15*1000) {
@@ -253,14 +260,18 @@ export default class QueryVisualization extends Component {
                     );
                 } else {
                     viz = (
-                        <div className="QueryError flex full align-center">
-                            <div className="QueryError-image QueryError-image--queryError"></div>
-                            <div className="QueryError-message text-centered">
-                                <h1 className="text-bold">We couldn't understand your question.</h1>
-                                <p className="QueryError-messageText">Your question might contain an invalid parameter or some other error.</p>
-                                <button className="Button" onClick={() => window.history.back() }>
-                                    Back to last run
-                                </button>
+                        <div className="QueryError2 flex full justify-center">
+                            <div className="QueryError-image QueryError-image--queryError mr4"></div>
+                            <div className="QueryError2-details">
+                                <h1 className="text-bold">There was a problem with your question</h1>
+                                <p className="QueryError-messageText">Most of the time this is caused by an invalid selection or bad input value.  Double check your inputs and retry your query.</p>
+                                <div ref={(c) => this._detailErrorLink = c} className="pt2">
+                                    <a onClick={this.showDetailError.bind(this)} className="link cursor-pointer">Show error details</a>
+                                </div>
+                                <div ref={(c) => this._detailErrorBody = c} style={{display: "none"}} className="pt3 text-left">
+                                    <h2>Here's the full error message</h2>
+                                    <div style={{fontFamily: "monospace"}} className="QueryError2-detailBody bordered rounded bg-grey-0 text-bold p2 mt1">{error}</div>
+                                </div>
                             </div>
                         </div>
                     );

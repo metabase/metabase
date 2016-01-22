@@ -141,6 +141,7 @@
 .text-grey-4,
 .text-grey-4-hover:hover { color: color(var(--base-grey) shade(40%)) }
 
+.bg-grey-0 { background-color: var(--base-grey) }
 .bg-grey-1 { background-color: color(var(--base-grey) shade(10%)) }
 .bg-grey-2 { background-color: color(var(--base-grey) shade(20%)) }
 .bg-grey-3 { background-color: color(var(--base-grey) shade(30%)) }
