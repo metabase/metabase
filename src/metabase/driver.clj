@@ -299,7 +299,7 @@
   (or ((keyword engine) @registered-drivers)
       (let [namespce (symbol (format "metabase.driver.%s" (name engine)))]
         (log/debug (format "Loading driver '%s'..." engine))
-        (require namespce)
+        (u/try-ignore-exceptions (require namespce))
         ((keyword engine) @registered-drivers))))
 
 
