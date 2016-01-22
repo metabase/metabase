@@ -496,6 +496,12 @@
                                                      (last args)
                                                      [(last args)]))))
 
+(defmacro try-ignore-exceptions
+  "Simple macro which wraps the given expression in a try/catch block and ignores the exception if caught."
+  [& body]
+  `(try ~@body (catch Throwable e#)))
+
+
 (defn wrap-try-catch!
   "Re-intern FN-SYMB as a new fn that wraps the original with a `try-catch`. Intended for debugging.
 

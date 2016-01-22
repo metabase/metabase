@@ -296,12 +296,11 @@
      metabase.driver.<engine>/<engine>"
   [engine]
   {:pre [engine]}
-  (when (is-engine? engine)
-    (or ((keyword engine) @registered-drivers)
-        (let [namespce (symbol (format "metabase.driver.%s" (name engine)))]
-          (log/debug (format "Loading driver '%s'..." engine))
-          (require namespce)
-          ((keyword engine) @registered-drivers)))))
+  (or ((keyword engine) @registered-drivers)
+      (let [namespce (symbol (format "metabase.driver.%s" (name engine)))]
+        (log/debug (format "Loading driver '%s'..." engine))
+        (u/try-ignore-exceptions (require namespce))
+        ((keyword engine) @registered-drivers))))
 
 
 ;; Can the type of a DB change?
