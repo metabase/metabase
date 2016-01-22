@@ -316,6 +316,21 @@
   margin-left: -41px; /* ugh */
 }
 
+.QueryError2 {
+    padding-top: 4rem;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.QueryError2-details {
+    max-width: 50%;
+}
+
+.QueryError2-detailBody {
+  background-color: #f8f8f8;
+}
+
+
 /* GUI BUILDER */
 
 .GuiBuilder {
