@@ -32,9 +32,9 @@ export default class PulseListItem extends Component {
                         <a className="PulseEditButton PulseButton Button no-decoration text-bold" href={"/pulse/" + pulse.id}>Edit</a>
                     </div>
                 </div>
-                <ol className="mb2 px4 flex">
+                <ol className="mb2 px4 flex flex-wrap">
                     { pulse.cards.map((card, index) =>
-                        <li key={index} className="mr1">
+                        <li key={index} className="mr1 mb1">
                             <a className="Button" href={"/card/"+card.id+"?clone"}>
                                 {card.name}
                             </a>
