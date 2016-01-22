@@ -332,7 +332,7 @@ CoreServices.factory('Card', ['$resource', '$cookies', function($resource, $cook
 CoreServices.factory('Dashboard', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/dashboard/:dashId', {}, {
         list: {
-            url:'/api/dashboard?org=:orgId&f=:filterMode',
+            url:'/api/dashboard?f=:filterMode',
             method:'GET',
             isArray:true
         },
@@ -409,7 +409,7 @@ CoreServices.factory('ForeignKey', ['$resource', '$cookies', function($resource,
 CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', function($resource, $cookies, MetabaseCore) {
     return $resource('/api/meta', {}, {
         db_list: {
-            url: '/api/database/?org=:orgId',
+            url: '/api/database/',
             method: 'GET',
             isArray: true
         },
