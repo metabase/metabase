@@ -323,11 +323,13 @@
 }
 
 .QueryError2-details {
-    max-width: 50%;
+    max-width: 500px;
 }
 
 .QueryError2-detailBody {
-  background-color: #f8f8f8;
+    background-color: #f8f8f8;
+    max-height: 15rem;
+    overflow: auto;
 }
 
 
