@@ -144,6 +144,11 @@ export default class DataSelector extends Component {
             };
         });
 
+        let openSection = selectedSchema && _.findIndex(this.state.databases, (db) => _.find(db.schemas, selectedSchema));
+        if (openSection >= 0 && this.state.databases[openSection] && this.state.databases[openSection].schemas.length === 1) {
+            openSection = -1;
+        }
+
         return (
             <AccordianList
                 key="schemaPicker"
@@ -154,7 +159,7 @@ export default class DataSelector extends Component {
                 itemIsSelected={(schema) => this.state.selectedSchema === schema}
                 renderSectionIcon={() => <Icon className="Icon text-default" name="database" width="18" height="18" />}
                 renderItemIcon={() => <Icon name="folder" width="16" height="16" />}
-                initiallyOpenSection={selectedSchema && _.findIndex(this.state.databases, (db) => _.find(db.schemas, selectedSchema))}
+                initiallyOpenSection={openSection}
                 showItemArrows={true}
             />
         );
