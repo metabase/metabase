@@ -205,7 +205,7 @@ export default class QueryVisualization extends Component {
             viz = (
                 <div className="flex full layout-centered text-grey-1 flex-column">
                     <h1>If you give me some data I can show you something cool. Run a Query!</h1>
-                    <a className="link cursor-pointer my2" onClick={this.props.onStartTutorial}>How do I use this thing?</a>
+                    <a className="link cursor-pointer my2" href="/q?tutorial">How do I use this thing?</a>
                 </div>
             );
         } else {

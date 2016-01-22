@@ -302,11 +302,6 @@ CardControllers.controller('CardDetail', [
 
                 // run it
                 runQuery();
-            },
-            onStartTutorial() {
-                isShowingTutorial = true;
-                setSampleDataset();
-                renderAll();
             }
         };
 
