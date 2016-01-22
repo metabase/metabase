@@ -44,6 +44,9 @@ In practice, if you select **Past 30 days** from the Relative Date calendar pick
 
 Now the relative date will be referencing the past 30 days from *today*, *not* from the day you saved the question. This is a really useful way of creating and saving questions that stay up-to-date: you can always know what your total sales were in the past 7 days, for example.
 
+#### Using segments
+If your Metabase admins have created special named filters, called segments, for the table you’re viewing, they’ll appear at the top of the filter dropdown in purple text with a star next to them. These are shortcuts to sets of filters that are commonly used in your organization. They might be something like “Active Users,” or “Most Popular Products.”
+
 ### Answer Output
 ---
 The last section of the question builder is where you select what you want the output of your answer to be, under the View dropdown. You’re basically telling Metabase, “I want to view the…” Metabase can output the answer to your question in three different ways: 
@@ -60,14 +63,13 @@ What's a *metric*? It's a number that is derived from your source table and take
 * **Count:** The total of number of rows in the answer. Each row corresponds to a separate record. If you want to know how many orders in the Orders table were placed with a price greater than $40, you’d filter by “Price greater than 40,” and then select Count, because you want Metabase to count how many orders matched your filter.
 * **Sum:** Sum of all the values in a column. This is really easy to get mixed up with Count — just remember that Count counts each *row*, but Sum adds up all the values in a single field. You’d use Sum to get your total revenue dollar amount, for example.
 * **Average:** Average of all the values in a column.
-
-#### 3. Advanced Metrics
-
-These options are a bit more specialized, so they’re hidden under the Advanced button in the View dropdown.
-
 * **Number of Distinct Values:** Number of unique values in all the cells of a single column. This would be useful to find out things like how many different *types* of products were sold last month (not how many were sold in total).
 * **Cumulative Sum:** This gives you a running total of a specific column. This will look exactly the same as Sum unless you break out your answer by day, week, month, etc. (See the next section about breaking out metrics.) An example would be total revenue over time.
 * **Standard Deviation:** A number which expresses how much the values of a column vary, plus or minus, from the average of that column.
+
+#### 3. Common Metrics
+
+If your admins have created any named metrics that are specific to your company or organization, they will be in this dropdown under the **Common Metrics** section. These might be things like your company’s official way of calculating revenue.
 
 ### Breaking Out Metrics: Add a group
 ---
