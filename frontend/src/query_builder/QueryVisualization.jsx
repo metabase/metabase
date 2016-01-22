@@ -14,6 +14,7 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import Query from "metabase/lib/query";
 
 import cx from "classnames";
+import _ from "underscore";
 
 export default class QueryVisualization extends Component {
     constructor(props, context) {
@@ -29,6 +30,10 @@ export default class QueryVisualization extends Component {
         visualizationSettingsApi: PropTypes.object.isRequired,
         card: PropTypes.object.isRequired,
         result: PropTypes.object,
+        databases: PropTypes.array,
+        tableMetadata: PropTypes.object,
+        tableForeignKeys: PropTypes.array,
+        tableForeignKeyReferences: PropTypes.object,
         downloadLink: PropTypes.string,
         setDisplayFn: PropTypes.func.isRequired,
         setChartColorFn: PropTypes.func.isRequired,
@@ -202,10 +207,11 @@ export default class QueryVisualization extends Component {
         }
 
         if (!this.props.result) {
+            let hasSampleDataset = !!_.findWhere(this.props.databases, { "name": "Sample Dataset" });
             viz = (
                 <div className="flex full layout-centered text-grey-1 flex-column">
                     <h1>If you give me some data I can show you something cool. Run a Query!</h1>
-                    <a className="link cursor-pointer my2" href="/q?tutorial">How do I use this thing?</a>
+                    { hasSampleDataset && <a className="link cursor-pointer my2" href="/q?tutorial">How do I use this thing?</a> }
                 </div>
             );
         } else {
