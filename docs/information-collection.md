@@ -36,6 +36,8 @@ While we will closely follow reported issues and feature requests, we aim to mak
 
 # The data we collect:
 
+NOTE: we never capture any specific details in any of our tracking methodology such as user details, table names, field names, etc.  collected data is limited to the types of actions users are taking with the product.
+
 
 ### Events
 
@@ -44,8 +46,8 @@ While we will closely follow reported issues and feature requests, we aim to mak
 | Links and Page Views | General website tracking of what pages are most used | This provides better understanding of what parts of the application are liked and used by customers so we know what's popular and potentially what needs more improvement. |
 | Dashboards | When the dashboard dropdown is used, when dashboards are created and updated, what types of edits occur such as adding/removing cards and repositioning. | We use this information to understand how dashboards are being used and what types of activities users most commonly do on their dashboards. |
 | Pulses | When pulses are created and updated, what types of pulses are created, and how many cards typically go in a pulse. | This is used to have a sense for how teams are structuring their push based communication.  When and where is information most often sent and how much information allows Metabase to continue improving features around push based data interactions. |
-| Query Builder | When questions are saved and viewed along with what types of choices are made such as chart types and query clauses used. | Helps the Metabase team understand the basic patterns around how users are accessing their data.  NOTE: we never capture any specific details here such as table names, field names, specific input values, etc.  we only care about what action was taken. |
+| Query Builder | When questions are saved and viewed along with what types of choices are made such as chart types and query clauses used. | Helps the Metabase team understand the basic patterns around how users are accessing their data. |
 | SQL Query | When a SQL query is saved or run. | This mostly just gives us a sense for when users are bypassing the GUI query interface.  We never capture the actual SQL written. |
 | Admin Settings | We capture some very basic stats about when settings are updated and if there are ever errors.  We also capture non-intrusive settings such as the chosen timezone. | We use this information to make sure that users aren't having problems managing their Metabase instance and it provides us some sense for the most common configuration choices so we can optimize for those cases. |
 | Databases | We simply capture when databases are created or removed and what types of databases are being used | This helps Metabase ensure that we spend the most time and attention on the types of databases that are most popular to users. |
-| Data Model | The saving and updates on tables, fields, segments, and metrics are all counted, along with a few other details such as what types of special metadata choices are made. | We use this data to help ensure that Metabase provides an appropriate set of options for users to describe their data and also gives us a sense for how much time users spend marking up their schemas. NOTE: as stated above, we never capture direct values such as table or field names, all of this data is complete focused on what action was taken. |
+| Data Model | The saving and updates on tables, fields, segments, and metrics are all counted, along with a few other details such as what types of special metadata choices are made. | We use this data to help ensure that Metabase provides an appropriate set of options for users to describe their data and also gives us a sense for how much time users spend marking up their schemas. |
