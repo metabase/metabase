@@ -189,8 +189,10 @@ export default class QueryVisualization extends Component {
     }
 
     showDetailError() {
-        this.refs.detailErrorLink.getDOMNode().style.display = "none";
-        this.refs.detailErrorBody.getDOMNode().style.display = "inherit";
+        if (this._detailErrorLink && this._detailErrorBody ) {
+            this._detailErrorLink.getDOMNode().style.display = "none";
+            this._detailErrorBody.getDOMNode().style.display = "inherit";
+        }
     }
 
     render() {
@@ -263,10 +265,10 @@ export default class QueryVisualization extends Component {
                             <div className="QueryError2-details">
                                 <h1 className="text-bold">There was a problem with your question</h1>
                                 <p className="QueryError-messageText">Most of the time this is caused by an invalid selection or bad input value.  Double check your inputs and retry your query.</p>
-                                <div ref="detailErrorLink" className="pt2">
+                                <div ref={(c) => this._detailErrorLink = c} className="pt2">
                                     <a onClick={this.showDetailError.bind(this)} className="link cursor-pointer">Show error details</a>
                                 </div>
-                                <div ref="detailErrorBody" style={{display: "none"}} className="pt3 text-left">
+                                <div ref={(c) => this._detailErrorBody = c} style={{display: "none"}} className="pt3 text-left">
                                     <h2>Here's the full error message</h2>
                                     <div style={{fontFamily: "monospace"}} className="QueryError2-detailBody bordered rounded bg-grey-0 text-bold p2 mt1">{error}</div>
                                 </div>
