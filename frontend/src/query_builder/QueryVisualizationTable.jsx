@@ -178,7 +178,7 @@ export default class QueryVisualizationTable extends Component {
     }
 
     cellRenderer(cellData, cellDataKey, rowData, rowIndex, columnData, width) {
-        cellData = cellData != null ? formatValue(cellData, this.props.data.cols[cellDataKey]) : null;
+        cellData = cellData != null ? formatValue(cellData, this.state.data.cols[cellDataKey]) : null;
 
         var key = 'cl'+rowIndex+'_'+cellDataKey;
         if (this.props.cellIsClickableFn(rowIndex, cellDataKey)) {
