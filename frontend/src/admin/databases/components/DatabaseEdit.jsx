@@ -5,7 +5,6 @@ import DatabaseEditForms from "./DatabaseEditForms.jsx";
 
 import ActionButton from "metabase/components/ActionButton.jsx";
 import Breadcrumbs from "metabase/components/Breadcrumbs.jsx"
-import Icon from "metabase/components/Icon.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 
 export default class DatabaseEdit extends Component {

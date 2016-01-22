@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
 import MetadataEditor from './components/database/MetadataEditor.jsx';
 
 import { augmentTable } from "metabase/lib/table";
@@ -184,11 +185,13 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
 
     $scope.onRetireSegment = async function(segment) {
         await Segment.delete(segment).$promise;
+        MetabaseAnalytics.trackEvent("Data Model", "Retire Segment");
         loadDatabaseMetadata();
     };
 
     $scope.onRetireMetric = async function(metric) {
         await Metric.delete(metric).$promise;
+        MetabaseAnalytics.trackEvent("Data Model", "Retire Metric");
         loadDatabaseMetadata();
     };
 }]);

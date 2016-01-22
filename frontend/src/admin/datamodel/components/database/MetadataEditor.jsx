@@ -1,8 +1,10 @@
 import React, { Component, PropTypes } from "react";
 import _ from "underscore";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 import MetadataHeader from './MetadataHeader.jsx';
-import MetadataTableList from './MetadataTableList.jsx';
+import MetadataTablePicker from './MetadataTablePicker.jsx';
 import MetadataTable from './MetadataTable.jsx';
 import MetadataSchema from './MetadataSchema.jsx';
 
@@ -37,6 +39,7 @@ export default class MetadataEditor extends Component {
 
     toggleShowSchema() {
         this.setState({ isShowingSchema: !this.state.isShowingSchema });
+        MetabaseAnalytics.trackEvent("Data Model", "Show OG Schema", !this.state.isShowingSchema);
     }
 
     handleSaveResult(promise) {
@@ -50,18 +53,22 @@ export default class MetadataEditor extends Component {
 
     updateTable(table) {
         this.handleSaveResult(this.props.updateTable(table));
+        MetabaseAnalytics.trackEvent("Data Model", "Update Table");
     }
 
     updateField(field) {
         this.handleSaveResult(this.props.updateField(field));
+        MetabaseAnalytics.trackEvent("Data Model", "Update Field");
     }
 
     updateFieldSpecialType(field) {
         this.handleSaveResult(this.props.updateFieldSpecialType(field));
+        MetabaseAnalytics.trackEvent("Data Model", "Update Field Special-Type", field.special_type);
     }
 
     updateFieldTarget(field) {
         this.handleSaveResult(this.props.updateFieldTarget(field));
+        MetabaseAnalytics.trackEvent("Data Model", "Update Field Target");
     }
 
     render() {
@@ -102,7 +109,7 @@ export default class MetadataEditor extends Component {
                     toggleShowSchema={this.toggleShowSchema}
                 />
                 <div className="MetadataEditor-main flex flex-row flex-full mt2">
-                    <MetadataTableList
+                    <MetadataTablePicker
                         tableId={this.props.tableId}
                         tables={(this.props.databaseMetadata) ? this.props.databaseMetadata.tables : []}
                         selectTable={this.props.selectTable}
