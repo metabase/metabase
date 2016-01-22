@@ -25,36 +25,35 @@
                                                                    :ssl    false}
                                                     :is_full_sync full-sync?})))
 
+(defn- db-details
+  ([]
+    (db-details (db)))
+  ([db]
+   (match-$ db
+     {:created_at      $
+      :engine          "h2"
+      :id              $
+      :details         $
+      :updated_at      $
+      :name            "test-data"
+      :is_sample       false
+      :is_full_sync    true
+      :organization_id nil
+      :description     nil
+      :features        (mapv name (metabase.driver/features (metabase.driver/engine->driver (:engine db))))})))
+
+
 ;; # DB LIFECYCLE ENDPOINTS
 
 ;; ## GET /api/database/:id
 ;; regular users *should not* see DB details
 (expect
-    (match-$ (db)
-      {:created_at      $
-       :engine          "h2"
-       :id              $
-       :updated_at      $
-       :name            "test-data"
-       :is_sample       false
-       :is_full_sync    true
-       :organization_id nil
-       :description     nil})
+  (dissoc (db-details) :details)
   ((user->client :rasta) :get 200 (format "database/%d" (id))))
 
 ;; superusers *should* see DB details
 (expect
-    (match-$ (db)
-      {:created_at      $
-       :engine          "h2"
-       :id              $
-       :details         $
-       :updated_at      $
-       :name            "test-data"
-       :is_sample       false
-       :is_full_sync    true
-       :organization_id nil
-       :description     nil})
+  (db-details)
   ((user->client :crowberto) :get 200 (format "database/%d" (id))))
 
 ;; ## POST /api/database
@@ -71,7 +70,8 @@
          :is_sample       false
          :is_full_sync    false
          :organization_id nil
-         :description     nil})
+         :description     nil
+         :features        (mapv name (metabase.driver/features (metabase.driver/engine->driver :postgres)))})
     (create-db db-name false)))
 
 ;; ## DELETE /api/database/:id
@@ -125,7 +125,8 @@
                                 :is_sample       false
                                 :is_full_sync    true
                                 :organization_id nil
-                                :description     nil})))
+                                :description     nil
+                                :features        (mapv name (metabase.driver/features (metabase.driver/engine->driver engine)))})))
                          (match-$ (sel :one Database :name db-name)
                            {:created_at      $
                             :engine          "postgres"
@@ -135,7 +136,8 @@
                             :is_sample       false
                             :is_full_sync    true
                             :organization_id nil
-                            :description     nil}))))
+                            :description     nil
+                            :features        (mapv name (metabase.driver/features (metabase.driver/engine->driver :postgres)))}))))
     (do
       ;; Delete all the randomly created Databases we've made so far
       (cascade-delete Database :id [not-in (set (filter identity
@@ -161,6 +163,7 @@
        :is_full_sync    true
        :organization_id nil
        :description     nil
+       :features        (mapv name (metabase.driver/features (metabase.driver/engine->driver :h2)))
        :tables [(match-$ (Table (id :categories))
                   {:description     nil
                    :entity_type     nil

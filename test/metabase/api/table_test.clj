@@ -24,6 +24,22 @@
 (expect (get middleware/response-unauthentic :body) (http/client :get 401 (format "table/%d" (id :users))))
 
 
+;; Helper Fns
+
+(defn- db-details []
+  (match-$ (db)
+    {:created_at      $
+     :engine          "h2"
+     :id              $
+     :updated_at      $
+     :name            "test-data"
+     :is_sample       false
+     :is_full_sync    true
+     :organization_id nil
+     :description     nil
+     :features        (mapv name (metabase.driver/features (metabase.driver/engine->driver :h2)))}))
+
+
 ;; ## GET /api/table?org
 ;; These should come back in alphabetical order and include relevant metadata
 (expect
@@ -62,16 +78,7 @@
       {:description     nil
        :entity_type     nil
        :visibility_type nil
-       :db              (match-$ (db)
-                          {:created_at      $
-                           :engine          "h2"
-                           :id              $
-                           :updated_at      $
-                           :name            "test-data"
-                           :is_sample       false
-                           :is_full_sync    true
-                           :organization_id nil
-                           :description     nil})
+       :db              (db-details)
        :schema          "PUBLIC"
        :name            "VENUES"
        :display_name    "Venues"
@@ -124,16 +131,7 @@
       {:description     nil
        :entity_type     nil
        :visibility_type nil
-       :db              (match-$ (db)
-                          {:created_at      $
-                           :engine          "h2"
-                           :id              $
-                           :updated_at      $
-                           :name            "test-data"
-                           :is_sample       false
-                           :is_full_sync    true
-                           :organization_id nil
-                           :description     nil})
+       :db              (db-details)
        :schema          "PUBLIC"
        :name            "CATEGORIES"
        :display_name    "Categories"
@@ -207,16 +205,7 @@
       {:description     nil
        :entity_type     nil
        :visibility_type nil
-       :db              (match-$ (db)
-                          {:created_at      $
-                           :engine          "h2"
-                           :id              $
-                           :updated_at      $
-                           :name            "test-data"
-                           :is_sample       false
-                           :is_full_sync    true
-                           :organization_id nil
-                           :description     nil})
+       :db              (db-details)
        :schema          "PUBLIC"
        :name            "USERS"
        :display_name    "Users"
@@ -318,16 +307,7 @@
       {:description     nil
        :entity_type     nil
        :visibility_type nil
-       :db              (match-$ (db)
-                          {:created_at      $
-                           :engine          "h2"
-                           :id              $
-                           :updated_at      $
-                           :name            "test-data"
-                           :is_sample       false
-                           :is_full_sync    true
-                           :organization_id nil
-                           :description     nil})
+       :db              (db-details)
        :schema          "PUBLIC"
        :name            "USERS"
        :display_name    "Users"
@@ -426,7 +406,8 @@
                            :details         $
                            :id              $
                            :engine          "h2"
-                           :created_at      $})
+                           :created_at      $
+                           :features        (mapv name (metabase.driver/features (metabase.driver/engine->driver :h2)))})
        :schema          "PUBLIC"
        :name            "USERS"
        :rows            15
@@ -485,16 +466,7 @@
                                              :id              $
                                              :db_id           $
                                              :created_at      $
-                                             :db              (match-$ (db)
-                                                                {:description     nil,
-                                                                 :organization_id nil,
-                                                                 :name            "test-data",
-                                                                 :is_sample       false,
-                                                                 :is_full_sync    true,
-                                                                 :updated_at      $,
-                                                                 :id              $,
-                                                                 :engine          "h2",
-                                                                 :created_at      $})})})
+                                             :db              (db-details)})})
       :destination    (match-$ users-id-field
                         {:id              $
                          :table_id        $

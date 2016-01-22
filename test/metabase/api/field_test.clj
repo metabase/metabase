@@ -8,6 +8,20 @@
             [metabase.test.data.users :refer :all]
             [metabase.test.util :refer [match-$ expect-eval-actual-first]]))
 
+;; Helper Fns
+
+(defn- db-details []
+  (match-$ (db)
+    {:created_at      $
+     :engine          "h2"
+     :id              $
+     :updated_at      $
+     :name            "test-data"
+     :is_sample       false
+     :is_full_sync    true
+     :organization_id nil
+     :description     nil
+     :features        (mapv name (metabase.driver/features (metabase.driver/engine->driver :h2)))}))
 
 
 ;; ## GET /api/field/:id
@@ -19,16 +33,7 @@
                           {:description     nil
                            :entity_type     nil
                            :visibility_type nil
-                           :db              (match-$ (db)
-                                              {:created_at      $
-                                               :engine          "h2"
-                                               :id              $
-                                               :updated_at      $
-                                               :name            "test-data"
-                                               :is_sample       false
-                                               :is_full_sync    true
-                                               :organization_id nil
-                                               :description     nil})
+                           :db              (db-details)
                            :schema          "PUBLIC"
                            :name            "USERS"
                            :display_name    "Users"

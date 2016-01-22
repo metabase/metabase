@@ -12,6 +12,12 @@
 
 (i/defentity Database :metabase_database)
 
+(defn- post-select [{:keys [engine] :as database}]
+  (if-not engine database
+                 (assoc database :features (if-let [driver ((resolve 'metabase.driver/engine->driver) engine)]
+                                             ((resolve 'metabase.driver/features) driver)
+                                             []))))
+
 (defn- pre-cascade-delete [{:keys [id]}]
   (cascade-delete 'Card  :database_id id)
   (cascade-delete 'Table :db_id id))
@@ -29,7 +35,7 @@
           :timestamped?       (constantly true)
           :can-read?          (constantly true)
           :can-write?         i/superuser?
-          :post-select        #(assoc % :features ((resolve 'metabase.driver/features) ((resolve 'metabase.driver/engine->driver) (:engine %))))
+          :post-select        post-select
           :pre-cascade-delete pre-cascade-delete}))
 
 
