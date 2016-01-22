@@ -355,7 +355,7 @@ export default class AdminPeople extends Component {
                     { modal ? this.renderModal(modal.type, modal.details) : null }
 
                     <section className="PageHeader clearfix px2">
-                        <a className="Button Button--primary float-right" href="#" onClick={() => this.props.dispatch(showModal({type: MODAL_ADD_PERSON}))}>Add person</a>
+                        <a data-metabase-event="People Admin;Add Person Modal" className="Button Button--primary float-right" href="#" onClick={() => this.props.dispatch(showModal({type: MODAL_ADD_PERSON}))}>Add person</a>
                         <h2 className="PageTitle">People</h2>
                     </section>
 

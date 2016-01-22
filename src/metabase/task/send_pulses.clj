@@ -89,22 +89,23 @@
 
 (defn- create-slack-attachment
   "Create an attachment in Slack for a given Card by rendering its result into an image and uploading it."
-  [{{:keys [id name] :as card} :card, {:keys [data]} :result}]
+  [slack-channel {{:keys [id name] :as card} :card, {:keys [data]} :result}]
   (let [image-byte-array (p/render-pulse-card-to-png card data false)
-        upload-result    (slack/files-upload image-byte-array)]
+        slack-file-url   (slack/files-upload image-byte-array "image.png" slack-channel)]
     {:title      name
      :title_link (format "%s/card/%d?clone" (setting/get :-site-url) id)
-     :image_url  (-> upload-result :file :url)
+     :image_url  slack-file-url
      :fallback   name}))
 
 (defn send-pulse-slack
   "Post a `Pulse` to a slack channel given a list of card results to render and details about the slack destination."
   [{:keys [id name]} results details]
   (log/debug (format "Sending Pulse (%d: %s) via Channel :slack" id name))
-  (let [attachments (mapv create-slack-attachment results)]
-    (slack/chat-post-message (:channel details)
-                             (str "Pulse: " name)
-                             (cheshire/generate-string attachments))))
+  (when-let [metabase-files-channel (slack/get-or-create-files-channel)]
+    (let [attachments (mapv (partial create-slack-attachment (:id metabase-files-channel)) results)]
+      (slack/chat-post-message (:channel details)
+                               (str "Pulse: " name)
+                               (cheshire/generate-string attachments)))))
 
 (defn send-pulse
   "Execute and Send a `Pulse`, optionally specifying the specific `PulseChannels`.  This includes running each

@@ -20,16 +20,6 @@
 
 (i/defentity Table :metabase_table)
 
-(defn ^:hydrate metrics
-  "Retrieve the metrics for TABLE."
-  [{:keys [id]}]
-  (retrieve-metrics id :all))
-
-(defn ^:hydrate segments
-  "Retrieve the segments for TABLE."
-  [{:keys [id]}]
-  (retrieve-segments id :all))
-
 (defn- pre-insert [table]
   (let [defaults {:display_name (common/name->human-readable-name (:name table))}]
     (merge defaults table)))
@@ -43,6 +33,16 @@
   "Return the `FIELDS` belonging to TABLE."
   [{:keys [id]}]
   (db/sel :many Field :table_id id, :active true, (k/order :position :ASC) (k/order :name :ASC)))
+
+(defn ^:hydrate metrics
+  "Retrieve the metrics for TABLE."
+  [{:keys [id]}]
+  (retrieve-metrics id :all))
+
+(defn ^:hydrate segments
+  "Retrieve the segments for TABLE."
+  [{:keys [id]}]
+  (retrieve-segments id :all))
 
 (defn field-values
   "Return the `FieldValues` for all `Fields` belonging to TABLE."

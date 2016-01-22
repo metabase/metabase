@@ -329,13 +329,8 @@ export default class GuiQueryEditor extends Component {
             addBreakoutButton = this.renderAdd("Add a grouping", this.addDimension);
         }
 
-        var querySectionClasses = cx({
-            "Query-section": true,
-            ml1: true,
-            disabled: !enabled
-        });
         return (
-            <div className={querySectionClasses}>
+            <div className={cx("Query-section Query-section-breakout ml1", { disabled: !enabled })}>
                 {breakoutList}
                 {addBreakoutButton}
             </div>
@@ -421,7 +416,7 @@ export default class GuiQueryEditor extends Component {
                         tables={this.props.tables}
                         setDatabaseFn={this.props.setDatabaseFn}
                         setSourceTableFn={this.props.setSourceTableFn}
-                        isInitiallyOpen={!this.props.query.database || !this.props.query.query.source_table}
+                        isInitiallyOpen={(!this.props.query.database || !this.props.query.query.source_table) && !this.props.isShowingTutorial}
                     />
                 :
                     <span className="flex align-center px2 py2 text-bold text-grey">

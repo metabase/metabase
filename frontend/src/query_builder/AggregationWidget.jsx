@@ -144,7 +144,7 @@ export default class AggregationWidget extends Component {
         }
 
         return (
-            <div className='Query-section'>
+            <div className='Query-section Query-section-aggregation'>
                 <div className="flex align-center">
                     <PopoverWithTrigger
                         ref="aggregation"

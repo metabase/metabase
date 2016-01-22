@@ -5,7 +5,8 @@
   :description "Metabase Community Edition"
   :url "http://metabase.com/"
   :min-lein-version "2.5.0"
-  :aliases {"test" ["with-profile" "+expectations" "expectations"]
+  :aliases {"bikeshed" ["with-profile" "+bikeshed" "bikeshed" "--max-line-length" "240"]
+            "test" ["with-profile" "+expectations" "expectations"]
             "generate-sample-dataset" ["with-profile" "+generate-sample-dataset" "run"]}
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [org.clojure/core.async "0.2.374"]

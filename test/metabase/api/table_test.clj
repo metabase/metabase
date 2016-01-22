@@ -69,6 +69,7 @@
                            :updated_at      $
                            :name            "test-data"
                            :is_sample       false
+                           :is_full_sync    true
                            :organization_id nil
                            :description     nil})
        :schema          "PUBLIC"
@@ -130,6 +131,7 @@
                            :updated_at      $
                            :name            "test-data"
                            :is_sample       false
+                           :is_full_sync    true
                            :organization_id nil
                            :description     nil})
        :schema          "PUBLIC"
@@ -212,6 +214,7 @@
                            :updated_at      $
                            :name            "test-data"
                            :is_sample       false
+                           :is_full_sync    true
                            :organization_id nil
                            :description     nil})
        :schema          "PUBLIC"
@@ -236,7 +239,7 @@
                          (match-$ (sel :one Field :id (id :users :last_login))
                            {:description     nil
                             :table_id        (id :users)
-                            :special_type    "category"
+                            :special_type    nil
                             :name            "LAST_LOGIN"
                             :display_name    "Last Login"
                             :updated_at      $
@@ -252,7 +255,7 @@
                          (match-$ (sel :one Field :id (id :users :name))
                            {:description     nil
                             :table_id        (id :users)
-                            :special_type    "category"
+                            :special_type    "name"
                             :name            "NAME"
                             :display_name    "Name"
                             :updated_at      $
@@ -322,6 +325,7 @@
                            :updated_at      $
                            :name            "test-data"
                            :is_sample       false
+                           :is_full_sync    true
                            :organization_id nil
                            :description     nil})
        :schema          "PUBLIC"
@@ -346,7 +350,7 @@
                          (match-$ (Field (id :users :last_login))
                            {:description     nil
                             :table_id        (id :users)
-                            :special_type    "category"
+                            :special_type    nil
                             :name            "LAST_LOGIN"
                             :display_name    "Last Login"
                             :updated_at      $
@@ -362,7 +366,7 @@
                          (match-$ (Field (id :users :name))
                            {:description     nil
                             :table_id        (id :users)
-                            :special_type    "category"
+                            :special_type    "name"
                             :name            "NAME"
                             :display_name    "Name"
                             :updated_at      $
@@ -417,6 +421,7 @@
                            :organization_id $
                            :name            "test-data"
                            :is_sample       false
+                           :is_full_sync    true
                            :updated_at      $
                            :details         $
                            :id              $
@@ -485,6 +490,7 @@
                                                                  :organization_id nil,
                                                                  :name            "test-data",
                                                                  :is_sample       false,
+                                                                 :is_full_sync    true,
                                                                  :updated_at      $,
                                                                  :id              $,
                                                                  :engine          "h2",

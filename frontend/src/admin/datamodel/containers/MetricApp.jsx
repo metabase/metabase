@@ -1,5 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 import MetricForm from "./MetricForm.jsx";
 
 import { metricEditSelectors } from "../selectors";
@@ -30,8 +32,10 @@ export default class MetricApp extends Component {
         let { tableMetadata } = this.props;
         if (metric.id != null) {
             await this.props.updateMetric(metric);
+            MetabaseAnalytics.trackEvent("Data Model", "Metric Updated");
         } else {
             await this.props.createMetric(metric);
+            MetabaseAnalytics.trackEvent("Data Model", "Metric Created");
         }
 
         this.onLocationChange("/admin/datamodel/database/" + tableMetadata.db_id + "/table/" + tableMetadata.id);

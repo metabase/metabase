@@ -2,6 +2,7 @@ import React, { Component, PropTypes } from "react";
 
 import { Responsive as ResponsiveReactGridLayout } from "react-grid-layout";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
 import Icon from "metabase/components/Icon.jsx";
 import DashCard from "./DashCard.jsx";
 import Modal from "metabase/components/Modal.jsx";
@@ -56,6 +57,10 @@ export default class DashboardGrid extends Component {
             change.dashcard.row = change.y;
             change.dashcard.sizeX = change.w;
             change.dashcard.sizeY = change.h;
+        }
+
+        if (changes && changes.length > 0) {
+            MetabaseAnalytics.trackEvent("Dashboard", "Layout Changed");
         }
     }
 
@@ -175,7 +180,7 @@ export default class DashboardGrid extends Component {
                                 <a href="#" onClick={() => this.onEditDashCard(dc)}>
                                     <Icon className="m1" name="pencil" width="24" height="24" />
                                 </a>
-                                <a href="#" onClick={() => this.setState({ removeModalDashCard: dc })}>
+                                <a data-metabase-event="Dashboard;Remove Card Modal" href="#" onClick={() => this.setState({ removeModalDashCard: dc })}>
                                     <Icon className="m1" name="trash" width="24" height="24" />
                                 </a>
                             </div>

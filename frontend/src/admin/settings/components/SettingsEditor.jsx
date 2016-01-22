@@ -1,5 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 import SettingsHeader from "./SettingsHeader.jsx";
 import SettingsSetting from "./SettingsSetting.jsx";
 import SettingsEmailForm from "./SettingsEmailForm.jsx";
@@ -45,8 +47,12 @@ export default class SettingsEditor extends Component {
         setting.value = value;
         this.props.updateSetting(setting).then(() => {
             this.refs.header.refs.status.setSaved();
+
+            let val = (setting.key === "report-timezone" || setting.key === "anon-tracking-enabled") ? setting.value : "success";
+            MetabaseAnalytics.trackEvent("General Settings", setting.display_name, val);
         }, (error) => {
             this.refs.header.refs.status.setSaveError(error.data);
+            MetabaseAnalytics.trackEvent("General Settings", setting.display_name, "error");
         });
     }
 

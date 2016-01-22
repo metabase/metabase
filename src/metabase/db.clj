@@ -24,7 +24,7 @@
 
 ;; ## DB FILE, JDBC/KORMA DEFINITONS
 
-(def ^:private db-file
+(def db-file
   "Path to our H2 DB file from env var or app config."
   ;; see http://h2database.com/html/features.html for explanation of options
   (delay (if (config/config-bool :mb-db-in-memory)
@@ -75,7 +75,7 @@
                           :user     (config/config-str :mb-db-user)
                           :password (config/config-str :mb-db-pass)}))))
 
-(defn- jdbc-details
+(defn jdbc-details
   "Takes our own MB details map and formats them properly for connection details for Korma / JDBC."
   [db-details]
   {:pre [(map? db-details)]}

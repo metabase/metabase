@@ -4,6 +4,7 @@ import cx from "classnames";
 import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
 import FormMessage from "metabase/components/form/FormMessage.jsx";
+import Toggle from "metabase/components/Toggle.jsx";
 
 
 // TODO - this should be somewhere more centralized
@@ -81,7 +82,8 @@ export default class DatabaseDetailsForm extends Component {
         let request = {
             engine: engine,
             name: details.name,
-            details: {}
+            details: {},
+            is_full_sync: details.is_full_sync
         };
 
         for (let field of engines[engine]['details-fields']) {
@@ -129,6 +131,36 @@ export default class DatabaseDetailsForm extends Component {
         }
     }
 
+    renderField(field, fieldIndex) {
+        if (field.name === "is_full_sync") {
+            let on = (this.state.details.is_full_sync == undefined) ? true : this.state.details.is_full_sync;
+            return (
+                <FormField key={field.name} fieldName={field.name}>
+                    <div className="flex align-center Form-offset">
+                        <div className="Grid-cell--top">
+                            <Toggle value={on} onChange={(val) => this.onChange("is_full_sync", val)}/>
+                        </div>
+                        <div className="px2">
+                            <h3>Enable in-depth database analysis</h3>
+                            <div style={{maxWidth: "40rem"}} className="pt1">
+                                This allows us to present you with better metadata for your tables and is required for some features of Metabase.
+                                 We recommend leaving this on unless your database is large and you're concerned about performance.
+                            </div>
+                        </div>
+                    </div>
+                </FormField>
+            );
+        } else {
+            return (
+                <FormField key={field.name} fieldName={field.name}>
+                    <FormLabel title={field['display-name']} fieldName={field.name}></FormLabel>
+                    {this.renderFieldInput(field, fieldIndex)}
+                    <span className="Form-charm"></span>
+                </FormField>
+            );
+        }
+    }
+
     render() {
         let { engine, engines, formError, formSuccess, hiddenFields, submitButtonText } = this.props;
         let { valid } = this.state;
@@ -140,20 +172,20 @@ export default class DatabaseDetailsForm extends Component {
                 placeholder: "How would you like to refer to this database?",
                 required: true
             },
-            ...engines[engine]['details-fields']
+            ...engines[engine]['details-fields'],
+            {
+                name: "is_full_sync",
+                required: true
+            }
         ];
 
         hiddenFields = hiddenFields || {};
 
         return (
             <form onSubmit={this.formSubmitted.bind(this)} noValidate>
-                <div className="FormInputGroup">
+                <div className="FormInputGroup pb2">
                     { fields.filter(field => !hiddenFields[field.name]).map((field, fieldIndex) =>
-                        <FormField key={field.name} fieldName={field.name}>
-                            <FormLabel title={field['display-name']} fieldName={field.name}></FormLabel>
-                            {this.renderFieldInput(field, fieldIndex)}
-                            <span className="Form-charm"></span>
-                        </FormField>
+                        this.renderField(field, fieldIndex)
                       )}
                 </div>
 

@@ -1,3 +1,5 @@
+/*global ace*/
+
 import React from "react";
 
 import DataReference from '../query_builder/DataReference.jsx';
@@ -5,6 +7,7 @@ import GuiQueryEditor from '../query_builder/GuiQueryEditor.jsx';
 import NativeQueryEditor from '../query_builder/NativeQueryEditor.jsx';
 import QueryHeader from '../query_builder/QueryHeader.jsx';
 import QueryVisualization from '../query_builder/QueryVisualization.jsx';
+import QueryBuilderTutorial from '../tutorial/QueryBuilderTutorial.jsx';
 
 import SavedQuestionsApp from './containers/SavedQuestionsApp.jsx';
 
@@ -85,7 +88,8 @@ CardControllers.controller('CardDetail', [
                 visualization_settings: {},
                 dataset_query: {},
             },
-            savedCardSerialized = null;
+            savedCardSerialized = null,
+            isShowingTutorial = !!$routeParams.tutorial;
 
         resetDirty();
 
@@ -298,6 +302,11 @@ CardControllers.controller('CardDetail', [
 
                 // run it
                 runQuery();
+            },
+            onStartTutorial() {
+                isShowingTutorial = true;
+                setSampleDataset();
+                renderAll();
             }
         };
 
@@ -327,6 +336,7 @@ CardControllers.controller('CardDetail', [
             // ensure rendering model is up to date
             editorModel.isRunning = isRunning;
             editorModel.isShowingDataReference = $scope.isShowingDataReference;
+            editorModel.isShowingTutorial = isShowingTutorial;
             editorModel.databases = databases;
             editorModel.tableMetadata = tableMetadata;
             editorModel.tableForeignKeys = tableForeignKeys;
@@ -364,11 +374,26 @@ CardControllers.controller('CardDetail', [
             React.render(<DataReference {...dataReferenceModel}/>, document.getElementById('react_data_reference'));
         }
 
+        let tutorialModel = {
+            onClose: () => {
+                isShowingTutorial = false;
+                renderAll();
+            }
+        }
+
+        function renderTutorial() {
+            tutorialModel.isShowingTutorial = isShowingTutorial;
+            React.render(
+                <span>{isShowingTutorial && <QueryBuilderTutorial {...tutorialModel} /> }</span>
+            , document.getElementById('react_qb_tutorial'));
+        }
+
         var renderAll = _.debounce(function() {
             renderHeader();
             renderEditor();
             renderVisualization();
             renderDataReference();
+            renderTutorial();
         }, 10);
 
 
@@ -469,6 +494,9 @@ CardControllers.controller('CardDetail', [
             });
 
             MetabaseAnalytics.trackEvent('QueryBuilder', 'Run Query', dataset_query.type);
+
+            // HACK: prevent SQL editor from losing focus
+            try { ace.edit("id_sql").focus() } catch (e) {};
         }
 
         function getDefaultQuery() {
@@ -779,6 +807,11 @@ CardControllers.controller('CardDetail', [
             loadAndSetCard();
         }
 
+        function setSampleDataset() {
+            let sampleDataset = _.findWhere(databases, { name: "Sample Dataset" });
+            setDatabase(sampleDataset.id);
+        }
+
         // needs to be performed asynchronously otherwise we get weird infinite recursion
         var updateUrl = (replaceState) => setTimeout(function() {
             var copy = cleanCopyCard(card);
@@ -865,19 +898,26 @@ CardControllers.controller('CardDetail', [
             });
         }
 
-        loadDatabasesAndTables().then(function(dbs) {
-            databases = dbs;
+        async function init() {
+            try {
+                databases = await loadDatabasesAndTables();
 
-            if (dbs.length < 1) {
-                // TODO: some indication that setting up a db is required
-                return;
+                if (databases.length < 1) {
+                    // TODO: some indication that setting up a db is required
+                    return;
+                }
+
+                // finish initializing our page and render
+                await loadAndSetCard();
+
+                if (isShowingTutorial) {
+                    setSampleDataset();
+                }
+            } catch (error) {
+                console.log('error getting database list', error);
             }
+        }
 
-            // finish initializing our page and render
-            loadAndSetCard();
-
-        }, function (error) {
-            console.log('error getting database list', error);
-        });
+        init();
     }
 ]);

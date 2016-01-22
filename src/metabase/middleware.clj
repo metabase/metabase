@@ -1,7 +1,6 @@
 (ns metabase.middleware
   "Metabase-specific middleware functions & configuration."
-  (:require [clojure.math.numeric-tower :as math]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             (cheshire factory
                       [generate :refer [add-encoder encode-str encode-nil]])
@@ -230,30 +229,6 @@
 
 ;;; # ------------------------------------------------------------ LOGGING ------------------------------------------------------------
 
-(def ^:private ^:const sensitive-fields
-  "Fields that we should censor before logging."
-  #{:password})
-
-(defn- scrub-sensitive-fields
-  "Replace values of fields in `sensitive-fields` with `\"**********\"` before logging."
-  [request]
-  (walk/prewalk (fn [form]
-                  (if-not (and (vector? form)
-                               (= (count form) 2)
-                               (keyword? (first form))
-                               (contains? sensitive-fields (first form)))
-                    form
-                    [(first form) "**********"]))
-                request))
-
-(defn- log-request [{:keys [uri request-method body query-string]}]
-  (log/debug (u/format-color 'blue "%s %s "
-                             (.toUpperCase (name request-method)) (str uri
-                                                                       (when-not (empty? query-string)
-                                                                         (str "?" query-string)))
-                             (when (or (string? body) (coll? body))
-                               (str "\n" (u/pprint-to-str (scrub-sensitive-fields body)))))))
-
 (defn- log-response [{:keys [uri request-method]} {:keys [status body]} elapsed-time]
   (let [log-error #(log/error %) ; these are macros so we can't pass by value :sad:
         log-debug #(log/debug %)
@@ -263,7 +238,7 @@
                                 (=  status 403) [true  'red   log-warn]
                                 (>= status 400) [true  'red   log-debug]
                                 :else           [false 'green log-debug])]
-    (log-fn (str (u/format-color color "%s %s %d (%d ms)" (.toUpperCase (name request-method)) uri status elapsed-time)
+    (log-fn (str (u/format-color color "%s %s %d (%s)" (.toUpperCase (name request-method)) uri status elapsed-time)
                  ;; only print body on error so we don't pollute our environment by over-logging
                  (when (and error?
                             (or (string? body) (coll? body)))
@@ -272,20 +247,9 @@
 (defn log-api-call
   "Middleware to log `:request` and/or `:response` by passing corresponding OPTIONS."
   [handler & options]
-  (let [{:keys [request response]} (set options)
-        log-request? request
-        log-response? response]
-    (fn [request]
-      (if-not (api-call? request) (handler request)
-              (do
-                (when log-request?
-                  (log-request request))
-                (let [start-time (System/nanoTime)
-                      response (handler request)
-                      elapsed-time (-> (- (System/nanoTime) start-time)
-                                       double
-                                       (/ 1000000.0)
-                                       math/round)]
-                  (when log-response?
-                    (log-response request response elapsed-time))
-                  response))))))
+  (fn [request]
+    (if-not (api-call? request)
+      (handler request)
+      (let [start-time (System/nanoTime)]
+        (u/prog1 (handler request)
+          (log-response request <> (u/format-nanoseconds (- (System/nanoTime) start-time))))))))
