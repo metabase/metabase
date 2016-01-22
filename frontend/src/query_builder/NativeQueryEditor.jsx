@@ -37,6 +37,13 @@ export default class NativeQueryEditor extends Component {
         this.loadAceEditor();
     }
 
+    componentDidUpdate() {
+        var editor = ace.edit("id_sql");
+        if (editor.getValue() !== this.props.query.native.query) {
+            editor.setValue(this.props.query.native.query)
+        }
+    }
+
     loadAceEditor() {
         var editor = ace.edit("id_sql");
 
