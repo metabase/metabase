@@ -31,8 +31,12 @@ export default class DataReferenceTable extends Component {
     componentWillMount() {
         this.props.loadTableFn(this.props.table.id).then((result) => {
             this.setState({
-                table: result.metadata,
+                table: result.table,
                 tableForeignKeys: result.foreignKeys
+            });
+        }).catch((error) => {
+            this.setState({
+                error: "An error occurred loading the table"
             });
         });
     }
@@ -52,8 +56,8 @@ export default class DataReferenceTable extends Component {
         this.props.runQueryFn();
     }
 
-    render(page) {
-        var table = this.state.table;
+    render() {
+        const { table, error } = this.state;
         if (table) {
             var queryButton;
             if (table.rows != null) {
@@ -121,7 +125,9 @@ export default class DataReferenceTable extends Component {
                 </div>
             );
         } else {
-            return null;
+            return (
+                <div>{error}</div>
+            );
         }
     }
 }
