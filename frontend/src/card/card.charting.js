@@ -753,7 +753,8 @@ export var CardRenderer = {
                 parentPaddingTop = getComputedSizeProperty('padding-top', parent),
                 parentPaddingBottom = getComputedSizeProperty('padding-bottom', parent);
 
-            return parentHeight - parentPaddingTop - parentPaddingBottom - 5; // why the magic number :/
+            // NOTE: if this magic number is not 3 we can get into infinite re-render loops
+            return parentHeight - parentPaddingTop - parentPaddingBottom - 3; // why the magic number :/
         }
 
         return null;
