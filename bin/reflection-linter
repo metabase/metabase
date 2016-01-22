@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+warnings=`lein check 2>&1 | grep Reflection | grep metabase`
+
+if [ ! -z "$warnings" ]; then
+    echo -e "\e[1;31mYour code has cased introduced some reflection warnings.\e[0m 😞"
+    echo "$warnings";
+    exit -1;
+fi
+
+echo -e "\e[1;32mNo reflection warnings! Success.\e[0m"

@@ -26,6 +26,7 @@
                                                :updated_at      $
                                                :name            "test-data"
                                                :is_sample       false
+                                               :is_full_sync    true
                                                :organization_id nil
                                                :description     nil})
                            :schema          "PUBLIC"
@@ -38,7 +39,7 @@
                            :id              (id :users)
                            :db_id           (id)
                            :created_at      $})
-       :special_type    "category" ; metabase.driver.generic-sql.sync/check-for-low-cardinality should have marked this as such because it had no other special_type
+       :special_type    "name"
        :name            "NAME"
        :display_name    "Name"
        :updated_at      $
@@ -49,8 +50,7 @@
        :preview_display true
        :created_at      $
        :base_type       "TextField"
-       :parent_id       nil
-       :parent          nil})
+       :parent_id       nil})
     ((user->client :rasta) :get 200 (format "field/%d" (id :users :name))))
 
 
@@ -82,8 +82,7 @@
               :preview_display true
               :created_at      $
               :base_type       "FloatField"
-              :parent_id       nil
-              :parent          nil})
+              :parent_id       nil})
   ((user->client :crowberto) :put 200 (format "field/%d" (id :venues :latitude)) {:special_type :fk}))
 
 (defn- field->field-values

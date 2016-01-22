@@ -1,0 +1,81 @@
+databaseChangeLog:
+  - changeSet:
+      id: 25
+      author: agilliland
+      changes:
+        - createTable:
+            tableName: metric
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: metabase_table(id)
+                    foreignKeyName: fk_metric_ref_table_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_metric_ref_creator_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: is_active
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: definition
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: metric
+            indexName: idx_metric_creator_id
+            columns:
+              column:
+                name: creator_id
+        - createIndex:
+            tableName: metric
+            indexName: idx_metric_table_id
+            columns:
+              column:
+                name: table_id
+        - modifySql:
+            dbms: postgresql
+            replace:
+              replace: WITHOUT
+              with: WITH

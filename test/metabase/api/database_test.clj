@@ -12,14 +12,18 @@
 
 ;; HELPER FNS
 
-(defn create-db [db-name]
-  ((user->client :crowberto) :post 200 "database" {:engine :postgres
-                                                   :name    db-name
-                                                   :details {:host   "localhost"
-                                                             :port   5432
-                                                             :dbname "fakedb"
-                                                             :user   "cam"
-                                                             :ssl    false}}))
+(defn create-db
+  ([db-name]
+    (create-db db-name true))
+  ([db-name full-sync?]
+   ((user->client :crowberto) :post 200 "database" {:engine       :postgres
+                                                    :name         db-name
+                                                    :details      {:host   "localhost"
+                                                                   :port   5432
+                                                                   :dbname "fakedb"
+                                                                   :user   "cam"
+                                                                   :ssl    false}
+                                                    :is_full_sync full-sync?})))
 
 ;; # DB LIFECYCLE ENDPOINTS
 
@@ -33,6 +37,7 @@
        :updated_at      $
        :name            "test-data"
        :is_sample       false
+       :is_full_sync    true
        :organization_id nil
        :description     nil})
   ((user->client :rasta) :get 200 (format "database/%d" (id))))
@@ -47,6 +52,7 @@
        :updated_at      $
        :name            "test-data"
        :is_sample       false
+       :is_full_sync    true
        :organization_id nil
        :description     nil})
   ((user->client :crowberto) :get 200 (format "database/%d" (id))))
@@ -63,9 +69,10 @@
          :updated_at      $
          :name            db-name
          :is_sample       false
+         :is_full_sync    false
          :organization_id nil
          :description     nil})
-    (create-db db-name)))
+    (create-db db-name false)))
 
 ;; ## DELETE /api/database/:id
 ;; Check that we can delete a Database
@@ -82,18 +89,21 @@
 ;; Check that we can update fields in a Database
 (expect-let [[old-name new-name] (repeatedly 2 random-name)
              {db-id :id} (create-db old-name)
-             sel-db (fn [] (sel :one :fields [Database :name :engine :details] :id db-id))]
-  [{:details {:host "localhost", :port 5432, :dbname "fakedb", :user "cam", :ssl true}
-    :engine  :postgres
-    :name    old-name}
-   {:details {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
-    :engine  :h2
-    :name    new-name}]
+             sel-db (fn [] (sel :one :fields [Database :name :engine :details :is_full_sync] :id db-id))]
+  [{:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "cam", :ssl true}
+    :engine       :postgres
+    :name         old-name
+    :is_full_sync true}
+   {:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
+    :engine       :h2
+    :name         new-name
+    :is_full_sync false}]
   [(sel-db)
    ;; Check that we can update all the fields
-   (do ((user->client :crowberto) :put 200 (format "database/%d" db-id) {:name    new-name
-                                                                         :engine  "h2"
-                                                                         :details {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}})
+   (do ((user->client :crowberto) :put 200 (format "database/%d" db-id) {:name         new-name
+                                                                         :engine       "h2"
+                                                                         :is_full_sync false
+                                                                         :details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}})
        (sel-db))])
 
 ;; # DATABASES FOR ORG
@@ -113,6 +123,7 @@
                                 :updated_at      $
                                 :name            "test-data"
                                 :is_sample       false
+                                :is_full_sync    true
                                 :organization_id nil
                                 :description     nil})))
                          (match-$ (sel :one Database :name db-name)
@@ -122,6 +133,7 @@
                             :updated_at      $
                             :name            $
                             :is_sample       false
+                            :is_full_sync    true
                             :organization_id nil
                             :description     nil}))))
     (do
@@ -146,6 +158,7 @@
        :updated_at      $
        :name            "test-data"
        :is_sample       false
+       :is_full_sync    true
        :organization_id nil
        :description     nil
        :tables [(match-$ (Table (id :categories))
@@ -171,7 +184,6 @@
                                         :created_at      $
                                         :base_type       "BigIntegerField"
                                         :parent_id       nil
-                                        :parent          nil
                                         :values          []})
                                      (match-$ (Field (id :categories :name))
                                        {:description     nil
@@ -189,8 +201,9 @@
                                         :created_at      $
                                         :base_type       "TextField"
                                         :parent_id       nil
-                                        :parent          nil
                                         :values          []})]
+                   :segments        []
+                   :metrics         []
                    :rows            75
                    :updated_at      $
                    :entity_name     nil

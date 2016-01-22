@@ -72,7 +72,7 @@ var config = module.exports = {
             // { test: /\.css$/, loader: 'style!css!cssnext' }
         ],
         noParse: [
-            /node_modules\/(angular|ng-|ace|react-onclickoutside|moment|underscore|d3)/ // doesn't include 'crossfilter', 'dc', and 'tether' due to use of 'require'
+            /node_modules\/(angular|ng-|ace|moment|underscore|d3)/ // doesn't include 'crossfilter', 'dc', and 'tether' due to use of 'require'
         ]
     },
 
@@ -97,7 +97,6 @@ var config = module.exports = {
             'ace/mode-sql':         __dirname + '/node_modules/ace-builds/src-min-noconflict/mode-sql.js',
             'ace/snippets/sql':     __dirname + '/node_modules/ace-builds/src-min-noconflict/snippets/sql.js',
             // react
-            'react-onclickoutside': __dirname + '/node_modules/react-onclickoutside/index.js',
             'fixed-data-table':     __dirname + '/node_modules/fixed-data-table/dist/fixed-data-table.min.js',
             // misc
             'moment':               __dirname + '/node_modules/moment/min/moment.min.js',

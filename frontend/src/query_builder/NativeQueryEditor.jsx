@@ -37,6 +37,13 @@ export default class NativeQueryEditor extends Component {
         this.loadAceEditor();
     }
 
+    componentDidUpdate() {
+        var editor = ace.edit("id_sql");
+        if (editor.getValue() !== this.props.query.native.query) {
+            editor.setValue(this.props.query.native.query)
+        }
+    }
+
     loadAceEditor() {
         var editor = ace.edit("id_sql");
 
@@ -121,12 +128,14 @@ export default class NativeQueryEditor extends Component {
         var dbSelector;
         if(this.state.showEditor && this.props.databases && this.props.databases.length > 1) {
             dbSelector = (
-                <DataSelector
-                    name="Database"
-                    databases={this.props.databases}
-                    query={this.props.query}
-                    setDatabaseFn={this.props.setDatabaseFn}
-                />
+                <div className="GuiBuilder-section GuiBuilder-data flex align-center">
+                    <span className="GuiBuilder-section-label Query-label">Database</span>
+                    <DataSelector
+                        databases={this.props.databases}
+                        query={this.props.query}
+                        setDatabaseFn={this.props.setDatabaseFn}
+                    />
+                </div>
             );
         } else {
             dbSelector = <span className="p2 text-grey-4">This question is written in SQL.</span>;

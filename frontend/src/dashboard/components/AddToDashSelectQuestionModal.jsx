@@ -1,10 +1,12 @@
 import React, { Component, PropTypes } from "react";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
 import SortableItemList from "metabase/components/SortableItemList.jsx";
 
 import { fetchCards, setEditingDashboard, addCardToDashboard } from "../actions";
+
 
 export default class AddToDashSelectQuestionModal extends Component {
     constructor(props, context) {
@@ -31,6 +33,7 @@ export default class AddToDashSelectQuestionModal extends Component {
         this.props.dispatch(addCardToDashboard({ dashId: this.props.dashboard.id, cardId: card.id }));
         this.props.dispatch(setEditingDashboard(true));
         this.props.onClose();
+        MetabaseAnalytics.trackEvent("Dashboard", "Add Card");
     }
 
     render() {

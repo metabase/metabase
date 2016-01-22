@@ -1,5 +1,5 @@
-var AdminPeople = angular.module('metabaseadmin.people', [
-    'metabaseadmin.people.controllers'
+var AdminPeople = angular.module('metabase.admin.people', [
+    'metabase.admin.people.controllers'
 ]);
 
 AdminPeople.config(['$routeProvider', function ($routeProvider) {

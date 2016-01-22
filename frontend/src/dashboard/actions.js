@@ -6,6 +6,7 @@ import { normalize, Schema, arrayOf } from "normalizr";
 
 import moment from "moment";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 
 const DATASET_TIMEOUT = 60;
@@ -150,6 +151,8 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
         // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
         dispatch(fetchDashboard(dashId));
 
+        MetabaseAnalytics.trackEvent("Dashboard", "Update");
+
         return dashboard;
     };
 });
@@ -157,6 +160,7 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
 export const deleteDashboard = createThunkAction(DELETE_DASHBOARD, function(dashId) {
     return async function(dispatch, getState) {
         await Dashboard.delete({ dashId });
+        MetabaseAnalytics.trackEvent("Dashboard", "Delete");
         return dashId;
     };
 });

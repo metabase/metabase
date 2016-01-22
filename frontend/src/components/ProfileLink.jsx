@@ -57,7 +57,7 @@ export default class ProfileLink extends Component {
         return (
             <OnClickOut onClickOut={this.closeDropdown}>
                 <div className={dropDownClasses}>
-                    <a className="NavDropdown-button NavItem flex align-center p2 transition-background" onClick={this.toggleDropdown}>
+                    <a data-metabase-event={"Navbar;Profile Dropdown;Toggle"} className="NavDropdown-button NavItem flex align-center p2 transition-background" onClick={this.toggleDropdown}>
                         <div className="NavDropdown-button-layer">
                             <div className="flex align-center">
                                 <UserAvatar user={user} style={{backgroundColor: 'transparent'}}/>
@@ -70,14 +70,14 @@ export default class ProfileLink extends Component {
                         <div className="NavDropdown-content right">
                             <ul className="NavDropdown-content-layer">
                                 <li>
-                                    <a onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration" href="/user/edit_current">
+                                    <a data-metabase-event={"Navbar;Profile Dropdown;Edit Profile"} onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration" href="/user/edit_current">
                                         Account Settings
                                     </a>
                                 </li>
 
                                 { user.is_superuser && context !== 'admin' ?
                                     <li>
-                                        <a onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration" href="/admin/">
+                                        <a data-metabase-event={"Navbar;Profile Dropdown;Enter Admin"} onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration" href="/admin/">
                                             Admin Panel
                                         </a>
                                     </li>
@@ -85,26 +85,26 @@ export default class ProfileLink extends Component {
 
                                 { user.is_superuser && context === 'admin' ?
                                     <li>
-                                        <a onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration" href="/">
+                                        <a data-metabase-event={"Navbar;Profile Dropdown;Exit Admin"} onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration" href="/">
                                             Exit Admin
                                         </a>
                                     </li>
                                 : null }
 
                                 <li>
-                                    <a className="Dropdown-item block text-white no-decoration" href={"http://www.metabase.com/docs/"+tag} target="_blank">
+                                    <a data-metabase-event={"Navbar;Profile Dropdown;Help "+tag} className="Dropdown-item block text-white no-decoration" href={"http://www.metabase.com/docs/"+tag} target="_blank">
                                         Help
                                     </a>
                                 </li>
 
                                 <li>
-                                    <a onClick={this.openModal} className="Dropdown-item block text-white no-decoration">
+                                    <a data-metabase-event={"Navbar;Profile Dropdown;About "+tag} onClick={this.openModal} className="Dropdown-item block text-white no-decoration">
                                         About Metabase
                                     </a>
                                 </li>
 
                                 <li className="border-top border-light">
-                                    <a className="Dropdown-item block text-white no-decoration" href="/auth/logout">Logout</a>
+                                    <a data-metabase-event={"Navbar;Profile Dropdown;Logout"} className="Dropdown-item block text-white no-decoration" href="/auth/logout">Logout</a>
                                 </li>
                             </ul>
                         </div>

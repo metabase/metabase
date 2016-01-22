@@ -94,11 +94,47 @@ export function singularize(...args) {
     return inflection.singularize(...args);
 }
 
+export function pluralize(...args) {
+    return inflection.pluralize(...args);
+}
+
 export function capitalize(...args) {
     return inflection.capitalize(...args);
+}
+
+export function inflect(...args) {
+    return inflection.inflect(...args);
+}
+
+export function titleize(...args) {
+    return inflection.titleize(...args);
+}
+
+export function humanize(...args) {
+    return inflection.humanize(...args);
 }
 
 // Removes trailing "id" from field names
 export function stripId(name) {
     return name && name.replace(/ id$/i, "");
+}
+
+export function assignUserColors(userIds, currentUserId, colorClasses = ['bg-brand', 'bg-purple', 'bg-error', 'bg-green', 'bg-gold', 'bg-grey-2']) {
+    let assignments = {};
+
+    const currentUserColor = colorClasses[0];
+    const otherUserColors = colorClasses.slice(1);
+    let otherUserColorIndex = 0;
+
+    for (let userId of userIds) {
+        if (!(userId in assignments)) {
+            if (userId === currentUserId) {
+                assignments[userId] = currentUserColor;
+            } else if (userId != null) {
+                assignments[userId] = otherUserColors[otherUserColorIndex++ % otherUserColors.length];
+            }
+        }
+    }
+
+    return assignments;
 }

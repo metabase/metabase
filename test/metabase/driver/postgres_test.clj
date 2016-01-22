@@ -1,9 +1,11 @@
 (ns metabase.driver.postgres-test
   (:require [expectations :refer :all]
             [metabase.driver.generic-sql :as sql]
+            [metabase.driver.query-processor.expand :as ql]
+            [metabase.test.data :as data]
             (metabase.test.data [datasets :refer [expect-with-engine]]
                                 [interface :refer [def-database-definition]])
-            [metabase.test.util.q :refer [Q]])
+            [metabase.util :as u])
   (:import metabase.driver.postgres.PostgresDriver))
 
 ;; # Check that SSL params get added the connection details in the way we'd like
@@ -45,25 +47,40 @@
     [#uuid "7a5ce4a2-0958-46e7-9685-1a4eaa3bd08a"]
     [#uuid "84ed434e-80b4-41cf-9c88-e334427104ae"]]])
 
+
 ;; Check that we can load a Postgres Database with a :UUIDField
 (expect-with-engine :postgres
-  {:cols    [{:description nil, :base_type :IntegerField, :schema_name "public", :name "id", :display_name "Id", :preview_display true, :special_type :id, :target nil, :extra_info {}}
-             {:description nil, :base_type :UUIDField, :schema_name "public", :name "user_id", :display_name "User Id", :preview_display true, :special_type :category, :target nil, :extra_info {}}],
-   :columns ["id" "user_id"],
-   :rows    [[1 #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
-             [2 #uuid "4652b2e7-d940-4d55-a971-7e484566663e"]
-             [3 #uuid "da1d6ecc-e775-4008-b366-c38e7a2e8433"]
-             [4 #uuid "7a5ce4a2-0958-46e7-9685-1a4eaa3bd08a"]
-             [5 #uuid "84ed434e-80b4-41cf-9c88-e334427104ae"]]}
-  (-> (Q dataset metabase.driver.postgres-test/with-uuid use postgres
-         return :data
-         aggregate rows of users)
-      (update :cols (partial mapv #(dissoc % :id :table_id)))))
+  [{:name "id",      :base_type :IntegerField}
+   {:name "user_id", :base_type :UUIDField}]
+  (->> (data/dataset metabase.driver.postgres-test/with-uuid
+         (data/run-query users))
+       :data
+       :cols
+       (mapv (u/rpartial select-keys [:name :base_type]))))
+
 
 ;; Check that we can filter by a UUID Field
 (expect-with-engine :postgres
   [[2 #uuid "4652b2e7-d940-4d55-a971-7e484566663e"]]
-  (Q dataset metabase.driver.postgres-test/with-uuid use postgres
-     return rows
-     aggregate rows of users
-     filter = user_id "4652b2e7-d940-4d55-a971-7e484566663e"))
+  (-> (data/dataset metabase.driver.postgres-test/with-uuid
+        (data/run-query users
+          (ql/filter (ql/= $user_id "4652b2e7-d940-4d55-a971-7e484566663e"))))
+      :data :rows))
+
+
+;;; # Make sure that Tables / Fields with dots in their names get escaped properly
+(def-database-definition ^:const ^:private dots-in-names
+  ["objects.stuff"
+   [{:field-name "dotted.name", :base-type :TextField}]
+   [["toucan_cage"]
+    ["four_loko"]
+    ["ouija_board"]]])
+
+(expect-with-engine :postgres
+  {:columns ["id" "dotted.name"]
+   :rows    [[1 "toucan_cage"]
+             [2 "four_loko"]
+             [3 "ouija_board"]]}
+  (-> (data/dataset metabase.driver.postgres-test/dots-in-names
+        (data/run-query objects.stuff))
+      :data (dissoc :cols)))

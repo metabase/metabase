@@ -46,7 +46,7 @@
     *  Infers the namespace of unqualified symbols like `'CardFavorite`"
   (memoize
    (fn -entity->korma [entity]
-     {:post [(:metabase.models.interface/entity %)]}
+     {:post [:metabase.models.interface/entity]}
      (cond (vector? entity) (-entity->korma (first entity))
            (string? entity) (-entity->korma (symbol entity))
            (symbol? entity) (try (eval entity)
@@ -81,7 +81,7 @@
   (let [[entity field-keys] (destructure-entity entity)
         entity              (entity->korma entity)
         entity+fields       (assoc entity :fields (or field-keys
-                                                            (:metabase.models.interface/default-fields entity)))]
+                                                      (models/default-fields entity)))]
     ;; Log if applicable
     (future
       (when (config/config-bool :mb-db-logging)
@@ -90,9 +90,8 @@
                      (or (:fields entity+fields) "*")
                      (s/replace log-str #"korma.core/" "")))))
 
-    (->> (k/exec (select-fn entity+fields))
-         (map (partial models/internal-post-select entity))
-         (map (partial models/post-select entity)))))
+    (for [obj (k/exec (select-fn entity+fields))]
+      (models/do-post-select entity obj))))
 
 (defmacro sel* [entity & forms]
   `(sel-exec ~entity (sel-fn ~@forms)))

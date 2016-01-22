@@ -1,13 +1,14 @@
 (ns metabase.middleware-test
-  (:require [expectations :refer :all]
+  (:require [cheshire.core :as json]
+            [expectations :refer :all]
             [korma.core :as k]
-            [ring.mock.request :as mock]
             [metabase.api.common :refer [*current-user-id* *current-user*]]
             [metabase.middleware :refer :all]
             [metabase.models.session :refer [Session]]
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [ring.mock.request :as mock]))
 
 ;;  ===========================  TEST wrap-session-id middleware  ===========================
 
@@ -172,31 +173,9 @@
   (api-key-enforced-handler (request-with-api-key "foobar")))
 
 
+;;; JSON encoding tests
 
-;;; # ------------------------------------------------------------ FORMATTING TESTS ------------------------------------------------------------
-
-;; `format`, being a middleware function, expects a `handler`
-;; and returns a function that actually affects the response.
-;; Since we're just interested in testing the returned function pass it `identity` as a handler
-;; so whatever we pass it is unaffected
-(def fmt (format-response identity))
-
-;; check basic stripping
-(expect {:a 1}
-        (fmt {:a 1
-              :b (fn [] 2)}))
-
-;; check recursive stripping w/ map
-(expect {:response {:a 1}}
-        (fmt {:response {:a 1
-                         :b (fn [] 2)}}))
-
-;; check recursive stripping w/ array
-(expect [{:a 1}]
-        (fmt [{:a 1
-               :b (fn [] 2)}]))
-
-;; check combined recursive stripping
-(expect [{:a [{:b 1}]}]
-        (fmt [{:a [{:b 1
-                    :c (fn [] 2)} ]}]))
+;; Check that we encode byte arrays as the hex values of their first four bytes
+(expect "{\"my-bytes\":\"0xC42360D7\"}"
+        (json/generate-string {:my-bytes (byte-array [196 35  96 215  8 106 108 248 183 215 244 143  17 160 53 186
+                                                      213 30 116  25 87  31 123 172 207 108  47 107 191 215 76  92])}))

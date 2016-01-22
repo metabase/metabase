@@ -309,31 +309,31 @@
 }
 
 .TableEditor-field-visibility {
-    color: var(--orange-color);
+    /*color: var(--orange-color);*/
 }
 
 .TableEditor-field-visibility .ColumnarSelector-row:hover {
-    background-color: var(--orange-color) !important;
+    background-color: var(--brand-color) !important;
     color: white !important;
 }
 
 .TableEditor-field-type {
-    color: var(--purple-color);
+    /*color: var(--purple-color);*/
 }
 
 .TableEditor-field-type .ColumnarSelector-row:hover {
-    background-color: var(--purple-color) !important;
+    background-color: var(--brand-color) !important;
     color: white !important;
 }
 
 .TableEditor-field-special-type,
 .TableEditor-field-target {
-    color: var(--green-color);
+    /*color: var(--green-color);*/
 }
 
 .TableEditor-field-special-type .ColumnarSelector-row:hover,
 .TableEditor-field-target .ColumnarSelector-row:hover {
-    background-color: var(--green-color) !important;
+    background-color: var(--brand-color) !important;
     color: white !important;
 }
 
@@ -425,4 +425,27 @@
 .UserActionsSelect {
     padding-top: 1em;
     min-width: 180px;
+}
+
+.AdminTable {
+  border-collapse: collapse;
+  border-spacing: 0;
+
+  white-space: nowrap;
+  text-align: left;
+}
+
+.AdminTable th {
+  text-transform: uppercase;
+  color: color(var(--base-grey) shade(40%));
+  padding:  var(--padding-1);
+  font-weight: normal;
+}
+
+.AdminTable thead {
+  border-bottom: var(--border-size) var(--border-style) var(--border-color);
+}
+
+.AdminTable tbody tr:first-child td {
+  padding-top: var(--margin-1);
 }

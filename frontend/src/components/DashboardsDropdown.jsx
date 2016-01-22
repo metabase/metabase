@@ -2,6 +2,7 @@ import React, { Component, PropTypes } from 'react';
 
 import OnClickOut from 'react-onclickout';
 
+import MetabaseAnalytics from "metabase/lib/analytics";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal.jsx";
 import Modal from "metabase/components/Modal.jsx";
 
@@ -43,6 +44,8 @@ export default class DashboardsDropdown extends Component {
                 dropdownOpen: false,
                 modalOpen: false
             });
+
+            MetabaseAnalytics.trackEvent("Dashboard", "Create");
         }.bind(this));
     }
 
@@ -107,7 +110,7 @@ export default class DashboardsDropdown extends Component {
                                     <ul className="NavDropdown-content-layer">
                                         { dashboards.map(dash =>
                                             <li className="block">
-                                                <a className="Dropdown-item block text-white no-decoration" href={"/dash/"+dash.id} onClick={this.closeDropdown}>
+                                                <a data-metabase-event={"Navbar;Dashboard Dropdown;Open Dashboard;"+dash.id} className="Dropdown-item block text-white no-decoration" href={"/dash/"+dash.id} onClick={this.closeDropdown}>
                                                     <div className="flex text-bold">
                                                         {dash.name}
                                                     </div>
@@ -120,7 +123,7 @@ export default class DashboardsDropdown extends Component {
                                             </li>
                                         )}
                                         <li className="block border-top border-light">
-                                            <a className="Dropdown-item block text-white no-decoration" href="#" onClick={this.toggleModal}>Create a new dashboard</a>
+                                            <a data-metabase-event={"Navbar;Dashboard Dropdown;Create Dashboard"} className="Dropdown-item block text-white no-decoration" href="#" onClick={this.toggleModal}>Create a new dashboard</a>
                                         </li>
                                     </ul>
                                 }

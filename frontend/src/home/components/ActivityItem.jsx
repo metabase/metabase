@@ -27,16 +27,9 @@ export default class ActivityItem extends Component {
 
                 <div className="ml2 full flex align-center">
                     <div className="text-grey-4">
-                        <span className="text-dark">{description.userName}</span>
+                        <span className="text-dark">{description.userName}</span>&nbsp;
 
-                        &nbsp;{description.subject}&nbsp;
-                        { description.subjectRefName && description.subjectRefLink ?
-                            <a className="link text-dark" href={description.subjectRefLink}>{description.subjectRefName}</a>
-                        : null }
-
-                        { description.subjectRefName && !description.subjectRefLink ?
-                            <span className="text-dark">{description.subjectRefName}</span>
-                        : null }
+                        {description.summary}
                     </div>
                     <div className="flex-align-right text-right text-grey-2">
                         {description.timeSince}

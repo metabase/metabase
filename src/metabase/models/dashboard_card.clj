@@ -1,22 +1,27 @@
 (ns metabase.models.dashboard-card
   (:require [clojure.set :as set]
-            [korma.core :refer :all, :exclude [defentity update]]
-            [metabase.db :refer :all]
+            [korma.core :as k]
+            [metabase.db :refer [sel]]
             (metabase.models [card :refer [Card]]
-                             [interface :refer :all])))
+                             [interface :as i])
+            [metabase.util :as u]))
 
-(defentity DashboardCard
-  [(table :report_dashboardcard)
-   timestamped]
+(i/defentity DashboardCard :report_dashboardcard
+             ;; This is implemented as a `transform` function instead of `post-select` because we want it to apply even
+             ;; when we use low-level korma primitives like `select`. Otherwise you can't `insert` what you `select`.
+             ;; TODO - The fact that we have to work around these names means we should probably just rename them
+             (k/transform (u/rpartial set/rename-keys {:sizex :sizeX, :sizey :sizeY})))
 
-  (pre-insert [_ dashcard]
-    (let [defaults {:sizeX 2
-                    :sizeY 2}]
-      (merge defaults dashcard)))
+(defn- pre-insert [dashcard]
+  (let [defaults {:sizeX 2
+                  :sizeY 2}]
+    (merge defaults dashcard)))
 
-  (post-select [_ {:keys [card_id dashboard_id] :as dashcard}]
-    (-> dashcard
-        (set/rename-keys {:sizex :sizeX ; mildly retarded: H2 columns are all uppercase, we're converting them
-                          :sizey :sizeY}) ; to all downcase, and the Angular app expected mixed-case names here
-        (assoc :card      (delay (Card card_id))
-               :dashboard (delay (sel :one 'Dashboard :id dashboard_id))))))
+(extend (class DashboardCard)
+  i/IEntity
+  (merge i/IEntityDefaults
+         {:timestamped? (constantly true)
+          :pre-insert   pre-insert}))
+
+
+(u/require-dox-in-this-namespace)

@@ -98,6 +98,15 @@
     border: 1px solid #885AB1;
 }
 
+.Button--borderless {
+  border: none;
+  background: transparent;
+  color: color(var(--base-grey) shade(40%));
+}
+.Button--borderless:hover {
+  color: color(var(--base-grey) shade(50%));
+}
+
 .Button-group {
   display: inline-block;
   border-radius: var(--default-button-border-radius);

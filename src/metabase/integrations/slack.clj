@@ -9,7 +9,8 @@
 ;; Define a setting which captures our Slack api token
 (defsetting slack-token "Slack API bearer token obtained from https://api.slack.com/web#authentication")
 
-(def ^:const slack-api-baseurl "https://slack.com/api")
+(def ^:private ^:const slack-api-baseurl "https://slack.com/api")
+(def ^:private ^:const metabase-slack-files-channel "metabase_files")
 
 
 (defn slack-configured?
@@ -55,26 +56,66 @@
     (cheshire/parse-string (:body response))
     (log/warn "Error in Slack api response:" (with-out-str (clojure.pprint/pprint response)))))
 
+(defn channels-create
+  "Calls Slack api `channels.create` for CHANNEL."
+  [channel]
+  {:pre [(string? channel)]}
+  (-> (slack-api-post (slack-token) "channels.create" {:name channel})
+      handle-api-response))
+
+(defn channels-archive
+  "Calls Slack api `channels.archive` for CHANNEL."
+  [channel]
+  {:pre [(string? channel)]}
+  (-> (slack-api-post (slack-token) "channels.archive" {:channel channel})
+      handle-api-response))
+
 (defn channels-list
   "Calls Slack api `channels.list` function and returns the list of available channels."
   []
   (-> (slack-api-get (slack-token) "channels.list" {:exclude_archived 1})
-      (handle-api-response)))
+      handle-api-response))
 
 (defn users-list
   "Calls Slack api `users.list` function and returns the list of available users."
   []
   (-> (slack-api-get (slack-token) "users.list")
-      (handle-api-response)))
+      handle-api-response))
+
+(defn- create-files-channel
+  "Convenience function for creating our Metabase files channel to store file uploads."
+  []
+  (when-let [response (channels-create metabase-slack-files-channel)]
+    (if-let [files-channel (clojure.walk/keywordize-keys (get response "channel"))]
+      (do
+        ;; right after creating our files channel, archive it.  this is because we don't need users to see it.
+        (channels-archive (:id files-channel))
+        ;; then return the info about the files channel we created as our response
+        files-channel)
+      (log/error "Error creating Slack channel for Metabase file uploads:" (with-out-str (clojure.pprint/pprint response))))))
+
+(defn get-or-create-files-channel
+  "Calls Slack api `channels.info` and `channels.create` function as needed to ensure that a #metabase_files channel exists."
+  []
+  (if-let [files-channel (->> (get (handle-api-response (slack-api-get (slack-token) "channels.list" {:exclude_archived 0})) "channels")
+                              (map clojure.walk/keywordize-keys)
+                              (filter #(= metabase-slack-files-channel (:name %)))
+                              first)]
+    files-channel
+    (create-files-channel)))
 
 (defn files-upload
-  "Calls Slack api `files.upload` function and returns the url of the uploaded file."
-  [file]
+  "Calls Slack api `files.upload` function and returns the body of the uploaded file."
+  [file filename channels]
+  {:pre [(string? filename)
+         (string? channels)]}
   (let [response (http/post (str slack-api-baseurl "/files.upload") {:multipart [["token" (slack-token)]
-                                                                                 ["file" file]]
+                                                                                 ["file" file]
+                                                                                 ["filename" filename]
+                                                                                 ["channels" channels]]
                                                                      :as :json})]
     (if (= 200 (:status response))
-      (:body response)
+      (get-in (:body response) [:file :url_private])
       (log/warn "Error uploading file to Slack:" (with-out-str (clojure.pprint/pprint response))))))
 
 (defn chat-post-message
@@ -87,7 +128,7 @@
     ;; TODO: it would be nice to have an emoji or icon image to use here
    (-> (slack-api-post (slack-token) "chat.postMessage" {:channel     channel
                                                          :username    "MetaBot"
-                                                         :icon_url    "http://static.metabase.com/mb_slack_avatar.png"
+                                                         :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
                                                          :text        text
                                                          :attachments attachments})
        (handle-api-response))))

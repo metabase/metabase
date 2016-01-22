@@ -1,0 +1,114 @@
+import React, { Component, PropTypes } from "react";
+
+import MetricsList from "./MetricsList.jsx";
+import ColumnsList from "./ColumnsList.jsx";
+import SegmentsList from "./SegmentsList.jsx";
+
+import Input from "metabase/components/Input.jsx";
+import ProgressBar from "metabase/components/ProgressBar.jsx";
+
+import cx from "classnames";
+
+export default class MetadataTable extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.onDescriptionChange = this.onDescriptionChange.bind(this);
+        this.onNameChange = this.onNameChange.bind(this);
+        this.updateProperty = this.updateProperty.bind(this);
+    }
+
+    static propTypes = {
+        tableMetadata: PropTypes.object,
+        idfields: PropTypes.array.isRequired,
+        updateTable: PropTypes.func.isRequired,
+        updateField: PropTypes.func.isRequired,
+        updateFieldSpecialType: PropTypes.func.isRequired,
+        updateFieldTarget: PropTypes.func.isRequired
+    };
+
+    isHidden() {
+        return !!this.props.tableMetadata.visibility_type;
+    }
+
+    updateProperty(name, value) {
+        this.props.tableMetadata[name] = value;
+        this.setState({ saving: true });
+        this.props.updateTable(this.props.tableMetadata);
+    }
+
+    onNameChange(event) {
+        this.updateProperty("display_name", event.target.value);
+    }
+
+    onDescriptionChange(event) {
+        this.updateProperty("description", event.target.value);
+    }
+
+    renderVisibilityType(text, type, any) {
+        var classes = cx("mx1", "text-bold", "text-brand-hover", "cursor-pointer", "text-default", {
+            "text-brand": this.props.tableMetadata.visibility_type === type || (any && this.props.tableMetadata.visibility_type)
+        });
+        return <span className={classes} onClick={this.updateProperty.bind(null, "visibility_type", type)}>{text}</span>;
+    }
+
+    renderVisibilityWidget() {
+        var subTypes;
+        if (this.props.tableMetadata.visibility_type) {
+            subTypes = (
+                <span className="border-left mx2">
+                    <span className="mx2 text-uppercase text-grey-3">Why Hide?</span>
+                    {this.renderVisibilityType("Technical Data", "technical")}
+                    {this.renderVisibilityType("Irrelevant/Cruft", "cruft")}
+                </span>
+            );
+        }
+        return (
+            <span>
+                {this.renderVisibilityType("Queryable", null)}
+                {this.renderVisibilityType("Hidden", "hidden", true)}
+                {subTypes}
+            </span>
+        );
+    }
+
+    render() {
+        const { tableMetadata } = this.props;
+        if (!tableMetadata) {
+            return false;
+        }
+
+        return (
+            <div className="MetadataTable px3 flex-full">
+                <div className="MetadataTable-title flex flex-column bordered rounded">
+                    <Input className="AdminInput TableEditor-table-name text-bold border-bottom rounded-top" type="text" value={tableMetadata.display_name} onBlurChange={this.onNameChange}/>
+                    <Input className="AdminInput TableEditor-table-description rounded-bottom" type="text" value={tableMetadata.description} onBlurChange={this.onDescriptionChange} placeholder="No table description yet" />
+                </div>
+                <div className="MetadataTable-header flex align-center py2 text-grey-3">
+                    <span className="mx1 text-uppercase">Visibility</span>
+                    {this.renderVisibilityWidget()}
+                    <span className="flex-align-right flex align-center">
+                        <span className="text-uppercase mr1">Metadata Strength</span>
+                        <ProgressBar percentage={tableMetadata.metadataStrength} />
+                    </span>
+                </div>
+                <div className={"mt2 " + (this.isHidden() ? "disabled" : "")}>
+                    <SegmentsList
+                        tableMetadata={tableMetadata}
+                        onRetire={this.props.onRetireSegment}
+                    />
+                    <MetricsList
+                        tableMetadata={tableMetadata}
+                        onRetire={this.props.onRetireMetric}
+                    />
+                    <ColumnsList
+                        tableMetadata={tableMetadata}
+                        idfields={this.props.idfields}
+                        updateField={this.props.updateField}
+                        updateFieldSpecialType={this.props.updateFieldSpecialType}
+                        updateFieldTarget={this.props.updateFieldTarget}
+                    />
+                </div>
+            </div>
+        );
+    }
+}

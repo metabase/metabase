@@ -55,9 +55,8 @@
 (def app
   "The primary entry point to the HTTP server"
   (-> routes/routes
-      (mb-middleware/log-api-call :request :response)
+      (mb-middleware/log-api-call)
       mb-middleware/add-security-headers              ; [METABASE] Add HTTP headers to API responses to prevent them from being cached
-      mb-middleware/format-response                   ; [METABASE] Do formatting before converting to JSON so serializer doesn't barf
       (wrap-json-body                                 ; extracts json POST body and makes it avaliable on request
         {:keywords? true})
       wrap-json-response                              ; middleware to automatically serialize suitable objects as JSON in responses
@@ -218,16 +217,25 @@
       (log/error "Metabase Initialization FAILED: " (.getMessage e))
       (System/exit 1))))
 
+(def ^:private cmd->fn
+  {:migrate      (fn [direction]
+                   (db/migrate @db/db-connection-details (keyword direction)))
+   :load-from-h2 (fn [& [h2-connection-string-or-nil]]
+                   (require 'metabase.cmd.load-from-h2)
+                   ((resolve 'metabase.cmd.load-from-h2/load-from-h2) h2-connection-string-or-nil))})
+
 (defn- run-cmd [cmd & args]
-  (let [cmd->fn {:migrate (fn [direction]
-                            (db/migrate @db/db-connection-details (keyword direction)))}]
-    (if-let [f (cmd->fn cmd)]
-      (do (apply f args)
-          (println "Success.")
-          (System/exit 0))
-      (do (println "Unrecognized command:" (name cmd))
-          (println "Valid commands are:\n" (u/pprint-to-str (map name (keys cmd->fn))))
-          (System/exit 1)))))
+  (let [f (or (cmd->fn cmd)
+              (do (println (u/format-color 'red "Unrecognized command: %s" (name cmd)))
+                  (println "Valid commands are:\n" (u/pprint-to-str (map name (keys cmd->fn))))
+                  (System/exit 1)))]
+    (try (apply f args)
+         (catch Throwable e
+           (.printStackTrace e)
+           (println (u/format-color 'red "Command failed with exception: %s" (.getMessage e)))
+           (System/exit 1)))
+    (println "Success.")
+    (System/exit 0)))
 
 (defn -main
   "Launch Metabase in standalone mode."
