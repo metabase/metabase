@@ -3,19 +3,21 @@ import React, { Component, PropTypes } from "react";
 import ProgressBar from "metabase/components/ProgressBar.jsx";
 import Icon from "metabase/components/Icon.jsx";
 
+import { inflect } from "metabase/lib/formatting";
+
 import _ from "underscore";
-import cx from 'classnames';
-import Humanize from 'humanize';
+import cx from "classnames";
 
 export default class MetadataTableList extends Component {
     constructor(props, context) {
         super(props, context);
-        this.updateSearchText = this.updateSearchText.bind(this);
 
         this.state = {
             searchText: null,
             searchRegex: null
         };
+
+        _.bindAll(this, "updateSearchText");
     }
 
     static propTypes = {
@@ -39,12 +41,9 @@ export default class MetadataTableList extends Component {
         if (this.props.tables) {
             var tables = _.sortBy(this.props.tables, "display_name");
             _.each(tables, (table) => {
-                var classes = cx("AdminList-item", "flex", "align-center", "no-decoration", {
-                    "selected": this.props.tableId === table.id
-                });
                 var row = (
                     <li key={table.id}>
-                        <a href="#" className={classes} onClick={this.props.selectTable.bind(null, table)}>
+                        <a href="#" className={cx("AdminList-item flex align-center no-decoration", { selected: this.props.tableId === table.id })} onClick={this.props.selectTable.bind(null, table)}>
                             {table.display_name}
                             <ProgressBar className="ProgressBar ProgressBar--mini flex-align-right" percentage={table.metadataStrength} />
                         </a>
@@ -62,10 +61,10 @@ export default class MetadataTableList extends Component {
         }
 
         if (queryableTables.length > 0) {
-            queryableTablesHeader = <li className="AdminList-section">{queryableTables.length} Queryable {Humanize.pluralize(queryableTables.length, "Table")}</li>;
+            queryableTablesHeader = <li className="AdminList-section">{queryableTables.length} Queryable {inflect("Table", queryableTables.length)}</li>;
         }
         if (hiddenTables.length > 0) {
-            hiddenTablesHeader = <li className="AdminList-section">{hiddenTables.length} Hidden {Humanize.pluralize(hiddenTables.length, "Table")}</li>;
+            hiddenTablesHeader = <li className="AdminList-section">{hiddenTables.length} Hidden {inflect("Table", hiddenTables.length)}</li>;
         }
         if (queryableTables.length === 0 && hiddenTables.length === 0) {
             queryableTablesHeader = <li className="AdminList-section">0 Tables</li>;
@@ -83,6 +82,16 @@ export default class MetadataTableList extends Component {
                         onChange={this.updateSearchText}
                     />
                 </div>
+                { (this.props.onBack || this.props.schema) &&
+                    <h4 className="p2 border-bottom">
+                        { this.props.onBack &&
+                            <span className="text-brand cursor-pointer" onClick={this.props.onBack}><Icon name="chevronleft" width={10} height={10}/> Schemas</span>
+                        }
+                        { this.props.onBack && this.props.schema && <span className="mx1">-</span>}
+                        { this.props.schema && <span> {this.props.schema.name}</span>}
+                    </h4>
+                }
+
                 <ul className="AdminList-items">
                     {queryableTablesHeader}
                     {queryableTables}

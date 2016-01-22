@@ -160,6 +160,8 @@ export default class FieldList extends Component {
     renderSectionIcon(section, sectionIndex) {
         if (sectionIndex > 0) {
             return <Icon name="connections" width={18} height={18} />
+        } else {
+            return <Icon name="table2" width={18} height={18} />;
         }
     }
 
