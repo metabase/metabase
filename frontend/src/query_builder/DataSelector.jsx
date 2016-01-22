@@ -161,6 +161,7 @@ export default class DataSelector extends Component {
                 renderItemIcon={() => <Icon name="folder" width="16" height="16" />}
                 initiallyOpenSection={openSection}
                 showItemArrows={true}
+                alwaysTogglable={true}
             />
         );
     }

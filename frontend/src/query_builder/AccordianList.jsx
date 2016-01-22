@@ -117,7 +117,7 @@ export default class AccordianList extends Component {
     }
 
     render() {
-        let { sections, showItemArrows } = this.props;
+        let { sections, showItemArrows, alwaysTogglable } = this.props;
         let openSection = this.getOpenSection();
 
         return (
@@ -126,7 +126,7 @@ export default class AccordianList extends Component {
                     <section key={sectionIndex} className={cx("List-section", { "List-section--open": openSection === sectionIndex })}>
                         { section.name != null ?
                             <div className="p1 border-bottom">
-                                { sections.length > 1 ?
+                                { sections.length > 1 || alwaysTogglable ?
                                     <div className="List-section-header px1 py1 cursor-pointer full flex align-center" onClick={() => this.toggleSection(sectionIndex)}>
                                         { this.renderSectionIcon(section, sectionIndex) }
                                         <h3 className="List-section-title">{section.name}</h3>
