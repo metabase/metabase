@@ -54,7 +54,7 @@ export default class DeleteDatabaseModal extends Component {
                 closeFn={this.props.onClose}
             >
                 <div className="Form-inputs mb4">
-                    { database.name === "Sample Dataset" &&
+                    { database.is_sample &&
                         <p><strong>Just a heads up:</strong> without the Sample Dataset, the Query Builder tutorial won't work. You can always restore the Sample Dataset, though.</p>
                     }
                     <p>

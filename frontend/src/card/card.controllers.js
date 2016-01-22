@@ -806,7 +806,7 @@ CardControllers.controller('CardDetail', [
         }
 
         function setSampleDataset() {
-            let sampleDataset = _.findWhere(databases, { name: "Sample Dataset" });
+            let sampleDataset = _.findWhere(databases, { is_sample: true });
             setDatabase(sampleDataset.id);
         }
 

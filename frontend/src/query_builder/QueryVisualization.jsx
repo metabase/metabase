@@ -207,7 +207,7 @@ export default class QueryVisualization extends Component {
         }
 
         if (!this.props.result) {
-            let hasSampleDataset = !!_.findWhere(this.props.databases, { "name": "Sample Dataset" });
+            let hasSampleDataset = !!_.findWhere(this.props.databases, { is_sample: true });
             viz = (
                 <div className="flex full layout-centered text-grey-1 flex-column">
                     <h1>If you give me some data I can show you something cool. Run a Query!</h1>
