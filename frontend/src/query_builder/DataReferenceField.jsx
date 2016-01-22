@@ -35,8 +35,12 @@ export default class DataReferenceField extends Component {
     componentWillMount() {
         this.props.loadTableFn(this.props.field.table_id).then((result) => {
             this.setState({
-                table: result.metadata,
+                table: result.table,
                 tableForeignKeys: result.foreignKeys
+            });
+        }).catch((error) => {
+            this.setState({
+                error: "An error occurred loading the table"
             });
         });
     }
@@ -103,7 +107,7 @@ export default class DataReferenceField extends Component {
 
     render() {
         let { field, query } = this.props;
-        let { table } = this.state;
+        let { table, error } = this.state;
 
         let fieldName = field.display_name;
         let tableName = table ? table.display_name : "";
@@ -163,6 +167,7 @@ export default class DataReferenceField extends Component {
                 : null }
                 <p className="text-bold">Potentially useful questions</p>
                 <ul>{usefulQuestions}</ul>
+                <div>{error}</div>
             </div>
         );
     }
