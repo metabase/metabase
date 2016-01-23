@@ -28,7 +28,10 @@ export default class Homepage extends Component {
         dispatch: PropTypes.func.isRequired,
         onChangeLocation: PropTypes.func.isRequired,
         showOnboarding: PropTypes.bool.isRequired,
-        user: PropTypes.object.isRequired
+        user: PropTypes.object.isRequired,
+        activity: PropTypes.array,
+        fetchActivity: PropTypes.func.isRequired,
+        fetchRecentViews: PropTypes.func.isRequired
     };
 
     completeOnboarding() {

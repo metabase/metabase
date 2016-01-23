@@ -8,8 +8,8 @@ const mb_settings = _.clone(window.MetabaseBootstrap);
 // provides access to Metabase application settings
 const MetabaseSettings = {
 
-    get: function(propName, defaultValue) {
-        return mb_settings[propName] || defaultValue || null;
+    get: function(propName, defaultValue = null) {
+        return mb_settings[propName] !== undefined ? mb_settings[propName] : defaultValue;
     },
 
     setAll: function(settings) {
