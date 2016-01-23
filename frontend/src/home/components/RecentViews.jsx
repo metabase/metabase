@@ -3,8 +3,6 @@ import React, { Component, PropTypes } from "react";
 import Icon from "metabase/components/Icon.jsx";
 import Urls from "metabase/lib/urls";
 
-import { fetchRecentViews } from "../actions";
-
 export default class RecentViews extends Component {
     constructor(props, context) {
         super(props, context);
@@ -13,13 +11,13 @@ export default class RecentViews extends Component {
     }
 
     static propTypes = {
-        dispatch: PropTypes.func.isRequired,
+        fetchRecentViews: PropTypes.func.isRequired,
         recentViews: PropTypes.array.isRequired
     }
 
     async componentDidMount() {
         try {
-            await this.props.dispatch(fetchRecentViews());
+            await this.props.fetchRecentViews();
         } catch (error) {
             this.setState({ error });
         }

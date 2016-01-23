@@ -175,6 +175,8 @@ CardControllers.controller('CardDetail', [
             visualizationSettingsApi: VisualizationSettings,
             card: null,
             result: null,
+            databases: null,
+            tableMetadata: null,
             tableForeignKeys: null,
             tableForeignKeyReferences: null,
             isRunning: false,
@@ -302,11 +304,6 @@ CardControllers.controller('CardDetail', [
 
                 // run it
                 runQuery();
-            },
-            onStartTutorial() {
-                isShowingTutorial = true;
-                setSampleDataset();
-                renderAll();
             }
         };
 
@@ -353,6 +350,7 @@ CardControllers.controller('CardDetail', [
             // ensure rendering model is up to date
             visualizationModel.card = angular.copy(card);
             visualizationModel.result = queryResult;
+            visualizationModel.databases = databases;
             visualizationModel.tableMetadata = tableMetadata;
             visualizationModel.tableForeignKeys = tableForeignKeys;
             visualizationModel.tableForeignKeyReferences = tableForeignKeyReferences;
@@ -808,7 +806,7 @@ CardControllers.controller('CardDetail', [
         }
 
         function setSampleDataset() {
-            let sampleDataset = _.findWhere(databases, { name: "Sample Dataset" });
+            let sampleDataset = _.findWhere(databases, { is_sample: true });
             setDatabase(sampleDataset.id);
         }
 

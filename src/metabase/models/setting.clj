@@ -217,7 +217,8 @@
    :email_configured      (@(resolve 'metabase.email/email-configured?))
    :admin_email           (get :admin-email)
    :report_timezone       (get :report-timezone)
-   :timezone_short        (short-timezone-name (get-instance-timezone))})
+   :timezone_short        (short-timezone-name (get-instance-timezone))
+   :has_sample_dataset    (some? (sel :one 'Database :is_sample true))})
 
 ;;; # IMPLEMENTATION
 

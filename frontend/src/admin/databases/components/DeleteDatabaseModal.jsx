@@ -28,6 +28,8 @@ export default class DeleteDatabaseModal extends Component {
     }
 
     render() {
+        const { database } = this.props;
+
         var formError;
         if (this.state.error) {
             var errorMessage = "Server error encountered";
@@ -52,6 +54,9 @@ export default class DeleteDatabaseModal extends Component {
                 closeFn={this.props.onClose}
             >
                 <div className="Form-inputs mb4">
+                    { database.is_sample &&
+                        <p><strong>Just a heads up:</strong> without the Sample Dataset, the Query Builder tutorial won't work. You can always restore the Sample Dataset, though.</p>
+                    }
                     <p>
                         Are you sure you want to delete this database? All saved questions that rely on this database will be lost. <strong>This cannot be undone</strong>. If you're sure, please type <strong>DELETE</strong> in this box:
                     </p>

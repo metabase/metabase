@@ -5,7 +5,7 @@ describe('metabase.services', function() {
 
     describe('Metabase', function() {
         it('should return empty list of databases', inject(function(Metabase, $httpBackend) {
-            $httpBackend.expect('GET', '/api/database/?org=')
+            $httpBackend.expect('GET', '/api/database')
                 .respond(200, '[]');
 
             Metabase.db_list().$promise.then(function(data) {
