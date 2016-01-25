@@ -85,6 +85,7 @@
 
 .Query-filter {
     display: flex;
+    flex-shrink: 0;
     font-size: 0.75em;
     border: 2px solid transparent;
     border-radius: var(--default-border-radius);
@@ -97,6 +98,7 @@
 .Filter-section {
     display: flex;
     align-items: center;
+    flex-shrink: 0;
 }
 
 .Query-filter .input {
