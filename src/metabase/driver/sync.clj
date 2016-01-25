@@ -364,7 +364,8 @@ infer-field-special-type
                                                           existing-base-type
                                                           field-base-type)
         field-field-type                                (or existing-field-type
-                                                            (:field-type field-def))]
+                                                            (:field-type field-def)
+                                                            :info)]
     (if-not existing-field
       ;; Field doesn't exist, so create it.
       (ins Field
