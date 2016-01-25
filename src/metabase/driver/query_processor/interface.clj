@@ -113,6 +113,22 @@
                                     unit   :- DatetimeValueUnit
                                     field  :- DateTimeField])
 
+(defprotocol IDateTimeValue
+  (unit [this]
+    "Get the `unit` associated with a `DateTimeValue` or `RelativeDateTimeValue`.")
+
+  (add-date-time-units [this n]
+    "Return a new `DateTimeValue` or `RelativeDateTimeValue` with N `units` added to it."))
+
+(extend-protocol IDateTimeValue
+  DateTimeValue
+  (unit                [this]   (:unit (:field this)))
+  (add-date-time-units [this n] (assoc this :value (u/relative-date (unit this) n (:value this))))
+
+  RelativeDateTimeValue
+  (unit                [this]   (:unit this))
+  (add-date-time-units [this n] (update this :amount (partial + n))))
+
 
 ;;; # ------------------------------------------------------------ PLACEHOLDER TYPES: FIELDPLACEHOLDER + VALUEPLACEHOLDER ------------------------------------------------------------
 

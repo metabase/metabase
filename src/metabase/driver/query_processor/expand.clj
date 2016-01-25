@@ -191,6 +191,9 @@
      (!= f v1 v2) ; same as (and (!= f v1) (!= f v2))"
   (partial equality-filter :!= and))
 
+(defn ^:ql is-null [f] (= f nil))
+(defn ^:ql not-null [f] (!= f nil))
+
 (s/defn ^:private ^:always-validate comparison-filter :- ComparisonFilter [filter-type f v]
   (i/map->ComparisonFilter {:filter-type filter-type, :field (field f), :value (value f v)}))
 

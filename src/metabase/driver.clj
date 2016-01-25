@@ -23,6 +23,14 @@
    to scan millions of values at any rate."
   10000)
 
+(def ^:const field-values-lazy-seq-chunk-size
+  "How many Field values should be fetched at a time for a chunked implementation of `field-values-lazy-seq`?"
+  ;; Hopefully this is a good balance between
+  ;; 1. Not doing too many DB calls
+  ;; 2. Not running out of mem
+  ;; 3. Not fetching too many results for things like mark-json-field! which will fail after the first result that isn't valid JSON
+  500)
+
 (def ^:const connection-error-messages
   "Generic error messages that drivers should return in their implementation of `humanize-connection-error-message`."
   {:cannot-connect-check-host-and-port "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct."
@@ -133,12 +141,19 @@
           Is this property required? Defaults to `false`.")
 
   (features ^java.util.Set [this]
-    "*OPTIONAL*. A set of keyword names of optional features supported by this driver, such as `:foreign-keys`.
-     Valid features are: `:foreign-keys :nested-fields :set-timezone :standard-deviation-aggregations`")
+    "*OPTIONAL*. A set of keyword names of optional features supported by this driver, such as `:foreign-keys`. Valid features are:
+
+     *  `:foreign-keys`
+     *  `:nested-fields`
+     *  `:set-timezone`
+     *  `:standard-deviation-aggregations`")
 
   (field-values-lazy-seq ^clojure.lang.Sequential [this, ^FieldInstance field]
     "Return a lazy sequence of all values of FIELD.
-     This is used to implement some methods of the database sync process which require rows of data during execution.")
+     This is used to implement some methods of the database sync process which require rows of data during execution.
+
+     The lazy sequence should not return more than `max-sync-lazy-seq-results`, which is currently `10000`.
+     For drivers that provide a chunked implementation, a recommended chunk size is `field-values-lazy-seq-chunk-size`, which is currently `500`.")
 
   (humanize-connection-error-message ^String [this, ^String message]
     "*OPTIONAL*. Return a humanized (user-facing) version of an connection error message string.
