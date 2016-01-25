@@ -121,7 +121,7 @@
                                            :quotation       (:quote data-quote)
                                            :quotationAuthor (:author data-quote)
                                            :logoFooter      true})]
-    (apply vector {:type "text/html" :content message-body}
+    (apply vector {:type "text/html; charset=utf-8" :content message-body}
            (map-indexed (fn [idx bytes] {:type         :inline
                                          :content-id   (str "IMAGE" idx)
                                          :content-type "image/png"
