@@ -11,6 +11,9 @@ import { formatNumber, formatValueString } from "metabase/lib/formatting";
 import tip from 'd3-tip';
 tip(d3);
 
+// agument d3 with a simple quarters range implementation
+d3.time.quarters = (start, stop, step) => d3.time.months(start, stop, 3);
+
 // ---------------------------------------- TODO - Maybe. Lots of these things never worked in the first place. ----------------------------------------
 // IMPORTANT
 // - 'titles' (tooltips)
