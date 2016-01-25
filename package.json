@@ -85,14 +85,14 @@
     "webpack-postcss-tools": "^1.1.1"
   },
   "scripts": {
-    "lint": "./node_modules/eslint/bin/eslint.js --ext .js --ext .jsx --max-warnings 0 frontend/src",
-    "test": "./node_modules/karma/bin/karma start frontend/test/karma.conf.js --single-run --reporters nyan",
-    "test-watch": "./node_modules/karma/bin/karma start frontend/test/karma.conf.js --auto-watch --reporters nyan",
-    "test-e2e": "./node_modules/protractor/bin/webdriver-manager update && ./node_modules/protractor/bin/protractor frontend/test/protractor-conf.js",
-    "build": "./node_modules/webpack/bin/webpack.js",
+    "lint":        "./node_modules/eslint/bin/eslint.js --ext .js --ext .jsx --max-warnings 0 frontend/src",
+    "test":        "./node_modules/karma/bin/karma start frontend/test/karma.conf.js --single-run --reporters nyan",
+    "test-watch":  "./node_modules/karma/bin/karma start frontend/test/karma.conf.js --auto-watch --reporters nyan",
+    "test-e2e":    "./node_modules/protractor/bin/webdriver-manager update && ./node_modules/protractor/bin/protractor frontend/test/protractor-conf.js",
+    "build":       "./node_modules/webpack/bin/webpack.js",
     "build-watch": "./node_modules/webpack/bin/webpack.js --watch",
-    "build-hot": "NODE_ENV=hot ./node_modules/webpack/bin/webpack.js && NODE_ENV=hot node_modules/webpack-dev-server/bin/webpack-dev-server.js --hot --inline --content-base frontend",
-    "shrinkwrap": "npm shrinkwrap --dev && ./bin/clean-shrinkwrap",
-    "start": "npm run build && lein ring server"
+    "build-hot":   "NODE_ENV=hot ./node_modules/webpack/bin/webpack.js && NODE_ENV=hot node_modules/webpack-dev-server/bin/webpack-dev-server.js --hot --inline --content-base frontend",
+    "shrinkwrap":  "npm shrinkwrap --dev && ./bin/clean-shrinkwrap",
+    "start":       "npm run build && lein ring server"
   }
 }
