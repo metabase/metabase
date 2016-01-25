@@ -23,6 +23,14 @@
    to scan millions of values at any rate."
   10000)
 
+(def ^:const field-values-lazy-seq-chunk-size
+  "How many Field values should be fetched at a time for a chunked implementation of `field-values-lazy-seq`?"
+  ;; Hopefully this is a good balance between
+  ;; 1. Not doing too many DB calls
+  ;; 2. Not running out of mem
+  ;; 3. Not fetching too many results for things like mark-json-field! which will fail after the first result that isn't valid JSON
+  500)
+
 (def ^:const connection-error-messages
   "Generic error messages that drivers should return in their implementation of `humanize-connection-error-message`."
   {:cannot-connect-check-host-and-port "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct."
@@ -133,21 +141,30 @@
           Is this property required? Defaults to `false`.")
 
   (features ^java.util.Set [this]
-    "*OPTIONAL*. A set of keyword names of optional features supported by this driver, such as `:foreign-keys`.
-     Valid features are: `:foreign-keys :nested-fields :set-timezone :standard-deviation-aggregations`")
+    "*OPTIONAL*. A set of keyword names of optional features supported by this driver, such as `:foreign-keys`. Valid features are:
+
+        *  `:foreign-keys`
+        *  `:nested-fields`
+        *  `:set-timezone`
+        *  `:standard-deviation-aggregations`")
 
   (field-values-lazy-seq ^clojure.lang.Sequential [this, ^FieldInstance field]
-    "Return a lazy sequence of all values of FIELD.
-     This is used to implement some methods of the database sync process which require rows of data during execution.")
+    "Return a lazy sequence of *all* values of FIELD.
+     This shouldn't apply any special ordering, and should return `nil` and duplicate values.
+
+     The lazy sequence should not return more than `max-sync-lazy-seq-results`, which is currently `10000`.
+     For drivers that provide a chunked implementation, a recommended chunk size is `field-values-lazy-seq-chunk-size`, which is currently `500`.")
 
   (humanize-connection-error-message ^String [this, ^String message]
     "*OPTIONAL*. Return a humanized (user-facing) version of an connection error message string.
      Generic error messages are provided in the constant `connection-error-messages`; return one of these whenever possible.")
 
+  ;; TODO - it makes more sense to just fetch details generically and have the signature for this function be
+  ;; (process-name [this, ^Map details, query]
   (process-native [this, ^Map query]
     "Process a native QUERY. This function is called by `metabase.driver/process-query`.")
 
-  (process-structured [this, ^Map query]
+  (process-structured [this, ^Map expanded-query]
     "Process a native or structured QUERY. This function is called by `metabase.driver/process-query` after performing various driver-unspecific
      steps like Query Expansion and other preprocessing.")
 
@@ -252,8 +269,9 @@
   (doseq [namespce (filter (fn [ns-symb]
                              (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb)))
                            (ns-find/find-namespaces (classpath/classpath)))]
-    (log/info "loading driver namespace: " namespce)
-    (require namespce)))
+    (when-not (contains? #{'metabase.driver.sync 'metabase.driver.util} namespce)
+      (log/info "loading driver namespace: " namespce)
+      (require namespce))))
 
 (defn is-engine?
   "Is ENGINE a valid driver name?"
@@ -261,31 +279,6 @@
   (when engine
     (contains? (set (keys (available-drivers))) (keyword engine))))
 
-(defn class->base-type
-  "Return the `Field.base_type` that corresponds to a given class returned by the DB."
-  [klass]
-  (or ({Boolean                         :BooleanField
-        Double                          :FloatField
-        Float                           :FloatField
-        Integer                         :IntegerField
-        Long                            :IntegerField
-        String                          :TextField
-        java.math.BigDecimal            :DecimalField
-        java.math.BigInteger            :BigIntegerField
-        java.sql.Date                   :DateField
-        java.sql.Timestamp              :DateTimeField
-        java.util.Date                  :DateField
-        java.util.UUID                  :TextField
-        clojure.lang.PersistentArrayMap :DictionaryField
-        clojure.lang.PersistentHashMap  :DictionaryField
-        clojure.lang.PersistentVector   :ArrayField
-        org.postgresql.util.PGobject    :UnknownField} klass)
-      (condp isa? klass
-        clojure.lang.IPersistentMap     :DictionaryField
-        clojure.lang.IPersistentVector  :ArrayField
-        nil)
-      (do (log/warn (format "Don't know how to map class '%s' to a Field base_type, falling back to :UnknownField." klass))
-          :UnknownField)))
 
 ;; ## Driver Lookup
 

@@ -1,9 +1,7 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
-  (:require [clojure.core.reducers :as r]
-            [clojure.set :as set]
+  (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [colorize.core :as color]
             [medley.core :as m]
             (monger [collection :as mc]
                     [command :as cmd]
@@ -12,6 +10,7 @@
                     [db :as mdb]
                     [query :as mq])
             [metabase.driver :as driver]
+            [metabase.driver.util :as driver-util]
             (metabase.driver.mongo [query-processor :as qp]
                                    [util :refer [*mongo-connection* with-mongo-connection values->base-type]])
             [metabase.models.field :as field]
@@ -106,7 +105,7 @@
                            (sort-by second)
                            last
                            first
-                           driver/class->base-type)}
+                           driver-util/class->base-type)}
           (= :_id field-kw) (assoc :pk? true)
           (:special-types field-info) (assoc :special-type (->> (into [] (:special-types field-info))
                                                                (filter #(not (nil? (first %))))

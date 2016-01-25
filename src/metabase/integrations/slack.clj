@@ -131,4 +131,4 @@
                                                          :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
                                                          :text        text
                                                          :attachments attachments})
-       (handle-api-response))))
+       handle-api-response)))

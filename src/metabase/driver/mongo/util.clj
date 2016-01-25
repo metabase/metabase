@@ -88,26 +88,3 @@
               ~@body)]
      (if *mongo-connection* (f# *mongo-connection*)
          (-with-mongo-connection f# ~database))))
-
-;; TODO - this isn't neccesarily Mongo-specific; consider moving
-(defn values->base-type
-  "Given a sequence of values, return `Field.base_type` in the most ghetto way possible.
-   This just gets counts the types of *every* value and returns the `base_type` for class whose count was highest."
-  [values-seq]
-  {:pre [(sequential? values-seq)]}
-  (or (->> values-seq
-           ;; TODO - why not do a query to return non-nil values of this column instead
-           (filter identity)
-           ;; it's probably fine just to consider the first 1,000 *non-nil* values when trying to type a column instead
-           ;; of iterating over the whole collection. (VALUES-SEQ should be up to 10,000 values, but we don't know how many are
-           ;; nil)
-           (take 1000)
-           (group-by type)
-           ;; create tuples like [Integer count].
-           (map (fn [[klass valus]]
-                  [klass (count valus)]))
-           (sort-by second)
-           last                     ; last result will be tuple with highest count
-           first                    ; keep just the type
-           driver/class->base-type) ; convert to Field base_type
-      :UnknownField))

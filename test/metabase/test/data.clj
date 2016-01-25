@@ -38,7 +38,8 @@
   (*get-db*))
 
 (defn do-with-db [db f]
-  (binding [*get-db* (constantly db)]
+  (binding [*get-db*      (constantly db)
+            *data-loader* (driver/engine->driver (:engine db#))]
     (f)))
 
 (defmacro with-db

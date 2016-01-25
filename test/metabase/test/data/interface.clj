@@ -152,3 +152,70 @@
   `(def ~(vary-meta dataset-name assoc :tag DatabaseDefinition)
      (create-database-definition ~(name dataset-name)
        ~@table-name+field-definition-maps+rows)))
+
+
+;;; ## Convenience + Helper Functions
+;; TODO - should these go here, or in `metabase.test.data`?
+
+(defn get-tabledef
+  "Return `TableDefinition` with TABLE-NAME in DBDEF."
+  [^DatabaseDefinition dbdef, ^String table-name]
+  (first (for [tabledef (:table-definitions dbdef)
+               :when    (= (:table-name tabledef) table-name)]
+           tabledef)))
+
+(defn get-fielddefs
+  "Return the `FieldDefinitions` associated with table with TABLE-NAME in DBDEF."
+  [^DatabaseDefinition dbdef, ^String table-name]
+  (:field-definitions (get-tabledef dbdef table-name)))
+
+(defn dbdef->table->id->k->v
+  "Return a map of table name -> map of row ID -> map of column key -> value."
+  [^DatabaseDefinition dbdef]
+  (into {} (for [{:keys [table-name field-definitions rows]} (:table-definitions dbdef)]
+             {table-name (let [field-names (map :field-name field-definitions)]
+                           (->> rows
+                                (map (partial zipmap field-names))
+                                (map-indexed (fn [i row]
+                                               {(inc i) row}))
+                                (into {})))})))
+
+(defn- nest-fielddefs [^DatabaseDefinition dbdef, ^String table-name]
+  (let [nest-fielddef (fn nest-fielddef [{:keys [fk field-name], :as fielddef}]
+                        (if-not fk
+                          [fielddef]
+                          (let [fk (name fk)]
+                            (for [nested-fielddef (mapcat nest-fielddef (get-fielddefs dbdef fk))]
+                              (update nested-fielddef :field-name (partial vector field-name fk))))))]
+    (mapcat nest-fielddef (get-fielddefs dbdef table-name))))
+
+(defn- flatten-rows [^DatabaseDefinition dbdef, ^String table-name]
+  (let [nested-fielddefs (nest-fielddefs dbdef table-name)
+        table->id->k->v  (dbdef->table->id->k->v dbdef)
+        resolve-field    (fn resolve-field [table id field-name]
+                           (if (string? field-name)
+                             (get-in table->id->k->v [table id field-name])
+                             (let [[fk-from-name fk-table fk-dest-name] field-name
+                                   fk-id                                (get-in table->id->k->v [table id fk-from-name])]
+                               (resolve-field fk-table fk-id fk-dest-name))))]
+    (for [id (range 1 (inc (count (:rows (get-tabledef dbdef table-name)))))]
+      (for [{:keys [field-name]} nested-fielddefs]
+        (resolve-field table-name id field-name)))))
+
+(defn- flatten-field-name [field-name]
+  (if (string? field-name)
+    field-name
+    (let [[_ fk-table fk-dest-name] field-name]
+      (-> fk-table
+          (clojure.string/replace #"ies$" "y")
+          (clojure.string/replace #"s$" "")
+          (str  \_ (flatten-field-name fk-dest-name))))))
+
+(defn flatten-dbdef
+  "Create a flattened version of DBDEF by following resolving all FKs and flattening all rows into the table with TABLE-NAME."
+  [^DatabaseDefinition dbdef, ^String table-name]
+  (create-database-definition (:database-name dbdef)
+    [table-name
+     (for [fielddef (nest-fielddefs dbdef table-name)]
+       (update fielddef :field-name flatten-field-name))
+     (flatten-rows dbdef table-name)]))
