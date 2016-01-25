@@ -389,7 +389,7 @@ function populateFields(aggregator, fields) {
 
 function getAggregators(table) {
     const supportedAggregations = Aggregators.filter(function (agg) {
-        if (agg.requiredDriverFeature && !_.contains(table.db.features, agg.requiredDriverFeature)) {
+        if (agg.requiredDriverFeature && table.db && !_.contains(table.db.features, agg.requiredDriverFeature)) {
             return false;
         } else {
             return true;
