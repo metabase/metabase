@@ -106,10 +106,6 @@ var Query = {
         return query;
     },
 
-    isAggregateField(field) {
-        return Array.isArray(field) && field[0] === "aggregation";
-    },
-
     canAddDimensions(query) {
         var MAX_DIMENSIONS = 2;
         return query && query.breakout && (query.breakout.length < MAX_DIMENSIONS);
