@@ -142,8 +142,8 @@
                                                       :script-src  ["'unsafe-inline'"
                                                                     "'unsafe-eval'"
                                                                     "'self'"
-                                                                    "www.google-analytics.com"
-                                                                    "*.googleapis.com"
+                                                                    "https://www.google-analytics.com" ; Safari requires the protocol
+                                                                    "https://*.googleapis.com"
                                                                     "*.gstatic.com"
                                                                     "js.intercomcdn.com"
                                                                     "*.intercom.io"
