@@ -2,6 +2,8 @@ import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
 
+const ENABLE_BACK_BUTTON = false; // disabled due to possibility of getting in inconsistent states
+
 export default class TutorialModal extends Component {
     render() {
         const { modalStepIndex, modalStepCount } = this.props;
@@ -16,7 +18,7 @@ export default class TutorialModal extends Component {
                     {this.props.children}
                 </div>
                 <div className="flex">
-                    { modalStepIndex > 0 &&
+                    { ENABLE_BACK_BUTTON && modalStepIndex > 0 &&
                         <a className="text-grey-4 cursor-pointer" onClick={this.props.onBack}>back</a>
                     }
                     <span className="text-grey-4 flex-align-right">{modalStepIndex + 1} of {modalStepCount}</span>
