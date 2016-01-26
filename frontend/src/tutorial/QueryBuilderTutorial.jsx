@@ -34,7 +34,7 @@ const QUERY_BUILDER_STEPS = [
     {
         getPortalTarget: () => qs(".GuiBuilder-data"),
         getPageFlagTarget: () => qsWithContent(".List-item", "Orders"),
-        shouldAllowEvent: (e) => qsWithContent(".List-item", "Orders").contains(e.target)
+        shouldAllowEvent: (e) => qsWithContent(".List-item > a", "Orders").contains(e.target)
     },
     {
         getPortalTarget: () => qs(".GuiBuilder-filtered-by"),
@@ -50,7 +50,7 @@ const QUERY_BUILDER_STEPS = [
     {
         getPortalTarget: () => qs(".GuiBuilder-filtered-by"),
         getPageFlagTarget: () => qsWithContent(".List-item", "Created At"),
-        shouldAllowEvent: (e) => qsWithContent(".List-item", "Created At").contains(e.target)
+        shouldAllowEvent: (e) => qsWithContent(".List-item > a", "Created At").contains(e.target)
     },
     {
         getPortalTarget: () => qs(".GuiBuilder-filtered-by"),
@@ -77,7 +77,7 @@ const QUERY_BUILDER_STEPS = [
     {
         getPortalTarget: () => qs(".Query-section-aggregation"),
         getPageFlagTarget: () => qsWithContent(".List-item", "Count of rows"),
-        shouldAllowEvent: (e) => qsWithContent(".List-item", "Count of rows").contains(e.target)
+        shouldAllowEvent: (e) => qsWithContent(".List-item > a", "Count of rows").contains(e.target)
     },
     {
         getPortalTarget: () => qs(".Query-section-breakout"),
@@ -99,7 +99,7 @@ const QUERY_BUILDER_STEPS = [
     {
         getPortalTarget: () => qs(".Query-section-breakout"),
         getPageFlagTarget: () => qsWithContent(".List-item", "Week"),
-        shouldAllowEvent: (e) => qsWithContent(".List-item", "Week").contains(e.target)
+        shouldAllowEvent: (e) => qsWithContent(".List-item > a", "Week").contains(e.target)
     },
     {
         getPortalTarget: () => qs(".RunButton"),
