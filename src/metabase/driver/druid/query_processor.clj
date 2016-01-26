@@ -26,6 +26,8 @@
 (derive ::topN             ::grouped-ag-query)
 (derive ::groupBy          ::grouped-ag-query)
 
+(def ^:private ^:dynamic *query* nil)
+
 (defn- query-type-dispatch-fn [query-type & _] query-type)
 
 (defprotocol ^:private IRValue
@@ -34,9 +36,10 @@
 (extend-protocol IRValue
   nil                   (->rvalue [_] nil)
   Object                (->rvalue [this] this)
-  AgFieldRef            (->rvalue [this] (let [ag-type (-> this :aggregation :aggregation-type)]
-                                           (if (= ag-type :distinct) :count
-                                               ag-type)))
+  AgFieldRef            (->rvalue [_] (let [ag-type (or (get-in *query* [:aggregation :aggregation-type])
+                                                        (throw (Exception. "Unknown aggregation type!")))]
+                                        (if (= ag-type :distinct) :count
+                                            ag-type)))
   Field                 (->rvalue [this] (:field-name this))
   DateTimeField         (->rvalue [this] (->rvalue (:field this)))
   Value                 (->rvalue [this] (:value this))
@@ -330,7 +333,7 @@
 (defmulti ^:private handle-order-by query-type-dispatch-fn)
 
 (defmethod handle-order-by ::query [_ _ _]
-  (log/warn (u/format-color 'red "Sorting is only allowed for queries that have one or more breakout columns. Ignoring :order_by clause.")))
+  (log/warn (u/format-color 'red "Sorting with Druid is only allowed queries that have one or more breakout columns. Ignoring :order_by clause.")))
 
 (defmethod handle-order-by ::topN [_ {{ag-type :aggregation-type} :aggregation, [breakout-field] :breakout, [{field :field, direction :direction}] :order-by} druid-query]
   (let [field             (->rvalue field)
@@ -462,15 +465,16 @@
                          k)]
     (if-not (seq keys-to-remove)
       results
-      (do (println "Removing keys:" keys-to-remove)
-          (map #(apply dissoc % keys-to-remove) results)))))
+      (for [result results]
+        (apply dissoc result keys-to-remove)))))
 
 
 ;;; ### process-structured-query
 
 (defn process-structured-query [do-query query]
-  (let [[query-type druid-query] (build-druid-query query)]
-    (log-druid-query druid-query)
-    (->> (do-query druid-query)
-         (post-process query-type)
-         remove-bonus-keys)))
+  (binding [*query* query]
+    (let [[query-type druid-query] (build-druid-query query)]
+      (log-druid-query druid-query)
+      (->> (do-query druid-query)
+           (post-process query-type)
+           remove-bonus-keys))))

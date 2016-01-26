@@ -32,7 +32,8 @@
 (def ^:private ^:const indexing-task
   {:type :index
    :spec {:dataSchema {:dataSource      "checkins"
-                       :parser          {:parseSpec {:format         :json
+                       :parser          {:type      :string
+                                         :parseSpec {:format         :json
                                                      :timestampSpec  {:column :date
                                                                       :format :auto}
                                                      :dimensionsSpec {:dimensions ["id"
@@ -77,13 +78,28 @@
           (Thread/sleep 1000)
           (recur (dec remaining-seconds)))))))
 
-(defn- setup-druid-test-data
+(defn- setup-druid-test-data* []
+  (println (u/format-color 'blue "Loading druid test data..."))
+  (write-dbdef-to-json (flattened-test-data) (str temp-dir "/" source-filename))
+  (run-indexing-task))
+
+#_(defn- setup-druid-test-data
   {:expectations-options :before-run}
   []
   (datasets/when-testing-engine :druid
-    (println (u/format-color 'blue "Loading druid test data..."))
-    (write-dbdef-to-json (flattened-test-data) (str temp-dir "/" source-filename))
-    (run-indexing-task)))
+    (setup-druid-test-data*)))
+
+;; TODO - needs to wait until http://localhost:8082/druid/v2/datasources/checkins?interval=-5000/5000 returns data
+#_{:dimensions [:venue_name
+              :venue_category_name
+              :user_password
+              :venue_longitude
+              :user_name
+              :id
+              :venue_latitude
+              :user_last_login
+              :venue_price]
+ :metrics [:count]}
 
 
 (defn- database->connection-details [this context dbdef]

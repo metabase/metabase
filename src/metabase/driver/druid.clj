@@ -96,7 +96,7 @@
 
 (defn describe-table [_ table]
   (let [details                      (:details (table/database table))
-        {:keys [dimensions metrics]} (GET (details->url details "/druid/v2/datasources/" (:name table)))]
+        {:keys [dimensions metrics]} (GET (details->url details "/druid/v2/datasources/" (:name table) "?interval=-5000/5000"))]
     (clojure.pprint/pprint dimensions)
     {:name   (:name table)
      :fields (set (concat
