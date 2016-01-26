@@ -11,7 +11,7 @@ const QUERY_BUILDER_STEPS = [
             <div className="text-centered">
                 <RetinaImage className="mb2" forceOriginalDimensions={false} src="/app/img/qb_tutorial/question_builder.png" width={186} />
                 <h3>Welcome to the Query Builder!</h3>
-                <p>The Query Builder lets you assemble question (or "queries") to ask about your data.</p>
+                <p>The Query Builder lets you assemble questions (or "queries") to ask about your data.</p>
                 <a className="Button Button--primary" onClick={props.onNext}>Tell me more</a>
             </div>
     },
@@ -76,8 +76,8 @@ const QUERY_BUILDER_STEPS = [
     },
     {
         getPortalTarget: () => qs(".Query-section-aggregation"),
-        getPageFlagTarget: () => qsWithContent(".List-item", "Row count"),
-        shouldAllowEvent: (e) => qsWithContent(".List-item", "Row count").contains(e.target)
+        getPageFlagTarget: () => qsWithContent(".List-item", "Count of rows"),
+        shouldAllowEvent: (e) => qsWithContent(".List-item", "Count of rows").contains(e.target)
     },
     {
         getPortalTarget: () => qs(".Query-section-breakout"),
