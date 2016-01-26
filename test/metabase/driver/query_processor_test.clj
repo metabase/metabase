@@ -228,7 +228,7 @@
                     :stddev "stddev"
                     :sum    "sum")}))
 
-(defn- format-rows-by
+(defn format-rows-by
   "Format the values in result ROWS with the fns at the corresponding indecies in FORMAT-FNS.
    ROWS can be a sequence or any of the common map formats we expect in QP tests.
 
@@ -249,11 +249,15 @@
 (def ^:private formatted-venues-rows (partial format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]))
 
 
-(defn- rows [results]
+(defn rows
+  "Return the result rows from query results, or throw an Exception if they're missing."
+  [results]
   (vec (or (-> results :data :rows)
            (throw (ex-info "Error!" results)))))
 
-(defn- first-row [results]
+(defn first-row
+  "Return the first row in the results of a query, or throw an Exception if they're missing."
+  [results]
   (first (rows results)))
 
 

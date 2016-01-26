@@ -439,7 +439,7 @@
    [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj).
 
      (format-color 'red \"Fatal error: %s\" error-message)"
-  [color-symb format-string & args]
+  ^String [color-symb format-string & args]
   {:pre [(symbol? color-symb)]}
   ((ns-resolve 'colorize.core color-symb) (apply format format-string args)))
 
