@@ -115,12 +115,5 @@
           :destroy-db!                  (constantly nil)}))
 
 
-(defn- destroy-druid-test-data
-  {:expectations-options :after-run}
-  []
-  ;; TODO
-  )
-
-;; TODO - spin up a cluster on AWS (?)
 ;; TODO - don't log druid query during sync
 ;; TODO - make `:paging` a feature?
