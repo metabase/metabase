@@ -42,62 +42,64 @@
              "count"
              "user_last_login"
              "user_name"
-             "user_password"
              "venue_category_name"
              "venue_latitude"
              "venue_longitude"
              "venue_name"
              "venue_price"]
-   :rows [["931", "2013-01-03T08:00:00.000Z", 1, "2014-01-01T08:30:00.000Z", "Simcha Yan", "a61f97c6-4484-4a63-b37e-b5e58bfa2ecb", "Thai", "34.094",  "-118.344", "Kinaree Thai Bistro",       "1"]
-          ["285", "2013-01-10T08:00:00.000Z", 1, "2014-07-03T01:30:00.000Z", "Kfir Caj",   "dfe21df3-f364-479d-a5e7-04bc5d85ad2b", "Thai", "34.1021", "-118.306", "Ruen Pair Thai Restaurant", "2"]]}
-  (:data (data/query checkins
-           (ql/limit 2))))
+   :rows [["931", "2013-01-03T08:00:00.000Z", 1, "2014-01-01T08:30:00.000Z", "Simcha Yan", "Thai", "34.094",  "-118.344", "Kinaree Thai Bistro",       "1"]
+          ["285", "2013-01-10T08:00:00.000Z", 1, "2014-07-03T01:30:00.000Z", "Kfir Caj",   "Thai", "34.1021", "-118.306", "Ruen Pair Thai Restaurant", "2"]]}
+  (data (data/run-query checkins
+          (ql/limit 2))))
 
 ;;; fields clause
 (expect-with-event-based-dbs
   {:columns ["venue_name" "venue_category_name" "timestamp"],
    :rows    [["Kinaree Thai Bistro"       "Thai" "2013-01-03T08:00:00.000Z"]
              ["Ruen Pair Thai Restaurant" "Thai" "2013-01-10T08:00:00.000Z"]]}
-  (:data (data/query checkins
-           (ql/fields $venue_name $venue_category_name)
-           (ql/limit 2))))
+  (data (data/run-query checkins
+          (ql/fields $venue_name $venue_category_name)
+          (ql/limit 2))))
 
 ;;; count
 (expect-with-event-based-dbs
   [1000]
-  (first-row (data/query checkins
+  (first-row (data/run-query checkins
                (ql/aggregation (ql/count)))))
 
 ;;; count(field)
 (expect-with-event-based-dbs
-  [[1000]]
-  (first-row (data/query checkins
+  [1000]
+  (first-row (data/run-query checkins
                (ql/aggregation (ql/count $user_name)))))
 
 ;;; avg
 (expect-with-event-based-dbs
   {:columns ["avg"]
    :rows    [[1.992]]}
-  (:data (data/query checkins
-           (ql/aggregation (ql/avg $venue_price)))))
+  (data (data/run-query checkins
+          (ql/aggregation (ql/avg $venue_price)))))
 
 ;;; sum
 (expect-with-event-based-dbs
   {:columns ["sum"]
    :rows    [[1992.0]]}
-  (:data (data/query checkins
-           (ql/aggregation (ql/sum $venue_price)))))
+  (data (data/run-query checkins
+          (ql/aggregation (ql/sum $venue_price)))))
 
 ;;; avg
-(datasets/expect-with-engine :druid
-  "venue_price is a dimension, not a metric. You can only sum or averge metrics."
-  (data/query checkins
-    (ql/aggregation (ql/avg $venue_price))))
+(expect-with-event-based-dbs
+  {:columns ["avg"]
+   :rows    [[1.992]]}
+  (->> (data/run-query checkins
+         (ql/aggregation (ql/avg $venue_price)))
+       (format-rows-by [(partial u/round-to-decimals 3)])
+       data))
 
 ;;; distinct count
 (expect-with-event-based-dbs
   [[4]]
-  (->> (data/query checkins
+  (->> (data/run-query checkins
          (ql/aggregation (ql/distinct $venue_price)))
        rows (format-rows-by [int])))
 
@@ -119,8 +121,8 @@
              ["Simcha Yan"]
              ["Spiros Teofil"]
              ["Szymon Theutrich"]]}
-  (:data (data/query checkins
-           (ql/breakout $user_name))))
+  (data (data/run-query checkins
+          (ql/breakout $user_name))))
 
 ;;; 2 breakouts
 (expect-with-event-based-dbs
@@ -135,9 +137,9 @@
              ["Broen Olujimi" "Caribbean"]
              ["Broen Olujimi" "Deli"]
              ["Broen Olujimi" "Dim Sum"]]}
-  (:data (data/query checkins
-           (ql/breakout $user_name $venue_category_name)
-           (ql/limit 10))))
+  (data (data/run-query checkins
+          (ql/breakout $user_name $venue_category_name)
+          (ql/limit 10))))
 
 ;;; 1 breakout w/ explicit order by
 (expect-with-event-based-dbs
@@ -152,10 +154,10 @@
              ["Nils Gotam"]
              ["Kfir Caj"]
              ["Kaneonuskatew Eiran"]]}
-  (:data (data/query checkins
-           (ql/breakout $user_name)
-           (ql/order-by (ql/desc $user_name))
-           (ql/limit 10))))
+  (data (data/run-query checkins
+          (ql/breakout $user_name)
+          (ql/order-by (ql/desc $user_name))
+          (ql/limit 10))))
 
 ;;; 2 breakouts w/ explicit order by
 (expect-with-event-based-dbs
@@ -170,30 +172,30 @@
              ["Nils Gotam"          "American"]
              ["Plato Yeshua"        "American"]
              ["Quentin Sören"       "American"]]}
-  (:data (data/query checkins
-           (ql/breakout $user_name $venue_category_name)
-           (ql/order-by (ql/asc $venue_category_name))
-           (ql/limit 10))))
+  (data (data/run-query checkins
+          (ql/breakout $user_name $venue_category_name)
+          (ql/order-by (ql/asc $venue_category_name))
+          (ql/limit 10))))
 
 ;;; count w/ 1 breakout
 (expect-with-event-based-dbs
- {:columns ["user_name" "count"]
-  :rows    [["Broen Olujimi"       62]
-            ["Conchúr Tihomir"     76]
-            ["Dwight Gresham"      76]
-            ["Felipinho Asklepios" 70]
-            ["Frans Hevel"         78]
-            ["Kaneonuskatew Eiran" 75]
-            ["Kfir Caj"            59]
-            ["Nils Gotam"          68]
-            ["Plato Yeshua"        31]
-            ["Quentin Sören"       69]
-            ["Rüstem Hebel"        34]
-            ["Shad Ferdynand"      70]
-            ["Simcha Yan"          77]
-            ["Spiros Teofil"       74]
-            ["Szymon Theutrich"    81]]}
- (:data (data/query checkins
+  {:columns ["user_name" "count"]
+   :rows    [["Broen Olujimi"       62]
+             ["Conchúr Tihomir"     76]
+             ["Dwight Gresham"      76]
+             ["Felipinho Asklepios" 70]
+             ["Frans Hevel"         78]
+             ["Kaneonuskatew Eiran" 75]
+             ["Kfir Caj"            59]
+             ["Nils Gotam"          68]
+             ["Plato Yeshua"        31]
+             ["Quentin Sören"       69]
+             ["Rüstem Hebel"        34]
+             ["Shad Ferdynand"      70]
+             ["Simcha Yan"          77]
+             ["Spiros Teofil"       74]
+             ["Szymon Theutrich"    81]]}
+  (data (data/run-query checkins
           (ql/aggregation (ql/count))
           (ql/breakout $user_name))))
 
@@ -210,36 +212,36 @@
              ["Broen Olujimi" "Caribbean" 1]
              ["Broen Olujimi" "Deli"      2]
              ["Broen Olujimi" "Dim Sum"   2]]}
-  (:data (data/query checkins
-           (ql/aggregation (ql/count))
-           (ql/breakout $user_name $venue_category_name)
-           (ql/limit 10))))
+  (data (data/run-query checkins
+          (ql/aggregation (ql/count))
+          (ql/breakout $user_name $venue_category_name)
+          (ql/limit 10))))
 
 ;;; filter >
 (expect-with-event-based-dbs
   [49]
-  (first-row (data/query checkins
+  (first-row (data/run-query checkins
                (ql/aggregation (ql/count))
                (ql/filter (ql/> $venue_price 3)))))
 
 ;;; filter <
 (expect-with-event-based-dbs
   [836]
-  (first-row (data/query checkins
+  (first-row (data/run-query checkins
                (ql/aggregation (ql/count))
                (ql/filter (ql/< $venue_price 3)))))
 
 ;;; filter >=
 (expect-with-event-based-dbs
   [164]
-  (first-row (data/query checkins
+  (first-row (data/run-query checkins
                (ql/aggregation (ql/count))
                (ql/filter (ql/>= $venue_price 3)))))
 
 ;;; filter <=
 (expect-with-event-based-dbs
   [951]
-  (first-row (data/query checkins
+  (first-row (data/run-query checkins
                (ql/aggregation (ql/count))
                (ql/filter (ql/<= $venue_price 3)))))
 
@@ -251,15 +253,15 @@
              ["Plato Yeshua" "Baby Blues BBQ" "BBQ"      "2013-06-03T07:00:00.000Z"]
              ["Plato Yeshua" "The Daily Pint" "Bar"      "2013-07-25T07:00:00.000Z"]
              ["Plato Yeshua" "Marlowe"        "American" "2013-09-10T07:00:00.000Z"]]}
-  (:data (data/query checkins
-           (ql/fields $user_name $venue_name $venue_category_name)
-           (ql/filter (ql/= $user_name "Plato Yeshua"))
-           (ql/limit 5))))
+  (data (data/run-query checkins
+          (ql/fields $user_name $venue_name $venue_category_name)
+          (ql/filter (ql/= $user_name "Plato Yeshua"))
+          (ql/limit 5))))
 
 ;;; filter !=
 (expect-with-event-based-dbs
   [969]
-  (first-row (data/query checkins
+  (first-row (data/run-query checkins
                (ql/aggregation (ql/count))
                (ql/filter (ql/!= $user_name "Plato Yeshua")))))
 
@@ -267,23 +269,23 @@
 (expect-with-event-based-dbs
   {:columns ["user_name" "venue_name" "timestamp"]
    :rows    [["Plato Yeshua" "The Daily Pint" "2013-07-25T07:00:00.000Z"]]}
-  (:data (data/query checkins
-           (ql/fields $user_name $venue_name)
-           (ql/filter (ql/and (ql/= $venue_category_name "Bar")
-                              (ql/= $user_name "Plato Yeshua"))))))
+  (data (data/run-query checkins
+          (ql/fields $user_name $venue_name)
+          (ql/filter (ql/and (ql/= $venue_category_name "Bar")
+                             (ql/= $user_name "Plato Yeshua"))))))
 
 ;;; filter OR
 (expect-with-event-based-dbs
   [199]
-  (data/query checkins
-    (ql/aggregation (ql/count))
-    (ql/filter (ql/or (ql/= $venue_category_name "Bar")
-                      (ql/= $venue_category_name "American")))))
+  (first-row (data/run-query checkins
+               (ql/aggregation (ql/count))
+               (ql/filter (ql/or (ql/= $venue_category_name "Bar")
+                                 (ql/= $venue_category_name "American"))))))
 
 ;;; filter BETWEEN (inclusive)
 (expect-with-event-based-dbs
   [951]
-  (first-row (data/query checkins
+  (first-row (data/run-query checkins
                (ql/aggregation (ql/count))
                (ql/filter (ql/between $venue_price 1 3)))))
 
@@ -291,21 +293,21 @@
 (expect-with-event-based-dbs
   {:columns ["venue_name"]
    :rows    [["Red Medicine"]]}
-  (:data (data/query checkins
-           (ql/breakout $venue_name)
-           (ql/filter (ql/inside $venue_latitude $venue_longitude 10.0649 -165.379 10.0641 -165.371)))))
+  (data (data/run-query checkins
+          (ql/breakout $venue_name)
+          (ql/filter (ql/inside $venue_latitude $venue_longitude 10.0649 -165.379 10.0641 -165.371)))))
 
 ;;; filter IS_NULL
 (expect-with-event-based-dbs
   [0]
-  (first-row (data/query checkins
+  (first-row (data/run-query checkins
                (ql/aggregation (ql/count))
                (ql/filter (ql/is-null $venue_category_name)))))
 
 ;;; filter NOT_NULL
 (expect-with-event-based-dbs
   [1000]
-  (first-row (data/query checkins
+  (first-row (data/run-query checkins
                (ql/aggregation (ql/count))
                (ql/filter (ql/not-null $venue_category_name)))))
 
@@ -313,9 +315,9 @@
 (expect-with-event-based-dbs
   {:columns ["venue_category_name"]
    :rows    [["Mediterannian"] ["Mexican"]]}
-  (:data (data/query checkins
-           (ql/breakout $venue_category_name)
-           (ql/filter (ql/starts-with $venue_category_name "Me")))))
+  (data (data/run-query checkins
+          (ql/breakout $venue_category_name)
+          (ql/filter (ql/starts-with $venue_category_name "Me")))))
 
 ;;; filter ENDS_WITH
 (expect-with-event-based-dbs
@@ -328,9 +330,9 @@
              ["Korean"]
              ["Mediterannian"]
              ["Mexican"]]}
-  (:data (data/query checkins
-           (ql/breakout $venue_category_name)
-           (ql/filter (ql/ends-with $venue_category_name "an")))))
+  (data (data/run-query checkins
+          (ql/breakout $venue_category_name)
+          (ql/filter (ql/ends-with $venue_category_name "an")))))
 
 ;;; filter CONTAINS
 (expect-with-event-based-dbs
@@ -343,9 +345,9 @@
              ["German"]
              ["Mediterannian"]
              ["Southern"]]}
-  (:data (data/query checkins
-           (ql/breakout $venue_category_name)
-           (ql/filter (ql/contains $venue_category_name "er")))))
+  (data (data/run-query checkins
+          (ql/breakout $venue_category_name)
+          (ql/filter (ql/contains $venue_category_name "er")))))
 
 ;;; order by aggregate field (?)
 (expect-with-event-based-dbs
@@ -360,11 +362,11 @@
              ["Spiros Teofil"       "Bar"      10]
              ["Dwight Gresham"      "Bar"       9]
              ["Frans Hevel"         "Japanese"  9]]}
-  (:data (data/query checkins
-           (ql/aggregation (ql/count))
-           (ql/breakout $user_name $venue_category_name)
-           (ql/order-by (ql/desc (ql/aggregate-field 0)))
-           (ql/limit 10))))
+  (data (data/run-query checkins
+          (ql/aggregation (ql/count))
+          (ql/breakout $user_name $venue_category_name)
+          (ql/order-by (ql/desc (ql/aggregate-field 0)))
+          (ql/limit 10))))
 
 ;;; date bucketing - default (day)
 (expect-with-event-based-dbs
@@ -374,28 +376,28 @@
              ["2013-01-19-0800" 1]
              ["2013-01-22-0800" 1]
              ["2013-01-23-0800" 1]]}
-  (:data (data/query checkins
-           (ql/aggregation (ql/count))
-           (ql/breakout $timestamp)
-           (ql/limit 5))))
+  (data (data/run-query checkins
+          (ql/aggregation (ql/count))
+          (ql/breakout $timestamp)
+          (ql/limit 5))))
 
 ;;; date bucketing - minute
 (expect-with-event-based-dbs
   {:columns ["timestamp" "count"]
    :rows    [["2013-01-03T00:00:00-0800" 1] ["2013-01-10T00:00:00-0800" 1] ["2013-01-19T00:00:00-0800" 1] ["2013-01-22T00:00:00-0800" 1] ["2013-01-23T00:00:00-0800" 1]]}
-  (:data (data/query checkins
-           (ql/aggregation (ql/count))
-           (ql/breakout (ql/datetime-field $timestamp :minute))
-           (ql/limit 5))))
+  (data (data/run-query checkins
+          (ql/aggregation (ql/count))
+          (ql/breakout (ql/datetime-field $timestamp :minute))
+          (ql/limit 5))))
 
 ;;; date bucketing - minute-of-hour
 (expect-with-event-based-dbs
   {:columns ["timestamp" "count"]
    :rows    [["00" 1000]]}
-  (:data (data/query checkins
-           (ql/aggregation (ql/count))
-           (ql/breakout (ql/datetime-field $timestamp :minute-of-hour))
-           (ql/limit 5))))
+  (data (data/run-query checkins
+          (ql/aggregation (ql/count))
+          (ql/breakout (ql/datetime-field $timestamp :minute-of-hour))
+          (ql/limit 5))))
 
 ;;; date bucketing - hour
 (expect-with-event-based-dbs
@@ -405,19 +407,19 @@
              ["2013-01-19T00:00:00-0800" 1]
              ["2013-01-22T00:00:00-0800" 1]
              ["2013-01-23T00:00:00-0800" 1]]}
-  (:data (data/query checkins
-           (ql/aggregation (ql/count))
-           (ql/breakout (ql/datetime-field $timestamp :hour))
-           (ql/limit 5))))
+  (data (data/run-query checkins
+          (ql/aggregation (ql/count))
+          (ql/breakout (ql/datetime-field $timestamp :hour))
+          (ql/limit 5))))
 
 ;;; date bucketing - hour-of-day
 (expect-with-event-based-dbs
   {:columns ["timestamp" "count"]
    :rows    [["00" 1000]]}
-  (:data (data/query checkins
-           (ql/aggregation (ql/count))
-           (ql/breakout (ql/datetime-field $timestamp :hour-of-day))
-           (ql/limit 5))))
+  (data (data/run-query checkins
+          (ql/aggregation (ql/count))
+          (ql/breakout (ql/datetime-field $timestamp :hour-of-day))
+          (ql/limit 5))))
 
 ;;; date bucketing - week
 (expect-with-event-based-dbs
@@ -427,10 +429,10 @@
              ["2013-01-13" 1]
              ["2013-01-20" 4]
              ["2013-01-27" 1]]}
-  (:data (data/query checkins
-           (ql/aggregation (ql/count))
-           (ql/breakout (ql/datetime-field $timestamp :week))
-           (ql/limit 5))))
+  (data (data/run-query checkins
+          (ql/aggregation (ql/count))
+          (ql/breakout (ql/datetime-field $timestamp :week))
+          (ql/limit 5))))
 
 ;;; date bucketing - day
 (expect-with-event-based-dbs
@@ -440,10 +442,10 @@
              ["2013-01-19-0800" 1]
              ["2013-01-22-0800" 1]
              ["2013-01-23-0800" 1]]}
-  (:data (data/query checkins
-           (ql/aggregation (ql/count))
-           (ql/breakout (ql/datetime-field $timestamp :day))
-           (ql/limit 5))))
+  (data (data/run-query checkins
+          (ql/aggregation (ql/count))
+          (ql/breakout (ql/datetime-field $timestamp :day))
+          (ql/limit 5))))
 
 ;;; date bucketing - day-of-week
 (expect-with-event-based-dbs
@@ -453,10 +455,10 @@
              ["3" 153]
              ["4" 136]
              ["5" 139]]}
-  (:data (data/query checkins
-           (ql/aggregation (ql/count))
-           (ql/breakout (ql/datetime-field $timestamp :day-of-week))
-           (ql/limit 5))))
+  (data (data/run-query checkins
+          (ql/aggregation (ql/count))
+          (ql/breakout (ql/datetime-field $timestamp :day-of-week))
+          (ql/limit 5))))
 
 ;;; date bucketing - day-of-month
 (expect-with-event-based-dbs
@@ -466,10 +468,10 @@
              ["03" 42]
              ["04" 35]
              ["05" 43]]}
-  (:data (data/query checkins
-           (ql/aggregation (ql/count))
-           (ql/breakout (ql/datetime-field $timestamp :day-of-month))
-           (ql/limit 5))))
+  (data (data/run-query checkins
+          (ql/aggregation (ql/count))
+          (ql/breakout (ql/datetime-field $timestamp :day-of-month))
+          (ql/limit 5))))
 
 ;;; date bucketing - day-of-year
 (expect-with-event-based-dbs
@@ -479,10 +481,10 @@
              ["005" 1]
              ["006" 1]
              ["007" 2]]}
-  (:data (data/query checkins
-           (ql/aggregation (ql/count))
-           (ql/breakout (ql/datetime-field $timestamp :day-of-year))
-           (ql/limit 5))))
+  (data (data/run-query checkins
+          (ql/aggregation (ql/count))
+          (ql/breakout (ql/datetime-field $timestamp :day-of-year))
+          (ql/limit 5))))
 
 ;;; date bucketing - week-of-year
 (expect-with-event-based-dbs
@@ -492,10 +494,10 @@
              ["03"  8]
              ["04" 10]
              ["05"  4]]}
-  (:data (data/query checkins
-           (ql/aggregation (ql/count))
-           (ql/breakout (ql/datetime-field $timestamp :week-of-year))
-           (ql/limit 5))))
+  (data (data/run-query checkins
+          (ql/aggregation (ql/count))
+          (ql/breakout (ql/datetime-field $timestamp :week-of-year))
+          (ql/limit 5))))
 
 ;;; date bucketing - month
 (expect-with-event-based-dbs
@@ -505,10 +507,10 @@
              ["2013-03-01" 21]
              ["2013-04-01" 26]
              ["2013-05-01" 23]]}
-  (:data (data/query checkins
-           (ql/aggregation (ql/count))
-           (ql/breakout (ql/datetime-field $timestamp :month))
-           (ql/limit 5))))
+  (data (data/run-query checkins
+          (ql/aggregation (ql/count))
+          (ql/breakout (ql/datetime-field $timestamp :month))
+          (ql/limit 5))))
 
 ;;; date bucketing - month-of-year
 (expect-with-event-based-dbs
@@ -518,10 +520,10 @@
              ["03" 92]
              ["04" 89]
              ["05" 111]]}
-  (:data (data/query checkins
-           (ql/aggregation (ql/count))
-           (ql/breakout (ql/datetime-field $timestamp :month-of-year))
-           (ql/limit 5))))
+  (data (data/run-query checkins
+          (ql/aggregation (ql/count))
+          (ql/breakout (ql/datetime-field $timestamp :month-of-year))
+          (ql/limit 5))))
 
 ;;; date bucketing - quarter
 (expect-with-event-based-dbs
@@ -531,10 +533,10 @@
              ["2013-07-01" 55]
              ["2013-10-01" 65]
              ["2014-01-01" 107]]}
-  (:data (data/query checkins
-           (ql/aggregation (ql/count))
-           (ql/breakout (ql/datetime-field $timestamp :quarter))
-           (ql/limit 5))))
+  (data (data/run-query checkins
+          (ql/aggregation (ql/count))
+          (ql/breakout (ql/datetime-field $timestamp :quarter))
+          (ql/limit 5))))
 
 ;;; date bucketing - quarter-of-year
 (expect-with-event-based-dbs
@@ -543,10 +545,10 @@
              ["2" 284]
              ["3" 278]
              ["4" 238]]}
-  (:data (data/query checkins
-           (ql/aggregation (ql/count))
-           (ql/breakout (ql/datetime-field $timestamp :quarter-of-year))
-           (ql/limit 5))))
+  (data (data/run-query checkins
+          (ql/aggregation (ql/count))
+          (ql/breakout (ql/datetime-field $timestamp :quarter-of-year))
+          (ql/limit 5))))
 
 ;;; date bucketing - year
 (expect-with-event-based-dbs
@@ -554,7 +556,7 @@
    :rows    [["2013" 235]
              ["2014" 498]
              ["2015" 267]]}
-  (:data (data/query checkins
-           (ql/aggregation (ql/count))
-           (ql/breakout (ql/datetime-field $timestamp :year))
-           (ql/limit 5))))
+  (data (data/run-query checkins
+          (ql/aggregation (ql/count))
+          (ql/breakout (ql/datetime-field $timestamp :year))
+          (ql/limit 5))))

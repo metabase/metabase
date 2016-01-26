@@ -1,5 +1,6 @@
 (ns metabase.driver.query-processor-test
-  "Query processing tests that can be ran between any of the available drivers, and should give the same results."
+  "Query processing tests that can be ran between any of the available non-event-based DB drivers, and should give the same results.
+   Event-based DBs such as Druid are tested in `metabase.driver.event-query-processor-test`."
   (:require [clojure.math.numeric-tower :as math]
             (clojure [set :as set]
                      [string :as s])
@@ -23,16 +24,20 @@
 
 ;; ### Helper Fns + Macros
 
+;; Event-Based DBs aren't tested here, but in `event-query-processor-test` instead.
+(def ^:private ^:const event-db-engines #{:druid})
+(def ^:private ^:const non-event-db-engines (set/difference datasets/all-valid-engines event-db-engines))
+
 (defn- engines-that-support [feature]
   (set (filter (fn [engine]
                  (contains? (driver/features (driver/engine->driver engine)) feature))
-               datasets/all-valid-engines)))
+               non-event-db-engines)))
 
 (defn- engines-that-dont-support [feature]
-  (set/difference datasets/all-valid-engines (engines-that-support feature)))
+  (set/difference non-event-db-engines (engines-that-support feature)))
 
 (defmacro ^:private qp-expect-with-all-engines [data q-form & post-process-fns]
-  `(datasets/expect-with-all-engines
+  `(datasets/expect-with-engines non-event-db-engines
     {:status    :completed
      :row_count ~(count (:rows data))
      :data      ~data}
@@ -340,7 +345,7 @@
 ;; Test that we can get "pages" of results.
 
 ;; ### PAGE - Get the first page
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   [[1 "African"]
    [2 "American"]
    [3 "Artisan"]
@@ -352,7 +357,7 @@
        rows (format-rows-by [int str])))
 
 ;; ### PAGE - Get the second page
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   [[ 6 "Bakery"]
    [ 7 "Bar"]
    [ 8 "Beer Garden"]
@@ -366,7 +371,7 @@
 
 ;; ## "ORDER_BY" CLAUSE
 ;; Test that we can tell the Query Processor to return results ordered by multiple fields
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   [[1 12 375]
    [1  9 139]
    [1  1  72]
@@ -389,7 +394,7 @@
 ;; ## "FILTER" CLAUSE
 
 ;; ### FILTER -- "AND", ">", ">="
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   [[55 "Dal Rae Restaurant"       67 33.983  -118.096 4]
    [61 "Lawry's The Prime Rib"    67 34.0677 -118.376 4]
    [77 "Sushi Nakazawa"           40 40.7318 -74.0045 4]
@@ -402,7 +407,7 @@
       rows formatted-venues-rows))
 
 ;; ### FILTER -- "AND", "<", ">", "!="
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   [[21 "PizzaHacker"          58 37.7441 -122.421 2]
    [23 "Taqueria Los Coyotes" 50 37.765  -122.42  2]]
   (-> (run-query venues
@@ -415,7 +420,7 @@
 ;; ### FILTER WITH A FALSE VALUE
 ;; Check that we're checking for non-nil values, not just logically true ones.
 ;; There's only one place (out of 3) that I don't like
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   [[1]]
   (->> (dataset places-cam-likes
          (run-query places
@@ -431,7 +436,7 @@
     x))
 
 ;;; filter = true
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   [[1 "Tempest" true]
    [2 "Bullit"  true]]
   (->> (dataset places-cam-likes
@@ -441,7 +446,7 @@
        rows (format-rows-by [int str ->bool] :format-nil-values)))
 
 ;;; filter != false
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   [[1 "Tempest" true]
    [2 "Bullit"  true]]
   (->> (dataset places-cam-likes
@@ -451,7 +456,7 @@
        rows (format-rows-by [int str ->bool] :format-nil-values)))
 
 ;;; filter != true
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   [[3 "The Dentist" false]]
   (->> (dataset places-cam-likes
          (run-query places
@@ -461,7 +466,7 @@
 
 
 ;; ### FILTER -- "BETWEEN", single subclause (neither "AND" nor "OR")
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   [[21 "PizzaHacker"    58 37.7441 -122.421 2]
    [22 "Gordo Taqueria" 50 37.7822 -122.484 1]]
   (-> (run-query venues
@@ -479,7 +484,7 @@
                           (ql/filter (ql/between $date "2015-04-01" "2015-05-01")))))
 
 ;; ### FILTER -- "OR", "<=", "="
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   [[1 "Red Medicine"                  4 10.0646 -165.374 3]
    [2 "Stout Burgers & Beers"        11 34.0996 -118.329 2]
    [3 "The Apple Pan"                11 34.0406 -118.428 2]
@@ -491,7 +496,7 @@
       rows formatted-venues-rows))
 
 ;; ### FILTER -- "INSIDE"
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   [[1 "Red Medicine" 4 10.0646 -165.374 3]]
   (-> (run-query venues
         (ql/filter (ql/inside $latitude $longitude 10.0649 -165.379 10.0641 -165.371)))
@@ -739,7 +744,7 @@
 
 
 ;;; ### order_by aggregate ["avg" field-id]
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   {:columns [(format-name "price")
              "avg"]
    :rows    [[3 22]
@@ -773,7 +778,7 @@
        :data (format-rows-by [int (comp int math/round)])))
 
 ;;; ### make sure that rows where preview_display = false are included and properly marked up
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
  [(set (venues-cols))
   #{(venues-col :category_id)
     (venues-col :name)
@@ -828,7 +833,7 @@
 ;; +------------------------------------------------------------------------------------------------------------------------+
 
 ;; There were 9 "sad toucan incidents" on 2015-06-02
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   (if (i/has-questionable-timezone-support? *data-loader*)
     10
     9)
@@ -838,7 +843,7 @@
                                       (ql/< $timestamp "2015-06-03")))
                    (ql/order-by (ql/asc $timestamp)))))))
 
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   (cond
     (= *engine* :sqlite)
     [["2015-06-01"  6]
@@ -1123,7 +1128,7 @@
 ;;; # New Filter Types - CONTAINS, STARTS_WITH, ENDS_WITH
 
 ;;; ## STARTS_WITH
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
  [[41 "Cheese Steak Shop" 18 37.7855 -122.44  1]
   [74 "Chez Jay"           2 34.0104 -118.493 2]]
  (-> (run-query venues
@@ -1133,7 +1138,7 @@
 
 
 ;;; ## ENDS_WITH
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
  [[ 5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]
   [ 7 "Don Day Korean Restaurant"    44 34.0689 -118.305 2]
   [17 "Ruen Pair Thai Restaurant"    71 34.1021 -118.306 2]
@@ -1145,7 +1150,7 @@
      rows formatted-venues-rows))
 
 ;;; ## CONTAINS
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   [[31 "Bludso's BBQ"             5 33.8894 -118.207 2]
    [34 "Beachwood BBQ & Brewing" 10 33.7701 -118.191 2]
    [39 "Baby Blues BBQ"           5 34.0003 -118.465 2]]
@@ -1156,7 +1161,7 @@
 
 ;;; ## Nested AND / OR
 
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   [[81]]
   (->> (run-query venues
          (ql/aggregation (ql/count))
@@ -1168,14 +1173,14 @@
 
 ;;; ## = / != with multiple values
 
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   [[81]]
   (->> (run-query venues
          (ql/aggregation (ql/count))
          (ql/filter (ql/= $price 1 2)))
        rows (format-rows-by [int])))
 
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   [[19]]
   (->> (run-query venues
          (ql/aggregation (ql/count))
@@ -1199,7 +1204,7 @@
        rows (format-rows-by [(fn [x] (if (number? x) (int x) x))
                              int])))
 
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   (cond
     (contains? #{:redshift :sqlserver} *engine*)
     [[#inst "2015-06-01T17:31" 1]
@@ -1238,7 +1243,7 @@
      [#inst "2015-06-02T11:11" 1]])
   (sad-toucan-incidents-with-bucketing :default))
 
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   (cond
     (= *engine* :sqlite)
     [["2015-06-01 10:31:00" 1]
@@ -1277,7 +1282,7 @@
      [#inst "2015-06-02T11:11" 1]])
   (sad-toucan-incidents-with-bucketing :minute))
 
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   [[0 5]
    [1 4]
    [2 2]
@@ -1290,7 +1295,7 @@
    [9 1]]
   (sad-toucan-incidents-with-bucketing :minute-of-hour))
 
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   (cond
     (= *engine* :sqlite)
     [["2015-06-01 10:00:00" 1]
@@ -1329,13 +1334,13 @@
      [#inst "2015-06-02T13" 1]])
   (sad-toucan-incidents-with-bucketing :hour))
 
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   (if (i/has-questionable-timezone-support? *data-loader*)
    [[0 13] [1 8] [2 4] [3  7] [4  5] [5 13] [6 10] [7 8] [8 9] [9 7]]
    [[0  8] [1 9] [2 7] [3 10] [4 10] [5  9] [6  6] [7 5] [8 7] [9 7]])
   (sad-toucan-incidents-with-bucketing :hour-of-day))
 
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   (cond
     (= *engine* :sqlite)
     [["2015-06-01"  6]
@@ -1374,25 +1379,25 @@
      [#inst "2015-06-10T07" 10]])
   (sad-toucan-incidents-with-bucketing :day))
 
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   (if (i/has-questionable-timezone-support? *data-loader*)
    [[1 28] [2 38] [3 29] [4 27] [5 24] [6 30] [7 24]]
    [[1 29] [2 36] [3 33] [4 29] [5 13] [6 38] [7 22]])
   (sad-toucan-incidents-with-bucketing :day-of-week))
 
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   (if (i/has-questionable-timezone-support? *data-loader*)
    [[1  6] [2 10] [3  4] [4  9] [5  9] [6  8] [7  8] [8  9] [9  7] [10  9]]
    [[1  8] [2  9] [3  9] [4  4] [5 11] [6  8] [7  6] [8 10] [9  6] [10 10]])
   (sad-toucan-incidents-with-bucketing :day-of-month))
 
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   (if (i/has-questionable-timezone-support? *data-loader*)
    [[152  6] [153 10] [154  4] [155  9] [156  9] [157  8] [158  8] [159  9] [160  7] [161  9]]
    [[152  8] [153  9] [154  9] [155  4] [156 11] [157  8] [158  6] [159 10] [160  6] [161 10]])
   (sad-toucan-incidents-with-bucketing :day-of-year))
 
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   (cond
     (= *engine* :sqlite)
     [["2015-05-31" 46]
@@ -1416,7 +1421,7 @@
      [#inst "2015-06-28T07" 7]])
   (sad-toucan-incidents-with-bucketing :week))
 
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   (cond
     (contains? #{:sqlserver :sqlite} *engine*)
     [[23 54] [24 46] [25 39] [26 61]]
@@ -1428,23 +1433,23 @@
     [[23 49] [24 47] [25 39] [26 58] [27 7]])
   (sad-toucan-incidents-with-bucketing :week-of-year))
 
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   [[(if (= *engine* :sqlite) "2015-06-01", #inst "2015-06-01T07") 200]]
   (sad-toucan-incidents-with-bucketing :month))
 
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   [[6 200]]
   (sad-toucan-incidents-with-bucketing :month-of-year))
 
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   [[(if (= *engine* :sqlite) "2015-04-01", #inst "2015-04-01T07") 200]]
   (sad-toucan-incidents-with-bucketing :quarter))
 
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   [[2 200]]
   (sad-toucan-incidents-with-bucketing :quarter-of-year))
 
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   [[2015 200]]
   (sad-toucan-incidents-with-bucketing :year))
 
@@ -1471,22 +1476,22 @@
                            (apply ql/relative-datetime relative-datetime-args)))))
       first-row first int))
 
-(datasets/expect-with-all-engines 4 (count-of-grouping (checkins:4-per-minute) :minute "current"))
-(datasets/expect-with-all-engines 4 (count-of-grouping (checkins:4-per-minute) :minute -1 "minute"))
-(datasets/expect-with-all-engines 4 (count-of-grouping (checkins:4-per-minute) :minute  1 "minute"))
+(datasets/expect-with-engines non-event-db-engines 4 (count-of-grouping (checkins:4-per-minute) :minute "current"))
+(datasets/expect-with-engines non-event-db-engines 4 (count-of-grouping (checkins:4-per-minute) :minute -1 "minute"))
+(datasets/expect-with-engines non-event-db-engines 4 (count-of-grouping (checkins:4-per-minute) :minute  1 "minute"))
 
-(datasets/expect-with-all-engines 4 (count-of-grouping (checkins:4-per-hour) :hour "current"))
-(datasets/expect-with-all-engines 4 (count-of-grouping (checkins:4-per-hour) :hour -1 "hour"))
-(datasets/expect-with-all-engines 4 (count-of-grouping (checkins:4-per-hour) :hour  1 "hour"))
+(datasets/expect-with-engines non-event-db-engines 4 (count-of-grouping (checkins:4-per-hour) :hour "current"))
+(datasets/expect-with-engines non-event-db-engines 4 (count-of-grouping (checkins:4-per-hour) :hour -1 "hour"))
+(datasets/expect-with-engines non-event-db-engines 4 (count-of-grouping (checkins:4-per-hour) :hour  1 "hour"))
 
-(datasets/expect-with-all-engines 1 (count-of-grouping (checkins:1-per-day) :day "current"))
-(datasets/expect-with-all-engines 1 (count-of-grouping (checkins:1-per-day) :day -1 "day"))
-(datasets/expect-with-all-engines 1 (count-of-grouping (checkins:1-per-day) :day  1 "day"))
+(datasets/expect-with-engines non-event-db-engines 1 (count-of-grouping (checkins:1-per-day) :day "current"))
+(datasets/expect-with-engines non-event-db-engines 1 (count-of-grouping (checkins:1-per-day) :day -1 "day"))
+(datasets/expect-with-engines non-event-db-engines 1 (count-of-grouping (checkins:1-per-day) :day  1 "day"))
 
-(datasets/expect-with-all-engines 7 (count-of-grouping (checkins:1-per-day) :week "current"))
+(datasets/expect-with-engines non-event-db-engines 7 (count-of-grouping (checkins:1-per-day) :week "current"))
 
 ;; SYNTACTIC SUGAR
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   1
   (-> (with-temp-db [_ (checkins:1-per-day)]
         (run-query checkins
@@ -1494,7 +1499,7 @@
           (ql/filter (ql/time-interval $timestamp :current :day))))
       first-row first int))
 
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   7
   (-> (with-temp-db [_ (checkins:1-per-day)]
         (run-query checkins
@@ -1515,22 +1520,22 @@
     {:rows (-> results :row_count)
      :unit (-> results :data :cols first :unit)}))
 
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   {:rows 1, :unit :day}
   (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day"))
 
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   {:rows 7, :unit :day}
   (date-bucketing-unit-when-you :breakout-by "day", :filter-by "week"))
 
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   {:rows 1, :unit :week}
   (date-bucketing-unit-when-you :breakout-by "week", :filter-by "day"))
 
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   {:rows 1, :unit :quarter}
   (date-bucketing-unit-when-you :breakout-by "quarter", :filter-by "day"))
 
-(datasets/expect-with-all-engines
+(datasets/expect-with-engines non-event-db-engines
   {:rows 1, :unit :hour}
   (date-bucketing-unit-when-you :breakout-by "hour", :filter-by "day"))
