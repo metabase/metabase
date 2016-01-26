@@ -20,6 +20,7 @@ import DataGrid from "metabase/lib/data_grid";
 import Query from "metabase/lib/query";
 import { serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
 import { loadTable } from "metabase/lib/table";
+import NotFound from "metabase/components/NotFound.jsx";
 
 import * as reducers from './reducers';
 
@@ -384,6 +385,11 @@ CardControllers.controller('CardDetail', [
             React.render(
                 <span>{isShowingTutorial && <QueryBuilderTutorial {...tutorialModel} /> }</span>
             , document.getElementById('react_qb_tutorial'));
+        }
+
+        function renderNotFound() {
+            tutorialModel.isShowingTutorial = isShowingTutorial;
+            React.render(<NotFound></NotFound>, document.getElementById('react_qb_viz'));
         }
 
         var renderAll = _.debounce(function() {
@@ -775,9 +781,8 @@ CardControllers.controller('CardDetail', [
                 delete card.isDirty;
                 return setCard(card, { setDirty: isDirty, resetDirty: !isDirty, replaceState: true });
             } catch (error) {
-                if (error.status == 404) {
-                    // TODO() - we should redirect to the card builder with no query instead of /
-                    $location.path('/');
+                if (error.status === 404) {
+                    renderNotFound();
                 }
             }
         }
