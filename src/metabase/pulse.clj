@@ -377,12 +377,17 @@
         aggregation (-> card :dataset_query :query :aggregation first)]
     (cond
       (or (= aggregation :rows)
-          (contains? #{:pin_map :state :country} (:display card)))        nil
-      (zero? row-count)                                                   :empty
-      (and (= col-count 1) (= row-count 1))                               :scalar
-      (and (= col-count 2) (datetime-field? col-1) (number-field? col-2)) :sparkline
-      (and (= col-count 2) (number-field? col-2))                         :bar
-      :else                                                               :table)))
+          (contains? #{:pin_map :state :country} (:display card))) nil
+      (zero? row-count)             :empty
+      (and (= col-count 1)
+           (= row-count 1))         :scalar
+      (and (= col-count 2)
+           (> row-count 1)
+           (datetime-field? col-1)
+           (number-field? col-2))   :sparkline
+      (and (= col-count 2)
+           (number-field? col-2))   :bar
+      :else                         :table)))
 
 (defn render-pulse-card
   [card data render-img include-title include-buttons]
