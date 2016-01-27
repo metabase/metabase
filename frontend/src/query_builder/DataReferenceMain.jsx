@@ -26,6 +26,12 @@ export default class DataReferenceMain extends Component {
             databases = this.props.databases.map((database) => {
                 var dbTables = this.state.databases[database.id];
                 if (dbTables === undefined) {
+                    if (database.tables) {
+                        this.state.databases[database.id] = database.tables;
+                        this.setState({ databases: this.state.databases });
+                        return;
+                    }
+
                     this.state.databases[database.id] = null; // null indicates loading
                     this.props.Metabase.db_tables({
                         'dbId': database.id

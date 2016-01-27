@@ -413,6 +413,14 @@ CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', funct
             method: 'GET',
             isArray: true
         },
+        db_list_with_tables: {
+            method: 'GET',
+            url: '/api/database/',
+            params: {
+                include_tables: 'true'
+            },
+            isArray: true
+        },
         db_create: {
             url: '/api/database/',
             method: 'POST'
