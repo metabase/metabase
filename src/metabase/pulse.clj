@@ -1,7 +1,8 @@
 (ns metabase.pulse
   (:require [clojure.java.io :as io]
             (clojure [pprint :refer [cl-format]]
-                     [string :refer [upper-case]])
+                     [string :refer [upper-case]]
+                     [stacktrace :refer [print-stack-trace]])
             [clojure.tools.logging :as log]
             (clj-time [coerce :as c]
                       [core :as t]
@@ -415,10 +416,12 @@
                              :font-weight 700})}
         "We were unable to display this card." [:br] "Please view this card in Metabase."])]
     (catch Throwable e
-      (log/warn (str "Pulse card render error:" e))
+      (log/warn "Pulse card render error:")
+      (print-stack-trace e)
       [:div {:style (style font-style
                            {:color       "#EF8C8C"
-                            :font-weight 700})}
+                            :font-weight 700
+                            :padding     "16px"})}
        "An error occurred while displaying this card."])))
 
 
