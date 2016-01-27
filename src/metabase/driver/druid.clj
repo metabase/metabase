@@ -48,8 +48,6 @@
   ([_ details]
    (can-connect? details))
   ([details]
-   ;; TODO - add a timeout to this (?)
-   ;; TODO - maybe check :version in the response?
    (= 200 (:status (http/get (details->url details "/status"))))))
 
 
@@ -60,12 +58,11 @@
   (try (vec (POST (details->url details "/druid/v2"), :body query))
        (catch Throwable e
          ;; try to print the error
-         ;; TODO - log/error
-         (try (println (u/format-color 'red "Error running query:\n  %s"
-                         (:error (json/parse-string (:body (:object (ex-data e))) keyword)))) ; TODO - log/error
+         (try (log/error (u/format-color 'red "Error running query:\n  %s"
+                           (:error (json/parse-string (:body (:object (ex-data e))) keyword)))) ; TODO - log/error
               (catch Throwable _))
-         ;; TODO - re-throw exception
-         #_(throw e))))
+         ;; re-throw exception either way
+         (throw e))))
 
 
 (defn- process-structured

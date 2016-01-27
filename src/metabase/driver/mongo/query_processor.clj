@@ -40,7 +40,7 @@
 
 (defn- log-monger-form [form]
   (when-not qp/*disable-qp-logging*
-    (log/debug (u/format-color 'blue "\nMONGO AGGREGATION PIPELINE:\n%s\n"
+    (log/debug (u/format-color 'green "\nMONGO AGGREGATION PIPELINE:\n%s\n"
                  (->> form
                       (walk/postwalk #(if (symbol? %) (symbol (name %)) %)) ; strip namespace qualifiers from Monger form
                       u/pprint-to-str) "\n"))))
@@ -233,29 +233,33 @@
 
 ;;; ### filter
 
-(defn- parse-filter-subclause [{:keys [filter-type field value] :as filter}]
+(defn- parse-filter-subclause [{:keys [filter-type field value] :as filter} & [negate?]]
   (let [field (when field (->lvalue field))
-        value (when value (->rvalue value))]
-    (case filter-type
-      :between     {field {$gte (->rvalue (:min-val filter))
-                           $lte (->rvalue (:max-val filter))}}
-      :is-null     {field {$exists false}}
-      :not-null    {field {$exists true}}
-      :contains    {field (re-pattern value)}
-      :starts-with {field (re-pattern (str \^ value))}
-      :ends-with   {field (re-pattern (str value \$))}
-      :=           {field value}
-      :!=          {field {$ne  value}}
-      :<           {field {$lt  value}}
-      :>           {field {$gt  value}}
-      :<=          {field {$lte value}}
-      :>=          {field {$gte value}})))
+        value (when value (->rvalue value))
+        v     (case filter-type
+                :between     {$gte (->rvalue (:min-val filter))
+                              $lte (->rvalue (:max-val filter))}
+                :is-null     {$exists false}
+                :not-null    {$exists true}
+                :contains    (re-pattern value)
+                :starts-with (re-pattern (str \^ value))
+                :ends-with   (re-pattern (str value \$))
+                :=           {"$eq" value}
+                :!=          {$ne  value}
+                :<           {$lt  value}
+                :>           {$gt  value}
+                :<=          {$lte value}
+                :>=          {$gte value})]
+    {field (if negate?
+             {$not v}
+             v)}))
 
-(defn- parse-filter-clause [{:keys [compound-type subclauses], :as clause}]
-  (cond
-    (= compound-type :and) {$and (mapv parse-filter-clause subclauses)}
-    (= compound-type :or)  {$or  (mapv parse-filter-clause subclauses)}
-    :else                  (parse-filter-subclause clause)))
+(defn- parse-filter-clause [{:keys [compound-type subclause subclauses], :as clause}]
+  (case compound-type
+    :and {$and (mapv parse-filter-clause subclauses)}
+    :or  {$or  (mapv parse-filter-clause subclauses)}
+    :not (parse-filter-subclause subclause :negate)
+    nil  (parse-filter-subclause clause)))
 
 (defn- handle-filter [{filter-clause :filter} pipeline]
   (when filter-clause

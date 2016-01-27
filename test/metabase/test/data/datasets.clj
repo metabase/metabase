@@ -103,8 +103,8 @@
   [engines expected actual]
   ;; Make functions to get expected/actual so the code is only compiled one time instead of for every single driver
   ;; speeds up loading of metabase.driver.query-processor-test significantly
-  (let [e (gensym "expected-")
-        a (gensym "actual-")]
+  (let [e (symbol (str "expected-" (hash expected)))
+        a (symbol (str "actual-"   (hash actual)))]
     `(let [~e (fn [] ~expected)
            ~a (fn [] ~actual)]
        ~@(for [engine (eval engines)]

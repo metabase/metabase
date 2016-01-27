@@ -21,7 +21,7 @@
   (merge i/IDatasetLoaderDefaultsMixin
          {:engine                       (constantly :druid)
           :database->connection-details database->connection-details
-          :create-db!                   (constantly "nil")
+          :create-db!                   (constantly nil)
           :destroy-db!                  (constantly nil)}))
 
 
