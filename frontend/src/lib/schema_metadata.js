@@ -40,11 +40,9 @@ const TYPES = {
     [LOCATION]: {
         special: ["city", "country", "state", "zip_code"]
     },
-
     [ENTITY]: {
         special: ["fk", "id", "name"]
     },
-
     [SUMMABLE]: {
         include: [NUMBER],
         exclude: [ENTITY, LOCATION, DATE_TIME]
@@ -99,6 +97,7 @@ export function getFieldType(field) {
 export const isDate = isFieldType.bind(null, DATE_TIME);
 export const isNumeric = isFieldType.bind(null, NUMBER);
 export const isBoolean = isFieldType.bind(null, BOOLEAN);
+export const isString = isFieldType.bind(null, STRING);
 export const isSummable = isFieldType.bind(null, SUMMABLE);
 export const isCategory = isFieldType.bind(null, CATEGORY);
 export const isDimension = isFieldType.bind(null, DIMENSION);
