@@ -1,8 +1,8 @@
 (ns metabase.pulse
   (:require [clojure.java.io :as io]
             (clojure [pprint :refer [cl-format]]
-                     [string :refer [upper-case]]
-                     [stacktrace :refer [print-stack-trace]])
+                     [stacktrace :refer [print-stack-trace]]
+                     [string :refer [upper-case]])
             [clojure.tools.logging :as log]
             (clj-time [coerce :as c]
                       [core :as t]
@@ -325,12 +325,12 @@
         xmin   (apply min xs)
         xmax   (apply max xs)
         xrange (- xmax xmin)
-        xs'    (map #(/ (float (- % xmin)) xrange) xs)
+        xs'    (map #(/ (double (- % xmin)) xrange) xs)
         ys     (map second rows)
         ymin   (apply min ys)
         ymax   (apply max ys)
         yrange (max 1 (- ymax ymin)) ; `(max 1 ...)` so we don't divide by zero
-        ys'    (map #(/ (float (- % ymin)) yrange) ys) ; cast to float to avoid "Non-terminating decimal expansion" errors
+        ys'    (map #(/ (double (- % ymin)) yrange) ys) ; cast to double to avoid "Non-terminating decimal expansion" errors
         rows'  (reverse (take-last 2 rows))
         values (map (comp format-number second) rows')
         labels (format-timestamp-pair (map first rows') (first cols))]
@@ -426,7 +426,7 @@
       [:div {:style (style font-style
                            {:color       "#EF8C8C"
                             :font-weight 700
-                            :padding     "16px"})}
+                            :padding     :16px})}
        "An error occurred while displaying this card."])))
 
 
