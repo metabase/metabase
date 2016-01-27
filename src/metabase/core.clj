@@ -187,7 +187,7 @@
                                                                       (merge jetty-ssl-config)))]
       (log/info "Launching Embedded Jetty Webserver with config:\n" (with-out-str (clojure.pprint/pprint (m/filter-keys (fn [k] (not (re-matches #".*password.*" (str k)))) jetty-config))))
       ;; NOTE: we always start jetty w/ join=false so we can start the server first then do init in the background
-      (->> (ring-jetty/run-jetty app (assoc jetty-config :join? false))
+      (->> (ring-jetty/run-jetty app (assoc jetty-config :join? false :request-header-size 32768))
            (reset! jetty-instance)))))
 
 (defn stop-jetty
