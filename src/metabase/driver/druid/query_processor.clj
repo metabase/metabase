@@ -61,7 +61,7 @@
 (def ^:private ^:const query-type->default-query
   (let [defaults {:intervals   ["-5000/5000"]
                   :granularity :all
-                  :context     {:timeout 5000}}]
+                  :context     {:timeout 60000}}]
     {::select     (merge defaults {:queryType  :select
                                    :pagingSpec {:threshold 100 #_qp/absolute-max-results}})
      ::timeseries (merge defaults {:queryType :timeseries})
