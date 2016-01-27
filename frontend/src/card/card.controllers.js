@@ -88,8 +88,7 @@ CardControllers.controller('CardDetail', [
                 visualization_settings: {},
                 dataset_query: {},
             },
-            savedCardSerialized = null,
-            isShowingTutorial = !!$routeParams.tutorial;
+            savedCardSerialized = null;
 
         resetDirty();
 
@@ -333,7 +332,7 @@ CardControllers.controller('CardDetail', [
             // ensure rendering model is up to date
             editorModel.isRunning = isRunning;
             editorModel.isShowingDataReference = $scope.isShowingDataReference;
-            editorModel.isShowingTutorial = isShowingTutorial;
+            editorModel.isShowingTutorial = !!$routeParams.tutorial;
             editorModel.databases = databases;
             editorModel.tableMetadata = tableMetadata;
             editorModel.tableForeignKeys = tableForeignKeys;
@@ -374,15 +373,16 @@ CardControllers.controller('CardDetail', [
 
         let tutorialModel = {
             onClose: () => {
-                isShowingTutorial = false;
+                $routeParams.tutorial = false;
+                updateUrl();
                 renderAll();
             }
         }
 
         function renderTutorial() {
-            tutorialModel.isShowingTutorial = isShowingTutorial;
+            tutorialModel.isShowingTutorial = !!$routeParams.tutorial;
             React.render(
-                <span>{isShowingTutorial && <QueryBuilderTutorial {...tutorialModel} /> }</span>
+                <span>{tutorialModel.isShowingTutorial && <QueryBuilderTutorial {...tutorialModel} /> }</span>
             , document.getElementById('react_qb_tutorial'));
         }
 
@@ -812,6 +812,11 @@ CardControllers.controller('CardDetail', [
 
         // needs to be performed asynchronously otherwise we get weird infinite recursion
         var updateUrl = (replaceState) => setTimeout(function() {
+            // don't update the URL if we're currently showing the tutorial
+            if (!!$routeParams.tutorial) {
+                return;
+            }
+
             var copy = cleanCopyCard(card);
             var newState = {
                 card: copy,
@@ -908,7 +913,7 @@ CardControllers.controller('CardDetail', [
                 // finish initializing our page and render
                 await loadAndSetCard();
 
-                if (isShowingTutorial) {
+                if (!!$routeParams.tutorial) {
                     setSampleDataset();
                 }
             } catch (error) {
