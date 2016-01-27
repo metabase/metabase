@@ -31,6 +31,13 @@ export default class SortWidget extends Component {
         });
     }
 
+    componentWillUnmount() {
+        // Remove partially completed sort if the widget is removed
+        if (this.state.field == null || this.state.direction == null) {
+            this.props.removeSort();
+        }
+    }
+
     setField(value) {
         if (this.state.field !== value) {
             this.props.updateSort([value, this.state.direction]);
