@@ -256,7 +256,10 @@ const OPERATORS_BY_TYPE_ORDERED = {
         { name: "=",       verboseName: "Is" },
         { name: "!=",      verboseName: "Is not" },
         { name: "IS_NULL", verboseName: "Is empty", advanced: true },
-        { name: "NOT_NULL",verboseName: "Not empty", advanced: true }
+        { name: "NOT_NULL",verboseName: "Not empty", advanced: true },
+        { name: "STARTS_WITH",verboseName: "Starts with", advanced: true},
+        { name: "ENDS_WITH",verboseName: "Ends with", advanced: true},
+        { name: "CONTAINS",verboseName: "Contains", advanced: true}
     ],
     [DATE_TIME]: [
         { name: "=",       verboseName: "Is" },
@@ -299,7 +302,7 @@ const MORE_VERBOSE_NAMES = {
     "less than": "is less than",
     "greater than": "is greater than",
     "less than or equal to": "is less than or equal to",
-    "greater than or equal to": "is greater than or equal to",
+    "greater than or equal to": "is greater than or equal to"
 }
 
 function getOperators(field, table) {
