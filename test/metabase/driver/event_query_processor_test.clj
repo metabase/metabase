@@ -17,6 +17,14 @@
     (fn []
       @def)))
 
+;; force loading of the flattened db definitions for the DBs that need it
+(defn- load-event-based-db-data!
+  {:expectations-options :before-run}
+  []
+  (doseq [engine event-based-dbs]
+    (datasets/with-engine-when-testing engine
+      (data/do-with-temp-db (flattened-db-def) (fn [& _])))))
+
 (defmacro ^:private expect-with-event-based-dbs
   {:style/indent 0}
   [expected actual]
