@@ -325,12 +325,12 @@
         xmin   (apply min xs)
         xmax   (apply max xs)
         xrange (- xmax xmin)
-        xs'    (map #(/ (- % xmin) xrange) xs)
+        xs'    (map #(/ (float (- % xmin)) xrange) xs)
         ys     (map second rows)
         ymin   (apply min ys)
         ymax   (apply max ys)
         yrange (max 1 (- ymax ymin)) ; `(max 1 ...)` so we don't divide by zero
-        ys'    (map #(/ (- % ymin) yrange) ys)
+        ys'    (map #(/ (float (- % ymin)) yrange) ys) ; cast to float to avoid "Non-terminating decimal expansion" errors
         rows'  (reverse (take-last 2 rows))
         values (map (comp format-number second) rows')
         labels (format-timestamp-pair (map first rows') (first cols))]
