@@ -15,7 +15,9 @@
             [metabase.driver.query-processor :as qp]
             metabase.driver.query-processor.interface
             [metabase.util :as u]
-            [metabase.util.korma-extensions :as kx])
+            [metabase.util.korma-extensions :as kx]
+            [korma.sql.utils :as kutils]
+            [korma.sql.engine :as kengine])
   (:import java.sql.Timestamp
            java.util.Date
            (metabase.driver.query_processor.interface AgFieldRef
@@ -127,8 +129,9 @@
 
 (defn- filter-subclause->predicate
   "Given a filter SUBCLAUSE, return a Korma filter predicate form for use in korma `where`."
-  [{:keys [filter-type], :as filter}]
-  (let [field (formatted (:field filter))
+  [{:keys [filter-type field], :as filter}]
+  {:pre [(map? filter) field]}
+  (let [field (formatted field)
         value (some-> filter :value formatted)]
     (case          filter-type
       :between     {field ['between [(formatted (:min-val filter)) (formatted (:max-val filter))]]}
@@ -144,10 +147,12 @@
       :=           {field ['=    value]}
       :!=          {field ['not= value]})))
 
-(defn- filter-clause->predicate [{:keys [compound-type subclauses], :as clause}]
+(defn- filter-clause->predicate [{:keys [compound-type subclause subclauses], :as clause}]
+  {:pre [(map? clause)]}
   (case compound-type
     :and (apply kfns/pred-and (map filter-clause->predicate subclauses))
     :or  (apply kfns/pred-or  (map filter-clause->predicate subclauses))
+    :not (kfns/pred-not (kengine/pred-map (filter-subclause->predicate subclause)))
     nil  (filter-subclause->predicate clause)))
 
 (defn apply-filter [_ korma-query {clause :filter}]
