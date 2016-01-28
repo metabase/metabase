@@ -1,6 +1,7 @@
 (ns metabase.pulse
   (:require [clojure.java.io :as io]
             (clojure [pprint :refer [cl-format]]
+                     [stacktrace :refer [print-stack-trace]]
                      [string :refer [upper-case]])
             [clojure.tools.logging :as log]
             (clj-time [coerce :as c]
@@ -324,12 +325,12 @@
         xmin   (apply min xs)
         xmax   (apply max xs)
         xrange (- xmax xmin)
-        xs'    (map #(/ (- % xmin) xrange) xs)
+        xs'    (map #(/ (double (- % xmin)) xrange) xs)
         ys     (map second rows)
         ymin   (apply min ys)
         ymax   (apply max ys)
         yrange (max 1 (- ymax ymin)) ; `(max 1 ...)` so we don't divide by zero
-        ys'    (map #(/ (- % ymin) yrange) ys)
+        ys'    (map #(/ (double (- % ymin)) yrange) ys) ; cast to double to avoid "Non-terminating decimal expansion" errors
         rows'  (reverse (take-last 2 rows))
         values (map (comp format-number second) rows')
         labels (format-timestamp-pair (map first rows') (first cols))]
@@ -376,12 +377,17 @@
         aggregation (-> card :dataset_query :query :aggregation first)]
     (cond
       (or (= aggregation :rows)
-          (contains? #{:pin_map :state :country} (:display card)))        nil
-      (zero? row-count)                                                   :empty
-      (and (= col-count 1) (= row-count 1))                               :scalar
-      (and (= col-count 2) (datetime-field? col-1) (number-field? col-2)) :sparkline
-      (and (= col-count 2) (number-field? col-2))                         :bar
-      :else                                                               :table)))
+          (contains? #{:pin_map :state :country} (:display card))) nil
+      (zero? row-count)             :empty
+      (and (= col-count 1)
+           (= row-count 1))         :scalar
+      (and (= col-count 2)
+           (> row-count 1)
+           (datetime-field? col-1)
+           (number-field? col-2))   :sparkline
+      (and (= col-count 2)
+           (number-field? col-2))   :bar
+      :else                         :table)))
 
 (defn render-pulse-card
   [card data render-img include-title include-buttons]
@@ -415,10 +421,12 @@
                              :font-weight 700})}
         "We were unable to display this card." [:br] "Please view this card in Metabase."])]
     (catch Throwable e
-      (log/warn (str "Pulse card render error:" e))
+      (log/warn "Pulse card render error:")
+      (print-stack-trace e)
       [:div {:style (style font-style
                            {:color       "#EF8C8C"
-                            :font-weight 700})}
+                            :font-weight 700
+                            :padding     :16px})}
        "An error occurred while displaying this card."])))
 
 
