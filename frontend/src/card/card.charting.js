@@ -165,9 +165,9 @@ function applyChartLegend(dcjsChart, card) {
     // I'm sure it made sense to somebody at some point to make this setting live in two different places depending on the type of chart.
     var settings = card.visualization_settings,
         legendEnabled = false;
-
-    if (card.display === "pie" && settings.pie) {
-        legendEnabled = settings.pie.legend_enabled;
+    
+    if (card.display && settings[card.display]) {
+        legendEnabled = settings[card.display].legend_enabled;
     } else if (settings.chart) {
         legendEnabled = settings.chart.legend_enabled;
     }
@@ -177,6 +177,15 @@ function applyChartLegend(dcjsChart, card) {
     } else {
         return dcjsChart;
     }
+}
+
+function addLegendMarginsForCharts(dcjsChart, card, legendCount) {
+    //Chart types which support legends
+    var chartTypes = ["bar", "line", "area"];
+
+    if (chartTypes.indexOf(card.display) > -1) {
+        dcjsChart.margins().top = dcjsChart.margins().top + legendCount*(dcjsChart.legend().itemHeight() + dcjsChart.legend().gap())
+    } 
 }
 
 function setCardTitle(card, elementId) {
@@ -892,23 +901,27 @@ export var CardRenderer = {
                         }),
             chart = initializeChart(card, id, DEFAULT_CARD_WIDTH, DEFAULT_CARD_HEIGHT)
                         .dimension(dimension)
-                        .group(group)
+                        .group(group, result.cols[1].name)
                         .valueAccessor(function(d) {
                             return d.value;
                         });
+
+        var legendCount = 1;
 
         // apply any stacked series if applicable
         if (isMultiSeries) {
             chart.stack(dimension.group().reduceSum(function(d) {
                 return d[2];
-            }));
+            }), result.cols[2].name);
+            legendCount++;
 
             // to keep things sane, draw the line at 2 stacked series
             // putting more than 3 series total on the same chart is a lot
             if (result.cols.length > 3) {
                 chart.stack(dimension.group().reduceSum(function(d) {
                     return d[3];
-                }));
+                }), result.cols[3].name);
+                legendCount++;
             }
         }
 
@@ -926,6 +939,7 @@ export var CardRenderer = {
 
         applyChartTooltips(chart, id, card, result.cols);
         applyChartColors(chart, card);
+        addLegendMarginsForCharts(chart, card, legendCount);
 
         // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
         if (chart.brushOn) chart.brushOn(false);
@@ -968,24 +982,27 @@ export var CardRenderer = {
                         }),
             chart = initializeChart(card, id, DEFAULT_CARD_WIDTH, DEFAULT_CARD_HEIGHT)
                         .dimension(dimension)
-                        .group(group)
+                        .group(group, result.cols[1].name)
                         .valueAccessor(function(d) {
                             return d.value;
                         })
                         .renderArea(isAreaChart);
 
+        var legendCount = 1;
         // apply any stacked series if applicable
         if (isMultiSeries) {
             chart.stack(dimension.group().reduceSum(function(d) {
                 return d[2];
-            }));
+            }), result.cols[2].name);
+            legendCount++;
 
             // to keep things sane, draw the line at 2 stacked series
             // putting more than 3 series total on the same chart is a lot
             if (result.cols.length > 3) {
                 chart.stack(dimension.group().reduceSum(function(d) {
                     return d[3];
-                }));
+                }), result.cols[3].name);
+                legendCount++;
             }
         }
 
@@ -1003,6 +1020,7 @@ export var CardRenderer = {
 
         applyChartTooltips(chart, id, card, result.cols);
         applyChartColors(chart, card);
+        addLegendMarginsForCharts(chart, card, legendCount);
 
         // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
         if (chart.brushOn) chart.brushOn(false);
