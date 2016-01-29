@@ -3,21 +3,9 @@ import React, { Component, PropTypes } from "react";
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 
-import { hasLatitudeAndLongitudeColumns, isString } from "metabase/lib/schema_metadata";
+import visualizations from "../visualizations";
 
 import cx from "classnames";
-
-const VISUALIZATION_TYPE_NAMES = {
-    'scalar':  { displayName: 'Number',      iconName: 'number' },
-    'table':   { displayName: 'Table',       iconName: 'table' },
-    'line':    { displayName: 'Line',        iconName: 'line' },
-    'bar':     { displayName: 'Bar',         iconName: 'bar' },
-    'pie':     { displayName: 'Pie',         iconName: 'pie' },
-    'area':    { displayName: 'Area',        iconName: 'area' },
-    'state':   { displayName: 'State map',   iconName: 'statemap' },
-    'country': { displayName: 'Country map', iconName: 'countrymap' },
-    'pin_map': { displayName: 'Pin map',     iconName: 'pinmap' }
-};
 
 export default class VisualizationSettings extends React.Component {
     constructor(props, context) {
@@ -34,20 +22,6 @@ export default class VisualizationSettings extends React.Component {
         setChartColorFn: PropTypes.func.isRequired
     };
 
-    static defaultProps = {
-        visualizationTypes: [
-            'scalar',
-            'table',
-            'line',
-            'bar',
-            'pie',
-            'area',
-            'state',
-            'country',
-            'pin_map'
-        ]
-    };
-
     setDisplay(type) {
         // notify our parent about our change
         this.props.setDisplayFn(type);
@@ -60,72 +34,41 @@ export default class VisualizationSettings extends React.Component {
         this.refs.colorPopover.toggle();
     }
 
-    isSensibleChartDisplay(display) {
-        var data = (this.props.result) ? this.props.result.data : null;
-        switch (display) {
-            case "table":
-                // table is always appropriate
-                return true;
-            case "scalar":
-                // a 1x1 data set is appropriate for a scalar
-                return (data && data.rows && data.rows.length === 1 && data.cols && data.cols.length === 1);
-            case "pin_map":
-                // when we have a latitude and longitude a pin map is cool
-                return (data && hasLatitudeAndLongitudeColumns(data.cols));
-            case "line":
-            case "area":
-                // if we have 2x2 or more then that's enough to make a line/area chart
-                return (data && data.rows && data.rows.length > 1 && data.cols && data.cols.length > 1);
-            case "country":
-            case "state":
-                return (data && data.cols && data.cols.length > 1 && isString(data.cols[0]));
-            case "bar":
-            case "pie":
-            default:
-                // general check for charts is that they require 2 columns
-                return (data && data.cols && data.cols.length > 1);
-        }
-    }
-
     renderChartTypePicker() {
-        var iconName = VISUALIZATION_TYPE_NAMES[this.props.card.display].iconName;
+        let { result, card } = this.props;
+        let visualization = visualizations.get(card.display);
+
         var triggerElement = (
             <span className="px2 py1 text-bold cursor-pointer text-default flex align-center">
-                <Icon name={iconName} width="24px" height="24px"/>
-                {VISUALIZATION_TYPE_NAMES[this.props.card.display].displayName}
+                <Icon name={visualization.iconName} width="24px" height="24px"/>
+                {visualization.displayName}
                 <Icon className="ml1" name="chevrondown" width="8px" height="8px"/>
             </span>
-        )
+        );
 
-        var displayOptions = this.props.visualizationTypes.map((type, index) => {
-            var classes = cx({
-                'p2': true,
-                'flex': true,
-                'align-center': true,
-                'cursor-pointer': true,
-                'bg-brand-hover': true,
-                'text-white-hover': true,
-                'ChartType--selected': type === this.props.card.display,
-                'ChartType--notSensible': !this.isSensibleChartDisplay(type),
-            });
-            var displayName = VISUALIZATION_TYPE_NAMES[type].displayName;
-            var iconName = VISUALIZATION_TYPE_NAMES[type].iconName;
-            return (
-                <li className={classes} key={index} onClick={this.setDisplay.bind(null, type)}>
-                    <Icon name={iconName} width="24px" height="24px"/>
-                    <span className="ml1">{displayName}</span>
-                </li>
-            );
-        });
         return (
             <div className="relative">
                 <span className="GuiBuilder-section-label Query-label">Visualization</span>
-                <PopoverWithTrigger ref="displayPopover"
-                                    className="ChartType-popover"
-                                    triggerElement={triggerElement}
-                                    triggerClasses="flex align-center">
+                <PopoverWithTrigger
+                    ref="displayPopover"
+                    className="ChartType-popover"
+                    triggerElement={triggerElement}
+                    triggerClasses="flex align-center"
+                >
                     <ul className="pt1 pb1">
-                        {displayOptions}
+                        { Array.from(visualizations).map(([vizType, viz], index) =>
+                            <li
+                                key={index}
+                                className={cx('p2 flex align-center cursor-pointer bg-brand-hover text-white-hover', {
+                                    'ChartType--selected': vizType === card.display,
+                                    'ChartType--notSensible': !(result && result.data && viz.isSensible(result.data.cols, result.data.rows))
+                                })}
+                                onClick={this.setDisplay.bind(null, vizType)}
+                            >
+                                <Icon name={viz.iconName} width="24px" height="24px"/>
+                                <span className="ml1">{viz.displayName}</span>
+                            </li>
+                        )}
                     </ul>
                 </PopoverWithTrigger>
             </div>
