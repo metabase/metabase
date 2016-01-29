@@ -13,7 +13,7 @@
             [metabase.util :as u])
   (:import clojure.lang.Keyword))
 
-(declare -dataset-query query-fail query-complete save-query-execution)
+(declare query-fail query-complete save-query-execution)
 
 ;;; ## INTERFACE + CONSTANTS
 
@@ -203,14 +203,16 @@
                                   more)))))
 
 (defn default-field-percent-urls
-  "Default implementation for optional driver fn `:field-percent-urls` that calculates percentage in Clojure-land."
+  "Default implementation for optional driver fn `field-percent-urls` that calculates percentage in Clojure-land."
   [driver field]
   (->> (field-values-lazy-seq driver field)
        (filter identity)
        (take max-sync-lazy-seq-results)
        percent-valid-urls))
 
-(defn default-field-avg-length [driver field]
+(defn default-field-avg-length
+  "Default implementation of optional driver fn `field-avg-length` that calculates the average length in Clojure-land via `field-values-lazy-seq`."
+  [driver field]
   (let [field-values        (->> (field-values-lazy-seq driver field)
                                  (filter identity)
                                  (take max-sync-lazy-seq-results))
@@ -462,6 +464,7 @@
       (merge query-result)))
 
 (defn save-query-execution
+  "Save (or update) a `QueryExecution`."
   [{:keys [id] :as query-execution}]
   (if id
     ;; execution has already been saved, so update it
@@ -470,3 +473,6 @@
       query-execution)
     ;; first time saving execution, so insert it
     (m/mapply ins QueryExecution query-execution)))
+
+
+(u/require-dox-in-this-namespace)
