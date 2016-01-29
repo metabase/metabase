@@ -148,9 +148,6 @@ function initializeChart(card, elementId, defaultWidth, defaultHeight, chartType
     // disable animations
     chart.transitionDuration(0);
 
-    // set card title
-    setCardTitle(card, elementId);
-
     return chart;
 }
 
@@ -176,18 +173,6 @@ function applyChartLegend(dcjsChart, card) {
         return dcjsChart.legend(dc.legend());
     } else {
         return dcjsChart;
-    }
-}
-
-function setCardTitle(card, elementId) {
-    // SET THE CARD TITLE if applicable (probably not, since there's no UI to set this AFAIK)
-    var settings = card.visualization_settings,
-        chartTitle = settings.global.title;
-    if (chartTitle) {
-        var titleElement = document.getElementById('card-title--' + elementId);
-        if (titleElement) {
-            titleElement.innerText = chartTitle;
-        }
     }
 }
 
@@ -631,15 +616,6 @@ function ChartRenderer(id, card, result, chartType) {
     // I'm sure it made sense to somebody at some point to make this setting live in two different places depending on the type of chart.
     var legendEnabled = chartType === 'pieChart' ? this.settings.pie.legend_enabled : this.settings.chart.legend_enabled;
     if (legendEnabled) this.chart.legend(dc.legend());
-
-    // SET THE CARD TITLE if applicable (probably not, since there's no UI to set this AFAIK)
-    var chartTitle = this.settings.global.title;
-    if (chartTitle) {
-        var titleElement = document.getElementById('card-title--' + id);
-        if (titleElement) {
-            titleElement.innerText = chartTitle;
-        }
-    }
 }
 
 function GeoHeatmapChartRenderer(id, card, result) {
