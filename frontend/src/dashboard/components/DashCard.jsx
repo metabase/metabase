@@ -2,10 +2,7 @@
 
 import React, { Component, PropTypes } from "react";
 
-import ScalarCard from "./cards/ScalarCard.jsx";
-import TableCard from "./cards/TableCard.jsx";
-import ChartCard from "./cards/ChartCard.jsx";
-
+import Visualization from "metabase/visualizations/Visualization.jsx";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 
 import { fetchDashCardData, markNewCardSeen } from "../actions";
@@ -61,11 +58,7 @@ export default class DashCard extends Component {
         }
 
         if (card && data) {
-            switch (card.display) {
-                case "table":  return <TableCard  className="flex-full" card={card} data={data} />;
-                case "scalar": return <ScalarCard className="flex-full" card={card} data={data} />;
-                default:       return <ChartCard  className="flex-full" card={card} data={data} />;
-            }
+            return <Visualization className="flex-full" card={card} data={data} isDashboard={true} />;
         }
 
         return (

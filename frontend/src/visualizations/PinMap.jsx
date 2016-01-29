@@ -1,6 +1,10 @@
 import React, { Component, PropTypes } from "react";
 
+import CardRenderer from "./CardRenderer.jsx";
+
 import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
+
+import { LatitudeLongitudeError } from "./errors";
 
 export default class PinMap extends Component {
     static displayName = "Pin Map";
@@ -11,9 +15,13 @@ export default class PinMap extends Component {
         return hasLatitudeAndLongitudeColumns(cols);
     }
 
+    static checkRenderable(cols, rows) {
+        if (!hasLatitudeAndLongitudeColumns(cols)) { throw new LatitudeLongitudeError(); }
+    }
+
     render() {
         return (
-            <div>Pin Map</div>
+            <CardRenderer className="flex-full" {...this.props} />
         );
     }
 }
