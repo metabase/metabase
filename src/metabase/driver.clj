@@ -266,10 +266,10 @@
   "Search Classpath for namespaces that start with `metabase.driver.`, then `require` them and look for the `driver-init`
    function which provides a uniform way for Driver initialization to be done."
   []
+  (log/info "find-and-load-drivers!")
   (doseq [namespce (filter (fn [ns-symb]
                              (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb)))
                            (ns-find/find-namespaces (classpath/classpath)))]
-    (log/info "loading driver namespace: " namespce)
     (require namespce)))
 
 (defn is-engine?

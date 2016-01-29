@@ -8,8 +8,8 @@
             [metabase.models.setting :as setting]
             [metabase.pulse :as p, :refer [render-pulse-section]]
             [metabase.util :as u]
-            [metabase.util.quotation :as q]
-            [metabase.util.urls :as url]))
+            (metabase.util [quotation :as quotation]
+                           [urls :as url])))
 
 ;; NOTE: uncomment this in development to disable template caching
 ;; (loader/set-cache (clojure.core.cache/ttl-cache-factory {} :ttl 0))
@@ -19,7 +19,7 @@
 (defn send-new-user-email
   "Format and Send an welcome email for newly created users."
   [invited invitor join-url]
-  (let [data-quote   (rand-nth q/quotations)
+  (let [data-quote   (quotation/random-quote)
         company      (or (setting/get :site-name) "Unknown")
         message-body (stencil/render-file "metabase/email/new_user_invite"
                                           {:emailType       "new_user_invite"
@@ -69,7 +69,7 @@
                         "Segment"   url/segment-url)
         add-url       (fn [{:keys [id model] :as obj}]
                         (assoc obj :url (apply (model->url-fn model) [id])))
-        data-quote    (rand-nth q/quotations)
+        data-quote    (quotation/random-quote)
         context       (-> context
                           (update :dependencies (fn [deps-by-model]
                                                   (for [model (sort (set (keys deps-by-model)))
@@ -111,7 +111,7 @@
   (let [images       (atom [])
         body         (apply vector :div (for [result results]
                                           (render-pulse-section (partial render-image images) :include-buttons result)))
-        data-quote   (rand-nth q/quotations)
+        data-quote   (quotation/random-quote)
         message-body (stencil/render-file "metabase/email/pulse"
                                           {:emailType       "pulse"
                                            :pulse           (html body)
