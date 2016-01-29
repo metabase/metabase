@@ -40,7 +40,7 @@
       :is_full_sync    true
       :organization_id nil
       :description     nil
-      :features        (mapv name (metabase.driver/features (metabase.driver/engine->driver (:engine db))))})))
+      :features        (mapv name (driver/features (driver/engine->driver (:engine db))))})))
 
 
 ;; # DB LIFECYCLE ENDPOINTS
@@ -71,7 +71,7 @@
          :is_full_sync    false
          :organization_id nil
          :description     nil
-         :features        (mapv name (metabase.driver/features (metabase.driver/engine->driver :postgres)))})
+         :features        (mapv name (driver/features (driver/engine->driver :postgres)))})
     (create-db db-name false)))
 
 ;; ## DELETE /api/database/:id
@@ -113,41 +113,41 @@
 ;; Database details *should not* come back for Rasta since she's not a superuser
 (let [db-name (str "A" (random-name))] ; make sure this name comes before "test-data"
   (expect-eval-actual-first
-      (set (filter identity
-                   (conj (for [engine datasets/all-valid-engines]
-                           (datasets/when-testing-engine engine
-                             (match-$ (get-or-create-test-data-db! (driver/engine->driver engine))
-                               {:created_at      $
-                                :engine          (name $engine)
-                                :id              $
-                                :updated_at      $
-                                :name            "test-data"
-                                :is_sample       false
-                                :is_full_sync    true
-                                :organization_id nil
-                                :description     nil
-                                :features        (mapv name (metabase.driver/features (metabase.driver/engine->driver engine)))})))
-                         (match-$ (sel :one Database :name db-name)
-                           {:created_at      $
-                            :engine          "postgres"
-                            :id              $
-                            :updated_at      $
-                            :name            $
-                            :is_sample       false
-                            :is_full_sync    true
-                            :organization_id nil
-                            :description     nil
-                            :features        (mapv name (metabase.driver/features (metabase.driver/engine->driver :postgres)))}))))
-    (do
-      ;; Delete all the randomly created Databases we've made so far
-      (cascade-delete Database :id [not-in (set (filter identity
-                                                        (for [engine datasets/all-valid-engines]
-                                                          (datasets/when-testing-engine engine
-                                                            (:id (get-or-create-test-data-db! (driver/engine->driver engine)))))))])
-      ;; Add an extra DB so we have something to fetch besides the Test DB
-      (create-db db-name)
-      ;; Now hit the endpoint
-      (set ((user->client :rasta) :get 200 "database")))))
+      (set (filter identity (conj (for [engine datasets/all-valid-engines]
+                                    (datasets/when-testing-engine engine
+                                      (match-$ (get-or-create-test-data-db! (driver/engine->driver engine))
+                                        {:created_at      $
+                                         :engine          (name $engine)
+                                         :id              $
+                                         :updated_at      $
+                                         :name            "test-data"
+                                         :is_sample       false
+                                         :is_full_sync    true
+                                         :organization_id nil
+                                         :description     nil
+                                         :features        (mapv name (driver/features (driver/engine->driver engine)))})))
+                                  ;; (?) I don't remember why we have to do this for postgres but not any other of the bonus drivers
+                                  (match-$ (sel :one Database :name db-name)
+                                    {:created_at      $
+                                     :engine          "postgres"
+                                     :id              $
+                                     :updated_at      $
+                                     :name            $
+                                     :is_sample       false
+                                     :is_full_sync    true
+                                     :organization_id nil
+                                     :description     nil
+                                     :features        (mapv name (driver/features (driver/engine->driver :postgres)))}))))
+      (do
+        ;; Delete all the randomly created Databases we've made so far
+        (cascade-delete Database :id [not-in (set (filter identity
+                                                          (for [engine datasets/all-valid-engines]
+                                                            (datasets/when-testing-engine engine
+                                                              (:id (get-or-create-test-data-db! (driver/engine->driver engine)))))))])
+        ;; Add an extra DB so we have something to fetch besides the Test DB
+        (create-db db-name)
+        ;; Now hit the endpoint
+        (set ((user->client :rasta) :get 200 "database")))))
 
 
 ;; ## GET /api/meta/table/:id/query_metadata
@@ -163,7 +163,7 @@
        :is_full_sync    true
        :organization_id nil
        :description     nil
-       :features        (mapv name (metabase.driver/features (metabase.driver/engine->driver :h2)))
+       :features        (mapv name (driver/features (driver/engine->driver :h2)))
        :tables [(match-$ (Table (id :categories))
                   {:description     nil
                    :entity_type     nil

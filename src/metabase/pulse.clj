@@ -242,7 +242,7 @@
                                                :max-height       :10px
                                                :height           :10px
                                                :border-radius    :2px
-                                               :width            (str (float (* 100 (/ (bar-column row) max-value))) "%")})}
+                                               :width            (str (float (* 100 (/ (double (bar-column row)) max-value))) "%")})} ; cast to double to avoid "Non-terminating decimal expansion" errors
                           "&#160;"]])])
                    rows)]]))
 

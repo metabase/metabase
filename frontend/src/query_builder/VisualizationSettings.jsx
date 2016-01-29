@@ -3,7 +3,7 @@ import React, { Component, PropTypes } from "react";
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 
-import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
+import { hasLatitudeAndLongitudeColumns, isString } from "metabase/lib/schema_metadata";
 
 import cx from "classnames";
 
@@ -78,7 +78,7 @@ export default class VisualizationSettings extends React.Component {
                 return (data && data.rows && data.rows.length > 1 && data.cols && data.cols.length > 1);
             case "country":
             case "state":
-                return (data && data.cols && data.cols.length > 1 && data.cols[0].base_type === "TextField");
+                return (data && data.cols && data.cols.length > 1 && isString(data.cols[0]));
             case "bar":
             case "pie":
             default:
