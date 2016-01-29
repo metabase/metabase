@@ -82,6 +82,7 @@ CardControllers.controller('CardDetail', [
             tableForeignKeyReferences = null,
             isRunning = false,
             isObjectDetail = false,
+            isShowingTutorial = $routeParams.tutorial,
             card = {
                 name: null,
                 public_perms: 0,
@@ -333,7 +334,7 @@ CardControllers.controller('CardDetail', [
             // ensure rendering model is up to date
             editorModel.isRunning = isRunning;
             editorModel.isShowingDataReference = $scope.isShowingDataReference;
-            editorModel.isShowingTutorial = !!$routeParams.tutorial;
+            editorModel.isShowingTutorial = isShowingTutorial;
             editorModel.databases = databases;
             editorModel.tableMetadata = tableMetadata;
             editorModel.tableForeignKeys = tableForeignKeys;
@@ -374,14 +375,14 @@ CardControllers.controller('CardDetail', [
 
         let tutorialModel = {
             onClose: () => {
-                $routeParams.tutorial = false;
+                isShowingTutorial = false;
                 updateUrl();
                 renderAll();
             }
         }
 
         function renderTutorial() {
-            tutorialModel.isShowingTutorial = !!$routeParams.tutorial;
+            tutorialModel.isShowingTutorial = isShowingTutorial;
             React.render(
                 <span>{tutorialModel.isShowingTutorial && <QueryBuilderTutorial {...tutorialModel} /> }</span>
             , document.getElementById('react_qb_tutorial'));
@@ -818,7 +819,7 @@ CardControllers.controller('CardDetail', [
         // needs to be performed asynchronously otherwise we get weird infinite recursion
         var updateUrl = (replaceState) => setTimeout(function() {
             // don't update the URL if we're currently showing the tutorial
-            if (!!$routeParams.tutorial) {
+            if (isShowingTutorial) {
                 return;
             }
 
@@ -918,7 +919,7 @@ CardControllers.controller('CardDetail', [
                 // finish initializing our page and render
                 await loadAndSetCard();
 
-                if (!!$routeParams.tutorial) {
+                if (isShowingTutorial) {
                     setSampleDataset();
                 }
             } catch (error) {
