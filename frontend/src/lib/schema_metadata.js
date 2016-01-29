@@ -342,7 +342,7 @@ var Aggregators = [{
     "description": "Just a table with the rows in the answer, no additional operations.",
     "validFieldsFilters": []
 }, {
-    "name": "Row count",
+    "name": "Count of rows",
     "short": "count",
     "description": "Total number of rows in the answer.",
     "validFieldsFilters": []
