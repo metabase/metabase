@@ -27,7 +27,6 @@ export default class QueryVisualization extends Component {
     }
 
     static propTypes = {
-        visualizationSettingsApi: PropTypes.object.isRequired,
         card: PropTypes.object.isRequired,
         result: PropTypes.object,
         databases: PropTypes.array,
@@ -359,7 +358,6 @@ export default class QueryVisualization extends Component {
                     viz = (
                         <QueryVisualizationChart
                             className="flex flex-full"
-                            visualizationSettingsApi={this.props.visualizationSettingsApi}
                             card={this.props.card}
                             data={this.props.result.data} />
                     );

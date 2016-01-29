@@ -20,8 +20,7 @@ export default class DashCard extends Component {
 
     static propTypes = {
         dispatch: PropTypes.func.isRequired,
-        dashcard: PropTypes.object.isRequired,
-        visualizationSettingsApi: PropTypes.object.isRequired
+        dashcard: PropTypes.object.isRequired
     };
 
     async componentDidMount() {
@@ -63,9 +62,9 @@ export default class DashCard extends Component {
 
         if (card && data) {
             switch (card.display) {
-                case "table":  return <TableCard  className="flex-full" card={card} data={data} visualizationSettingsApi={this.props.visualizationSettingsApi} />;
-                case "scalar": return <ScalarCard className="flex-full" card={card} data={data} visualizationSettingsApi={this.props.visualizationSettingsApi} />;
-                default:       return <ChartCard  className="flex-full" card={card} data={data} visualizationSettingsApi={this.props.visualizationSettingsApi} />;
+                case "table":  return <TableCard  className="flex-full" card={card} data={data} />;
+                case "scalar": return <ScalarCard className="flex-full" card={card} data={data} />;
+                default:       return <ChartCard  className="flex-full" card={card} data={data} />;
             }
         }
 

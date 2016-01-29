@@ -4,6 +4,7 @@ import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 
 import visualizations from "../visualizations";
+import { getDefaultColor, getDefaultColorHarmony } from "metabase/lib/visualization_settings";
 
 import cx from "classnames";
 
@@ -15,7 +16,6 @@ export default class VisualizationSettings extends React.Component {
     }
 
     static propTypes = {
-        visualizationSettingsApi: PropTypes.object.isRequired,
         card: PropTypes.object.isRequired,
         result: PropTypes.object,
         setDisplayFn: PropTypes.func.isRequired,
@@ -77,7 +77,7 @@ export default class VisualizationSettings extends React.Component {
 
     renderChartColorPicker() {
         if (this.props.card.display === "line" || this.props.card.display === "area" || this.props.card.display === "bar") {
-            var colors = this.props.visualizationSettingsApi.getDefaultColorHarmony();
+            var colors = getDefaultColorHarmony();
             var colorItems = [];
             for (var i=0; i < colors.length; i++) {
                 var color = colors[i];
@@ -91,7 +91,7 @@ export default class VisualizationSettings extends React.Component {
             }
 
             // TODO: currently we set all chart type colors to the same value so bar color always works
-            var currentColor = this.props.card.visualization_settings.bar && this.props.card.visualization_settings.bar.color || this.props.visualizationSettingsApi.getDefaultColor();
+            var currentColor = this.props.card.visualization_settings.bar && this.props.card.visualization_settings.bar.color || getDefaultColor();
             var triggerElement = (
                 <span className="px2 py1 text-bold cursor-pointer text-default flex align-center">
                     <div className="ColorWell rounded bordered" style={{backgroundColor:currentColor}}></div>

@@ -5,6 +5,7 @@ import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import { CardRenderer } from '../card/card.charting';
 
 import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
+import { getSettingsForVisualization, setLatitudeAndLongitude } from "metabase/lib/visualization_settings";
 
 @ExplicitSize
 export default class QueryVisualizationChart extends Component {
@@ -17,7 +18,6 @@ export default class QueryVisualizationChart extends Component {
     }
 
     static propTypes = {
-        visualizationSettingsApi: PropTypes.object.isRequired,
         card: PropTypes.object.isRequired,
         data: PropTypes.object
     };
@@ -75,7 +75,7 @@ export default class QueryVisualizationChart extends Component {
 
             try {
                 // always ensure we have the most recent visualization settings to use for rendering
-                var vizSettings = this.props.visualizationSettingsApi.getSettingsForVisualization(this.props.card.visualization_settings, this.props.card.display);
+                var vizSettings = getSettingsForVisualization(this.props.card.visualization_settings, this.props.card.display);
 
                 // be as immutable as possible and build a card like structure used for charting
                 var cardIsh = {
@@ -89,7 +89,7 @@ export default class QueryVisualizationChart extends Component {
                     // call signature is (elementId, card, updateMapCenter (callback), updateMapZoom (callback))
 
                     // identify the lat/lon columns from our data and make them part of the viz settings so we can render maps
-                    cardIsh.visualization_settings = this.props.visualizationSettingsApi.setLatitudeAndLongitude(cardIsh.visualization_settings, this.props.data.cols);
+                    cardIsh.visualization_settings = setLatitudeAndLongitude(cardIsh.visualization_settings, this.props.data.cols);
 
                     // these are example callback functions that could be passed into the renderer
                     // var updateMapCenter = function(lat, lon) {
