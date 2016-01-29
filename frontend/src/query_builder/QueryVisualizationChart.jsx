@@ -1,17 +1,18 @@
 import React, { Component, PropTypes } from "react";
 
+import ExplicitSize from "metabase/components/ExplicitSize.jsx";
+
 import { CardRenderer } from '../card/card.charting';
 
 import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 
+@ExplicitSize
 export default class QueryVisualizationChart extends Component {
     constructor(props, context) {
         super(props, context);
 
         this.state = {
-            chartId: Math.floor((Math.random() * 698754) + 1),
-            width: 0,
-            height: 0,
+            chartId: Math.floor((Math.random() * 698754) + 1)
         };
     }
 
@@ -22,14 +23,13 @@ export default class QueryVisualizationChart extends Component {
     };
 
     shouldComponentUpdate(nextProps, nextState) {
-        this.calculateSizing(nextState);
         // a chart only needs re-rendering when the result itself changes OR the chart type is different
         // NOTE: we are purposely doing an identity comparison here with props.result and NOT a value comparison
         if (this.state.error === nextState.error &&
                 this.props.data == nextProps.data &&
                 this.props.card.display === nextProps.card.display &&
                 JSON.stringify(this.props.card.visualization_settings) === JSON.stringify(nextProps.card.visualization_settings) &&
-                this.state.width === nextState.width && this.state.height === nextState.height
+                this.props.width === nextProps.width && this.props.height === nextProps.height
         ) {
             return false;
         } else {
@@ -38,7 +38,6 @@ export default class QueryVisualizationChart extends Component {
     }
 
     componentDidMount() {
-        this.calculateSizing(this.state);
         this.renderChart();
     }
 
@@ -46,15 +45,8 @@ export default class QueryVisualizationChart extends Component {
         this.renderChart();
     }
 
-    calculateSizing(prevState) {
-        var width = CardRenderer.getAvailableCanvasWidth(this.state.chartId);
-        var height = CardRenderer.getAvailableCanvasHeight(this.state.chartId);
-        if (width !== prevState.width || height !== prevState.height) {
-            this.setState({ width, height });
-        }
-    }
-
     renderChart() {
+        let element = React.findDOMNode(this.refs.chart)
         if (this.props.data) {
             // validate the shape of the data against our chosen display and if we don't have appropriate data
             // then lets inform the user that this isn't going to work so they can do something better
@@ -115,10 +107,11 @@ export default class QueryVisualizationChart extends Component {
                         // do nothing for now
                     };
 
-                    CardRenderer[this.props.card.display](this.state.chartId, cardIsh, no_op, no_op);
+
+                    CardRenderer[this.props.card.display](element, cardIsh, no_op, no_op);
                 } else {
                     // TODO: it would be nicer if this didn't require the whole card
-                    CardRenderer[this.props.card.display](this.state.chartId, cardIsh, this.props.data);
+                    CardRenderer[this.props.card.display](element, cardIsh, this.props.data);
                 }
             } catch (err) {
                 console.error(err);
@@ -148,8 +141,8 @@ export default class QueryVisualizationChart extends Component {
         }
 
         return (
-            <div className={"Card--" + this.props.card.display + " Card-outer px1"} id={this.state.chartId}>
-                <div id={innerId} className="card-inner" style={{ display: errorMessage ? "none" : undefined }}></div>
+            <div className={"Card-outer px1"} id={this.state.chartId}>
+                <div ref="chart" id={innerId} style={{ display: errorMessage ? "none" : undefined }}></div>
                 {errorMessage}
             </div>
         );

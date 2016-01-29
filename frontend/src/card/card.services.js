@@ -135,7 +135,6 @@ CardServices.service('VisualizationSettings', [function() {
         'bar': ['global', 'columns', 'chart', 'xAxis', 'yAxis', 'bar'],
         'line': ['global', 'columns', 'chart', 'xAxis', 'yAxis', 'line'],
         'area': ['global', 'columns', 'chart', 'xAxis', 'yAxis', 'line', 'area'],
-        'timeseries': ['global', 'columns', 'chart', 'xAxis', 'yAxis', 'line'],
         'country': ['global', 'columns', 'chart', 'map'],
         'state': ['global', 'columns', 'chart', 'map'],
         'pin_map': ['global', 'columns', 'chart', 'map']

@@ -358,6 +358,7 @@ export default class QueryVisualization extends Component {
                     // assume that anything not a table is a chart
                     viz = (
                         <QueryVisualizationChart
+                            className="flex flex-full"
                             visualizationSettingsApi={this.props.visualizationSettingsApi}
                             card={this.props.card}
                             data={this.props.result.data} />
@@ -371,7 +372,7 @@ export default class QueryVisualization extends Component {
             'flex-column': !this.props.isObjectDetail
         });
 
-        var visualizationClasses = cx('flex flex-full Visualization z1', {
+        var visualizationClasses = cx('flex flex-full Visualization z1 px1', {
             'Visualization--errors': (this.props.result && this.props.result.error),
             'Visualization--loading': this.props.isRunning
         });
