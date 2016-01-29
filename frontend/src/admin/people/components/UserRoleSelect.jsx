@@ -3,7 +3,7 @@ import cx from "classnames";
 
 import ColumnarSelector from "metabase/components/ColumnarSelector.jsx";
 import Icon from "metabase/components/Icon.jsx";
-import MetabaseCore from "metabase/lib/core";
+import * as MetabaseCore from "metabase/lib/core";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 
 
