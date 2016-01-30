@@ -11,17 +11,18 @@ import QueryBuilderTutorial from '../tutorial/QueryBuilderTutorial.jsx';
 
 import SavedQuestionsApp from './containers/SavedQuestionsApp.jsx';
 
-import { createStore, combineReducers } from "metabase/lib/redux";
-import _ from "underscore";
+import NotFound from "metabase/components/NotFound.jsx";
 
+import { createStore, combineReducers } from "metabase/lib/redux";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import DataGrid from "metabase/lib/data_grid";
 import Query from "metabase/lib/query";
 import { serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
 import { loadTable } from "metabase/lib/table";
 import { getDefaultColor } from "metabase/lib/visualization_settings";
+import Urls from "metabase/lib/urls";
 
-import NotFound from "metabase/components/NotFound.jsx";
+import _ from "underscore";
 
 import * as reducers from './reducers';
 
@@ -389,7 +390,7 @@ CardControllers.controller('CardDetail', [
         }
 
         function renderNotFound() {
-            tutorialModel.isShowingTutorial = isShowingTutorial;
+            //tutorialModel.isShowingTutorial = isShowingTutorial;
             React.render(<NotFound></NotFound>, document.getElementById('react_qb_viz'));
         }
 
@@ -607,6 +608,8 @@ CardControllers.controller('CardDetail', [
         function isObjectDetailQuery(card, data) {
             var response = false;
 
+            // TODO: why can't we just use the Table Metadata here instead of the query result?
+
             // "rows" type query w/ an '=' filter against the PK column
             if (card.dataset_query &&
                     card.dataset_query.query &&
@@ -817,6 +820,10 @@ CardControllers.controller('CardDetail', [
         }
 
         function reloadCard() {
+            // we reload a card when we revert to a given revision number
+            if ($routeParams.cardId && $routeParams.cardId.length > 10) {
+                delete $routeParams.cardId;
+            }
             delete $routeParams.serializedCard;
             $location.hash(null);
             loadAndSetCard();
@@ -846,13 +853,16 @@ CardControllers.controller('CardDetail', [
             }
 
             var url = urlForCardState(newState, cardIsDirty());
+            console.log('update url', url);
 
             // if the serialized card is identical replace the previous state instead of adding a new one
             // e.x. when saving a new card we want to replace the state and URL with one with the new card ID
             replaceState = replaceState || (window.history.state && window.history.state.serializedCard === newState.serializedCard);
             if (replaceState) {
+                console.log('replacing url');
                 window.history.replaceState(newState, null, url);
             } else {
+                console.log('pushing url');
                 window.history.pushState(newState, null, url);
             }
         }, 0);
@@ -892,6 +902,7 @@ CardControllers.controller('CardDetail', [
         // this works by setting the new route to the old route and manually moving over params
         var route = $route.current;
         $scope.$on('$locationChangeSuccess', function (event) {
+            console.log('location change success', window.location, route.params, $route.current.params);
             var newParams = $route.current.params;
             var oldParams = route.params;
 
