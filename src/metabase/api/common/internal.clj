@@ -260,7 +260,7 @@
   [[annotation-kw arg-symb]] ; dispatch-fn passed as a param to avoid circular dependencies
   {:pre [(keyword? annotation-kw)
          (symbol? arg-symb)]}
-  `[~arg-symb (~((eval 'metabase.api.common/-arg-annotation-fn) annotation-kw) '~arg-symb ~arg-symb)])
+  `[~arg-symb (~((resolve 'metabase.api.common/-arg-annotation-fn) annotation-kw) '~arg-symb ~arg-symb)])
 
 (defn process-arg-annotations [annotations-map]
   {:pre [(or (nil? annotations-map)
