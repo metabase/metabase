@@ -123,6 +123,7 @@ CardControllers.controller('CardDetail', [
                 MetabaseAnalytics.trackEvent('QueryBuilder', 'Create Card', newCard.dataset_query.type);
             },
             notifyCardUpdatedFn: function(updatedCard) {
+                updatedCard.isEditing = false;
                 setCard(updatedCard, { resetDirty: true, replaceState: true });
 
                 MetabaseAnalytics.trackEvent('QueryBuilder', 'Update Card', updatedCard.dataset_query.type);
@@ -151,6 +152,7 @@ CardControllers.controller('CardDetail', [
                 $timeout(() => $location.url(url))
             },
             toggleDataReferenceFn: toggleDataReference,
+            toggleCardEditingFn: toggleCardEditing,
             cardIsNewFn: cardIsNew,
             cardIsDirtyFn: cardIsDirty
         };
@@ -667,6 +669,13 @@ CardControllers.controller('CardDetail', [
                 // FIXME: if previous render takes too long this is missed
                 window.setTimeout(renderAll, 300);
             });
+        }
+
+        function toggleCardEditing(isEditing) {
+            if (card && card.id) {
+                card.isEditing = isEditing;
+            }
+            renderAll();
         }
 
         function resetCardQuery(mode) {

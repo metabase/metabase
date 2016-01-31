@@ -3,7 +3,7 @@ import React, { Component, PropTypes } from "react";
 import ActionButton from 'metabase/components/ActionButton.jsx';
 import AddToDashSelectDashModal from 'metabase/components/AddToDashSelectDashModal.jsx';
 import DeleteQuestionModal from 'metabase/components/DeleteQuestionModal.jsx';
-import Header from "metabase/components/Header.jsx";
+import HeaderBar from "metabase/components/HeaderBar.jsx";
 import HistoryModal from "metabase/components/HistoryModal.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Modal from "metabase/components/Modal.jsx";
@@ -14,8 +14,8 @@ import SaveQuestionModal from 'metabase/components/SaveQuestionModal.jsx';
 
 import Query from "metabase/lib/query";
 
-import inflection from "inflection";
 import cx from "classnames";
+
 
 export default React.createClass({
     displayName: 'QueryHeader',
@@ -64,6 +64,10 @@ export default React.createClass({
         }
     },
 
+    onBeginEditing: function() {
+        this.props.toggleCardEditingFn(true);
+    },
+
     onSave: async function() {
         let card = this.props.card;
 
@@ -84,7 +88,11 @@ export default React.createClass({
     },
 
     onCancel: async function() {
-        this.onGoBack();
+        if (this.props.fromUrl) {
+            this.onGoBack();
+        } else {
+            this.props.toggleCardEditingFn(false);
+        }
     },
 
     onDelete: async function () {
@@ -124,32 +132,108 @@ export default React.createClass({
     },
 
     getHeaderButtons: function() {
-        var buttonSections = [[],[]];
+        var buttonSections = [];
 
-        if (this.props.cardIsNewFn() && this.props.cardIsDirtyFn()) {
-            buttonSections[0].push(
-                <ModalWithTrigger
-                    key="save"
-                    ref="saveModal"
-                    triggerClasses="h4 px1 text-grey-4 text-brand-hover text-uppercase"
-                    triggerElement="Save"
-                >
-                    <SaveQuestionModal
-                        card={this.props.card}
-                        tableMetadata={this.props.tableMetadata}
-                        saveFn={this.onCreate}
-                        closeFn={() => this.refs.saveModal.toggle()}
+        // NEW card
+        if (this.props.cardIsNewFn()) {
+            if (this.props.cardIsDirtyFn()) {
+                buttonSections.push([
+                    <ModalWithTrigger
+                        key="save"
+                        ref="saveModal"
+                        triggerClasses="h4 px1 text-grey-4 text-brand-hover text-uppercase"
+                        triggerElement="Save"
+                    >
+                        <SaveQuestionModal
+                            card={this.props.card}
+                            tableMetadata={this.props.tableMetadata}
+                            saveFn={this.onCreate}
+                            closeFn={() => this.refs.saveModal.toggle()}
+                        />
+                    </ModalWithTrigger>
+                ]);
+            } else {
+                buttonSections.push([
+                    <QueryModeToggle
+                        key="queryModeToggle"
+                        currentQueryMode={this.props.card.dataset_query.type}
+                        setQueryModeFn={this.setQueryMode}
                     />
-                </ModalWithTrigger>
-            );
+                ]);
+            }
         }
 
+        // persistence buttons on saved cards
         if (!this.props.cardIsNewFn()) {
-            buttonSections[0].push(
+            if (!this.props.card.isEditing) {
+                if (this.state.recentlySaved) {
+                    // existing card + not editing + recently saved = save confirmation
+                    buttonSections.push([
+                        <button key="recentlySaved" className="cursor-pointer bg-white text-success text-strong text-uppercase">
+                            <span>
+                                <Icon name='check' width="12px" height="12px" />
+                                <span className="ml1">Saved</span>
+                            </span>
+                        </button>
+                    ]);
+
+                } else {
+                    // edit button
+                    buttonSections.push([
+                        <a key="edit" className="cursor-pointer text-brand-hover" onClick={() => this.onBeginEditing()}>
+                            <Icon name="pencil" width="16px" height="16px" />
+                        </a>
+                    ]);
+                }
+
+            } else {
+                // save button
+                buttonSections.push([
+                    <ActionButton
+                        key="save"
+                        actionFn={() => this.onSave()}
+                        className="cursor-pointer text-brand-hover bg-white text-grey-4 text-uppercase"
+                        normalText="SAVE CHANGES"
+                        activeText="Saving…"
+                        failedText="Save failed"
+                        successText="Saved"
+                    />
+                ]);
+
+                // cancel button
+                buttonSections.push([
+                    <a key="cancel" className="cursor-pointer text-brand-hover text-uppercase" onClick={() => this.onCancel()}>
+                        CANCEL
+                    </a>
+                ]);
+
+                // delete button
+                buttonSections.push([
+                    <ModalWithTrigger
+                        key="delete"
+                        ref="deleteModal"
+                        triggerElement={<span className="text-brand-hover"><Icon name="trash" width="16px" height="16px" /></span>}
+                    >
+                        <DeleteQuestionModal
+                            card={this.props.card}
+                            deleteCardFn={() => this.onDelete()}
+                            closeFn={() => this.refs.deleteModal.toggle()}
+                        />
+                    </ModalWithTrigger>
+                ]);
+            }
+        }
+
+        // TODO: add to dashboard
+        //   if (!new && !editing) OR (new && dirty)
+
+        // history icon on saved cards
+        if (!this.props.cardIsNewFn()) {
+            buttonSections.push([
                 <ModalWithTrigger
                     key="history"
                     ref="cardHistory"
-                    triggerElement={<Icon name="history" width="16px" height="16px" />}
+                    triggerElement={<span className="text-brand-hover"><Icon name="history" width="16px" height="16px" /></span>}
                 >
                     <HistoryModal
                         revisions={this.state.revisions}
@@ -161,90 +245,41 @@ export default React.createClass({
                         onReverted={this.onRevertedRevision}
                     />
                 </ModalWithTrigger>
-            );
+            ]);
         }
 
-        if (this.props.cardIsNewFn() && !this.props.cardIsDirtyFn()) {
-            buttonSections[0].push(
-                <QueryModeToggle
-                    key="queryModeToggle"
-                    currentQueryMode={this.props.card.dataset_query.type}
-                    setQueryModeFn={this.setQueryMode}
-                />
-            );
-        }
-
+        // data reference button
         var dataReferenceButtonClasses = cx('mx1 transition-color', {
             'text-grey-4': !this.props.isShowingDataReference,
             'text-brand': this.props.isShowingDataReference,
             'text-brand-hover': !this.state.isShowingDataReference
         });
-        buttonSections[1].push(
+        buttonSections.push(
             <a key="dataReference" className={dataReferenceButtonClasses} title="Get help on what data means">
                 <Icon name='reference' width="16px" height="16px" onClick={this.toggleDataReference}></Icon>
             </a>
-        );
+        ]);
 
         return buttonSections;
     },
 
-    getEditingButtons: function() {
-        return [
-            <ActionButton
-                key="save"
-                actionFn={() => this.onSave()}
-                className="Button Button--small Button--primary text-uppercase"
-                normalText="Save"
-                activeText="Saving…"
-                failedText="Save failed"
-                successText="Saved"
-            />,
-            <a key="cancel" className="Button Button--small text-uppercase" onClick={() => this.onCancel()}>
-                Cancel
-            </a>,
-            <ModalWithTrigger
-                key="delete"
-                ref="deleteModal"
-                triggerClasses="Button Button--small text-uppercase"
-                triggerElement="Delete"
-            >
-                <DeleteQuestionModal
-                    card={this.props.card}
-                    deleteCardFn={() => this.onDelete()}
-                    closeFn={() => this.refs.deleteModal.toggle()}
-                />
-            </ModalWithTrigger>
-        ];
-    },
-
     render: function() {
-        var subtitleText;
-        if (this.props.card) {
-            if (this.props.card.dashboard_count > 0) {
-                subtitleText = "Changes will be reflected in " + this.props.card.dashboard_count + " " + inflection.inflect("dashboard", this.props.card.dashboard_count) + " and can be reverted.";
-            } else {
-                subtitleText = "Changes can be reverted."
-            }
-        }
-
         return (
-            <Header
-                objectType="question"
-                item={this.props.card}
-                isEditing={!this.props.cardIsNewFn()}
-                isEditingInfo={!this.props.cardIsNewFn()}
-                headerButtons={this.getHeaderButtons()}
-                editingTitle="You are editing a saved question"
-                editingSubtitle={subtitleText}
-                editingButtons={this.getEditingButtons()}
-                setItemAttributeFn={this.setCardAttribute}
-            >
+            <div>
+                <HeaderBar
+                    isEditing={this.props.card.isEditing}
+                    name={this.props.cardIsNewFn() ? "New question" : this.props.card.name}
+                    buttons={this.getHeaderButtons()}
+                    setItemAttributeFn={this.setCardAttribute}
+                />
+
                 <Modal isOpen={this.state.modal === "saved"}>
                     <QuestionSavedModal
                         addToDashboardFn={() => this.setState({ modal: "add-to-dashboard" })}
                         closeFn={() => this.setState({ modal: null })}
                     />
                 </Modal>
+
                 <Modal isOpen={this.state.modal === "add-to-dashboard"}>
                     <AddToDashSelectDashModal
                         card={this.props.card}
@@ -253,7 +288,7 @@ export default React.createClass({
                         notifyCardAddedToDashFn={this.props.notifyCardAddedToDashFn}
                     />
                 </Modal>
-            </Header>
+            </div>
         );
     }
 });
