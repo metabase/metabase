@@ -83,6 +83,7 @@ CardControllers.controller('CardDetail', [
             tableForeignKeyReferences = null,
             isRunning = false,
             isObjectDetail = false,
+            isShowingTutorial = $routeParams.tutorial,
             card = {
                 name: null,
                 public_perms: 0,
@@ -90,8 +91,7 @@ CardControllers.controller('CardDetail', [
                 visualization_settings: {},
                 dataset_query: {},
             },
-            savedCardSerialized = null,
-            isShowingTutorial = !!$routeParams.tutorial;
+            savedCardSerialized = null;
 
         resetDirty();
 
@@ -376,6 +376,7 @@ CardControllers.controller('CardDetail', [
         let tutorialModel = {
             onClose: () => {
                 isShowingTutorial = false;
+                updateUrl();
                 renderAll();
             }
         }
@@ -383,7 +384,7 @@ CardControllers.controller('CardDetail', [
         function renderTutorial() {
             tutorialModel.isShowingTutorial = isShowingTutorial;
             React.render(
-                <span>{isShowingTutorial && <QueryBuilderTutorial {...tutorialModel} /> }</span>
+                <span>{tutorialModel.isShowingTutorial && <QueryBuilderTutorial {...tutorialModel} /> }</span>
             , document.getElementById('react_qb_tutorial'));
         }
 
@@ -817,6 +818,11 @@ CardControllers.controller('CardDetail', [
 
         // needs to be performed asynchronously otherwise we get weird infinite recursion
         var updateUrl = (replaceState) => setTimeout(function() {
+            // don't update the URL if we're currently showing the tutorial
+            if (isShowingTutorial) {
+                return;
+            }
+
             var copy = cleanCopyCard(card);
             var newState = {
                 card: copy,

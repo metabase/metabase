@@ -111,7 +111,7 @@
     (catch Exception e
       (log/error "Failed to authenticate with email:" email "and password:" password ". Does user exist?"))))
 
-(defn build-url [url url-param-kwargs]
+(defn- build-url [url url-param-kwargs]
   {:pre [(string? url)
          (or (nil? url-param-kwargs)
              (map? url-param-kwargs))]}

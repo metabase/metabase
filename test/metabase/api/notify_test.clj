@@ -17,8 +17,8 @@
 (expect
   {:status 404
    :body "Not found."}
-  (try (client/post (http/build-url "notify/db/100" {}) {:accept :json
-                                                         :headers {"X-METABASE-APIKEY" "test-api-key"}})
+  (try (client/post ((resolve 'metabase.http-client/build-url) "notify/db/100" {}) {:accept :json
+                                                                                    :headers {"X-METABASE-APIKEY" "test-api-key"}})
        (catch clojure.lang.ExceptionInfo e
          (-> (.getData ^clojure.lang.ExceptionInfo e)
              (:object)
