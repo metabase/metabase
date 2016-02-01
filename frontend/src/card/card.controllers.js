@@ -535,7 +535,7 @@ CardControllers.controller('CardDetail', [
 
             let db = _.findWhere(databases, { id: databaseId });
             if (db && db.tables) {
-                tables = db.tabels;
+                tables = db.tables;
                 renderAll();
                 return;
             }
