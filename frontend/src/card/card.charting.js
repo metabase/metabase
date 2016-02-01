@@ -85,16 +85,6 @@ function dimensionIsTimeseries(result) {
     return (hasDateField || isDateFirstVal);
 }
 
-/// return the Element ID that should be used to find chart with a given chartId
-function chartElementIdForId(chartId) {
-    return 'card-inner--' + chartId;
-}
-
-/// return the DOM element where chart with CHARTID
-function chartElementForId(chartId) {
-    return document.getElementById(chartElementIdForId(chartId));
-}
-
 // return computed property of element or element with ID. Returns null if element is not found
 function getComputedProperty(prop, elementOrId) {
     if (typeof elementOrId === 'string') elementOrId = document.getElementById(elementOrId);
@@ -133,14 +123,14 @@ function getDcjsChartType(cardType) {
     }
 }
 
-function initializeChart(card, elementId, defaultWidth, defaultHeight, chartType) {
+function initializeChart(card, element, defaultWidth, defaultHeight, chartType) {
     chartType = (chartType) ? chartType : getDcjsChartType(card.display);
 
     // create the chart
-    var chart = dc[chartType]('#' + chartElementIdForId(elementId));
+    var chart = dc[chartType](element);
 
     // set width and height
-    chart = applyChartBoundary(chart, card, elementId, defaultWidth, defaultHeight);
+    chart = applyChartBoundary(chart, card, element, defaultWidth, defaultHeight);
 
     // specify legend
     chart = applyChartLegend(chart, card);
@@ -151,13 +141,13 @@ function initializeChart(card, elementId, defaultWidth, defaultHeight, chartType
     return chart;
 }
 
-function applyChartBoundary(dcjsChart, card, elementId, defaultWidth, defaultHeight) {
-    return dcjsChart
-            .width(CardRenderer.getAvailableCanvasWidth(elementId, card) || defaultWidth)
-            .height(CardRenderer.getAvailableCanvasHeight(elementId, card) || defaultHeight);
+function applyChartBoundary(chart, card, element, defaultWidth, defaultHeight) {
+    return chart
+        .width(CardRenderer.getAvailableCanvasWidth(element, card) || defaultWidth)
+        .height(CardRenderer.getAvailableCanvasHeight(element, card) || defaultHeight);
 }
 
-function applyChartLegend(dcjsChart, card) {
+function applyChartLegend(chart, card) {
     // ENABLE LEGEND IF SPECIFIED IN VISUALIZATION SETTINGS
     // I'm sure it made sense to somebody at some point to make this setting live in two different places depending on the type of chart.
     var settings = card.visualization_settings,
@@ -170,9 +160,9 @@ function applyChartLegend(dcjsChart, card) {
     }
 
     if (legendEnabled) {
-        return dcjsChart.legend(dc.legend());
+        return chart.legend(dc.legend());
     } else {
-        return dcjsChart;
+        return chart;
     }
 }
 
@@ -367,23 +357,23 @@ function applyChartYAxis(chart, card, coldefs, data, minPixelsPerTick) {
     }
 }
 
-function applyChartColors(dcjsChart, card) {
+function applyChartColors(chart, card) {
     // Set the color for the bar/line
     let settings = card.visualization_settings;
     let chartColor = (card.display === 'bar') ? settings.bar.color : settings.line.lineColor;
     let colorList = (card.display === 'bar') ? settings.bar.colors : settings.line.colors;
     // dedup colors list to ensure stacked charts don't have the same color
     let uniqueColors = _.uniq([chartColor].concat(colorList));
-    return dcjsChart.ordinalColors(uniqueColors);
+    return chart.ordinalColors(uniqueColors);
 }
 
-function applyChartTooltips(dcjsChart, id, card, cols) {
-    dcjsChart.on('renderlet', function(chart) {
+function applyChartTooltips(chart, element, card, cols) {
+    chart.on('renderlet', function(chart) {
         // Remove old tooltips which are sometimes not removed due to chart being rerendered while tip is visible
-        Array.prototype.forEach.call(document.querySelectorAll('.ChartTooltip--'+id), (t) => t.parentNode.removeChild(t));
+        Array.prototype.forEach.call(document.querySelectorAll('.ChartTooltip--'+element.id), (t) => t.parentNode.removeChild(t));
 
         var tip = d3.tip()
-            .attr('class', 'ChartTooltip ChartTooltip--'+id)
+            .attr('class', 'ChartTooltip ChartTooltip--'+element.id)
             .direction('n')
             .offset([-10, 0])
             .html(function(d) {
@@ -401,7 +391,7 @@ function applyChartTooltips(dcjsChart, id, card, cols) {
             .on('mouseover.tip', function(slice) {
                 tip.show.apply(tip, arguments);
                 if (card.display === "pie") {
-                    var tooltip = d3.select('.ChartTooltip--'+id);
+                    var tooltip = d3.select('.ChartTooltip--'+element.id);
                     let tooltipOffset = getTooltipOffset(tooltip);
                     let sliceCentroid = getPieSliceCentroid(this, slice);
                     tooltip.style({
@@ -451,9 +441,9 @@ function getTooltipOffset(tooltip) {
     };
 }
 
-function lineAndBarOnRender(dcjsChart, card) {
+function lineAndBarOnRender(chart, card) {
     // once chart has rendered and we can access the SVG, do customizations to axis labels / etc that you can't do through dc.js
-    var svg = dcjsChart.svg(),
+    var svg = chart.svg(),
         settings = card.visualization_settings,
         x = settings.xAxis,
         y = settings.yAxis;
@@ -509,8 +499,8 @@ function lineAndBarOnRender(dcjsChart, card) {
     } catch (e) {}
 
     // adjust the margins to fit the Y-axis tick label sizes, and rerender
-    dcjsChart.margins().left = dcjsChart.select(".axis.y")[0][0].getBBox().width + 20;
-    dcjsChart.render();
+    chart.margins().left = chart.select(".axis.y")[0][0].getBBox().width + 20;
+    chart.render();
 }
 
 
@@ -528,13 +518,13 @@ function lineAndBarOnRender(dcjsChart, card) {
 ///     2) Code in ChartRenderer(...) runs and does setup common across all charts
 ///     3) Code in GeoHeatmapChartRenderer(...) runs and does setup common across the charts
 /// 4) Further customizations specific to bar charts take place in .customize()
-function ChartRenderer(id, card, result, chartType) {
+function ChartRenderer(element, card, result, chartType) {
     // ------------------------------ CONSTANTS ------------------------------ //
     var DEFAULT_CARD_WIDTH = 900,
         DEFAULT_CARD_HEIGHT = 500;
 
     // ------------------------------ PROPERTIES ------------------------------ //
-    this.id = id;
+    this.element = element;
     this.card = card;
     this.result = result;
     this.chartType = chartType;
@@ -598,17 +588,16 @@ function ChartRenderer(id, card, result, chartType) {
 
     /// determine what width we should use for the chart - we can look at size of the card header / footer and match that
     this._getWidth = function() {
-        return CardRenderer.getAvailableCanvasWidth(this.id, this.card) || DEFAULT_CARD_WIDTH;
+        return CardRenderer.getAvailableCanvasWidth(this.element, this.card) || DEFAULT_CARD_WIDTH;
     };
 
     /// height available to card for the chart, if available. Equal to height of card minus heights of header + footer.
     this._getHeight = function() {
-        return CardRenderer.getAvailableCanvasHeight(this.id, this.card) || DEFAULT_CARD_HEIGHT;
+        return CardRenderer.getAvailableCanvasHeight(this.element, this.card) || DEFAULT_CARD_HEIGHT;
     };
 
     // ------------------------------ INITIALIZATION ------------------------------ //
-    this.chartFn = dc[this.chartType]; // e.g. dc['geoChoroplethChart]
-    this.chart = this.chartFn('#' + chartElementIdForId(this.id))
+    this.chart = dc[this.chartType](this.element)
         .width(this._getWidth())
         .height(this._getHeight());
 
@@ -618,7 +607,7 @@ function ChartRenderer(id, card, result, chartType) {
     if (legendEnabled) this.chart.legend(dc.legend());
 }
 
-function GeoHeatmapChartRenderer(id, card, result) {
+function GeoHeatmapChartRenderer(element, card, result) {
     // ------------------------------ CONSTANTS ------------------------------ //
     /// various shades that should be used in State + World Heatmaps
     /// TODO - These colors are from the dc.js examples and aren't the same ones we used on highcharts. Do we want custom Metabase colors?
@@ -638,7 +627,7 @@ function GeoHeatmapChartRenderer(id, card, result) {
         HEAT_MAP_ZERO_COLOR = '#CCC';
 
     // ------------------------------ SUPERCLASS INIT ------------------------------ //
-    ChartRenderer.call(this, id, card, result, 'geoChoroplethChart');
+    ChartRenderer.call(this, element, card, result, 'geoChoroplethChart');
 
     // ------------------------------ METHODS ------------------------------ //
     this.superSetData = this.setData;
@@ -710,96 +699,47 @@ export var CardRenderer = {
     },
 
     /// height available for rendering the card
-    getAvailableCanvasHeight: function(id, cardOrDimension) {
+    getAvailableCanvasHeight: function(element, cardOrDimension) {
         var sizeSettings = CardRenderer._getSizeSettings(cardOrDimension),
             initialHeight = sizeSettings ? sizeSettings.initialHeight : undefined;
 
         if (typeof cardOrDimension === "number") {
             initialHeight = cardOrDimension;
         }
-
-        // if we already have size settings subtract height of header + footer and return
         if (typeof initialHeight !== "undefined") {
-            var headerHeight = getComputedHeight(id + '_heading');
-            return initialHeight - headerHeight - 5; // why the magic number :/
+            return initialHeight;
         }
 
-        // if we can find the chart element in the DOM then max width is parent element - parent x padding
-        var chartElement = chartElementForId(id);
-        if (chartElement) {
-            var parent = chartElement.parentElement,
-                parentHeight = getComputedHeight(parent),
-                parentPaddingTop = getComputedSizeProperty('padding-top', parent),
-                parentPaddingBottom = getComputedSizeProperty('padding-bottom', parent);
+        var parent = element.parentElement,
+            parentHeight = getComputedHeight(parent),
+            parentPaddingTop = getComputedSizeProperty('padding-top', parent),
+            parentPaddingBottom = getComputedSizeProperty('padding-bottom', parent);
 
-            // NOTE: if this magic number is not 3 we can get into infinite re-render loops
-            return parentHeight - parentPaddingTop - parentPaddingBottom - 3; // why the magic number :/
-        }
-
-        return null;
+        // NOTE: if this magic number is not 3 we can get into infinite re-render loops
+        return parentHeight - parentPaddingTop - parentPaddingBottom - 3; // why the magic number :/
     },
 
     /// width available for rendering the card
-    getAvailableCanvasWidth: function(id, cardOrDimension) {
+    getAvailableCanvasWidth: function(element, cardOrDimension) {
         var sizeSettings = CardRenderer._getSizeSettings(cardOrDimension),
             initialWidth = sizeSettings ? sizeSettings.initialWidth : undefined;
 
         if (typeof cardOrDimension === "number") {
             initialWidth = cardOrDimension;
         }
-        if (typeof initalWidth !== 'undefined') return initialWidth;
-
-        // if we can find the chart element in the DOM then max width is parent element - parent x padding
-        var chartElement = chartElementForId(id);
-        if (chartElement) {
-            var parent = chartElement.parentElement,
-                parentWidth = getComputedWidth(parent),
-                parentPaddingLeft = getComputedSizeProperty('padding-left', parent),
-                parentPaddingRight = getComputedSizeProperty('padding-right', parent);
-
-            return parentWidth - parentPaddingLeft - parentPaddingRight;
+        if (typeof initialWidth !== 'undefined') {
+            return initialWidth;
         }
 
-        // otherwise try to return the width of #CHARTID_heading or null if that fails
-        return getComputedWidth(id + '_heading');
+        var parent = element.parentElement,
+            parentWidth = getComputedWidth(parent),
+            parentPaddingLeft = getComputedSizeProperty('padding-left', parent),
+            parentPaddingRight = getComputedSizeProperty('padding-right', parent);
+
+        return parentWidth - parentPaddingLeft - parentPaddingRight;
     },
 
-    /// set the size of chart/table
-    /// called every time a table is displayed, or when charts are resized on a Dashboard
-    setSize: function(id, height, width) {
-        height = CardRenderer.getAvailableCanvasHeight(id, height);
-        width = CardRenderer.getAvailableCanvasWidth(id, width);
-        if (height === null) {
-            height = 450;
-        }
-        var el = document.getElementById(id);
-        if (el) {
-            el.style.height = height + "px";
-            if (width !== null) {
-                el.style.width = width + "px";
-            }
-            el.dispatchEvent(new Event("cardrenderer-card-resized"));
-        }
-
-        // dynamically resize the chart if applicable
-        var chartRootElement = chartElementForId(id);
-        if (chartRootElement) {
-            // find the dc.js Chart instance for that corresponds to this element
-            var chart = _.filter(dc.chartRegistry.list(), function(dcChart) {
-                return dcChart.root()[0][0] === chartRootElement;
-            })[0];
-            // update size, width then re-render the chart
-            if (height) chart.height(height);
-            if (width) chart.width(width);
-
-            // HACK! pie chart doesn't resize properly unless you also update radius
-            if (typeof chart.radius !== 'undefined') chart.radius(Math.min(height, width) / 2);
-
-            chart.render();
-        }
-    },
-
-    pie: function(id, card, result) {
+    pie: function(element, card, result) {
         var settings = card.visualization_settings,
             data = _.map(result.rows, function(row) {
                 return {
@@ -821,7 +761,7 @@ export var CardRenderer = {
             group = dimension.group().reduceSum(function(d) {
                             return d.value;
                         }),
-            chart = initializeChart(card, id, DEFAULT_CARD_WIDTH, DEFAULT_CARD_HEIGHT)
+            chart = initializeChart(card, element, DEFAULT_CARD_WIDTH, DEFAULT_CARD_HEIGHT)
                         .dimension(dimension)
                         .group(group)
                         .colors(settings.pie.colors)
@@ -837,12 +777,12 @@ export var CardRenderer = {
             // disables ability to select slices
             chart.filter = function() {};
 
-        applyChartTooltips(chart, id, card, result.cols);
+        applyChartTooltips(chart, element, card, result.cols);
 
         chart.render();
     },
 
-    bar: function(id, card, result) {
+    bar: function(element, card, result) {
         var isTimeseries = (dimensionIsTimeseries(result)) ? true : false;
         var isMultiSeries = (result.cols !== undefined &&
                                 result.cols.length > 2) ? true : false;
@@ -866,7 +806,7 @@ export var CardRenderer = {
             group = dimension.group().reduceSum(function(d) {
                             return d[1];
                         }),
-            chart = initializeChart(card, id, DEFAULT_CARD_WIDTH, DEFAULT_CARD_HEIGHT)
+            chart = initializeChart(card, element, DEFAULT_CARD_WIDTH, DEFAULT_CARD_HEIGHT)
                         .dimension(dimension)
                         .group(group)
                         .valueAccessor(function(d) {
@@ -900,7 +840,7 @@ export var CardRenderer = {
         // TODO: if we are multi-series this could be split axis
         applyChartYAxis(chart, card, result.cols, data, MIN_PIXELS_PER_TICK.y);
 
-        applyChartTooltips(chart, id, card, result.cols);
+        applyChartTooltips(chart, element, card, result.cols);
         applyChartColors(chart, card);
 
         // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
@@ -916,7 +856,7 @@ export var CardRenderer = {
         lineAndBarOnRender(chart, card);
     },
 
-    line: function(id, card, result, isAreaChart, isTimeseries) {
+    line: function(element, card, result, isAreaChart, isTimeseries) {
         isAreaChart = typeof isAreaChart === undefined ? false : isAreaChart;
         isTimeseries = ((typeof isAreaChart !== undefined && isTimeseries) ||
                             dimensionIsTimeseries(result)) ? true : false;
@@ -942,7 +882,7 @@ export var CardRenderer = {
             group = dimension.group().reduceSum(function(d) {
                             return d[1];
                         }),
-            chart = initializeChart(card, id, DEFAULT_CARD_WIDTH, DEFAULT_CARD_HEIGHT)
+            chart = initializeChart(card, element, DEFAULT_CARD_WIDTH, DEFAULT_CARD_HEIGHT)
                         .dimension(dimension)
                         .group(group)
                         .valueAccessor(function(d) {
@@ -977,7 +917,7 @@ export var CardRenderer = {
         // TODO: if we are multi-series this could be split axis
         applyChartYAxis(chart, card, result.cols, data, MIN_PIXELS_PER_TICK.y);
 
-        applyChartTooltips(chart, id, card, result.cols);
+        applyChartTooltips(chart, element, card, result.cols);
         applyChartColors(chart, card);
 
         // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
@@ -995,17 +935,11 @@ export var CardRenderer = {
 
     /// Area Chart is just a Line Chart that we called renderArea(true) on
     /// Defer to CardRenderer.line() and pass param area = true
-    area: function(id, card, result) {
-        return CardRenderer.line(id, card, result, true);
+    area: function(element, card, result) {
+        return CardRenderer.line(element, card, result, true);
     },
 
-    /// TimeSeries is really just a Line Chart where the x-axis is time, so
-    /// Defer to CardRendered.line() and be explicit that we know timeseries = true
-    timeseries: function(id, card, result) {
-        return CardRenderer.line(id, card, result, false, true);
-    },
-
-    state: function(id, card, result) {
+    state: function(element, card, result) {
         var chartData = _.map(result.rows, function(value) {
             return {
                 stateCode: value[0],
@@ -1013,7 +947,7 @@ export var CardRenderer = {
             };
         });
 
-        var chartRenderer = new GeoHeatmapChartRenderer(id, card, result)
+        var chartRenderer = new GeoHeatmapChartRenderer(element, card, result)
             .setData(chartData, 'stateCode', 'value')
             .setJson('/app/charts/us-states.json', function(d) {
                 return d.properties.name;
@@ -1030,7 +964,7 @@ export var CardRenderer = {
         return chartRenderer;
     },
 
-    country: function(id, card, result) {
+    country: function(element, card, result) {
         var chartData = _.map(result.rows, function(value) {
             // Does this actually make sense? If country is > 2 characters just use the first 2 letters as the country code ?? (WTF)
             var countryCode = value[0];
@@ -1044,7 +978,7 @@ export var CardRenderer = {
             };
         });
 
-        var chartRenderer = new GeoHeatmapChartRenderer(id, card, result)
+        var chartRenderer = new GeoHeatmapChartRenderer(element, card, result)
             .setData(chartData, 'code', 'value')
             .setJson('/app/charts/world.json', function(d) {
                 return d.properties.ISO_A2; // 2-letter country code
@@ -1060,49 +994,7 @@ export var CardRenderer = {
         return chartRenderer;
     },
 
-    ll_heatmap: function(id, card, result) {
-        var mapOptions = {
-                zoom: 2,
-                center: new google.maps.LatLng(result.average_latitude, result.average_longitude),
-                mapTypeId: google.maps.MapTypeId.MAP
-            };
-
-        var map = new google.maps.Map(document.getElementById(id), mapOptions);
-
-        var southWest = new google.maps.LatLng(result.min_latitude, result.min_longitude),
-            northEast = new google.maps.LatLng(result.max_latitude, result.max_longitude),
-            average = new google.maps.LatLng(result.average_latitude, result.average_longitude);
-
-        var bounds = new google.maps.LatLngBounds();
-        bounds.extend(southWest);
-        bounds.extend(northEast);
-        bounds.extend(average);
-        map.fitBounds(bounds);
-
-        var pointData = [];
-        for (var i = 0; i < result.rows.length; i++) {
-            pointData.push(new google.maps.LatLng(result.rows[i][0], result.rows[i][1]));
-        }
-        var pointArray = new google.maps.MVCArray(pointData);
-
-        var heatmap = new google.maps.visualization.HeatmapLayer({
-            data: pointArray,
-            radius: 16,
-            maxIntensity: 4
-        });
-
-        heatmap.setMap(map);
-        var height = CardRenderer.getAvailableCanvasHeight(id, card),
-            width = CardRenderer.getAvailableCanvasWidth(id, card);
-        if (!height) height = 450;
-
-        document.getElementById(id).style.height = height + "px";
-        if (width !== null) {
-            document.getElementById(id).style.width = width + "px";
-        }
-    },
-
-    pin_map: function(id, card, updateMapCenter, updateMapZoom) {
+    pin_map: function(element, card, updateMapCenter, updateMapZoom) {
         var query = card.dataset_query,
             vs = card.visualization_settings,
             latitude_dataset_col_index = vs.map.latitude_dataset_col_index,
@@ -1136,17 +1028,18 @@ export var CardRenderer = {
             tileSize: new google.maps.Size(256, 256)
         });
 
-        var height = CardRenderer.getAvailableCanvasHeight(id, card),
-            width = CardRenderer.getAvailableCanvasWidth(id, card);
+        var height = CardRenderer.getAvailableCanvasHeight(element, card);
+        var width = CardRenderer.getAvailableCanvasWidth(element, card);
 
-        if (height === null) height = 450;
-        document.getElementById(id).style.height = height + "px";
-
-        if (width !== null) {
-            document.getElementById(id).style.width = width + "px";
+        if (height !== null) {
+            element.style.height = height + "px";
         }
 
-        var map = new google.maps.Map(document.getElementById(id), mapOptions);
+        if (width !== null) {
+            element.style.width = width + "px";
+        }
+
+        var map = new google.maps.Map(element, mapOptions);
 
         map.overlayMapTypes.push(markerImageMapType);
 
@@ -1172,18 +1065,8 @@ export var CardRenderer = {
         //listen for resize event (internal to CardRenderer)
         //to let google maps api know about the resize
         //(see https://developers.google.com/maps/documentation/javascript/reference)
-        document.getElementById(id).addEventListener('cardrenderer-card-resized', function() {
+        element.addEventListener('cardrenderer-card-resized', function() {
             google.maps.event.trigger(map, 'resize');
         });
-    },
-
-    table: function(id, card) {
-        // set the size of the table's container to the initial
-        // size prescribed by gridster (if applicable).
-        if (card.render_settings !== undefined &&
-            card.render_settings.size.initialHeight !== 'undefined' &&
-            card.render_settings.size.initialWidth !== 'undefined') {
-            CardRenderer.setSize(id, card.render_settings.size.initialHeight, card.render_settings.size.initialWidth);
-        }
     }
 };

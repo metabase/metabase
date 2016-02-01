@@ -14,12 +14,13 @@ import SavedQuestionsApp from './containers/SavedQuestionsApp.jsx';
 import { createStore, combineReducers } from "metabase/lib/redux";
 import _ from "underscore";
 
-import MetabaseAnalytics from '../lib/analytics';
+import MetabaseAnalytics from "metabase/lib/analytics";
 import DataGrid from "metabase/lib/data_grid";
-
 import Query from "metabase/lib/query";
 import { serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
 import { loadTable } from "metabase/lib/table";
+import { getDefaultColor } from "metabase/lib/visualization_settings";
+
 import NotFound from "metabase/components/NotFound.jsx";
 
 import * as reducers from './reducers';
@@ -41,8 +42,8 @@ CardControllers.controller('CardList', ['$scope', '$location', function($scope, 
 }]);
 
 CardControllers.controller('CardDetail', [
-    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'Metabase', 'VisualizationSettings', 'Revision',
-    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, Metabase, VisualizationSettings, Revision) {
+    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'Metabase', 'Revision',
+    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, Metabase, Revision) {
         // promise helper
         $q.resolve = function(object) {
             var deferred = $q.defer();
@@ -173,7 +174,6 @@ CardControllers.controller('CardDetail', [
         };
 
         var visualizationModel = {
-            visualizationSettingsApi: VisualizationSettings,
             card: null,
             result: null,
             databases: null,
@@ -188,7 +188,7 @@ CardControllers.controller('CardDetail', [
                 var vizSettings = card.visualization_settings;
 
                 // if someone picks the default color then clear any color settings
-                if (color === VisualizationSettings.getDefaultColor()) {
+                if (color === getDefaultColor()) {
                     // NOTE: this only works if setting color is the only option we allow
                     card.visualization_settings = {};
 

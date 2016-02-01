@@ -2,7 +2,7 @@ import _ from "underscore";
 
 import MetabaseAnalytics from 'metabase/lib/analytics';
 import MetabaseCookies from 'metabase/lib/cookies';
-import MetabaseCore from 'metabase/lib/core';
+import * as MetabaseCore from 'metabase/lib/core';
 import MetabaseSettings from 'metabase/lib/settings';
 
 

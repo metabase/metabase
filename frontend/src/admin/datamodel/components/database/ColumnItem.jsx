@@ -3,7 +3,7 @@ import React, { Component, PropTypes } from "react";
 import Input from "metabase/components/Input.jsx";
 import Select from "metabase/components/Select.jsx";
 
-import MetabaseCore from "metabase/lib/core";
+import * as MetabaseCore from "metabase/lib/core";
 
 import _  from "underscore";
 
