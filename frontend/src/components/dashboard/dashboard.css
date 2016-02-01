@@ -50,6 +50,7 @@
 }
 
 .Dash--editing .DashCard .Card {
+    pointer-events: none;
     border: 1px dashed rgba(149, 149, 149, 0.5);
     transition: border .3s, background-color .3s;
 }
