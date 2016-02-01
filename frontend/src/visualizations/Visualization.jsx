@@ -71,8 +71,8 @@ export default class Visualization extends Component {
             );
         } else {
             let { card } = this.props;
-            let Visualization = visualizations.get(card.display);
-            return <Visualization {...this.props} onRenderError={this.onRenderError} />;
+            let CardVisualization = visualizations.get(card.display);
+            return <CardVisualization {...this.props} onRenderError={this.onRenderError} />;
         }
     }
 }
