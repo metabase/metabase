@@ -533,6 +533,13 @@ CardControllers.controller('CardDetail', [
             tables = null;
             tableMetadata = null;
 
+            let db = _.findWhere(databases, { id: databaseId });
+            if (db && db.tables) {
+                tables = db.tables;
+                renderAll();
+                return;
+            }
+
             // get tables for db
             Metabase.db_tables({
                 'dbId': databaseId
@@ -897,19 +904,9 @@ CardControllers.controller('CardDetail', [
             }
         });
 
-        // TODO: while we wait for the databases list we should put something on screen
-        // grab our database list, then handle the rest
-        async function loadDatabasesAndTables() {
-            let dbs = await Metabase.db_list().$promise;
-            return await * dbs.map(async function(db) {
-                db.tables = await Metabase.db_tables({ dbId: db.id }).$promise;
-                return db;
-            });
-        }
-
         async function init() {
             try {
-                databases = await loadDatabasesAndTables();
+                databases = await Metabase.db_list_with_tables().$promise;
 
                 if (databases.length < 1) {
                     // TODO: some indication that setting up a db is required

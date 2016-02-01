@@ -5,15 +5,8 @@ import { isQueryable } from "metabase/lib/table";
 import inflection from 'inflection';
 import cx from "classnames";
 
-export default class DataReferenceMain extends Component {
-    constructor(props, context) {
-        super(props, context);
 
-        this.state = {
-            databases: {},
-            tables: {}
-        };
-    }
+export default class DataReferenceMain extends Component {
 
     static propTypes = {
         Metabase: PropTypes.func.isRequired,
@@ -21,27 +14,15 @@ export default class DataReferenceMain extends Component {
     };
 
     render() {
-        var databases;
+        let databases;
         if (this.props.databases) {
             databases = this.props.databases.map((database) => {
-                var dbTables = this.state.databases[database.id];
-                if (dbTables === undefined) {
-                    this.state.databases[database.id] = null; // null indicates loading
-                    this.props.Metabase.db_tables({
-                        'dbId': database.id
-                    }).$promise.then((tables) => {
-                        this.state.databases[database.id] = tables.filter(isQueryable);
-                        this.setState({ databases: this.state.databases });
-                    });
-                }
-                var tables;
-                var tableCount;
-                if (dbTables && dbTables.length > 0) {
-                    tableCount = dbTables.length + " " + inflection.inflect("table", dbTables.length);
-                    tables = dbTables.map((table, index) => {
-                        var classes = cx({
+                if (database.tables && database.tables.length > 0) {
+                    const tableCount = database.tables.length + " " + inflection.inflect("table", database.tables.length);
+                    const tables = database.tables.filter(isQueryable).map((table, index) => {
+                        let classes = cx({
                             'p1' : true,
-                            'border-bottom': index !== dbTables.length - 1
+                            'border-bottom': index !== database.tables.length - 1
                         })
                         return (
                             <li key={table.id} className={classes}>
@@ -49,6 +30,7 @@ export default class DataReferenceMain extends Component {
                             </li>
                         );
                     });
+
                     return (
                         <li key={database.id}>
                             <div className="my2">

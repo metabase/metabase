@@ -42,6 +42,22 @@
       :description     nil
       :features        (mapv name (driver/features (driver/engine->driver (:engine db))))})))
 
+(defn- table-details [table]
+  (match-$ table
+    {:description     $
+     :entity_type     $
+     :visibility_type $
+     :schema          $
+     :name            $
+     :display_name    $
+     :rows            $
+     :updated_at      $
+     :entity_name     $
+     :active          $
+     :id              $
+     :db_id           $
+     :created_at      $}))
+
 
 ;; # DB LIFECYCLE ENDPOINTS
 
@@ -149,6 +165,49 @@
         ;; Now hit the endpoint
         (set ((user->client :rasta) :get 200 "database")))))
 
+;; GET /api/databases (include tables)
+(let [db-name (str "A" (random-name))] ; make sure this name comes before "test-data"
+  (expect-eval-actual-first
+    (set (filter identity (conj (for [engine datasets/all-valid-engines]
+                                  (datasets/when-testing-engine engine
+                                                                (let [database (get-or-create-test-data-db! (driver/engine->driver engine))]
+                                                                  (match-$ database
+                                                                    {:created_at      $
+                                                                     :engine          (name $engine)
+                                                                     :id              $
+                                                                     :updated_at      $
+                                                                     :name            "test-data"
+                                                                     :is_sample       false
+                                                                     :is_full_sync    true
+                                                                     :organization_id nil
+                                                                     :description     nil
+                                                                     :tables          (->> (sel :many Table :db_id (:id database))
+                                                                                           (mapv table-details)
+                                                                                           (sort-by :name))
+                                                                     :features        (mapv name (driver/features (driver/engine->driver engine)))}))))
+                                ;; (?) I don't remember why we have to do this for postgres but not any other of the bonus drivers
+                                (match-$ (sel :one Database :name db-name)
+                                  {:created_at      $
+                                   :engine          "postgres"
+                                   :id              $
+                                   :updated_at      $
+                                   :name            $
+                                   :is_sample       false
+                                   :is_full_sync    true
+                                   :organization_id nil
+                                   :description     nil
+                                   :tables          []
+                                   :features        (mapv name (driver/features (driver/engine->driver :postgres)))}))))
+    (do
+      ;; Delete all the randomly created Databases we've made so far
+      (cascade-delete Database :id [not-in (set (filter identity
+                                                        (for [engine datasets/all-valid-engines]
+                                                          (datasets/when-testing-engine engine
+                                                                                        (:id (get-or-create-test-data-db! (driver/engine->driver engine)))))))])
+      ;; Add an extra DB so we have something to fetch besides the Test DB
+      (create-db db-name)
+      ;; Now hit the endpoint
+      (set ((user->client :rasta) :get 200 "database" :include_tables true)))))
 
 ;; ## GET /api/meta/table/:id/query_metadata
 ;; TODO - add in example with Field :values
