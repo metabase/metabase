@@ -3,7 +3,7 @@ import React, { Component, PropTypes } from "react";
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 
-import visualizations from "../visualizations";
+import visualizations from "metabase/visualizations";
 import { getDefaultColor, getDefaultColorHarmony } from "metabase/lib/visualization_settings";
 
 import cx from "classnames";
