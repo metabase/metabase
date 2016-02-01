@@ -76,10 +76,13 @@ export default class TableInteractive extends Component {
         // if size changes don't update yet because state will change in a moment
         this.calculateSizing(nextState);
 
-        // compare props and state to determine if we should re-render
+        // compare props (excluding card) and state to determine if we should re-render
         // NOTE: this is essentially the same as React.addons.PureRenderMixin but
         // we currently need to recalculate the container size here.
-        return !_.isEqual(this.props, nextProps) || !_.isEqual(this.state, nextState);
+        return (
+            !_.isEqual({ ...this.props, card: null }, { ...nextProps, card: null }) ||
+            !_.isEqual(this.state, nextState)
+        );
     }
 
     componentDidUpdate() {
