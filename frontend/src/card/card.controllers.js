@@ -724,17 +724,17 @@ CardControllers.controller('CardDetail', [
             return card;
         }
 
-        async function loadCard() {
-            if ($routeParams.cardId != undefined) {
-                var card = await loadSavedCard($routeParams.cardId);
-                if ($routeParams.serializedCard) {
-                    let serializedCard = await loadSerializedCard($routeParams.serializedCard);
-                    return _.extend(card, serializedCard);
+        async function loadCard(cardId, serializedCard) {
+            if (cardId != undefined) {
+                var card = await loadSavedCard(cardId);
+                if (serializedCard) {
+                    let deserializedCard = await loadSerializedCard(serializedCard);
+                    return _.extend(card, deserializedCard);
                 } else {
                     return card;
                 }
-            } else if ($routeParams.serializedCard != undefined) {
-                return loadSerializedCard($routeParams.serializedCard);
+            } else if (serializedCard) {
+                return loadSerializedCard(serializedCard);
             } else {
                 return loadNewCard();
             }
@@ -772,7 +772,10 @@ CardControllers.controller('CardDetail', [
         // meant to be called once on controller startup
         async function loadAndSetCard() {
             try {
-                let card = await loadCard();
+                const cardId = $routeParams.cardId;
+                const serializedCard = _.isEmpty($location.hash()) ? null : $location.hash();
+
+                let card = await loadCard(cardId, serializedCard);
                 if ($routeParams.clone) {
                     delete card.id;
                     card.isDirty = true;
@@ -808,6 +811,7 @@ CardControllers.controller('CardDetail', [
 
         function reloadCard() {
             delete $routeParams.serializedCard;
+            $location.hash(null);
             loadAndSetCard();
         }
 
@@ -873,8 +877,12 @@ CardControllers.controller('CardDetail', [
             React.unmountComponentAtNode(document.getElementById('react_data_reference'));
         });
 
+        // prevent angular route change when we manually update the url
+        // NOTE: we tried listening on $locationChangeStart and simply canceling that, but doing so prevents the history and everything
+        //       and ideally we'd simply listen on $routeChangeStart and cancel that when it's the same controller, but that doesn't work :(
 
-        // mildly hacky way to prevent reloading controllers as the URL changes
+        // mildly hacky way to prevent reloading controllers as the URL changes 
+        // this works by setting the new route to the old route and manually moving over params
         var route = $route.current;
         $scope.$on('$locationChangeSuccess', function (event) {
             var newParams = $route.current.params;
@@ -883,7 +891,9 @@ CardControllers.controller('CardDetail', [
             // reload the controller if:
             // 1. not CardDetail
             // 2. both serializedCard and cardId are not set (new card)
-            if ($route.current.$$route.controller === 'CardDetail' && (newParams.serializedCard || newParams.cardId)) {
+            // TODO: is there really ever a reason to reload this route if we are going to the same place?
+            const serializedCard = _.isEmpty($location.hash()) ? null : $location.hash();
+            if ($route.current.$$route.controller === 'CardDetail' && (serializedCard || newParams.cardId)) {
                 $route.current = route;
 
                 angular.forEach(oldParams, function(value, key) {
