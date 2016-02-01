@@ -32,6 +32,4 @@ registerVisualization(USStateMap);
 registerVisualization(WorldMap);
 registerVisualization(PinMap);
 
-window.visualizations = visualizations;
-
 export default visualizations;
