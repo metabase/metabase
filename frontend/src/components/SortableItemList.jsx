@@ -45,7 +45,7 @@ export default class SortableItemList extends Component {
                 <ul className="SortableItemList-list px2 pb2">
                     {items.map(item =>
                         <li key={item.id} className="border-row-divider">
-                            <a className="no-decoration flex p2" href="#" onClick={() => this.onClickItem(item)}>
+                            <a className="no-decoration flex p2" onClick={() => this.onClickItem(item)}>
                                 <div className="flex align-center flex-full mr2">
                                     {this.props.showIcons ?
                                         <div className="mr2"><Icon name={'illustration-'+item.display} width={48} height={48} /></div>

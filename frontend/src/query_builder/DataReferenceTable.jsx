@@ -77,7 +77,7 @@ export default class DataReferenceTable extends Component {
                     'Button--active': name === this.state.pane
                 });
                 return (
-                    <a key={name} className={classes} href="#" onClick={this.showPane.bind(null, name)}>
+                    <a key={name} className={classes} onClick={this.showPane.bind(null, name)}>
                         <span className="DataReference-paneCount">{count}</span><span>{inflection.inflect(name, count)}</span>
                     </a>
                 );
@@ -88,7 +88,7 @@ export default class DataReferenceTable extends Component {
                 var fields = table.fields.map((field, index) => {
                     return (
                         <li key={field.id} className="p1 border-row-divider">
-                            <a className="text-brand text-brand-darken-hover no-decoration" href="#" onClick={this.props.showField.bind(null, field)}>{field.display_name}</a>
+                            <a className="text-brand text-brand-darken-hover no-decoration" onClick={this.props.showField.bind(null, field)}>{field.display_name}</a>
                         </li>
                     );
                 });
@@ -103,7 +103,7 @@ export default class DataReferenceTable extends Component {
 
                     return (
                         <li key={fk.id} className="p1 border-row-divider">
-                            <a className="text-brand text-brand-darken-hover no-decoration" href="#" onClick={this.props.showField.bind(null, fk.origin)}>{fk.origin.table.display_name}{via}</a>
+                            <a className="text-brand text-brand-darken-hover no-decoration" onClick={this.props.showField.bind(null, fk.origin)}>{fk.origin.table.display_name}{via}</a>
                         </li>
                     );
                 });

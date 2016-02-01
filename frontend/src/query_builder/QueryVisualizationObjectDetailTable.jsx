@@ -67,7 +67,7 @@ export default class QueryVisualizationObjectDetailTable extends Component {
 
             // NOTE: that the values to our function call look off, but that's because we are un-pivoting them
             if (this.props.cellIsClickableFn(0, rowIndex)) {
-                return (<div key={key}><a className="link" href="#" onClick={this.cellClicked.bind(null, 0, rowIndex)}>{cellValue}</a></div>);
+                return (<div key={key}><a className="link" onClick={this.cellClicked.bind(null, 0, rowIndex)}>{cellValue}</a></div>);
             } else {
                 return (<div key={key}>{cellValue}</div>);
             }

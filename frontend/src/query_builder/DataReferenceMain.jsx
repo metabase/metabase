@@ -26,7 +26,7 @@ export default class DataReferenceMain extends Component {
                         })
                         return (
                             <li key={table.id} className={classes}>
-                                <a className="text-brand text-brand-darken-hover no-decoration" href="#" onClick={this.props.showTable.bind(null, table)}>{table.display_name}</a>
+                                <a className="text-brand text-brand-darken-hover no-decoration" onClick={this.props.showTable.bind(null, table)}>{table.display_name}</a>
                             </li>
                         );
                     });
