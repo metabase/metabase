@@ -5,7 +5,6 @@ var Card = angular.module('metabase.card', [
     'metabase.filters',
     'metabase.directives',
     'metabase.services',
-    'metabase.card.services',
     'metabase.card.controllers',
     'metabase.card.directives'
 ]);

@@ -8,10 +8,9 @@ const reducer = combineReducers(reducers);
 //  Dashboard Controllers
 var DashboardControllers = angular.module('metabase.dashboard.controllers', []);
 
-DashboardControllers.controller('Dashboard', ['$scope', '$rootScope', '$routeParams', '$location', 'VisualizationSettings', function($scope, $rootScope, $routeParams, $location, VisualizationSettings) {
+DashboardControllers.controller('Dashboard', ['$scope', '$rootScope', '$routeParams', '$location', function($scope, $rootScope, $routeParams, $location) {
     $scope.Component = DashboardApp;
     $scope.props = {
-        visualizationSettingsApi: VisualizationSettings,
         onChangeLocation: function(url) {
             $scope.$apply(() => $location.url(url));
         },

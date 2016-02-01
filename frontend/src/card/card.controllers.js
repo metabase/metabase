@@ -14,12 +14,13 @@ import SavedQuestionsApp from './containers/SavedQuestionsApp.jsx';
 import { createStore, combineReducers } from "metabase/lib/redux";
 import _ from "underscore";
 
-import MetabaseAnalytics from '../lib/analytics';
+import MetabaseAnalytics from "metabase/lib/analytics";
 import DataGrid from "metabase/lib/data_grid";
-
 import Query from "metabase/lib/query";
 import { serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
 import { loadTable } from "metabase/lib/table";
+import { getDefaultColor } from "metabase/lib/visualization_settings";
+
 import NotFound from "metabase/components/NotFound.jsx";
 
 import * as reducers from './reducers';
@@ -41,8 +42,8 @@ CardControllers.controller('CardList', ['$scope', '$location', function($scope, 
 }]);
 
 CardControllers.controller('CardDetail', [
-    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'Metabase', 'VisualizationSettings', 'Revision',
-    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, Metabase, VisualizationSettings, Revision) {
+    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'Metabase', 'Revision',
+    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, Metabase, Revision) {
         // promise helper
         $q.resolve = function(object) {
             var deferred = $q.defer();
@@ -173,7 +174,6 @@ CardControllers.controller('CardDetail', [
         };
 
         var visualizationModel = {
-            visualizationSettingsApi: VisualizationSettings,
             card: null,
             result: null,
             databases: null,
@@ -188,7 +188,7 @@ CardControllers.controller('CardDetail', [
                 var vizSettings = card.visualization_settings;
 
                 // if someone picks the default color then clear any color settings
-                if (color === VisualizationSettings.getDefaultColor()) {
+                if (color === getDefaultColor()) {
                     // NOTE: this only works if setting color is the only option we allow
                     card.visualization_settings = {};
 
@@ -532,6 +532,13 @@ CardControllers.controller('CardDetail', [
 
             tables = null;
             tableMetadata = null;
+
+            let db = _.findWhere(databases, { id: databaseId });
+            if (db && db.tables) {
+                tables = db.tables;
+                renderAll();
+                return;
+            }
 
             // get tables for db
             Metabase.db_tables({
@@ -907,19 +914,9 @@ CardControllers.controller('CardDetail', [
             }
         });
 
-        // TODO: while we wait for the databases list we should put something on screen
-        // grab our database list, then handle the rest
-        async function loadDatabasesAndTables() {
-            let dbs = await Metabase.db_list().$promise;
-            return await * dbs.map(async function(db) {
-                db.tables = await Metabase.db_tables({ dbId: db.id }).$promise;
-                return db;
-            });
-        }
-
         async function init() {
             try {
-                databases = await loadDatabasesAndTables();
+                databases = await Metabase.db_list_with_tables().$promise;
 
                 if (databases.length < 1) {
                     // TODO: some indication that setting up a db is required

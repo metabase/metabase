@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from "react";
 
-export default class TableCard extends Component {
+export default class TableSimple extends Component {
 
     static propTypes = {
         data: PropTypes.object.isRequired
