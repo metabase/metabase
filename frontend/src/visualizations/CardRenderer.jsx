@@ -2,12 +2,12 @@ import React, { Component, PropTypes } from "react";
 
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 
-import { CardRenderer } from '../card/card.charting';
+import * as charting from '../card/card.charting';
 
 import { getSettingsForVisualization, setLatitudeAndLongitude } from "metabase/lib/visualization_settings";
 
 @ExplicitSize
-export default class CardRendererComponent extends Component {
+export default class CardRenderer_ extends Component {
     static propTypes = {
         card: PropTypes.object.isRequired,
         data: PropTypes.object
@@ -71,10 +71,10 @@ export default class CardRendererComponent extends Component {
                     };
 
 
-                    CardRenderer[this.props.card.display](element, card, no_op, no_op);
+                    charting.CardRenderer[this.props.card.display](element, card, no_op, no_op);
                 } else {
                     // TODO: it would be nicer if this didn't require the whole card
-                    CardRenderer[this.props.card.display](element, card, this.props.data);
+                    charting.CardRenderer[this.props.card.display](element, card, this.props.data);
                 }
             } catch (err) {
                 console.error(err);
