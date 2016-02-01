@@ -19,7 +19,7 @@ export default class DataReferenceMain extends Component {
             databases = this.props.databases.map((database) => {
                 if (database.tables && database.tables.length > 0) {
                     const tableCount = database.tables.length + " " + inflection.inflect("table", database.tables.length);
-                    const tables = database.tables.map((table, index) => {
+                    const tables = database.tables.filter(isQueryable).map((table, index) => {
                         let classes = cx({
                             'p1' : true,
                             'border-bottom': index !== database.tables.length - 1
