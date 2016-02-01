@@ -170,21 +170,21 @@
   (expect-eval-actual-first
     (set (filter identity (conj (for [engine datasets/all-valid-engines]
                                   (datasets/when-testing-engine engine
-                                                                (match-$ (get-or-create-test-data-db! (driver/engine->driver engine))
-                                                                  {:created_at      $
-                                                                   :engine          (name $engine)
-                                                                   :id              $
-                                                                   :updated_at      $
-                                                                   :name            "test-data"
-                                                                   :is_sample       false
-                                                                   :is_full_sync    true
-                                                                   :organization_id nil
-                                                                   :description     nil
-                                                                   :tables          [(table-details (Table (id :categories)))
-                                                                                     (table-details (Table (id :checkins)))
-                                                                                     (table-details (Table (id :users)))
-                                                                                     (table-details (Table (id :venues)))]
-                                                                   :features        (mapv name (driver/features (driver/engine->driver engine)))})))
+                                                                (let [database (get-or-create-test-data-db! (driver/engine->driver engine))]
+                                                                  (match-$ database
+                                                                    {:created_at      $
+                                                                     :engine          (name $engine)
+                                                                     :id              $
+                                                                     :updated_at      $
+                                                                     :name            "test-data"
+                                                                     :is_sample       false
+                                                                     :is_full_sync    true
+                                                                     :organization_id nil
+                                                                     :description     nil
+                                                                     :tables          (->> (sel :many Table :db_id (:id database))
+                                                                                           (mapv table-details)
+                                                                                           (sort-by :name))
+                                                                     :features        (mapv name (driver/features (driver/engine->driver engine)))}))))
                                 ;; (?) I don't remember why we have to do this for postgres but not any other of the bonus drivers
                                 (match-$ (sel :one Database :name db-name)
                                   {:created_at      $
