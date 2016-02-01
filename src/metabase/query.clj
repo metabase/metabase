@@ -2,11 +2,10 @@
   "Functions for dealing with structured queries."
   (:require [clojure.core.match :refer [match]]))
 
-
 (defn- parse-filter-subclause [subclause]
   (match subclause
          ["SEGMENT" (segment-id :guard integer?)] segment-id
-         subclause                                nil))
+         _                                        nil))
 
 (defn- parse-filter [clause]
   (match clause
@@ -21,8 +20,9 @@
          (filter identity)
          set)))
 
-(defn extract-metric-ids [query]
+(defn extract-metric-ids
+  [query]
   (when-let [aggregation-clause (:aggregation query)]
     (match aggregation-clause
       ["METRIC" (metric-id :guard integer?)] #{metric-id}
-      other                                  nil)))
+      _                                       nil)))

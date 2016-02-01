@@ -44,7 +44,9 @@
   DateTimeField         (->rvalue [this] (->rvalue (:field this)))
   Value                 (->rvalue [this] (:value this))
   DateTimeValue         (->rvalue [{{unit :unit} :field, value :value}] (u/date->iso-8601 (u/date-trunc-or-extract unit value)))
-  RelativeDateTimeValue (->rvalue [{:keys [unit amount]}]               (u/date->iso-8601 (u/date-trunc-or-extract unit (u/relative-date unit amount)))))
+  RelativeDateTimeValue (->rvalue [{:keys [unit amount], :as this}]     (if (zero? amount)
+                                                                          (u/date->iso-8601)
+                                                                          (u/date->iso-8601 (u/date-trunc-or-extract unit (u/relative-date unit amount))))))
 
 (defprotocol ^:private IDimensionOrMetric
   (^:private dimension-or-metric? [this]
@@ -207,7 +209,10 @@
 ;;; ### handle-filter
 
 (defn- filter:not [filter]
-  {:type :not, :field filter})
+  {:pre [filter]}
+  (if (= (:type filter) :not)     ; it looks like "two nots don't make an identity" with druid
+    (:field filter)
+    {:type :not, :field filter}))
 
 (defn- filter:= [field value]
   {:type      :selector
@@ -231,6 +236,7 @@
       (throw (IllegalArgumentException. (u/format-color 'red "WARNING: Filtering only works on dimensions! '%s' is a metric. Ignoring %s filter." (->rvalue field) filter-type))))))
 
 (defn- parse-filter-subclause:filter [{:keys [filter-type field value] :as filter}]
+  {:pre [filter]}
   ;; We'll handle :timestamp separately. It needs to go in :intervals instead
   (when-not (instance? DateTimeField field)
     (try (when field
@@ -266,12 +272,14 @@
          (catch Throwable e
            (log/warn (.getMessage e))))))
 
-(defn- parse-filter-clause:filter [{:keys [compound-type subclauses], :as clause}]
-  (if-not compound-type
-    (parse-filter-subclause:filter clause)
-    (let [subclauses (filterv identity (map parse-filter-clause:filter subclauses))]
-      (when (seq subclauses)
-        {:type compound-type, :fields subclauses}))))
+(defn- parse-filter-clause:filter [{:keys [compound-type subclauses subclause], :as clause}]
+  {:pre [clause]}
+  (case compound-type
+    :and {:type :and, :fields (filterv identity (map parse-filter-clause:filter subclauses))}
+    :or  {:type :or,  :fields (filterv identity (map parse-filter-clause:filter subclauses))}
+    :not (when-let [subclause (parse-filter-subclause:filter subclause)]
+           (filter:not subclause))
+    nil  (parse-filter-subclause:filter clause)))
 
 
 (defn- make-intervals [min max & more]
@@ -316,7 +324,9 @@
                                                          "Ignoring these intervals: %s") (rest subclauses))))
                    [(first subclauses)])
           ;; Ok to specify multiple intervals for OR
-          :or  subclauses)))))
+          :or  subclauses
+          ;; We should never get to this point since the all non-string negations should get automatically rewritten by the query expander.
+          :not (log/warn (u/format-color 'red "WARNING: Don't know how to negate: %s" clause)))))))
 
 
 (defn- handle-filter [_ {filter-clause :filter} druid-query]

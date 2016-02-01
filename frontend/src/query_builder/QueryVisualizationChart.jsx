@@ -131,7 +131,6 @@ export default class QueryVisualizationChart extends Component {
 
     render() {
         // rendering a chart of some type
-        var titleId = 'card-title--'+this.state.chartId;
         var innerId = 'card-inner--'+this.state.chartId;
 
         var errorMessage;
@@ -150,8 +149,7 @@ export default class QueryVisualizationChart extends Component {
 
         return (
             <div className={"Card--" + this.props.card.display + " Card-outer px1"} id={this.state.chartId}>
-                <div id={titleId} className="text-centered"></div>
-                <div id={innerId} className="card-inner"></div>
+                <div id={innerId} className="card-inner" style={{ display: errorMessage ? "none" : undefined }}></div>
                 {errorMessage}
             </div>
         );

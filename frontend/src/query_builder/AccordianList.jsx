@@ -3,14 +3,31 @@ import React, { Component, PropTypes } from "react";
 import Icon from "metabase/components/Icon.jsx";
 
 import cx from "classnames";
-
 import _ from "underscore";
 
 export default class AccordianList extends Component {
     constructor(props, context) {
         super(props, context);
+
+        let openSection;
+        // use initiallyOpenSection prop if present
+        if (props.initiallyOpenSection !== undefined) {
+            openSection = props.initiallyOpenSection;
+        }
+        // otherwise try to find the selected section, if any
+        if (openSection === undefined) {
+            openSection = _.findIndex(props.sections, (section, index) => this.sectionIsSelected(section, index));
+            if (openSection === -1) {
+                openSection = undefined;
+            }
+        }
+        // default to the first section
+        if (openSection === undefined) {
+            openSection = 0;
+        }
+
         this.state = {
-            openSection: props.initiallyOpenSection
+            openSection
         };
     }
 
@@ -24,10 +41,6 @@ export default class AccordianList extends Component {
         renderItem: PropTypes.func,
         renderSectionIcon: PropTypes.func,
         getItemClasses: PropTypes.func
-    };
-
-    static defaultProps = {
-        initiallyOpenSection: 0
     };
 
     toggleSection(sectionIndex) {
