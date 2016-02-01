@@ -15,6 +15,7 @@ export default class Bar extends Component {
     }
 
     static checkRenderable(cols, rows) {
+        // scalar can always be rendered, nothing needed here
     }
 
     render() {

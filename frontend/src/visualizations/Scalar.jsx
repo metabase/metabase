@@ -12,6 +12,7 @@ export default class Scalar extends Component {
     }
 
     static checkRenderable(cols, rows) {
+        // scalar can always be rendered, nothing needed here
     }
 
     render() {
