@@ -183,7 +183,7 @@ export default class QueryVisualizationTable extends Component {
         var key = 'cl'+rowIndex+'_'+cellDataKey;
         if (this.props.cellIsClickableFn(rowIndex, cellDataKey)) {
             return (
-                <a key={key} className="link cellData" href="#" onClick={this.cellClicked.bind(this, rowIndex, cellDataKey)}>{cellData}</a>
+                <a key={key} className="link cellData" onClick={this.cellClicked.bind(this, rowIndex, cellDataKey)}>{cellData}</a>
             );
         } else {
             var popover = null;
