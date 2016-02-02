@@ -5,30 +5,33 @@ import React, { Component, PropTypes } from "react";
 import Visualization from "metabase/visualizations/Visualization.jsx";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 
-import { fetchDashCardData, markNewCardSeen } from "../actions";
-
 import cx from "classnames";
 
 export default class DashCard extends Component {
     constructor(props, context) {
         super(props, context);
-        this.state = { error: null };
+
+        this.state = {
+            error: null
+        };
     }
 
     static propTypes = {
-        dispatch: PropTypes.func.isRequired,
-        dashcard: PropTypes.object.isRequired
+        dashcard: PropTypes.object.isRequired,
+
+        markNewCardSeen: PropTypes.func.isRequired,
+        fetchDashCardData: PropTypes.func.isRequired,
     };
 
     async componentDidMount() {
         // HACK: way to scroll to a newly added card
         if (this.props.dashcard.justAdded) {
             React.findDOMNode(this).scrollIntoView();
-            this.props.dispatch(markNewCardSeen(this.props.dashcard.id));
+            this.props.markNewCardSeen(this.props.dashcard.id);
         }
 
         try {
-            await this.props.dispatch(fetchDashCardData(this.props.dashcard.id));
+            await this.props.fetchDashCardData(this.props.dashcard.id);
         } catch (error) {
             this.setState({ error });
         }

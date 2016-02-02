@@ -20,13 +20,17 @@ function formatDate(date) {
 export default class HistoryModal extends Component {
     constructor(props, context) {
         super(props, context);
-        this.state = { error: null };
+
+        this.state = {
+            error: null
+        };
     }
 
     static propTypes = {
         revisions: PropTypes.array,
         entityType: PropTypes.string.isRequired,
         entityId: PropTypes.number.isRequired,
+
         onFetchRevisions: PropTypes.func.isRequired,
         onRevertToRevision: PropTypes.func.isRequired,
         onClose: PropTypes.func.isRequired,

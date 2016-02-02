@@ -4,24 +4,34 @@ import DashboardHeader from "../components/DashboardHeader.jsx";
 import DashboardGrid from "../components/DashboardGrid.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
-import { fetchDashboard } from "../actions";
-
 export default class Dashboard extends Component {
 
     constructor(props, context) {
         super(props, context);
-        this.state = { error: null };
+
+        this.state = {
+            error: null
+        };
     }
 
     static propTypes = {
-        dispatch: PropTypes.func.isRequired,
+        addCardToDashboard: PropTypes.func.isRequired,
+        deleteDashboard: PropTypes.func.isRequired,
+        fetchCards: PropTypes.func.isRequired,
+        fetchDashboard: PropTypes.func.isRequired,
+        fetchRevisions: PropTypes.func.isRequired,
+        revertToRevision: PropTypes.func.isRequired,
+        saveDashboard: PropTypes.func.isRequired,
+        setDashboardAttributes: PropTypes.func.isRequired,
+        setEditingDashboard: PropTypes.func.isRequired,
+
         onChangeLocation: PropTypes.func.isRequired,
-        onDashboardDeleted: PropTypes.func.isRequired
+        onDashboardDeleted: PropTypes.func.isRequired,
     };
 
     async componentDidMount() {
         try {
-            await this.props.dispatch(fetchDashboard(this.props.selectedDashboard));
+            await this.props.fetchDashboard(this.props.selectedDashboard);
         } catch (error) {
             if (error.status === 404) {
                 this.props.onChangeLocation("/404");

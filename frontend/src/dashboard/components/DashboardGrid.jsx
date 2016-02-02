@@ -8,28 +8,32 @@ import DashCard from "./DashCard.jsx";
 import Modal from "metabase/components/Modal.jsx";
 import RemoveFromDashboardModal from "./RemoveFromDashboardModal.jsx";
 
-import { setDashCardAttributes } from "../actions";
-
 import _ from "underscore";
 import cx from "classnames";
 
 export default class DashboardGrid extends Component {
-
     constructor(props, context) {
         super(props, context);
+
         this.state = {
             layouts: this.getLayouts(props),
             removeModalDashCard: null,
             rowHeight: 0,
             isDragging: false
         };
-        this.calculateSizing = this.calculateSizing.bind(this);
+
+        _.bindAll(this, "calculateSizing");
     }
 
     static propTypes = {
-        dispatch: PropTypes.func.isRequired,
         isEditing: PropTypes.bool.isRequired,
         dashboard: PropTypes.object.isRequired,
+
+        setDashCardAttributes: PropTypes.func.isRequired,
+        removeCardFromDashboard: PropTypes.func.isRequired,
+        markNewCardSeen: PropTypes.func.isRequired,
+        fetchDashCardData: PropTypes.func.isRequired,
+
         onChangeLocation: PropTypes.func.isRequired
     };
 
@@ -48,10 +52,10 @@ export default class DashboardGrid extends Component {
             return !_.isEqual(newLayout, this.getLayoutForDashCard(newLayout.dashcard))
         });
         for (var change of changes) {
-            this.props.dispatch(setDashCardAttributes({
+            this.props.setDashCardAttributes({
                 id: change.dashcard.id,
                 attributes: { col: change.x, row: change.y, sizeX: change.w, sizeY: change.h }
-            }));
+            });
             change.dashcard.col = change.x;
             change.dashcard.row = change.y;
             change.dashcard.sizeX = change.w;
@@ -93,12 +97,12 @@ export default class DashboardGrid extends Component {
 
     renderRemoveModal() {
         // can't use PopoverWithTrigger due to strange interaction with ReactGridLayout
-        return (
-            <Modal isOpen={this.state.removeModalDashCard != null}>
+        return this.state.removeModalDashCard != null && (
+            <Modal>
                 <RemoveFromDashboardModal
-                    dispatch={this.props.dispatch}
                     dashcard={this.state.removeModalDashCard}
                     dashboard={this.props.dashboard}
+                    removeCardFromDashboard={this.props.removeCardFromDashboard}
                     onClose={() => this.setState({ removeModalDashCard: null })}
                 />
             </Modal>
@@ -172,7 +176,8 @@ export default class DashboardGrid extends Component {
                             <DashCard
                                 key={dc.id}
                                 dashcard={dc}
-                                dispatch={this.props.dispatch}
+                                fetchDashCardData={this.props.fetchDashCardData}
+                                markNewCardSeen={this.props.markNewCardSeen}
                             />
                             <div className="DashCard-actions absolute top right text-brand p1">
                                 <a href="#" onClick={() => this.onEditDashCard(dc)}>
