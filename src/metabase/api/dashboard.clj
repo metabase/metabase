@@ -39,13 +39,13 @@
 (defendpoint GET "/:id"
   "Get `Dashboard` with ID."
   [id]
-  (let-404 [db (-> (Dashboard id)
-                   read-check
-                   (hydrate :creator [:ordered_cards [:card :creator]] :can_read :can_write)
-                   (assoc :actor_id *current-user-id*)
-                   (->> (events/publish-event :dashboard-read))
-                   (dissoc :actor_id))]
-    {:dashboard db})) ; why is this returned with this {:dashboard} wrapper?
+  (let-404 [dash (Dashboard id)]
+    (read-check dash)
+    (->500 dash
+           (hydrate :creator [:ordered_cards [:card :creator]] :can_read :can_write)
+           (assoc :actor_id *current-user-id*)
+           (->> (events/publish-event :dashboard-read))
+           (dissoc :actor_id))))
 
 (defendpoint PUT "/:id"
   "Update a `Dashboard`."

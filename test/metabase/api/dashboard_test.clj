@@ -76,32 +76,32 @@
 
 ;; ## GET /api/dashboard/:id
 (expect
-  {:dashboard {:name            "Test Dashboard"
-               :description     nil
-               :creator_id      (user->id :rasta)
-               :creator         (user-details (fetch-user :rasta))
-               :public_perms    0
-               :can_read        true
-               :can_write       true
-               :updated_at      true
-               :created_at      true
-               :ordered_cards   [{:sizeX        2
-                                  :sizeY        2
-                                  :col          nil
-                                  :row          nil
-                                  :updated_at   true
-                                  :created_at   true
-                                  :card         {:name                   "Dashboard Test Card"
-                                                 :description            nil
-                                                 :public_perms           0
-                                                 :creator_id             (user->id :rasta)
-                                                 :creator                (user-details (fetch-user :rasta))
-                                                 :organization_id        nil
-                                                 :display                "scalar"
-                                                 :query_type             nil
-                                                 :dataset_query          {:something "simple"}
-                                                 :visualization_settings {:global {:title nil}}}}]
-               :organization_id nil}}
+  {:name            "Test Dashboard"
+   :description     nil
+   :creator_id      (user->id :rasta)
+   :creator         (user-details (fetch-user :rasta))
+   :public_perms    0
+   :can_read        true
+   :can_write       true
+   :updated_at      true
+   :created_at      true
+   :ordered_cards   [{:sizeX        2
+                      :sizeY        2
+                      :col          nil
+                      :row          nil
+                      :updated_at   true
+                      :created_at   true
+                      :card         {:name                   "Dashboard Test Card"
+                                     :description            nil
+                                     :public_perms           0
+                                     :creator_id             (user->id :rasta)
+                                     :creator                (user-details (fetch-user :rasta))
+                                     :organization_id        nil
+                                     :display                "scalar"
+                                     :query_type             nil
+                                     :dataset_query          {:something "simple"}
+                                     :visualization_settings {:global {:title nil}}}}]
+   :organization_id nil}
   ;; fetch a dashboard WITH a dashboard card on it
   (tu/with-temp Dashboard [{dashboard-id :id} {:name         "Test Dashboard"
                                                :public_perms 0
@@ -115,7 +115,7 @@
       (tu/with-temp DashboardCard [_ {:dashboard_id dashboard-id
                                       :card_id      card-id}]
         (-> ((user->client :rasta) :get 200 (format "dashboard/%d" dashboard-id))
-            (update :dashboard dashboard-response))))))
+            dashboard-response)))))
 
 
 ;; ## PUT /api/dashboard/:id
