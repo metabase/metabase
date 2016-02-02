@@ -24,5 +24,8 @@
       (instance? RelativeDatetime value)
       (map->RelativeDateTimeValue {:field this, :amount (:amount value), :unit (:unit value)})
 
+      (nil? value)
+      nil
+
       :else
       (throw (Exception. (format "Invalid value '%s': expected a DateTime." value))))))
