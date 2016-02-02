@@ -217,7 +217,7 @@
          (count (db/sel :many :field [DashboardCard :id] :dashboard_id dashboard-id))]))))
 
 
-;; ## POST /api/dashboard/:id/reposition
+;; ## PUT /api/dashboard/:id/cards
 (expect
   [[{:sizeX        2
      :sizeY        2
@@ -251,14 +251,14 @@
         (tu/with-temp DashboardCard [{dashcard-id2 :id} {:dashboard_id dashboard-id
                                                          :card_id      card-id}]
           [(db/sel :many :fields [DashboardCard :sizeX :sizeY :row :col] :dashboard_id dashboard-id (k/order :id :asc))
-           ((user->client :rasta) :post 200 (format "dashboard/%d/reposition" dashboard-id) {:cards [{:id    dashcard-id1
-                                                                                                      :sizeX 4
-                                                                                                      :sizeY 2
-                                                                                                      :col   0
-                                                                                                      :row   0}
-                                                                                                     {:id    dashcard-id2
-                                                                                                      :sizeX 1
-                                                                                                      :sizeY 1
-                                                                                                      :col   1
-                                                                                                      :row   3}]})
+           ((user->client :rasta) :put 200 (format "dashboard/%d/cards" dashboard-id) {:cards [{:id    dashcard-id1
+                                                                                                :sizeX 4
+                                                                                                :sizeY 2
+                                                                                                :col   0
+                                                                                                :row   0}
+                                                                                               {:id    dashcard-id2
+                                                                                                :sizeX 1
+                                                                                                :sizeY 1
+                                                                                                :col   1
+                                                                                                :row   3}]})
            (db/sel :many :fields [DashboardCard :sizeX :sizeY :row :col] :dashboard_id dashboard-id (k/order :id :asc))])))))
