@@ -4,7 +4,7 @@
             [korma.core :as k]
             [metabase.events :as events]
             [metabase.api.common :refer :all]
-            [metabase.db :refer :all]
+            [metabase.db :as db]
             (metabase.models [hydrate :refer [hydrate]]
                              [card :refer [Card]]
                              [common :as common]
@@ -19,9 +19,9 @@
   [f]
   {f FilterOptionAllOrMine}
   (-> (case (or f :all)
-        :all  (sel :many Dashboard (k/where (or {:creator_id *current-user-id*}
+        :all  (db/sel :many Dashboard (k/where (or {:creator_id *current-user-id*}
                                                 {:public_perms [> common/perms-none]})))
-        :mine (sel :many Dashboard :creator_id *current-user-id*))
+        :mine (db/sel :many Dashboard :creator_id *current-user-id*))
       (hydrate :creator :can_read :can_write)))
 
 (defendpoint POST "/"
@@ -29,11 +29,11 @@
   [:as {{:keys [name description public_perms] :as body} :body}]
   {name         [Required NonEmptyString]
    public_perms [Required PublicPerms]}
-  (->> (ins Dashboard
-            :name name
-            :description description
-            :public_perms public_perms
-            :creator_id *current-user-id*)
+  (->> (db/ins Dashboard
+               :name name
+               :description description
+               :public_perms public_perms
+               :creator_id *current-user-id*)
        (events/publish-event :dashboard-create)))
 
 (defendpoint GET "/:id"
@@ -52,18 +52,18 @@
   [id :as {{:keys [description name public_perms]} :body}]
   {name NonEmptyString, public_perms PublicPerms}
   (write-check Dashboard id)
-  (check-500 (upd-non-nil-keys Dashboard id
-                               :description description
-                               :name name))
-  (events/publish-event :dashboard-update (assoc (sel :one Dashboard :id id) :actor_id *current-user-id*)))
+  (check-500 (db/upd-non-nil-keys Dashboard id
+                                  :description description
+                                  :name name))
+  (events/publish-event :dashboard-update (assoc (db/sel :one Dashboard :id id) :actor_id *current-user-id*)))
 
 (defendpoint DELETE "/:id"
   "Delete a `Dashboard`."
   [id]
   (write-check Dashboard id)
   ;; TODO - it would be much more natural if `cascade-delete` returned the deleted entity instead of an api response
-  (let [dashboard (sel :one Dashboard :id id)
-        result (cascade-delete Dashboard :id id)]
+  (let [dashboard (db/sel :one Dashboard :id id)
+        result    (db/cascade-delete Dashboard :id id)]
     (events/publish-event :dashboard-delete (assoc dashboard :actor_id *current-user-id*))
     result))
 
@@ -72,8 +72,8 @@
   [id :as {{:keys [cardId]} :body}]
   {cardId [Required Integer]}
   (write-check Dashboard id)
-  (check-400 (exists? Card :id cardId))
-  (let [result (ins DashboardCard :card_id cardId, :dashboard_id id)]
+  (check-400 (db/exists? Card :id cardId))
+  (let [result (db/ins DashboardCard :card_id cardId, :dashboard_id id)]
     (events/publish-event :dashboard-add-cards {:id id :actor_id *current-user-id* :dashcards [result]})
     result))
 
@@ -87,11 +87,11 @@
               :col} ...]}"
   [id :as {{:keys [cards]} :body}]
   (write-check Dashboard id)
-  (doseq [{dashcard-id :id :keys [sizeX sizeY row col]} cards]
-    ;; we lookup the dashcard purely to ensure the card is part of the given dashboard
-    (let [dashcard (sel :one [DashboardCard :id] :id dashcard-id :dashboard_id id)]
-      (when dashcard
-        (upd DashboardCard dashcard-id :sizeX sizeX :sizeY sizeY :row row :col col))))
+  (let [dashcard-ids (set (db/sel :many :field [DashboardCard :id] :dashboard_id id))]
+    (doseq [{dashcard-id :id :keys [sizeX sizeY row col]} cards]
+      ;; ensure the dashcard we are updating is part of the given dashboard
+      (when (contains? dashcard-ids dashcard-id)
+        (db/upd DashboardCard dashcard-id :sizeX sizeX :sizeY sizeY :row row :col col))))
   (events/publish-event :dashboard-reposition-cards {:id id :actor_id *current-user-id* :dashcards cards})
   {:status :ok})
 
@@ -101,8 +101,8 @@
   {dashcardId [Required String->Integer]}
   (write-check Dashboard id)
   ;; TODO - it would be nicer to do this if `del` returned the object that was deleted instead of an api response
-  (let [dashcard (sel :one DashboardCard :id dashcardId)
-        result (del DashboardCard :id dashcardId :dashboard_id id)]
+  (let [dashcard (db/sel :one DashboardCard :id dashcardId)
+        result   (db/del DashboardCard :id dashcardId :dashboard_id id)]
     (events/publish-event :dashboard-remove-cards {:id id :actor_id *current-user-id* :dashcards [dashcard]})
     result))
 
