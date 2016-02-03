@@ -22,7 +22,8 @@ export default class QueryVisualization extends Component {
         this.runQuery = this.runQuery.bind(this);
 
         this.state = {
-            origQuery: JSON.stringify(props.card.dataset_query)
+            lastRunCard: props.card,
+            lastRunQuery: JSON.stringify(props.card.dataset_query)
         };
     }
 
@@ -52,14 +53,15 @@ export default class QueryVisualization extends Component {
         // whenever we are told that we are running a query lets update our understanding of the "current" query
         if (nextProps.isRunning) {
             this.setState({
-                origQuery: JSON.stringify(nextProps.card.dataset_query)
+                lastRunCard: nextProps.card,
+                lastRunQuery: JSON.stringify(nextProps.card.dataset_query)
             });
         }
     }
 
     queryIsDirty() {
         // a query is considered dirty if ANY part of it has been changed
-        return (JSON.stringify(this.props.card.dataset_query) !== this.state.origQuery);
+        return (JSON.stringify(this.props.card.dataset_query) !== this.state.lastRunQuery);
     }
 
     isChartDisplay(display) {
@@ -313,7 +315,7 @@ export default class QueryVisualization extends Component {
                 } else {
                     viz = (
                         <Visualization
-                            card={this.props.card}
+                            card={this.state.lastRunCard}
                             data={this.props.result.data}
 
                             // Table:
