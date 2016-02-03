@@ -441,6 +441,7 @@
         (dissoc :start_time_millis)
         (merge updates)
         (save-query-execution)
+        (dissoc :raw_query :result_rows :version)
         ;; this is just for the response for clien
         (assoc :error     error-message
                :row_count 0
@@ -460,7 +461,7 @@
       (dissoc :start_time_millis)
       (save-query-execution)
       ;; at this point we've saved and we just need to massage things into our final response format
-      (select-keys [:id :uuid])
+      (dissoc :error :raw_query :result_rows :version)
       (merge query-result)))
 
 (defn save-query-execution
