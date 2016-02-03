@@ -6,8 +6,26 @@ import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import CheckBox from "metabase/components/CheckBox.jsx";
 
+import { isNumeric, isDate } from "metabase/lib/schema_metadata";
+
 import _ from "underscore";
 import cx from "classnames";
+
+function isDataCompatible(dataA, dataB) {
+    // second column must be numeric
+    if (!isNumeric(dataA.cols[1]) || !isNumeric(dataB.cols[1])) {
+        return false;
+    }
+    // both or neither must be dates
+    if (isDate(dataA.cols[0]) !== isDate(dataB.cols[0])) {
+        return false;
+    }
+    // both or neither must be numeric
+    if (isNumeric(dataA.cols[0]) !== isNumeric(dataB.cols[0])) {
+        return false;
+    }
+    return true;
+}
 
 export default class AddSeriesModal extends Component {
     constructor(props, context) {
@@ -17,14 +35,21 @@ export default class AddSeriesModal extends Component {
             searchValue: "",
             error: null,
             series: props.dashcard.series || [],
-            seriesData: {},
             badCards: {}
         };
 
         _.bindAll(this, "onSearchChange", "onDone", "filterCards")
     }
 
-    static propTypes = {};
+    static propTypes = {
+        dashcard: PropTypes.object.isRequired,
+        cards: PropTypes.array,
+        cardData: PropTypes.object.isRequired,
+        fetchCards: PropTypes.func.isRequired,
+        fetchCardData: PropTypes.func.isRequired,
+        setDashCardAttributes: PropTypes.func.isRequired,
+        onClose: PropTypes.func.isRequired
+    };
     static defaultProps = {};
 
     async componentDidMount() {
@@ -39,65 +64,79 @@ export default class AddSeriesModal extends Component {
         this.setState({ searchValue: e.target.value.toLowerCase() });
     }
 
-    onCardChange(card, e) {
-        let enabled = e.target.checked;
-        let series = this.state.series.filter(c => c.id !== card.id);
-        if (enabled) {
-            series.push(card);
-            if (this.state.seriesData[card.id] === undefined) {
-                this.setState({ state: "loading" });
-                setTimeout(() => {
-                    let data = {
-                        rows: [
-                            ["Doohickey", Math.round(Math.random() * 5000)],
-                            ["Gadget", Math.round(Math.random() * 5000)],
-                            ["Gizmo", Math.round(Math.random() * 5000)],
-                            ["Widget", Math.round(Math.random() * 5000)]
-                        ]
-                    }
-                    if (card.dataset_query.type === "query" || Math.random() > 0.75) {
-                        this.setState({
-                            state: null,
-                            seriesData: { ...this.state.seriesData, [card.id]: data }
-                        });
-                    } else {
-                        this.setState({
-                            state: "incompatible",
-                            series: this.state.series.filter(c => c.id !== card.id),
-                            seriesData: { ...this.state.seriesData, [card.id]: false },
-                            badCards: { ...this.state.badCards, [card.id]: true }
-                        });
-                        setTimeout(() => this.setState({ state: null }), 2000);
-                    }
-                }, 1000);
+    async onCardChange(card, e) {
+        try {
+            if (e.target.checked) {
+                if (this.props.cardData[card.id] === undefined) {
+                    this.setState({ state: "loading" });
+                    await this.props.fetchCardData(card);
+                }
+                let sourceDataset = this.props.cardData[this.props.dashcard.card.id];
+                let seriesDataset = this.props.cardData[card.id];
+                if (isDataCompatible(sourceDataset.data, seriesDataset.data)) {
+                    this.setState({
+                        state: null,
+                        series: this.state.series.concat(card)
+                    });
+                } else {
+                    this.setState({
+                        state: "incompatible",
+                        badCards: { ...this.state.badCards, [card.id]: true }
+                    });
+                    setTimeout(() => this.setState({ state: null }), 2000);
+                }
+            } else {
+                this.setState({ series: this.state.series.filter(c => c.id !== card.id) });
             }
+        } catch (e) {
+            console.error("onCardChange", e)
         }
-        this.setState({ series });
     }
 
     onDone() {
-        // this.props.onDone(this.state.series);
+        this.props.setDashCardAttributes({
+            id: this.props.dashcard.id,
+            attributes: { series: this.state.series }
+        });
+        this.props.onClose();
     }
 
     filterCards(cards) {
-        let { card } = this.props.dashcard;
+        let { dashcard } = this.props;
         let { searchValue } = this.state;
-        return cards.filter(c => {
-            if (c.id === card.id) {
-                return false;
-            } else if (searchValue && c.name.toLowerCase().indexOf(searchValue) < 0) {
-                return false;
-            } else {
+        return cards.filter(card => {
+            try {
+                // filter out the card itself
+                if (card.id === dashcard.card.id) {
+                    return false;
+                }
+                if (card.dataset_query.type === "query") {
+                    // no bare rows
+                    if (card.dataset_query.query.aggregation[0] === "rows") {
+                        return false;
+                    }
+                    // must have one and only one breakout
+                    if (card.dataset_query.query.breakout.length !== 1) {
+                        return false;
+                    }
+                }
+                // search
+                if (searchValue && card.name.toLowerCase().indexOf(searchValue) < 0) {
+                    return false;
+                }
                 return true;
+            } catch (e) {
+                console.warn(e);
+                return false;
             }
         });
     }
 
     render() {
-        let { card, dataset } = this.props.dashcard;
-        let data = (dataset && dataset.data);
+        const { dashcard, cardData, cards } = this.props;
+        const dataset = cardData[dashcard.card.id];
+        const data = dataset && dataset.data;
 
-        let cards = this.props.cards;
         let error = this.state.error;
 
         let filteredCards;
@@ -125,9 +164,9 @@ export default class AddSeriesModal extends Component {
             enabledCards[c.id] = true;
         }
 
-        let series = this.state.series.map(c => ({
-            card: c,
-            data: this.state.seriesData[c.id]
+        let series = this.state.series.map(card => ({
+            card: card,
+            data: this.props.cardData[card.id].data
         })).filter(s => !!s.data);
 
         return (
@@ -137,11 +176,10 @@ export default class AddSeriesModal extends Component {
                     <div className="flex flex-full relative">
                         <Visualization
                             className="flex-full"
-                            card={card}
+                            card={dashcard.card}
                             data={data}
                             series={series}
                             isDashboard={true}
-                            onAddSeries={this.props.onAddSeries}
                         />
                         { this.state.state &&
                             <div className="absolute top left bottom right flex layout-centered" style={{ backgroundColor: "rgba(255,255,255,0.80)" }}>

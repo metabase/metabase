@@ -17,20 +17,12 @@ const dashboardSelector = createSelector(
 );
 
 const dashboardCompleteSelector = createSelector(
-    [dashboardSelector, dashcardsSelector, cardDataSelector],
-    (dashboard, dashcards, cardData) => {
-        if (dashboard) {
-            dashboard = {
-                ...dashboard,
-                ordered_cards: dashboard.ordered_cards.map(id => ({
-                    ...dashcards[id],
-                    dataset: cardData[dashcards[id].card.id]
-                })).filter(dc => !dc.isRemoved)
-            };
-        }
-        return dashboard;
-    }
-)
+    [dashboardSelector, dashcardsSelector],
+    (dashboard, dashcards) => (dashboard && {
+        ...dashboard,
+        ordered_cards: dashboard.ordered_cards.map(id => dashcards[id]).filter(dc => !dc.isRemoved)
+    })
+);
 
 const isDirtySelector = createSelector(
     [dashboardSelector, dashcardsSelector],

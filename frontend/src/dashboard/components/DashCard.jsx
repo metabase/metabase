@@ -20,6 +20,7 @@ export default class DashCard extends Component {
 
     static propTypes = {
         dashcard: PropTypes.object.isRequired,
+        cardData: PropTypes.object.isRequired,
 
         markNewCardSeen: PropTypes.func.isRequired,
         fetchCardData: PropTypes.func.isRequired,
@@ -33,15 +34,21 @@ export default class DashCard extends Component {
         }
 
         try {
-            await this.props.fetchCardData(this.props.dashcard.card);
+            await * [
+                this.props.fetchCardData(this.props.dashcard.card)
+            ].concat(
+                this.props.dashcard.series.map(this.props.fetchCardData)
+            );
         } catch (error) {
             this.setState({ error });
         }
     }
 
     renderCard() {
-        let { card, dataset } = this.props.dashcard;
-        let data = (dataset && dataset.data);
+        const { dashcard, cardData } = this.props;
+        const dataset = cardData[dashcard.card.id];
+        const data = dataset && dataset.data;
+
         let error = (dataset && dataset.error) || this.state.error;
 
         if (error) {
@@ -62,12 +69,17 @@ export default class DashCard extends Component {
             );
         }
 
-        if (card && data) {
+        if (dashcard.card && data) {
+            let series = dashcard.series.map(c => ({
+                card: c,
+                data: cardData[c.id].data
+            })).filter(s => !!s.data);
             return (
                 <Visualization
                     className="flex-full"
-                    card={card}
+                    card={dashcard.card}
                     data={data}
+                    series={series}
                     isDashboard={true}
                     onAddSeries={this.props.onAddSeries}
                 />
@@ -92,13 +104,12 @@ export default class DashCard extends Component {
     }
 
     render() {
-        let dc = this.props.dashcard;
-        let { card } = dc;
-        let CardVisualization = visualizations.get(card.display);
-        let recent = this.props.dashcard.isAdded;
+        const { dashcard } = this.props;
+        const { card } = dashcard;
+        const CardVisualization = visualizations.get(card.display);
         return (
             <div>
-                <div className={"Card bordered rounded flex flex-column " + cx({ "Card--recent": recent })}>
+                <div className={"Card bordered rounded flex flex-column " + cx({ "Card--recent": dashcard.isAdded })}>
                     { !CardVisualization.noHeader &&
                         <div className="Card-heading my1 px2">
                             <a data-metabase-event={"Dashboard;Card Link;"+card.display} className="Card-title no-decoration" href={"/card/"+card.id+"?clone"}>

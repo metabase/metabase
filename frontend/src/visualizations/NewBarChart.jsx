@@ -22,6 +22,45 @@ const CHART_OPTIONS = {
   legendTemplate : "<ul class=\"<%=name.toLowerCase()%>-legend\"><% for (var i=0; i<segments.length; i++){%><li><span style=\"background-color:<%=segments[i].fillColor%>\"></span><%if(segments[i].label){%><%=segments[i].label%><%}%></li><%}%></ul>"
 }
 
+function mergeSeries(series) {
+    let result = {
+        labels: [],
+        datasets: []
+    };
+
+    let labelsMap = new Map();
+    function generateData(rows, col) {
+        let data = [];
+        for (let row of rows) {
+            if (!labelsMap.has(row[0])) {
+                labelsMap.set(row[0], result.labels.length);
+                result.labels.push(formatValueString(row[0], col));
+            }
+            data[labelsMap.get(row[0])] = row[1];
+        }
+        return data;
+    }
+
+    for (let [index, s] of series.entries()) {
+        result.datasets.push({
+            label: s.card.name || "",
+            fillColor:  COLORS[index % COLORS.length],
+            data: generateData(s.data.rows, s.data.cols[0])
+        });
+    }
+
+    // fill in missing data
+    for (let i = 0; i < result.labels.length; i++) {
+        for (let dataset of result.datasets) {
+            if (dataset.data[i] === undefined) {
+                dataset.data[i] = 0;
+            }
+        }
+    }
+
+    return result;
+}
+
 export default class NewBarChart extends Component {
     static displayName = "Bar (chart.js)";
     static identifier = "bar";
@@ -85,26 +124,11 @@ class BarChart extends Component {
             ...CHART_OPTIONS,
             showScale: true
         };
-        let barData = {
-            labels: data.rows.map(d => formatValueString(d[0], data.cols[0])),
-            datasets: [
-                {
-                    label: card.name || "",
-                    fillColor: COLORS[0],
-                    data: data.rows.map(d => d[1])
-                }
-            ]
-        };
 
-        for (let [index, s] of series.entries()) {
-            barData.datasets.push({
-                label: s.card.name || "",
-                fillColor: COLORS[(index + 1) % COLORS.length],
-                data: s.data.rows.map(d => d[1])
-            });
-        }
+        let chartData = mergeSeries([{ data, card }].concat(series));
+
         return (
-             <Bar key={"bar_"+width+"_"+height} data={barData} options={options} width={width} height={height} redraw />
+             <Bar key={"bar_"+width+"_"+height} data={chartData} options={options} width={width} height={height} redraw />
         );
     }
 }

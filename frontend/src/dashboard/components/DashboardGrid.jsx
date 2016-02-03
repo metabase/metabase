@@ -114,6 +114,7 @@ export default class DashboardGrid extends Component {
                     fetchCards={this.props.fetchCards}
                     fetchCardData={this.props.fetchCardData}
                     removeCardFromDashboard={this.props.removeCardFromDashboard}
+                    setDashCardAttributes={this.props.setDashCardAttributes}
                     onClose={() => this.setState({ addSeriesModalDashCard: null })}
                 /> }
             </Modal>
@@ -178,11 +179,11 @@ export default class DashboardGrid extends Component {
     }
 
     render() {
-        var { dashboard } = this.props;
+        var { dashboard, isEditing } = this.props;
         return (
             <div className="flex-full full">
                 <ResponsiveReactGridLayout
-                    className={cx("DashboardGrid", { "Dash--editing": this.props.isEditing, "Dash--dragging": this.state.isDragging })}
+                    className={cx("DashboardGrid", { "Dash--editing": isEditing, "Dash--dragging": this.state.isDragging })}
                     breakpoints={{lg: 753, sm: 752}}
                     layouts={this.state.layouts}
                     // NOTE: these need to be different otherwise RGL doesn't switch breakpoints
@@ -204,11 +205,12 @@ export default class DashboardGrid extends Component {
                         <div key={dc.id} className="DashCard" onMouseDownCapture={this.onDashCardMouseDown}>
                             <DashCard
                                 dashcard={dc}
+                                cardData={this.props.cardData}
                                 fetchCardData={this.props.fetchCardData}
                                 markNewCardSeen={this.props.markNewCardSeen}
                                 onEdit={this.onDashCardEdit.bind(this, dc)}
                                 onRemove={this.onDashCardRemove.bind(this, dc)}
-                                onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
+                                onAddSeries={isEditing && this.onDashCardAddSeries.bind(this, dc)}
                             />
                         </div>
                     )}

@@ -126,7 +126,7 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
                 if (dc.isAdded) {
                     let result = await Dashboard.addcard({ dashId, cardId: dc.card_id })
                     // mark isAdded because addcard doesn't record the position
-                    return { ...result, col: dc.col, row: dc.row, sizeX: dc.sizeX, sizeY: dc.sizeY, isAdded: true }
+                    return { ...result, col: dc.col, row: dc.row, sizeX: dc.sizeX, sizeY: dc.sizeY, series: dc.series, isAdded: true }
                 } else {
                     return dc;
                 }
@@ -140,7 +140,7 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
 
         // reposition the cards
         if (_.some(updatedDashcards, (dc) => dc.isDirty || dc.isAdded)) {
-            let cards = updatedDashcards.map(({ id, row, col, sizeX, sizeY }) => ({ id, row, col, sizeX, sizeY }));
+            let cards = updatedDashcards.map(({ id, row, col, sizeX, sizeY, series }) => ({ id, row, col, sizeX, sizeY, series }));
             var result = await Dashboard.reposition_cards({ dashId, cards });
             if (result.status !== "ok") {
                 throw new Error(result.status);
