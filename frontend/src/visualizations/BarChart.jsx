@@ -6,7 +6,7 @@ import { MinColumnsError } from "./errors";
 
 export default class BarChart extends Component {
     static displayName = "Bar";
-    static identifier = "bar";
+    static identifier = "bar-old";
     static iconName = "bar";
 
     static isSensible(cols, rows) {
@@ -19,7 +19,7 @@ export default class BarChart extends Component {
 
     render() {
         return (
-            <CardRenderer className="flex-full" {...this.props} />
+            <CardRenderer className="flex-full" {...this.props} chartType="bar" />
         );
     }
 }

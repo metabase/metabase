@@ -21,7 +21,7 @@ export default class WorldMap extends Component {
 
     render() {
         return (
-            <CardRenderer className="flex-full" {...this.props} />
+            <CardRenderer className="flex-full" {...this.props} chartType="world" />
         );
     }
 }

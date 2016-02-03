@@ -9,6 +9,8 @@ import USStateMap from "./USStateMap.jsx";
 import WorldMap   from "./WorldMap.jsx";
 import PinMap     from "./PinMap.jsx";
 
+import NewBarChart   from "./NewBarChart.jsx";
+
 const visualizations = new Map();
 
 export function registerVisualization(visualization) {
@@ -26,6 +28,7 @@ registerVisualization(Scalar);
 registerVisualization(Table);
 registerVisualization(LineChart);
 registerVisualization(BarChart);
+registerVisualization(NewBarChart);
 registerVisualization(PieChart);
 registerVisualization(AreaChart);
 registerVisualization(USStateMap);

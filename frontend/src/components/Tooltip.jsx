@@ -14,9 +14,10 @@ export default class Tooltip extends Component {
     static defaultProps = {};
 
     render() {
-        let { tooltipElement } = this.props;
+        let { tooltipElement, className } = this.props;
         return (
             <span
+                className={className}
                 onMouseEnter={() => this.setState({ isOpen: true })}
                 onMouseLeave={() => this.setState({ isOpen: false })}
             >

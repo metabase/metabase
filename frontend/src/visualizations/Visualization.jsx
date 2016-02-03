@@ -40,10 +40,10 @@ export default class Visualization extends Component {
         } else if (!newProps.card.display) {
             this.setState({ error: "Chart type not set" });
         } else {
-            let visualization = visualizations.get(newProps.card.display);
+            let CardVisualization = visualizations.get(newProps.card.display);
             try {
-                if (visualization.checkRenderable) {
-                    visualization.checkRenderable(newProps.data.cols, newProps.data.rows);
+                if (CardVisualization.checkRenderable) {
+                    CardVisualization.checkRenderable(newProps.data.cols, newProps.data.rows);
                 }
                 this.setState({ error: null });
             } catch (e) {
@@ -72,7 +72,12 @@ export default class Visualization extends Component {
         } else {
             let { card } = this.props;
             let CardVisualization = visualizations.get(card.display);
-            return <CardVisualization {...this.props} onRenderError={this.onRenderError} />;
+            return (
+                <CardVisualization {...this.props}
+                    onUpdateVisualizationSetting={(...args) => console.log("onUpdateVisualizationSetting", args)}
+                    onRenderError={this.onRenderError}
+                />
+            );
         }
     }
 }
