@@ -58,11 +58,11 @@ export default class MetadataHeader extends Component {
 
     render() {
         return (
-            <div className="MetadataEditor-header flex align-center">
-                <div className="MetadataEditor-headerSection h2 mb2">
+            <div className="MetadataEditor-header clearfix">
+                <div className="MetadataEditor-headerSection h2 mb2 float-left">
                     <span className="text-grey-4">Current database:</span> {this.renderDbSelector()}
                 </div>
-                <div className="MetadataEditor-headerSection flex-align-right flex align-center">
+                <div className="MetadataEditor-headerSection float-right flex align-center">
                     <SaveStatus ref="status" />
                     <span className="mr1">Show original schema</span>
                     <Toggle value={this.props.isShowingSchema} onChange={this.props.toggleShowSchema} />
