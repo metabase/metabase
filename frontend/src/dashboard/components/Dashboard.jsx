@@ -42,9 +42,9 @@ export default class Dashboard extends Component {
                     <header className="bg-white border-bottom">
                         <DashboardHeader {...this.props} />
                     </header>
-                    <div className="Dash-wrapper wrapper flex layout-centered flex-full flex-column">
+                    <div className="Dash-wrapper wrapper flex-full">
                         { dashboard.ordered_cards.length === 0 ?
-                            <div className="flex flex-column layout-centered">
+                            <div className="absolute top bottom left right flex flex-column layout-centered">
                                 <span className="QuestionCircle">?</span>
                                 <div className="text-normal mt3 mb1">This dashboard is looking empty.</div>
                                 <div className="text-normal text-grey-2">Add a question to start making it useful!</div>
