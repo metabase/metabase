@@ -103,7 +103,7 @@ export const fetchDashCardData = createThunkAction(FETCH_DASHCARD_DATASET, funct
 export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(id) {
     return async function(dispatch, getState) {
         let result = await Dashboard.get({ dashId: id });
-        return normalize(result, { dashboard: dashboard });
+        return normalize(result, dashboard);
     };
 });
 

@@ -24,6 +24,7 @@
       {"include": {"file": "migrations/023_modify_table_rows_to_bigint.yaml"}},
       {"include": {"file": "migrations/024_add_dependency_table.yaml"}},
       {"include": {"file": "migrations/025_add_metric_table.yaml"}},
-      {"include": {"file": "migrations/026_add_database_is_full_sync_field.yaml"}}
+      {"include": {"file": "migrations/026_add_database_is_full_sync_field.yaml"}},
+      {"include": {"file": "migrations/027_add_dashcardseries_table.yaml"}}
   ]
 }

@@ -1,11 +1,16 @@
 (ns metabase.models.card-test
   (:require [expectations :refer :all]
-            (metabase.api [card-test :refer [post-card]]
-                          [dashboard-test :refer [create-dash]])
+            (metabase.api [card-test :refer [post-card]])
             [metabase.db :refer [ins]]
             (metabase.models [card :refer :all]
                              [dashboard-card :refer [DashboardCard]])
+            [metabase.test.data.users :refer :all]
             [metabase.test.util :refer [random-name]]))
+
+
+(defn create-dash [dash-name]
+  ((user->client :rasta) :post 200 "dashboard" {:name         dash-name
+                                                :public_perms 0}))
 
 ;; Check that the :dashboard_count delay returns the correct count of Dashboards a Card is in
 (expect [0 1 2]
