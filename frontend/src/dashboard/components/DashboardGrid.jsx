@@ -33,7 +33,7 @@ export default class DashboardGrid extends Component {
         setDashCardAttributes: PropTypes.func.isRequired,
         removeCardFromDashboard: PropTypes.func.isRequired,
         markNewCardSeen: PropTypes.func.isRequired,
-        fetchDashCardData: PropTypes.func.isRequired,
+        fetchCardData: PropTypes.func.isRequired,
 
         onChangeLocation: PropTypes.func.isRequired
     };
@@ -110,7 +110,9 @@ export default class DashboardGrid extends Component {
                     dashcard={this.state.addSeriesModalDashCard}
                     dashboard={this.props.dashboard}
                     cards={this.props.cards}
+                    cardData={this.props.cardData}
                     fetchCards={this.props.fetchCards}
+                    fetchCardData={this.props.fetchCardData}
                     removeCardFromDashboard={this.props.removeCardFromDashboard}
                     onClose={() => this.setState({ addSeriesModalDashCard: null })}
                 /> }
@@ -202,7 +204,7 @@ export default class DashboardGrid extends Component {
                         <div key={dc.id} className="DashCard" onMouseDownCapture={this.onDashCardMouseDown}>
                             <DashCard
                                 dashcard={dc}
-                                fetchDashCardData={this.props.fetchDashCardData}
+                                fetchCardData={this.props.fetchCardData}
                                 markNewCardSeen={this.props.markNewCardSeen}
                                 onEdit={this.onDashCardEdit.bind(this, dc)}
                                 onRemove={this.onDashCardRemove.bind(this, dc)}

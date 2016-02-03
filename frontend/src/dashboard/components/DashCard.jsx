@@ -22,7 +22,7 @@ export default class DashCard extends Component {
         dashcard: PropTypes.object.isRequired,
 
         markNewCardSeen: PropTypes.func.isRequired,
-        fetchDashCardData: PropTypes.func.isRequired,
+        fetchCardData: PropTypes.func.isRequired,
     };
 
     async componentDidMount() {
@@ -33,7 +33,7 @@ export default class DashCard extends Component {
         }
 
         try {
-            await this.props.fetchDashCardData(this.props.dashcard.id);
+            await this.props.fetchCardData(this.props.dashcard.card);
         } catch (error) {
             this.setState({ error });
         }

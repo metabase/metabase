@@ -36,7 +36,7 @@ export const REMOVE_CARD_FROM_DASH = 'REMOVE_CARD_FROM_DASH';
 export const SET_DASHCARD_ATTRIBUTES = 'SET_DASHCARD_ATTRIBUTES';
 export const SAVE_DASHCARD = 'SAVE_DASHCARD';
 
-export const FETCH_DASHCARD_DATASET = 'FETCH_DASHCARD_DATASET';
+export const FETCH_CARD_DATA = 'FETCH_CARD_DATA';
 export const FETCH_REVISIONS = 'FETCH_REVISIONS';
 export const REVERT_TO_REVISION = 'REVERT_TO_REVISION';
 
@@ -92,11 +92,10 @@ export const addCardToDashboard = function({ dashId, cardId }) {
 
 export const removeCardFromDashboard = createAction(REMOVE_CARD_FROM_DASH);
 
-export const fetchDashCardData = createThunkAction(FETCH_DASHCARD_DATASET, function(id) {
+export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card) {
     return async function(dispatch, getState) {
-        let dashcard = getState().dashcards[id];
-        let result = await timeout(Metabase.dataset(dashcard.card.dataset_query), DATASET_TIMEOUT * 1000, "Card took longer than " + DATASET_TIMEOUT + " seconds to load.");
-        return { id, result };
+        let result = await timeout(Metabase.dataset(card.dataset_query), DATASET_TIMEOUT * 1000, "Card took longer than " + DATASET_TIMEOUT + " seconds to load.");
+        return { id: card.id, result };
     };
 });
 
