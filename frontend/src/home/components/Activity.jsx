@@ -206,12 +206,11 @@ export default class Activity extends Component {
                 description.body = item.details.name;
                 break;
             case "dashboard-add-cards":
-                description.body = item.details.dashcards[0].name;
-                description.bodyLink = Urls.card(item.details.dashcards[0].card_id);
-                break;
             case "dashboard-remove-cards":
                 description.body = item.details.dashcards[0].name;
-                description.bodyLink = Urls.card(item.details.dashcards[0].card_id);
+                if (item.details.dashcards[0].exists) {
+                    description.bodyLink = Urls.card(item.details.dashcards[0].card_id);
+                }
                 break;
             case "metric-create":
                 description.body = item.details.description;
