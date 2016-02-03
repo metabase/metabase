@@ -3,11 +3,11 @@ import React, { Component, PropTypes } from "react";
 import { Route } from 'react-router';
 import { ReduxRouter } from 'redux-router';
 
-import MetricApp from "./datamodel/containers/MetricApp.jsx";
-import SegmentApp from "./datamodel/containers/SegmentApp.jsx";
-import RevisionHistoryApp from "./datamodel/containers/RevisionHistoryApp.jsx";
+import MetricApp from "metabase/admin/datamodel/containers/MetricApp.jsx";
+import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp.jsx";
+import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp.jsx";
 
-export default class AdminRoutes extends Component {
+export default class Routes extends Component {
     render() {
         return (
             <ReduxRouter>
