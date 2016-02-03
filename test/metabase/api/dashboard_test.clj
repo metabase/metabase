@@ -173,6 +173,7 @@
     :sizeY        2
     :col          nil
     :row          nil
+    :series       []
     :created_at   true
     :updated_at   true}
    [{:sizeX        2

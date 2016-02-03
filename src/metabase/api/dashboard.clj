@@ -9,7 +9,7 @@
                              [card :refer [Card]]
                              [common :as common]
                              [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]])))
+                             [dashboard-card :refer [DashboardCard create-dashboard-card update-dashboard-card]])))
 
 (defendpoint GET "/"
   "Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
@@ -73,7 +73,9 @@
   {cardId [Required Integer]}
   (write-check Dashboard id)
   (check-400 (db/exists? Card :id cardId))
-  (let [result (db/ins DashboardCard :card_id cardId, :dashboard_id id)]
+  (let [result (create-dashboard-card {:dashboard_id id
+                                       :card_id      cardId
+                                       :creator_id   *current-user-id*})]
     (events/publish-event :dashboard-add-cards {:id id :actor_id *current-user-id* :dashcards [result]})
     result))
 
@@ -88,10 +90,10 @@
   [id :as {{:keys [cards]} :body}]
   (write-check Dashboard id)
   (let [dashcard-ids (set (db/sel :many :field [DashboardCard :id] :dashboard_id id))]
-    (doseq [{dashcard-id :id :keys [sizeX sizeY row col]} cards]
+    (doseq [{dashcard-id :id :as dashboard-card} cards]
       ;; ensure the dashcard we are updating is part of the given dashboard
       (when (contains? dashcard-ids dashcard-id)
-        (db/upd DashboardCard dashcard-id :sizeX sizeX :sizeY sizeY :row row :col col))))
+        (update-dashboard-card dashboard-card))))
   (events/publish-event :dashboard-reposition-cards {:id id :actor_id *current-user-id* :dashcards cards})
   {:status :ok})
 
