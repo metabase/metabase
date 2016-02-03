@@ -9,7 +9,8 @@
             (metabase.models [hydrate :refer [hydrate]]
                              [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]]
+                             [dashboard-card :refer [DashboardCard retrieve-dashboard-card]]
+                             [dashboard-card-series :refer [DashboardCardSeries]]
                              [user :refer [User]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
@@ -18,6 +19,21 @@
 
 
 ;; ## Helper Fns
+
+(defn remove-ids-and-boolean-timestamps [m]
+  (let [f (fn [v]
+            (cond
+              (map? v) (remove-ids-and-boolean-timestamps v)
+              (coll? v) (mapv remove-ids-and-boolean-timestamps v)
+              :else v))]
+    (into {} (for [[k v] m]
+               (when-not (or (= :id k)
+                             (.endsWith (name k) "_id"))
+                 (if (or (= :created_at k)
+                         (= :updated_at k))
+                   [k (not (nil? v))]
+                   [k (f v)]))))))
+
 (defn user-details [user]
   (tu/match-$ user
               {:id $
@@ -168,18 +184,19 @@
 ;; # DASHBOARD CARD ENDPOINTS
 
 ;; ## POST /api/dashboard/:id/cards
+;; simple creation with no additional series
 (expect
   [{:sizeX        2
     :sizeY        2
-    :col          nil
-    :row          nil
+    :col          4
+    :row          4
     :series       []
     :created_at   true
     :updated_at   true}
    [{:sizeX        2
      :sizeY        2
-     :col          nil
-     :row          nil}]]
+     :col          4
+     :row          4}]]
   (tu/with-temp Dashboard [{dashboard-id :id} {:name         "Test Dashboard"
                                                :public_perms 0
                                                :creator_id   (user->id :rasta)}]
@@ -189,11 +206,54 @@
                                        :display                "scalar"
                                        :dataset_query          {:something "simple"}
                                        :visualization_settings {:global {:title nil}}}]
-      [(-> ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id) {:cardId card-id})
+      [(-> ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id) {:cardId card-id
+                                                                                        :row    4
+                                                                                        :col    4})
            (dissoc :id :dashboard_id :card_id)
            (update :created_at #(not (nil? %)))
            (update :updated_at #(not (nil? %))))
        (db/sel :many :fields [DashboardCard :sizeX :sizeY :col :row] :dashboard_id dashboard-id)])))
+
+;; new dashboard card w/ additional series
+(expect
+  [{:sizeX        2
+    :sizeY        2
+    :col          4
+    :row          4
+    :series       [{:name                   "Series Card"
+                    :description            nil
+                    :display                "scalar"
+                    :dataset_query          {:something "simple"}
+                    :visualization_settings {}}]
+    :created_at   true
+    :updated_at   true}
+   [{:sizeX        2
+     :sizeY        2
+     :col          4
+     :row          4}]
+   [0]]
+  (tu/with-temp Dashboard [{dashboard-id :id} {:name         "Test Dashboard"
+                                               :public_perms 0
+                                               :creator_id   (user->id :rasta)}]
+    (tu/with-temp Card [{card-id :id} {:name                   "Dashboard Test Card"
+                                       :creator_id             (user->id :rasta)
+                                       :public_perms           0
+                                       :display                "scalar"
+                                       :dataset_query          {:something "simple"}
+                                       :visualization_settings {}}]
+      (tu/with-temp Card [{series-id1 :id} {:name                   "Series Card"
+                                            :creator_id             (user->id :rasta)
+                                            :public_perms           0
+                                            :display                "scalar"
+                                            :dataset_query          {:something "simple"}
+                                            :visualization_settings {}}]
+        (let [dashboard-card ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id) {:cardId card-id
+                                                                                                          :row    4
+                                                                                                          :col    4
+                                                                                                          :series [{:id series-id1}]})]
+          [(remove-ids-and-boolean-timestamps dashboard-card)
+           (db/sel :many :fields [DashboardCard :sizeX :sizeY :col :row] :dashboard_id dashboard-id)
+           (db/sel :many :field [DashboardCardSeries :position] :dashboardcard_id (:id dashboard-card))])))))
 
 
 ;; ## DELETE /api/dashboard/:id/cards
@@ -223,20 +283,36 @@
   [[{:sizeX        2
      :sizeY        2
      :col          nil
-     :row          nil}
+     :row          nil
+     :series       []
+     :created_at   true
+     :updated_at   true}
     {:sizeX        2
      :sizeY        2
      :col          nil
-     :row          nil}]
+     :row          nil
+     :series       []
+     :created_at   true
+     :updated_at   true}]
    {:status "ok"}
    [{:sizeX        4
      :sizeY        2
      :col          0
-     :row          0}
+     :row          0
+     :series       [{:name                   "Series Card"
+                     :description            nil
+                     :display                :scalar
+                     :dataset_query          {:something "simple"}
+                     :visualization_settings {}}]
+     :created_at   true
+     :updated_at   true}
     {:sizeX        1
      :sizeY        1
      :col          1
-     :row          3}]]
+     :row          3
+     :series       []
+     :created_at   true
+     :updated_at   true}]]
   ;; fetch a dashboard WITH a dashboard card on it
   (tu/with-temp Dashboard [{dashboard-id :id} {:name         "Test Dashboard"
                                                :public_perms 0
@@ -251,15 +327,24 @@
                                                        :card_id      card-id}]
         (tu/with-temp DashboardCard [{dashcard-id2 :id} {:dashboard_id dashboard-id
                                                          :card_id      card-id}]
-          [(db/sel :many :fields [DashboardCard :sizeX :sizeY :row :col] :dashboard_id dashboard-id (k/order :id :asc))
-           ((user->client :rasta) :put 200 (format "dashboard/%d/cards" dashboard-id) {:cards [{:id    dashcard-id1
-                                                                                                :sizeX 4
-                                                                                                :sizeY 2
-                                                                                                :col   0
-                                                                                                :row   0}
-                                                                                               {:id    dashcard-id2
-                                                                                                :sizeX 1
-                                                                                                :sizeY 1
-                                                                                                :col   1
-                                                                                                :row   3}]})
-           (db/sel :many :fields [DashboardCard :sizeX :sizeY :row :col] :dashboard_id dashboard-id (k/order :id :asc))])))))
+          (tu/with-temp Card [{series-id1 :id} {:name                   "Series Card"
+                                                :creator_id             (user->id :rasta)
+                                                :public_perms           0
+                                                :display                "scalar"
+                                                :dataset_query          {:something "simple"}
+                                                :visualization_settings {}}]
+            [[(remove-ids-and-boolean-timestamps (retrieve-dashboard-card dashcard-id1))
+              (remove-ids-and-boolean-timestamps (retrieve-dashboard-card dashcard-id2))]
+             ((user->client :rasta) :put 200 (format "dashboard/%d/cards" dashboard-id) {:cards [{:id    dashcard-id1
+                                                                                                  :sizeX 4
+                                                                                                  :sizeY 2
+                                                                                                  :col   0
+                                                                                                  :row   0
+                                                                                                  :series [{:id series-id1}]}
+                                                                                                 {:id    dashcard-id2
+                                                                                                  :sizeX 1
+                                                                                                  :sizeY 1
+                                                                                                  :col   1
+                                                                                                  :row   3}]})
+             [(remove-ids-and-boolean-timestamps (retrieve-dashboard-card dashcard-id1))
+              (remove-ids-and-boolean-timestamps (retrieve-dashboard-card dashcard-id2))]]))))))

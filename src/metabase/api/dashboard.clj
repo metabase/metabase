@@ -69,15 +69,19 @@
 
 (defendpoint POST "/:id/cards"
   "Add a `Card` to a `Dashboard`."
-  [id :as {{:keys [cardId]} :body}]
+  [id :as {{:keys [cardId series] :as dashboard-card} :body}]
   {cardId [Required Integer]}
   (write-check Dashboard id)
   (check-400 (db/exists? Card :id cardId))
-  (let [result (create-dashboard-card {:dashboard_id id
-                                       :card_id      cardId
-                                       :creator_id   *current-user-id*})]
-    (events/publish-event :dashboard-add-cards {:id id :actor_id *current-user-id* :dashcards [result]})
-    result))
+  (let [defaults       {:dashboard_id id
+                        :card_id      cardId
+                        :creator_id   *current-user-id*
+                        :series       (or series [])}
+        dashboard-card (-> (merge dashboard-card defaults)
+                           (update :series #(filter identity (map :id %))))]
+    (let-500 [result (create-dashboard-card dashboard-card)]
+      (events/publish-event :dashboard-add-cards {:id id :actor_id *current-user-id* :dashcards [result]})
+      result)))
 
 (defendpoint PUT "/:id/cards"
   "Reposition `Cards` on a `Dashboard`. Request body should have the form:
@@ -86,14 +90,16 @@
               :sizeX ...
               :sizeY ...
               :row ...
-              :col} ...]}"
+              :col ...
+              :series [{:id 123
+                        ...}]} ...]}"
   [id :as {{:keys [cards]} :body}]
   (write-check Dashboard id)
   (let [dashcard-ids (set (db/sel :many :field [DashboardCard :id] :dashboard_id id))]
     (doseq [{dashcard-id :id :as dashboard-card} cards]
       ;; ensure the dashcard we are updating is part of the given dashboard
       (when (contains? dashcard-ids dashcard-id)
-        (update-dashboard-card dashboard-card))))
+        (update-dashboard-card (update dashboard-card :series #(filter identity (map :id %)))))))
   (events/publish-event :dashboard-reposition-cards {:id id :actor_id *current-user-id* :dashcards cards})
   {:status :ok})
 
