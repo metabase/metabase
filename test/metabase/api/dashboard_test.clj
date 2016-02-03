@@ -116,7 +116,8 @@
                                      :display                "scalar"
                                      :query_type             nil
                                      :dataset_query          {:something "simple"}
-                                     :visualization_settings {:global {:title nil}}}}]
+                                     :visualization_settings {:global {:title nil}}}
+                      :series       []}]
    :organization_id nil}
   ;; fetch a dashboard WITH a dashboard card on it
   (tu/with-temp Dashboard [{dashboard-id :id} {:name         "Test Dashboard"

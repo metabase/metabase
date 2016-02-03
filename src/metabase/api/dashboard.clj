@@ -42,7 +42,7 @@
   (let-404 [dash (Dashboard id)]
     (read-check dash)
     (->500 dash
-           (hydrate :creator [:ordered_cards [:card :creator]] :can_read :can_write)
+           (hydrate :creator [:ordered_cards [:card :creator] :series] :can_read :can_write)
            (assoc :actor_id *current-user-id*)
            (->> (events/publish-event :dashboard-read))
            (dissoc :actor_id))))
