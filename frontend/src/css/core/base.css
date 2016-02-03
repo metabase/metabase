@@ -55,3 +55,7 @@ textarea {
   pointer-events: none;
   opacity: 0.4;
 }
+
+.MB-lightBG {
+  background-color: #f9fbfc;
+}
