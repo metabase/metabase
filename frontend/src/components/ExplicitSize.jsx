@@ -23,7 +23,7 @@ export default ComposedComponent => class extends Component {
     }
 
     componentDidUpdate() {
-        const { width, height } = React.findDOMNode(this).getBoundingClientRect()
+        const { width, height } = React.findDOMNode(this).getBoundingClientRect();
         if (this.state.width !== width || this.state.height !== height) {
             this.setState({ width, height });
         }

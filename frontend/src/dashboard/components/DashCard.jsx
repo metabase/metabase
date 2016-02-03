@@ -3,7 +3,9 @@
 import React, { Component, PropTypes } from "react";
 
 import Visualization from "metabase/visualizations/Visualization.jsx";
+import visualizations from "metabase/visualizations";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
+import Icon from "metabase/components/Icon.jsx";
 
 import cx from "classnames";
 
@@ -61,7 +63,15 @@ export default class DashCard extends Component {
         }
 
         if (card && data) {
-            return <Visualization className="flex-full" card={card} data={data} isDashboard={true} />;
+            return (
+                <Visualization
+                    className="flex-full"
+                    card={card}
+                    data={data}
+                    isDashboard={true}
+                    onAddSeries={this.props.onAddSeries}
+                />
+            );
         }
 
         return (
@@ -74,24 +84,40 @@ export default class DashCard extends Component {
 
     componentDidUpdate() {
         let titleElement = React.findDOMNode(this.refs.title);
-        // have to restore the text in case we previously clamped it :-/
-        titleElement.textContent = this.props.dashcard.card.name;
-        $clamp(titleElement, { clamp: 2 });
+        if (titleElement) {
+            // have to restore the text in case we previously clamped it :-/
+            titleElement.textContent = this.props.dashcard.card.name;
+            $clamp(titleElement, { clamp: 2 });
+        }
     }
 
     render() {
-        let { card } = this.props.dashcard;
+        let dc = this.props.dashcard;
+        let { card } = dc;
+        let CardVisualization = visualizations.get(card.display);
         let recent = this.props.dashcard.isAdded;
         return (
-            <div className={"Card bordered rounded flex flex-column " + cx({ "Card--recent": recent })}>
-                <div className="Card-heading my1 px2">
-                    <a data-metabase-event={"Dashboard;Card Link;"+card.display} className="Card-title link" href={"/card/"+card.id+"?clone"}>
-                        <div ref="title" className="h3 text-normal my1">
-                            {card.name}
+            <div>
+                <div className={"Card bordered rounded flex flex-column " + cx({ "Card--recent": recent })}>
+                    { !CardVisualization.noHeader &&
+                        <div className="Card-heading my1 px2">
+                            <a data-metabase-event={"Dashboard;Card Link;"+card.display} className="Card-title no-decoration" href={"/card/"+card.id+"?clone"}>
+                                <div ref="title" className="h3 text-bold my1">
+                                    {card.name}
+                                </div>
+                            </a>
                         </div>
+                    }
+                    {this.renderCard()}
+                </div>
+                <div className="DashCard-actions absolute top right text-brand p2">
+                    <a href="#" onClick={this.props.onEdit}>
+                        <Icon className="my1 mr1" name="pencil" width="18" height="18" />
+                    </a>
+                    <a data-metabase-event="Dashboard;Remove Card Modal" href="#" onClick={this.props.onRemove}>
+                        <Icon className="my1 mr1" name="trash" width="18" height="18" />
                     </a>
                 </div>
-                {this.renderCard()}
             </div>
         );
     }

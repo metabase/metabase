@@ -3,10 +3,10 @@ import React, { Component, PropTypes } from "react";
 import { Responsive as ResponsiveReactGridLayout } from "react-grid-layout";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import Icon from "metabase/components/Icon.jsx";
 import DashCard from "./DashCard.jsx";
 import Modal from "metabase/components/Modal.jsx";
 import RemoveFromDashboardModal from "./RemoveFromDashboardModal.jsx";
+import AddSeriesModal from "./AddSeriesModal.jsx";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -18,11 +18,12 @@ export default class DashboardGrid extends Component {
         this.state = {
             layouts: this.getLayouts(props),
             removeModalDashCard: null,
+            addSeriesModalDashCard: null,
             rowHeight: 0,
             isDragging: false
         };
 
-        _.bindAll(this, "calculateSizing");
+        _.bindAll(this, "calculateSizing", "onDashCardMouseDown");
     }
 
     static propTypes = {
@@ -85,26 +86,34 @@ export default class DashboardGrid extends Component {
         return { lg: mainLayout, sm: mobileLayout };
     }
 
-    onEditDashCard(dc) {
-        // if editing and card is dirty prompt to save changes
-        if (this.props.isEditing && this.props.isDirty) {
-            if (!confirm("You have unsaved changes to this dashboard, are you sure you want to discard them?")) {
-                return;
-            }
-        }
-        this.props.onChangeLocation("/card/" + dc.card_id + "?from=" + encodeURIComponent("/dash/" + dc.dashboard_id));
-    }
-
     renderRemoveModal() {
         // can't use PopoverWithTrigger due to strange interaction with ReactGridLayout
-        return this.state.removeModalDashCard != null && (
-            <Modal>
-                <RemoveFromDashboardModal
+        let isOpen = this.state.removeModalDashCard != null;
+        return (
+            <Modal isOpen={isOpen}>
+                { isOpen && <RemoveFromDashboardModal
                     dashcard={this.state.removeModalDashCard}
                     dashboard={this.props.dashboard}
                     removeCardFromDashboard={this.props.removeCardFromDashboard}
                     onClose={() => this.setState({ removeModalDashCard: null })}
-                />
+                /> }
+            </Modal>
+        );
+    }
+
+    renderAddSeriesModal() {
+        // can't use PopoverWithTrigger due to strange interaction with ReactGridLayout
+        let isOpen = this.state.addSeriesModalDashCard != null;
+        return (
+            <Modal className="Modal AddSeriesModal" isOpen={isOpen}>
+                { isOpen && <AddSeriesModal
+                    dashcard={this.state.addSeriesModalDashCard}
+                    dashboard={this.props.dashboard}
+                    cards={this.props.cards}
+                    fetchCards={this.props.fetchCards}
+                    removeCardFromDashboard={this.props.removeCardFromDashboard}
+                    onClose={() => this.setState({ addSeriesModalDashCard: null })}
+                /> }
             </Modal>
         );
     }
@@ -148,6 +157,24 @@ export default class DashboardGrid extends Component {
         }
     }
 
+    onDashCardEdit(dc) {
+        // if editing and card is dirty prompt to save changes
+        if (this.props.isEditing && this.props.isDirty) {
+            if (!confirm("You have unsaved changes to this dashboard, are you sure you want to discard them?")) {
+                return;
+            }
+        }
+        this.props.onChangeLocation("/card/" + dc.card_id + "?from=" + encodeURIComponent("/dash/" + dc.dashboard_id));
+    }
+
+    onDashCardRemove(dc) {
+        this.setState({ removeModalDashCard: dc });
+    }
+
+    onDashCardAddSeries(dc) {
+        this.setState({ addSeriesModalDashCard: dc });
+    }
+
     render() {
         var { dashboard } = this.props;
         return (
@@ -172,25 +199,20 @@ export default class DashboardGrid extends Component {
                     onDragStop={(...args) => this.onDragStop(...args)}
                 >
                     {dashboard.ordered_cards.map(dc =>
-                        <div key={dc.id} className="DashCard" onMouseDownCapture={(...args) => this.onDashCardMouseDown(...args)}>
+                        <div key={dc.id} className="DashCard" onMouseDownCapture={this.onDashCardMouseDown}>
                             <DashCard
-                                key={dc.id}
                                 dashcard={dc}
                                 fetchDashCardData={this.props.fetchDashCardData}
                                 markNewCardSeen={this.props.markNewCardSeen}
+                                onEdit={this.onDashCardEdit.bind(this, dc)}
+                                onRemove={this.onDashCardRemove.bind(this, dc)}
+                                onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
                             />
-                            <div className="DashCard-actions absolute top right text-brand p1">
-                                <a href="#" onClick={() => this.onEditDashCard(dc)}>
-                                    <Icon className="m1" name="pencil" width="24" height="24" />
-                                </a>
-                                <a data-metabase-event="Dashboard;Remove Card Modal" href="#" onClick={() => this.setState({ removeModalDashCard: dc })}>
-                                    <Icon className="m1" name="trash" width="24" height="24" />
-                                </a>
-                            </div>
                         </div>
                     )}
                 </ResponsiveReactGridLayout>
                 {this.renderRemoveModal()}
+                {this.renderAddSeriesModal()}
             </div>
         );
     }

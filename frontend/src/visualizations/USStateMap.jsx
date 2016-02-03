@@ -21,7 +21,7 @@ export default class USStateMap extends Component {
 
     render() {
         return (
-            <CardRenderer className="flex-full" {...this.props} />
+            <CardRenderer className="flex-full" {...this.props} chartType="state" />
         );
     }
 }

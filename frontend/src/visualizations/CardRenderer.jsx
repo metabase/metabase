@@ -10,7 +10,8 @@ import { getSettingsForVisualization, setLatitudeAndLongitude } from "metabase/l
 export default class CardRenderer_ extends Component {
     static propTypes = {
         card: PropTypes.object.isRequired,
-        data: PropTypes.object
+        data: PropTypes.object,
+        chartType: PropTypes.string.isRequired
     };
 
     shouldComponentUpdate(nextProps, nextState) {
@@ -48,33 +49,26 @@ export default class CardRenderer_ extends Component {
                     visualization_settings: vizSettings
                 };
 
-                if (this.props.card.display === "pin_map") {
+                if (this.props.chartType === "pin_map") {
                     // call signature is (elementId, card, updateMapCenter (callback), updateMapZoom (callback))
 
                     // identify the lat/lon columns from our data and make them part of the viz settings so we can render maps
                     card.visualization_settings = setLatitudeAndLongitude(card.visualization_settings, this.props.data.cols);
 
                     // these are example callback functions that could be passed into the renderer
-                    // var updateMapCenter = function(lat, lon) {
-                    //     scope.card.visualization_settings.map.center_latitude = lat;
-                    //     scope.card.visualization_settings.map.center_longitude = lon;
-                    //     scope.$apply();
-                    // };
-
-                    // var updateMapZoom = function(zoom) {
-                    //     scope.card.visualization_settings.map.zoom = zoom;
-                    //     scope.$apply();
-                    // };
-
-                    var no_op = function(a, b) {
-                        // do nothing for now
+                    var updateMapCenter = (lat, lon) => {
+                        this.props.onUpdateVisualizationSetting(["map", "center_latitude"], lat);
+                        this.props.onUpdateVisualizationSetting(["map", "center_longitude"], lat);
                     };
 
+                    var updateMapZoom = (zoom) => {
+                        this.props.onUpdateVisualizationSetting(["map", "zoom"], zoom);
+                    };
 
-                    charting.CardRenderer[this.props.card.display](element, card, no_op, no_op);
+                    charting.CardRenderer[this.props.chartType](element, card, updateMapCenter, updateMapZoom);
                 } else {
                     // TODO: it would be nicer if this didn't require the whole card
-                    charting.CardRenderer[this.props.card.display](element, card, this.props.data);
+                    charting.CardRenderer[this.props.chartType](element, card, this.props.data);
                 }
             } catch (err) {
                 console.error(err);

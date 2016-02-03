@@ -74,9 +74,8 @@
     animation-name: fade-out-yellow;
 }
 
-.Dash--editing .DashCard:hover .Card {
-  border: 1px dashed var(--brand-color);
-  background-color: #F6FAFD;
+.Dash--editing .DashCard:hover .Card .Card-heading {
+  z-index: 2;
 }
 
 .Dash--editing .DashCard:hover .DashCard-actions {
@@ -147,4 +146,11 @@
 /* ensure action buttons do not respond to events when dragging */
 .Dash--dragging .DashCard-actions {
     pointer-events: none !important;
+}
+
+.Modal.AddSeriesModal {
+  height: 80%;
+  max-height: 600px;
+  width: 80%;
+  max-width: 1024px;
 }
