@@ -70,10 +70,12 @@ export default class DashCard extends Component {
         }
 
         if (dashcard.card && data) {
-            let series = dashcard.series.map(c => ({
-                card: c,
-                data: cardData[c.id].data
-            })).filter(s => !!s.data);
+            let series = dashcard.series
+            .filter(card => !!cardData[card.id])
+            .map(card => ({
+                card: card,
+                data: cardData[card.id].data
+            }));
             return (
                 <Visualization
                     className="flex-full"
