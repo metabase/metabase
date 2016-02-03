@@ -22,7 +22,7 @@ export default class Dashboard extends Component {
 
     async componentDidMount() {
         // HACK: apply a css class to the page body so that we can ensure the bg-color is maintained
-        document.body.className += " MB-lightBG";
+        document.body.classList.add("MB-lightBG");
 
         try {
             await this.props.dispatch(fetchDashboard(this.props.selectedDashboard));
@@ -37,7 +37,7 @@ export default class Dashboard extends Component {
 
     componentWillUnmount() {
         // HACK: remove our bg-color css applied when component mounts
-        document.body.className = document.body.className.replace( /(?:^|\s)MB-lightBG(?!\S)/g , '');
+        document.body.classList.remove("MB-lightBG");
     }
 
     render() {
