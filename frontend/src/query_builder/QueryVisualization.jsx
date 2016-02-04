@@ -22,8 +22,7 @@ export default class QueryVisualization extends Component {
         this.runQuery = this.runQuery.bind(this);
 
         this.state = {
-            lastRunCard: props.card,
-            lastRunQuery: JSON.stringify(props.card.dataset_query)
+            lastRunDatasetQuery: props.card.dataset_query
         };
     }
 
@@ -53,15 +52,14 @@ export default class QueryVisualization extends Component {
         // whenever we are told that we are running a query lets update our understanding of the "current" query
         if (nextProps.isRunning) {
             this.setState({
-                lastRunCard: nextProps.card,
-                lastRunQuery: JSON.stringify(nextProps.card.dataset_query)
+                lastRunDatasetQuery: nextProps.card.dataset_query
             });
         }
     }
 
     queryIsDirty() {
         // a query is considered dirty if ANY part of it has been changed
-        return (JSON.stringify(this.props.card.dataset_query) !== this.state.lastRunQuery);
+        return JSON.stringify(this.props.card.dataset_query) !== JSON.stringify(this.state.lastRunDatasetQuery);
     }
 
     isChartDisplay(display) {
@@ -313,11 +311,17 @@ export default class QueryVisualization extends Component {
                     );
 
                 } else {
+                    // we want to provide the visualization with a card containing the latest
+                    // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
+                    // BUT the last executed "dataset_query" (to ensure data matches the query)
+                    let card = {
+                        ...this.props.card,
+                        dataset_query: this.state.lastRunDatasetQuery
+                    };
                     viz = (
                         <Visualization
-                            card={this.state.lastRunCard}
+                            card={card}
                             data={this.props.result.data}
-
                             // Table:
                             setSortFn={this.props.setSortFn}
                             cellIsClickableFn={this.props.cellIsClickableFn}
