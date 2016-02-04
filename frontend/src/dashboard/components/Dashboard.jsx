@@ -46,12 +46,12 @@ export default class Dashboard extends Component {
             <LoadingAndErrorWrapper className="Dashboard full-height" loading={!dashboard} error={error}>
             {() =>
                 <div className="full">
-                    <header className="bg-white border-bottom">
+                    <header className="bg-white border-bottom relative z2">
                         <DashboardHeader {...this.props} />
                     </header>
                     <div className="Dash-wrapper wrapper">
                         { dashboard.ordered_cards.length === 0 ?
-                            <div className="absolute top bottom left right flex flex-column layout-centered">
+                            <div className="absolute z1 top bottom left right flex flex-column layout-centered">
                                 <span className="QuestionCircle">?</span>
                                 <div className="text-normal mt3 mb1">This dashboard is looking empty.</div>
                                 <div className="text-normal text-grey-2">Add a question to start making it useful!</div>
