@@ -40,11 +40,9 @@ const TYPES = {
     [LOCATION]: {
         special: ["city", "country", "state", "zip_code"]
     },
-
     [ENTITY]: {
         special: ["fk", "id", "name"]
     },
-
     [SUMMABLE]: {
         include: [NUMBER],
         exclude: [ENTITY, LOCATION, DATE_TIME]
@@ -99,6 +97,7 @@ export function getFieldType(field) {
 export const isDate = isFieldType.bind(null, DATE_TIME);
 export const isNumeric = isFieldType.bind(null, NUMBER);
 export const isBoolean = isFieldType.bind(null, BOOLEAN);
+export const isString = isFieldType.bind(null, STRING);
 export const isSummable = isFieldType.bind(null, SUMMABLE);
 export const isCategory = isFieldType.bind(null, CATEGORY);
 export const isDimension = isFieldType.bind(null, DIMENSION);
@@ -150,7 +149,7 @@ function equivalentArgument(field, table) {
     }
 
     if (isCategory(field)) {
-        if (field.id in table.field_values && table.field_values[field.id].length > 0) {
+        if (table.field_values && field.id in table.field_values && table.field_values[field.id].length > 0) {
             let validValues = table.field_values[field.id];
             // this sort function works for both numbers and strings:
             validValues.sort((a, b) => a === b ? 0 : (a < b ? -1 : 1));
@@ -237,57 +236,64 @@ const OPERATORS = {
     },
     "CONTAINS": {
         validArgumentsFilters: [freeformArgument]
+    },
+    "DOES_NOT_CONTAIN": {
+        validArgumentsFilters: [freeformArgument]
     }
 };
 
 // ordered list of operators and metadata per type
 const OPERATORS_BY_TYPE_ORDERED = {
     [NUMBER]: [
-        { name: "=",       verboseName: "Equal" },
-        { name: "!=",      verboseName: "Not equal" },
-        { name: ">",       verboseName: "Greater than" },
-        { name: "<",       verboseName: "Less than" },
-        { name: "BETWEEN", verboseName: "Between" },
-        { name: ">=",      verboseName: "Greater than or equal to", advanced: true },
-        { name: "<=",      verboseName: "Less than or equal to", advanced: true },
-        { name: "IS_NULL", verboseName: "Is empty", advanced: true },
-        { name: "NOT_NULL",verboseName: "Not empty", advanced: true }
+        { name: "=",                verboseName: "Equal" },
+        { name: "!=",               verboseName: "Not equal" },
+        { name: ">",                verboseName: "Greater than" },
+        { name: "<",                verboseName: "Less than" },
+        { name: "BETWEEN",          verboseName: "Between" },
+        { name: ">=",               verboseName: "Greater than or equal to", advanced: true },
+        { name: "<=",               verboseName: "Less than or equal to", advanced: true },
+        { name: "IS_NULL",          verboseName: "Is empty", advanced: true },
+        { name: "NOT_NULL",         verboseName: "Not empty", advanced: true }
     ],
     [STRING]: [
-        { name: "=",       verboseName: "Is" },
-        { name: "!=",      verboseName: "Is not" },
-        { name: "IS_NULL", verboseName: "Is empty", advanced: true },
-        { name: "NOT_NULL",verboseName: "Not empty", advanced: true }
+        { name: "=",                verboseName: "Is" },
+        { name: "!=",               verboseName: "Is not" },
+        { name: "CONTAINS",         verboseName: "Contains"},
+        { name: "DOES_NOT_CONTAIN", verboseName: "Does not contain"},
+        { name: "IS_NULL",          verboseName: "Is empty", advanced: true },
+        { name: "NOT_NULL",         verboseName: "Not empty", advanced: true },
+        { name: "STARTS_WITH",      verboseName: "Starts with", advanced: true},
+        { name: "ENDS_WITH",        verboseName: "Ends with", advanced: true}
     ],
     [DATE_TIME]: [
-        { name: "=",       verboseName: "Is" },
-        { name: "<",       verboseName: "Before" },
-        { name: ">",       verboseName: "After" },
-        { name: "BETWEEN", verboseName: "Between" },
-        { name: "IS_NULL", verboseName: "Is empty", advanced: true },
-        { name: "NOT_NULL",verboseName: "Not empty", advanced: true }
+        { name: "=",                verboseName: "Is" },
+        { name: "<",                verboseName: "Before" },
+        { name: ">",                verboseName: "After" },
+        { name: "BETWEEN",          verboseName: "Between" },
+        { name: "IS_NULL",          verboseName: "Is empty", advanced: true },
+        { name: "NOT_NULL",         verboseName: "Not empty", advanced: true }
     ],
     [LOCATION]: [
-        { name: "=",       verboseName: "Is" },
-        { name: "!=",      verboseName: "Is not" },
-        { name: "IS_NULL", verboseName: "Is empty", advanced: true },
-        { name: "NOT_NULL",verboseName: "Not empty", advanced: true }
+        { name: "=",                verboseName: "Is" },
+        { name: "!=",               verboseName: "Is not" },
+        { name: "IS_NULL",          verboseName: "Is empty", advanced: true },
+        { name: "NOT_NULL",         verboseName: "Not empty", advanced: true }
     ],
     [COORDINATE]: [
-        { name: "=",       verboseName: "Is" },
-        { name: "!=",      verboseName: "Is not" },
-        { name: "INSIDE",  verboseName: "Inside" }
+        { name: "=",                verboseName: "Is" },
+        { name: "!=",               verboseName: "Is not" },
+        { name: "INSIDE",           verboseName: "Inside" }
     ],
     [BOOLEAN]: [
-        { name: "=",       verboseName: "Is", multi: false, defaults: [true] },
-        { name: "IS_NULL", verboseName: "Is empty" },
-        { name: "NOT_NULL",verboseName: "Not empty" }
+        { name: "=",                verboseName: "Is", multi: false, defaults: [true] },
+        { name: "IS_NULL",          verboseName: "Is empty" },
+        { name: "NOT_NULL",         verboseName: "Not empty" }
     ],
     [UNKNOWN]: [
-        { name: "=",       verboseName: "Is" },
-        { name: "!=",      verboseName: "Is not" },
-        { name: "IS_NULL", verboseName: "Is empty", advanced: true },
-        { name: "NOT_NULL",verboseName: "Not empty", advanced: true }
+        { name: "=",                verboseName: "Is" },
+        { name: "!=",               verboseName: "Is not" },
+        { name: "IS_NULL",          verboseName: "Is empty", advanced: true },
+        { name: "NOT_NULL",         verboseName: "Not empty", advanced: true }
     ]
 };
 
@@ -300,7 +306,7 @@ const MORE_VERBOSE_NAMES = {
     "less than": "is less than",
     "greater than": "is greater than",
     "less than or equal to": "is less than or equal to",
-    "greater than or equal to": "is greater than or equal to",
+    "greater than or equal to": "is greater than or equal to"
 }
 
 function getOperators(field, table) {

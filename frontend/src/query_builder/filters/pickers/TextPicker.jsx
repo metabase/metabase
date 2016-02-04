@@ -42,7 +42,7 @@ export default class TextPicker extends Component {
             <div>
                 <ul>
                     {values.map((value, index) =>
-                        <li className="px1 pt1 relative">
+                        <li className="FilterInput px1 pt1 relative">
                             <input
                                 className={cx("input block full border-purple", { "border-error": validations[index] === false })}
                                 type="text"
@@ -52,8 +52,8 @@ export default class TextPicker extends Component {
                                 autoFocus={true}
                             />
                             { index > 0 ?
-                                <span className="absolute top right">
-                                    <Icon name="close" className="cursor-pointer" width="16" height="16" onClick={() => this.removeValue(index)}/>
+                                <span className="FilterRemove-field absolute top right">
+                                    <Icon name="close" className="cursor-pointer text-white" width="12" height="12" onClick={() => this.removeValue(index)}/>
                                 </span>
                             : null }
                         </li>

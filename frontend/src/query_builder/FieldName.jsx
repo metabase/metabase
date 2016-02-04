@@ -68,7 +68,7 @@ export default class FieldName extends Component {
         var removeButton;
         if (this.props.removeField) {
             removeButton = (
-                <a className="text-grey-2 no-decoration pr1 flex align-center" href="#" onClick={this.props.removeField}>
+                <a className="text-grey-2 no-decoration pr1 flex align-center" onClick={this.props.removeField}>
                     <Icon name='close' width="14px" height="14px" />
                 </a>
             )

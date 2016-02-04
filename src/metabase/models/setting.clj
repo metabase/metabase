@@ -4,7 +4,7 @@
             [environ.core :as env]
             [korma.core :as k]
             [metabase.config :as config]
-            [metabase.db :refer [sel del]]
+            [metabase.db :refer [exists? sel del]]
             [metabase.models [common :as common]
                              [interface :as i]]
             [metabase.setup :as setup]
@@ -62,10 +62,11 @@
   [k]
   {:pre [(keyword? k)]}
   (restore-cache-if-needed)
-  (or (@cached-setting->value k)
-      (when-let [v (sel :one :field [Setting :value] :key (name k))]
-        (swap! cached-setting->value assoc k v)
-        v)))
+  (if (contains? @cached-setting->value k)
+    (@cached-setting->value k)
+    (let [v (sel :one :field [Setting :value] :key (name k))]
+      (swap! cached-setting->value assoc k v)
+      v)))
 
 (defn- get-from-env-var
   "Given a `Setting` like `:mandrill-api-key`, return the value of the corresponding env var,
@@ -188,46 +189,39 @@
                        :value (k settings))))
          (sort-by :key))))
 
-(defn short-timezone-name
-  "Get a short display name for a TIMEZONE, e.g. `PST`."
-  [^TimeZone timezone]
-  (.getDisplayName timezone (.inDaylightTime timezone (new java.util.Date)) TimeZone/SHORT))
-
-(defn get-instance-timezone
-  "Get the `report-timezone`, or fall back to the System default if it's not set."
-  []
-  (let [^String timezone-name (get :report-timezone)]
-    (or (when (seq timezone-name)
-          (TimeZone/getTimeZone timezone-name))
-        (TimeZone/getDefault))))
+(def ^:private short-timezone-name
+  "Get a short display name (e.g. `PST`) for `report-timezone`, or fall back to the System default if it's not set."
+  (memoize (fn [^String timezone-name]
+             (let [^TimeZone timezone (or (when (seq timezone-name)
+                                            (TimeZone/getTimeZone timezone-name))
+                                          (TimeZone/getDefault))]
+               (.getDisplayName timezone (.inDaylightTime timezone (java.util.Date.)) TimeZone/SHORT)))))
 
 (defn public-settings
   "Return a simple map of key/value pairs which represent the public settings for the front-end application."
   []
-  {:engines               (@(resolve 'metabase.driver/available-drivers))
-   :ga_code               "UA-60817802-1"
-   :password_complexity   (password/active-password-complexity)
-   :setup_token           (setup/token-value)
+  {:ga_code               "UA-60817802-1"
+   :password_complexity   password/active-password-complexity
    :timezones             common/timezones
-   :version               (config/mb-version-info)
-   ;; all of these values are dynamic settings controlled at runtime
+   :version               config/mb-version-info
+   :engines               ((resolve 'metabase.driver/available-drivers))
+   :setup_token           (setup/token-value)
    :anon_tracking_enabled (let [tracking? (get :anon-tracking-enabled)]
                             (or (nil? tracking?) (= "true" tracking?)))
    :site_name             (get :site-name)
-   :email_configured      (@(resolve 'metabase.email/email-configured?))
+   :email_configured      ((resolve 'metabase.email/email-configured?))
    :admin_email           (get :admin-email)
    :report_timezone       (get :report-timezone)
-   :timezone_short        (short-timezone-name (get-instance-timezone))
-   :has_sample_dataset    (some? (sel :one 'Database :is_sample true))})
+   :timezone_short        (short-timezone-name (get :report-timezone))
+   :has_sample_dataset    (exists? 'Database, :is_sample true)})
+
 
 ;;; # IMPLEMENTATION
 
 (defn- restore-cache-if-needed []
   (when-not @cached-setting->value
-    (reset! cached-setting->value (->> (sel :many Setting)
-                                       (map (fn [{k :key v :value}]
-                                              {(keyword k) v}))
-                                       (into {})))))
+    (reset! cached-setting->value (into {} (for [{k :key, v :value} (sel :many Setting)]
+                                             {(keyword k) v})))))
 
 (def ^:private cached-setting->value
   "Map of setting name (keyword) -> string value, as they exist in the DB."

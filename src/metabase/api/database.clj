@@ -51,8 +51,13 @@
 
 (defendpoint GET "/"
   "Fetch all `Databases`."
-  []
-  (sel :many Database (k/order :name)))
+  [include_tables]
+  (let [dbs (sel :many Database (k/order :name))]
+    (if-not include_tables
+      dbs
+      (let [db-id->tables (group-by :db_id (sel :many Table, :active true))]
+        (for [db dbs]
+          (assoc db :tables (sort-by :name (get db-id->tables (:id db) []))))))))
 
 (defendpoint POST "/"
   "Add a new `Database`."

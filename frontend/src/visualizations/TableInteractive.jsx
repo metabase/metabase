@@ -1,10 +1,11 @@
 import React, { Component, PropTypes } from "react";
 
-import { Table, Column } from 'fixed-data-table';
+import { Table, Column } from "fixed-data-table";
+
 import Icon from "metabase/components/Icon.jsx";
 import Popover from "metabase/components/Popover.jsx";
 
-import MetabaseAnalytics from '../lib/analytics';
+import MetabaseAnalytics from "metabase/lib/analytics";
 import DataGrid from "metabase/lib/data_grid";
 import { formatValue, capitalize } from "metabase/lib/formatting";
 
@@ -18,7 +19,7 @@ const QUICK_FILTERS = [
     { name: ">", value: ">" }
 ];
 
-export default class QueryVisualizationTable extends Component {
+export default class TableInteractive extends Component {
     constructor(props, context) {
         super(props, context);
 
@@ -38,16 +39,12 @@ export default class QueryVisualizationTable extends Component {
     }
 
     static propTypes = {
-        data: PropTypes.object,
-        sort: PropTypes.array,
-        setSortFn: PropTypes.func,
-        isCellClickableFn: PropTypes.func,
-        cellClickedFn: PropTypes.func
-    };
-
-    static defaultProps = {
-        maxRows: 2000,
-        minColumnWidth: 75
+        data: PropTypes.object.isRequired,
+        sort: PropTypes.array.isRequired,
+        setSortFn: PropTypes.func.isRequired,
+        isCellClickableFn: PropTypes.func.isRequired,
+        cellClickedFn: PropTypes.func.isRequired,
+        pivot: PropTypes.bool.isRequired
     };
 
     componentWillMount() {
@@ -79,10 +76,13 @@ export default class QueryVisualizationTable extends Component {
         // if size changes don't update yet because state will change in a moment
         this.calculateSizing(nextState);
 
-        // compare props and state to determine if we should re-render
+        // compare props (excluding card) and state to determine if we should re-render
         // NOTE: this is essentially the same as React.addons.PureRenderMixin but
         // we currently need to recalculate the container size here.
-        return !_.isEqual(this.props, nextProps) || !_.isEqual(this.state, nextState);
+        return (
+            !_.isEqual({ ...this.props, card: null }, { ...nextProps, card: null }) ||
+            !_.isEqual(this.state, nextState)
+        );
     }
 
     componentDidUpdate() {
@@ -183,7 +183,7 @@ export default class QueryVisualizationTable extends Component {
         var key = 'cl'+rowIndex+'_'+cellDataKey;
         if (this.props.cellIsClickableFn(rowIndex, cellDataKey)) {
             return (
-                <a key={key} className="link cellData" href="#" onClick={this.cellClicked.bind(this, rowIndex, cellDataKey)}>{cellData}</a>
+                <a key={key} className="link cellData" onClick={this.cellClicked.bind(this, rowIndex, cellDataKey)}>{cellData}</a>
             );
         } else {
             var popover = null;

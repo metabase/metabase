@@ -85,7 +85,7 @@ export default class CardFavoriteButton extends Component {
         });
 
         return (
-            <a className={iconClasses} href="#" onClick={this.toggleFavorite} title="Favorite this question">
+            <a className={iconClasses} onClick={this.toggleFavorite} title="Favorite this question">
                 <Icon name="star" width="16px" height="16px"></Icon>
             </a>
         );

@@ -42,7 +42,7 @@ export default ComposedComponent => class extends Component {
 
     render() {
         return (
-            <a ref="trigger" href="#" onClick={() => this.toggle()} className={cx("no-decoration", this.props.triggerClasses)}>
+            <a ref="trigger" onClick={() => this.toggle()} className={cx("no-decoration", this.props.triggerClasses)}>
                 {this.props.triggerElement}
                 <ComposedComponent
                     {...this.props}

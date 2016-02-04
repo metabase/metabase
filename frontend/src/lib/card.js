@@ -44,7 +44,7 @@ export function urlForCardState(state, dirty) {
         url = "/q";
     }
     if (state.serializedCard && (!state.cardId || dirty)) {
-        url += "/" + state.serializedCard;
+        url += "#" + state.serializedCard;
     }
     return url;
 }

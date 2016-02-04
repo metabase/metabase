@@ -16,8 +16,7 @@ export default class Dashboard extends Component {
     static propTypes = {
         dispatch: PropTypes.func.isRequired,
         onChangeLocation: PropTypes.func.isRequired,
-        onDashboardDeleted: PropTypes.func.isRequired,
-        visualizationSettingsApi: PropTypes.object.isRequired
+        onDashboardDeleted: PropTypes.func.isRequired
     };
 
     async componentDidMount() {

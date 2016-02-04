@@ -30,7 +30,6 @@ export default class DashboardGrid extends Component {
         dispatch: PropTypes.func.isRequired,
         isEditing: PropTypes.bool.isRequired,
         dashboard: PropTypes.object.isRequired,
-        visualizationSettingsApi: PropTypes.object.isRequired,
         onChangeLocation: PropTypes.func.isRequired
     };
 
@@ -174,7 +173,6 @@ export default class DashboardGrid extends Component {
                                 key={dc.id}
                                 dashcard={dc}
                                 dispatch={this.props.dispatch}
-                                visualizationSettingsApi={this.props.visualizationSettingsApi}
                             />
                             <div className="DashCard-actions absolute top right text-brand p1">
                                 <a href="#" onClick={() => this.onEditDashCard(dc)}>

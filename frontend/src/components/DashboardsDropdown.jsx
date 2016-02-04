@@ -103,7 +103,7 @@ export default class DashboardsDropdown extends Component {
                                         <div className="px2 py1 text-bold">You don’t have any dashboards yet.</div>
                                         <div className="px2 pb2">Dashboards group visualizations for frequent questions in a single handy place.</div>
                                         <div className="border-top border-light">
-                                            <a className="Dropdown-item block text-white no-decoration" href="#" onClick={this.toggleModal}>Create your first dashboard</a>
+                                            <a className="Dropdown-item block text-white no-decoration" onClick={this.toggleModal}>Create your first dashboard</a>
                                         </div>
                                     </div>
                                 :
@@ -123,7 +123,7 @@ export default class DashboardsDropdown extends Component {
                                             </li>
                                         )}
                                         <li className="block border-top border-light">
-                                            <a data-metabase-event={"Navbar;Dashboard Dropdown;Create Dashboard"} className="Dropdown-item block text-white no-decoration" href="#" onClick={this.toggleModal}>Create a new dashboard</a>
+                                            <a data-metabase-event={"Navbar;Dashboard Dropdown;Create Dashboard"} className="Dropdown-item block text-white no-decoration" onClick={this.toggleModal}>Create a new dashboard</a>
                                         </li>
                                     </ul>
                                 }

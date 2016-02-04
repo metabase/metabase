@@ -180,7 +180,7 @@ export default React.createClass({
             'text-brand-hover': !this.state.isShowingDataReference
         });
         buttonSections[1].push(
-            <a key="dataReference" href="#" className={dataReferenceButtonClasses} title="Get help on what data means">
+            <a key="dataReference" className={dataReferenceButtonClasses} title="Get help on what data means">
                 <Icon name='reference' width="16px" height="16px" onClick={this.toggleDataReference}></Icon>
             </a>
         );
