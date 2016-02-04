@@ -10,11 +10,19 @@
                              [user :refer [User]]
                              [view-log :refer [ViewLog]])))
 
+(defn- dashcard-exists [{:keys [topic] :as activity}]
+  (if-not (contains? #{:dashboard-add-cards :dashboard-remove-cards} topic)
+    activity
+    (update-in activity [:details :dashcards] (fn [dashcards]
+                                                (for [dashcard dashcards]
+                                                  (assoc dashcard :exists (db/exists? Card :id (:card_id dashcard))))))))
+
 (defendpoint GET "/"
   "Get recent activity."
   []
   (-> (db/sel :many Activity (k/order :timestamp :DESC) (k/limit 40))
-      (hydrate :user :table :database :model_exists)))
+      (hydrate :user :table :database :model_exists)
+      (->> (mapv dashcard-exists))))
 
 (defendpoint GET "/recent_views"
   "Get the list of 15 things the current user has been viewing most recently."
