@@ -7,6 +7,7 @@
             (metabase.models [activity :refer [Activity]]
                              [card :refer [Card]]
                              [database :refer [Database]]
+                             [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]]
                              [setting :as setting])
             [metabase.sample-data :as sample-data]
@@ -96,3 +97,14 @@
   (when-not (contains? activity-feed-topics :database-sync-begin)
     (k/delete Activity
       (k/where {:topic "database-sync"}))))
+
+
+;; Clean up duplicate FK entries
+(defmigration remove-duplicate-fk-entries
+  (let [existing-fks (db/sel :many ForeignKey)
+        grouped-fks  (group-by #(str (:origin_id %) "_" (:destination_id %)) existing-fks)]
+    (doseq [[k fks] grouped-fks]
+      (when (< 1 (count fks))
+        (log/debug "Removing duplicate FK entries for" k)
+        (doseq [duplicate-fk (drop-last fks)]
+          (db/del ForeignKey :id (:id duplicate-fk)))))))
