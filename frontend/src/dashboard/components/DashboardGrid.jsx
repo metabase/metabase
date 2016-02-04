@@ -90,7 +90,7 @@ export default class DashboardGrid extends Component {
                 return;
             }
         }
-        this.props.onChangeLocation(Urls.card(dc.card_id)+"?edit=true&from=" + encodeURIComponent("/dash/" + dc.dashboard_id));
+        this.props.onChangeLocation(Urls.card(dc.card_id)+"?edit=true&from=" + encodeURIComponent(Urls.dashboard(dc.dashboard_id)));
     }
 
     renderRemoveModal() {

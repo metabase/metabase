@@ -1,12 +1,8 @@
 // provides functions for building urls to things we care about
 var Urls = {
     card: function(card_id) {
-        if (card_id) {
-            // NOTE that this is for an ephemeral card link, not an editable card
-            return "/q/"+card_id;
-        } else {
-            return "/q/";
-        }
+        // NOTE that this is for an ephemeral card link, not an editable card
+        return "/card/"+card_id;
     },
 
     dashboard: function(dashboard_id) {

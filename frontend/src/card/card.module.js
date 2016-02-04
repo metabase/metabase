@@ -10,15 +10,13 @@ var Card = angular.module('metabase.card', [
 ]);
 
 Card.config(['$routeProvider', function($routeProvider) {
-    $routeProvider.when('/q/', {
+    $routeProvider.when('/q', {
         templateUrl: '/app/card/partials/card_detail.html',
-        controller: 'CardDetail',
-        reloadOnSearch: false
+        controller: 'CardDetail'
     });
     $routeProvider.when('/card/:cardId', {
         templateUrl: '/app/card/partials/card_detail.html',
-        controller: 'CardDetail',
-        reloadOnSearch: false
+        controller: 'CardDetail'
     });
 
     // redirect old urls to new ones with hashes
