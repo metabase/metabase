@@ -181,7 +181,7 @@ export default class DashboardGrid extends Component {
     render() {
         var { dashboard, isEditing } = this.props;
         return (
-            <div className="flex-full full">
+            <div>
                 <ResponsiveReactGridLayout
                     className={cx("DashboardGrid", { "Dash--editing": isEditing, "Dash--dragging": this.state.isDragging })}
                     breakpoints={{lg: 753, sm: 752}}

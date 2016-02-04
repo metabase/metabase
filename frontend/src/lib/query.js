@@ -345,12 +345,12 @@ var Query = {
     },
 
     removeSort(query, index) {
-        var queryOrderBy = query.order_by;
-
-        if (queryOrderBy.length === 1) {
-            delete query.order_by;
-        } else {
-            queryOrderBy.splice(index, 1);
+        if (query.order_by) {
+            if (query.order_by.length === 1) {
+                delete query.order_by;
+            } else {
+                query.order_by.splice(index, 1);
+            }
         }
     },
 
