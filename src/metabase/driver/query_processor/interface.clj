@@ -3,7 +3,6 @@
    This namespace should just contain definitions of various protocols and record types; associated logic
    should go in `metabase.driver.query-processor.expand`."
   (:require [schema.core :as s]
-            [metabase.driver :as driver]
             [metabase.models.field :as field]
             [metabase.util :as u])
   (:import clojure.lang.Keyword
@@ -19,7 +18,7 @@
   "When `*driver*` is bound, assert that is supports keyword FEATURE."
   [feature]
   (when *driver*
-    (when-not (contains? (driver/features *driver*) feature)
+    (when-not (contains? ((resolve 'metabase.driver/features) *driver*) feature)
       (throw (Exception. (str (name feature) " is not supported by this driver."))))))
 
 ;; Expansion Happens in a Few Stages:
@@ -62,7 +61,7 @@
                     special-type       :- (s/maybe (apply s/enum field/special-types))
                     table-id           :- IntGreaterThanZero
                     schema-name        :- (s/maybe s/Str)
-                    table-name         :- s/Str
+                    table-name         :- (s/maybe s/Str) ; TODO - Why is this `maybe` ?
                     position           :- (s/maybe s/Int) ; TODO - int >= 0
                     description        :- (s/maybe s/Str)
                     parent-id          :- (s/maybe IntGreaterThanZero)
@@ -103,7 +102,7 @@
 ;; Value is the expansion of a value within a QL clause
 ;; Information about the associated Field is included for convenience
 (s/defrecord Value [value   :- (s/maybe (s/cond-pre s/Bool s/Num s/Str))
-                    field   :- Field])
+                    field   :- Field]) ;; TODO - Value doesn't need the whole field, just the relevant type info / units
 
 ;; e.g. an absolute point in time (literal)
 (s/defrecord DateTimeValue [value :- Timestamp
@@ -147,7 +146,7 @@
 
 
 (s/defrecord RelativeDatetime [amount :- s/Int
-                               unit   :- (s/maybe DatetimeValueUnit)])
+                               unit   :- DatetimeValueUnit])
 
 (def LiteralDatetimeString (s/constrained s/Str u/date-string?                         "Valid ISO-8601 datetime string literal"))
 (def LiteralDatetime       (s/named (s/cond-pre java.sql.Date LiteralDatetimeString)   "Valid datetime literal (must be ISO-8601 string or java.sql.Date)"))
@@ -170,14 +169,13 @@
 
 ;;; # ------------------------------------------------------------ CLAUSE SCHEMAS ------------------------------------------------------------
 
+(s/defrecord AggregationWithoutField [aggregation-type :- (s/eq :count)])
+
+(s/defrecord AggregationWithField [aggregation-type :- (s/named (s/enum :avg :count :cumulative-sum :distinct :stddev :sum) "Valid aggregation type")
+                                   field            :- FieldPlaceholder])
+
 (def Aggregation (s/constrained
-                  (s/constrained
-                   {:aggregation-type       (s/named (s/enum :avg :count :cumulative-sum :distinct :stddev :sum) "Valid aggregation type")
-                    (s/optional-key :field) FieldPlaceholder}
-                   (fn [{:keys [aggregation-type field]}]
-                     (or (= aggregation-type :count)
-                         field))
-                   "Missing :field.")
+                  (s/cond-pre AggregationWithField AggregationWithoutField)
                   (fn [{:keys [aggregation-type]}]
                     (when (= aggregation-type :stddev)
                       (assert-driver-supports :standard-deviation-aggregations))
@@ -202,12 +200,19 @@
                            field       :- FieldPlaceholder
                            value       :- StringValuePlaceholder])
 
-(def SimpleFilter (s/cond-pre EqualityFilter ComparisonFilter BetweenFilter StringFilter))
+(def SimpleFilterClause (s/named (s/cond-pre EqualityFilter ComparisonFilter BetweenFilter StringFilter)
+                                 "Simple filter clause"))
+
+(s/defrecord NotFilter [compound-type :- (s/eq :not)
+                        subclause     :- SimpleFilterClause])
+
+(declare Filter)
 
 (s/defrecord CompoundFilter [compound-type :- (s/enum :and :or)
-                             subclauses    :- [(s/named (s/cond-pre SimpleFilter CompoundFilter) "Valid filter subclause in compound (and/or) filter")]])
+                             subclauses    :- [(s/recursive #'Filter)]])
 
-(def Filter (s/named (s/cond-pre SimpleFilter CompoundFilter) "Valid filter clause"))
+(def Filter (s/named (s/cond-pre SimpleFilterClause NotFilter CompoundFilter)
+                     "Valid filter clause"))
 
 
 (def OrderBy (s/named {:field     FieldPlaceholderOrAgRef

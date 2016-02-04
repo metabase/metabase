@@ -2,11 +2,11 @@ import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
 import LoadingSpinner from 'metabase/components/LoadingSpinner.jsx';
-import QueryVisualizationTable from './QueryVisualizationTable.jsx';
-import QueryVisualizationChart from './QueryVisualizationChart.jsx';
 import QueryVisualizationObjectDetailTable from './QueryVisualizationObjectDetailTable.jsx';
 import RunButton from './RunButton.jsx';
 import VisualizationSettings from './VisualizationSettings.jsx';
+
+import Visualization from "metabase/visualizations/Visualization.jsx";
 
 import MetabaseSettings from "metabase/lib/settings";
 import Modal from "metabase/components/Modal.jsx";
@@ -22,12 +22,12 @@ export default class QueryVisualization extends Component {
         this.runQuery = this.runQuery.bind(this);
 
         this.state = {
-            origQuery: JSON.stringify(props.card.dataset_query)
+            lastRunCard: props.card,
+            lastRunQuery: JSON.stringify(props.card.dataset_query)
         };
     }
 
     static propTypes = {
-        visualizationSettingsApi: PropTypes.object.isRequired,
         card: PropTypes.object.isRequired,
         result: PropTypes.object,
         databases: PropTypes.array,
@@ -53,14 +53,15 @@ export default class QueryVisualization extends Component {
         // whenever we are told that we are running a query lets update our understanding of the "current" query
         if (nextProps.isRunning) {
             this.setState({
-                origQuery: JSON.stringify(nextProps.card.dataset_query)
+                lastRunCard: nextProps.card,
+                lastRunQuery: JSON.stringify(nextProps.card.dataset_query)
             });
         }
     }
 
     queryIsDirty() {
         // a query is considered dirty if ANY part of it has been changed
-        return (JSON.stringify(this.props.card.dataset_query) !== this.state.origQuery);
+        return (JSON.stringify(this.props.card.dataset_query) !== this.state.lastRunQuery);
     }
 
     isChartDisplay(display) {
@@ -87,7 +88,7 @@ export default class QueryVisualization extends Component {
         }
 
         return (
-            <div className="relative flex full mt3 mb1">
+            <div className="relative flex flex-no-shrink mt3 mb1">
                 <span className="relative z3">{visualizationSettings}</span>
                 <div className="absolute flex layout-centered left right z2">
                     <RunButton
@@ -176,7 +177,7 @@ export default class QueryVisualization extends Component {
             } else {
                 if (window.OSX) {
                     return (
-                        <a classname="mx1" href="#" title="Download this data" onClick={function() {
+                        <a classname="mx1" title="Download this data" onClick={function() {
                             window.OSX.saveCSV(downloadLink);
                         }}>
                             <Icon name='download' width="16px" height="16px" />
@@ -311,56 +312,17 @@ export default class QueryVisualization extends Component {
                         </div>
                     );
 
-                } else if (this.props.card.display === "scalar") {
-                    var scalarValue;
-                    if (this.props.result.data.rows &&
-                        this.props.result.data.rows.length > 0 &&
-                        this.props.result.data.rows[0].length > 0) {
-                        scalarValue = this.props.result.data.rows[0][0];
-                    }
-
+                } else {
                     viz = (
-                        <div className="Visualization--scalar flex full layout-centered">
-                            <span>{scalarValue}</span>
-                        </div>
-                    );
-
-                } else if (this.props.card.display === "table") {
-
-                    var pivotTable = false,
-                        cellClickable = this.props.cellIsClickableFn,
-                        sortFunction = this.props.setSortFn,
-                        sort = (this.props.card.dataset_query.query && this.props.card.dataset_query.query.order_by) ?
-                                    this.props.card.dataset_query.query.order_by : null;
-
-                    // check if the data is pivotable (2 groupings + 1 agg != 'rows')
-                    if (Query.isStructured(this.props.card.dataset_query) &&
-                            !Query.isBareRowsAggregation(this.props.card.dataset_query.query) &&
-                            this.props.result.data.cols.length === 3) {
-                        pivotTable = true;
-                        sortFunction = undefined;
-                        cellClickable = function() { return false; };
-                    }
-
-                    viz = (
-                        <QueryVisualizationTable
+                        <Visualization
+                            card={this.state.lastRunCard}
                             data={this.props.result.data}
-                            pivot={pivotTable}
-                            maxRows={this.props.maxTableRows}
-                            setSortFn={sortFunction}
-                            sort={sort}
-                            cellIsClickableFn={cellClickable}
+
+                            // Table:
+                            setSortFn={this.props.setSortFn}
+                            cellIsClickableFn={this.props.cellIsClickableFn}
                             cellClickedFn={this.props.cellClickedFn}
                         />
-                    );
-
-                } else {
-                    // assume that anything not a table is a chart
-                    viz = (
-                        <QueryVisualizationChart
-                            visualizationSettingsApi={this.props.visualizationSettingsApi}
-                            card={this.props.card}
-                            data={this.props.result.data} />
                     );
                 }
             }
@@ -371,7 +333,7 @@ export default class QueryVisualization extends Component {
             'flex-column': !this.props.isObjectDetail
         });
 
-        var visualizationClasses = cx('flex flex-full Visualization z1', {
+        var visualizationClasses = cx('flex flex-full Visualization z1 px1', {
             'Visualization--errors': (this.props.result && this.props.result.error),
             'Visualization--loading': this.props.isRunning
         });

@@ -4,16 +4,21 @@
   (:require (clojure [set :as set]
                      [walk :as walk])
             [medley.core :as m]
+            [schema.core :as s]
             [metabase.db :refer [sel]]
-            (metabase.driver.query-processor [interface :refer :all]
-                                             [parse :as parse])
+            [metabase.driver.query-processor.interface :refer :all]
             (metabase.models [database :refer [Database]]
                              [field :as field]
                              [foreign-key :refer [ForeignKey]]
-                             [table :refer [Table]]))
+                             [table :refer [Table]])
+            [metabase.util :as u])
   (:import (metabase.driver.query_processor.interface DateTimeField
+                                                      DateTimeValue
                                                       Field
                                                       FieldPlaceholder
+                                                      RelativeDatetime
+                                                      RelativeDateTimeValue
+                                                      Value
                                                       ValuePlaceholder)))
 
 ;; # ---------------------------------------------------------------------- UTIL FNS ------------------------------------------------------------
@@ -111,11 +116,36 @@
 
 ;;; ## ------------------------------------------------------------ VALUE PLACEHOLDER ------------------------------------------------------------
 
+(defprotocol ^:private IParseValueForField
+  (^:private parse-value [this value]
+    "Parse a value for a given type of `Field`."))
+
+(extend-protocol IParseValueForField
+  Field
+  (parse-value [this value]
+    (s/validate Value (map->Value {:field this, :value value})))
+
+  DateTimeField
+  (parse-value [this value]
+    (cond
+      (u/date-string? value)
+      (s/validate DateTimeValue (map->DateTimeValue {:field this, :value (u/->Timestamp value)}))
+
+      (instance? RelativeDatetime value)
+      (do (s/validate RelativeDatetime value)
+          (s/validate RelativeDateTimeValue (map->RelativeDateTimeValue {:field this, :amount (:amount value), :unit (:unit value)})))
+
+      (nil? value)
+      nil
+      
+      :else
+      (throw (Exception. (format "Invalid value '%s': expected a DateTime." value))))))
+
 (defn- value-ph-resolve-field [{:keys [field-placeholder value]} field-id->fields]
   (let [resolved-field (resolve-field field-placeholder field-id->fields)]
     (when-not resolved-field
       (throw (Exception. (format "Unable to resolve field: %s" field-placeholder))))
-    (parse/parse-value resolved-field value)))
+    (parse-value resolved-field value)))
 
 (extend ValuePlaceholder
   IResolve (merge IResolveDefaults
@@ -215,9 +245,14 @@
 
 ;;; # ------------------------------------------------------------ PUBLIC INTERFACE ------------------------------------------------------------
 
-(defn resolve [expanded-query-dict]
+(defn resolve
+  "Resolve placeholders by fetching `Fields`, `Databases`, and `Tables` that are referred to in EXPANDED-QUERY-DICT."
+  [expanded-query-dict]
   (some-> expanded-query-dict
           record-fk-field-ids
           resolve-fields
           resolve-database
           resolve-tables))
+
+
+(u/require-dox-in-this-namespace)

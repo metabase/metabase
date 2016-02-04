@@ -14,12 +14,14 @@ import SavedQuestionsApp from './containers/SavedQuestionsApp.jsx';
 import { createStore, combineReducers } from "metabase/lib/redux";
 import _ from "underscore";
 
-import MetabaseAnalytics from '../lib/analytics';
+import MetabaseAnalytics from "metabase/lib/analytics";
 import DataGrid from "metabase/lib/data_grid";
-
 import Query from "metabase/lib/query";
 import { serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
 import { loadTable } from "metabase/lib/table";
+import { getDefaultColor } from "metabase/lib/visualization_settings";
+
+import NotFound from "metabase/components/NotFound.jsx";
 
 import * as reducers from './reducers';
 
@@ -40,8 +42,8 @@ CardControllers.controller('CardList', ['$scope', '$location', function($scope, 
 }]);
 
 CardControllers.controller('CardDetail', [
-    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'Metabase', 'VisualizationSettings', 'Revision',
-    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, Metabase, VisualizationSettings, Revision) {
+    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'Metabase', 'Revision',
+    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, Metabase, Revision) {
         // promise helper
         $q.resolve = function(object) {
             var deferred = $q.defer();
@@ -81,6 +83,7 @@ CardControllers.controller('CardDetail', [
             tableForeignKeyReferences = null,
             isRunning = false,
             isObjectDetail = false,
+            isShowingTutorial = $routeParams.tutorial,
             card = {
                 name: null,
                 public_perms: 0,
@@ -171,7 +174,6 @@ CardControllers.controller('CardDetail', [
         };
 
         var visualizationModel = {
-            visualizationSettingsApi: VisualizationSettings,
             card: null,
             result: null,
             databases: null,
@@ -186,7 +188,7 @@ CardControllers.controller('CardDetail', [
                 var vizSettings = card.visualization_settings;
 
                 // if someone picks the default color then clear any color settings
-                if (color === VisualizationSettings.getDefaultColor()) {
+                if (color === getDefaultColor()) {
                     // NOTE: this only works if setting color is the only option we allow
                     card.visualization_settings = {};
 
@@ -332,7 +334,7 @@ CardControllers.controller('CardDetail', [
             // ensure rendering model is up to date
             editorModel.isRunning = isRunning;
             editorModel.isShowingDataReference = $scope.isShowingDataReference;
-            editorModel.isShowingTutorial = !!$routeParams.tutorial;
+            editorModel.isShowingTutorial = isShowingTutorial;
             editorModel.databases = databases;
             editorModel.tableMetadata = tableMetadata;
             editorModel.tableForeignKeys = tableForeignKeys;
@@ -373,17 +375,22 @@ CardControllers.controller('CardDetail', [
 
         let tutorialModel = {
             onClose: () => {
-                $routeParams.tutorial = false;
+                isShowingTutorial = false;
                 updateUrl();
                 renderAll();
             }
         }
 
         function renderTutorial() {
-            tutorialModel.isShowingTutorial = !!$routeParams.tutorial;
+            tutorialModel.isShowingTutorial = isShowingTutorial;
             React.render(
                 <span>{tutorialModel.isShowingTutorial && <QueryBuilderTutorial {...tutorialModel} /> }</span>
             , document.getElementById('react_qb_tutorial'));
+        }
+
+        function renderNotFound() {
+            tutorialModel.isShowingTutorial = isShowingTutorial;
+            React.render(<NotFound></NotFound>, document.getElementById('react_qb_viz'));
         }
 
         var renderAll = _.debounce(function() {
@@ -525,6 +532,13 @@ CardControllers.controller('CardDetail', [
 
             tables = null;
             tableMetadata = null;
+
+            let db = _.findWhere(databases, { id: databaseId });
+            if (db && db.tables) {
+                tables = db.tables;
+                renderAll();
+                return;
+            }
 
             // get tables for db
             Metabase.db_tables({
@@ -717,17 +731,17 @@ CardControllers.controller('CardDetail', [
             return card;
         }
 
-        async function loadCard() {
-            if ($routeParams.cardId != undefined) {
-                var card = await loadSavedCard($routeParams.cardId);
-                if ($routeParams.serializedCard) {
-                    let serializedCard = await loadSerializedCard($routeParams.serializedCard);
-                    return _.extend(card, serializedCard);
+        async function loadCard(cardId, serializedCard) {
+            if (cardId != undefined) {
+                var card = await loadSavedCard(cardId);
+                if (serializedCard) {
+                    let deserializedCard = await loadSerializedCard(serializedCard);
+                    return _.extend(card, deserializedCard);
                 } else {
                     return card;
                 }
-            } else if ($routeParams.serializedCard != undefined) {
-                return loadSerializedCard($routeParams.serializedCard);
+            } else if (serializedCard) {
+                return loadSerializedCard(serializedCard);
             } else {
                 return loadNewCard();
             }
@@ -765,7 +779,10 @@ CardControllers.controller('CardDetail', [
         // meant to be called once on controller startup
         async function loadAndSetCard() {
             try {
-                let card = await loadCard();
+                const cardId = $routeParams.cardId;
+                const serializedCard = _.isEmpty($location.hash()) ? null : $location.hash();
+
+                let card = await loadCard(cardId, serializedCard);
                 if ($routeParams.clone) {
                     delete card.id;
                     card.isDirty = true;
@@ -775,9 +792,8 @@ CardControllers.controller('CardDetail', [
                 delete card.isDirty;
                 return setCard(card, { setDirty: isDirty, resetDirty: !isDirty, replaceState: true });
             } catch (error) {
-                if (error.status == 404) {
-                    // TODO() - we should redirect to the card builder with no query instead of /
-                    $location.path('/');
+                if (error.status === 404) {
+                    renderNotFound();
                 }
             }
         }
@@ -802,6 +818,7 @@ CardControllers.controller('CardDetail', [
 
         function reloadCard() {
             delete $routeParams.serializedCard;
+            $location.hash(null);
             loadAndSetCard();
         }
 
@@ -813,7 +830,7 @@ CardControllers.controller('CardDetail', [
         // needs to be performed asynchronously otherwise we get weird infinite recursion
         var updateUrl = (replaceState) => setTimeout(function() {
             // don't update the URL if we're currently showing the tutorial
-            if (!!$routeParams.tutorial) {
+            if (isShowingTutorial) {
                 return;
             }
 
@@ -867,8 +884,12 @@ CardControllers.controller('CardDetail', [
             React.unmountComponentAtNode(document.getElementById('react_data_reference'));
         });
 
+        // prevent angular route change when we manually update the url
+        // NOTE: we tried listening on $locationChangeStart and simply canceling that, but doing so prevents the history and everything
+        //       and ideally we'd simply listen on $routeChangeStart and cancel that when it's the same controller, but that doesn't work :(
 
-        // mildly hacky way to prevent reloading controllers as the URL changes
+        // mildly hacky way to prevent reloading controllers as the URL changes 
+        // this works by setting the new route to the old route and manually moving over params
         var route = $route.current;
         $scope.$on('$locationChangeSuccess', function (event) {
             var newParams = $route.current.params;
@@ -877,7 +898,9 @@ CardControllers.controller('CardDetail', [
             // reload the controller if:
             // 1. not CardDetail
             // 2. both serializedCard and cardId are not set (new card)
-            if ($route.current.$$route.controller === 'CardDetail' && (newParams.serializedCard || newParams.cardId)) {
+            // TODO: is there really ever a reason to reload this route if we are going to the same place?
+            const serializedCard = _.isEmpty($location.hash()) ? null : $location.hash();
+            if ($route.current.$$route.controller === 'CardDetail' && (serializedCard || newParams.cardId)) {
                 $route.current = route;
 
                 angular.forEach(oldParams, function(value, key) {
@@ -891,19 +914,9 @@ CardControllers.controller('CardDetail', [
             }
         });
 
-        // TODO: while we wait for the databases list we should put something on screen
-        // grab our database list, then handle the rest
-        async function loadDatabasesAndTables() {
-            let dbs = await Metabase.db_list().$promise;
-            return await * dbs.map(async function(db) {
-                db.tables = await Metabase.db_tables({ dbId: db.id }).$promise;
-                return db;
-            });
-        }
-
         async function init() {
             try {
-                databases = await loadDatabasesAndTables();
+                databases = await Metabase.db_list_with_tables().$promise;
 
                 if (databases.length < 1) {
                     // TODO: some indication that setting up a db is required
@@ -913,7 +926,7 @@ CardControllers.controller('CardDetail', [
                 // finish initializing our page and render
                 await loadAndSetCard();
 
-                if (!!$routeParams.tutorial) {
+                if (isShowingTutorial) {
                     setSampleDataset();
                 }
             } catch (error) {

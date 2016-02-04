@@ -45,9 +45,8 @@
                  (when (>= (occurances char-type) min-count)
                    (recur more)))))))
 
-(defn active-password-complexity
+(def ^:const active-password-complexity
   "The currently configured description of the password complexity rules being enforced"
-  []
   (merge (complexity->char-type->min (config/config-kw :mb-password-complexity))
          ;; Setting MB_PASSWORD_LENGTH overrides the default :total for a given password complexity class
          (when-let [min-len (config/config-int :mb-password-length)]
@@ -55,7 +54,7 @@
 
 (def ^{:arglists '([password])} is-complex?
   "Check if a given password meets complexity standards for the application."
-  (partial password-has-char-counts? (active-password-complexity)))
+  (partial password-has-char-counts? active-password-complexity))
 
 
 (defn verify-password

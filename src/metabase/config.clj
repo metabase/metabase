@@ -85,24 +85,23 @@
      :date   date}))
 
 (defn- version-info-from-properties-file []
-  (with-open [reader (io/reader (io/resource "version.properties"))]
-    (let [props (java.util.Properties.)]
-      (.load props reader)
-      (into {} (for [[k v] props]
-                 [(keyword k) v])))))
+  (when-let [props-file (io/resource "version.properties")]
+    (with-open [reader (io/reader props-file)]
+      (let [props (java.util.Properties.)]
+        (.load props reader)
+        (into {} (for [[k v] props]
+                   [(keyword k) v]))))))
 
-(defn mb-version-info
-  "Return information about the current version of Metabase.
+(def ^:const mb-version-info
+  "Information about the current version of Metabase.
    This comes from `resources/version.properties` for prod builds and is fetched from `git` via the `./bin/version` script for dev.
 
-     (mb-version) -> {:tag: \"v0.11.1\", :hash: \"afdf863\", :branch: \"about_metabase\", :date: \"2015-10-05\"}"
-  []
+     mb-version-info -> {:tag: \"v0.11.1\", :hash: \"afdf863\", :branch: \"about_metabase\", :date: \"2015-10-05\"}"
   (if (is-prod?)
     (version-info-from-properties-file)
     (version-info-from-shell-script)))
 
-(defn mb-version-string
-  "Return a formatted version string representing the currently running application."
-  []
-  (let [{:keys [tag hash branch date]} (mb-version-info)]
+(def ^:const mb-version-string
+  "A formatted version string representing the currently running application."
+  (let [{:keys [tag hash branch date]} mb-version-info]
     (format "%s (%s %s)" tag hash branch)))

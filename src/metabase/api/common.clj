@@ -176,33 +176,33 @@
 
 ;; #### GENERIC 400 RESPONSE HELPERS
 (def ^:private ^:const generic-400 [400 "Invalid Request."])
-(defn     check-400 [tst]     (check tst generic-400))
-(defmacro let-400   [& args] `(api-let   ~generic-400 ~@args))
-(defmacro ->400     [& args] `(api->     ~generic-400 ~@args))
-(defmacro ->>400    [& args] `(api->>    ~generic-400 ~@args))
+(defn     check-400 "Throw a 400 if TEST is false."                                                         [tst]    (check tst generic-400))
+(defmacro let-400   "Bind a form as with `let`; throw a 400 if it is `nil` or `false`."                     [& body] `(api-let   ~generic-400 ~@body))
+(defmacro ->400     "If form is `nil` or `false`, throw a 400; otherwise thread it through BODY via `->`."  [& body] `(api->     ~generic-400 ~@body))
+(defmacro ->>400    "If form is `nil` or `false`, throw a 400; otherwise thread it through BODY via `->>`." [& body] `(api->>    ~generic-400 ~@body))
 
 ;; #### GENERIC 404 RESPONSE HELPERS
 (def ^:private ^:const generic-404 [404 "Not found."])
-(defn     check-404 [tst]     (check tst generic-404))
-(defmacro let-404   [& args] `(api-let   ~generic-404 ~@args))
-(defmacro ->404     [& args] `(api->     ~generic-404 ~@args))
-(defmacro ->>404    [& args] `(api->>    ~generic-404 ~@args))
+(defn     check-404 "Throw a 404 if TEST is false."                                                         [tst]    (check tst generic-404))
+(defmacro let-404   "Bind a form as with `let`; throw a 404 if it is `nil` or `false`."                     [& body] `(api-let   ~generic-404 ~@body))
+(defmacro ->404     "If form is `nil` or `false`, throw a 404; otherwise thread it through BODY via `->`."  [& body] `(api->     ~generic-404 ~@body))
+(defmacro ->>404    "If form is `nil` or `false`, throw a 404; otherwise thread it through BODY via `->>`." [& body] `(api->>    ~generic-404 ~@body))
 
 ;; #### GENERIC 403 RESPONSE HELPERS
 ;; If you can't be bothered to write a custom error message
 (def ^:private ^:const generic-403 [403 "You don't have permissions to do that."])
-(defn     check-403 [tst]     (check tst generic-403))
-(defmacro let-403   [& args] `(api-let   ~generic-403 ~@args))
-(defmacro ->403     [& args] `(api->     ~generic-403 ~@args))
-(defmacro ->>403    [& args] `(api->>    ~generic-403 ~@args))
+(defn     check-403 "Throw a 403 if TEST is false."                                                         [tst]     (check tst generic-403))
+(defmacro let-403   "Bind a form as with `let`; throw a 403 if it is `nil` or `false`."                     [& body] `(api-let   ~generic-403 ~@body))
+(defmacro ->403     "If form is `nil` or `false`, throw a 403; otherwise thread it through BODY via `->`."  [& body] `(api->     ~generic-403 ~@body))
+(defmacro ->>403    "If form is `nil` or `false`, throw a 403; otherwise thread it through BODY via `->>`." [& body] `(api->>    ~generic-403 ~@body))
 
 ;; #### GENERIC 500 RESPONSE HELPERS
 ;; For when you don't feel like writing something useful
 (def ^:private ^:const generic-500 [500 "Internal server error."])
-(defn     check-500 [tst]     (check tst generic-500))
-(defmacro let-500   [& args] `(api-let   ~generic-500 ~@args))
-(defmacro ->500     [& args] `(api->     ~generic-500 ~@args))
-(defmacro ->>500    [& args] `(api->>    ~generic-500 ~@args))
+(defn     check-500 "Throw a 500 if TEST is false."                                                         [tst]    (check tst generic-500))
+(defmacro let-500   "Bind a form as with `let`; throw a 500 if it is `nil` or `false`."                     [& body] `(api-let   ~generic-500 ~@body))
+(defmacro ->500     "If form is `nil` or `false`, throw a 500; otherwise thread it through BODY via `->`."  [& body] `(api->     ~generic-500 ~@body))
+(defmacro ->>500    "If form is `nil` or `false`, throw a 500; otherwise thread it through BODY via `->>`." [& body] `(api->>    ~generic-500 ~@body))
 
 
 ;;; ## DEFENDPOINT AND RELATED FUNCTIONS
@@ -210,15 +210,14 @@
 
 ;;; ### Arg annotation fns
 
-(defmulti -arg-annotation-fn
-  "*Internal* - don't use this directly.
+(defmulti ^{:doc "*Internal* - don't use this directly.
 
-   Multimethod used internally to dispatch arg annotation functions.
-   Dispatches on the arg annotation as a keyword.
+                  Multimethod used internally to dispatch arg annotation functions.
+                  Dispatches on the arg annotation as a keyword.
 
-    {id Required}
-    -> ((-arg-annotation-fn :Required) 'id id)
-    -> (annotation:Required 'id id)"
+                   {id Required}
+                   -> ((-arg-annotation-fn :Required) 'id id)
+                   -> (annotation:Required 'id id)"} -arg-annotation-fn ; for some reason supplying a docstr the normal way doesn't assoc it with the metadata like we'd expect
   (fn [annotation-kw]
     {:pre [(keyword? annotation-kw)]}
     annotation-kw))
@@ -440,3 +439,6 @@
    obj)
   ([entity id]
    (check-403 (models/can-write? entity id))))
+
+
+(u/require-dox-in-this-namespace)

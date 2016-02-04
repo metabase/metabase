@@ -127,7 +127,7 @@ export default class DataReferenceField extends Component {
 
             useForCurrentQuestion.push(
                 <li key="filter-by" className="mt1">
-                    <a className="Button Button--white text-default text-brand-hover border-brand-hover no-decoration" href="#" onClick={this.filterBy}>
+                    <a className="Button Button--white text-default text-brand-hover border-brand-hover no-decoration" onClick={this.filterBy}>
                         <Icon className="mr1" name="add" width="12px" height="12px"/> Filter by {name}
                         </a>
                 </li>
@@ -135,7 +135,7 @@ export default class DataReferenceField extends Component {
             if (validBreakout) {
                 useForCurrentQuestion.push(
                     <li key="group-by" className="mt1">
-                        <a className="Button Button--white text-default text-brand-hover border-brand-hover no-decoration" href="#" onClick={this.groupBy}>
+                        <a className="Button Button--white text-default text-brand-hover border-brand-hover no-decoration" onClick={this.groupBy}>
                             <Icon className="mr2" name="add" width="12px" height="12px" /> Group by {name}
                         </a>
                     </li>

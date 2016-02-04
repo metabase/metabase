@@ -23,7 +23,7 @@ export default class QuestionSavedModal extends Component {
                             </a>
 </li>
                         <li>
-                            <a className="no-decoration flex align-center border-bottom py1 pb2" href="#" onClick={this.props.addToDashboardFn}>
+                            <a className="no-decoration flex align-center border-bottom py1 pb2" onClick={this.props.addToDashboardFn}>
                                 <img className="" style={{height: "32px"}} src="/app/components/icons/assets/illustration_dashboard.png" />
                                 <span className="h3 ml2 text-bold text-brand-hover">Add to a dashboard</span>
                             </a>
