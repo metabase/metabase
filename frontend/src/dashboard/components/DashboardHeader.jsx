@@ -150,7 +150,7 @@ export default class DashboardHeader extends Component {
                 ref="addQuestionModal"
                 triggerElement={
                     <a data-metabase-event="Dashboard;Add Card Modal" title="Add a question to this dashboard">
-                        <Icon className={cx("text-brand-hover", { "Icon--pulse": isEmpty })} name="add" width="16px" height="16px" />
+                        <Icon className={cx("text-brand-hover cursor-pointer", { "Icon--pulse": isEmpty })} name="add" width="16px" height="16px" />
                     </a>
                 }
             >
