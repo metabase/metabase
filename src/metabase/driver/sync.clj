@@ -476,18 +476,19 @@ infer-field-special-type
                    (every? :dest-column-name fks))
               "table-fks should return a set of maps with keys :fk-column-name, :dest-table, and :dest-column-name.")
       (when (seq fks)
-        (let [fk-name->id    (sel :many :field->id [Field :name], :table_id (:id table), :name [in (map :fk-column-name fks)], :parent_id nil)]
+        (let [fk-name->id (sel :many :field->id [Field :name], :table_id (:id table), :name [in (map :fk-column-name fks)], :parent_id nil)]
           (doseq [{:keys [fk-column-name dest-column-name dest-table]} fks]
             (when-let [fk-column-id (fk-name->id fk-column-name)]
               (when-let [dest-table-id (sel :one :field [Table :id], :db_id (:db_id table) :name (:name dest-table) :schema (:schema dest-table))]
                 (when-let [dest-column-id (sel :one :id Field, :table_id dest-table-id, :name dest-column-name, :parent_id nil)]
                   (log/debug (u/format-color 'green "Marking foreign key '%s.%s' -> '%s.%s'." (:name table) fk-column-name (:name dest-table) dest-column-name))
-                  (ins ForeignKey
-                    :origin_id      fk-column-id
-                    :destination_id dest-column-id
-                    ;; TODO: do we even care about this?
-                    ;:relationship   (determine-fk-type {:id fk-column-id, :table (delay table)}) ; fake a Field instance
-                    :relationship   :Mt1)
+                  (when-not (exists? ForeignKey :origin_id fk-column-id, :destination_id dest-column-id)
+                    (ins ForeignKey
+                      :origin_id      fk-column-id
+                      :destination_id dest-column-id
+                      ;; TODO: do we even care about this?
+                      ;:relationship  (determine-fk-type {:id fk-column-id, :table (delay table)}) ; fake a Field instance
+                      :relationship   :Mt1))
                   (upd Field fk-column-id :special_type :fk))))))))))
 
 
