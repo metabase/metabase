@@ -254,7 +254,7 @@ export default React.createClass({
             'text-brand': this.props.isShowingDataReference,
             'text-brand-hover': !this.state.isShowingDataReference
         });
-        buttonSections.push(
+        buttonSections.push([
             <a key="dataReference" className={dataReferenceButtonClasses} title="Get help on what data means">
                 <Icon name='reference' width="16px" height="16px" onClick={this.toggleDataReference}></Icon>
             </a>
