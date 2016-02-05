@@ -26,31 +26,38 @@ export function formatScalar(scalar) {
     }
 }
 
-function formatMajorMinor(major, minor, majorWidth = 3) {
-    return (
-        <span>
-            <span style={{minWidth: majorWidth + "em"}} className="inline-block text-right text-bold">{major}</span>
-            {" - "}
-            <span>{minor}</span>
-        </span>
-    );
+function formatMajorMinor(major, minor, options = {}) {
+    options = { jsx: false, majorWidth: 3, ...options };
+    if (options.jsx) {
+        return (
+            <span>
+                <span style={{minWidth: options.majorWidth + "em"}} className="inline-block text-right text-bold">{major}</span>
+                {" - "}
+                <span>{minor}</span>
+            </span>
+        );
+    } else {
+        return `${major} - ${minor}`;
+    }
 }
 
-export function formatWithUnit(value, unit) {
+export function formatWithUnit(value, unit, options = {}) {
     let m = moment(value);
     switch (unit) {
         case "hour": // 12 AM - January 1, 2015
-            return formatMajorMinor(m.format("h A"), m.format("MMMM D, YYYY"));
+            return formatMajorMinor(m.format("h A"), m.format("MMMM D, YYYY"), options);
         case "day": // January 1, 2015
             return m.format("MMMM D, YYYY");
         case "week": // 1st - 2015
-            return formatMajorMinor(m.format("wo"), m.format("YYYY"));
+            return formatMajorMinor(m.format("wo"), m.format("YYYY"), options);
         case "month": // January 2015
-            return <div><span className="text-bold">{m.format("MMMM")}</span> {m.format("YYYY")}</div>;
+            return options.jsx ?
+                <div><span className="text-bold">{m.format("MMMM")}</span> {m.format("YYYY")}</div> :
+                m.format("MMMM") + " " + m.format("YYYY");
         case "year": // 2015
             return String(value);
         case "quarter": // Q1 - 2015
-            return formatMajorMinor(m.format("[Q]Q"), m.format("YYYY"), 0);
+            return formatMajorMinor(m.format("[Q]Q"), m.format("YYYY"), { ...options, majorWidth: 0 });
         case "hour-of-day": // 12 AM
             return moment().hour(value).format("h A");
         case "day-of-week": // Sunday
@@ -63,11 +70,12 @@ export function formatWithUnit(value, unit) {
     return String(value);
 }
 
-export function formatValue(value, column) {
+export function formatValue(value, column, options = {}) {
+    options = { jsx: false, ...options };
     if (value == undefined) {
         return null
     } else if (column && column.unit != null) {
-        return formatWithUnit(value, column.unit)
+        return formatWithUnit(value, column.unit, options)
     } else if (typeof value === "string") {
         return value;
     } else if (typeof value === "number") {
@@ -82,12 +90,6 @@ export function formatValue(value, column) {
     } else {
         return String(value);
     }
-}
-
-export function formatValueString(value, column) {
-    var e = document.createElement("div");
-    React.render(<div>{formatValue(value, column)}</div>, e);
-    return e.textContent;
 }
 
 export function singularize(...args) {

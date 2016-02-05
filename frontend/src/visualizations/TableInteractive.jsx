@@ -178,7 +178,7 @@ export default class TableInteractive extends Component {
     }
 
     cellRenderer(cellData, cellDataKey, rowData, rowIndex, columnData, width) {
-        cellData = cellData != null ? formatValue(cellData, this.state.data.cols[cellDataKey]) : null;
+        cellData = cellData != null ? formatValue(cellData, this.state.data.cols[cellDataKey], { jsx: true }) : null;
 
         var key = 'cl'+rowIndex+'_'+cellDataKey;
         if (this.props.cellIsClickableFn(rowIndex, cellDataKey)) {

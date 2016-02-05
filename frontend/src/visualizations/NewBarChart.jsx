@@ -7,7 +7,7 @@ import { Bar } from "react-chartjs";
 
 import { MinColumnsError } from "./errors";
 
-import { formatValueString } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting";
 
 const COLORS = ["#4A90E2", "#84BB4C", "#F9CF48", "#ED6E6E", "#885AB1"];
 
@@ -34,7 +34,7 @@ function mergeSeries(series) {
         for (let row of rows) {
             if (!labelsMap.has(row[0])) {
                 labelsMap.set(row[0], result.labels.length);
-                result.labels.push(formatValueString(row[0], col));
+                result.labels.push(formatValue(row[0], col));
             }
             data[labelsMap.get(row[0])] = row[1];
         }

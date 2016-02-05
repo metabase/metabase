@@ -6,7 +6,7 @@ import d3 from 'd3';
 import dc from 'dc';
 import moment from 'moment';
 
-import { formatNumber, formatValueString } from "metabase/lib/formatting";
+import { formatNumber, formatValue } from "metabase/lib/formatting";
 
 import tip from 'd3-tip';
 tip(d3);
@@ -179,7 +179,7 @@ function applyChartTimeseriesXAxis(chart, card, coldefs, data) {
         chart.renderVerticalGridLines(x.gridLine_enabled);
 
         if (coldefs[0] && coldefs[0].unit) {
-            xAxis.tickFormat(d => formatValueString(d, coldefs[0]));
+            xAxis.tickFormat(d => formatValue(d, coldefs[0]));
         } else {
             xAxis.tickFormat(d3.time.format.multi([
                 [".%L",    (d) => d.getMilliseconds()],
@@ -314,7 +314,7 @@ function applyChartOrdinalXAxis(chart, card, coldefs, data, minPixelsPerTick) {
 
             xAxis.tickValues(visibleKeys);
         }
-        xAxis.tickFormat(d => formatValueString(d, coldefs[0]));
+        xAxis.tickFormat(d => formatValue(d, coldefs[0]));
     } else {
         xAxis.ticks(0);
         xAxis.tickFormat('');
@@ -382,7 +382,7 @@ function applyChartTooltips(chart, element, card, cols) {
                     // TODO: this is not the ideal way to calculate the percentage, but it works for now
                     values += " (" + formatNumber((d.endAngle - d.startAngle) / Math.PI * 50) + '%)'
                 }
-                return '<div><span class="ChartTooltip-name">' + formatValueString(d.data.key, cols[0]) + '</span></div>' +
+                return '<div><span class="ChartTooltip-name">' + formatValue(d.data.key, cols[0]) + '</span></div>' +
                     '<div><span class="ChartTooltip-value">' + values + '</span></div>';
             });
 
@@ -766,7 +766,7 @@ export var CardRenderer = {
                         .group(group)
                         .colors(settings.pie.colors)
                         .colorCalculator((d, i) => settings.pie.colors[((i * 5) + Math.floor(i / 5)) % settings.pie.colors.length])
-                        .label(row => formatValueString(row.key, result.cols[0]))
+                        .label(row => formatValue(row.key, result.cols[0]))
                         .title(function(d) {
                             // ghetto rounding to 1 decimal digit since Math.round() doesn't let
                             // you specify a precision and always rounds to int
