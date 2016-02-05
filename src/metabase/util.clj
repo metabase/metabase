@@ -441,7 +441,7 @@
      (format-color 'red \"Fatal error: %s\" error-message)"
   ^String [color-symb format-string & args]
   {:pre [(symbol? color-symb)]}
-  ((ns-resolve 'colorize.core color-symb) (apply format format-string args)))
+  ((ns-resolve 'colorize.core color-symb) (apply format (str format-string) args)))
 
 (defn pprint-to-str
   "Returns the output of pretty-printing X as a string.

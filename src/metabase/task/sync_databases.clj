@@ -26,8 +26,7 @@
         (catch Exception e
           (log/error "Error syncing database: " (:id database) e))))))
 
-(defn task-init []
-  (log/info "Submitting sync-database task to scheduler")
+(defn- task-init []
   ;; build our job
   (reset! sync-databases-job (jobs/build
                                (jobs/of-type SyncDatabases)

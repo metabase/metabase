@@ -2,7 +2,6 @@
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
             [metabase.db :as db]
-            [metabase.config :as config]
             [metabase.events :as events]
             (metabase.models [activity :refer [Activity], :as activity]
                              [card :refer [Card]]
@@ -150,7 +149,5 @@
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
-(defn events-init []
-  (when-not (config/is-test?)
-    (log/info "Starting activity-feed events listener")
-    (events/start-event-listener activity-feed-topics activity-feed-channel process-activity-event)))
+(defn- events-init []
+  (events/start-event-listener activity-feed-topics activity-feed-channel process-activity-event))

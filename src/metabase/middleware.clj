@@ -147,7 +147,8 @@
                                                                     "*.gstatic.com"
                                                                     "js.intercomcdn.com"
                                                                     "*.intercom.io"
-                                                                    (when (config/is-dev?) "localhost:8080")]
+                                                                    (when config/is-dev?
+                                                                      "localhost:8080")]
                                                       :style-src   ["'unsafe-inline'"
                                                                     "'self'"
                                                                     "fonts.googleapis.com"]
@@ -159,7 +160,8 @@
                                                                     "metabase.us10.list-manage.com"
                                                                     "*.intercom.io"
                                                                     "wss://*.intercom.io" ; allow websockets as well
-                                                                    (when (config/is-dev?) "localhost:8080 ws://localhost:8080")]}]
+                                                                    (when config/is-dev?
+                                                                      "localhost:8080 ws://localhost:8080")]}]
                                           (format "%s %s; " (name k) (apply str (interpose " " vs)))))})
 
 (defsetting ssl-certificate-public-key

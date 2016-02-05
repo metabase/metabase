@@ -1,7 +1,6 @@
 (ns metabase.events.notifications
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [metabase.config :as config]
             [metabase.db :as db]
             [metabase.email.messages :as messages]
             [metabase.events :as events]
@@ -93,7 +92,5 @@
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
-(defn events-init []
-  (when-not (config/is-test?)
-    (log/info "Starting notifications events listener")
-    (events/start-event-listener notifications-topics notifications-channel process-notifications-event)))
+(defn- events-init []
+  (events/start-event-listener notifications-topics notifications-channel process-notifications-event))

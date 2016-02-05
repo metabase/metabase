@@ -4,6 +4,7 @@
             [clojure.string :as s]
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
+            [colorize.core :as color]
             [korma.core :as k]
             [medley.core :as m]
             [metabase.db :refer [ins sel upd]]
@@ -50,7 +51,7 @@
    This name should be a \"nice-name\" that we'll display to the user."
 
   (analyze-table ^java.util.Map [this, ^TableInstance table, ^java.util.Set new-field-ids]
-    "Return a map containing information that provides optional analysis values for TABLE.
+    "*OPTIONAL*. Return a map containing information that provides optional analysis values for TABLE.
 
      Each map should be structured as follows:
 
@@ -159,12 +160,25 @@
     "*OPTIONAL*. Return a humanized (user-facing) version of an connection error message string.
      Generic error messages are provided in the constant `connection-error-messages`; return one of these whenever possible.")
 
-  (process-native [this, ^Map query]
-    "Process a native QUERY. This function is called by `metabase.driver/process-query`.")
+  (process-native [this, {^Integer database-id :database, {^String native-query :query} :native, :as ^Map query}]
+    "Process a native QUERY. This function is called by `metabase.driver/process-query`.
+
+     Results should look something like:
+
+       {:columns [\"id\", \"bird_name\"]
+        :cols    [{:name \"id\", :base_type :IntegerField}
+                  {:name \"bird_name\", :base_type :TextField}]
+        :rows    [[1 \"Lucky Bird\"]
+                  [2 \"Rasta Can\"]]}")
 
   (process-structured [this, ^Map query]
     "Process a native or structured QUERY. This function is called by `metabase.driver/process-query` after performing various driver-unspecific
-     steps like Query Expansion and other preprocessing.")
+     steps like Query Expansion and other preprocessing.
+
+     Results should look something like:
+
+       [{:id 1, :name \"Lucky Bird\"}
+        {:id 2, :name \"Rasta Can\"}]")
 
   (process-query-in-context [this, ^IFn qp]
     "*OPTIONAL*. Similar to `sync-in-context`, but for running queries rather than syncing. This should be used to do things like open DB connections
@@ -227,7 +241,8 @@
 
 (def IDriverDefaultsMixin
   "Default implementations of `IDriver` methods marked *OPTIONAL*."
-  {:date-interval                     (fn [_ unit amount] (u/relative-date unit amount))
+  {:analyze-table                     (constantly nil)
+   :date-interval                     (fn [_ unit amount] (u/relative-date unit amount))
    :describe-table-fks                (constantly nil)
    :features                          (constantly nil)
    :humanize-connection-error-message (fn [_ message] message)
@@ -251,7 +266,7 @@
   [^Keyword engine, driver-instance]
   {:pre [(keyword? engine) (map? driver-instance)]}
   (swap! registered-drivers assoc engine driver-instance)
-  (log/debug (format "Registered driver %s." engine)))
+  (log/debug (format "Registered driver %s 🚚" (color/blue engine))))
 
 (defn available-drivers
   "Info about available drivers."
@@ -266,7 +281,6 @@
   "Search Classpath for namespaces that start with `metabase.driver.`, then `require` them and look for the `driver-init`
    function which provides a uniform way for Driver initialization to be done."
   []
-  (log/info "find-and-load-drivers!")
   (doseq [namespce (filter (fn [ns-symb]
                              (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb)))
                            (ns-find/find-namespaces (classpath/classpath)))]

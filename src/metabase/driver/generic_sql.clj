@@ -6,18 +6,18 @@
             (korma [core :as k]
                    [db :as kdb])
             [metabase.driver :as driver]
+            [metabase.driver.sync :as sync]
             metabase.driver.query-processor.interface
             (metabase.models [field :as field]
                              [table :as table])
             [metabase.util :as u]
-            [metabase.util.korma-extensions :as kx]
-            [metabase.driver.sync :as sync])
+            [metabase.util.korma-extensions :as kx])
   (:import java.sql.DatabaseMetaData
            java.util.Map
-           clojure.lang.Keyword))
+           clojure.lang.Keyword
+           (metabase.driver.query_processor.interface Field Value)))
 
-(declare db->korma-db
-         korma-entity)
+(declare korma-entity)
 
 (defprotocol ISQLDriver
   "Methods SQL-based drivers should implement in order to use `IDriverSQLDefaultsMixin`.
@@ -62,18 +62,23 @@
   (get-connection-for-sync ^java.sql.Connection [this details]
     "*OPTIONAL*. Get a connection used for a Sync step. By default, this returns a pooled connection.")
 
+  (prepare-value [this, ^Value value]
+    "*OPTIONAL*. Prepare a value (e.g. a `String` or `Integer`) that will be used in a korma form. By default, this returns VALUE's `:value` as-is, which
+     is eventually passed as a parameter in a prepared statement. Drivers such as BigQuery that don't support prepared statements can skip this
+     behavior by returning a korma `raw` form instead, or other drivers can perform custom type conversion as appropriate.")
+
   (set-timezone-sql ^String [this]
     "*OPTIONAL*. This should be a prepared JDBC SQL statement string to be used to set the timezone for the current transaction.
 
        \"SET @@session.timezone = ?;\"")
 
   (stddev-fn ^clojure.lang.Keyword [this]
-    "*OPTIONAL*. Keyword name of the SQL function that should be used to get the length of a string. Defaults to `:STDDEV`.")
+    "*OPTIONAL*. Keyword name of the SQL function that should be used to do a standard deviation aggregation. Defaults to `:STDDEV`.")
 
   (string-length-fn ^clojure.lang.Keyword [this]
     "Keyword name of the SQL function that should be used to get the length of a string, e.g. `:LENGTH`.")
 
-  (unix-timestamp->timestamp [this, ^Keyword seconds-or-milliseconds, field-or-value]
+  (unix-timestamp->timestamp [this, field-or-value, ^Keyword seconds-or-milliseconds]
     "Return a korma form appropriate for converting a Unix timestamp integer field or value to an proper SQL `Timestamp`.
      SECONDS-OR-MILLISECONDS refers to the resolution of the int in question and with be either `:seconds` or `:milliseconds`."))
 
@@ -294,6 +299,7 @@
    :current-datetime-fn     (constantly (k/sqlfn* :NOW))
    :excluded-schemas        (constantly nil)
    :get-connection-for-sync db->connection
+   :prepare-value           (u/drop-first-arg :value)
    :set-timezone-sql        (constantly nil)
    :stddev-fn               (constantly :STDDEV)})
 

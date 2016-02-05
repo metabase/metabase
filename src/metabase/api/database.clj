@@ -3,16 +3,17 @@
   (:require [compojure.core :refer [GET POST PUT DELETE]]
             [korma.core :as k]
             [metabase.api.common :refer :all]
-            [metabase.db :refer :all]
-            [metabase.driver :as driver]
-            [metabase.events :as events]
+            (metabase [config :as config]
+                      [db :refer :all]
+                      [driver :as driver]
+                      [events :as events]
+                      [sample-data :as sample-data]
+                      [util :as u])
             (metabase.models common
                              [hydrate :refer [hydrate]]
                              [database :refer [Database protected-password]]
                              [field :refer [Field]]
-                             [table :refer [Table]])
-            [metabase.sample-data :as sample-data]
-            [metabase.util :as u]))
+                             [table :refer [Table]])))
 
 (defannotation DBEngine
   "Param must be a valid database engine type, e.g. `h2` or `postgres`."
@@ -22,7 +23,7 @@
 (defn test-database-connection
   "Try out the connection details for a database and useful error message if connection fails, returns `nil` if connection succeeds."
   [engine {:keys [host port] :as details}]
-  (when (not (metabase.config/is-test?))
+  (when-not config/is-test?
     (let [engine           (keyword engine)
           details          (assoc details :engine engine)
           response-invalid (fn [field m] {:valid false
