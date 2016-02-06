@@ -79,15 +79,13 @@
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'
                              [lein-instant-cheatsheet "2.1.4"]        ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
                              [michaelblume/lein-marginalia "0.9.0"]]  ; generate documentation with 'lein marg'
-                   :global-vars {*warn-on-reflection* true}           ; Emit warnings on all reflection calls
                    :env {:mb-run-mode "dev"}
                    :jvm-opts ["-Dlogfile.path=target/log"
                               "-Xms1024m"                             ; give JVM a decent heap size to start with
                               "-Xmx2048m"                             ; hard limit of 2GB so we stop hitting the 4GB container limit on CircleCI
                               "-XX:+CMSClassUnloadingEnabled"         ; let Clojure's dynamically generated temporary classes be GC'ed from PermGen
                               "-XX:+UseConcMarkSweepGC"]}             ; Concurrent Mark Sweep GC needs to be used for Class Unloading (above)
-             :expectations {:global-vars {*warn-on-reflection* false}
-                            :injections [(require 'metabase.test-setup)]
+             :expectations {:injections [(require 'metabase.test-setup)]
                             :resource-paths ["test_resources"]
                             :env {:mb-test-setting-1 "ABCDEFG"
                                   :mb-run-mode "test"}
@@ -100,7 +98,6 @@
              :generate-sample-dataset {:dependencies [[faker "0.2.2"]                   ; Fake data generator -- port of Perl/Ruby
                                                       [incanter/incanter-core "1.9.0"]] ; Satistical functions like normal distibutions}})
                                        :source-paths ["sample_dataset"]
-                                       :global-vars {*warn-on-reflection* false}
                                        :main ^:skip-aot metabase.sample-dataset.generate}
              ;; Run reset password from source: MB_DB_PATH=/path/to/metabase.db lein with-profile reset-password run email@address.com
              ;; Create the reset password JAR:  lein with-profile reset-password jar
@@ -108,7 +105,6 @@
              ;; Run the reset password JAR:     MB_DB_PATH=/path/to/metabase.db java -classpath /path/to/metabase-uberjar.jar:/path/to/reset-password.jar \
              ;;                                   metabase.reset_password.core email@address.com
              :reset-password {:source-paths ["reset_password"]
-                              :global-vars {*warn-on-reflection* false}
                               :main metabase.reset-password.core
                               :jar-name "reset-password.jar"
                               ;; Exclude everything except for reset-password specific code in the created jar

@@ -173,6 +173,8 @@
           :year            {$year field})))))
 
 (extend-protocol IRValue
+  nil (->rvalue [_] nil)
+
   Field
   (->rvalue [this]
     (str \$ (->lvalue this)))

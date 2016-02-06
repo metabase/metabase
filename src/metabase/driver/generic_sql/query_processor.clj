@@ -30,18 +30,19 @@
 
 (def ^:private ^:dynamic *query* nil)
 
+(defn- driver [] (:driver *query*))
+
 
 ;;; ## Formatting
-
-(defprotocol ^:private IGenericSQLFormattable
-  (^:private formatted [this]))
-
-(defn- driver [] (:driver *query*))
 
 (defn- as
   "Generate a FORM `AS` FIELD alias using the name information of FIELD."
   [form field]
   [form (name field)])
+
+
+(defprotocol ^:private IGenericSQLFormattable
+  (^:private formatted [this]))
 
 (extend-protocol IGenericSQLFormattable
   nil (formatted [_] nil)
