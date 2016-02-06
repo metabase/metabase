@@ -1,7 +1,6 @@
 (ns metabase.events.dependencies
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [metabase.config :as config]
             [metabase.events :as events]
             (metabase.models [card :refer [Card]]
                              [dependency :refer [IDependent] :as dependency]
@@ -48,7 +47,5 @@
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
-(defn events-init []
-  (when-not (config/is-test?)
-    (log/info "Starting dependencies events listener")
-    (events/start-event-listener dependencies-topics dependencies-channel process-dependencies-event)))
+(defn- events-init []
+  (events/start-event-listener dependencies-topics dependencies-channel process-dependencies-event))

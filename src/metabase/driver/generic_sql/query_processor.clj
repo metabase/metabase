@@ -2,7 +2,8 @@
   "The Query Processor is responsible for translating the Metabase Query Language into korma SQL forms."
   (:require [clojure.core.match :refer [match]]
             [clojure.java.jdbc :as jdbc]
-            (clojure [string :as s]
+            (clojure [pprint :as pprint]
+                     [string :as s]
                      [walk :as walk])
             [clojure.tools.logging :as log]
             (korma [core :as k]
@@ -29,193 +30,195 @@
 
 (def ^:private ^:dynamic *query* nil)
 
+
 ;;; ## Formatting
 
-(defprotocol IGenericSQLFormattable
-  (formatted [this] [this include-as?]))
+(defprotocol ^:private IGenericSQLFormattable
+  (^:private formatted [this]))
+
+(defn- driver [] (:driver *query*))
+
+(defn- as
+  "Generate a FORM `AS` FIELD alias using the name information of FIELD."
+  [form field]
+  [form (name field)])
 
 (extend-protocol IGenericSQLFormattable
+  nil (formatted [_] nil)
+
   Field
-  (formatted
-    ([this]
-     (formatted this false))
-    ([{:keys [schema-name table-name special-type field-name], :as field} include-as?]
-     (let [->timestamp (partial sql/unix-timestamp->timestamp (:driver *query*))
-           field       (cond-> (keyword (kx/combine+escape-name-components [schema-name table-name field-name]))
-                         (= special-type :timestamp_seconds)      (->timestamp :seconds)
-                         (= special-type :timestamp_milliseconds) (->timestamp :milliseconds))]
-       (if include-as? [field (keyword field-name)]
-           field))))
+  (formatted [{:keys [schema-name table-name special-type field-name]}]
+    (let [field (keyword (kx/combine+escape-name-components [schema-name table-name field-name]))]
+      (case special-type
+        :timestamp_seconds      (sql/unix-timestamp->timestamp (driver) field :seconds)
+        :timestamp_milliseconds (sql/unix-timestamp->timestamp (driver) field :milliseconds)
+        field)))
 
   DateTimeField
-  (formatted
-    ([this]
-     (formatted this false))
-    ([{unit :unit, {:keys [field-name base-type special-type], :as field} :field} include-as?]
-     (let [field (sql/date (:driver *query*) unit (formatted field))]
-       (if include-as? [field (keyword field-name)]
-           field))))
+  (formatted [{unit :unit, field :field}]
+    (sql/date (driver) unit (formatted field)))
 
   ;; e.g. the ["aggregation" 0] fields we allow in order-by
   AgFieldRef
-  (formatted
-    ([this]
-     (formatted this false))
-    ([_ _]
-     (let [{:keys [aggregation-type]} (:aggregation (:query *query*))]
-       (case aggregation-type
-         :avg      :avg
-         :count    :count
-         :distinct :count
-         :stddev   :stddev
-         :sum      :sum))))
+  (formatted [_]
+    (let [{:keys [aggregation-type]} (:aggregation (:query *query*))]
+      (case aggregation-type
+        :avg      :avg
+        :count    :count
+        :distinct :count
+        :stddev   :stddev
+        :sum      :sum)))
 
   Value
-  (formatted
-    ([this]
-     (formatted this false))
-    ([{value :value, {:keys [base-type]} :field} _]
-     (if (= base-type :UUIDField)
-       (java.util.UUID/fromString value)
-       value)))
+  (formatted [value] (sql/prepare-value (driver) value))
 
   DateTimeValue
-  (formatted
-    ([this]
-     (formatted this false))
-    ([{value :value, {unit :unit} :field} _]
-     ;; prevent Clojure from converting this to #inst literal, which is a util.date
-     (sql/date (:driver *query*) unit value)))
+  (formatted [{value :value, {unit :unit} :field}]
+    ;; prevent Clojure from converting this to #inst literal, which is a util.date
+    (sql/date (driver) unit value))
 
   RelativeDateTimeValue
-  (formatted
-    ([this]
-     (formatted this false))
-    ([{:keys [amount unit], {field-unit :unit} :field} _]
-     (let [driver (:driver *query*)]
-       (sql/date driver field-unit (if (zero? amount)
-                                     (sql/current-datetime-fn driver)
-                                     (driver/date-interval driver unit amount)))))))
+  (formatted [{:keys [amount unit], {field-unit :unit} :field}]
+    (sql/date (driver) field-unit (if (zero? amount)
+                                    (sql/current-datetime-fn (driver))
+                                    (driver/date-interval (driver) unit amount)))))
+
+
 
 
 ;;; ## Clause Handlers
 
-(defn apply-aggregation [driver korma-query {{:keys [aggregation-type field]} :aggregation}]
-  (if-not field
-    ;; aggregation clauses w/o a Field
-    (do (assert (= aggregation-type :count))
-        (k/aggregate korma-query (count (k/raw "*")) :count))
-    ;; aggregation clauses with a Field
-    (let [field (formatted field)]
-      (case aggregation-type
-        :avg      (k/aggregate korma-query (avg field) :avg)
-        :count    (k/aggregate korma-query (count field) :count)
-        :distinct (k/aggregate korma-query (count (k/sqlfn :DISTINCT field)) :count)
-        :stddev   (k/fields    korma-query [(k/sqlfn* (sql/stddev-fn driver) field) :stddev])
-        :sum      (k/aggregate korma-query (sum field) :sum)))))
+(defn apply-aggregation
+  "Apply an `aggregation` clause to KORMA-FORM. Default implementation of `apply-aggregation` for SQL drivers."
+  ([driver korma-form {{:keys [aggregation-type field]} :aggregation}]
+   (apply-aggregation driver korma-form aggregation-type (formatted field)))
 
-(defn apply-breakout [_ korma-query {breakout-fields :breakout, fields-fields :fields}]
-  (-> korma-query
+  ([driver korma-form aggregation-type field]
+   (if-not field
+     ;; aggregation clauses w/o a Field
+     (do (assert (= aggregation-type :count))
+         (k/aggregate korma-form (count (k/raw "*")) :count))
+     ;; aggregation clauses with a Field
+     (case aggregation-type
+       :avg      (k/aggregate korma-form (avg field)                              :avg)
+       :count    (k/aggregate korma-form (count field)                            :count)
+       :distinct (k/aggregate korma-form (count (k/sqlfn :DISTINCT field))        :count)   ; why not call it :distinct? This complicates things
+       :stddev   (k/fields    korma-form [(k/sqlfn* (sql/stddev-fn driver) field) :stddev])
+       :sum      (k/aggregate korma-form (sum field)                              :sum)))))
+
+(defn apply-breakout
+  "Apply a `breakout` clause to KORMA-FORM. Default implementation of `apply-breakout` for SQL drivers."
+  [_ korma-form {breakout-fields :breakout, fields-fields :fields}]
+  (-> korma-form
       ;; Group by all the breakout fields
       ((partial apply k/group) (map formatted breakout-fields))
       ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it twice, or korma will barf
-      ((partial apply k/fields) (->> breakout-fields
-                                     (filter (partial (complement contains?) (set fields-fields)))
-                                     (map (u/rpartial formatted :include-as))))))
+      ((partial apply k/fields) (for [field breakout-fields
+                                      :when (not (contains? (set fields-fields) field))]
+                                  (as (formatted field) field)))))
 
-(defn apply-fields [_ korma-query {fields :fields}]
-  (apply k/fields korma-query (for [field fields]
-                                (formatted field :include-as))))
+(defn- apply-fields [_ korma-form {fields :fields}]
+  (apply k/fields korma-form (for [field fields]
+                                (as (formatted field) field))))
 
 (defn- filter-subclause->predicate
   "Given a filter SUBCLAUSE, return a Korma filter predicate form for use in korma `where`."
-  [{:keys [filter-type field], :as filter}]
+  [{:keys [filter-type field value], :as filter}]
   {:pre [(map? filter) field]}
-  (let [field (formatted field)
-        value (some-> filter :value formatted)]
-    (case          filter-type
-      :between     {field ['between [(formatted (:min-val filter)) (formatted (:max-val filter))]]}
-      :not-null    {field ['not= nil]}
-      :is-null     {field ['=    nil]}
-      :starts-with {field ['like (str value \%)]}
-      :contains    {field ['like (str \% value \%)]}
-      :ends-with   {field ['like (str \% value)]}
-      :>           {field ['>    value]}
-      :<           {field ['<    value]}
-      :>=          {field ['>=   value]}
-      :<=          {field ['<=   value]}
-      :=           {field ['=    value]}
-      :!=          {field ['not= value]})))
+  (let [field (formatted field)]
+    {field (case          filter-type
+             :between     ['between [(formatted (:min-val filter)) (formatted (:max-val filter))]]
+             :starts-with ['like (formatted (update value :value (fn [s] (str    s \%)))) ]
+             :contains    ['like (formatted (update value :value (fn [s] (str \% s \%))))]
+             :ends-with   ['like (formatted (update value :value (fn [s] (str \% s))))]
+             :>           ['>    (formatted value)]
+             :<           ['<    (formatted value)]
+             :>=          ['>=   (formatted value)]
+             :<=          ['<=   (formatted value)]
+             :=           ['=    (formatted value)]
+             :!=          ['not= (formatted value)])}))
 
 (defn- filter-clause->predicate [{:keys [compound-type subclause subclauses], :as clause}]
-  {:pre [(map? clause)]}
   (case compound-type
     :and (apply kfns/pred-and (map filter-clause->predicate subclauses))
     :or  (apply kfns/pred-or  (map filter-clause->predicate subclauses))
     :not (kfns/pred-not (kengine/pred-map (filter-subclause->predicate subclause)))
     nil  (filter-subclause->predicate clause)))
 
-(defn apply-filter [_ korma-query {clause :filter}]
-  (k/where korma-query (filter-clause->predicate clause)))
+(defn apply-filter [_ korma-form {clause :filter}]
+  (k/where korma-form (filter-clause->predicate clause)))
 
-(defn apply-join-tables [_ korma-query {join-tables :join-tables, {source-table-name :name, source-schema :schema} :source-table}]
-  (loop [korma-query korma-query, [{:keys [table-name pk-field source-field schema]} & more] join-tables]
+(defn apply-join-tables [_ korma-form {join-tables :join-tables, {source-table-name :name, source-schema :schema} :source-table}]
+  (loop [korma-form korma-form, [{:keys [table-name pk-field source-field schema]} & more] join-tables]
     (let [table-name        (if (seq schema)
                               (str schema \. table-name)
                               table-name)
           source-table-name (if (seq source-schema)
                               (str source-schema \. source-table-name)
                               source-table-name)
-          korma-query       (k/join korma-query table-name
+          korma-form       (k/join korma-form table-name
                                     (= (keyword (str source-table-name \. (:field-name source-field)))
                                        (keyword (str table-name        \. (:field-name pk-field)))))]
       (if (seq more)
-        (recur korma-query more)
-        korma-query))))
+        (recur korma-form more)
+        korma-form))))
 
-(defn apply-limit [_ korma-query {value :limit}]
-  (k/limit korma-query value))
+(defn apply-limit [_ korma-form {value :limit}]
+  (k/limit korma-form value))
 
-(defn apply-order-by [_ korma-query {subclauses :order-by}]
-  (loop [korma-query korma-query, [{:keys [field direction]} & more] subclauses]
-    (let [korma-query (k/order korma-query (formatted field) (case direction
+(defn apply-order-by [_ korma-form {subclauses :order-by}]
+  (loop [korma-form korma-form, [{:keys [field direction]} & more] subclauses]
+    (let [korma-form (k/order korma-form (formatted field) (case direction
                                                                :ascending  :ASC
                                                                :descending :DESC))]
       (if (seq more)
-        (recur korma-query more)
-        korma-query))))
+        (recur korma-form more)
+        korma-form))))
 
-(defn apply-page [_ korma-query {{:keys [items page]} :page}]
-  (-> korma-query
+(defn apply-page [_ korma-form {{:keys [items page]} :page}]
+  (-> korma-form
       (k/limit items)
       (k/offset (* items (dec page)))))
 
-(defn- log-korma-form
-  [korma-form]
-  (when (config/config-bool :mb-db-logging)
-    (when-not qp/*disable-qp-logging*
-      (log/debug
-       (u/format-color 'green "\nKORMA FORM: 😋\n%s" (u/pprint-to-str (walk/postwalk (fn [x] (if (keyword? x)
-                                                                                               (keyword (name x)) ; strip ns qualifiers, e.g. (keyword (name :korma.sql.utils/func)) -> :func
-                                                                                               x))
-                                                                                    (into {} (for [[k v] (dissoc korma-form :db :ent :from :options :aliases :results :type :alias)
-                                                                                                   :when (or (not (sequential? v))
-                                                                                                             (seq v))] ; remove keys where values are just []
-                                                                                               {k v}))))))
-      (try
-        (log/debug
-         (u/format-color 'blue "\nSQL: 😈\n%s\n" (-> (k/as-sql korma-form)
-                                                      (s/replace #"\sFROM" "\nFROM") ; add newlines to the SQL to make it more readable
-                                                      (s/replace #"\sLEFT JOIN" "\nLEFT JOIN")
-                                                      (s/replace #"\sWHERE" "\nWHERE")
-                                                      (s/replace #"\sGROUP BY" "\nGROUP BY")
-                                                      (s/replace #"\sORDER BY" "\nORDER BY")
-                                                      (s/replace #"\sLIMIT" "\nLIMIT")
-                                                      (s/replace #"\sAND\s" "\n   AND ")
-                                                      (s/replace #"\sOR\s" "\n    OR "))))
-        ;; (k/as-sql korma-form) will barf if the korma form is invalid
-        (catch Throwable e
-          (log/error (u/format-color 'red "Invalid korma form: %s" (.getMessage e))))))))
+(defn- should-log-korma-form? []
+  (and (config/config-bool :mb-db-logging)
+       (not qp/*disable-qp-logging*)))
+
+(defn log-korma-form
+  "Log a korma form and the SQL it corresponds to logging is enabled.
+   Removing empty/`nil` kv pairs from KORMA-FORM and strip ns qualifiers (e.g. `(keyword (name :korma.sql.utils/func))` -> `:func`).
+   Add newlines to the SQL to make it more readable."
+  ([korma-form]
+   (when (should-log-korma-form?)
+     (log-korma-form korma-form (try (k/as-sql korma-form)
+                                     (catch Throwable e
+                                       (log/error (u/format-color 'red "Invalid korma form: %s" (.getMessage e))))))))
+
+  ([korma-form, ^String sql]
+   (when (should-log-korma-form?)
+     (log/debug (u/format-color 'green "\nKORMA FORM: 😋\n%s"
+                  (binding [pprint/*print-right-margin* 200]
+                    (u/pprint-to-str (walk/postwalk (fn [x] (cond
+                                                              (keyword? x) (keyword (name x)) ; strip off ns qualifiers from keywords
+                                                              (fn? x)      (class x)
+                                                              :else        x))
+                                                    (into {} (for [[k v] (dissoc korma-form :db :ent :from :options :aliases :results :type :alias)
+                                                                   :when (or (not (sequential? v))
+                                                                             (seq v))]
+                                                               {k v}))))))
+                (when sql
+                  (u/format-color 'blue "\nSQL: 😈\n%s\n"
+                    (-> sql
+                        (s/replace #"\sFROM" "\nFROM")
+                        (s/replace #"\sLEFT JOIN" "\nLEFT JOIN")
+                        (s/replace #"\sWHERE" "\nWHERE")
+                        (s/replace #"\sGROUP BY" "\nGROUP BY")
+                        (s/replace #"\sORDER BY" "\nORDER BY")
+                        (s/replace #"\sLIMIT" "\nLIMIT")
+                        (s/replace #"\sAND\s" "\n   AND ")
+                        (s/replace #"\sOR\s" "\n    OR "))))))))
+
+
 
 (def ^:private clause-handlers
   {:aggregation #'sql/apply-aggregation ; use the vars rather than the functions themselves because them implementation
@@ -229,14 +232,14 @@
 
 (defn- apply-clauses
   "Loop through all the `clause->handler` entries; if the query contains a given clause, apply the handler fn."
-  [driver korma-query query]
-  (loop [korma-query korma-query, [[clause f] & more] (seq clause-handlers)]
-    (let [korma-query (if (clause query)
-                        (f driver korma-query query)
-                        korma-query)]
+  [driver korma-form query]
+  (loop [korma-form korma-form, [[clause f] & more] (seq clause-handlers)]
+    (let [korma-form (if (clause query)
+                        (f driver korma-form query)
+                        korma-form)]
       (if (seq more)
-        (recur korma-query more)
-        korma-query))))
+        (recur korma-form more)
+        korma-form))))
 
 (defn- do-with-timezone [driver f]
   (log/debug (u/format-color 'blue (sql/set-timezone-sql driver)))
@@ -258,19 +261,24 @@
                                 (.getMessage e))]
         (throw (Exception. message))))))
 
+(defn build-korma-form
+  "Build the korma form we will call `k/exec` on."
+  [driver {inner-query :query :as outer-query} entity]
+  (binding [*query* outer-query]
+      (apply-clauses driver (k/select* entity) inner-query)))
+
 (defn process-structured
   "Convert QUERY into a korma `select` form, execute it, and annotate the results."
-  [driver {{:keys [source-table] :as query} :query, database :database, :as outer-query}]
+  [driver {{:keys [source-table]} :query, database :database, :as outer-query}]
   (let [set-timezone? (and (seq (driver/report-timezone))
                            (contains? (driver/features driver) :set-timezone))
         entity        ((resolve 'metabase.driver.generic-sql/korma-entity) database source-table)
-        korma-query   (binding [*query* outer-query]
-                        (apply-clauses driver (k/select* entity) query))
-        f             (partial k/exec korma-query)
+        korma-form   (build-korma-form driver outer-query entity)
+        f             (partial k/exec korma-form)
         f             (fn []
                         (kdb/with-db (:db entity)
                           (if set-timezone?
                             (do-with-timezone driver f)
                             (f))))]
-    (log-korma-form korma-query)
+    (log-korma-form korma-form)
     (do-with-try-catch f)))

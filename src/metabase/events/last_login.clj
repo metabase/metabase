@@ -1,7 +1,6 @@
 (ns metabase.events.last-login
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [metabase.config :as config]
             [metabase.db :as db]
             [metabase.events :as events]
             [metabase.models.user :refer [User]]
@@ -38,7 +37,5 @@
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
-(defn events-init []
-  (when-not (config/is-test?)
-    (log/info "Starting last-login events listener")
-    (events/start-event-listener last-login-topics last-login-channel process-last-login-event)))
+(defn- events-init []
+  (events/start-event-listener last-login-topics last-login-channel process-last-login-event))

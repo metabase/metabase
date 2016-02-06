@@ -1,7 +1,6 @@
 (ns metabase.events.view-log
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [metabase.config :as config]
             [metabase.db :as db]
             [metabase.events :as events]
             [metabase.models.view-log :refer [ViewLog]]))
@@ -47,7 +46,5 @@
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
-(defn events-init []
-  (when-not (config/is-test?)
-    (log/info "Starting view-log events listener")
-    (events/start-event-listener view-counts-topics view-counts-channel process-view-count-event)))
+(defn- events-init []
+  (events/start-event-listener view-counts-topics view-counts-channel process-view-count-event))

@@ -239,8 +239,6 @@
         v     (case filter-type
                 :between     {$gte (->rvalue (:min-val filter))
                               $lte (->rvalue (:max-val filter))}
-                :is-null     {$exists false}
-                :not-null    {$exists true}
                 :contains    (re-pattern value)
                 :starts-with (re-pattern (str \^ value))
                 :ends-with   (re-pattern (str value \$))
