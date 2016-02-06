@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import GridItem from "./GridItem.jsx";
 
@@ -34,7 +35,7 @@ export default class GridLayout extends Component {
     }
 
     componentDidUpdate() {
-        let width = React.findDOMNode(this).parentNode.offsetWidth;
+        let width = ReactDOM.findDOMNode(this).parentNode.offsetWidth;
         if (this.state.width !== width) {
             this.setState({ width });
         }

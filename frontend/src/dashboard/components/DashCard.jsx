@@ -1,6 +1,7 @@
 /*global $clamp*/
 
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import Visualization from "metabase/visualizations/Visualization.jsx";
 import visualizations from "metabase/visualizations";
@@ -29,7 +30,7 @@ export default class DashCard extends Component {
     async componentDidMount() {
         // HACK: way to scroll to a newly added card
         if (this.props.dashcard.justAdded) {
-            React.findDOMNode(this).scrollIntoView();
+            ReactDOM.findDOMNode(this).scrollIntoView();
             this.props.markNewCardSeen(this.props.dashcard.id);
         }
 
@@ -97,7 +98,7 @@ export default class DashCard extends Component {
     }
 
     componentDidUpdate() {
-        let titleElement = React.findDOMNode(this.refs.title);
+        let titleElement = ReactDOM.findDOMNode(this.refs.title);
         if (titleElement) {
             // have to restore the text in case we previously clamped it :-/
             titleElement.textContent = this.props.dashcard.card.name;

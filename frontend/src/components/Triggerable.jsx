@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import cx from "classnames";
 
@@ -26,7 +27,7 @@ export default ComposedComponent => class extends Component {
 
     onClose(e) {
         // don't close if clicked the actual trigger, it will toggle
-        if (e && e.target && React.findDOMNode(this.refs.trigger).contains(e.target)) {
+        if (e && e.target && ReactDOM.findDOMNode(this.refs.trigger).contains(e.target)) {
             return;
         }
         this.close();

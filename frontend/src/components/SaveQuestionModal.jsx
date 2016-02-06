@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import FormField from "metabase/components/FormField.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
@@ -31,7 +32,7 @@ export default React.createClass({
         event.preventDefault();
 
         // make sure that user put in a card name before we close out the form
-        var name = React.findDOMNode(this.refs.name).value.trim();
+        var name = ReactDOM.findDOMNode(this.refs.name).value.trim();
         if (!name || name === "") {
             this.setState({
                 errors: {
@@ -47,8 +48,8 @@ export default React.createClass({
         }
 
         var card = this.props.card;
-        card.name = React.findDOMNode(this.refs.name).value.trim();
-        card.description = React.findDOMNode(this.refs.description).value.trim();
+        card.name = ReactDOM.findDOMNode(this.refs.name).value.trim();
+        card.description = ReactDOM.findDOMNode(this.refs.description).value.trim();
         card.public_perms = 2; // public read/write
 
         this.props.saveFn(card).then((success) => {

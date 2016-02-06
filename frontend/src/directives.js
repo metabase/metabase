@@ -1,4 +1,5 @@
 import React from "react";
+import ReactDOM from "react-dom";
 
 import { Provider } from 'react-redux';
 import { DevTools, DebugPanel } from 'redux-devtools/lib/react';
@@ -140,7 +141,7 @@ MetabaseDirectives.directive('mbReduxComponent', ['$timeout', function ($timeout
                 var win = window.open(null, "redux-devtools", "menubar=no,location=no,resizable=yes,scrollbars=no,status=no");
                 win.location.reload();
                 setTimeout(function() {
-                    React.render(
+                    ReactDOM.render(
                         <DebugPanel top right bottom left >
                             <DevTools store={scope.store} monitor={scope.monitor} />
                         </DebugPanel>
@@ -148,7 +149,7 @@ MetabaseDirectives.directive('mbReduxComponent', ['$timeout', function ($timeout
                 }, 10);
             }
 
-            React.render(
+            ReactDOM.render(
                 <Provider store={scope.store}>
                     {() => <scope.Component {...scope.props} />}
                 </Provider>,
@@ -191,7 +192,7 @@ MetabaseDirectives.directive('mbReactComponent', ['$timeout', function ($timeout
                     }
                 }
                 copyProps(props, scope)
-                React.render(<Component {...props}/>, element[0]);
+                ReactDOM.render(<Component {...props}/>, element[0]);
             }
 
             // limit renders to once per animation frame

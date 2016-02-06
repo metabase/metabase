@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import GridLayout from "./grid/GridLayout.jsx";
 
@@ -114,7 +115,7 @@ export default class DashboardGrid extends Component {
 
     // make grid square by getting the container width, then dividing by 6
     calculateSizing() {
-        let width = React.findDOMNode(this).offsetWidth;
+        let width = ReactDOM.findDOMNode(this).offsetWidth;
         if (this.state.width !== width) {
             this.setState({ width });
         }

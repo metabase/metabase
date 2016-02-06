@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import Icon from "metabase/components/Icon.jsx";
 import LoadingSpinner from 'metabase/components/LoadingSpinner.jsx';
@@ -194,8 +195,8 @@ export default class QueryVisualization extends Component {
 
     showDetailError() {
         if (this._detailErrorLink && this._detailErrorBody ) {
-            this._detailErrorLink.getDOMNode().style.display = "none";
-            this._detailErrorBody.getDOMNode().style.display = "inherit";
+            ReactDOM.findDOMNode(this._detailErrorLink).style.display = "none";
+            ReactDOM.findDOMNode(this._detailErrorBody).style.display = "inherit";
         }
     }
 

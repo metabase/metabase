@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import TimeoutTransitionGroup from "react-components/timeout-transition-group";
 
@@ -70,7 +71,7 @@ export default class Modal extends Component {
     }
 
     _renderPopover() {
-        React.render(
+        ReactDOM.render(
             <TimeoutTransitionGroup transitionName="Modal" enterTimeout={250} leaveTimeout={250}>
                 { this.state.isOpen &&
                     <div key="modal" className="Modal-backdrop" style={this.props.style}>

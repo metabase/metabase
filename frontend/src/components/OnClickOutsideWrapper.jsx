@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import ClickOutComponent from 'react-onclickout';
 
@@ -15,7 +16,7 @@ export default class OnClickOutsideWrapper extends ClickOutComponent {
         setTimeout(() => {
             popoverStack.push(this);
             // HACK: set the z-index of the parent element to ensure it's always on top
-            React.findDOMNode(this).parentNode.style.zIndex = popoverStack.length + 2; // HACK: add 2 to ensure it's in front of main and nav elements
+            ReactDOM.findDOMNode(this).parentNode.style.zIndex = popoverStack.length + 2; // HACK: add 2 to ensure it's in front of main and nav elements
         }, 10);
     }
 

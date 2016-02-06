@@ -1,12 +1,14 @@
 import React, { Component, PropTypes } from "react";
-import _ from "underscore";
-import cx from "classnames";
+import ReactDOM from "react-dom";
 
 import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
 import FormMessage from "metabase/components/form/FormMessage.jsx";
+
 import MetabaseUtils from "metabase/lib/utils";
 
+import _ from "underscore";
+import cx from "classnames";
 
 export default class UpdateUserDetails extends Component {
 
@@ -30,7 +32,7 @@ export default class UpdateUserDetails extends Component {
 
         // required: first_name, last_name, email
         for (var fieldName in this.refs) {
-            let node = React.findDOMNode(this.refs[fieldName]);
+            let node = ReactDOM.findDOMNode(this.refs[fieldName]);
             if (node.required && MetabaseUtils.isEmpty(node.value)) isValid = false;
         };
 
@@ -55,7 +57,7 @@ export default class UpdateUserDetails extends Component {
         let formErrors = {data:{errors:{}}};
 
         // validate email address
-        if (!MetabaseUtils.validEmail(React.findDOMNode(this.refs.email).value)) {
+        if (!MetabaseUtils.validEmail(ReactDOM.findDOMNode(this.refs.email).value)) {
             formErrors.data.errors.email = "Not a valid formatted email address";
         }
 
@@ -68,9 +70,9 @@ export default class UpdateUserDetails extends Component {
 
         let user = (this.props.user) ? _.clone(this.props.user) : {};
 
-        user.first_name = React.findDOMNode(this.refs.firstName).value;
-        user.last_name = React.findDOMNode(this.refs.lastName).value;
-        user.email = React.findDOMNode(this.refs.email).value;
+        user.first_name = ReactDOM.findDOMNode(this.refs.firstName).value;
+        user.last_name = ReactDOM.findDOMNode(this.refs.lastName).value;
+        user.email = ReactDOM.findDOMNode(this.refs.email).value;
 
         this.props.submitFn(user);
     }

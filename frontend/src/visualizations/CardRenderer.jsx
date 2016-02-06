@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 
@@ -38,7 +39,7 @@ export default class CardRenderer_ extends Component {
     }
 
     renderChart() {
-        let element = React.findDOMNode(this.refs.chart)
+        let element = ReactDOM.findDOMNode(this.refs.chart)
         if (this.props.data) {
             try {
                 // always ensure we have the most recent visualization settings to use for rendering

@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import ActionButton from "metabase/components/ActionButton.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
@@ -17,7 +18,7 @@ export default class ObjectRetireModal extends Component {
     async handleSubmit() {
         const { object, objectType } = this.props;
         let payload = {
-            revision_message: React.findDOMNode(this.refs.revision_message).value
+            revision_message: ReactDOM.findDOMNode(this.refs.revision_message).value
         };
         payload[objectType+"Id"] = object.id;
 

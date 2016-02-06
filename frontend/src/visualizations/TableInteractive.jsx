@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import { Table, Column } from "fixed-data-table";
 
@@ -87,7 +88,7 @@ export default class TableInteractive extends Component {
 
     componentDidUpdate() {
         if (!this.state.contentWidths) {
-            let tableElement = React.findDOMNode(this.refs.table);
+            let tableElement = ReactDOM.findDOMNode(this.refs.table);
             let contentWidths = [];
             let rowElements = tableElement.querySelectorAll(".fixedDataTableRowLayout_rowWrapper");
             for (var rowIndex = 0; rowIndex < rowElements.length; rowIndex++) {
@@ -112,7 +113,7 @@ export default class TableInteractive extends Component {
     }
 
     calculateSizing(prevState, force) {
-        var element = React.findDOMNode(this);
+        var element = ReactDOM.findDOMNode(this);
 
         // account for padding of our parent
         var style = window.getComputedStyle(element.parentElement, null);

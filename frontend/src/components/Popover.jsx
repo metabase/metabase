@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper.jsx";
 import Tether from "tether";
@@ -124,17 +125,17 @@ export default class Popover extends Component {
     _renderPopover() {
         if (this.props.isOpen) {
             // popover is open, lets do this!
-            React.render(this._popoverComponent(), this._popoverElement);
+            ReactDOM.render(this._popoverComponent(), this._popoverElement);
 
             var tetherOptions = {};
 
             tetherOptions.element = this._popoverElement;
 
             if (!tetherOptions.target && this.props.getTriggerTarget) {
-                tetherOptions.target = React.findDOMNode(this.props.getTriggerTarget());
+                tetherOptions.target = ReactDOM.findDOMNode(this.props.getTriggerTarget());
             }
             if (!tetherOptions.target) {
-                tetherOptions.target = React.findDOMNode(this).parentNode;
+                tetherOptions.target = ReactDOM.findDOMNode(this).parentNode;
             }
 
             if (this.props.tetherOptions) {

@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -23,7 +24,7 @@ export default class PulseEditName extends Component {
     }
 
     validate() {
-        this.setState({ valid: !!React.findDOMNode(this.refs.name).value });
+        this.setState({ valid: !!ReactDOM.findDOMNode(this.refs.name).value });
     }
 
     render() {

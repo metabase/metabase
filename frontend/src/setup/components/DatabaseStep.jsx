@@ -1,15 +1,17 @@
 import React, { Component, PropTypes } from "react";
-import _ from "underscore";
+import ReactDOM from "react-dom";
+
+import StepTitle from './StepTitle.jsx'
+import CollapsedStep from "./CollapsedStep.jsx";
 
 import DatabaseDetailsForm from "metabase/components/database/DatabaseDetailsForm.jsx";
 import FormField from "metabase/components/form/FormField.jsx";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
-import StepTitle from './StepTitle.jsx'
-import CollapsedStep from "./CollapsedStep.jsx";
 import { setDatabaseDetails, validateDatabase } from "../actions";
 
+import _ from "underscore";
 
 export default class DatabaseStep extends Component {
     constructor(props, context) {
@@ -23,7 +25,7 @@ export default class DatabaseStep extends Component {
     }
 
     chooseDatabaseEngine() {
-        let engine = React.findDOMNode(this.refs.engine).value;
+        let engine = ReactDOM.findDOMNode(this.refs.engine).value;
 
         this.setState({
             'engine': engine
