@@ -43,8 +43,7 @@
                                 :id)]
     (send-pulses curr-hour curr-weekday)))
 
-(defn task-init []
-  (log/info "Submitting send-pulses task to scheduler")
+(defn- task-init []
   ;; build our job
   (reset! send-pulses-job (jobs/build
                                (jobs/of-type SendPulses)

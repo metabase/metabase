@@ -5,6 +5,7 @@
             (clojure [set :as set]
                      [string :as s]
                      [walk :as walk])
+            [colorize.core :as color]
             [environ.core :refer [env]]
             (korma [core :as k]
                    [db :as kdb])
@@ -145,12 +146,12 @@
   "Test connection to database with DETAILS and throw an exception if we have any troubles connecting."
   [engine details]
   {:pre [(keyword? engine) (map? details)]}
-  (log/info "Verifying Database Connection ...")
+  (log/info (color/cyan "Verifying Database Connection ..."))
   (assert (binding [*allow-potentailly-unsafe-connections* true]
             (require 'metabase.driver)
             (@(resolve 'metabase.driver/can-connect-with-details?) engine details))
     "Unable to connect to Metabase DB.")
-  (log/info "Verify Database Connection ... CHECK"))
+  (log/info (str "Verify Database Connection ... ✅")))
 
 (defn setup-db
   "Do general perparation of database by validating that we can connect.
@@ -175,7 +176,7 @@
                      "\n\n"
                      "Once your database is updated try running the application again.\n"))
       (throw (java.lang.Exception. "Database requires manual upgrade."))))
-  (log/info "Database Migrations Current ... CHECK")
+  (log/info "Database Migrations Current ... ✅")
 
   ;; Establish our 'default' Korma DB Connection
   (kdb/default-connection (kdb/create-db (jdbc-details db-details)))

@@ -1,16 +1,12 @@
 (ns metabase.driver.postgres
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.tools.logging :as log]
-            (clojure [set :refer [rename-keys]]
+  (:require (clojure [set :refer [rename-keys]]
                      [string :as s])
             (korma [core :as k]
                    [db :as kdb])
             [korma.sql.utils :as kutils]
-            [swiss.arrows :refer :all]
-            [metabase.db :refer [upd]]
-            [metabase.models.field :refer [Field]]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
+            [metabase.util :as u]
             [metabase.util.korma-extensions :as kx])
   ;; This is necessary for when NonValidatingFactory is passed in the sslfactory connection string argument,
   ;; e.x. when connecting to a Heroku Postgres database from outside of Heroku.
@@ -165,6 +161,11 @@
     #".*" ; default
     message))
 
+(defn- prepare-value [{value :value, {:keys [base-type]} :field}]
+  (if (= base-type :UUIDField)
+    (java.util.UUID/fromString value)
+    value))
+
 (defrecord PostgresDriver []
   clojure.lang.Named
   (getName [_] "PostgreSQL"))
@@ -176,6 +177,7 @@
           :column->special-type      column->special-type
           :connection-details->spec  connection-details->spec
           :date                      date
+          :prepare-value             (u/drop-first-arg prepare-value)
           :set-timezone-sql          (constantly "UPDATE pg_settings SET setting = ? WHERE name ILIKE 'timezone';")
           :string-length-fn          (constantly :CHAR_LENGTH)
           :unix-timestamp->timestamp unix-timestamp->timestamp}))

@@ -22,7 +22,7 @@
   {settings [Required Dict]}
   (check-superuser)
   (let [slack-token (:slack-token settings)
-        response    (if-not (config/is-test?)
+        response    (if-not config/is-test?
                       ;; in normal conditions, validate connection
                       (slack-api-get slack-token "channels.list" {:exclude_archived 1})
                       ;; for unit testing just respond with a success message

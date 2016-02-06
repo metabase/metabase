@@ -5,7 +5,8 @@
             [colorize.core :as color]
             [environ.core :refer [env]]
             [expectations :refer [expect]]
-            [metabase.driver :as driver]))
+            (metabase [config :as config]
+                      [driver :as driver])))
 
 (driver/find-and-load-drivers!)
 (def ^:const all-valid-engines (set (keys (driver/available-drivers))))
@@ -40,7 +41,8 @@
    By default, this only contains `:h2` but can be overriden by setting env var `ENGINES`."
   (let [engines (or (get-engines-from-env)
                     #{:h2})]
-    (log/info (color/green "Running QP tests against these engines: " engines))
+    (when config/is-test?
+      (log/info (color/cyan "Running QP tests against these engines: " engines)))
     engines))
 
 

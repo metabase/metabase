@@ -55,23 +55,9 @@
                [k (config-str k)])))
 
 
-(defn config-match
-  "Retrieves all configuration values whose key begin with a specified prefix.
-   The returned map will strip the prefix from the key names.
-   All returned values will be Strings.
-
-   For example if you wanted all of Java's internal environment config values:
-   * (config-match \"java-\") -> {:version \"25.25-b02\" :info \"mixed mode\"}"
-  [prefix]
-  (let [prefix-regex (re-pattern (str ":" prefix ".*"))]
-    (->> (merge
-          (m/filter-keys (fn [k] (re-matches prefix-regex (str k))) app-defaults)
-          (m/filter-keys (fn [k] (re-matches prefix-regex (str k))) environ/env))
-      (m/map-keys (fn [k] (let [kstr (str k)] (keyword (subs kstr (+ 1 (count prefix))))))))))
-
-(defn ^Boolean is-dev?  [] (= :dev  (config-kw :mb-run-mode)))
-(defn ^Boolean is-prod? [] (= :prod (config-kw :mb-run-mode)))
-(defn ^Boolean is-test? [] (= :test (config-kw :mb-run-mode)))
+(def ^:const ^Boolean is-dev?  (= :dev  (config-kw :mb-run-mode)))
+(def ^:const ^Boolean is-prod? (= :prod (config-kw :mb-run-mode)))
+(def ^:const ^Boolean is-test? (= :test (config-kw :mb-run-mode)))
 
 
 ;;; Version stuff
@@ -79,10 +65,7 @@
 
 (defn- version-info-from-shell-script []
   (let [[tag hash branch date] (-> (shell/sh "./bin/version") :out s/trim (s/split #" "))]
-    {:tag    tag
-     :hash   hash
-     :branch branch
-     :date   date}))
+    {:tag tag, :hash hash, :branch branch, :date date}))
 
 (defn- version-info-from-properties-file []
   (when-let [props-file (io/resource "version.properties")]
@@ -97,7 +80,7 @@
    This comes from `resources/version.properties` for prod builds and is fetched from `git` via the `./bin/version` script for dev.
 
      mb-version-info -> {:tag: \"v0.11.1\", :hash: \"afdf863\", :branch: \"about_metabase\", :date: \"2015-10-05\"}"
-  (if (is-prod?)
+  (if is-prod?
     (version-info-from-properties-file)
     (version-info-from-shell-script)))
 
