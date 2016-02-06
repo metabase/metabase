@@ -82,7 +82,7 @@ export default class NewBarChart extends Component {
 
     renderLegendItem(card, index) {
         return (
-            <span className="h3 mr2 mb1 text-bold flex align-center">
+            <span key={index} className="h3 mr2 mb1 text-bold flex align-center">
                 <span className="inline-block circular" style={{width: 13, height: 13, backgroundColor: COLORS[index % COLORS.length]}} />
                 <span className="ml1">{card.name}</span>
             </span>

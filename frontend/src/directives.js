@@ -151,7 +151,7 @@ MetabaseDirectives.directive('mbReduxComponent', ['$timeout', function ($timeout
 
             ReactDOM.render(
                 <Provider store={scope.store}>
-                    {() => <scope.Component {...scope.props} />}
+                    <scope.Component {...scope.props} />
                 </Provider>,
                 element[0]
             );

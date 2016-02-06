@@ -40,6 +40,7 @@ export default class TableSimple extends Component {
                                 { cols.map((column, colIndex) => <th key={colIndex}>{this.getDatasetColumnTitleByIndex(colIndex)}</th>) }
                             </tr>
                         </thead>
+                        <tbody>
                         {
                             rows.slice(0, 100).map((row, rowIndex) =>
                                 <tr key={rowIndex}>
@@ -47,6 +48,7 @@ export default class TableSimple extends Component {
                                 </tr>
                             )
                         }
+                        </tbody>
                     </table>
                 </div>
         );

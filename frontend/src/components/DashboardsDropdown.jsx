@@ -91,9 +91,9 @@ export default class DashboardsDropdown extends Component {
 
                 <OnClickOut onClickOut={this.closeDropdown}>
                     <div className={cx('NavDropdown inline-block cursor-pointer', { 'open': dropdownOpen })}>
-                        <a onClick={this.toggleDropdown}>
+                        <span onClick={this.toggleDropdown}>
                             {children}
-                        </a>
+                        </span>
 
                         { dropdownOpen ?
                             <div className="NavDropdown-content DashboardList NavDropdown-content--dashboards">
@@ -109,7 +109,7 @@ export default class DashboardsDropdown extends Component {
                                 :
                                     <ul className="NavDropdown-content-layer">
                                         { dashboards.map(dash =>
-                                            <li className="block">
+                                            <li key={dash.id} className="block">
                                                 <a data-metabase-event={"Navbar;Dashboard Dropdown;Open Dashboard;"+dash.id} className="Dropdown-item block text-white no-decoration" href={"/dash/"+dash.id} onClick={this.closeDropdown}>
                                                     <div className="flex text-bold">
                                                         {dash.name}
