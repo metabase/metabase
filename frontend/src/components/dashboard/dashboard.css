@@ -19,9 +19,9 @@
 }
 
 .DashboardGrid {
-    /* offset RGL's 10px padding */
-    margin-left: -10px;
-    margin-right: -10px;
+    margin-top: 5px;
+    margin-left: -5px;
+    margin-right: -5px;
 }
 
 .DashCard {
@@ -35,6 +35,7 @@
   left: 0;
   bottom: 0;
   right: 0;
+  overflow: hidden;
 }
 
 .DashCard .Card-outer {
@@ -86,38 +87,35 @@
 
 .Dash--editing .DashCard .Card {
     background: #fff;
-}
-
-.Dash--editing .DashCard.react-draggable {
     user-select: none;
 }
 
-.Dash--editing .DashCard.react-draggable-dragging .Card {
+.Dash--editing .DashCard.dragging .Card {
     box-shadow: 3px 3px 8px rgba(0,0,0,0.1);
 }
 
-.Dash--editing .DashCard.react-draggable-dragging,
+.Dash--editing .DashCard.dragging,
 .Dash--editing .DashCard.resizing {
     z-index: 2;
 }
 
-.Dash--editing .DashCard.react-draggable-dragging .Card,
+.Dash--editing .DashCard.dragging .Card,
 .Dash--editing .DashCard.resizing .Card {
     background-color: #E5F1FB !important;
     border: 1px solid var(--brand-color);
 }
 
-.Dash--editing .DashCard.react-draggable-dragging .DashCard-actions,
+.Dash--editing .DashCard.dragging .DashCard-actions,
 .Dash--editing .DashCard.resizing .DashCard-actions {
-  opacity: 0;
-  transition: opacity .3s linear;
+    opacity: 0;
+    transition: opacity .3s linear;
 }
 
 .Dash--editing .DashCard {
     transition: transform .3s;
 }
 
-.Dash--editing .DashCard.react-draggable-dragging,
+.Dash--editing .DashCard.dragging,
 .Dash--editing .DashCard.resizing {
     transition: transform 0s;
 }
@@ -136,7 +134,9 @@
 }
 
 .Dash--editing .react-grid-placeholder {
+    z-index: 0;
     background-color: #F2F2F2;
+    transition: all 0.15s linear;
 }
 
 .Dash--editing .Card-title {
