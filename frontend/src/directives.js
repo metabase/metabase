@@ -157,7 +157,7 @@ MetabaseDirectives.directive('mbReduxComponent', ['$timeout', function ($timeout
             );
 
             scope.$on("$destroy", function() {
-                React.unmountComponentAtNode(element[0]);
+                ReactDOM.unmountComponentAtNode(element[0]);
             });
         }
     };
@@ -207,7 +207,7 @@ MetabaseDirectives.directive('mbReactComponent', ['$timeout', function ($timeout
             });
 
             scope.$on("$destroy", function() {
-                React.unmountComponentAtNode(element[0]);
+                ReactDOM.unmountComponentAtNode(element[0]);
                 // make sure to clear the timeout if set otherwise we might accidentally render a destroyed component
                 if (timeout) {
                     window.cancelAnimationFrame(timeout);

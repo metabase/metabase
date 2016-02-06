@@ -49,7 +49,7 @@ export default class Popover extends Component {
             this._tether.destroy();
             delete this._tether;
         }
-        React.unmountComponentAtNode(this._popoverElement);
+        ReactDOM.unmountComponentAtNode(this._popoverElement);
         if (this._popoverElement.parentNode) {
             this._popoverElement.parentNode.removeChild(this._popoverElement);
         }
@@ -180,7 +180,7 @@ export default class Popover extends Component {
             }
         } else {
             // if the popover isn't open then actively unmount our popover
-            React.unmountComponentAtNode(this._popoverElement);
+            ReactDOM.unmountComponentAtNode(this._popoverElement);
         }
     }
 

@@ -16,7 +16,7 @@ export default ComposedComponent => class extends Component {
     }
 
     componentWillUnmount() {
-        React.unmountComponentAtNode(this._element);
+        ReactDOM.unmountComponentAtNode(this._element);
         if (this._element.parentNode) {
             this._element.parentNode.removeChild(this._element);
         }

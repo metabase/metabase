@@ -48,7 +48,7 @@ export default class Modal extends Component {
     }
 
     componentWillUnmount() {
-        React.unmountComponentAtNode(this._modalElement);
+        ReactDOM.unmountComponentAtNode(this._modalElement);
         if (this._modalElement.parentNode) {
             this._modalElement.parentNode.removeChild(this._modalElement);
         }

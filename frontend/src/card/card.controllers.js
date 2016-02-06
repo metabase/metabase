@@ -879,10 +879,10 @@ CardControllers.controller('CardDetail', [
 
             // any time we route away from the query builder force unmount our react components to make sure they have a chance
             // to fully clean themselves up and remove things like popover elements which may be on the screen
-            React.unmountComponentAtNode(document.getElementById('react_qb_header'));
-            React.unmountComponentAtNode(document.getElementById('react_qb_editor'));
-            React.unmountComponentAtNode(document.getElementById('react_qb_viz'));
-            React.unmountComponentAtNode(document.getElementById('react_data_reference'));
+            ReactDOM.unmountComponentAtNode(document.getElementById('react_qb_header'));
+            ReactDOM.unmountComponentAtNode(document.getElementById('react_qb_editor'));
+            ReactDOM.unmountComponentAtNode(document.getElementById('react_qb_viz'));
+            ReactDOM.unmountComponentAtNode(document.getElementById('react_data_reference'));
         });
 
         // prevent angular route change when we manually update the url
