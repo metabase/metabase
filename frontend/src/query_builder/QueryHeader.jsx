@@ -21,6 +21,8 @@ export default React.createClass({
     displayName: 'QueryHeader',
     propTypes: {
         card: PropTypes.object.isRequired,
+        originalCard: PropTypes.object,
+        isEditing: PropTypes.bool.isRequired,
         tableMetadata: PropTypes.object, // can't be required, sometimes null
         cardApi: PropTypes.func.isRequired,
         dashboardApi: PropTypes.func.isRequired,
@@ -65,7 +67,7 @@ export default React.createClass({
     },
 
     onBeginEditing: function() {
-        this.props.toggleCardEditingFn(true);
+        this.props.onBeginEditing();
     },
 
     onSave: async function() {
@@ -91,13 +93,17 @@ export default React.createClass({
         if (this.props.fromUrl) {
             this.onGoBack();
         } else {
-            this.props.toggleCardEditingFn(false);
+            this.props.onCancelEditing();
         }
     },
 
     onDelete: async function () {
         await this.props.cardApi.delete({ 'cardId': this.props.card.id }).$promise;
         this.onGoBack();
+    },
+
+    onFollowBreadcrumb: function() {
+        this.props.onRestoreOriginalQuery();
     },
 
     setQueryMode: function(mode) {
@@ -165,7 +171,7 @@ export default React.createClass({
 
         // persistence buttons on saved cards
         if (!this.props.cardIsNewFn()) {
-            if (!this.props.card.isEditing) {
+            if (!this.props.isEditing) {
                 if (this.state.recentlySaved) {
                     // existing card + not editing + recently saved = save confirmation
                     buttonSections.push([
@@ -267,8 +273,9 @@ export default React.createClass({
         return (
             <div>
                 <HeaderBar
-                    isEditing={this.props.card.isEditing}
+                    isEditing={this.props.isEditing}
                     name={this.props.cardIsNewFn() ? "New question" : this.props.card.name}
+                    breadcrumb={(!this.props.card.id && this.props.originalCard) ? (<span className="pl2">started from <a className="link" onClick={this.onFollowBreadcrumb}>{this.props.originalCard.name}</a></span>) : null }
                     buttons={this.getHeaderButtons()}
                     setItemAttributeFn={this.setCardAttribute}
                 />

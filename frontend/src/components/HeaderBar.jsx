@@ -6,7 +6,8 @@ import Input from "metabase/components/Input.jsx";
 export default class Header extends Component {
     static defaultProps = {
         buttons: [],
-        className: "py1 lg-py2 xl-py3 wrapper"
+        className: "py1 lg-py2 xl-py3 wrapper",
+        breadcrumb: null
     };
 
     setItemAttribute(attribute, event) {
@@ -14,7 +15,7 @@ export default class Header extends Component {
     }
 
     render() {
-        const { isEditing, name, description, buttons, className } = this.props;
+        const { isEditing, name, description, breadcrumb, buttons, className } = this.props;
 
         var titleAndDescription;
         if (isEditing) {
@@ -34,8 +35,8 @@ export default class Header extends Component {
                 );
             } else {
                 titleAndDescription = (
-                    <div className="flex align-center">
-                        <h1 className="Entity-title my1">{name}</h1>
+                    <div className="flex align-baseline">
+                        <h1 className="Entity-title my1">{name}</h1> {breadcrumb}
                     </div>
                 );
             }

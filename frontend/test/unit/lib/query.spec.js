@@ -1,8 +1,84 @@
 /*eslint-env jasmine */
 
-import Query from 'metabase/lib/query';
+import Query from "metabase/lib/query";
+import { createQuery } from "metabase/lib/query";
+
 
 describe('Query', () => {
+    describe('createQuery', () => {
+        it("should provide a structured query with no args", () => {
+            expect(createQuery()).toEqual({
+                database: null,
+                type: "query",
+                query: {
+                    source_table: null,
+                    aggregation: ["rows"],
+                    breakout: [],
+                    filter: []
+                }
+            });
+        });
+
+        it("should be able to create a native type query", () => {
+            expect(createQuery("native")).toEqual({
+                database: null,
+                type: "native",
+                native: {
+                    query: ""
+                }
+            });
+        });
+
+        it("should populate the databaseId if specified", () => {
+            expect(createQuery("query", 123)).toEqual({
+                database: 123,
+                type: "query",
+                query: {
+                    source_table: null,
+                    aggregation: ["rows"],
+                    breakout: [],
+                    filter: []
+                }
+            });
+        });
+
+        it("should populate the tableId if specified", () => {
+            expect(createQuery("query", 123, 456)).toEqual({
+                database: 123,
+                type: "query",
+                query: {
+                    source_table: 456,
+                    aggregation: ["rows"],
+                    breakout: [],
+                    filter: []
+                }
+            });
+        });
+
+        it("should NOT set the tableId if query type is native", () => {
+            expect(createQuery("native", 123, 456)).toEqual({
+                database: 123,
+                type: "native",
+                native: {
+                    query: ""
+                }
+            });
+        });
+
+        it("should NOT populate the tableId if no database specified", () => {
+            expect(createQuery("query", null, 456)).toEqual({
+                database: null,
+                type: "query",
+                query: {
+                    source_table: null,
+                    aggregation: ["rows"],
+                    breakout: [],
+                    filter: []
+                }
+            });
+        });
+    });
+
     describe('cleanQuery', () => {
         it('should not remove complete sort clauses', () => {
             let query = {
