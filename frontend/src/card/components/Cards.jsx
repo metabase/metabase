@@ -1,7 +1,6 @@
 import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
-import IconBorder from 'metabase/components/IconBorder.jsx';
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 import Urls from "metabase/lib/urls";
 
