@@ -28,17 +28,19 @@ export default class DashCard extends Component {
     };
 
     async componentDidMount() {
+        const { dashcard } = this.props;
+
         // HACK: way to scroll to a newly added card
-        if (this.props.dashcard.justAdded) {
+        if (dashcard.justAdded) {
             ReactDOM.findDOMNode(this).scrollIntoView();
-            this.props.markNewCardSeen(this.props.dashcard.id);
+            this.props.markNewCardSeen(dashcard.id);
         }
 
         try {
             await * [
-                this.props.fetchCardData(this.props.dashcard.card)
+                this.props.fetchCardData(dashcard.card)
             ].concat(
-                this.props.dashcard.series.map(this.props.fetchCardData)
+                dashcard.series && dashcard.series.map(this.props.fetchCardData)
             );
         } catch (error) {
             console.error("DashCard error", error)
@@ -72,7 +74,7 @@ export default class DashCard extends Component {
         }
 
         if (dashcard.card && data) {
-            let series = dashcard.series
+            let series = dashcard.series && dashcard.series
             .filter(card => !!cardData[card.id])
             .map(card => ({
                 card: card,
