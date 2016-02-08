@@ -2,6 +2,7 @@ import React, { Component, PropTypes } from "react";
 
 import ActionButton from 'metabase/components/ActionButton.jsx';
 import AddToDashSelectDashModal from 'metabase/components/AddToDashSelectDashModal.jsx';
+import ButtonBar from "metabase/components/ButtonBar.jsx";
 import DeleteQuestionModal from 'metabase/components/DeleteQuestionModal.jsx';
 import HeaderBar from "metabase/components/HeaderBar.jsx";
 import HistoryModal from "metabase/components/HistoryModal.jsx";
@@ -230,21 +231,21 @@ export default React.createClass({
         //   if (!new && !editing) OR (new && dirty)
         if ((!this.props.cardIsNewFn() && !this.props.isEditing) || (this.props.cardIsNewFn() && this.props.cardIsDirtyFn())) { 
             buttonSections.push([
-                    <ModalWithTrigger
-                        key="addtodash"
-                        ref="addToDash"
-                        triggerElement={<span className="text-brand-hover"><Icon name="addtodash" width="16px" height="16px" /></span>}
-                    >
-                        <HistoryModal
-                            revisions={this.state.revisions}
-                            entityType="card"
-                            entityId={this.props.card.id}
-                            onFetchRevisions={this.onFetchRevisions}
-                            onRevertToRevision={this.onRevertToRevision}
-                            onClose={() => this.refs.addToDash.toggle()}
-                            onReverted={this.onRevertedRevision}
-                        />
-                    </ModalWithTrigger>
+                <ModalWithTrigger
+                    key="addtodash"
+                    ref="addToDash"
+                    triggerElement={<span className="text-brand-hover"><Icon name="addtodash" width="16px" height="16px" /></span>}
+                >
+                    <HistoryModal
+                        revisions={this.state.revisions}
+                        entityType="card"
+                        entityId={this.props.card.id}
+                        onFetchRevisions={this.onFetchRevisions}
+                        onRevertToRevision={this.onRevertToRevision}
+                        onClose={() => this.refs.addToDash.toggle()}
+                        onReverted={this.onRevertedRevision}
+                    />
+                </ModalWithTrigger>
             ]);
         }
 
@@ -281,7 +282,9 @@ export default React.createClass({
             </a>
         ]);
 
-        return buttonSections;
+        return (
+            <ButtonBar buttons={buttonSections} className="Header-buttonSection" />
+        );
     },
 
     render: function() {

@@ -4,8 +4,9 @@ import Input from "metabase/components/Input.jsx";
 
 
 export default class Header extends Component {
+
     static defaultProps = {
-        buttons: [],
+        buttons: null,
         className: "py1 lg-py2 xl-py3 wrapper",
         breadcrumb: null
     };
@@ -13,7 +14,7 @@ export default class Header extends Component {
     render() {
         const { isEditing, name, description, breadcrumb, buttons, className } = this.props;
 
-        var titleAndDescription;
+        let titleAndDescription;
         if (isEditing) {
             titleAndDescription = (
                 <div className="Header-title flex flex-column flex-full bordered rounded my1">
@@ -38,22 +39,14 @@ export default class Header extends Component {
             }
         }
 
-        const headerButtons = buttons.map((section, sectionIndex) => {
-            return section && section.length > 0 && (
-                <span key={sectionIndex} className="Header-buttonSection">
-                    {section}
-                </span>
-            );
-        });
-
         return (
             <div className={"QueryBuilder-section flex align-center " + className}>
                 <div className="Entity">
                     {titleAndDescription}
                 </div>
 
-                <div className="flex align-center flex-align-right">
-                    {headerButtons}
+                <div className="flex-align-right">
+                    {buttons}
                 </div>
             </div>
         );
