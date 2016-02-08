@@ -27,7 +27,7 @@ export default React.createClass({
         cardApi: PropTypes.func.isRequired,
         dashboardApi: PropTypes.func.isRequired,
         revisionApi: PropTypes.func.isRequired,
-        notifyCardChangedFn: PropTypes.func.isRequired,
+        onSetCardAttribute: PropTypes.func.isRequired,
         notifyCardAddedToDashFn: PropTypes.func.isRequired,
         reloadCardFn: PropTypes.func.isRequired,
         setQueryModeFn: PropTypes.func.isRequired,
@@ -111,11 +111,6 @@ export default React.createClass({
 
     toggleDataReference: function() {
         this.props.toggleDataReferenceFn();
-    },
-
-    setCardAttribute: function(attribute, value) {
-        this.props.card[attribute] = value;
-        this.props.notifyCardChangedFn(this.props.card);
     },
 
     onGoBack: function() {
@@ -233,6 +228,25 @@ export default React.createClass({
 
         // TODO: add to dashboard
         //   if (!new && !editing) OR (new && dirty)
+        if ((!this.props.cardIsNewFn() && !this.props.isEditing) || (this.props.cardIsNewFn() && this.props.cardIsDirtyFn())) { 
+            buttonSections.push([
+                    <ModalWithTrigger
+                        key="addtodash"
+                        ref="addToDash"
+                        triggerElement={<span className="text-brand-hover"><Icon name="addtodash" width="16px" height="16px" /></span>}
+                    >
+                        <HistoryModal
+                            revisions={this.state.revisions}
+                            entityType="card"
+                            entityId={this.props.card.id}
+                            onFetchRevisions={this.onFetchRevisions}
+                            onRevertToRevision={this.onRevertToRevision}
+                            onClose={() => this.refs.addToDash.toggle()}
+                            onReverted={this.onRevertedRevision}
+                        />
+                    </ModalWithTrigger>
+            ]);
+        }
 
         // history icon on saved cards
         if (!this.props.cardIsNewFn()) {
@@ -276,9 +290,10 @@ export default React.createClass({
                 <HeaderBar
                     isEditing={this.props.isEditing}
                     name={this.props.cardIsNewFn() ? "New question" : this.props.card.name}
+                    description={this.props.card ? this.props.card.description : null}
                     breadcrumb={(!this.props.card.id && this.props.originalCard) ? (<span className="pl2">started from <a className="link" onClick={this.onFollowBreadcrumb}>{this.props.originalCard.name}</a></span>) : null }
                     buttons={this.getHeaderButtons()}
-                    setItemAttributeFn={this.setCardAttribute}
+                    setItemAttributeFn={this.props.onSetCardAttribute}
                 />
 
                 <Modal isOpen={this.state.modal === "saved"}>

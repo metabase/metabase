@@ -91,13 +91,12 @@ CardControllers.controller('CardDetail', [
             broadcastEventFn: function(eventName, value) {
                 $rootScope.$broadcast(eventName, value);
             },
-            notifyCardChangedFn: async function(modifiedCard) {
+            onSetCardAttribute: function(attribute, value) {
                 // these are the only things we let the header change
-                card.name = modifiedCard.name;
-                card.description = modifiedCard.description;
-                card.public_perms = modifiedCard.public_perms;
-
-                renderAll();
+                if (attribute === "name" || attribute === "description") {
+                    card[attribute] = value;
+                    renderAll();
+                }
             },
             notifyCardCreatedFn: function(newCard) {
                 setCard(newCard, { resetDirty: true, replaceState: true });

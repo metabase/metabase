@@ -10,10 +10,6 @@ export default class Header extends Component {
         breadcrumb: null
     };
 
-    setItemAttribute(attribute, event) {
-        this.props.setItemAttributeFn(attribute, event.target.value);
-    }
-
     render() {
         const { isEditing, name, description, breadcrumb, buttons, className } = this.props;
 
@@ -21,8 +17,8 @@ export default class Header extends Component {
         if (isEditing) {
             titleAndDescription = (
                 <div className="Header-title flex flex-column flex-full bordered rounded my1">
-                    <Input className="AdminInput text-bold border-bottom rounded-top h3" type="text" value={name} onChange={this.setItemAttribute.bind(this, "name")}/>
-                    <Input className="AdminInput rounded-bottom h4" type="text" value={description} onChange={this.setItemAttribute.bind(this, "description")} placeholder="No description yet" />
+                    <Input className="AdminInput text-bold border-bottom rounded-top h3" type="text" value={name} onChange={(e) => this.props.setItemAttributeFn("name", e.target.value)} />
+                    <Input className="AdminInput rounded-bottom h4" type="text" value={description} onChange={(e) => this.props.setItemAttributeFn("description", e.target.value)} placeholder="No description yet" />
                 </div>
             );
         } else {
