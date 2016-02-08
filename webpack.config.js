@@ -72,7 +72,7 @@ var config = module.exports = {
             // { test: /\.css$/, loader: 'style!css!cssnext' }
         ],
         noParse: [
-            /node_modules\/(angular|ng-|ace|moment|underscore|d3)/ // doesn't include 'crossfilter', 'dc', and 'tether' due to use of 'require'
+            /node_modules\/(angular|ng-|ace|moment|underscore|d3-tip)/ // doesn't include 'crossfilter', 'dc', and 'tether' due to use of 'require'
         ]
     },
 
