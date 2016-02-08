@@ -3,12 +3,12 @@ import ReactDOM from "react-dom";
 
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 
-import * as charting from "metabase/card/card.charting";
+import * as charting from "metabase/card/lib/CardRenderer";
 
 import { getSettingsForVisualization, setLatitudeAndLongitude } from "metabase/lib/visualization_settings";
 
 @ExplicitSize
-export default class CardRenderer_ extends Component {
+export default class CardRenderer extends Component {
     static propTypes = {
         card: PropTypes.object.isRequired,
         data: PropTypes.object,
