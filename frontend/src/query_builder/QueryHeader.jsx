@@ -58,6 +58,7 @@ export default React.createClass({
     },
 
     onCreate: async function(card) {
+        // TODO: why are we not cleaning the card here?
         let newCard = await this.props.cardApi.create(card).$promise;
         this.props.notifyCardCreatedFn(newCard);
         if (this.isMounted()) {
@@ -70,9 +71,7 @@ export default React.createClass({
         this.props.onBeginEditing();
     },
 
-    onSave: async function() {
-        let card = this.props.card;
-
+    onSave: async function(card) {
         if (card.dataset_query.query) {
             Query.cleanQuery(card.dataset_query.query);
         }
@@ -152,8 +151,10 @@ export default React.createClass({
                     >
                         <SaveQuestionModal
                             card={this.props.card}
+                            originalCard={this.props.originalCard}
                             tableMetadata={this.props.tableMetadata}
-                            saveFn={this.onCreate}
+                            saveFn={this.onSave}
+                            createFn={this.onCreate}
                             closeFn={() => this.refs.saveModal.toggle()}
                         />
                     </ModalWithTrigger>
@@ -197,7 +198,7 @@ export default React.createClass({
                 buttonSections.push([
                     <ActionButton
                         key="save"
-                        actionFn={() => this.onSave()}
+                        actionFn={() => this.onSave(this.props.card)}
                         className="cursor-pointer text-brand-hover bg-white text-grey-4 text-uppercase"
                         normalText="SAVE CHANGES"
                         activeText="Saving…"
