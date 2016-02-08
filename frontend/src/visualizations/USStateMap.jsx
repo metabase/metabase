@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from "react";
 
-import CardRenderer from "./CardRenderer.jsx";
+import CardRenderer from "./components/CardRenderer.jsx";
 
 import { isString } from "metabase/lib/schema_metadata";
 

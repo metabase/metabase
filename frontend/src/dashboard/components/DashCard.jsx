@@ -41,6 +41,7 @@ export default class DashCard extends Component {
                 this.props.dashcard.series.map(this.props.fetchCardData)
             );
         } catch (error) {
+            console.error("DashCard error", error)
             this.setState({ error });
         }
     }

@@ -1,9 +1,10 @@
 import React, { Component, PropTypes } from "react";
 
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
-import Icon from "metabase/components/Icon.jsx";
 
 import { Bar } from "react-chartjs";
+
+import LegendHeader from "./components/LegendHeader.jsx"
 
 import { MinColumnsError } from "./errors";
 
@@ -63,7 +64,7 @@ function mergeSeries(series) {
 
 export default class NewBarChart extends Component {
     static displayName = "Bar (chart.js)";
-    static identifier = "bar";
+    static identifier = "bar-new";
     static iconName = "bar";
 
     static noHeader = true;
@@ -80,36 +81,11 @@ export default class NewBarChart extends Component {
         series: []
     };
 
-    renderLegendItem(card, index) {
-        return (
-            <span key={index} className="h3 mr2 mb1 text-bold flex align-center">
-                <span className="inline-block circular" style={{width: 13, height: 13, backgroundColor: COLORS[index % COLORS.length]}} />
-                <span className="ml1">{card.name}</span>
-            </span>
-        )
-    }
-
     render() {
-        let { card, series } = this.props;
-
-        let headers = [];
-        headers.push(this.renderLegendItem(card, 0));
-        for (let [index, s] of series.entries()) {
-            headers.push(this.renderLegendItem(s.card, index + 1));
-        }
-
-        if (this.props.onAddSeries) {
-            headers.push(
-                <a className="h3 mr2 mb1 cursor-pointer flex align-center text-brand-hover" style={{ pointerEvents: "all" }} onClick={this.props.onAddSeries}>
-                    <Icon className="circular bordered border-brand text-brand" style={{ padding: "0.25em" }} name="add" width={12} height={12} />
-                    <span className="ml1">Add data</span>
-                </a>
-            );
-        }
-
+        let { card, series, onAddSeries } = this.props;
         return (
             <div className="flex flex-full flex-column px4 py2">
-                <div className="Card-title my1 flex flex-no-shrink flex-row flex-wrap">{headers}</div>
+                <LegendHeader card={card} series={series} onAddSeries={onAddSeries} />
                 <BarChart className="flex-full" {...this.props} />
             </div>
         );

@@ -2,7 +2,7 @@ import React, { Component, PropTypes } from "react";
 
 import { MinColumnsError, MinRowsError } from "./errors";
 
-import CardRenderer from "./CardRenderer.jsx";
+import CardRenderer from "./components/CardRenderer.jsx";
 
 export default class AreaChart extends Component {
     static displayName = "Area";

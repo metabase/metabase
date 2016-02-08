@@ -1,13 +1,16 @@
 import React, { Component, PropTypes } from "react";
 
-import CardRenderer from "./CardRenderer.jsx";
+import CardRenderer from "./components/CardRenderer.jsx";
+import LegendHeader from "./components/LegendHeader.jsx"
 
 import { MinColumnsError } from "./errors";
 
 export default class BarChart extends Component {
     static displayName = "Bar";
-    static identifier = "bar-old";
+    static identifier = "bar";
     static iconName = "bar";
+
+    static noHeader = true;
 
     static isSensible(cols, rows) {
         return cols.length > 1;
@@ -18,8 +21,12 @@ export default class BarChart extends Component {
     }
 
     render() {
+        let { card, series, onAddSeries } = this.props;
         return (
-            <CardRenderer className="flex-full" {...this.props} chartType="bar" />
+            <div className="flex flex-full flex-column p2">
+                <LegendHeader card={card} series={series} onAddSeries={onAddSeries} />
+                    <CardRenderer className="flex-full" {...this.props} chartType="bar" />
+            </div>
         );
     }
 }

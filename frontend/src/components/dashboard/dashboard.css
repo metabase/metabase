@@ -38,7 +38,7 @@
   overflow: hidden;
 }
 
-.DashCard .Card-outer {
+.Card-outer {
     overflow: hidden;
     width: 100%;
     height: 100%;
