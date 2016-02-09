@@ -690,9 +690,12 @@ CardControllers.controller('CardDetail', [
         }
 
         function loadSerializedCard(serialized) {
-            var card = deserializeCardFromUrl(serialized);
-            // consider this since it's not saved:
-            card.isDirty = true;
+            const card = deserializeCardFromUrl(serialized);
+
+            if (serialized !== serializeCardForUrl(startNewCard(card.dataset_query.type))) {
+                card.isDirty = true;
+            }
+
             return card;
         }
 
