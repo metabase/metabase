@@ -106,7 +106,7 @@
 (extend (class Field)
   i/IEntity (merge i/IEntityDefaults
                    {:hydration-keys     (constantly [:destination :field :origin])
-                    :types              (constantly {:base_type :keyword, :field_type :keyword, :special_type :keyword})
+                    :types              (constantly {:base_type :keyword, :field_type :keyword, :special_type :keyword, :description :clob})
                     :timestamped?       (constantly true)
                     :can-read?          (constantly true)
                     :can-write?         i/superuser?
