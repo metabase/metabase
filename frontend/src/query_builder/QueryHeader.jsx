@@ -58,13 +58,14 @@ export default React.createClass({
         }, 5000);
     },
 
-    onCreate: async function(card) {
+    onCreate: async function(card, addToDash) {
         // TODO: why are we not cleaning the card here?
         let newCard = await this.props.cardApi.create(card).$promise;
         this.props.notifyCardCreatedFn(newCard);
         if (this.isMounted()) {
             // update local state to reflect new card state
-            this.setState({ recentlySaved: "created", modal: "saved" }, this.resetStateOnTimeout);
+            const modal = addToDash ? "add-to-dashboard" : "saved";
+            this.setState({ recentlySaved: "created", modal: modal }, this.resetStateOnTimeout);
         }
     },
 
@@ -72,7 +73,7 @@ export default React.createClass({
         this.props.onBeginEditing();
     },
 
-    onSave: async function(card) {
+    onSave: async function(card, addToDash) {
         if (card.dataset_query.query) {
             Query.cleanQuery(card.dataset_query.query);
         }
@@ -85,7 +86,8 @@ export default React.createClass({
         this.props.notifyCardUpdatedFn(updatedCard);
         if (this.isMounted()) {
             // update local state to reflect new card state
-            this.setState({ recentlySaved: "updated" }, this.resetStateOnTimeout);
+            const modal = addToDash ? "add-to-dashboard" : null;
+            this.setState({ recentlySaved: "updated", modal: modal }, this.resetStateOnTimeout);
         }
     },
 
@@ -149,6 +151,7 @@ export default React.createClass({
                             card={this.props.card}
                             originalCard={this.props.originalCard}
                             tableMetadata={this.props.tableMetadata}
+                            addToDashboard={false}
                             saveFn={this.onSave}
                             createFn={this.onCreate}
                             closeFn={() => this.refs.saveModal.toggle()}
@@ -194,7 +197,7 @@ export default React.createClass({
                 buttonSections.push([
                     <ActionButton
                         key="save"
-                        actionFn={() => this.onSave(this.props.card)}
+                        actionFn={() => this.onSave(this.props.card, false)}
                         className="cursor-pointer text-brand-hover bg-white text-grey-4 text-uppercase"
                         normalText="SAVE CHANGES"
                         activeText="Saving…"
@@ -227,23 +230,31 @@ export default React.createClass({
             }
         }
 
-        // TODO: add to dashboard
-        //   if (!new && !editing) OR (new && dirty)
-        if ((!this.props.cardIsNewFn() && !this.props.isEditing) || (this.props.cardIsNewFn() && this.props.cardIsDirtyFn())) { 
+        // add to dashboard
+        if (!this.props.cardIsNewFn() && !this.props.isEditing) {
+            // simply adding an existing saved card to a dashboard, so show the modal to do so
+            buttonSections.push([
+                <span className="cursor-pointer text-brand-hover" onClick={() => this.setState({ modal: "add-to-dashboard" })}>
+                    <Icon name="addtodash" width="16px" height="16px" />
+                </span>
+            ]);
+        } else if (this.props.cardIsNewFn() && this.props.cardIsDirtyFn()) {
+            // this is a new card, so we need the user to save first then they can add to dash
             buttonSections.push([
                 <ModalWithTrigger
-                    key="addtodash"
-                    ref="addToDash"
+                    key="addtodashsave"
+                    ref="addToDashSaveModal"
+                    triggerClasses="h4 px1 text-grey-4 text-brand-hover text-uppercase"
                     triggerElement={<span className="text-brand-hover"><Icon name="addtodash" width="16px" height="16px" /></span>}
                 >
-                    <HistoryModal
-                        revisions={this.state.revisions}
-                        entityType="card"
-                        entityId={this.props.card.id}
-                        onFetchRevisions={this.onFetchRevisions}
-                        onRevertToRevision={this.onRevertToRevision}
-                        onClose={() => this.refs.addToDash.toggle()}
-                        onReverted={this.onRevertedRevision}
+                    <SaveQuestionModal
+                        card={this.props.card}
+                        originalCard={this.props.originalCard}
+                        tableMetadata={this.props.tableMetadata}
+                        addToDashboard={true}
+                        saveFn={this.onSave}
+                        createFn={this.onCreate}
+                        closeFn={() => this.refs.addToDashSaveModal.toggle()}
                     />
                 </ModalWithTrigger>
             ]);
@@ -299,7 +310,7 @@ export default React.createClass({
                     setItemAttributeFn={this.props.onSetCardAttribute}
                 />
 
-                <Modal isOpen={this.state.modal === "saved"}>
+                <Modal className="Modal Modal--small" isOpen={this.state.modal === "saved"}>
                     <QuestionSavedModal
                         addToDashboardFn={() => this.setState({ modal: "add-to-dashboard" })}
                         closeFn={() => this.setState({ modal: null })}

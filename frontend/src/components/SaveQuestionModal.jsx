@@ -16,11 +16,14 @@ export default class SaveQuestionModal extends Component {
             errors: null,
             valid: false,
             details: {
-                name: props.card ? props.card.name : null,
-                description: props.card ? props.card.description : null,
+                name: props.card.name || Query.generateQueryDescription(props.tableMetadata, props.card.dataset_query.query),
+                description: props.card.description || null,
                 saveType: "create"
             }
         };
+
+        this.props.createFn.bind(this);
+        this.props.saveFn.bind(this);
     }
 
     static propTypes = {
@@ -70,7 +73,7 @@ export default class SaveQuestionModal extends Component {
         card.public_perms = 2; // public read/write
 
         if (details.saveType === "create") {
-            this.props.createFn(card).then((success) => {
+            this.props.createFn(card, this.props.addToDashboard).then((success) => {
                 if (this.isMounted()) {
                     this.props.closeFn();
                 }
@@ -83,7 +86,7 @@ export default class SaveQuestionModal extends Component {
             });
         } else if (details.saveType === "overwrite") {
             card.id = this.props.originalCard.id;
-            this.props.saveFn(card).then((success) => {
+            this.props.saveFn(card, this.props.addToDashboard).then((success) => {
                 if (this.isMounted()) {
                     this.props.closeFn();
                 }
@@ -123,8 +126,6 @@ export default class SaveQuestionModal extends Component {
             "Button--primary": this.state.valid
         });
 
-        var name = this.props.card.name || Query.generateQueryDescription(this.props.tableMetadata, this.props.card.dataset_query.query);
-
         var saveOrUpdate = null;
         if (!this.props.card.id && this.props.originalCard) {
             saveOrUpdate = (
@@ -140,9 +141,11 @@ export default class SaveQuestionModal extends Component {
             );
         }
 
+        let title = this.props.addToDashboard ? "First, Save Your Question" : "Save Question";
+
         return (
             <ModalContent
-                title="Save Question"
+                title={title}
                 closeFn={this.props.closeFn}
             >
                 <form className="flex flex-column flex-full" onSubmit={(e) => this.formSubmitted(e)}>
@@ -153,14 +156,14 @@ export default class SaveQuestionModal extends Component {
                             displayName="Name"
                             fieldName="name"
                             errors={this.state.errors}>
-                            <input className="Form-input full" name="name" placeholder="What is the name of your card?" defaultValue={name} onChange={(e) => this.onChange("name", e.target.value)} autofocus/>
+                            <input className="Form-input full" name="name" placeholder="What is the name of your card?" defaultValue={this.state.details.name} onChange={(e) => this.onChange("name", e.target.value)} autofocus/>
                         </FormField>
 
                         <FormField
                             displayName="Description (optional)"
                             fieldName="description"
                             errors={this.state.errors}>
-                            <textarea className="Form-input full" name="description" placeholder="It's optional but oh, so helpful" defaultValue={this.props.card.description} onChange={(e) => this.onChange("description", e.target.value)} />
+                            <textarea className="Form-input full" name="description" placeholder="It's optional but oh, so helpful" defaultValue={this.state.details.description} onChange={(e) => this.onChange("description", e.target.value)} />
                         </FormField>
                     </div>
 
