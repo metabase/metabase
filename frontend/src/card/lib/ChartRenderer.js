@@ -1,5 +1,6 @@
 
 import { CardRenderer } from "./CardRenderer";
+import { getAvailableCanvasWidth, getAvailableCanvasHeight } from "./utils";
 
 import crossfilter from "crossfilter";
 import dc from "dc";
@@ -88,12 +89,12 @@ export default function ChartRenderer(element, card, result, chartType) {
 
     /// determine what width we should use for the chart - we can look at size of the card header / footer and match that
     this._getWidth = function() {
-        return CardRenderer.getAvailableCanvasWidth(this.element, this.card) || DEFAULT_CARD_WIDTH;
+        return getAvailableCanvasWidth(this.element) || DEFAULT_CARD_WIDTH;
     };
 
     /// height available to card for the chart, if available. Equal to height of card minus heights of header + footer.
     this._getHeight = function() {
-        return CardRenderer.getAvailableCanvasHeight(this.element, this.card) || DEFAULT_CARD_HEIGHT;
+        return getAvailableCanvasHeight(this.element) || DEFAULT_CARD_HEIGHT;
     };
 
     // ------------------------------ INITIALIZATION ------------------------------ //
