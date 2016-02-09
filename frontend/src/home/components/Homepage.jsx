@@ -25,7 +25,6 @@ export default class Homepage extends Component {
     }
 
     static propTypes = {
-        dispatch: PropTypes.func.isRequired,
         onChangeLocation: PropTypes.func.isRequired,
         showOnboarding: PropTypes.bool.isRequired,
         user: PropTypes.object.isRequired,
@@ -36,7 +35,7 @@ export default class Homepage extends Component {
 
     completeOnboarding() {
         this.setState({
-            'onboarding': false
+            onboarding: false
         });
     }
 
