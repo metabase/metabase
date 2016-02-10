@@ -9,7 +9,7 @@
                              [user :refer [User]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ random-name expect-eval-actual-first]]))
+            [metabase.test.util :refer [match-$ random-name expect-eval-actual-first with-temp]]))
 
 ;; ## /api/user/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
@@ -238,6 +238,26 @@
 (expect {:errors {:old_password "Invalid password"}}
   ((user->client :rasta) :put 400 (format "user/%d/password" (user->id :rasta)) {:password "whateverUP12!!"
                                                                                  :old_password "mismatched"}))
+
+
+;; ## PUT /api/user/:id/qbnewb
+;; Test that we can set the qbnewb status on a user
+(expect
+  [{:success true}
+   false]
+  (with-temp User [{:keys [id]} {:first_name (random-name)
+                                 :last_name  (random-name)
+                                 :email      "def@metabase.com"
+                                 :password   "def123"}]
+    (let [creds {:email    "def@metabase.com"
+                 :password "def123"}]
+      [(metabase.http-client/client creds :put 200 (format "user/%d/qbnewb" id))
+       (sel :one :field [User :is_qbnewb] :id id)])))
+
+
+;; Check that a non-superuser CANNOT update someone else's password
+(expect "You don't have permissions to do that."
+  ((user->client :rasta) :put 403 (format "user/%d/qbnewb" (user->id :trashbird))))
 
 
 ;; ## DELETE /api/user/:id
