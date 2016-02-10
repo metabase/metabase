@@ -23,7 +23,7 @@ export default class BarChart extends Component {
     render() {
         let { card, series, onAddSeries } = this.props;
         return (
-            <div className="flex flex-full flex-column p2">
+            <div className="flex flex-full flex-column px2 py1">
                 <LegendHeader card={card} series={series} onAddSeries={onAddSeries} />
                 <CardRenderer className="flex-full" {...this.props} chartType="bar" />
             </div>

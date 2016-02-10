@@ -1,6 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
 import CardRenderer from "./components/CardRenderer.jsx";
+import LegendHeader from "./components/LegendHeader.jsx"
 
 import { MinColumnsError, MinRowsError } from "./errors";
 
@@ -8,6 +9,8 @@ export default class LineChart extends Component {
     static displayName = "Line";
     static identifier = "line";
     static iconName = "line";
+
+    static noHeader = true;
 
     static isSensible(cols, rows) {
         return rows.length > 1 && cols.length > 1;
@@ -19,8 +22,12 @@ export default class LineChart extends Component {
     }
 
     render() {
+        let { card, series, onAddSeries } = this.props;
         return (
-            <CardRenderer className="flex-full" {...this.props} chartType="line" />
+            <div className="flex flex-full flex-column px2 py1">
+                <LegendHeader card={card} series={series} onAddSeries={onAddSeries} />
+                <CardRenderer className="flex-full" {...this.props} chartType="line" />
+            </div>
         );
     }
 }

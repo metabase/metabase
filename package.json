@@ -33,7 +33,6 @@
     "normalizr": "^1.4.0",
     "password-generator": "^2.0.1",
     "react": "^0.14.7",
-    "react-chartjs": "^0.6.0",
     "react-components": "^0.4.0",
     "react-dom": "^0.14.7",
     "react-draggable": "^1.1.3",
