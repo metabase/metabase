@@ -199,9 +199,7 @@
   (let [tax-rate (state->tax-rate state)
         _        (assert tax-rate
                    (format "No tax rate found for state '%s'." state))
-        tax      (-> (* price  100.0)
-                     int
-                     (/ 100.0))]
+        tax      (u/round-to-decimals 2 (* price tax-rate))]
     {:user_id    (:id person)
      :product_id (:id product)
      :subtotal   price
