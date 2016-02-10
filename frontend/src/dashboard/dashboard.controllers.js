@@ -11,7 +11,7 @@ var DashboardControllers = angular.module('metabase.dashboard.controllers', []);
 DashboardControllers.controller('Dashboard', ['$scope', '$rootScope', '$routeParams', '$location', function($scope, $rootScope, $routeParams, $location) {
     $scope.Component = DashboardApp;
     $scope.props = {
-        addCardOnLoad: $routeParams.add,
+        addCardOnLoad: parseInt($routeParams.add) || null,
         onChangeLocation: function(url) {
             $scope.$apply(() => $location.url(url));
         },

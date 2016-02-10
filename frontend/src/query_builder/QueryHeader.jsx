@@ -29,7 +29,6 @@ export default React.createClass({
         dashboardApi: PropTypes.func.isRequired,
         revisionApi: PropTypes.func.isRequired,
         onSetCardAttribute: PropTypes.func.isRequired,
-        notifyCardAddedToDashFn: PropTypes.func.isRequired,
         reloadCardFn: PropTypes.func.isRequired,
         setQueryModeFn: PropTypes.func.isRequired,
         isShowingDataReference: PropTypes.bool.isRequired,
@@ -322,7 +321,7 @@ export default React.createClass({
                         card={this.props.card}
                         dashboardApi={this.props.dashboardApi}
                         closeFn={() => this.setState({ modal: null })}
-                        notifyCardAddedToDashFn={this.props.notifyCardAddedToDashFn}
+                        onChangeLocation={this.props.onChangeLocation}
                     />
                 </Modal>
             </div>
