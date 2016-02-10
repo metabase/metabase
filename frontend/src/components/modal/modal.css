@@ -35,7 +35,7 @@
 
 .modal-backdrop, /* used by angular-ui-bootstrap */
 .Modal-backdrop {
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     right: 0;
