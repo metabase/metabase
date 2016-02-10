@@ -30,6 +30,7 @@ export default class AddToDashSelectQuestionModal extends Component {
         try {
             await this.props.fetchCards();
         } catch (error) {
+            console.error(error);
             this.setState({ error });
         }
     }
