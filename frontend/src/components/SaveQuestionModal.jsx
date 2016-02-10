@@ -134,8 +134,8 @@ export default class SaveQuestionModal extends Component {
                     fieldName="saveType"
                     errors={this.state.errors}>
                     <ul>
-                        <li><input type="radio" name="saveType" value="create" checked={this.state.details.saveType === "create"} onChange={(e) => this.onChange("saveType", e.target.value)} /> Save as a new question?</li>
-                        <li><input type="radio" name="saveType" value="overwrite" checked={this.state.details.saveType === "overwrite"} onChange={(e) => this.onChange("saveType", e.target.value)} /> Replace original question, "{this.props.originalCard.name}"</li>
+                        <li onClick={(e) => this.onChange("saveType", "create")}><input type="radio" name="saveType" value="create" checked={this.state.details.saveType === "create"} /> Save as a new question?</li>
+                        <li onClick={(e) => this.onChange("saveType", "overwrite")}><input type="radio" name="saveType" value="overwrite" checked={this.state.details.saveType === "overwrite"} /> Replace original question, "{this.props.originalCard.name}"</li>
                     </ul>
                 </FormField>
             );
