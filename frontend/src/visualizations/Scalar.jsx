@@ -17,7 +17,7 @@ export default class Scalar extends Component {
 
     render() {
         let { data, isDashboard } = this.props;
-        let formattedScalarValue = formatScalar(data && data.rows && data.rows[0] && data.rows[0][0] || "");
+        let formattedScalarValue = (data && data.rows && data.rows[0] && data.rows[0].length > 0) ? formatScalar(data.rows[0][0]) : "";
 
         if (isDashboard) {
             return (
