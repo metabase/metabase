@@ -491,7 +491,7 @@ export let CardRenderer = {
         chart.render();
     },
 
-    bar(element, card, result) {
+    lineAreaBar(element, card, result, chartType) {
         let isTimeseries = dimensionIsTimeseries(result);
         let isMultiSeries = result.cols && result.cols.length > 2;
 
@@ -544,20 +544,39 @@ export let CardRenderer = {
         applyChartColors(chart, card);
 
         // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
-        if (chart.brushOn) chart.brushOn(false);
+        if (chart.brushOn) {
+            chart.brushOn(false);
+        }
 
+        // LINE/AREA:
         // for chart types that have an 'interpolate' option (line/area charts), enable based on settings
-        if (chart.interpolate && card.visualization_settings.line.step) chart.interpolate('step');
+        if (chart.interpolate && card.visualization_settings.line.step) {
+            chart.interpolate("step");
+        }
+        if (chart.renderArea) {
+            chart.renderArea(chartType === "area");
+        }
 
-        chart.barPadding(0.2); // amount of padding between bars relative to bar size [0 - 1.0]. Default = 0
+        // BAR:
+        if (chart.barPadding) {
+            chart.barPadding(0.2);
+        }
+
         chart.render();
 
         // apply any on-rendering functions
         lineAndBarOnRender(chart, card);
     },
 
-    line(element, card, result, isAreaChart = false, isTimeseries = dimensionIsTimeseries(result)) {
-        let isMultiSeries = result.cols && result.cols.length > 2;
+    multiLineAreaBar(element, series, chartType) {
+        const COLORS = ["#4A90E2", "#84BB4C", "#F9CF48", "#ED6E6E", "#885AB1"];
+        const BAR_PADDING_RATIO = 0.2;
+
+        let { card, data: result } = series[0];
+
+        let isTimeseries = dimensionIsTimeseries(result);
+        let isStacked = chartType === "area";
+        let isLinear = false;
 
         // validation.  we require at least 2 rows for line charting
         if (result.cols.length < 2) {
@@ -573,23 +592,94 @@ export let CardRenderer = {
         });
 
         // build crossfilter dataset + dimension + base group
-        let dataset = crossfilter(data);
-        let dimension = dataset.dimension(d => d[0]);
-        let group = dimension.group().reduceSum(d => d[1]);
-        let chart = initializeChart(card, element)
+        let dataset = crossfilter();
+        series.map((s, index) =>
+            dataset.add(s.data.rows.map(row => ({
+                x: (isTimeseries) ? new Date(row[0]) : row[0],
+                ["y"+index]: row[1]
+            })))
+        );
+
+        let dimension = dataset.dimension(d => d.x);
+        let groups = series.map((s, index) =>
+            dimension.group().reduceSum(d => (d["y"+index] || 0))
+        );
+
+        let chart;
+        if (isStacked || series.length === 1) {
+            chart = initializeChart(series[0].card, element)
                         .dimension(dimension)
-                        .group(group)
-                        .valueAccessor(d => d.value)
-                        .renderArea(isAreaChart);
+                        .group(groups[0]);
 
-        // apply any stacked series if applicable
-        if (isMultiSeries) {
-            chart.stack(dimension.group().reduceSum(d => d[2]));
+            // apply any stacked series if applicable
+            console.log("groups", groups)
+            for (let i = 1; i < groups.length; i++) {
+                chart.stack(groups[i]);
+            }
 
-            // to keep things sane, draw the line at 2 stacked series
-            // putting more than 3 series total on the same chart is a lot
-            if (result.cols.length > 3) {
-                chart.stack(dimension.group().reduceSum(d => d[3]));
+            if (chart.renderArea) {
+                chart.renderArea(chartType === "area");
+            }
+
+            applyChartTooltips(chart, element, card, result.cols);
+            // applyChartColors(chart, card);
+            chart.ordinalColors(COLORS);
+
+            // BAR:
+            if (chart.barPadding) {
+                chart.barPadding(BAR_PADDING_RATIO);
+            }
+        } else {
+            chart = initializeChart(card, element, "compositeChart")
+
+            let subCharts = series.map(s =>
+                dc[getDcjsChartType(series[0].card.display)](chart)
+            );
+
+            subCharts.forEach((subChart, index) => {
+                subChart
+                    .dimension(dimension)
+                    .group(groups[index])
+                    .colors(COLORS[index % COLORS.length])
+                // BAR:
+                if (subChart.barPadding) {
+                    subChart
+                        .barPadding(BAR_PADDING_RATIO)
+                        .centerBar(isLinear)
+                }
+                // LINE:
+                if (subChart.interpolate && card.visualization_settings.line.step) {
+                    subChart.interpolate("step");
+                }
+            });
+
+            chart
+                .compose(subCharts)
+                .on("renderlet.groupedbar", function (chart) {
+                    // HACK: dc.js doesn't support grouped bar charts so we need to manually resize/reposition them
+                    // https://github.com/dc-js/dc.js/issues/558
+                    let barCharts = chart.selectAll(".sub rect:first-child")[0].map(node => node.parentNode.parentNode.parentNode);
+                    if (barCharts.length > 0) {
+                        let oldBarWidth = parseFloat(barCharts[0].querySelector("rect").getAttribute("width"));
+                        let newBarWidthTotal = oldBarWidth / barCharts.length;
+                        let seriesPadding =
+                            newBarWidthTotal < 4 ? 0 :
+                            newBarWidthTotal < 8 ? 1 :
+                                                   2;
+                        let newBarWidth = Math.max(1, newBarWidthTotal - seriesPadding);
+
+                        chart.selectAll("g.sub rect").attr("width", newBarWidth);
+                        barCharts.forEach((barChart, index) => {
+                            barChart.setAttribute("transform", "translate(" + ((newBarWidth + seriesPadding) * index) + ", 0)");
+                        });
+                    }
+                })
+
+            // HACK: compositeChart + ordinal X axis shenanigans
+            if (chartType === "bar") {
+                chart._rangeBandPadding(BAR_PADDING_RATIO) // https://github.com/dc-js/dc.js/issues/678
+            } else {
+                chart._rangeBandPadding(1) // https://github.com/dc-js/dc.js/issues/662
             }
         }
 
@@ -605,18 +695,13 @@ export let CardRenderer = {
         // TODO: if we are multi-series this could be split axis
         applyChartYAxis(chart, card, result.cols, data, MIN_PIXELS_PER_TICK.y);
 
-        applyChartTooltips(chart, element, card, result.cols);
-        applyChartColors(chart, card);
-
         // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
         if (chart.brushOn) {
             chart.brushOn(false);
         }
 
-        // for chart types that have an 'interpolate' option (line/area charts), enable based on settings
-        if (chart.interpolate && card.visualization_settings.line.step) {
-            chart.interpolate('step');
-        }
+        // disable transitions
+        chart.transitionDuration(0);
 
         // render
         chart.render();
@@ -625,10 +710,31 @@ export let CardRenderer = {
         lineAndBarOnRender(chart, card);
     },
 
-    /// Area Chart is just a Line Chart that we called renderArea(true) on
-    /// Defer to CardRenderer.line() and pass param area = true
-    area(element, card, result) {
-        return CardRenderer.line(element, card, result, true);
+    bar(element, card, data, series) {
+        if (series && series.length > 0) {
+            series = [{ card, data }].concat(series);
+            return CardRenderer.multiLineAreaBar(element, series, "bar");
+        } else {
+            return CardRenderer.lineAreaBar(element, card, data, "bar");
+        }
+    },
+
+    line(element, card, data, series) {
+        if (series && series.length > 0) {
+            series = [{ card, data }].concat(series);
+            return CardRenderer.multiLineAreaBar(element, series, "line");
+        } else {
+            return CardRenderer.lineAreaBar(element, card, data, "line");
+        }
+    },
+
+    area(element, card, data, series) {
+        if (series && series.length > 0) {
+            series = [{ card, data }].concat(series);
+            return CardRenderer.multiLineAreaBar(element, series, "area");
+        } else {
+            return CardRenderer.lineAreaBar(element, card, data, "area");
+        }
     },
 
     state(element, card, result) {
