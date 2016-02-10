@@ -44,8 +44,8 @@ CardControllers.controller('CardList', ['$scope', '$location', function($scope, 
 }]);
 
 CardControllers.controller('CardDetail', [
-    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'Metabase', 'Revision',
-    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, Metabase, Revision) {
+    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'Metabase', 'Revision', 'User',
+    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, Metabase, Revision, User) {
         // promise helper
         $q.resolve = function(object) {
             var deferred = $q.defer();
@@ -380,6 +380,10 @@ CardControllers.controller('CardDetail', [
             onClose: () => {
                 isShowingNewbModal = false;
                 renderAll();
+
+                // persist the fact that this user has seen the NewbModal
+                $scope.user.is_qbnewb = false;
+                User.update_qbnewb({id: $scope.user.id});
             }
         }
 
@@ -844,7 +848,6 @@ CardControllers.controller('CardDetail', [
         }
 
         function reloadCard() {
-            delete $routeParams.serializedCard;
             $location.hash(null);
             loadAndSetCard();
         }

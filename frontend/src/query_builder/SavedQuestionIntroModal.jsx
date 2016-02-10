@@ -2,12 +2,8 @@ import React, { Component, PropTypes } from "react";
 
 import Modal from "metabase/components/Modal.jsx";
 
-export default class SavedQuestionIntroModal extends Component {
 
-    static defaultProps = {
-        buttons: [],
-        className: ""
-    };
+export default class SavedQuestionIntroModal extends Component {
 
     render() {
         return (
@@ -20,7 +16,7 @@ export default class SavedQuestionIntroModal extends Component {
                     </div>
 
                     <div className="Form-actions flex justify-center py1">
-                        <button className="Button Button--primary" onClick={() => this.props.onClose()}>Okay</button>
+                        <button data-metabase-event={"QueryBuilder;IntroModal"} className="Button Button--primary" onClick={() => this.props.onClose()}>Okay</button>
                     </div>
                 </div>
             </Modal>
