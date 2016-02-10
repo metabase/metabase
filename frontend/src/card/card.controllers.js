@@ -8,6 +8,7 @@ import NativeQueryEditor from '../query_builder/NativeQueryEditor.jsx';
 import QueryHeader from '../query_builder/QueryHeader.jsx';
 import QueryVisualization from '../query_builder/QueryVisualization.jsx';
 import QueryBuilderTutorial from '../tutorial/QueryBuilderTutorial.jsx';
+import SavedQuestionIntroModal from "../query_builder/SavedQuestionIntroModal.jsx";
 
 import SavedQuestionsApp from './containers/SavedQuestionsApp.jsx';
 
@@ -65,7 +66,8 @@ CardControllers.controller('CardDetail', [
             isRunning = false,
             isEditing = false,
             isObjectDetail = false,
-            isShowingTutorial = $routeParams.tutorial,
+            isShowingTutorial = false,
+            isShowingNewbModal = false,
             card = {
                 name: null,
                 public_perms: 0,
@@ -374,8 +376,21 @@ CardControllers.controller('CardDetail', [
             , document.getElementById('react_qb_tutorial'));
         }
 
+        let newbModalModel = {
+            onClose: () => {
+                isShowingNewbModal = false;
+                renderAll();
+            }
+        }
+
+        function renderNewbModal() {
+            newbModalModel.isShowingNewbModal = isShowingNewbModal;
+            React.render(
+                <span>{newbModalModel.isShowingNewbModal && <SavedQuestionIntroModal {...newbModalModel} /> }</span>
+            , document.getElementById('react_qbnewb_modal'));
+        }
+
         function renderNotFound() {
-            //tutorialModel.isShowingTutorial = isShowingTutorial;
             React.render(<NotFound></NotFound>, document.getElementById('react_qb_viz'));
         }
 
@@ -385,6 +400,7 @@ CardControllers.controller('CardDetail', [
             renderVisualization();
             renderDataReference();
             renderTutorial();
+            renderNewbModal();
         }, 10);
 
 
@@ -744,7 +760,6 @@ CardControllers.controller('CardDetail', [
 
         // completely reset the active card on the QB.  includes options for: resetDirty, setDirty, runQuery
         function setCard(result, options = {}) {
-            console.log("setting card", result, options);
             // update our react models as needed
             card = result;
             queryResult = null;
@@ -782,8 +797,6 @@ CardControllers.controller('CardDetail', [
             if (options.runQuery !== false && (Query.canRun(card.dataset_query.query) || card.dataset_query.type === "native")) {
                 runQuery();
             }
-
-            console.log("after set card", originalCard);
 
             // trigger full rendering
             renderAll();
@@ -936,6 +949,9 @@ CardControllers.controller('CardDetail', [
                     // TODO: some indication that setting up a db is required
                     return;
                 }
+
+                isShowingTutorial = $routeParams.tutorial;
+                isShowingNewbModal = $routeParams.cardId && $scope.user.is_qbnewb;
 
                 // finish initializing our page and render
                 await loadAndSetCard();
