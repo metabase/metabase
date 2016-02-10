@@ -68,6 +68,9 @@
                     ;; Field once its resolved; FieldPlaceholder before that
                     parent             :- s/Any
                     preview-display    :- (s/maybe s/Bool)]
+  clojure.lang.Named
+  (getName [_] field-name) ; (name <field>) returns the *unqualified* name of the field, #obvi
+
   IField
   (qualified-name-components [this]
     (conj (if parent
@@ -97,7 +100,9 @@
 
 ;; wrapper around Field
 (s/defrecord DateTimeField [field :- Field
-                            unit  :- DatetimeFieldUnit])
+                            unit  :- DatetimeFieldUnit]
+  clojure.lang.Named
+  (getName [_] (name field)))
 
 ;; Value is the expansion of a value within a QL clause
 ;; Information about the associated Field is included for convenience

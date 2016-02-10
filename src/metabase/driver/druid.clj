@@ -158,7 +158,7 @@
                          (field-values-lazy-seq details table-name field-name total-items-fetched paging-identifiers)))))))
 
 
-;;; ### DriverDriver Class Definition
+;;; ### DruidrDriver Class Definition
 
 (defrecord DruidDriver []
   clojure.lang.Named
@@ -167,19 +167,18 @@
 (extend DruidDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table             (constantly nil)       ; TODO: we should fill this out at some point
-          :describe-database         describe-database
-          :describe-table            describe-table
-          :can-connect?              can-connect?
-          :details-fields            (constantly [{:name         "host"
-                                                   :display-name "Host"
-                                                   :default      "http://localhost"}
-                                                  {:name         "port"
-                                                   :display-name "Broker node port"
-                                                   :type         :integer
-                                                   :default      8082}])
-          :field-values-lazy-seq     field-values-lazy-seq
-          :process-native            process-native
-          :process-structured        process-structured}))
+         {:can-connect?          can-connect?
+          :describe-database     describe-database
+          :describe-table        describe-table
+          :details-fields        (constantly [{:name         "host"
+                                               :display-name "Host"
+                                               :default      "http://localhost"}
+                                              {:name         "port"
+                                               :display-name "Broker node port"
+                                               :type         :integer
+                                               :default      8082}])
+          :field-values-lazy-seq field-values-lazy-seq
+          :process-native        process-native
+          :process-structured    process-structured}))
 
 (driver/register-driver! :druid (DruidDriver.))

@@ -510,6 +510,23 @@
         (ql/filter (ql/inside $latitude $longitude 10.0649 -165.379 10.0641 -165.371)))
       rows formatted-venues-rows))
 
+;;; ## FILTER - `is-null` & `not-null` on datetime columns
+(expect-with-non-timeseries-dbs
+  [1000]
+  (first-row (run-query checkins
+               (ql/aggregation (ql/count))
+               (ql/filter (ql/not-null $date)))))
+
+(expect-with-non-timeseries-dbs
+  ;; Some DBs like Mongo don't return any results at all in this case, and there's no easy workaround
+  true
+  (let [result (first-row (run-query checkins
+                            (ql/aggregation (ql/count))
+                            (ql/filter (ql/is-null $date))))]
+    (or (= result [0])
+        (nil? result))))
+
+
 
 ;; ## "FIELDS" CLAUSE
 ;; Test that we can restrict the Fields that get returned to the ones specified, and that results come back in the order of the IDs in the `fields` clause

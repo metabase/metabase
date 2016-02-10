@@ -1,9 +1,9 @@
 (ns metabase.driver.query-processor
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific implementations."
-  (:require [clojure.core.match :refer [match]]
-            [clojure.string :as s]
+  (:require (clojure [pprint :as pprint]
+                     [string :as s]
+                     [walk :as walk])
             [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
             [korma.core :as k]
             [medley.core :as m]
             schema.utils
@@ -264,16 +264,17 @@
     (when (and (structured-query? query)
                (not *disable-qp-logging*))
       (log/debug (u/format-color 'magenta "\n\nPREPROCESSED/EXPANDED: 😻\n%s"
-                                 (u/pprint-to-str
-                                  ;; Remove empty kv pairs because otherwise expanded query is HUGE
-                                  (walk/prewalk
-                                   (fn [f]
-                                     (if-not (map? f) f
-                                             (m/filter-vals identity (into {} f))))
-                                   ;; obscure DB details when logging. Just log the name of driver because we don't care about its properties
-                                   (-> query
-                                       (assoc-in [:database :details] "😋 ") ; :yum:
-                                       (update :driver name)))))))
+                   (binding [pprint/*print-right-margin* 200]
+                     (u/pprint-to-str
+                      ;; Remove empty kv pairs because otherwise expanded query is HUGE
+                      (walk/prewalk
+                       (fn [f]
+                         (if-not (map? f) f
+                                 (m/filter-vals identity (into {} f))))
+                       ;; obscure DB details when logging. Just log the name of driver because we don't care about its properties
+                       (-> query
+                           (assoc-in [:database :details] "😋 ") ; :yum:
+                           (update :driver name))))))))
     (qp query)))
 
 
@@ -322,7 +323,8 @@
   "Process a QUERY and return the results."
   [driver query]
   (when-not *disable-qp-logging*
-    (log/debug (u/format-color 'blue "\nQUERY: 😎\n%s" (u/pprint-to-str query))))
+    (log/debug (u/format-color 'blue "\nQUERY: 😎\n%s"  (binding [pprint/*print-right-margin* 200]
+                                                          (u/pprint-to-str query)))))
   (binding [*driver* driver]
     (let [driver-process-query (partial (if (structured-query? query)
                                           driver/process-structured

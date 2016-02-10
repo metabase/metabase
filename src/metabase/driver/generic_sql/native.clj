@@ -47,8 +47,8 @@
                ;; Rollback any changes made during this transaction just to be extra-double-sure JDBC doesn't try to commit them automatically for us
                (finally (.rollback jdbc-connection))))))
        (catch java.sql.SQLException e
-         (let [^String message (or (->> (.getMessage e) ; error message comes back like 'Column "ZID" not found; SQL statement: ... [error-code]' sometimes
+         (let [^String message (or (->> (.getMessage e)     ; error message comes back like 'Column "ZID" not found; SQL statement: ... [error-code]' sometimes
                                         (re-find #"^(.*);") ; the user already knows the SQL, and error code is meaningless
-                                        second) ; so just return the part of the exception that is relevant
+                                        second)             ; so just return the part of the exception that is relevant
                                    (.getMessage e))]
            (throw (Exception. message))))))
