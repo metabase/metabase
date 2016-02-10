@@ -56,6 +56,7 @@ export default class AddSeriesModal extends Component {
         try {
             await this.props.fetchCards();
         } catch (error) {
+            console.error(error);
             this.setState({ error });
         }
     }

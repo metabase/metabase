@@ -21,8 +21,8 @@ export default class CardRenderer extends Component {
         if (this.props.data == nextProps.data &&
             this.props.card.display === nextProps.card.display &&
             JSON.stringify(this.props.card.visualization_settings) === JSON.stringify(nextProps.card.visualization_settings) &&
-            this.props.width === nextProps.width &&
-            this.props.height === nextProps.height
+            this.props.series === nextProps.series &&
+            this.props.width === nextProps.width && this.props.height === nextProps.height
         ) {
             return false;
         } else {
