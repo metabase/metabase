@@ -41,9 +41,6 @@ d3.time.quarters = (start, stop, step) => d3.time.months(start, stop, 3);
 //     - panKey
 // - pie.dataLabels_enabled
 
-let DEFAULT_CARD_WIDTH = 900;
-let DEFAULT_CARD_HEIGHT = 500;
-
 let MIN_PIXELS_PER_TICK = {
     x: 100,
     y: 50
@@ -84,14 +81,14 @@ function getDcjsChartType(cardType) {
     }
 }
 
-function initializeChart(card, element, defaultWidth, defaultHeight, chartType) {
+function initializeChart(card, element, chartType) {
     chartType = (chartType) ? chartType : getDcjsChartType(card.display);
 
     // create the chart
     let chart = dc[chartType](element);
 
     // set width and height
-    chart = applyChartBoundary(chart, card, element, defaultWidth, defaultHeight);
+    chart = applyChartBoundary(chart, card, element);
 
     // specify legend
     chart = applyChartLegend(chart, card);
@@ -102,10 +99,10 @@ function initializeChart(card, element, defaultWidth, defaultHeight, chartType) 
     return chart;
 }
 
-function applyChartBoundary(chart, card, element, defaultWidth, defaultHeight) {
+function applyChartBoundary(chart, card, element) {
     return chart
-        .width(getAvailableCanvasWidth(element) || defaultWidth)
-        .height(getAvailableCanvasHeight(element) || defaultHeight);
+        .width(getAvailableCanvasWidth(element))
+        .height(getAvailableCanvasHeight(element));
 }
 
 function applyChartLegend(chart, card) {
@@ -473,7 +470,7 @@ export let CardRenderer = {
         let dataset = crossfilter(data);
         let dimension = dataset.dimension(d => d.key);
         let group = dimension.group().reduceSum(d => d.value);
-        let chart = initializeChart(card, element, DEFAULT_CARD_WIDTH, DEFAULT_CARD_HEIGHT)
+        let chart = initializeChart(card, element)
                         .dimension(dimension)
                         .group(group)
                         .colors(settings.pie.colors)
@@ -515,7 +512,7 @@ export let CardRenderer = {
         let dataset = crossfilter(data);
         let dimension = dataset.dimension(d => d[0]);
         let group = dimension.group().reduceSum(d => d[1]);
-        let chart = initializeChart(card, element, DEFAULT_CARD_WIDTH, DEFAULT_CARD_HEIGHT)
+        let chart = initializeChart(card, element)
                         .dimension(dimension)
                         .group(group)
                         .valueAccessor(d => d.value);
@@ -579,7 +576,7 @@ export let CardRenderer = {
         let dataset = crossfilter(data);
         let dimension = dataset.dimension(d => d[0]);
         let group = dimension.group().reduceSum(d => d[1]);
-        let chart = initializeChart(card, element, DEFAULT_CARD_WIDTH, DEFAULT_CARD_HEIGHT)
+        let chart = initializeChart(card, element)
                         .dimension(dimension)
                         .group(group)
                         .valueAccessor(d => d.value)

@@ -1,5 +1,4 @@
 
-import { CardRenderer } from "./CardRenderer";
 import { getAvailableCanvasWidth, getAvailableCanvasHeight } from "./utils";
 
 import crossfilter from "crossfilter";
