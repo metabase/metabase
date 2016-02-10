@@ -75,7 +75,7 @@
 (defn user-details
   [username]
   (-> (fetch-user username)
-      (dissoc :date_joined :last_login :is_superuser)))
+      (dissoc :date_joined :last_login :is_superuser :is_qbnewb)))
 
 ;; create a channel then select its details
 (defn- create-channel-then-select

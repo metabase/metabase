@@ -47,6 +47,7 @@
      :last_name $
      :last_login $
      :is_superuser $
+     :is_qbnewb $
      :common_name $}))
 
 (defn pulse-card-details [card]

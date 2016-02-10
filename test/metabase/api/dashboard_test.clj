@@ -45,7 +45,7 @@
       :can_read        true
       :ordered_cards   []
       :creator         (-> (User (user->id :rasta))
-                           (select-keys [:email :first_name :last_login :is_superuser :id :last_name :date_joined :common_name]))
+                           (select-keys [:email :first_name :last_login :is_superuser :is_qbnewb :id :last_name :date_joined :common_name]))
       :can_write       true
       :organization_id nil
       :name            $
@@ -116,7 +116,7 @@
             :card         (match-$ card
                             {:description            nil
                              :creator                (-> (User (user->id :rasta))
-                                                         (select-keys [:date_joined :last_name :id :is_superuser :last_login :first_name :email :common_name]))
+                                                         (select-keys [:date_joined :last_name :id :is_superuser :is_qbnewb :last_login :first_name :email :common_name]))
                              :organization_id        nil
                              :name                   $
                              :creator_id             (user->id :rasta)
