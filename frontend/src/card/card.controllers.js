@@ -590,6 +590,8 @@ CardControllers.controller('CardDetail', [
             // when the query changes on saved card we change this into a new query w/ a known starting point
             if (!isEditing && card.id) {
                 delete card.id;
+                delete card.name;
+                delete card.description;
             }
 
             setQuery(dataset_query);
@@ -742,6 +744,7 @@ CardControllers.controller('CardDetail', [
 
         // completely reset the active card on the QB.  includes options for: resetDirty, setDirty, runQuery
         function setCard(result, options = {}) {
+            console.log("setting card", result, options);
             // update our react models as needed
             card = result;
             queryResult = null;
@@ -779,6 +782,8 @@ CardControllers.controller('CardDetail', [
             if (options.runQuery !== false && (Query.canRun(card.dataset_query.query) || card.dataset_query.type === "native")) {
                 runQuery();
             }
+
+            console.log("after set card", originalCard);
 
             // trigger full rendering
             renderAll();
