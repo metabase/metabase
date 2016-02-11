@@ -83,7 +83,7 @@ NOTE: it's possible to skip this step if you wish, however this will force Metab
 
 ##### Using Metabase in a VPC
 
-Newer AWS accounts are encouraging the use of VPC for deployments and in general we thing it's simplest to follow that best practice.
+Newer AWS accounts are encouraging the use of VPC for deployments and in general we think it's simplest to follow that best practice.
 
 If you prefer not to use a VPC that is fine, however one thing to note is that some EC2 instance types (t2.* in specific) are not available outside of a VPC, so if you choose to not use a VPC then make sure and pick appropriate instance types.
 
