@@ -134,12 +134,12 @@ NSString *BaseURL() {
 		NSLog(@"Will save CSV at: %@", savePanel.URL);
 		
 		NSURL *url = [NSURL URLWithString:@"/api/dataset/csv" relativeToURL:[NSURL URLWithString:BaseURL()]];
-        NSString *postBody = [NSString stringWithFormat:@"query=%@",datasetQuery];
+        NSString *postBody = [NSString stringWithFormat:@"query=%@", datasetQuery];
         NSData *data = [postBody dataUsingEncoding:NSUTF8StringEncoding];
 		NSMutableURLRequest *csvRequest = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringCacheData timeoutInterval:10.0f];
         csvRequest.HTTPMethod = @"POST";
         [csvRequest setValue:@"application/x-www-form-urlencoded" forHTTPHeaderField:@"Content-Type"];
-        [csvRequest setValue:[NSString stringWithFormat:@"%lu",(unsigned long)[data length]] forHTTPHeaderField:@"Content-Length"];
+        [csvRequest setValue:[NSString stringWithFormat:@"%lu", (NSUInteger)data.length] forHTTPHeaderField:@"Content-Length"];
         csvRequest.HTTPBody = data;
 		[NSURLConnection sendAsynchronousRequest:csvRequest queue:[[NSOperationQueue alloc] init] completionHandler:^(NSURLResponse *response, NSData *data, NSError *connectionError) {
 			NSError *writeError = nil;
