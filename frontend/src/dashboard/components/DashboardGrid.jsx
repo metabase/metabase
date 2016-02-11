@@ -198,6 +198,11 @@ export default class DashboardGrid extends Component {
         const { dashboard, isEditing } = this.props;
         const { width } = this.state;
 
+        // don't attempt to render if we don't know the size yet, otherwise we may end up re-rendering
+        if (width === 0) {
+            return <div />;
+        }
+
         // Responsive™
         if (width <= 752) {
             return this.renderMobile();

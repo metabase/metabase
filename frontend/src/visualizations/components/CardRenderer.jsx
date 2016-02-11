@@ -7,6 +7,8 @@ import * as charting from "metabase/card/lib/CardRenderer";
 
 import { getSettingsForVisualization, setLatitudeAndLongitude } from "metabase/lib/visualization_settings";
 
+import _ from "underscore";
+
 @ExplicitSize
 export default class CardRenderer extends Component {
     static propTypes = {
@@ -16,18 +18,19 @@ export default class CardRenderer extends Component {
     };
 
     shouldComponentUpdate(nextProps, nextState) {
-        // a chart only needs re-rendering when the result itself changes OR the chart type is different
-        // NOTE: we are purposely doing an identity comparison here with props.result and NOT a value comparison
-        if (this.props.data == nextProps.data &&
-            this.props.card.display === nextProps.card.display &&
-            JSON.stringify(this.props.card.visualization_settings) === JSON.stringify(nextProps.card.visualization_settings) &&
-            this.props.series === nextProps.series &&
-            this.props.width === nextProps.width && this.props.height === nextProps.height
-        ) {
-            return false;
-        } else {
-            return true;
+        function cardAndDataIsSame(a, b) {
+            let sameData = a.data === b.data;
+            let sameDisplay = (a.card && a.card.display) === (b.card && b.card.display);
+            let sameVizSettings = (a.card && JSON.stringify(a.card.visualization_settings)) === (b.card && JSON.stringify(b.card.visualization_settings));
+            return (sameData && sameDisplay && sameVizSettings);
         }
+
+        // a chart only needs re-rendering when the result itself changes OR the chart type is different
+        let sameSize = this.props.width === nextProps.width && this.props.height === nextProps.height;
+        let sameCardAndData = cardAndDataIsSame(this.props, nextProps);
+        let sameSeries = (this.props.series && this.props.series.length) === (nextProps.series && nextProps.series.length) &&
+            _.zip(this.props.series, nextProps.series).reduce((acc, [a, b]) => acc && cardAndDataIsSame(a, b), true);
+        return !(sameSize && sameCardAndData && sameSeries)
     }
 
     componentDidMount() {
