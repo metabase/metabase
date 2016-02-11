@@ -134,7 +134,7 @@ NSString *BaseURL() {
 		NSLog(@"Will save CSV at: %@", savePanel.URL);
 		
 		NSURL *url = [NSURL URLWithString:@"/api/dataset/csv" relativeToURL:[NSURL URLWithString:BaseURL()]];
-        NSString *postBody = [NSString stringWithFormat:@"query=%@", datasetQuery];
+        NSString *postBody = [@"query=" stringByAppendingString:datasetQuery];
         NSData *data = [postBody dataUsingEncoding:NSUTF8StringEncoding];
 		NSMutableURLRequest *csvRequest = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringCacheData timeoutInterval:10.0f];
         csvRequest.HTTPMethod = @"POST";
