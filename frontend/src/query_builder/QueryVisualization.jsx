@@ -33,7 +33,6 @@ export default class QueryVisualization extends Component {
         tableMetadata: PropTypes.object,
         tableForeignKeys: PropTypes.array,
         tableForeignKeyReferences: PropTypes.object,
-        downloadLink: PropTypes.string,
         setDisplayFn: PropTypes.func.isRequired,
         setChartColorFn: PropTypes.func.isRequired,
         setSortFn: PropTypes.func.isRequired,
@@ -139,19 +138,15 @@ export default class QueryVisualization extends Component {
     }
 
     renderDownloadButton() {
-        const { downloadLink } = this.props;
+        const { card, result } = this.props;
 
-        // NOTE: we expect our component provider set this to something falsey if download not available
-        // TODO: it's likely the downloading won't work with large query expressions on the Mac App
-        if (downloadLink) {
-            const { result } = this.props;
-
+        if (result && !result.error) {
             if (result && result.data && result.data.rows_truncated) {
                 // this is a "large" dataset, so show a modal to inform users about this and make them click again to d/l
                 let downloadButton;
                 if (window.OSX) {
                     downloadButton = (<button className="Button Button--primary" onClick={() => {
-                            window.OSX.saveCSV(this.props.downloadLink);
+                            window.OSX.saveCSV(JSON.stringify(card.dataset_query));
                             this.refs.downloadModal.toggle()
                         }}>Download CSV</button>);
                 } else {
@@ -190,7 +185,7 @@ export default class QueryVisualization extends Component {
                 if (window.OSX) {
                     return (
                         <a classname="mx1" title="Download this data" onClick={function() {
-                            window.OSX.saveCSV(downloadLink);
+                            window.OSX.saveCSV(JSON.stringify(card.dataset_query));
                         }}>
                             <Icon name='download' width="16px" height="16px" />
                         </a>
