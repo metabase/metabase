@@ -135,14 +135,14 @@ export default class Calendar extends Component {
                 </div>
                 {this.props.onBeforeClick &&
                     <div className="absolute top left z2" style={{marginTop: "-12px", marginLeft: "-12px"}}>
-                        <Tooltip tooltipElement={"Everything before " + this.props.selected.format("MMMM Do, YYYY")}>
+                        <Tooltip tooltip={"Everything before " + this.props.selected.format("MMMM Do, YYYY")}>
                             <a className="circle-button cursor-pointer" onClick={this.props.onBeforeClick}>«</a>
                         </Tooltip>
                     </div>
                 }
                 {this.props.onAfterClick &&
                     <div className="absolute bottom right z2" style={{marginBottom: "-12px", marginRight: "-12px"}}>
-                        <Tooltip tooltipElement={"Everything after " + this.props.selected.format("MMMM Do, YYYY")}>
+                        <Tooltip tooltip={"Everything after " + this.props.selected.format("MMMM Do, YYYY")}>
                             <a className="circle-button cursor-pointer" onClick={this.props.onAfterClick}>»</a>
                         </Tooltip>
                     </div>

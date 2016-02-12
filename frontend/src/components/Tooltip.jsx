@@ -10,31 +10,38 @@ export default class Tooltip extends Component {
         };
     }
 
-    static propTypes = {};
-    static defaultProps = {};
+    static propTypes = {
+        tooltip: PropTypes.node.isRequired,
+        children: PropTypes.element.isRequired
+    };
 
     render() {
-        let { tooltipElement, className } = this.props;
-        return (
-            <span
-                className={className}
-                onMouseEnter={() => this.setState({ isOpen: true })}
-                onMouseLeave={() => this.setState({ isOpen: false })}
-            >
-                {this.props.children}
-                <Popover
-                    isOpen={this.state.isOpen}
-                    className="PopoverBody--tooltip"
-                    verticalAttachments={["top", "bottom"]}
-                    targetOffsetY={10}
-                >
-                    { typeof tooltipElement === "string" ?
-                        <div className="p2" style={{maxWidth: "12em"}}>{tooltipElement}</div>
-                    :
-                        {tooltipElement}
-                    }
-                </Popover>
-            </span>
-        );
+        let { tooltip, children } = this.props;
+        let { isOpen } = this.state;
+
+        let child = React.Children.only(children);
+        return React.cloneElement(child, {
+            onMouseEnter: () => this.setState({ isOpen: true }),
+            onMouseLeave: () => this.setState({ isOpen: false }),
+            children: React.Children.toArray(child.props.children).concat(
+                <TooltipPopover isOpen={isOpen} tooltip={tooltip} />
+            )
+        });
     }
 }
+
+const TooltipPopover = ({ isOpen, tooltip }) =>
+    <Popover
+        isOpen={isOpen}
+        className="PopoverBody--tooltip"
+        verticalAttachments={["top", "bottom"]}
+        targetOffsetY={10}
+    >
+        { typeof tooltip === "string" ?
+            <div className="p2" style={{maxWidth: "12em"}}>
+                {tooltip}
+            </div>
+        :
+            tooltip
+        }
+    </Popover>

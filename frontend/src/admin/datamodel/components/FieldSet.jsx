@@ -11,7 +11,7 @@ export default class FieldSet extends Component {
         return (
             <fieldset className={"px2 pb2 bordered rounded " + border}>
                 {legend && <legend className="h5 text-bold text-uppercase px1" style={{ marginLeft: "-0.5rem" }}>{legend}</legend>}
-                {{children}}
+                {children}
             </fieldset>
         );
     }
