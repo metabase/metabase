@@ -95,3 +95,17 @@ export function computeSplit(extents) {
 
     return partitionIndexes;
 }
+
+const FRIENDLY_NAME_MAP = {
+    "avg": "Average",
+    "count": "Count",
+    "sum": "Sum",
+    "distinct": "Distinct",
+    "stddev": "Standard Deviation"
+};
+
+export function getFriendlyName(col) {
+    let name = col.display_name || col.name;
+    let friendlyName = FRIENDLY_NAME_MAP[name.toLowerCase().trim()];
+    return friendlyName || name;
+}

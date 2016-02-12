@@ -225,7 +225,7 @@ export default class GuiQueryEditor extends Component {
                 <PopoverWithTrigger ref="filterPopover"
                                     triggerElement={addFilterButton}
                                     triggerClasses="flex align-center"
-                                    getTriggerTarget={() => this.refs.addFilterTarget}
+                                    getTarget={() => this.refs.addFilterTarget}
                 >
                     <FilterPopover
                         isNew={true}

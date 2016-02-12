@@ -7,7 +7,7 @@ import dc from "dc";
 import moment from "moment";
 
 import GeoHeatmapChartRenderer from "./GeoHeatmapChartRenderer";
-import { getMinMax, getAvailableCanvasWidth, getAvailableCanvasHeight, computeSplit } from "./utils";
+import { getMinMax, getAvailableCanvasWidth, getAvailableCanvasHeight, computeSplit, getFriendlyName } from "./utils";
 
 import { formatNumber, formatValue } from "metabase/lib/formatting";
 
@@ -285,7 +285,7 @@ function applyChartYAxis(chart, card, coldefs, data, minPixelsPerTick) {
     let y = settings.yAxis;
 
     if (y.labels_enabled) {
-        chart.yAxisLabel(y.title_text || coldefs[1].display_name);
+        chart.yAxisLabel(y.title_text || getFriendlyName(coldefs[1]));
         chart.renderHorizontalGridLines(true);
 
         if (y.min || y.max) {
@@ -325,41 +325,68 @@ function applyChartColors(chart, card) {
     return chart.ordinalColors(uniqueColors);
 }
 
-function applyChartTooltips(chart, element, card, cols) {
+function determineSeriesIndexFromElement(element) {
+    let e = element;
+    while (e && e.classList && !e.classList.contains("sub")) {
+        e = e.parentNode;
+    }
+    if (e && e.classList) {
+        return [...e.classList].map(c => c.match(/^_(\d+)$/)).filter(c => c).map(c => parseInt(c[1], 10))[0];
+    }
+    e = element;
+    while (e && e.classList && !e.classList.contains("dc-tooltip") && !e.classList.contains("stack")) {
+        e = e.parentNode;
+    }
+    if (e && e.classList) {
+        return [...e.classList].map(c => c.match(/^_(\d+)$/)).filter(c => c).map(c => parseInt(c[1], 10))[0];
+    }
+    return null;
+}
+
+function applyChartTooltips(chart, element, card, cols, onHoverChange) {
     chart.on('renderlet', function(chart) {
         // Remove old tooltips which are sometimes not removed due to chart being rerendered while tip is visible
-        Array.prototype.forEach.call(document.querySelectorAll('.ChartTooltip--'+element.id), (t) => t.parentNode.removeChild(t));
+        // Array.prototype.forEach.call(document.querySelectorAll('.ChartTooltip--'+element.id), (t) => t.parentNode.removeChild(t));
+        //
+        // let tip = d3.tip()
+        //     .attr('class', 'ChartTooltip ChartTooltip--'+element.id)
+        //     .direction('n')
+        //     .offset([-10, 0])
+        //     .html(function(d) {
+        //         let values = formatNumber(d.data.value);
+        //         if (card.display === 'pie') {
+        //             // TODO: this is not the ideal way to calculate the percentage, but it works for now
+        //             values += " (" + formatNumber((d.endAngle - d.startAngle) / Math.PI * 50) + '%)'
+        //         }
+        //         return '<div><span class="ChartTooltip-name">' + formatValue(d.data.key, cols[0]) + '</span></div>' +
+        //             '<div><span class="ChartTooltip-value">' + values + '</span></div>';
+        //     });
+        //
+        // chart.selectAll('rect.bar,circle.dot,g.pie-slice path,circle.bubble,g.row rect')
+        //     .call(tip)
+        //     .on('mouseover', (slice) => {
+        //         tip.show.apply(tip, arguments);
+        //         if (card.display === "pie") {
+        //             let tooltip = d3.select('.ChartTooltip--'+element.id);
+        //             let tooltipOffset = getTooltipOffset(tooltip);
+        //             let sliceCentroid = getPieSliceCentroid(this, slice);
+        //             tooltip.style({
+        //                 top: tooltipOffset.y + sliceCentroid.y + "px",
+        //                 left: tooltipOffset.x + sliceCentroid.x + "px",
+        //                 "pointer-events": "none" // d3-tip forces "pointer-events: all" which cases flickering when the tooltip is under the cursor
+        //             });
+        //         }
+        //     })
+        //     .on('mouseout', tip.hide);
 
-        let tip = d3.tip()
-            .attr('class', 'ChartTooltip ChartTooltip--'+element.id)
-            .direction('n')
-            .offset([-10, 0])
-            .html(function(d) {
-                let values = formatNumber(d.data.value);
-                if (card.display === 'pie') {
-                    // TODO: this is not the ideal way to calculate the percentage, but it works for now
-                    values += " (" + formatNumber((d.endAngle - d.startAngle) / Math.PI * 50) + '%)'
-                }
-                return '<div><span class="ChartTooltip-name">' + formatValue(d.data.key, cols[0]) + '</span></div>' +
-                    '<div><span class="ChartTooltip-value">' + values + '</span></div>';
-            });
-
-        chart.selectAll('rect.bar,circle.dot,g.pie-slice path,circle.bubble,g.row rect')
-            .call(tip)
-            .on('mouseover.tip', (slice) => {
-                tip.show.apply(tip, arguments);
-                if (card.display === "pie") {
-                    let tooltip = d3.select('.ChartTooltip--'+element.id);
-                    let tooltipOffset = getTooltipOffset(tooltip);
-                    let sliceCentroid = getPieSliceCentroid(this, slice);
-                    tooltip.style({
-                        top: tooltipOffset.y + sliceCentroid.y + "px",
-                        left: tooltipOffset.x + sliceCentroid.x + "px",
-                        "pointer-events": "none" // d3-tip forces "pointer-events: all" which cases flickering when the tooltip is under the cursor
-                    });
-                }
+        chart.selectAll('.bar, .dot, .area, .line')
+            .on("mouseenter", function(...args) {
+                let index = determineSeriesIndexFromElement(this);
+                onHoverChange && onHoverChange(index, this, args);
             })
-            .on('mouseleave.tip', tip.hide);
+            .on("mouseleave", function(...args) {
+                onHoverChange && onHoverChange(null);
+            });
 
         chart.selectAll('title').remove();
     });
@@ -445,15 +472,30 @@ function lineAndBarOnRender(chart, card) {
         customizeVertGL('stroke-width', x.gridLineWidth);
         customizeVertGL('style', x.gridLineColor, (colorStr) => 'stroke:' + colorStr + ';');
     } catch (e) {}
+
     try {
         let customizeHorzGL = customizer(svg.select('.grid-line.horizontal')[0][0].children);
         customizeHorzGL('stroke-width', y.gridLineWidth);
         customizeHorzGL('style', y.gridLineColor, (colorStr) => 'stroke:' + '#ddd' + ';');
-
     } catch (e) {}
 
+    chart.on("renderlet.lineAndBarOnRender", (chart) => {
+        for (let elem of chart.selectAll(".sub, .chart-body")[0]) {
+            // prevents dots from being clipped:
+            elem.removeAttribute("clip-path");
+            // move chart content on top of axis (z-index doesn't work on SVG):
+            elem.parentNode.appendChild(elem);
+        }
+        for (let elem of chart.svg().selectAll('.dc-tooltip circle.dot')[0]) {
+            // set the color of the dots to the fill color so we can use currentColor in CSS rules:
+            elem.style.color = elem.getAttribute("fill");
+        }
+    });
+
     // adjust the margins to fit the Y-axis tick label sizes, and rerender
-    chart.margins().left = chart.select(".axis.y")[0][0].getBBox().width + 20;
+    chart.margins().left = chart.select(".axis.y")[0][0].getBBox().width + 30;
+    chart.margins().bottom = chart.select(".axis.x")[0][0].getBBox().height + 30;
+
     chart.render();
 }
 
@@ -552,8 +594,12 @@ export let CardRenderer = {
 
         // LINE/AREA:
         // for chart types that have an 'interpolate' option (line/area charts), enable based on settings
-        if (chart.interpolate && card.visualization_settings.line.step) {
-            chart.interpolate("step");
+        if (chart.interpolate) {
+            if (card.visualization_settings.line.step) {
+                chart.interpolate("step");
+            } else {
+                chart.interpolate("cardinal");
+            }
         }
         if (chart.renderArea) {
             chart.renderArea(chartType === "area");
@@ -570,7 +616,7 @@ export let CardRenderer = {
         lineAndBarOnRender(chart, card);
     },
 
-    multiLineAreaBar(element, series, chartType) {
+    multiLineAreaBar(element, series, chartType, onHoverChange) {
         const COLORS = ["#4A90E2", "#84BB4C", "#F9CF48", "#ED6E6E", "#885AB1"];
         const BAR_PADDING_RATIO = 0.2;
 
@@ -654,9 +700,15 @@ export let CardRenderer = {
                         .centerBar(isLinear)
                 }
                 // LINE:
-                if (subChart.interpolate && card.visualization_settings.line.step) {
-                    subChart.interpolate("step");
+                if (subChart.interpolate) {
+                    if (card.visualization_settings.line.step) {
+                        subChart.interpolate("step");
+                    } else {
+                        subChart.interpolate("cardinal");
+                    }
                 }
+
+                applyChartTooltips(subChart, element, series[index].card, series[index].data.cols, onHoverChange);
             });
 
             chart
@@ -716,30 +768,30 @@ export let CardRenderer = {
         lineAndBarOnRender(chart, card);
     },
 
-    bar(element, card, data, series) {
+    bar(element, card, data, series, onHoverChange) {
         if (series && series.length > 0) {
             series = [{ card, data }].concat(series);
-            return CardRenderer.multiLineAreaBar(element, series, "bar");
+            return CardRenderer.multiLineAreaBar(element, series, "bar", onHoverChange);
         } else {
             return CardRenderer.lineAreaBar(element, card, data, "bar");
         }
     },
 
-    line(element, card, data, series) {
+    line(element, card, data, series, onHoverChange) {
         if (series && series.length > 0) {
             series = [{ card, data }].concat(series);
-            return CardRenderer.multiLineAreaBar(element, series, "line");
+            return CardRenderer.multiLineAreaBar(element, series, "line", onHoverChange);
         } else {
-            return CardRenderer.lineAreaBar(element, card, data, "line");
+            return CardRenderer.lineAreaBar(element, card, data, "line", onHoverChange);
         }
     },
 
-    area(element, card, data, series) {
+    area(element, card, data, series, onHoverChange) {
         if (series && series.length > 0) {
             series = [{ card, data }].concat(series);
-            return CardRenderer.multiLineAreaBar(element, series, "area");
+            return CardRenderer.multiLineAreaBar(element, series, "area", onHoverChange);
         } else {
-            return CardRenderer.lineAreaBar(element, card, data, "area");
+            return CardRenderer.lineAreaBar(element, card, data, "area", onHoverChange);
         }
     },
 

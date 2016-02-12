@@ -1,7 +1,6 @@
 import React, { Component, PropTypes } from "react";
 
-import CardRenderer from "./components/CardRenderer.jsx";
-import LegendHeader from "./components/LegendHeader.jsx"
+import LineAreaBarChart from "./components/LineAreaBarChart.jsx";
 
 import { MinColumnsError } from "./errors";
 
@@ -11,6 +10,7 @@ export default class BarChart extends Component {
     static iconName = "bar";
 
     static noHeader = true;
+    static supportsSeries = true;
 
     static isSensible(cols, rows) {
         return cols.length > 1;
@@ -21,12 +21,6 @@ export default class BarChart extends Component {
     }
 
     render() {
-        let { card, series, onAddSeries } = this.props;
-        return (
-            <div className="flex flex-full flex-column px2 py1">
-                <LegendHeader card={card} series={series} onAddSeries={onAddSeries} />
-                <CardRenderer className="flex-full" {...this.props} chartType="bar" />
-            </div>
-        );
+        return <LineAreaBarChart {...this.props} chartType="bar" />;
     }
 }

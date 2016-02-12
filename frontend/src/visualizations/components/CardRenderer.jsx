@@ -72,7 +72,7 @@ export default class CardRenderer extends Component {
                     charting.CardRenderer[this.props.chartType](element, card, updateMapCenter, updateMapZoom);
                 } else {
                     // TODO: it would be nicer if this didn't require the whole card
-                    charting.CardRenderer[this.props.chartType](element, card, this.props.data, this.props.series);
+                    charting.CardRenderer[this.props.chartType](element, card, this.props.data, this.props.series, this.props.onHoverChange);
                 }
             } catch (err) {
                 console.error(err);

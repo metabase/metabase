@@ -186,9 +186,10 @@ export default class DashboardGrid extends Component {
                             cardData={this.props.cardData}
                             fetchCardData={this.props.fetchCardData}
                             markNewCardSeen={this.props.markNewCardSeen}
+                            isEditing={isEditing}
                             onEdit={this.onDashCardEdit.bind(this, dc)}
                             onRemove={this.onDashCardRemove.bind(this, dc)}
-                            onAddSeries={isEditing && this.onDashCardAddSeries.bind(this, dc)}
+                            onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
                         />
                     </div>
                 )}
@@ -229,9 +230,10 @@ export default class DashboardGrid extends Component {
                                 cardData={this.props.cardData}
                                 fetchCardData={this.props.fetchCardData}
                                 markNewCardSeen={this.props.markNewCardSeen}
+                                isEditing={isEditing}
                                 onEdit={this.onDashCardEdit.bind(this, dc)}
                                 onRemove={this.onDashCardRemove.bind(this, dc)}
-                                onAddSeries={isEditing && this.onDashCardAddSeries.bind(this, dc)}
+                                onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
                             />
                         </div>
                     )}

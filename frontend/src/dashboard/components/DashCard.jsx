@@ -3,8 +3,10 @@
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
-import Visualization from "metabase/visualizations/Visualization.jsx";
 import visualizations from "metabase/visualizations";
+
+import Visualization from "metabase/visualizations/Visualization.jsx";
+import LegendHeader from "metabase/visualizations/components/LegendHeader.jsx";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 
 import Icon from "metabase/components/Icon.jsx";
@@ -50,8 +52,8 @@ export default class DashCard extends Component {
         }
     }
 
-    renderCard() {
-        const { dashcard, cardData } = this.props;
+    renderCard(CardVisualization) {
+        const { dashcard, cardData, isEditing, onAddSeries } = this.props;
         const dataset = cardData[dashcard.card.id];
         const data = dataset && dataset.data;
 
@@ -89,7 +91,8 @@ export default class DashCard extends Component {
                     data={data}
                     series={series}
                     isDashboard={true}
-                    onAddSeries={this.props.onAddSeries}
+                    onAddSeries={isEditing && CardVisualization.supportsSeries && onAddSeries}
+                    extraActions={isEditing && <ExtraActions onEdit={this.props.onEdit} onRemove={this.props.onRemove} />}
                 />
             );
         }
@@ -112,32 +115,28 @@ export default class DashCard extends Component {
     }
 
     render() {
-        const { dashcard } = this.props;
-        const { card } = dashcard;
+        const { dashcard, onAddSeries, onEdit, onRemove, isEditing } = this.props;
+        const { card, series } = dashcard;
         const CardVisualization = visualizations.get(card.display);
         return (
-            <div>
-                <div className={"Card bordered rounded flex flex-column " + cx({ "Card--recent": dashcard.isAdded })}>
-                    { !CardVisualization.noHeader &&
-                        <div className="Card-heading my1 px2">
-                            <a data-metabase-event={"Dashboard;Card Link;"+card.display} className="Card-title no-decoration" href={Urls.card(card.id)}>
-                                <div ref="title" className="h3 text-bold my1">
-                                    {card.name}
-                                </div>
-                            </a>
-                        </div>
-                    }
-                    {this.renderCard()}
-                </div>
-                <div className="DashCard-actions absolute top right text-brand p2">
-                    <a href="#" onClick={this.props.onEdit}>
-                        <Icon className="my1 mr1" name="pencil" width="18" height="18" />
-                    </a>
-                    <a data-metabase-event="Dashboard;Remove Card Modal" href="#" onClick={this.props.onRemove}>
-                        <Icon className="my1 mr1" name="trash" width="18" height="18" />
-                    </a>
-                </div>
+            <div className={"Card bordered rounded flex flex-column " + cx({ "Card--recent": dashcard.isAdded })}>
+                { !CardVisualization.noHeader &&
+                    <div className="p1">
+                        <LegendHeader card={card} series={series} onAddSeries={isEditing && CardVisualization.supportsSeries && onAddSeries} extraActions={isEditing && <ExtraActions onEdit={onEdit} onRemove={onRemove} />}/>
+                    </div>
+                }
+                {this.renderCard(CardVisualization)}
             </div>
         );
     }
 }
+
+const ExtraActions = ({ onEdit, onRemove }) =>
+    <span className="text-brand">
+        <a href="#" onClick={onEdit}>
+            <Icon className="my1 mr1" name="pencil" width="18" height="18" />
+        </a>
+        <a data-metabase-event="Dashboard;Remove Card Modal" href="#" onClick={onRemove}>
+            <Icon className="my1" name="trash" width="18" height="18" />
+        </a>
+    </span>

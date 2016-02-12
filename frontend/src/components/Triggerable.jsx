@@ -33,9 +33,9 @@ export default ComposedComponent => class extends Component {
         this.close();
     }
 
-    getTriggerTarget() {
-        if (this.props.getTriggerTarget) {
-            return this.props.getTriggerTarget();
+    getTarget() {
+        if (this.props.getTarget) {
+            return this.props.getTarget();
         } else {
             return this.refs.trigger;
         }
@@ -49,7 +49,7 @@ export default ComposedComponent => class extends Component {
                     {...this.props}
                     isOpen={this.state.isOpen}
                     onClose={this.onClose.bind(this)}
-                    getTriggerTarget={() => this.getTriggerTarget()}
+                    getTarget={() => this.getTarget()}
                 />
             </a>
         );

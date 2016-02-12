@@ -18,8 +18,15 @@ export default class LegendHeader extends Component {
         };
     }
 
-    static propTypes = {};
-    static defaultProps = {};
+    static propTypes = {
+         card: PropTypes.object.isRequired,
+         series: PropTypes.array.isRequired,
+         onAddSeries: PropTypes.func
+    };
+
+    static defaultProps = {
+        series: []
+    };
 
     componentDidMount() {
         this.componentDidUpdate();
@@ -33,34 +40,49 @@ export default class LegendHeader extends Component {
     }
 
     render() {
-        const { card, series, onAddSeries } = this.props;
-        const showTitles = !series || series.length === 0 || this.state.width > 150;
+        const { onAddSeries, extraActions, onSeriesHoverChange } = this.props;
+        const series = [{ card: this.props.card }].concat(this.props.series);
+        const showDots = series.length > 1;
+        const isNarrow = this.state.width < 150;
+        const showTitles = !showDots || !isNarrow;
         return (
-            <div className="Card-title my1 flex flex-no-shrink flex-row">
-                <LegendItem card={card} index={0} showTitles={showTitles} />
-                { series && series.map((s, index) =>
-                    <LegendItem key={index} card={s.card} index={index + 1} showTitles={showTitles} />
+            <div className="Card-title m1 flex flex-no-shrink flex-row align-center">
+                { series.map((s, index) =>
+                    <LegendItem key={index} card={s.card} index={index} showDots={showDots} showTitles={showTitles} onSeriesHoverChange={onSeriesHoverChange} />
                 )}
                 { onAddSeries &&
-                    <AddSeriesItem onAddSeries={onAddSeries} showTitles={showTitles} />
+                    <span className="DashCard-actions flex-no-shrink">
+                        <AddSeriesItem onAddSeries={onAddSeries} showTitles={!isNarrow} />
+                    </span>
+                }
+                { extraActions &&
+                    <span className="DashCard-actions flex-no-shrink flex-align-right">
+                        {extraActions}
+                    </span>
                 }
             </div>
         );
     }
 }
 
-const LegendItem = ({ card, index, showTitles }) =>
-    <Tooltip key={index} tooltip={card.name}>
-        <a href={Urls.card(card.id)} className={cx("no-decoration h3 mb1 text-bold flex align-center", { mr1: showTitles })} style={{ overflowX: "hidden", flex: "0 1 auto" }}>
-            <div className="flex-no-shrink inline-block circular" style={{width: 13, height: 13, margin: 4, marginRight: 8, backgroundColor: COLORS[index % COLORS.length]}} />
+const LegendItem = ({ card, index, showDots, showTitles, onSeriesHoverChange }) =>
+    <Tooltip
+        key={index}
+        tooltip={card.name}
+        verticalAttachments={["bottom", "top"]}
+        onMouseEnter={() => onSeriesHoverChange && onSeriesHoverChange(index) }
+        onMouseLeave={() => onSeriesHoverChange && onSeriesHoverChange(null) }
+    >
+        <a href={Urls.card(card.id)} className={cx("no-decoration h3 text-bold flex align-center", { mr1: showTitles })} style={{ overflowX: "hidden", flex: "0 1 auto" }}>
+            {showDots && <div className="flex-no-shrink inline-block circular" style={{width: 13, height: 13, margin: 4, marginRight: 8, backgroundColor: COLORS[index % COLORS.length]}} />}
             {showTitles && <div style={{ overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{card.name}</div> }
         </a>
     </Tooltip>
 
 const AddSeriesItem = ({ onAddSeries, showTitles }) =>
-    <a className="h3 ml1 mr2 mb1 cursor-pointer flex-no-shrink flex align-center text-brand-hover" style={{ pointerEvents: "all" }} onClick={onAddSeries}>
+    <a className="h3 ml1 mr2 cursor-pointer flex align-center text-brand-hover" style={{ pointerEvents: "all" }} onClick={onAddSeries}>
         <span className="flex-no-shrink circular bordered border-brand flex layout-centered" style={{ width: 20, height: 20, marginRight: 8 }}>
-            <Icon className="text-brand" name="add" width={12} height={12} />
+            <Icon className="text-brand" name="add" width={10} height={10} />
         </span>
         { showTitles && <span className="flex-no-shrink">Add data</span> }
     </a>

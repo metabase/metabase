@@ -44,12 +44,6 @@
     height: 100%;
 }
 
-.DashCard .DashCard-actions {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .3s linear;
-}
-
 .Dash--editing .DashCard .Card {
     pointer-events: none;
     border: 1px dashed rgba(149, 149, 149, 0.5);
@@ -79,11 +73,6 @@
   z-index: 2;
 }
 
-.Dash--editing .DashCard:hover .DashCard-actions {
-  opacity: 1;
-  pointer-events: inherit;
-  transition: opacity .3s linear;
-}
 
 .Dash--editing .DashCard .Card {
     background: #fff;
@@ -103,6 +92,17 @@
 .Dash--editing .DashCard.resizing .Card {
     background-color: #E5F1FB !important;
     border: 1px solid var(--brand-color);
+}
+
+.DashCard .DashCard-actions {
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .3s linear;
+}
+
+.Dash--editing .DashCard:hover .DashCard-actions {  height: initial;
+  opacity: 1;
+  pointer-events: inherit;
 }
 
 .Dash--editing .DashCard.dragging .DashCard-actions,
@@ -153,4 +153,97 @@
   max-height: 600px;
   width: 80%;
   max-width: 1024px;
+}
+
+.dc-chart .grid-line.horizontal {
+  stroke: rgba(151, 151, 151, 0.2);
+  stroke-dasharray: 5,5;
+}
+
+
+.dc-chart .axis {
+  z-index: -1;
+}
+.dc-chart .axis .domain,
+.dc-chart .axis .tick line {
+  stroke: #EDEDED;
+}
+
+.dc-chart .axis .tick text {
+  fill: #C5C6C8;
+}
+
+/* turn off ticks and domain lines */
+.dc-chart .axis.y .domain,
+.dc-chart .axis.yr .domain,
+.dc-chart .axis.y .tick line,
+.dc-chart .axis.yr .tick line {
+  display: none;
+}
+
+.dc-chart .x-axis-label,
+.dc-chart .y-axis-label {
+  /*fill: #C5C6C8;*/
+  fill: #A2A2A2;
+}
+
+/* gridline at 0 overlaps with X axis */
+.dc-chart .grid-line.horizontal line:first-child {
+  display: none;
+}
+
+.dc-chart rect.bar:hover {
+  fill-opacity: 1;
+}
+
+.dc-tooltip circle.dot {
+  r: 3 !important;
+  fill: white;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill-opacity: 1 !important;
+  stroke-opacity: 1 !important;
+}
+
+.dc-tooltip circle.dot:hover {
+  fill: currentColor;
+}
+
+.area, .bar, .line, .dot {
+  transition: opacity 0.1s linear;
+}
+
+.mute-0 .sub._0 .area { /*fill:   #A2A2A2 !important;*/ opacity: 0.25; }
+.mute-0 .sub._0 .bar  { /*fill:   #A2A2A2 !important;*/ opacity: 0.25; }
+.mute-0 .sub._0 .line { /*stroke: #C5C6C8 !important;*/ opacity: 0.25; }
+.mute-0 .sub._0 .dot  { /*stroke: #C5C6C8 !important;*/ opacity: 0.25; }
+.mute-1 .sub._1 .area { /*fill:   #A2A2A2 !important;*/ opacity: 0.25; }
+.mute-1 .sub._1 .bar  { /*fill:   #A2A2A2 !important;*/ opacity: 0.25; }
+.mute-1 .sub._1 .line { /*stroke: #C5C6C8 !important;*/ opacity: 0.25; }
+.mute-1 .sub._1 .dot  { /*stroke: #C5C6C8 !important;*/ opacity: 0.25; }
+.mute-2 .sub._2 .area { /*fill:   #A2A2A2 !important;*/ opacity: 0.25; }
+.mute-2 .sub._2 .bar  { /*fill:   #A2A2A2 !important;*/ opacity: 0.25; }
+.mute-2 .sub._2 .line { /*stroke: #C5C6C8 !important;*/ opacity: 0.25; }
+.mute-2 .sub._2 .dot  { /*stroke: #C5C6C8 !important;*/ opacity: 0.25; }
+.mute-3 .sub._3 .area { /*fill:   #A2A2A2 !important;*/ opacity: 0.25; }
+.mute-3 .sub._3 .bar  { /*fill:   #A2A2A2 !important;*/ opacity: 0.25; }
+.mute-3 .sub._3 .line { /*stroke: #C5C6C8 !important;*/ opacity: 0.25; }
+.mute-3 .sub._3 .dot  { /*stroke: #C5C6C8 !important;*/ opacity: 0.25; }
+.mute-4 .sub._4 .area { /*fill:   #A2A2A2 !important;*/ opacity: 0.25; }
+.mute-4 .sub._4 .bar  { /*fill:   #A2A2A2 !important;*/ opacity: 0.25; }
+.mute-4 .sub._4 .line { /*stroke: #C5C6C8 !important;*/ opacity: 0.25; }
+.mute-4 .sub._4 .dot  { /*stroke: #C5C6C8 !important;*/ opacity: 0.25; }
+.mute-5 .sub._5 .area { /*fill:   #A2A2A2 !important;*/ opacity: 0.25; }
+.mute-5 .sub._5 .bar  { /*fill:   #A2A2A2 !important;*/ opacity: 0.25; }
+.mute-5 .sub._5 .line { /*stroke: #C5C6C8 !important;*/ opacity: 0.25; }
+.mute-5 .sub._5 .dot  { /*stroke: #C5C6C8 !important;*/ opacity: 0.25; }
+
+.mute-yl .dc-chart .axis.y,
+.mute-yl .dc-chart .y-axis-label {
+  opacity: 0.25;
+}
+
+.mute-yr .dc-chart .axis.yr,
+.mute-yr .dc-chart .yr-axis-label {
+  opacity: 0.25;
 }

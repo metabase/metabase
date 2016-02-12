@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from "react";
 
-import Popover from "./Popover.jsx";
+import TooltipPopover from "./TooltipPopover.jsx";
 
 export default class Tooltip extends Component {
     constructor(props, context) {
@@ -12,36 +12,23 @@ export default class Tooltip extends Component {
 
     static propTypes = {
         tooltip: PropTypes.node.isRequired,
-        children: PropTypes.element.isRequired
+        children: PropTypes.element.isRequired,
+        verticalAttachments: PropTypes.array
+    };
+
+    static defaultProps = {
+        verticalAttachments: ["top", "bottom"]
     };
 
     render() {
-        let { tooltip, children } = this.props;
-        let { isOpen } = this.state;
-
-        let child = React.Children.only(children);
+        const { onMouseEnter, onMouseLeave, children } = this.props;
+        const child = React.Children.only(children);
         return React.cloneElement(child, {
-            onMouseEnter: () => this.setState({ isOpen: true }),
-            onMouseLeave: () => this.setState({ isOpen: false }),
+            onMouseEnter: (...args) => { this.setState({ isOpen: true }); onMouseEnter && onMouseEnter(...args); },
+            onMouseLeave: (...args) => { this.setState({ isOpen: false }); onMouseLeave && onMouseLeave(...args); },
             children: React.Children.toArray(child.props.children).concat(
-                <TooltipPopover isOpen={isOpen} tooltip={tooltip} />
+                <TooltipPopover isOpen={this.state.isOpen} {...this.props} children={this.props.tooltip} />
             )
         });
     }
 }
-
-const TooltipPopover = ({ isOpen, tooltip }) =>
-    <Popover
-        isOpen={isOpen}
-        className="PopoverBody--tooltip"
-        verticalAttachments={["top", "bottom"]}
-        targetOffsetY={10}
-    >
-        { typeof tooltip === "string" ?
-            <div className="p2" style={{maxWidth: "12em"}}>
-                {tooltip}
-            </div>
-        :
-            tooltip
-        }
-    </Popover>
