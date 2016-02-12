@@ -137,12 +137,12 @@ export default class DashboardGrid extends Component {
     }
 
     // we need to track whether or not we're dragging so we can disable pointer events on action buttons :-/
-    onDrag(layout, oldItem, newItem, placeholder, e) {
+    onDrag() {
         if (!this.state.isDragging) {
             this.setState({ isDragging: true });
         }
     }
-    onDragStop(layout, oldItem, newItem, placeholder, e) {
+    onDragStop() {
         this.setState({ isDragging: false });
     }
 

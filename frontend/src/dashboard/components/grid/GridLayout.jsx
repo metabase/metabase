@@ -42,7 +42,7 @@ export default class GridLayout extends Component {
     }
 
     onDragStart(i, { position }) {
-        this.setState({ dragging: true })
+        // this.setState({ dragging: true })
     }
 
     layoutsOverlap(a, b) {
@@ -59,7 +59,8 @@ export default class GridLayout extends Component {
             ...this.computeDraggedLayout(i, position),
             i: "placeholder"
         }
-        this.setState({ placeholderLayout: placeholderLayout });
+        this.setState({ dragging: true, placeholderLayout: placeholderLayout });
+        this.props.onDrag();
     }
 
     onDragStop(i, { position }) {
@@ -76,6 +77,7 @@ export default class GridLayout extends Component {
         if (newLayout) {
             this.props.onLayoutChange(newLayout);
         }
+        this.props.onDragStop();
     }
 
     computeDraggedLayout(i, position) {

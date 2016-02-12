@@ -16,21 +16,26 @@ export default class GridItem extends Component {
     }
 
     onDragHandler(handlerName) {
-      return (e, {element, position}) => {
+        return (e, {element, position}) => {
+            // react-draggle seems to return undefined/NaN occasionally, which breaks things
+            if (isNaN(position.clientX) || isNaN(position.clientY)) {
+                return;
+            }
 
-        let { dragStartPosition } = this.state;
-        if (handlerName === "onDragStart") {
-            dragStartPosition = position;
-            this.setState({ dragStartPosition: position });
-        }
-        let pos = {
-            x: position.clientX - dragStartPosition.clientX,
-            y: position.clientY - dragStartPosition.clientY,
-        }
-        this.setState({ dragging: handlerName === "onDragStop" ? null : pos });
+            let { dragStartPosition } = this.state;
+            if (handlerName === "onDragStart") {
+                dragStartPosition = position;
+                this.setState({ dragStartPosition: position });
+            }
 
-        this.props[handlerName](this.props.i, {e, element, position: pos });
-      };
+            let pos = {
+                x: position.clientX - dragStartPosition.clientX,
+                y: position.clientY - dragStartPosition.clientY,
+            }
+            this.setState({ dragging: handlerName === "onDragStop" ? null : pos });
+
+            this.props[handlerName](this.props.i, {e, element, position: pos });
+        };
     }
 
     onResizeHandler(handlerName) {

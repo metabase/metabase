@@ -74,13 +74,13 @@ const LegendItem = ({ card, index, showDots, showTitles, onSeriesHoverChange }) 
         onMouseLeave={() => onSeriesHoverChange && onSeriesHoverChange(null) }
     >
         <a href={Urls.card(card.id)} className={cx("no-decoration h3 text-bold flex align-center", { mr1: showTitles })} style={{ overflowX: "hidden", flex: "0 1 auto" }}>
-            {showDots && <div className="flex-no-shrink inline-block circular" style={{width: 13, height: 13, margin: 4, marginRight: 8, backgroundColor: COLORS[index % COLORS.length]}} />}
+            {showDots && <div className="flex-no-shrink inline-block circular" style={{width: 13, height: 13, margin: 4, marginRight: 8, backgroundColor: color}} />}
             {showTitles && <div style={{ overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{card.name}</div> }
         </a>
     </Tooltip>
 
 const AddSeriesItem = ({ onAddSeries, showTitles }) =>
-    <a className="h3 ml1 mr2 cursor-pointer flex align-center text-brand-hover" style={{ pointerEvents: "all" }} onClick={onAddSeries}>
+    <a className="h3 ml1 mr2 cursor-pointer flex align-center text-brand-hover" onClick={onAddSeries}>
         <span className="flex-no-shrink circular bordered border-brand flex layout-centered" style={{ width: 20, height: 20, marginRight: 8 }}>
             <Icon className="text-brand" name="add" width={10} height={10} />
         </span>
