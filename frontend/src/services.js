@@ -831,6 +831,13 @@ CoreServices.factory('User', ['$resource', '$cookies', function($resource, $cook
                 'userId': '@id'
             }
         },
+        update_qbnewb: {
+            url: '/api/user/:userId/qbnewb',
+            method: 'PUT',
+            params: {
+                'userId': '@id'
+            }
+        },
         delete: {
             method: 'DELETE',
             params: {

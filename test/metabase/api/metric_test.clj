@@ -24,6 +24,7 @@
      :last_name $
      :last_login $
      :is_superuser $
+     :is_qbnewb $
      :common_name $}))
 
 (defn metric-response [{:keys [created_at updated_at] :as metric}]
@@ -238,14 +239,14 @@
     :is_creation  false
     :message      "updated"
     :user         (-> (user-details (fetch-user :crowberto))
-                      (dissoc :email :date_joined :last_login :is_superuser))
+                      (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
     :diff         {:name {:before "b" :after "c"}}
     :description  "renamed this Metric from \"b\" to \"c\"."}
    {:is_reversion false
     :is_creation  true
     :message      nil
     :user         (-> (user-details (fetch-user :rasta))
-                      (dissoc :email :date_joined :last_login :is_superuser))
+                      (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
     :diff         {:name       {:after "b"}
                    :definition {:after {:filter ["AND" [">" 1 25]]}}}
     :description  nil}]
@@ -301,7 +302,7 @@
     :is_creation  false
     :message      nil
     :user         (-> (user-details (fetch-user :crowberto))
-                      (dissoc :email :date_joined :last_login :is_superuser))
+                      (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
     :diff         {:name {:before "Changed Metric Name"
                           :after  "One Metric to rule them all, one metric to define them"}}
     :description  "renamed this Metric from \"Changed Metric Name\" to \"One Metric to rule them all, one metric to define them\"."}
@@ -310,7 +311,7 @@
      :is_creation  false
      :message      nil
      :user         (-> (user-details (fetch-user :crowberto))
-                       (dissoc :email :date_joined :last_login :is_superuser))
+                       (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
      :diff         {:name {:before "Changed Metric Name"
                            :after  "One Metric to rule them all, one metric to define them"}}
      :description  "renamed this Metric from \"Changed Metric Name\" to \"One Metric to rule them all, one metric to define them\"."}
@@ -318,7 +319,7 @@
      :is_creation  false
      :message      "updated"
      :user         (-> (user-details (fetch-user :crowberto))
-                       (dissoc :email :date_joined :last_login :is_superuser))
+                       (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
      :diff         {:name {:after  "Changed Metric Name"
                            :before "One Metric to rule them all, one metric to define them"}}
      :description  "renamed this Metric from \"One Metric to rule them all, one metric to define them\" to \"Changed Metric Name\"."}
@@ -326,7 +327,7 @@
      :is_creation  true
      :message      nil
      :user         (-> (user-details (fetch-user :rasta))
-                       (dissoc :email :date_joined :last_login :is_superuser))
+                       (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
      :diff         {:name        {:after "One Metric to rule them all, one metric to define them"}
                     :description {:after "One metric to bring them all, and in the DataModel bind them"}
                     :definition  {:after {:database 123

@@ -35,6 +35,12 @@ export default class Dashboard extends Component {
 
         try {
             await this.props.fetchDashboard(this.props.selectedDashboard);
+            if (this.props.addCardOnLoad) {
+                // we have to load our cards before we can add one
+                await this.props.fetchCards();
+                this.props.setEditingDashboard(true);
+                this.props.addCardToDashboard({ dashId: this.props.selectedDashboard, cardId: this.props.addCardOnLoad });
+            }
         } catch (error) {
             if (error.status === 404) {
                 this.props.onChangeLocation("/404");

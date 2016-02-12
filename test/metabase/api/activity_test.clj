@@ -52,6 +52,7 @@
                        :last_name    $
                        :last_login   $
                        :is_superuser $
+                       :is_qbnewb    $
                        :common_name  $})
       :model        $
       :model_id     $
@@ -74,6 +75,7 @@
                        :last_name    $
                        :last_login   $
                        :is_superuser $
+                       :is_qbnewb    $
                        :common_name  $})
       :model        $
       :model_id     $

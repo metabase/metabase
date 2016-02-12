@@ -9,7 +9,7 @@
                              [user :refer [User]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ random-name expect-eval-actual-first]]))
+            [metabase.test.util :refer [match-$ random-name expect-eval-actual-first with-temp]]))
 
 ;; ## /api/user/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
@@ -29,32 +29,35 @@
 ;; Check that anyone can get a list of all active Users
 (expect
     #{(match-$ (fetch-user :crowberto)
-        {:common_name "Crowberto Corv"
-         :date_joined $
-         :last_name "Corv"
-         :id $
+        {:common_name  "Crowberto Corv"
+         :date_joined  $
+         :last_name    "Corv"
+         :id           $
          :is_superuser true
-         :last_login $
-         :first_name "Crowberto"
-         :email "crowberto@metabase.com"})
+         :is_qbnewb    true
+         :last_login   $
+         :first_name   "Crowberto"
+         :email        "crowberto@metabase.com"})
       (match-$ (fetch-user :lucky)
-        {:common_name "Lucky Pigeon"
-         :date_joined $
-         :last_name "Pigeon"
-         :id $
+        {:common_name  "Lucky Pigeon"
+         :date_joined  $
+         :last_name    "Pigeon"
+         :id           $
          :is_superuser false
-         :last_login $
-         :first_name "Lucky"
-         :email "lucky@metabase.com"})
+         :is_qbnewb    true
+         :last_login   $
+         :first_name   "Lucky"
+         :email        "lucky@metabase.com"})
       (match-$ (fetch-user :rasta)
-        {:common_name "Rasta Toucan"
-         :date_joined $
-         :last_name "Toucan"
-         :id $
+        {:common_name  "Rasta Toucan"
+         :date_joined  $
+         :last_name    "Toucan"
+         :id           $
          :is_superuser false
-         :last_login $
-         :first_name "Rasta"
-         :email "rasta@metabase.com"})}
+         :is_qbnewb    true
+         :last_login   $
+         :first_name   "Rasta"
+         :email        "rasta@metabase.com"})}
   (do
     ;; Delete all the other random Users we've created so far
     (let [user-ids (set (map user->id [:crowberto :rasta :lucky :trashbird]))]
@@ -68,28 +71,30 @@
 (let [rand-name (random-name)]
   (expect-eval-actual-first
     (match-$ (sel :one User :first_name rand-name)
-      {:id $
-       :email $
-       :first_name rand-name
-       :last_name rand-name
-       :date_joined $
-       :last_login $
-       :common_name $
-       :is_superuser false})
+      {:id           $
+       :email        $
+       :first_name   rand-name
+       :last_name    rand-name
+       :date_joined  $
+       :last_login   $
+       :common_name  $
+       :is_superuser false
+       :is_qbnewb    true})
     (create-user-api rand-name)))
 
 ;; Test that reactivating a disabled account works
 (let [rand-name (random-name)]
   (expect-eval-actual-first
     (match-$ (sel :one User :first_name rand-name :is_active true)
-      {:id $
-       :email $
-       :first_name rand-name
-       :last_name "whatever"
-       :date_joined $
-       :last_login $
-       :common_name $
-       :is_superuser false})
+      {:id           $
+       :email        $
+       :first_name   rand-name
+       :last_name    "whatever"
+       :date_joined  $
+       :last_login   $
+       :common_name  $
+       :is_superuser false
+       :is_qbnewb    true})
     (when-let [user (create-user-api rand-name)]
       ;; create a random user then set them to :inactive
       (upd User (:id user)
@@ -126,30 +131,32 @@
 ;; ## GET /api/user/current
 ;; Check that fetching current user will return extra fields like `is_active` and will return OrgPerms
 (expect (match-$ (fetch-user :rasta)
-          {:email "rasta@metabase.com"
-           :first_name "Rasta"
-           :last_name "Toucan"
-           :common_name "Rasta Toucan"
-           :date_joined $
-           :last_login $
-           :is_active true
-           :is_staff true
+          {:email        "rasta@metabase.com"
+           :first_name   "Rasta"
+           :last_name    "Toucan"
+           :common_name  "Rasta Toucan"
+           :date_joined  $
+           :last_login   $
+           :is_active    true
+           :is_staff     true
            :is_superuser false
-           :id $})
+           :is_qbnewb    true
+           :id           $})
   ((user->client :rasta) :get 200 "user/current"))
 
 
 ;; ## GET /api/user/:id
 ;; Should return a smaller set of fields, and should *not* return OrgPerms
 (expect (match-$ (fetch-user :rasta)
-          {:email "rasta@metabase.com"
-           :first_name "Rasta"
-           :last_login $
+          {:email        "rasta@metabase.com"
+           :first_name   "Rasta"
+           :last_login   $
            :is_superuser false
-           :id $
-           :last_name "Toucan"
-           :date_joined $
-           :common_name "Rasta Toucan"})
+           :is_qbnewb    true
+           :id           $
+           :last_name    "Toucan"
+           :date_joined  $
+           :common_name  "Rasta Toucan"})
   ((user->client :rasta) :get 200 (str "user/" (user->id :rasta))))
 
 ;; Check that a non-superuser CANNOT fetch someone else's user details
@@ -158,14 +165,15 @@
 
 ;; A superuser should be allowed to fetch another users data
 (expect (match-$ (fetch-user :rasta)
-          {:email "rasta@metabase.com"
-           :first_name "Rasta"
-           :last_login $
+          {:email        "rasta@metabase.com"
+           :first_name   "Rasta"
+           :last_login   $
            :is_superuser false
-           :id $
-           :last_name "Toucan"
-           :date_joined $
-           :common_name "Rasta Toucan"})
+           :is_qbnewb    true
+           :id           $
+           :last_name    "Toucan"
+           :date_joined  $
+           :common_name  "Rasta Toucan"})
   ((user->client :crowberto) :get 200 (str "user/" (user->id :rasta))))
 
 ;; We should get a 404 when trying to access a disabled account
@@ -238,6 +246,26 @@
 (expect {:errors {:old_password "Invalid password"}}
   ((user->client :rasta) :put 400 (format "user/%d/password" (user->id :rasta)) {:password "whateverUP12!!"
                                                                                  :old_password "mismatched"}))
+
+
+;; ## PUT /api/user/:id/qbnewb
+;; Test that we can set the qbnewb status on a user
+(expect
+  [{:success true}
+   false]
+  (with-temp User [{:keys [id]} {:first_name (random-name)
+                                 :last_name  (random-name)
+                                 :email      "def@metabase.com"
+                                 :password   "def123"}]
+    (let [creds {:email    "def@metabase.com"
+                 :password "def123"}]
+      [(metabase.http-client/client creds :put 200 (format "user/%d/qbnewb" id))
+       (sel :one :field [User :is_qbnewb] :id id)])))
+
+
+;; Check that a non-superuser CANNOT update someone else's password
+(expect "You don't have permissions to do that."
+  ((user->client :rasta) :put 403 (format "user/%d/qbnewb" (user->id :trashbird))))
 
 
 ;; ## DELETE /api/user/:id

@@ -3,6 +3,7 @@ import ReactDOM from "react-dom";
 
 import cx from "classnames";
 
+import Urls from "metabase/lib/urls";
 import PulseListChannel from "./PulseListChannel.jsx";
 
 export default class PulseListItem extends Component {
@@ -36,7 +37,7 @@ export default class PulseListItem extends Component {
                 <ol className="mb2 px4 flex flex-wrap">
                     { pulse.cards.map((card, index) =>
                         <li key={index} className="mr1 mb1">
-                            <a className="Button" href={"/card/"+card.id+"?clone"}>
+                            <a className="Button" href={Urls.card(card.id)}>
                                 {card.name}
                             </a>
                         </li>

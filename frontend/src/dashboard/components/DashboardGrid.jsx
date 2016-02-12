@@ -4,6 +4,8 @@ import ReactDOM from "react-dom";
 import GridLayout from "./grid/GridLayout.jsx";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
+import Urls from "metabase/lib/urls";
+
 import DashCard from "./DashCard.jsx";
 import Modal from "metabase/components/Modal.jsx";
 import RemoveFromDashboardModal from "./RemoveFromDashboardModal.jsx";
@@ -158,7 +160,7 @@ export default class DashboardGrid extends Component {
                 return;
             }
         }
-        this.props.onChangeLocation("/card/" + dc.card_id + "?from=" + encodeURIComponent("/dash/" + dc.dashboard_id));
+        this.props.onChangeLocation(Urls.card(dc.card_id)+"?edit=true&from=" + encodeURIComponent(Urls.dashboard(dc.dashboard_id)));
     }
 
     onDashCardRemove(dc) {

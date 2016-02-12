@@ -6,7 +6,9 @@ import ReactDOM from "react-dom";
 import Visualization from "metabase/visualizations/Visualization.jsx";
 import visualizations from "metabase/visualizations";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
+
 import Icon from "metabase/components/Icon.jsx";
+import Urls from "metabase/lib/urls";
 
 import cx from "classnames";
 
@@ -118,7 +120,7 @@ export default class DashCard extends Component {
                 <div className={"Card bordered rounded flex flex-column " + cx({ "Card--recent": dashcard.isAdded })}>
                     { !CardVisualization.noHeader &&
                         <div className="Card-heading my1 px2">
-                            <a data-metabase-event={"Dashboard;Card Link;"+card.display} className="Card-title no-decoration" href={"/card/"+card.id+"?clone"}>
+                            <a data-metabase-event={"Dashboard;Card Link;"+card.display} className="Card-title no-decoration" href={Urls.card(card.id)}>
                                 <div ref="title" className="h3 text-bold my1">
                                     {card.name}
                                 </div>

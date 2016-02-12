@@ -1,8 +1,8 @@
 import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
-import IconBorder from 'metabase/components/IconBorder.jsx';
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import Urls from "metabase/lib/urls";
 
 import { fetchCards } from "../actions";
 
@@ -52,19 +52,12 @@ export default class Cards extends Component {
                         </div>
                         <div className="flex align-center flex-full border-bottom pb2">
                             <div className="text-brand-hover">
-                                <a className="link mb2" href={'/card/'+item.id+'?clone'}>{item.name}</a>
+                                <a className="link mb2" href={Urls.card(item.id)}>{item.name}</a>
                                 <div className="text-grey-3">{item.description || "No description yet"}</div>
                             </div>
                             <div className="flex-align-right flex-no-shrink text-right text-grey-3">
                                 <div>Saved by <span className="text-dark">{item.creator.common_name}</span></div>
                                 <div>Created {item.created_at.fromNow()}</div>
-                            </div>
-                            <div className="flex-align-right text-right text-grey-3 ml2">
-                                <a href={'/card/'+item.id} className="flex-align-right flex text-grey-1 text-grey-3-hover" title="Edit this question">
-                                    <IconBorder>
-                                        <Icon name='pencil' width={16} height={16}></Icon>
-                                    </IconBorder>
-                                </a>
                             </div>
                         </div>
                     </li>

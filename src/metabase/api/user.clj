@@ -86,6 +86,14 @@
   (User id))
 
 
+(defendpoint PUT "/:id/qbnewb"
+  "Indicate that a user has been informed about the vast intricacies of 'the' QueryBuilder."
+  [id]
+  (check-self-or-superuser id)
+  (check-500 (upd User id :is_qbnewb false))
+  {:success true})
+
+
 (defendpoint POST "/:id/send_invite"
   "Resend the user invite email for a given user."
   [id]

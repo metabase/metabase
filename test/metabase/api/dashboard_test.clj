@@ -91,48 +91,83 @@
 
 
 ;; ## GET /api/dashboard/:id
-(expect
-  {:name            "Test Dashboard"
-   :description     nil
-   :creator_id      (user->id :rasta)
-   :creator         (user-details (fetch-user :rasta))
-   :public_perms    0
-   :can_read        true
-   :can_write       true
-   :updated_at      true
-   :created_at      true
-   :ordered_cards   [{:sizeX        2
-                      :sizeY        2
-                      :col          nil
-                      :row          nil
-                      :updated_at   true
-                      :created_at   true
-                      :card         {:name                   "Dashboard Test Card"
-                                     :description            nil
-                                     :public_perms           0
-                                     :creator_id             (user->id :rasta)
-                                     :creator                (user-details (fetch-user :rasta))
-                                     :organization_id        nil
-                                     :display                "scalar"
-                                     :query_type             nil
-                                     :dataset_query          {:something "simple"}
-                                     :visualization_settings {:global {:title nil}}}
-                      :series       []}]
-   :organization_id nil}
-  ;; fetch a dashboard WITH a dashboard card on it
-  (tu/with-temp Dashboard [{dashboard-id :id} {:name         "Test Dashboard"
-                                               :public_perms 0
-                                               :creator_id   (user->id :rasta)}]
-    (tu/with-temp Card [{card-id :id} {:name                   "Dashboard Test Card"
-                                       :creator_id             (user->id :rasta)
-                                       :public_perms           0
-                                       :display                "scalar"
-                                       :dataset_query          {:something "simple"}
-                                       :visualization_settings {:global {:title nil}}}]
-      (tu/with-temp DashboardCard [_ {:dashboard_id dashboard-id
-                                      :card_id      card-id}]
-        (-> ((user->client :rasta) :get 200 (format "dashboard/%d" dashboard-id))
-            dashboard-response)))))
+; <<<<<<< HEAD
+; (expect
+;   {:name            "Test Dashboard"
+;    :description     nil
+;    :creator_id      (user->id :rasta)
+;    :creator         (user-details (fetch-user :rasta))
+;    :public_perms    0
+;    :can_read        true
+;    :can_write       true
+;    :updated_at      true
+;    :created_at      true
+;    :ordered_cards   [{:sizeX        2
+;                       :sizeY        2
+;                       :col          nil
+;                       :row          nil
+;                       :updated_at   true
+;                       :created_at   true
+;                       :card         {:name                   "Dashboard Test Card"
+;                                      :description            nil
+;                                      :public_perms           0
+;                                      :creator_id             (user->id :rasta)
+;                                      :creator                (user-details (fetch-user :rasta))
+;                                      :organization_id        nil
+;                                      :display                "scalar"
+;                                      :query_type             nil
+;                                      :dataset_query          {:something "simple"}
+;                                      :visualization_settings {:global {:title nil}}}
+;                       :series       []}]
+;    :organization_id nil}
+;   ;; fetch a dashboard WITH a dashboard card on it
+;   (tu/with-temp Dashboard [{dashboard-id :id} {:name         "Test Dashboard"
+;                                                :public_perms 0
+;                                                :creator_id   (user->id :rasta)}]
+;     (tu/with-temp Card [{card-id :id} {:name                   "Dashboard Test Card"
+;                                        :creator_id             (user->id :rasta)
+;                                        :public_perms           0
+;                                        :display                "scalar"
+;                                        :dataset_query          {:something "simple"}
+;                                        :visualization_settings {:global {:title nil}}}]
+;       (tu/with-temp DashboardCard [_ {:dashboard_id dashboard-id
+;                                       :card_id      card-id}]
+;         (-> ((user->client :rasta) :get 200 (format "dashboard/%d" dashboard-id))
+;             dashboard-response)))))
+; =======
+; ;; Test that we can fetch a Dashboard, and that it comes back wrapped in a "dashboard" dictionary (WHY?!)
+; (expect-let [dash (create-dash (random-name))]
+;   {:dashboard
+;    (match-$ dash
+;      {:description     nil
+;       :can_read        true
+;       :ordered_cards   []
+;       :creator         (-> (User (user->id :rasta))
+;                            (select-keys [:email :first_name :last_login :is_superuser :is_qbnewb :id :last_name :date_joined :common_name]))
+;       :can_write       true
+;       :organization_id nil
+;       :name            $
+;       :creator_id      (user->id :rasta)
+;       :updated_at      $
+;       :id              $
+;       :public_perms    0
+;       :created_at      $})}
+;   ((user->client :rasta) :get 200 (format "dashboard/%d" (:id dash))))
+;
+; ;; Check that only the creator of a Dashboard sees it when it isn't public
+; (expect [true
+;          false]
+;   (with-temp Dashboard [{:keys [id]} {:name (random-name)
+;                                       :public_perms common/perms-none
+;                                       :creator_id (user->id :crowberto)}]
+;     (let [can-see-dash? (fn [user]
+;                           (contains? (->> ((user->client user) :get 200 "dashboard" :f :all)
+;                                           (map :id)
+;                                           set)
+;                                      id))]
+;       [(can-see-dash? :crowberto)
+;        (can-see-dash? :rasta)])))
+; >>>>>>> e4277aea02fa2f1e4d5e6d2d42546a4c277cefcf
 
 
 ;; ## PUT /api/dashboard/:id
@@ -185,77 +220,121 @@
 ;; # DASHBOARD CARD ENDPOINTS
 
 ;; ## POST /api/dashboard/:id/cards
-;; simple creation with no additional series
-(expect
-  [{:sizeX        2
-    :sizeY        2
-    :col          4
-    :row          4
-    :series       []
-    :created_at   true
-    :updated_at   true}
-   [{:sizeX        2
-     :sizeY        2
-     :col          4
-     :row          4}]]
-  (tu/with-temp Dashboard [{dashboard-id :id} {:name         "Test Dashboard"
-                                               :public_perms 0
-                                               :creator_id   (user->id :rasta)}]
-    (tu/with-temp Card [{card-id :id} {:name                   "Dashboard Test Card"
-                                       :creator_id             (user->id :rasta)
-                                       :public_perms           0
-                                       :display                "scalar"
-                                       :dataset_query          {:something "simple"}
-                                       :visualization_settings {:global {:title nil}}}]
-      [(-> ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id) {:cardId card-id
-                                                                                        :row    4
-                                                                                        :col    4})
-           (dissoc :id :dashboard_id :card_id)
-           (update :created_at #(not (nil? %)))
-           (update :updated_at #(not (nil? %))))
-       (db/sel :many :fields [DashboardCard :sizeX :sizeY :col :row] :dashboard_id dashboard-id)])))
-
-;; new dashboard card w/ additional series
-(expect
-  [{:sizeX        2
-    :sizeY        2
-    :col          4
-    :row          4
-    :series       [{:name                   "Series Card"
-                    :description            nil
-                    :display                "scalar"
-                    :dataset_query          {:something "simple"}
-                    :visualization_settings {}}]
-    :created_at   true
-    :updated_at   true}
-   [{:sizeX        2
-     :sizeY        2
-     :col          4
-     :row          4}]
-   [0]]
-  (tu/with-temp Dashboard [{dashboard-id :id} {:name         "Test Dashboard"
-                                               :public_perms 0
-                                               :creator_id   (user->id :rasta)}]
-    (tu/with-temp Card [{card-id :id} {:name                   "Dashboard Test Card"
-                                       :creator_id             (user->id :rasta)
-                                       :public_perms           0
-                                       :display                "scalar"
-                                       :dataset_query          {:something "simple"}
-                                       :visualization_settings {}}]
-      (tu/with-temp Card [{series-id1 :id} {:name                   "Series Card"
-                                            :creator_id             (user->id :rasta)
-                                            :public_perms           0
-                                            :display                "scalar"
-                                            :dataset_query          {:something "simple"}
-                                            :visualization_settings {}}]
-        (let [dashboard-card ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id) {:cardId card-id
-                                                                                                          :row    4
-                                                                                                          :col    4
-                                                                                                          :series [{:id series-id1}]})]
-          [(remove-ids-and-boolean-timestamps dashboard-card)
-           (db/sel :many :fields [DashboardCard :sizeX :sizeY :col :row] :dashboard_id dashboard-id)
-           (db/sel :many :field [DashboardCardSeries :position] :dashboardcard_id (:id dashboard-card))])))))
-
+; <<<<<<< HEAD
+; ;; simple creation with no additional series
+; (expect
+;   [{:sizeX        2
+;     :sizeY        2
+;     :col          4
+;     :row          4
+;     :series       []
+;     :created_at   true
+;     :updated_at   true}
+;    [{:sizeX        2
+;      :sizeY        2
+;      :col          4
+;      :row          4}]]
+;   (tu/with-temp Dashboard [{dashboard-id :id} {:name         "Test Dashboard"
+;                                                :public_perms 0
+;                                                :creator_id   (user->id :rasta)}]
+;     (tu/with-temp Card [{card-id :id} {:name                   "Dashboard Test Card"
+;                                        :creator_id             (user->id :rasta)
+;                                        :public_perms           0
+;                                        :display                "scalar"
+;                                        :dataset_query          {:something "simple"}
+;                                        :visualization_settings {:global {:title nil}}}]
+;       [(-> ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id) {:cardId card-id
+;                                                                                         :row    4
+;                                                                                         :col    4})
+;            (dissoc :id :dashboard_id :card_id)
+;            (update :created_at #(not (nil? %)))
+;            (update :updated_at #(not (nil? %))))
+;        (db/sel :many :fields [DashboardCard :sizeX :sizeY :col :row] :dashboard_id dashboard-id)])))
+;
+; ;; new dashboard card w/ additional series
+; (expect
+;   [{:sizeX        2
+;     :sizeY        2
+;     :col          4
+;     :row          4
+;     :series       [{:name                   "Series Card"
+;                     :description            nil
+;                     :display                "scalar"
+;                     :dataset_query          {:something "simple"}
+;                     :visualization_settings {}}]
+;     :created_at   true
+;     :updated_at   true}
+;    [{:sizeX        2
+;      :sizeY        2
+;      :col          4
+;      :row          4}]
+;    [0]]
+;   (tu/with-temp Dashboard [{dashboard-id :id} {:name         "Test Dashboard"
+;                                                :public_perms 0
+;                                                :creator_id   (user->id :rasta)}]
+;     (tu/with-temp Card [{card-id :id} {:name                   "Dashboard Test Card"
+;                                        :creator_id             (user->id :rasta)
+;                                        :public_perms           0
+;                                        :display                "scalar"
+;                                        :dataset_query          {:something "simple"}
+;                                        :visualization_settings {}}]
+;       (tu/with-temp Card [{series-id1 :id} {:name                   "Series Card"
+;                                             :creator_id             (user->id :rasta)
+;                                             :public_perms           0
+;                                             :display                "scalar"
+;                                             :dataset_query          {:something "simple"}
+;                                             :visualization_settings {}}]
+;         (let [dashboard-card ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id) {:cardId card-id
+;                                                                                                           :row    4
+;                                                                                                           :col    4
+;                                                                                                           :series [{:id series-id1}]})]
+;           [(remove-ids-and-boolean-timestamps dashboard-card)
+;            (db/sel :many :fields [DashboardCard :sizeX :sizeY :col :row] :dashboard_id dashboard-id)
+;            (db/sel :many :field [DashboardCardSeries :position] :dashboardcard_id (:id dashboard-card))])))))
+;
+; =======
+; ;; Can we add a Card to a Dashboard?
+; (let [card-name (random-name)
+;       dash-name (random-name)]
+;   (expect-eval-actual-first
+;       (let [{card-id :id :as card} (sel :one Card :name card-name)
+;             dash-id (sel :one :id Dashboard :name dash-name)]
+;         [(match-$ (sel :one DashboardCard :dashboard_id dash-id :card_id card-id)
+;            {:sizeX        2
+;             :card         (match-$ card
+;                             {:description            nil
+;                              :creator                (-> (User (user->id :rasta))
+;                                                          (select-keys [:date_joined :last_name :id :is_superuser :is_qbnewb :last_login :first_name :email :common_name]))
+;                              :organization_id        nil
+;                              :name                   $
+;                              :creator_id             (user->id :rasta)
+;                              :updated_at             $
+;                              :dataset_query          (obj->json->obj (ql/wrap-inner-query
+;                                                                        (query categories
+;                                                                          (ql/aggregation (ql/count)))))
+;                              :id                     card-id
+;                              :display                "scalar"
+;                              :visualization_settings {:global {:title nil}}
+;                              :public_perms           0
+;                              :created_at             $
+;                              :database_id            (id)
+;                              :table_id               (id :categories)
+;                              :query_type             "query"})
+;             :updated_at   $
+;             :col          nil
+;             :id           $
+;             :card_id      card-id
+;             :dashboard_id dash-id
+;             :created_at   $
+;             :sizeY        2
+;             :row          nil})])
+;       (let [{card-id :id} (post-card card-name)
+;             {dash-id :id} (create-dash dash-name)]
+;         ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dash-id) {:cardId card-id})
+;         (->> ((user->client :rasta) :get 200 (format "dashboard/%d" dash-id))
+;              :dashboard
+;              :ordered_cards))))
+; >>>>>>> e4277aea02fa2f1e4d5e6d2d42546a4c277cefcf
 
 ;; ## DELETE /api/dashboard/:id/cards
 (expect
