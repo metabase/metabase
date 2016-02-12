@@ -47,10 +47,6 @@
           :destroy-db!                  destroy-db!
           :database->connection-details database->connection-details
           :engine                       (constantly :mongo)
-          :expected-base-type->actual   (fn [_ base-type]
-                                          (let [expected->actual {:DateTimeField :DateField}]
-                                            (or (expected->actual base-type)
-                                                base-type)))
           :format-name                  (fn [_ table-or-field-name]
                                           (if (= table-or-field-name "id") "_id"
                                               table-or-field-name))}))
