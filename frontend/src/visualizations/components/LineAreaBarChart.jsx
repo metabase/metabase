@@ -13,9 +13,9 @@ import cx from "classnames";
 export default class LineAreaBarChart extends Component {
     constructor(props, context) {
         super(props, context);
+
         this.state = {
-            hoveredIndex: null,
-            hoveredElement: null
+            hovered: null,
         };
 
         _.bindAll(this, "onSeriesHoverChange")
@@ -24,48 +24,52 @@ export default class LineAreaBarChart extends Component {
     static propTypes = {};
     static defaultProps = {};
 
-    onSeriesHoverChange(index, element, args) {
+    onSeriesHoverChange(index, element, d, axisIndex) {
+        // disable tooltips on lines
         if (element && element.classList.contains("line")) {
             element = null;
         }
-        this.setState({ hoveredIndex: index, hoveredElement: element, hoveredData: args && args[0].data });
+        this.setState({ hovered: index == null ? null : { index, element, data: d && d.data, axisIndex } });
     }
 
     getHoverClasses() {
-        const { hoveredIndex } = this.state;
-        if (hoveredIndex != null) {
-            return _.range(0,5).filter(n => n !== hoveredIndex).map(n => "mute-"+n);
+        const { hovered } = this.state;
+        if (hovered != null) {
+            let seriesClasses = _.range(0,5).filter(n => n !== hovered.index).map(n => "mute-"+n);
+            let axisClasses =
+                hovered.axisIndex === 0 ? "mute-yr" :
+                hovered.axisIndex === 1 ? "mute-yl" :
+                null;
+            return seriesClasses.concat(axisClasses);
         } else {
             return null;
         }
     }
 
     renderTooltip() {
-        const { card, data } = this.props;
-        const { hoveredData, hoveredIndex, hoveredElement } = this.state;
-        const series = [{ card, data }].concat(this.props.series);
-        return (hoveredElement && hoveredData && hoveredIndex != null &&
+        const { series } = this.props;
+        const { hovered } = this.state;
+        return hovered && hovered.element &&
             <TooltipPopover
-                target={hoveredElement}
+                target={hovered.element}
                 verticalAttachments={["bottom", "top"]}
             >
                 <div className="py1 px2">
                     <div>
-                        <span className="ChartTooltip-name">{formatValue(hoveredData.key, series[hoveredIndex].data.cols[0])}</span>
+                        <span className="ChartTooltip-name">{formatValue(hovered.data.key, series[hovered.index].data.cols[0])}</span>
                     </div>
                     <div>
-                        <span className="ChartTooltip-value">{formatNumber(hoveredData.value)}</span>
+                        <span className="ChartTooltip-value">{formatNumber(hovered.data.value)}</span>
                     </div>
                 </div>
             </TooltipPopover>
-        )
     }
 
     render() {
-        let { card, series, onAddSeries, extraActions } = this.props;
+        let { series, onAddSeries, extraActions } = this.props;
         return (
             <div className={cx("flex flex-full flex-column p1", this.getHoverClasses())}>
-                <LegendHeader card={card} series={series} onAddSeries={onAddSeries} extraActions={extraActions} onSeriesHoverChange={this.onSeriesHoverChange} />
+                <LegendHeader series={series} onAddSeries={onAddSeries} extraActions={extraActions} onSeriesHoverChange={this.onSeriesHoverChange} />
                 <CardRenderer className="flex-full" {...this.props} onHoverChange={this.onSeriesHoverChange} />
                 {this.renderTooltip()}
             </div>

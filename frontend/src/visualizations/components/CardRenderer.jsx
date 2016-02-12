@@ -5,32 +5,28 @@ import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 
 import * as charting from "metabase/card/lib/CardRenderer";
 
-import { getSettingsForVisualization, setLatitudeAndLongitude } from "metabase/lib/visualization_settings";
+import { setLatitudeAndLongitude } from "metabase/lib/visualization_settings";
 
 import _ from "underscore";
 
 @ExplicitSize
 export default class CardRenderer extends Component {
     static propTypes = {
-        card: PropTypes.object.isRequired,
-        data: PropTypes.object,
-        chartType: PropTypes.string.isRequired
+        chartType: PropTypes.string.isRequired,
+        series: PropTypes.array.isRequired
     };
 
     shouldComponentUpdate(nextProps, nextState) {
-        function cardAndDataIsSame(a, b) {
-            let sameData = a.data === b.data;
-            let sameDisplay = (a.card && a.card.display) === (b.card && b.card.display);
-            let sameVizSettings = (a.card && JSON.stringify(a.card.visualization_settings)) === (b.card && JSON.stringify(b.card.visualization_settings));
-            return (sameData && sameDisplay && sameVizSettings);
-        }
-
         // a chart only needs re-rendering when the result itself changes OR the chart type is different
-        let sameSize = this.props.width === nextProps.width && this.props.height === nextProps.height;
-        let sameCardAndData = cardAndDataIsSame(this.props, nextProps);
+        let sameSize = (this.props.width === nextProps.width && this.props.height === nextProps.height);
         let sameSeries = (this.props.series && this.props.series.length) === (nextProps.series && nextProps.series.length) &&
-            _.zip(this.props.series, nextProps.series).reduce((acc, [a, b]) => acc && cardAndDataIsSame(a, b), true);
-        return !(sameSize && sameCardAndData && sameSeries)
+            _.zip(this.props.series, nextProps.series).reduce((acc, [a, b]) => {
+                let sameData = a.data === b.data;
+                let sameDisplay = (a.card && a.card.display) === (b.card && b.card.display);
+                let sameVizSettings = (a.card && JSON.stringify(a.card.visualization_settings)) === (b.card && JSON.stringify(b.card.visualization_settings));
+                return acc && (sameData && sameDisplay && sameVizSettings);
+            }, true);
+        return !(sameSize && sameSeries);
     }
 
     componentDidMount() {
@@ -42,22 +38,18 @@ export default class CardRenderer extends Component {
     }
 
     renderChart() {
-        let element = ReactDOM.findDOMNode(this.refs.chart)
-        if (this.props.data) {
-            try {
-                // always ensure we have the most recent visualization settings to use for rendering
-                var vizSettings = getSettingsForVisualization(this.props.card.visualization_settings, this.props.card.display);
-
-                var card = {
-                    ...this.props.card,
-                    visualization_settings: vizSettings
-                };
-
+        let element = ReactDOM.findDOMNode(this.refs.chart);
+        try {
+            let s = this.props.series[0];
+            if (s && s.data) {
                 if (this.props.chartType === "pin_map") {
                     // call signature is (elementId, card, updateMapCenter (callback), updateMapZoom (callback))
 
                     // identify the lat/lon columns from our data and make them part of the viz settings so we can render maps
-                    card.visualization_settings = setLatitudeAndLongitude(card.visualization_settings, this.props.data.cols);
+                    let card = {
+                        ...s.card,
+                        visualization_settings: setLatitudeAndLongitude(s.card.visualization_settings, s.data.cols)
+                    }
 
                     // these are example callback functions that could be passed into the renderer
                     var updateMapCenter = (lat, lon) => {
@@ -72,12 +64,12 @@ export default class CardRenderer extends Component {
                     charting.CardRenderer[this.props.chartType](element, card, updateMapCenter, updateMapZoom);
                 } else {
                     // TODO: it would be nicer if this didn't require the whole card
-                    charting.CardRenderer[this.props.chartType](element, card, this.props.data, this.props.series, this.props.onHoverChange);
+                    charting.CardRenderer[this.props.chartType](element, this.props);
                 }
-            } catch (err) {
-                console.error(err);
-                this.props.onRenderError(err.message || err);
             }
+        } catch (err) {
+            console.error(err);
+            this.props.onRenderError(err.message || err);
         }
     }
 

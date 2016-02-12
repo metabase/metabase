@@ -7,12 +7,22 @@ import dc from "dc";
 import moment from "moment";
 
 import GeoHeatmapChartRenderer from "./GeoHeatmapChartRenderer";
-import { getMinMax, getAvailableCanvasWidth, getAvailableCanvasHeight, computeSplit, getFriendlyName } from "./utils";
+import {
+    getMinMax,
+    getAvailableCanvasWidth,
+    getAvailableCanvasHeight,
+    computeSplit,
+    getFriendlyName,
+    getCardColors
+} from "./utils";
 
 import { formatNumber, formatValue } from "metabase/lib/formatting";
 
 import tip from 'd3-tip';
 tip(d3);
+
+const DEFAULT_INTERPOLATION = "cardinal";
+const BAR_PADDING_RATIO = 0.2;
 
 // agument d3 with a simple quarters range implementation
 d3.time.quarters = (start, stop, step) => d3.time.months(start, stop, 3);
@@ -85,7 +95,7 @@ function initializeChart(card, element, chartType = getDcjsChartType(card.displa
     let chart = dc[chartType](element);
 
     // set width and height
-    chart = applyChartBoundary(chart, card, element);
+    chart = applyChartBoundary(chart, element);
 
     // specify legend
     chart = applyChartLegend(chart, card);
@@ -96,7 +106,7 @@ function initializeChart(card, element, chartType = getDcjsChartType(card.displa
     return chart;
 }
 
-function applyChartBoundary(chart, card, element) {
+function applyChartBoundary(chart, element) {
     return chart
         .width(getAvailableCanvasWidth(element))
         .height(getAvailableCanvasHeight(element));
@@ -315,16 +325,6 @@ function applyChartYAxis(chart, card, coldefs, data, minPixelsPerTick) {
     }
 }
 
-function applyChartColors(chart, card) {
-    // Set the color for the bar/line
-    let settings = card.visualization_settings;
-    let chartColor = (card.display === 'bar') ? settings.bar.color : settings.line.lineColor;
-    let colorList = (card.display === 'bar') ? settings.bar.colors : settings.line.colors;
-    // dedup colors list to ensure stacked charts don't have the same color
-    let uniqueColors = _.uniq([chartColor].concat(colorList));
-    return chart.ordinalColors(uniqueColors);
-}
-
 function determineSeriesIndexFromElement(element) {
     let e = element;
     while (e && e.classList && !e.classList.contains("sub")) {
@@ -343,52 +343,18 @@ function determineSeriesIndexFromElement(element) {
     return null;
 }
 
-function applyChartTooltips(chart, element, card, cols, onHoverChange) {
-    chart.on('renderlet', function(chart) {
-        // Remove old tooltips which are sometimes not removed due to chart being rerendered while tip is visible
-        // Array.prototype.forEach.call(document.querySelectorAll('.ChartTooltip--'+element.id), (t) => t.parentNode.removeChild(t));
-        //
-        // let tip = d3.tip()
-        //     .attr('class', 'ChartTooltip ChartTooltip--'+element.id)
-        //     .direction('n')
-        //     .offset([-10, 0])
-        //     .html(function(d) {
-        //         let values = formatNumber(d.data.value);
-        //         if (card.display === 'pie') {
-        //             // TODO: this is not the ideal way to calculate the percentage, but it works for now
-        //             values += " (" + formatNumber((d.endAngle - d.startAngle) / Math.PI * 50) + '%)'
-        //         }
-        //         return '<div><span class="ChartTooltip-name">' + formatValue(d.data.key, cols[0]) + '</span></div>' +
-        //             '<div><span class="ChartTooltip-value">' + values + '</span></div>';
-        //     });
-        //
-        // chart.selectAll('rect.bar,circle.dot,g.pie-slice path,circle.bubble,g.row rect')
-        //     .call(tip)
-        //     .on('mouseover', (slice) => {
-        //         tip.show.apply(tip, arguments);
-        //         if (card.display === "pie") {
-        //             let tooltip = d3.select('.ChartTooltip--'+element.id);
-        //             let tooltipOffset = getTooltipOffset(tooltip);
-        //             let sliceCentroid = getPieSliceCentroid(this, slice);
-        //             tooltip.style({
-        //                 top: tooltipOffset.y + sliceCentroid.y + "px",
-        //                 left: tooltipOffset.x + sliceCentroid.x + "px",
-        //                 "pointer-events": "none" // d3-tip forces "pointer-events: all" which cases flickering when the tooltip is under the cursor
-        //             });
-        //         }
-        //     })
-        //     .on('mouseout', tip.hide);
-
-        chart.selectAll('.bar, .dot, .area, .line')
-            .on("mouseenter", function(...args) {
+function applyChartTooltips(chart, onHoverChange) {
+    chart.on("renderlet", function(chart) {
+        chart.selectAll(".bar, .dot, .area, .line, .pie-slice")
+            .on("mouseenter", function(d) {
                 let index = determineSeriesIndexFromElement(this);
-                onHoverChange && onHoverChange(index, this, args);
+                onHoverChange && onHoverChange(index, this, d);
             })
-            .on("mouseleave", function(...args) {
+            .on("mouseleave", function() {
                 onHoverChange && onHoverChange(null);
             });
 
-        chart.selectAll('title').remove();
+        chart.selectAll("title").remove();
     });
 }
 
@@ -424,6 +390,33 @@ function getTooltipOffset(tooltip) {
         x: -tooltipRect.width / 2 + scrollOffset.left,
         y: -tooltipRect.height - 30 + scrollOffset.top
     };
+}
+
+function applyChartLineBarSettings(chart, card, chartType) {
+    // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
+    if (chart.brushOn) {
+        chart.brushOn(false);
+    }
+
+    // LINE/AREA:
+    // for chart types that have an 'interpolate' option (line/area charts), enable based on settings
+    if (chart.interpolate) {
+        if (card.visualization_settings.line.step) {
+            chart.interpolate("step");
+        } else {
+            chart.interpolate(DEFAULT_INTERPOLATION);
+        }
+    }
+
+    // AREA:
+    if (chart.renderArea) {
+        chart.renderArea(chartType === "area");
+    }
+
+    // BAR:
+    if (chart.barPadding) {
+        chart.barPadding(BAR_PADDING_RATIO);
+    }
 }
 
 function lineAndBarOnRender(chart, card) {
@@ -500,7 +493,7 @@ function lineAndBarOnRender(chart, card) {
 }
 
 export let CardRenderer = {
-    pie(element, card, result) {
+    pie(element, { card, data: result, onHoverChange }) {
         let settings = card.visualization_settings;
         let data = result.rows.map(row => ({
             key: row[0],
@@ -530,97 +523,15 @@ export let CardRenderer = {
         // disables ability to select slices
         chart.filter = () => {};
 
-        applyChartTooltips(chart, element, card, result.cols);
+        applyChartTooltips(chart, onHoverChange);
 
         chart.render();
     },
 
-    lineAreaBar(element, card, result, chartType) {
-        let isTimeseries = dimensionIsTimeseries(result);
-        let isMultiSeries = result.cols && result.cols.length > 2;
-
-        // validation.  we require at least 2 rows for bar charting
-        if (result.cols.length < 2) {
-            return;
-        }
-
-        // pre-process data
-        let data = result.rows.map(row => {
-            // IMPORTANT: clone the data if you are going to modify it in any way
-            let tuple = row.slice(0);
-            tuple[0] = (isTimeseries) ? new Date(row[0]) : row[0];
-            return tuple;
-        });
-
-        // build crossfilter dataset + dimension + base group
-        let dataset = crossfilter(data);
-        let dimension = dataset.dimension(d => d[0]);
-        let group = dimension.group().reduceSum(d => d[1]);
-        let chart = initializeChart(card, element)
-                        .dimension(dimension)
-                        .group(group)
-                        .valueAccessor(d => d.value);
-
-        // apply any stacked series if applicable
-        if (isMultiSeries) {
-            chart.stack(dimension.group().reduceSum(d => d[2]));
-
-            // to keep things sane, draw the line at 2 stacked series
-            // putting more than 3 series total on the same chart is a lot
-            if (result.cols.length > 3) {
-                chart.stack(dimension.group().reduceSum(d => d[3]));
-            }
-        }
-
-        // x-axis settings
-        // TODO: we should support a linear (numeric) x-axis option
-        if (isTimeseries) {
-            applyChartTimeseriesXAxis(chart, card, result.cols, data);
-        } else {
-            applyChartOrdinalXAxis(chart, card, result.cols, data, MIN_PIXELS_PER_TICK.x);
-        }
-
-        // y-axis settings
-        // TODO: if we are multi-series this could be split axis
-        applyChartYAxis(chart, card, result.cols, data, MIN_PIXELS_PER_TICK.y);
-
-        applyChartTooltips(chart, element, card, result.cols);
-        applyChartColors(chart, card);
-
-        // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
-        if (chart.brushOn) {
-            chart.brushOn(false);
-        }
-
-        // LINE/AREA:
-        // for chart types that have an 'interpolate' option (line/area charts), enable based on settings
-        if (chart.interpolate) {
-            if (card.visualization_settings.line.step) {
-                chart.interpolate("step");
-            } else {
-                chart.interpolate("cardinal");
-            }
-        }
-        if (chart.renderArea) {
-            chart.renderArea(chartType === "area");
-        }
-
-        // BAR:
-        if (chart.barPadding) {
-            chart.barPadding(0.2);
-        }
-
-        chart.render();
-
-        // apply any on-rendering functions
-        lineAndBarOnRender(chart, card);
-    },
-
-    multiLineAreaBar(element, series, chartType, onHoverChange) {
-        const COLORS = ["#4A90E2", "#84BB4C", "#F9CF48", "#ED6E6E", "#885AB1"];
-        const BAR_PADDING_RATIO = 0.2;
-
+    lineAreaBar(element, chartType, { series, onHoverChange }) {
         let { card, data: result } = series[0];
+
+        const colors = getCardColors(card);//["#4A90E2", "#84BB4C", "#F9CF48", "#ED6E6E", "#885AB1"];
 
         let isTimeseries = dimensionIsTimeseries(result);
         let isStacked = chartType === "area";
@@ -668,18 +579,9 @@ export let CardRenderer = {
                 chart.stack(groups[i]);
             }
 
-            if (chart.renderArea) {
-                chart.renderArea(chartType === "area");
-            }
+            applyChartLineBarSettings(chart, card, chartType);
 
-            applyChartTooltips(chart, element, card, result.cols);
-            // applyChartColors(chart, card);
-            chart.ordinalColors(COLORS);
-
-            // BAR:
-            if (chart.barPadding) {
-                chart.barPadding(BAR_PADDING_RATIO);
-            }
+            chart.ordinalColors(colors);
         } else {
             chart = initializeChart(card, element, "compositeChart")
 
@@ -691,24 +593,17 @@ export let CardRenderer = {
                 subChart
                     .dimension(dimension)
                     .group(groups[index])
-                    .colors(COLORS[index % COLORS.length])
+                    .colors(colors[index % colors.length])
                     .useRightYAxis(yAxisSplit.length > 1 && yAxisSplit[1].includes(index))
+
+                applyChartLineBarSettings(subChart, card, chartType);
+
                 // BAR:
                 if (subChart.barPadding) {
                     subChart
                         .barPadding(BAR_PADDING_RATIO)
                         .centerBar(isLinear)
                 }
-                // LINE:
-                if (subChart.interpolate) {
-                    if (card.visualization_settings.line.step) {
-                        subChart.interpolate("step");
-                    } else {
-                        subChart.interpolate("cardinal");
-                    }
-                }
-
-                applyChartTooltips(subChart, element, series[index].card, series[index].data.cols, onHoverChange);
             });
 
             chart
@@ -753,13 +648,17 @@ export let CardRenderer = {
         // TODO: if we are multi-series this could be split axis
         applyChartYAxis(chart, card, result.cols, data, MIN_PIXELS_PER_TICK.y);
 
+        applyChartTooltips(chart, (index, element, data) => {
+            if (onHoverChange) {
+                let axisIndex = _.findIndex(yAxisSplit, (indexes) => _.contains(indexes, index));
+                onHoverChange(index, element, data, axisIndex);
+            }
+        });
+
         // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
         if (chart.brushOn) {
             chart.brushOn(false);
         }
-
-        // disable transitions
-        chart.transitionDuration(0);
 
         // render
         chart.render();
@@ -768,40 +667,25 @@ export let CardRenderer = {
         lineAndBarOnRender(chart, card);
     },
 
-    bar(element, card, data, series, onHoverChange) {
-        if (series && series.length > 0) {
-            series = [{ card, data }].concat(series);
-            return CardRenderer.multiLineAreaBar(element, series, "bar", onHoverChange);
-        } else {
-            return CardRenderer.lineAreaBar(element, card, data, "bar");
-        }
+    bar(element, props) {
+        return CardRenderer.lineAreaBar(element, "bar", props);
     },
 
-    line(element, card, data, series, onHoverChange) {
-        if (series && series.length > 0) {
-            series = [{ card, data }].concat(series);
-            return CardRenderer.multiLineAreaBar(element, series, "line", onHoverChange);
-        } else {
-            return CardRenderer.lineAreaBar(element, card, data, "line", onHoverChange);
-        }
+    line(element, props) {
+        return CardRenderer.lineAreaBar(element, "line", props);
     },
 
-    area(element, card, data, series, onHoverChange) {
-        if (series && series.length > 0) {
-            series = [{ card, data }].concat(series);
-            return CardRenderer.multiLineAreaBar(element, series, "area", onHoverChange);
-        } else {
-            return CardRenderer.lineAreaBar(element, card, data, "area", onHoverChange);
-        }
+    area(element, props) {
+        return CardRenderer.lineAreaBar(element, "area", props);
     },
 
-    state(element, card, result) {
-        let chartData = result.rows.map(value => ({
+    state(element, { card, data }) {
+        let chartData = data.rows.map(value => ({
             stateCode: value[0],
             value: value[1]
         }));
 
-        let chartRenderer = new GeoHeatmapChartRenderer(element, card, result)
+        let chartRenderer = new GeoHeatmapChartRenderer(element, card, data)
             .setData(chartData, 'stateCode', 'value')
             .setJson('/app/charts/us-states.json', d => d.properties.name)
             .setProjection(d3.geo.albersUsa())
@@ -814,8 +698,8 @@ export let CardRenderer = {
         return chartRenderer;
     },
 
-    country(element, card, result) {
-        let chartData = result.rows.map(value => {
+    country(element, { card, data }) {
+        let chartData = data.rows.map(value => {
             // Does this actually make sense? If country is > 2 characters just use the first 2 letters as the country code ?? (WTF)
             let countryCode = value[0];
             if (typeof countryCode === "string") {
@@ -828,7 +712,7 @@ export let CardRenderer = {
             };
         });
 
-        let chartRenderer = new GeoHeatmapChartRenderer(element, card, result)
+        let chartRenderer = new GeoHeatmapChartRenderer(element, card, data)
             .setData(chartData, 'code', 'value')
             .setJson('/app/charts/world.json', d => d.properties.ISO_A2) // 2-letter country code
             .setProjection(d3.geo.mercator())

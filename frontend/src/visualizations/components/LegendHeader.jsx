@@ -5,6 +5,7 @@ import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 
 import Urls from "metabase/lib/urls";
+import { getCardColors } from "metabase/card/lib/utils";
 
 import cx from "classnames";
 
@@ -19,7 +20,6 @@ export default class LegendHeader extends Component {
     }
 
     static propTypes = {
-         card: PropTypes.object.isRequired,
          series: PropTypes.array.isRequired,
          onAddSeries: PropTypes.func
     };
@@ -40,15 +40,16 @@ export default class LegendHeader extends Component {
     }
 
     render() {
-        const { onAddSeries, extraActions, onSeriesHoverChange } = this.props;
-        const series = [{ card: this.props.card }].concat(this.props.series);
+        const { series, onAddSeries, extraActions, onSeriesHoverChange } = this.props;
         const showDots = series.length > 1;
         const isNarrow = this.state.width < 150;
         const showTitles = !showDots || !isNarrow;
+
+        let colors = getCardColors(series[0].card);
         return (
             <div className="Card-title m1 flex flex-no-shrink flex-row align-center">
                 { series.map((s, index) =>
-                    <LegendItem key={index} card={s.card} index={index} showDots={showDots} showTitles={showTitles} onSeriesHoverChange={onSeriesHoverChange} />
+                    <LegendItem key={index} card={s.card} index={index} color={colors[index % colors.length]} showDots={showDots} showTitles={showTitles} onSeriesHoverChange={onSeriesHoverChange} />
                 )}
                 { onAddSeries &&
                     <span className="DashCard-actions flex-no-shrink">
@@ -65,7 +66,7 @@ export default class LegendHeader extends Component {
     }
 }
 
-const LegendItem = ({ card, index, showDots, showTitles, onSeriesHoverChange }) =>
+const LegendItem = ({ card, index, color, showDots, showTitles, onSeriesHoverChange }) =>
     <Tooltip
         key={index}
         tooltip={card.name}

@@ -10,7 +10,6 @@ import LegendHeader from "metabase/visualizations/components/LegendHeader.jsx";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 
 import Icon from "metabase/components/Icon.jsx";
-import Urls from "metabase/lib/urls";
 
 import cx from "classnames";
 
@@ -116,13 +115,13 @@ export default class DashCard extends Component {
 
     render() {
         const { dashcard, onAddSeries, onEdit, onRemove, isEditing } = this.props;
-        const { card, series } = dashcard;
-        const CardVisualization = visualizations.get(card.display);
+        const series = [{ card: dashcard.card }].concat(dashcard.series || []);
+        const CardVisualization = visualizations.get(series[0].card.display);
         return (
             <div className={"Card bordered rounded flex flex-column " + cx({ "Card--recent": dashcard.isAdded })}>
                 { !CardVisualization.noHeader &&
                     <div className="p1">
-                        <LegendHeader card={card} series={series} onAddSeries={isEditing && CardVisualization.supportsSeries && onAddSeries} extraActions={isEditing && <ExtraActions onEdit={onEdit} onRemove={onRemove} />}/>
+                        <LegendHeader series={series} onAddSeries={isEditing && CardVisualization.supportsSeries && onAddSeries} extraActions={isEditing && <ExtraActions onEdit={onEdit} onRemove={onRemove} />}/>
                     </div>
                 }
                 {this.renderCard(CardVisualization)}

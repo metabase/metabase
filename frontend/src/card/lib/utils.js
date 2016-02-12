@@ -1,6 +1,8 @@
 
 import _ from "underscore";
 
+import * as colors from "metabase/lib/colors";
+
 /// return pair of [min, max] values from items in array DATA, using VALUEACCESSOR to retrieve values for each item
 /// VALUEACCESSOR may be an accessor function like fn(ITEM) or can be a string/integer key/index into ITEM which will
 /// use a function like fn(item) { return item(KEY); }
@@ -108,4 +110,26 @@ export function getFriendlyName(col) {
     let name = col.display_name || col.name;
     let friendlyName = FRIENDLY_NAME_MAP[name.toLowerCase().trim()];
     return friendlyName || name;
+}
+
+export function getCardColors(card) {
+    let settings = card.visualization_settings;
+    let chartColor, colorList;
+    switch (card.display) {
+        case "bar":
+            if (settings.bar) {
+                chartColor = settings.bar.color;
+                colorList = settings.bar.colors;
+                break;
+            }
+        default:
+            if (settings.line) {
+                chartColor = settings.line.lineColor;
+                colorList = settings.line.colors
+            } else {
+                chartColor = colors.normal[0];
+                colorList = colors;
+            }
+    }
+    return _.uniq([chartColor].concat(colorList));
 }

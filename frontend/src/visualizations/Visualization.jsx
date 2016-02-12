@@ -2,6 +2,8 @@ import React, { Component, PropTypes } from "react";
 
 import visualizations from ".";
 
+import { getSettingsForVisualization } from "metabase/lib/visualization_settings";
+
 import _ from "underscore";
 
 export default class Visualization extends Component {
@@ -18,6 +20,8 @@ export default class Visualization extends Component {
     static propTypes = {
         card: PropTypes.object.isRequired,
         data: PropTypes.object.isRequired,
+        series: PropTypes.array,
+
         isDashboard: PropTypes.bool,
 
         // used by TableInteractive
@@ -70,10 +74,21 @@ export default class Visualization extends Component {
                 </div>
             );
         } else {
-            let { card } = this.props;
+            let { card, data, series } = this.props;
             let CardVisualization = visualizations.get(card.display);
+
+            series = [{ card, data }].concat(series || []).map(s => ({
+                ...s,
+                card: {
+                    ...s.card,
+                    visualization_settings: getSettingsForVisualization(s.card.visualization_settings, s.card.display)
+                }
+            }))
             return (
                 <CardVisualization {...this.props}
+                    series={series}
+                    card={series[0].card}
+                    data={series[0].data}
                     onUpdateVisualizationSetting={(...args) => console.log("onUpdateVisualizationSetting", args)}
                     onRenderError={this.onRenderError}
                 />
