@@ -8,6 +8,7 @@
             [metabase.driver :as driver]
             [metabase.driver.druid.query-processor :as qp]
             (metabase.models [database :refer [Database]]
+                             [field :as field]
                              [table :as table])
             [metabase.util :as u]))
 
@@ -68,7 +69,7 @@
 (defn- process-structured
   ([_ expanded-query-map]
    (process-structured {:details (-> expanded-query-map :database :details)
-                        :query    (-> expanded-query-map :query)}))
+                        :query   (-> expanded-query-map :query)}))
   ([{:keys [details query]}]
    (qp/process-structured-query (partial do-query details) query)))
 
@@ -91,7 +92,7 @@
            {:field-type :metric, :base-type :FloatField}
            {:field-type :dimension, :base-type :TextField})))
 
-(defn describe-table [_ table]
+(defn- describe-table [table]
   (let [details                      (:details (table/database table))
         {:keys [dimensions metrics]} (GET (details->url details "/druid/v2/datasources/" (:name table) "?interval=-5000/5000"))]
     (clojure.pprint/pprint dimensions)
@@ -105,7 +106,7 @@
                     (map (partial describe-table-field :dimension) dimensions)
                     (map (partial describe-table-field :metric) metrics)))}))
 
-(defn describe-database [_ database]
+(defn- describe-database [database]
   {:pre [(map? (:details database))]}
   (let [details           (:details database)
         druid-datasources (GET (details->url details "/druid/v2/datasources"))]
@@ -117,15 +118,15 @@
 
 (defn- field-values-lazy-seq-fetch-one-page [details table-name field-name & [paging-identifiers]]
   {:pre [(map? details) (or (string? table-name) (keyword? table-name)) (or (string? field-name) (keyword? field-name)) (or (nil? paging-identifiers) (map? paging-identifiers))]}
-  (let [[{{:keys [pagingIdentifiers events]} :result}] (do-query details {:queryType    :select
-                                                                          :dataSource   table-name
-                                                                          :intervals    ["-5000/5000"]
-                                                                          :granularity  :all
-                                                                          :dimensions   [field-name]
-                                                                          :metrics      []
-                                                                          :pagingSpec   (merge {:threshold driver/field-values-lazy-seq-chunk-size}
-                                                                                               (when paging-identifiers
-                                                                                                 {:pagingIdentifiers paging-identifiers}))})]
+  (let [[{{:keys [pagingIdentifiers events]} :result}] (do-query details {:queryType   :select
+                                                                          :dataSource  table-name
+                                                                          :intervals   ["-5000/5000"]
+                                                                          :granularity :all
+                                                                          :dimensions  [field-name]
+                                                                          :metrics     []
+                                                                          :pagingSpec  (merge {:threshold driver/field-values-lazy-seq-chunk-size}
+                                                                                              (when paging-identifiers
+                                                                                                {:pagingIdentifiers paging-identifiers}))})]
     ;; return pair of [paging-identifiers values]
     [ ;; Paging identifiers return the largest offset of their results, e.g. 49 for page 1.
      ;; We need to inc that number so the next page starts after that (e.g. 50)
@@ -137,8 +138,8 @@
 
 (defn- field-values-lazy-seq
   ([_ field]
-   (field-values-lazy-seq (:details (u/deref-> field :table :db))
-                          (:name @(:table field))
+   (field-values-lazy-seq (:details (table/database (field/table field)))
+                          (:name (field/table field))
                           (:name field)
                           0
                           nil))
@@ -168,8 +169,8 @@
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
          {:can-connect?          can-connect?
-          :describe-database     describe-database
-          :describe-table        describe-table
+          :describe-database     (u/drop-first-arg describe-database)
+          :describe-table        (u/drop-first-arg describe-table)
           :details-fields        (constantly [{:name         "host"
                                                :display-name "Host"
                                                :default      "http://localhost"}

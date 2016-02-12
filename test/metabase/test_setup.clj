@@ -5,6 +5,7 @@
             [clojure.set :as set]
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
+            [colorize.core :as color]
             [expectations :refer :all]
             (metabase [core :as core]
                       [db :as db]
@@ -102,13 +103,14 @@
 ;; Check that we're on target for every public var in Metabase having a docstring
 ;; This will abort unit tests if we don't hit our target
 (defn- expected-docstr-percentage-for-day-of-year
-  "Calculate the percentage of public vars we expect to have a docstring by the current date in time. This ranges from 80% for the end of January to 100% half way through the year."
+  "Calculate the percentage of public vars we expect to have a docstring by the current date in time.
+   This ranges from 80% for the end of January to 100% a quarter of the way through the year."
   ([]
    (expected-docstr-percentage-for-day-of-year (u/date-extract :day-of-year)))
   ([doy]
    (let [start-day                  30
          start-percent              80.0
-         target-doy-for-100-percent 180
+         target-doy-for-100-percent 90
          remaining-percent          (- 100.0 start-percent)
          remaining-days             (- target-doy-for-100-percent start-day)]
      (Math/min (+ start-percent (* (/ remaining-percent remaining-days)
@@ -133,9 +135,10 @@
         needs-more-dox?     (< percentage expected-percentage)]
     (println (u/format-color (if needs-more-dox? 'red 'green)
                  "%.1f%% of Metabase public vars have docstrings. (%d/%d) Expected for today: %.1f%%" percentage num-with-dox total expected-percentage))
-    (println (u/format-color 'cyan "Why don't you go write a docstr for %s?" (first (shuffle (for [[symb has-doc?] symb->has-doc?
-                                                                                                   :when           (not has-doc?)]
-                                                                                               symb)))))
+    (println (u/format-color 'cyan "While you're waiting, why don't you go write a docstr for %s?"
+               (color/bold (first (shuffle (for [[symb has-doc?] symb->has-doc?
+                                                 :when           (not has-doc?)]
+                                             symb))))))
     needs-more-dox?))
 
 

@@ -211,7 +211,7 @@
      (when (and id
                 (config/config-bool :mb-db-logging)
                 (not @(resolve 'metabase.db/*sel-disable-logging*)))
-       (log/debug "DB CALL: " (:name entity) id))
+       (log/debug "DB CALL:" (:name entity) id))
      (when-let [[obj] (seq (k/select (assoc entity :fields (default-fields entity))
                                      (k/where {:id id})
                                      (k/limit 1)))]

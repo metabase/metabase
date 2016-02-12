@@ -248,20 +248,17 @@
                                    (if-not (contains? pks (:name field)) field
                                                                          (assoc field :pk? true))))))))
 
-(defn describe-database
-  [driver database]
+(defn- describe-database [driver database]
   (with-metadata [metadata driver database]
     {:tables (active-tables driver, ^DatabaseMetaData metadata)}))
 
-(defn describe-table
-  [driver table]
+(defn- describe-table [driver table]
   (with-metadata [metadata driver (table/database table)]
     (->> (assoc (select-keys table [:name :schema]) :fields (describe-table-fields metadata driver table))
          ;; find PKs and mark them
          (add-table-pks metadata))))
 
-(defn describe-table-fks
-  [driver table]
+(defn- describe-table-fks [driver table]
   (with-metadata [metadata driver (table/database table)]
     (set (->> (.getImportedKeys metadata nil nil (:name table))
               jdbc/result-set-seq
@@ -310,16 +307,16 @@
   (require 'metabase.driver.generic-sql.native
            'metabase.driver.generic-sql.query-processor)
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table             analyze-table
-          :can-connect?              can-connect?
-          :describe-database         describe-database
-          :describe-table            describe-table
-          :describe-table-fks        describe-table-fks
-          :features                  features
-          :field-values-lazy-seq     field-values-lazy-seq
-          :process-native            (resolve 'metabase.driver.generic-sql.native/process-and-run)
-          :process-structured        (resolve 'metabase.driver.generic-sql.query-processor/process-structured)
-          :table-rows-seq            table-rows-seq}))
+         {:analyze-table         analyze-table
+          :can-connect?          can-connect?
+          :describe-database     describe-database
+          :describe-table        describe-table
+          :describe-table-fks    describe-table-fks
+          :features              features
+          :field-values-lazy-seq field-values-lazy-seq
+          :process-native        (resolve 'metabase.driver.generic-sql.native/process-and-run)
+          :process-structured    (resolve 'metabase.driver.generic-sql.query-processor/process-structured)
+          :table-rows-seq        table-rows-seq}))
 
 
 
