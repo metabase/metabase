@@ -5,6 +5,8 @@ import React, { Component, PropTypes } from "react";
 import Visualization from "metabase/visualizations/Visualization.jsx";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 
+import Urls from "metabase/lib/urls";
+
 import { fetchDashCardData, markNewCardSeen } from "../actions";
 
 import cx from "classnames";
@@ -82,7 +84,7 @@ export default class DashCard extends Component {
         return (
             <div className={"Card bordered rounded flex flex-column " + cx({ "Card--recent": recent })}>
                 <div className="Card-heading my1 px2">
-                    <a data-metabase-event={"Dashboard;Card Link;"+card.display} className="Card-title link" href={"/card/"+card.id+"?clone"}>
+                    <a data-metabase-event={"Dashboard;Card Link;"+card.display} className="Card-title link" href={Urls.card(card.id)}>
                         <div ref="title" className="h3 text-normal my1">
                             {card.name}
                         </div>

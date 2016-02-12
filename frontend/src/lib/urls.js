@@ -2,7 +2,7 @@
 var Urls = {
     card: function(card_id) {
         // NOTE that this is for an ephemeral card link, not an editable card
-        return "/card/"+card_id+"?clone";
+        return "/card/"+card_id;
     },
 
     dashboard: function(dashboard_id) {

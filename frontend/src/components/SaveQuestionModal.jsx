@@ -7,64 +7,100 @@ import Query from "metabase/lib/query";
 
 import cx from "classnames";
 
-export default React.createClass({
-    displayName: "SaveQuestionModal",
-    propTypes: {
+
+export default class SaveQuestionModal extends Component {
+
+    constructor(props, context) {
+        super(props, context);
+        this.state = {
+            errors: null,
+            valid: false,
+            details: {
+                name: props.card.name || Query.generateQueryDescription(props.tableMetadata, props.card.dataset_query.query),
+                description: props.card.description || null,
+                saveType: "create"
+            }
+        };
+
+        this.props.createFn.bind(this);
+        this.props.saveFn.bind(this);
+    }
+
+    static propTypes = {
         card: PropTypes.object.isRequired,
+        originalCard: PropTypes.object,
         tableMetadata: PropTypes.object, // can't be required, sometimes null
+        createFn: PropTypes.func.isRequired,
         saveFn: PropTypes.func.isRequired,
         closeFn: PropTypes.func.isRequired
-    },
+    }
 
-    getInitialState: function() {
-        return {
-            errors: null
-        };
-    },
+    componentDidMount() {
+        this.validateForm();
+    }
 
-    isFormReady: function() {
-        // TODO: make this work properly
-        return true;
-    },
+    componentDidUpdate() {
+        this.validateForm();
+    }
 
-    save: function(event) {
-        event.preventDefault();
+    validateForm() {
+        let { details } = this.state;
 
-        // make sure that user put in a card name before we close out the form
-        var name = React.findDOMNode(this.refs.name).value.trim();
-        if (!name || name === "") {
-            this.setState({
-                errors: {
-                    data: {
-                        errors: {
-                            name: "This is a required field"
-                        }
-                    }
-                }
-            });
+        let valid = true;
 
-            return;
+        // name is required
+        if (!details.name) {
+            valid = false;
         }
 
-        var card = this.props.card;
-        card.name = React.findDOMNode(this.refs.name).value.trim();
-        card.description = React.findDOMNode(this.refs.description).value.trim();
+        if (this.state.valid !== valid) {
+            this.setState({ valid });
+        }
+    }
+
+    onChange(fieldName, fieldValue) {
+        this.setState({ details: { ...this.state.details, [fieldName]: fieldValue ? fieldValue.trim() : null }});
+    }
+
+    formSubmitted(e) {
+        e.preventDefault();
+
+        let { details } = this.state;
+        let card = this.props.card;
+
+        card.name = details.name;
+        card.description = details.description;
         card.public_perms = 2; // public read/write
 
-        this.props.saveFn(card).then((success) => {
-            if (this.isMounted()) {
-                this.props.closeFn();
-            }
-        }, (error) => {
-            if (this.isMounted()) {
-                this.setState({
-                    errors: error
-                });
-            }
-        });
-    },
+        if (details.saveType === "create") {
+            this.props.createFn(card, this.props.addToDashboard).then((success) => {
+                if (this.isMounted()) {
+                    this.props.closeFn();
+                }
+            }, (error) => {
+                if (this.isMounted()) {
+                    this.setState({
+                        errors: error
+                    });
+                }
+            });
+        } else if (details.saveType === "overwrite") {
+            card.id = this.props.originalCard.id;
+            this.props.saveFn(card, this.props.addToDashboard).then((success) => {
+                if (this.isMounted()) {
+                    this.props.closeFn();
+                }
+            }, (error) => {
+                if (this.isMounted()) {
+                    this.setState({
+                        errors: error
+                    });
+                }
+            });
+        }
+    }
 
-    render: function() {
+    render() {
         var formError;
         if (this.state.errors) {
             var errorMessage;
@@ -87,35 +123,52 @@ export default React.createClass({
 
         var buttonClasses = cx({
             "Button": true,
-            "Button--primary": this.isFormReady()
+            "Button--primary": this.state.valid
         });
 
-        var name = this.props.card.name || Query.generateQueryDescription(this.props.tableMetadata, this.props.card.dataset_query.query);
+        var saveOrUpdate = null;
+        if (!this.props.card.id && this.props.originalCard) {
+            saveOrUpdate = (
+                <FormField
+                    displayName="Save or Replace?"
+                    fieldName="saveType"
+                    errors={this.state.errors}>
+                    <ul>
+                        <li onClick={(e) => this.onChange("saveType", "create")}><input type="radio" name="saveType" value="create" checked={this.state.details.saveType === "create"} /> Save as a new question?</li>
+                        <li onClick={(e) => this.onChange("saveType", "overwrite")}><input type="radio" name="saveType" value="overwrite" checked={this.state.details.saveType === "overwrite"} /> Replace original question, "{this.props.originalCard.name}"</li>
+                    </ul>
+                </FormField>
+            );
+        }
+
+        let title = this.props.addToDashboard ? "First, Save Your Question" : "Save Question";
 
         return (
             <ModalContent
-                title="Save Question"
+                title={title}
                 closeFn={this.props.closeFn}
             >
-                <form className="flex flex-column flex-full" onSubmit={this.save}>
+                <form className="flex flex-column flex-full" onSubmit={(e) => this.formSubmitted(e)}>
                     <div className="Form-inputs">
+                        {saveOrUpdate}
+
                         <FormField
                             displayName="Name"
                             fieldName="name"
                             errors={this.state.errors}>
-                            <input ref="name" className="Form-input full" name="name" placeholder="What is the name of your card?" defaultValue={name} autofocus/>
+                            <input className="Form-input full" name="name" placeholder="What is the name of your card?" defaultValue={this.state.details.name} onChange={(e) => this.onChange("name", e.target.value)} autofocus/>
                         </FormField>
 
                         <FormField
                             displayName="Description (optional)"
                             fieldName="description"
                             errors={this.state.errors}>
-                            <textarea ref="description" className="Form-input full" name="description" placeholder="It's optional but oh, so helpful" defaultValue={this.props.card.description} />
+                            <textarea className="Form-input full" name="description" placeholder="It's optional but oh, so helpful" defaultValue={this.state.details.description} onChange={(e) => this.onChange("description", e.target.value)} />
                         </FormField>
                     </div>
 
                     <div className="Form-actions">
-                        <button className={buttonClasses}>
+                        <button className={buttonClasses} disabled={!this.state.valid}>
                             Save
                         </button>
                         <span className="px1">or</span><a className="no-decoration text-brand text-bold" onClick={this.props.closeFn}>Cancel</a>
@@ -124,5 +177,5 @@ export default React.createClass({
                 </form>
             </ModalContent>
         );
-    },
-});
+    }
+}

@@ -4,7 +4,7 @@ import DashboardHeader from "../components/DashboardHeader.jsx";
 import DashboardGrid from "../components/DashboardGrid.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
-import { fetchDashboard } from "../actions";
+import { addCardToDashboard, fetchCards, fetchDashboard, setEditingDashboard } from "../actions";
 
 export default class Dashboard extends Component {
 
@@ -25,6 +25,13 @@ export default class Dashboard extends Component {
 
         try {
             await this.props.dispatch(fetchDashboard(this.props.selectedDashboard));
+
+            if (this.props.addCardOnLoad) {
+                // we have to load our cards before we can add one
+                await this.props.dispatch(fetchCards());
+                this.props.dispatch(setEditingDashboard(true));
+                this.props.dispatch(addCardToDashboard({ dashId: this.props.selectedDashboard, cardId: this.props.addCardOnLoad }));
+            }
         } catch (error) {
             if (error.status === 404) {
                 this.props.onChangeLocation("/404");

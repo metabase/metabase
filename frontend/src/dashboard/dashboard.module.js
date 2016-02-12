@@ -9,6 +9,7 @@ var Dashboard = angular.module('metabase.dashboard', [
 Dashboard.config(['$routeProvider', function ($routeProvider) {
     $routeProvider.when('/dash/:dashId', {
         template: '<div mb-redux-component class="flex flex-column flex-full" />',
-        controller: 'Dashboard'
+        controller: 'Dashboard',
+        reloadOnSearch: false
     });
 }]);

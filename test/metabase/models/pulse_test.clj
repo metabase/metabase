@@ -56,7 +56,7 @@
                    :details       {:other "stuff"},
                    :schedule_day  nil,
                    :recipients    [{:email "foo@bar.com"}
-                                   (dissoc (user-details :rasta) :is_superuser)]}]}
+                                   (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]}]}
   (tu/with-temp Pulse [{:keys [id]} {:creator_id (user->id :rasta)
                                      :name       "Lodi Dodi"}]
     (tu/with-temp PulseChannel [{channel-id :id :as channel} {:pulse_id      id
@@ -178,7 +178,7 @@
    :schedule_hour 4
    :schedule_day  nil
    :recipients    [{:email "foo@bar.com"}
-                   (dissoc (user-details :rasta) :is_superuser)]}
+                   (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]}
   (tu/with-temp Pulse [{:keys [id]} {:creator_id (user->id :rasta)
                                      :name       (tu/random-name)}]
     (do
@@ -238,7 +238,7 @@
                    :channel_type  :email,
                    :schedule_day  nil,
                    :recipients    [{:email "foo@bar.com"}
-                                   (dissoc (user-details :crowberto) :is_superuser)]}]}
+                                   (dissoc (user-details :crowberto) :is_superuser :is_qbnewb)]}]}
   (tu/with-temp Pulse [{:keys [id]} {:creator_id (user->id :rasta)
                                      :name       "Lodi Dodi"}]
     (tu/with-temp Card [{card-id1 :id} {:creator_id            (user->id :rasta)

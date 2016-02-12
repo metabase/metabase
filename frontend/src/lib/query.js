@@ -3,6 +3,41 @@ import React from "react";
 import inflection from "inflection";
 import _ from "underscore";
 
+
+export const newQueryTemplates = {
+    "query": {
+        database: null,
+        type: "query",
+        query: {
+            source_table: null,
+            aggregation: ["rows"],
+            breakout: [],
+            filter: []
+        }
+    },
+    "native": {
+        database: null,
+        type: "native",
+        native: {
+            query: ""
+        }
+    }
+};
+
+export function createQuery(type = "query", databaseId, tableId) {
+    let query = angular.copy(newQueryTemplates[type]);
+
+    if (databaseId) {
+        query.database = databaseId;
+    }
+
+    if (type === "query" && databaseId && tableId) {
+        query.query.source_table = tableId;
+    }
+
+    return query;
+}
+
 var Query = {
 
     isStructured(query) {

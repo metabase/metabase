@@ -1,5 +1,16 @@
 import Query from "metabase/lib/query";
 
+
+export function createCard(name = null) {
+    return {
+        name: name,
+        public_perms: 0,
+        display: "table",
+        visualization_settings: {},
+        dataset_query: {},
+    };
+}
+
 export function serializeCardForUrl(card) {
     var dataset_query = angular.copy(card.dataset_query);
     if (dataset_query.query) {

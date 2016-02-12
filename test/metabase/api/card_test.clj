@@ -158,6 +158,7 @@
          :creator (match-$ (fetch-user :rasta)
                     {:common_name "Rasta Toucan",
                      :is_superuser false,
+                     :is_qbnewb true,
                      :last_login $,
                      :last_name "Toucan",
                      :first_name "Rasta",
