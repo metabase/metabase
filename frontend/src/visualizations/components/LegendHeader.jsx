@@ -4,6 +4,8 @@ import ReactDOM from "react-dom";
 import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 
+import Urls from "metabase/lib/urls";
+
 import cx from "classnames";
 
 const COLORS = ["#4A90E2", "#84BB4C", "#F9CF48", "#ED6E6E", "#885AB1"];
@@ -32,7 +34,7 @@ export default class LegendHeader extends Component {
 
     render() {
         const { card, series, onAddSeries } = this.props;
-        const showTitles = series.length > 0 && this.state.width > 150;
+        const showTitles = !series || series.length === 0 || this.state.width > 150;
         return (
             <div className="Card-title my1 flex flex-no-shrink flex-row">
                 <LegendItem card={card} index={0} showTitles={showTitles} />
@@ -49,7 +51,7 @@ export default class LegendHeader extends Component {
 
 const LegendItem = ({ card, index, showTitles }) =>
     <Tooltip key={index} tooltip={card.name}>
-        <a href={"/card/"+card.id} className={cx("no-decoration h3 mb1 text-bold flex align-center", { mr1: showTitles })} style={{ overflowX: "hidden", flex: "0 1 auto" }}>
+        <a href={Urls.card(card.id)} className={cx("no-decoration h3 mb1 text-bold flex align-center", { mr1: showTitles })} style={{ overflowX: "hidden", flex: "0 1 auto" }}>
             <div className="flex-no-shrink inline-block circular" style={{width: 13, height: 13, margin: 4, marginRight: 8, backgroundColor: COLORS[index % COLORS.length]}} />
             {showTitles && <div style={{ overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{card.name}</div> }
         </a>

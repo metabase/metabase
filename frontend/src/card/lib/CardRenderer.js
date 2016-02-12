@@ -7,7 +7,7 @@ import dc from "dc";
 import moment from "moment";
 
 import GeoHeatmapChartRenderer from "./GeoHeatmapChartRenderer";
-import { getMinMax, getAvailableCanvasWidth, getAvailableCanvasHeight } from "./utils";
+import { getMinMax, getAvailableCanvasWidth, getAvailableCanvasHeight, computeSplit } from "./utils";
 
 import { formatNumber, formatValue } from "metabase/lib/formatting";
 
@@ -43,7 +43,7 @@ d3.time.quarters = (start, stop, step) => d3.time.months(start, stop, 3);
 
 let MIN_PIXELS_PER_TICK = {
     x: 100,
-    y: 50
+    y: 30
 };
 
 // investigate the response from a dataset query and determine if the dimension is a timeseries
@@ -72,18 +72,15 @@ function adjustTicksIfNeeded(axis, axisSize, minPixelsPerTick) {
 
 function getDcjsChartType(cardType) {
     switch (cardType) {
-        case "pie": return "pieChart";
-        case "bar": return "barChart";
-        case "line":
-        case "area":
-        case "timeseries": return "lineChart";
-        default: return "barChart";
+        case "pie":  return "pieChart";
+        case "line": return "lineChart";
+        case "area": return "lineChart";
+        case "bar":  return "barChart";
+        default:     return "barChart";
     }
 }
 
-function initializeChart(card, element, chartType) {
-    chartType = (chartType) ? chartType : getDcjsChartType(card.display);
-
+function initializeChart(card, element, chartType = getDcjsChartType(card.display)) {
     // create the chart
     let chart = dc[chartType](element);
 
@@ -286,10 +283,9 @@ function applyChartYAxis(chart, card, coldefs, data, minPixelsPerTick) {
 
     let settings = card.visualization_settings;
     let y = settings.yAxis;
-    let yAxis = chart.yAxis();
 
     if (y.labels_enabled) {
-        chart.yAxisLabel((y.title_text || null) || coldefs[1].display_name);
+        chart.yAxisLabel(y.title_text || coldefs[1].display_name);
         chart.renderHorizontalGridLines(true);
 
         if (y.min || y.max) {
@@ -307,9 +303,15 @@ function applyChartYAxis(chart, card, coldefs, data, minPixelsPerTick) {
 
         // Very small charts (i.e., Dashboard Cards) tend to render with an excessive number of ticks
         // set some limits on the ticks per pixel and adjust if needed
-        adjustTicksIfNeeded(yAxis, chart.height(), minPixelsPerTick);
+        adjustTicksIfNeeded(chart.yAxis(), chart.height(), minPixelsPerTick);
+        if (chart.rightYAxis) {
+            adjustTicksIfNeeded(chart.rightYAxis(), chart.height(), minPixelsPerTick);
+        }
     } else {
-        yAxis.ticks(0);
+        chart.yAxis().ticks(0);
+        if (chart.rightYAxis) {
+            chart.rightYAxis().ticks(0);
+        }
     }
 }
 
@@ -605,6 +607,10 @@ export let CardRenderer = {
             dimension.group().reduceSum(d => (d["y"+index] || 0))
         );
 
+        let xValues = dimension.group().all().map(d => d.key);
+        let yExtents = groups.map(group => d3.extent(group.all(), d => d.value));
+        let yAxisSplit = computeSplit(yExtents);
+
         let chart;
         if (isStacked || series.length === 1) {
             chart = initializeChart(series[0].card, element)
@@ -612,7 +618,6 @@ export let CardRenderer = {
                         .group(groups[0]);
 
             // apply any stacked series if applicable
-            console.log("groups", groups)
             for (let i = 1; i < groups.length; i++) {
                 chart.stack(groups[i]);
             }
@@ -641,6 +646,7 @@ export let CardRenderer = {
                     .dimension(dimension)
                     .group(groups[index])
                     .colors(COLORS[index % COLORS.length])
+                    .useRightYAxis(yAxisSplit.length > 1 && yAxisSplit[1].includes(index))
                 // BAR:
                 if (subChart.barPadding) {
                     subChart

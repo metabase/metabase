@@ -49,3 +49,49 @@ export function getAvailableCanvasWidth(element) {
 
     return parentWidth - parentPaddingLeft - parentPaddingRight;
 }
+
+export function computeSplit(extents) {
+    // copy and sort the intervals by the lower bound
+    let intervals = extents.map(e => e.slice()).sort((a,b) => a[0] - b[0]);
+
+    // start with a zero width gap
+    let gap = [0,0];
+
+    // iterate over each interval
+    let current = intervals[0];
+    for (let i = 1; i < intervals.length; i++) {
+        let next = intervals[i];
+        // merge next interval with the current one if appropriate
+        if (next[0] <= current[1]) {
+            if (next[1] > current[1]) {
+                current[1] = next[1];
+            }
+        // otheriwse update the gap if it's larger than the previously recorded gap
+        } else {
+            if (next[0] - current[1] > gap[1] - gap[0]) {
+                gap = [current[1], next[0]];
+            }
+            current = next;
+        }
+    }
+
+    let partitionIndexes;
+    // if there is a gap, and it's larger than an order of magnitude, then split
+    if (gap[1] - gap[0] !== 0 && (gap[1] / gap[0]) >= 10) {
+        partitionIndexes = [[],[]];
+        extents.forEach(([min, max], index) => {
+            // if the end of an extent is less or equal to than the beginning of the gap
+            // put it in the lower partition
+            if (max <= gap[0]) {
+                partitionIndexes[0].push(index);
+            } else {
+                partitionIndexes[1].push(index);
+            }
+        })
+    // otherwise don't partition
+    } else {
+        partitionIndexes = [extents.map((e,i) => i)];
+    }
+
+    return partitionIndexes;
+}
