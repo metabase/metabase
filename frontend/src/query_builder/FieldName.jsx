@@ -49,11 +49,6 @@ export default class FieldName extends Component {
             targetTitle = (<span>{fieldDef.display_name}</span>);
         }
 
-        // Mongo doesn't support non-default time bucketing so don't show it
-        if (fieldDef && isDate(fieldDef) && tableMetadata.db.engine !== "mongo") {
-            bucketingTitle = ": " + formatBucketing(bucketing);
-        }
-
         var titleElement;
         if (fkTitle || targetTitle) {
             titleElement = <span className="QueryOption">{fkTitle}{fkIcon}{targetTitle}{bucketingTitle}</span>;
