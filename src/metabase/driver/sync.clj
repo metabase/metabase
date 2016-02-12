@@ -609,8 +609,8 @@ infer-field-special-type
        (test:url-special-type   driver field)
        (test:json-special-type  driver field)))
 
-(defn generic-analyze-table
-  "Generic implementation of `analyze-table`."
+(defn make-analyze-table
+  "Make a generic implementation of `analyze-table`."
   [driver & {:keys [field-avg-length-fn field-percent-urls-fn]
              :or   {field-avg-length-fn   (partial driver/default-field-avg-length driver)
                     field-percent-urls-fn (partial driver/default-field-percent-urls driver)}}]
@@ -622,3 +622,8 @@ infer-field-special-type
                       (cond->> {:id id}
                         (test-for-cardinality? field new-field?) (test:cardinality-and-extract-field-values field)
                         new-field?                               (test:new-field driver field))))})))
+
+(defn generic-analyze-table
+  "An implementation of `analyze-table` using the defaults (`default-field-avg-length` and `field-percent-urls`)."
+  [driver table new-field-ids]
+  ((make-analyze-table driver) driver table new-field-ids))

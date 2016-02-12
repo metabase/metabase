@@ -270,13 +270,14 @@
 
 
 (defn analyze-table
+  "Default implementation of `analyze-table` for SQL drivers."
   [driver table new-table-ids]
-  ((sync/generic-analyze-table driver
-                               :field-avg-length-fn (partial field-avg-length driver)
-                               :field-percent-urls-fn (partial field-percent-urls driver))
-    driver
-    table
-    new-table-ids))
+  ((sync/make-analyze-table driver
+                            :field-avg-length-fn   (partial field-avg-length driver)
+                            :field-percent-urls-fn (partial field-percent-urls driver))
+   driver
+   table
+   new-table-ids))
 
 
 (defn ISQLDriverDefaultsMixin
