@@ -45,4 +45,25 @@
       {:status 500
        :body   (:error response)})))
 
+
+(defendpoint POST "/csv"
+  "Execute an MQL query and download the result data as a CSV file."
+  [query]
+  {query [Required String->Dict]}
+  (clojure.pprint/pprint query)
+  (read-check Database (:database query))
+  (let [{{:keys [columns rows]} :data :keys [status] :as response} (driver/dataset-query query {:executed_by *current-user-id*})
+        columns (map name columns)]                         ; turn keywords into strings, otherwise we get colons in our output
+    (if (= status :completed)
+      ;; successful query, send CSV file
+      {:status  200
+       :body    (with-out-str
+                  (csv/write-csv *out* (into [columns] rows)))
+       :headers {"Content-Type" "text/csv"
+                 "Content-Disposition" (str "attachment; filename=\"query_result_" (u/date->iso-8601) ".csv\"")}}
+      ;; failed query, send error message
+      {:status 500
+       :body   (:error response)})))
+
+
 (define-routes)

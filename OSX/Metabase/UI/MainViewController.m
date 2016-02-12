@@ -115,7 +115,7 @@ NSString *BaseURL() {
 	[self.webView.mainFrame loadRequest:request];
 }
 
-- (void)saveCSV:(NSString *)apiURL {
+- (void)saveCSV:(NSString *)datasetQuery {
 	NSSavePanel *savePanel			= [NSSavePanel savePanel];
 	savePanel.allowedFileTypes		= @[@"csv"];
 	savePanel.allowsOtherFileTypes	= NO;
@@ -133,8 +133,14 @@ NSString *BaseURL() {
 	if ([savePanel runModal] == NSFileHandlingPanelOKButton) {
 		NSLog(@"Will save CSV at: %@", savePanel.URL);
 		
-		NSURL *url = [NSURL URLWithString:apiURL relativeToURL:[NSURL URLWithString:BaseURL()]];
-		NSURLRequest *csvRequest = [NSURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringCacheData timeoutInterval:10.0f];
+		NSURL *url = [NSURL URLWithString:@"/api/dataset/csv" relativeToURL:[NSURL URLWithString:BaseURL()]];
+        NSString *postBody = [@"query=" stringByAppendingString:datasetQuery];
+        NSData *data = [postBody dataUsingEncoding:NSUTF8StringEncoding];
+		NSMutableURLRequest *csvRequest = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringCacheData timeoutInterval:10.0f];
+        csvRequest.HTTPMethod = @"POST";
+        [csvRequest setValue:@"application/x-www-form-urlencoded" forHTTPHeaderField:@"Content-Type"];
+        [csvRequest setValue:[NSString stringWithFormat:@"%lu", (NSUInteger)data.length] forHTTPHeaderField:@"Content-Length"];
+        csvRequest.HTTPBody = data;
 		[NSURLConnection sendAsynchronousRequest:csvRequest queue:[[NSOperationQueue alloc] init] completionHandler:^(NSURLResponse *response, NSData *data, NSError *connectionError) {
 			NSError *writeError = nil;
 			[data writeToURL:savePanel.URL options:NSDataWritingAtomic error:&writeError];
@@ -159,8 +165,8 @@ NSString *BaseURL() {
 	};
 	
 	// custom functions for OS X integration are available to the frontend as properties of window.OSX
-	context[@"OSX"] = @{@"saveCSV": ^(JSValue *apiURL){
-		[self saveCSV:apiURL.description];
+	context[@"OSX"] = @{@"saveCSV": ^(JSValue *datasetQuery){
+		[self saveCSV:datasetQuery.description];
 	}};
 }
 

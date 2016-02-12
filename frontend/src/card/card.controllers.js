@@ -346,12 +346,6 @@ CardControllers.controller('CardDetail', [
             visualizationModel.isRunning = isRunning;
             visualizationModel.isObjectDetail = isObjectDetail;
 
-            if (queryResult && !queryResult.error) {
-                visualizationModel.downloadLink = '/api/dataset/csv?query=' + encodeURIComponent(JSON.stringify(card.dataset_query));
-            } else {
-                visualizationModel.downloadLink = null;
-            }
-
             React.render(<QueryVisualization {...visualizationModel}/>, document.getElementById('react_qb_viz'));
         }
 
