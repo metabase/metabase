@@ -85,7 +85,7 @@ export default class FieldList extends Component {
     }
 
     renderItemExtra(item) {
-        let { field, tableMetadata, enableTimeGrouping } = this.props;
+        let { field, enableTimeGrouping } = this.props;
 
         return (
             <div className="flex align-center">
