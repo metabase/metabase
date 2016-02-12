@@ -78,11 +78,11 @@
                           (cond-> arg
                             (number? arg) k/raw))))
 
-(def ^{:arglists '([& exprs])}  +  (partial math-infix "+"))
-(def ^{:arglists '([& exprs])}  -  (partial math-infix "-"))
-(def ^{:arglists '([& exprs])}  /  (partial math-infix "/"))
-(def ^{:arglists '([& exprs])}  *  (partial math-infix "*"))
-(def ^{:arglists '([& exprs])} mod (partial math-infix "%"))
+(def ^{:arglists '([& exprs])}  +  "Math operator. Interpose `+` between EXPRS and wrap in parentheses." (partial math-infix "+"))
+(def ^{:arglists '([& exprs])}  -  "Math operator. Interpose `-` between EXPRS and wrap in parentheses." (partial math-infix "-"))
+(def ^{:arglists '([& exprs])}  /  "Math operator. Interpose `/` between EXPRS and wrap in parentheses." (partial math-infix "/"))
+(def ^{:arglists '([& exprs])}  *  "Math operator. Interpose `*` between EXPRS and wrap in parentheses." (partial math-infix "*"))
+(def ^{:arglists '([& exprs])} mod "Math operator. Interpose `%` between EXPRS and wrap in parentheses." (partial math-infix "%"))
 
 (defn inc "Add 1 to X."        [x] (+ x 1))
 (defn dec "Subtract 1 from X." [x] (- x 1))
@@ -98,7 +98,9 @@
   (kutils/func (clojure.core/format "CAST(%%s AS %s)" (name c))
                [x]))
 
-(defn format [format-str expr]
+(defn format
+  "SQL `FORMAT` function."
+  [format-str expr]
   (k/sqlfn :FORMAT expr (literal format-str)))
 
 (defn ->date                     "CAST X to a `DATE`."                     [x] (cast :DATE x))

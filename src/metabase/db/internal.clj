@@ -49,17 +49,15 @@
      {:post [:metabase.models.interface/entity]}
      (cond (vector? entity) (-entity->korma (first entity))
            (string? entity) (-entity->korma (symbol entity))
-           (symbol? entity) (try (eval entity)
-                                 (catch clojure.lang.Compiler$CompilerException _ ; a wrapped ClassNotFoundException
-                                   (let [[_ ns symb] (re-matches #"^(?:([^/]+)/)?([^/]+)$" (str entity))
-                                         _    (assert symb)
-                                         ns   (symbol (or ns
-                                                          (str "metabase.models." (-> symb
-                                                                                      (s/replace #"([a-z])([A-Z])" "$1-$2") ; convert something like CardFavorite
-                                                                                      s/lower-case)))) ; to ns like metabase.models.card_favorite
-                                         symb (symbol symb)]
-                                     (require ns)
-                                     @(ns-resolve ns symb))))
+           (symbol? entity) (let [[_ ns symb] (re-matches #"^(?:([^/]+)/)?([^/]+)$" (str entity))
+                                  _    (assert symb)
+                                  ns   (symbol (or ns
+                                                   (str "metabase.models." (-> symb
+                                                                               (s/replace #"([a-z])([A-Z])" "$1-$2") ; convert something like CardFavorite
+                                                                               s/lower-case)))) ; to ns like metabase.models.card_favorite
+                                  symb (symbol symb)]
+                              (require ns)
+                              @(ns-resolve ns symb))
            :else entity))))
 
 
@@ -86,7 +84,7 @@
     (future
       (when (config/config-bool :mb-db-logging)
         (when-not @(resolve 'metabase.db/*sel-disable-logging*)
-          (log/debug "DB CALL: " (:name entity)
+          (log/debug "DB CALL:" (:name entity)
                      (or (:fields entity+fields) "*")
                      (s/replace log-str #"korma.core/" "")))))
 

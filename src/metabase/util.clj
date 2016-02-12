@@ -17,6 +17,9 @@
            javax.xml.bind.DatatypeConverter
            org.joda.time.format.DateTimeFormatter))
 
+;; Set the default width for pprinting to 240 instead of 72. The default width is too narrow and wastes a lot of space for pprinting huge things like expanded queries
+(intern 'clojure.pprint '*print-right-margin* 240)
+
 (declare pprint-to-str)
 
 ;;; ### Protocols
@@ -363,21 +366,6 @@
   (fn [& args]
     (apply f (concat args bound-args))))
 
-(defmacro deref->
-  "Threads OBJ through FORMS, calling `deref` after each.
-   Now you can write:
-
-    (deref-> (sel :one Field :id 12) :table :db :organization)
-
-   Instead of:
-
-    @(:organization @(:db @(:table (sel :one Field :id 12))))"
-  {:arglists '([obj & forms])}
-  [obj & forms]
-  `(-> ~obj
-       ~@(interpose 'deref forms)
-       deref))
-
 (defn require-dox-in-this-namespace
   "Throw an exception if any public interned symbol in this namespace is missing a docstring."
   []
@@ -388,8 +376,9 @@
        dorun))
 
 (defmacro pdoseq
-  "Just like `doseq` but runs in parallel."
+  "(Almost) just like `doseq` but runs in parallel. Doesn't support advanced binding forms like `:let` or `:when` and only supports a single binding </3"
   [[binding collection] & body]
+  {:style/indent 1}
   `(dorun (pmap (fn [~binding]
                   ~@body)
                 ~collection)))
@@ -432,16 +421,19 @@
      ~@body
      ~'<>))
 
-(defn format-color
+(defn ^String format-color
   "Like `format`, but uses a function in `colorize.core` to colorize the output.
    COLOR-SYMB should be a quoted symbol like `green`, `red`, `yellow`, `blue`,
    `cyan`, `magenta`, etc. See the entire list of avaliable colors
    [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj).
 
      (format-color 'red \"Fatal error: %s\" error-message)"
-  ^String [color-symb format-string & args]
-  {:pre [(symbol? color-symb)]}
-  ((ns-resolve 'colorize.core color-symb) (apply format (str format-string) args)))
+  {:style/indent 2}
+  ([color-symb x]
+   {:pre [(symbol? color-symb)]}
+   ((ns-resolve 'colorize.core color-symb) x))
+  ([color-symb format-string & args]
+   (format-color color-symb (apply format format-string args))))
 
 (defn pprint-to-str
   "Returns the output of pretty-printing X as a string.
@@ -467,8 +459,10 @@
   [^Throwable e]
   (when e
     (when-let [stacktrace (.getStackTrace e)]
-      (filterv (partial re-find #"metabase")
-               (map str (.getStackTrace e))))))
+      (vec (for [frame (.getStackTrace e)
+                 :let  [s (str frame)]
+                 :when (re-find #"metabase" s)]
+             (s/replace s #"^metabase\." ""))))))
 
 (defn wrap-try-catch
   "Returns a new function that wraps F in a `try-catch`. When an exception is caught, it is logged
@@ -509,7 +503,7 @@
 (defmacro try-ignore-exceptions
   "Simple macro which wraps the given expression in a try/catch block and ignores the exception if caught."
   [& body]
-  `(try ~@body (catch Throwable e#)))
+  `(try ~@body (catch Throwable ~'_)))
 
 
 (defn wrap-try-catch!

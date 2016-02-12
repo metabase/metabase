@@ -242,14 +242,13 @@
 (def IDriverDefaultsMixin
   "Default implementations of `IDriver` methods marked *OPTIONAL*."
   {:analyze-table                     (constantly nil)
-   :date-interval                     (fn [_ unit amount] (u/relative-date unit amount))
+   :date-interval                     (u/drop-first-arg u/relative-date)
    :describe-table-fks                (constantly nil)
    :features                          (constantly nil)
-   :humanize-connection-error-message (fn [_ message] message)
-   :process-query-in-context          (fn [_ qp]      qp)
+   :humanize-connection-error-message (u/drop-first-arg identity)
+   :process-query-in-context          (u/drop-first-arg identity)
    :sync-in-context                   (fn [_ _ f] (f))
    :table-rows-seq                    (constantly nil)})
-
 
 
 ;;; ## CONFIG
@@ -329,7 +328,6 @@
   {:pre [engine]}
   (or ((keyword engine) @registered-drivers)
       (let [namespce (symbol (format "metabase.driver.%s" (name engine)))]
-        (log/debug (format "Loading driver '%s'..." engine))
         (u/try-ignore-exceptions (require namespce))
         ((keyword engine) @registered-drivers))))
 

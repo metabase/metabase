@@ -232,7 +232,10 @@
 
 ;; ## SEL
 
-(def ^:dynamic *sel-disable-logging* false)
+(def ^:dynamic *sel-disable-logging*
+  "Should we disable logging for the `sel` macro? Normally `false`, but bind this to `true` to keep logging from getting too noisy during
+   operations that require a lot of DB access, like the sync process."
+  false)
 
 (defmacro sel
   "Wrapper for korma `select` that calls `post-select` on results and provides a few other conveniences.
@@ -341,7 +344,9 @@
 
 ;; ## CASADE-DELETE
 
-(defn -cascade-delete [entity f]
+(defn -cascade-delete
+  "Internal implementation of `cascade-delete`. Don't use this directly!"
+  [entity f]
   (let [entity  (i/entity->korma entity)
         results (i/sel-exec entity f)]
     (dorun (for [obj (map (partial models/do-post-select entity) results)]
