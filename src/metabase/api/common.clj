@@ -1,6 +1,7 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
   (:require [clojure.tools.logging :as log]
+            [clojure.string :as s]
             [cheshire.core :as json]
             [compojure.core :refer [defroutes]]
             [korma.core :as k]
@@ -401,7 +402,7 @@
         route                  (typify-route route)
         [docstr [args & more]] (u/optional string? more)
         _                      (when-not docstr
-                                 (log/warn (format "Warning: endpoint %s/%s does not have a docstring." (.getName *ns*) fn-name)))
+                                 (log/warn (format "Warning: endpoint %s/%s does not have a docstring." (ns-name *ns*) fn-name)))
         [arg-annotations body] (u/optional #(and (map? %) (every? symbol? (keys %))) more)]
     `(def ~(vary-meta fn-name assoc
                       :doc (route-dox method route docstr args arg-annotations)
@@ -417,10 +418,15 @@
   "Create a `(defroutes routes ...)` form that automatically includes all functions created with
    `defendpoint` in the current namespace."
   [& additional-routes]
-  (let [api-routes (->> (ns-publics *ns*)
-                        (m/filter-vals #(:is-endpoint? (meta %)))
-                        (map first))]
-    `(defroutes ~'routes ~@api-routes ~@additional-routes)))
+  (let [api-routes (for [[symb varr] (ns-publics *ns*)
+                         :when       (:is-endpoint? (meta varr))]
+                     symb)]
+    `(defroutes ~(vary-meta 'routes assoc :doc (format "Ring routes for %s:\n%s"
+                                                       (-> (ns-name *ns*)
+                                                           (s/replace #"^metabase\." "")
+                                                           (s/replace #"\." "/"))
+                                                       (u/pprint-to-str (concat api-routes additional-routes))))
+       ~@api-routes ~@additional-routes)))
 
 (defn read-check
   "Check whether we can read an existing OBJ, or ENTITY with ID."

@@ -28,14 +28,16 @@
                                                       RelativeDateTimeValue
                                                       Value)))
 
-(def ^:private ^:dynamic *query* nil)
+(def ^:dynamic *query*
+  "The outer query currently being processed."
+  nil)
 
 (defn- driver [] (:driver *query*))
 
 
 ;;; ## Formatting
 
-(defn- as
+(defn as
   "Generate a FORM `AS` FIELD alias using the name information of FIELD."
   [form field]
   [form (name field)])
@@ -74,9 +76,8 @@
   (formatted [value] (sql/prepare-value (driver) value))
 
   DateTimeValue
-  (formatted [{value :value, {unit :unit} :field}]
-    ;; prevent Clojure from converting this to #inst literal, which is a util.date
-    (sql/date (driver) unit value))
+  (formatted [{{unit :unit} :field, :as value}]
+    (sql/date (driver) unit (sql/prepare-value (driver) value)))
 
   RelativeDateTimeValue
   (formatted [{:keys [amount unit], {field-unit :unit} :field}]
@@ -185,10 +186,34 @@
   (and (config/config-bool :mb-db-logging)
        (not qp/*disable-qp-logging*)))
 
+(defn pprint-korma-form
+  "Removing empty/`nil` kv pairs from KORMA-FORM and strip ns qualifiers (e.g. `(keyword (name :korma.sql.utils/func))` -> `:func`)."
+  [korma-form]
+  (u/pprint-to-str (walk/postwalk (fn [x] (cond
+                                            (keyword? x) (keyword (name x)) ; strip off ns qualifiers from keywords
+                                            (fn? x)      (class x)
+                                            :else        x))
+                                  (into {} (for [[k v] (dissoc korma-form :db :ent :from :options :aliases :results :type :alias)
+                                                 :when (or (not (sequential? v))
+                                                           (seq v))]
+                                             {k v})))))
+
+(defn pprint-sql
+  "Add newlines to the SQL to make it more readable."
+  [sql]
+  (when sql
+    (-> sql
+        (s/replace #"\sFROM" "\nFROM")
+        (s/replace #"\sLEFT JOIN" "\nLEFT JOIN")
+        (s/replace #"\sWHERE" "\nWHERE")
+        (s/replace #"\sGROUP BY" "\nGROUP BY")
+        (s/replace #"\sORDER BY" "\nORDER BY")
+        (s/replace #"\sLIMIT" "\nLIMIT")
+        (s/replace #"\sAND\s" "\n   AND ")
+        (s/replace #"\sOR\s" "\n    OR "))))
+
 (defn log-korma-form
-  "Log a korma form and the SQL it corresponds to logging is enabled.
-   Removing empty/`nil` kv pairs from KORMA-FORM and strip ns qualifiers (e.g. `(keyword (name :korma.sql.utils/func))` -> `:func`).
-   Add newlines to the SQL to make it more readable."
+  "Log a korma form and the SQL it corresponds to logging is enabled."
   ([korma-form]
    (when (should-log-korma-form?)
      (log-korma-form korma-form (try (k/as-sql korma-form)
@@ -197,27 +222,8 @@
 
   ([korma-form, ^String sql]
    (when (should-log-korma-form?)
-     (log/debug (u/format-color 'green "\nKORMA FORM: 😋\n%s"
-                  (binding [pprint/*print-right-margin* 200]
-                    (u/pprint-to-str (walk/postwalk (fn [x] (cond
-                                                              (keyword? x) (keyword (name x)) ; strip off ns qualifiers from keywords
-                                                              (fn? x)      (class x)
-                                                              :else        x))
-                                                    (into {} (for [[k v] (dissoc korma-form :db :ent :from :options :aliases :results :type :alias)
-                                                                   :when (or (not (sequential? v))
-                                                                             (seq v))]
-                                                               {k v}))))))
-                (when sql
-                  (u/format-color 'blue "\nSQL: 😈\n%s\n"
-                    (-> sql
-                        (s/replace #"\sFROM" "\nFROM")
-                        (s/replace #"\sLEFT JOIN" "\nLEFT JOIN")
-                        (s/replace #"\sWHERE" "\nWHERE")
-                        (s/replace #"\sGROUP BY" "\nGROUP BY")
-                        (s/replace #"\sORDER BY" "\nORDER BY")
-                        (s/replace #"\sLIMIT" "\nLIMIT")
-                        (s/replace #"\sAND\s" "\n   AND ")
-                        (s/replace #"\sOR\s" "\n    OR "))))))))
+     (log/debug (u/format-color 'green "\nKORMA FORM: 😋\n%s" (pprint-korma-form korma-form))
+                (u/format-color 'blue "\nSQL: 😈\n%s\n"  (pprint-sql sql))))))
 
 
 

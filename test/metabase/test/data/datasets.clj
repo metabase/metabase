@@ -6,7 +6,8 @@
             [environ.core :refer [env]]
             [expectations :refer [expect]]
             (metabase [config :as config]
-                      [driver :as driver])))
+                      [driver :as driver])
+            [metabase.test.data.interface :as i]))
 
 (driver/find-and-load-drivers!)
 (def ^:const all-valid-engines (set (keys (driver/available-drivers))))
@@ -56,6 +57,14 @@
   "Keyword name of the engine that we're currently testing against. Defaults to `:h2`."
   default-engine)
 
+(defn- engine->driver
+  "Like `driver/engine->driver`, but reloads the relevant test data namespace as well if needed."
+  [engine]
+  (try (i/engine (driver/engine->driver engine))
+       (catch IllegalArgumentException _
+         (require (symbol (str "metabase.test.data." (name engine))) :reload)))
+  (driver/engine->driver engine))
+
 (def ^:dynamic *data-loader*
   "The dataset we're currently testing against, bound by `with-engine`.
    This is just a regular driver, e.g. `MySQLDriver`, with an extra promise keyed by `:dbpromise`
@@ -64,7 +73,7 @@
 
 (defn do-with-engine [engine f]
   (binding [*engine*      engine
-            *data-loader* (driver/engine->driver engine)]
+            *data-loader* (engine->driver engine)]
     (f)))
 
 (defmacro with-engine

@@ -251,6 +251,8 @@
    (format-rows-by format-fns (not :format-nil-values?) rows))
   ([format-fns format-nil-values? rows]
    (cond
+     (= (:status rows) :failed) (throw (ex-info (:error rows) rows))
+
      (:data rows) (update-in rows [:data :rows] (partial format-rows-by format-fns))
      (:rows rows) (update    rows :rows         (partial format-rows-by format-fns))
      :else        (vec (for [row rows]
@@ -525,7 +527,6 @@
                             (ql/filter (ql/is-null $date))))]
     (or (= result [0])
         (nil? result))))
-
 
 
 ;; ## "FIELDS" CLAUSE
@@ -1447,6 +1448,7 @@
   (sad-toucan-incidents-with-bucketing :week))
 
 (expect-with-non-timeseries-dbs
+  ;; Not really sure why different drivers have different opinions on these </3
   (cond
     (contains? #{:sqlserver :sqlite} *engine*)
     [[23 54] [24 46] [25 39] [26 61]]
@@ -1487,7 +1489,8 @@
      (vec (for [i (range -15 15)]
             ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of generating `java.sql.Timestamps` here so
             ;; they'll be in the DB's native timezone. Some DBs refuse to use the same timezone we're running the tests from *cough* SQL Server *cough*
-            [(driver/date-interval *data-loader* :second (* i interval-seconds))]))]))
+            [(u/prog1 (driver/date-interval *data-loader* :second (* i interval-seconds))
+               (assert <>))]))]))
 
 (def ^:private checkins:4-per-minute (partial database-def-with-timestamps 15))
 (def ^:private checkins:4-per-hour   (partial database-def-with-timestamps (* 60 15)))
@@ -1542,7 +1545,8 @@
                     (ql/aggregation (ql/count))
                     (ql/breakout (ql/datetime-field $timestamp breakout-by))
                     (ql/filter (ql/time-interval $timestamp :current filter-by))))]
-    {:rows (-> results :row_count)
+    {:rows (or (-> results :row_count)
+               (throw (ex-info "Query failed!" results)))
      :unit (-> results :data :cols first :unit)}))
 
 (expect-with-non-timeseries-dbs

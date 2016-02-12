@@ -81,14 +81,14 @@
 ;; Escaped:
 ;;   {"$group" {"source___username" {"$first" {"$source.username"}, "_id" "$source.username"}}, ...}
 
-(defprotocol IRValue
-  (->rvalue [this]
+(defprotocol ^:private IRValue
+  (^:private ->rvalue [this]
     "Format this `Field` or `Value` for use as the right hand value of an expression, e.g. by adding `$` to a `Field`'s name"))
 
-(defprotocol IField
-  (->lvalue ^String [this]
+(defprotocol ^:private IField
+  (^:private ->lvalue ^String [this]
     "Return an escaped name that can be used as the name of a given Field.")
-  (->initial-rvalue [this]
+  (^:private ->initial-rvalue [this]
     "Return the rvalue that should be used in the *initial* projection for this `Field`."))
 
 
@@ -97,7 +97,9 @@
   ^String [^Field field, ^String separator]
   (apply str (interpose separator (rest (qualified-name-components field)))))
 
-(defmacro ^:private mongo-let [[field value] & body]
+(defmacro ^:private mongo-let
+  {:style/indent 1}
+  [[field value] & body]
   {:$let {:vars {(keyword field) value}
           :in   `(let [~field ~(keyword (str "$$" (name field)))]
                    ~@body)}})

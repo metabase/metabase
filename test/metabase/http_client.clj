@@ -128,7 +128,7 @@
 
 ;; ## AUTO-DESERIALIZATION
 
-(def auto-deserialize-dates-keys
+(def ^:private ^:const auto-deserialize-dates-keys
   #{:created_at :updated_at :last_login :date_joined :started_at :finished_at})
 
 (defn- auto-deserialize-dates

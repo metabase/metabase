@@ -263,18 +263,17 @@
   (fn [query]
     (when (and (structured-query? query)
                (not *disable-qp-logging*))
-      (log/debug (u/format-color 'magenta "\n\nPREPROCESSED/EXPANDED: 😻\n%s"
-                   (binding [pprint/*print-right-margin* 200]
-                     (u/pprint-to-str
-                      ;; Remove empty kv pairs because otherwise expanded query is HUGE
-                      (walk/prewalk
-                       (fn [f]
-                         (if-not (map? f) f
-                                 (m/filter-vals identity (into {} f))))
-                       ;; obscure DB details when logging. Just log the name of driver because we don't care about its properties
-                       (-> query
-                           (assoc-in [:database :details] "😋 ") ; :yum:
-                           (update :driver name))))))))
+      (log/debug (u/format-color 'magenta "\nPREPROCESSED/EXPANDED: 😻\n%s"
+                   (u/pprint-to-str
+                    ;; Remove empty kv pairs because otherwise expanded query is HUGE
+                    (walk/prewalk
+                     (fn [f]
+                       (if-not (map? f) f
+                               (m/filter-vals identity (into {} f))))
+                     ;; obscure DB details when logging. Just log the name of driver because we don't care about its properties
+                     (-> query
+                         (assoc-in [:database :details] "😋 ") ; :yum:
+                         (update :driver name)))))))
     (qp query)))
 
 
@@ -323,8 +322,7 @@
   "Process a QUERY and return the results."
   [driver query]
   (when-not *disable-qp-logging*
-    (log/debug (u/format-color 'blue "\nQUERY: 😎\n%s"  (binding [pprint/*print-right-margin* 200]
-                                                          (u/pprint-to-str query)))))
+    (log/debug (u/format-color 'blue "\nQUERY: 😎\n%s"  (u/pprint-to-str query))))
   (binding [*driver* driver]
     (let [driver-process-query (partial (if (structured-query? query)
                                           driver/process-structured
