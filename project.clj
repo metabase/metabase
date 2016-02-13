@@ -28,7 +28,7 @@
                  [com.cemerick/friend "0.2.1"]                        ; auth library
                  [com.draines/postal "1.11.4"]                        ; SMTP library
                  [com.h2database/h2 "1.4.191"]                        ; embedded SQL database
-                 [com.mattbertolini/liquibase-slf4j "1.2.1"]          ; Java Migrations lib
+                 [com.mattbertolini/liquibase-slf4j "2.0.0"]          ; Java Migrations lib
                  [com.novemberain/monger "3.0.2"]                     ; MongoDB Driver
                  [compojure "1.4.0"]                                  ; HTTP Routing library built on Ring
                  [environ "1.0.2"]                                    ; easy environment management
@@ -54,7 +54,7 @@
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
                  [swiss-arrows "1.0.0"]]                              ; 'Magic wand' macro -<>, etc.
-  :plugins [[lein-environ "1.0.1"]                                    ; easy access to environment variables
+  :plugins [[lein-environ "1.0.2"]                                    ; easy access to environment variables
             [lein-ring "0.9.7"]]                                      ; start the HTTP server with 'lein ring server'
   :main ^:skip-aot metabase.core
   :manifest {"Liquibase-Package" "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"}
@@ -73,7 +73,7 @@
                                   [org.clojure/tools.reader "0.10.0"] ; Need to explictly specify this dep otherwise expectations doesn't seem to work right :'(
                                   [expectations "2.1.3"]              ; unit tests
                                   [ring/ring-mock "0.3.0"]]
-                   :plugins [[jonase/eastwood "0.2.2"]                ; Linting
+                   :plugins [[jonase/eastwood "0.2.3"]                ; Linting
                              [lein-ancient "0.6.8"]                   ; Check project for outdated dependencies + plugins w/ 'lein ancient'
                              [lein-bikeshed "0.2.0"]                  ; Linting
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'
