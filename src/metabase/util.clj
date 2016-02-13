@@ -7,7 +7,8 @@
             [clj-time.coerce :as coerce]
             [clj-time.format :as time]
             [colorize.core :as color]
-            [medley.core :as m])
+            [medley.core :as m]
+            [metabase.config :as config])
   (:import clojure.lang.Keyword
            (java.net Socket
                      InetSocketAddress
@@ -369,11 +370,10 @@
 (defn require-dox-in-this-namespace
   "Throw an exception if any public interned symbol in this namespace is missing a docstring."
   []
-  (->> (ns-publics *ns*)
-       (map (fn [[symb varr]]
-              (when-not (:doc (meta varr))
-                (throw (Exception. (format "All public symbols in %s are required to have a docstring, but %s is missing one." (.getName *ns*) symb))))))
-       dorun))
+  (when-not config/is-prod?
+    (doseq [[symb varr] (ns-publics *ns*)
+            :when       (not (:doc (meta varr)))]
+      (throw (Exception. (format "All public symbols in %s are required to have a docstring, but %s is missing one." (.getName *ns*) symb))))))
 
 (defmacro pdoseq
   "(Almost) just like `doseq` but runs in parallel. Doesn't support advanced binding forms like `:let` or `:when` and only supports a single binding </3"
