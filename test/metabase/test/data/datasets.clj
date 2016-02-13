@@ -28,14 +28,9 @@
   "Return a set of dataset names to test against from the env var `ENGINES`."
   []
   (when-let [env-engines (some-> (env :engines) s/lower-case)]
-    (some->> (s/split env-engines #",")
-             (map keyword)
-             ;; Double check that the specified datasets are all valid
-             (map (fn [engine]
-                    (assert (contains? all-valid-engines engine)
-                      (format "Invalid dataset specified in ENGINES: %s" (name engine)))
-                    engine))
-             set)))
+    (set (for [engine (s/split env-engines #",")
+               :when engine]
+           (keyword engine)))))
 
 (def ^:const test-engines
   "Set of names of drivers we should run tests against.
