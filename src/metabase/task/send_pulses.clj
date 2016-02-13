@@ -41,7 +41,7 @@
         curr-weekday       (->> (time/day-of-week now)
                                 (get pulse-channel/days-of-week)
                                 :id)]
-    (send-pulses curr-hour curr-weekday)))
+    (send-pulses curr-hour curr-weekday :other :other)))
 
 (defn- task-init []
   ;; build our job
@@ -127,11 +127,13 @@
   "Send any `Pulses` which are scheduled to run in the current day/hour.  We use the current time and determine the
    hour of the day and day of the week according to the defined reporting timezone, or UTC.  We then find all `Pulses`
    that are scheduled to run and send them."
-  [hour day]
+  [hour weekday monthday monthweek]
   [:pre [(integer? hour)
          (and (< 0 hour) (> 23 hour))
-         (pulse-channel/day-of-week? day)]]
-  (let [channels-by-pulse (group-by :pulse_id (pulse-channel/retrieve-scheduled-channels hour day))]
+         (pulse-channel/day-of-week? weekday)
+         (contains? #{:first :last :mid :other} monthday)
+         (contains? #{:first :last :other} monthweek)]]
+  (let [channels-by-pulse (group-by :pulse_id (pulse-channel/retrieve-scheduled-channels hour weekday monthday monthweek))]
     (doseq [pulse-id (keys channels-by-pulse)]
       (try
         (log/debug (format "Starting Pulse Execution: %d" pulse-id))

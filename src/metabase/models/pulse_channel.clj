@@ -155,17 +155,32 @@
      * no input returns any channel scheduled for HOURLY delivery only.
      * just `hour` input returns any HOURLY scheduled channels + DAILY channels for the chosen hour.
      * when `hour` and `day` are supplied we return HOURLY channels + DAILY channels + WEEKLY channels."
-  [hour day]
+  [hour weekday monthday monthweek]
   [:pre [(integer? hour)
-         (day-of-week? day)]]
-  (k/select PulseChannel
-    (k/fields :id :pulse_id :schedule_type :channel_type)
-    (k/where (or (= :schedule_type (name schedule-type-hourly))
-                 (and (= :schedule_type (name schedule-type-daily))
-                      (= :schedule_hour hour))
-                 (and (= :schedule_type (name schedule-type-weekly))
-                      (= :schedule_hour hour)
-                      (= :schedule_day day))))))
+         (day-of-week? weekday)
+         (contains? #{:first :last :mid :other} monthday)
+         (contains? #{:first :last :other} monthweek)]]
+  (let [schedule-frame              (cond
+                                      (= :mid monthday)    (name schedule-frame-mid)
+                                      (= :first monthweek) (name schedule-frame-first)
+                                      (= :last monthweek)  (name schedule-frame-last)
+                                      :else                "invalid")
+        monthly-schedule-day-or-nil (when (= :other monthday)
+                                      weekday)]
+    (k/select PulseChannel
+      (k/fields :id :pulse_id :schedule_type :channel_type)
+      (k/where (or (= :schedule_type (name schedule-type-hourly))
+                   (and (= :schedule_type (name schedule-type-daily))
+                        (= :schedule_hour hour))
+                   (and (= :schedule_type (name schedule-type-weekly))
+                        (= :schedule_hour hour)
+                        (= :schedule_day weekday))
+                   (and (= :schedule_type (name schedule-type-monthly))
+                        (= :schedule_hour hour)
+                        (= :schedule_frame schedule-frame)
+                        (or (= :schedule_day weekday)
+                            ;; this is here specifically to allow for cases where day doesn't have to match
+                            (= :schedule_day monthly-schedule-day-or-nil))))))))
 
 (defn update-recipients!
   "Update the `PulseChannelRecipients` for PULSE-CHANNEL.

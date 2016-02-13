@@ -313,7 +313,7 @@
                                      :schedule_type schedule-type-hourly
                                      :schedule_hour nil}]
         (let [retrieve-channels (fn [hour day]
-                                  (->> (retrieve-scheduled-channels hour day)
+                                  (->> (retrieve-scheduled-channels hour day :other :other)
                                        (mapv #(dissoc % :id :pulse_id))))]
           [(retrieve-channels nil nil)
            (retrieve-channels 12 nil)
@@ -356,9 +356,66 @@
                                            :schedule_hour 8
                                            :schedule_day  "mon"}]
               (let [retrieve-channels (fn [hour day]
-                                        (->> (retrieve-scheduled-channels hour day)
+                                        (->> (retrieve-scheduled-channels hour day :other :other)
                                              (mapv #(dissoc % :id :pulse_id))))]
                 [(retrieve-channels nil nil)
                  (retrieve-channels 10 nil)
                  (retrieve-channels 15 nil)
                  (retrieve-channels 8 "mon")]))))))))
+
+;; specific test for various monthly scheduling permutations
+(expect
+  [[]
+   [{:schedule_type "monthly", :channel_type "email"}
+    {:schedule_type "monthly", :channel_type "slack"}]
+   [{:schedule_type "monthly", :channel_type "slack"}]
+   []
+   [{:schedule_type "monthly", :channel_type "slack"}]
+   [{:schedule_type "monthly", :channel_type "email"}]]
+  (tu/with-temp Pulse [{pulse1 :id} {:creator_id (user->id :rasta)
+                                     :name       (tu/random-name)}]
+    (tu/with-temp Pulse [{pulse2 :id} {:creator_id (user->id :crowberto)
+                                       :name       (tu/random-name)}]
+      (tu/with-temp PulseChannel [_ {:pulse_id      pulse1
+                                     :channel_type  :email
+                                     :details       {}
+                                     :schedule_type schedule-type-monthly
+                                     :schedule_hour 12
+                                     :schedule_day  nil
+                                     :schedule_frame schedule-frame-first}]
+        (tu/with-temp PulseChannel [_ {:pulse_id      pulse1
+                                       :channel_type  :slack
+                                       :details       {}
+                                       :schedule_type schedule-type-monthly
+                                       :schedule_hour 12
+                                       :schedule_day  "mon"
+                                       :schedule_frame schedule-frame-first}]
+          (tu/with-temp PulseChannel [_ {:pulse_id      pulse2
+                                         :channel_type  :slack
+                                         :details       {}
+                                         :schedule_type schedule-type-monthly
+                                         :schedule_hour 16
+                                         :schedule_day  nil
+                                         :schedule_frame schedule-frame-mid}]
+            (tu/with-temp PulseChannel [_ {:pulse_id      pulse2
+                                           :channel_type  :email
+                                           :details       {}
+                                           :schedule_type schedule-type-monthly
+                                           :schedule_hour 8
+                                           :schedule_day  "fri"
+                                           :schedule_frame schedule-frame-last}]
+              (let [retrieve-channels (fn [hour weekday monthday monthweek]
+                                        (->> (retrieve-scheduled-channels hour weekday monthday monthweek)
+                                             (mapv #(dissoc % :id :pulse_id))))]
+                ;; simple starter which should be empty
+                [(retrieve-channels nil nil :other :other)
+                 ;; this should capture BOTH first absolute day of month + first monday of month schedules
+                 (retrieve-channels 12 "mon" :first :first)
+                 ;; this should only capture the first monday of the month
+                 (retrieve-channels 12 "mon" :other :first)
+                 ;; this makes sure hour checking is being enforced
+                 (retrieve-channels 8 "mon" :first :first)
+                 ;; middle of the month
+                 (retrieve-channels 16 "fri" :mid :other)
+                 ;; last friday of the month (but not the last day of month)
+                 (retrieve-channels 8 "fri" :other :last)]))))))))
