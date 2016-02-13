@@ -94,7 +94,8 @@
                                        "-Dmb.jetty.port=3010"
                                        "-Dmb.api.key=test-api-key"
                                        "-Xverify:none"]}              ; disable bytecode verification when running tests so they start slightly faster
-             :uberjar {:aot :all}
+             :uberjar {:aot :all
+                       :jvm-opts ["-Dclojure.compiler.elide-meta=[:doc :added :file :line]"]}
              :generate-sample-dataset {:dependencies [[faker "0.2.2"]                   ; Fake data generator -- port of Perl/Ruby
                                                       [incanter/incanter-core "1.9.0"]] ; Satistical functions like normal distibutions}})
                                        :source-paths ["sample_dataset"]
