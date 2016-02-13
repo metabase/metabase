@@ -9,8 +9,6 @@ import { getCardColors } from "metabase/card/lib/utils";
 
 import cx from "classnames";
 
-const COLORS = ["#4A90E2", "#84BB4C", "#F9CF48", "#ED6E6E", "#885AB1"];
-
 export default class LegendHeader extends Component {
     constructor(props, context) {
         super(props, context);

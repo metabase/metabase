@@ -21,8 +21,11 @@ export default class LineAreaBarChart extends Component {
         _.bindAll(this, "onSeriesHoverChange")
     }
 
-    static propTypes = {};
-    static defaultProps = {};
+    static propTypes = {
+        series: PropTypes.array.isRequired,
+        onAddSeries: PropTypes.func,
+        extraActions: PropTypes.node
+    };
 
     onSeriesHoverChange(index, element, d, axisIndex) {
         // disable tooltips on lines

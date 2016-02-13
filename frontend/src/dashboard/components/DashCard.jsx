@@ -90,8 +90,8 @@ export default class DashCard extends Component {
                     data={data}
                     series={series}
                     isDashboard={true}
-                    onAddSeries={isEditing && CardVisualization.supportsSeries && onAddSeries}
-                    extraActions={isEditing && <ExtraActions onEdit={this.props.onEdit} onRemove={this.props.onRemove} />}
+                    onAddSeries={isEditing && CardVisualization.supportsSeries ? onAddSeries : undefined}
+                    extraActions={isEditing ? <ExtraActions onEdit={this.props.onEdit} onRemove={this.props.onRemove} /> : undefined}
                 />
             );
         }
@@ -121,7 +121,11 @@ export default class DashCard extends Component {
             <div className={"Card bordered rounded flex flex-column " + cx({ "Card--recent": dashcard.isAdded })}>
                 { !CardVisualization.noHeader &&
                     <div className="p1">
-                        <LegendHeader series={series} onAddSeries={isEditing && CardVisualization.supportsSeries && onAddSeries} extraActions={isEditing && <ExtraActions onEdit={onEdit} onRemove={onRemove} />}/>
+                        <LegendHeader
+                            series={series}
+                            onAddSeries={isEditing && CardVisualization.supportsSeries ? onAddSeries : undefined}
+                            extraActions={isEditing ? <ExtraActions onEdit={onEdit} onRemove={onRemove} /> : undefined}
+                        />
                     </div>
                 }
                 {this.renderCard(CardVisualization)}

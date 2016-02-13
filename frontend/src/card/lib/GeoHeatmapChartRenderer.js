@@ -1,5 +1,4 @@
 import ChartRenderer from "./ChartRenderer";
-import { getMinMax } from "./utils";
 
 import d3 from "d3";
 
@@ -29,7 +28,7 @@ export default function GeoHeatmapChartRenderer(element, card, result) {
     this.superSetData = this.setData;
     this.setData = function(data, dimension, groupFn) {
         this.superSetData(data, dimension, groupFn);
-        this.chart.colorDomain(getMinMax(this.data, 'value'));
+        this.chart.colorDomain(d3.extent(this.data, (d) => d.value));
         return this;
     };
 

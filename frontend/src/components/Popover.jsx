@@ -135,7 +135,8 @@ export default class Popover extends Component {
                 tetherOptions.target = ReactDOM.findDOMNode(this.props.target);
             } else if (this.props.getTarget) {
                 tetherOptions.target = ReactDOM.findDOMNode(this.props.getTarget());
-            } else {
+            }
+            if (tetherOptions.target == null) {
                 tetherOptions.target = ReactDOM.findDOMNode(this).parentNode;
             }
 

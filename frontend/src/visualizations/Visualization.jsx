@@ -85,7 +85,8 @@ export default class Visualization extends Component {
                 }
             }))
             return (
-                <CardVisualization {...this.props}
+                <CardVisualization
+                    {...this.props}
                     series={series}
                     card={series[0].card}
                     data={series[0].data}

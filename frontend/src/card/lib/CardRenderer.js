@@ -4,57 +4,26 @@ import _ from "underscore";
 import crossfilter from "crossfilter";
 import d3 from "d3";
 import dc from "dc";
-import moment from "moment";
 
 import GeoHeatmapChartRenderer from "./GeoHeatmapChartRenderer";
+
 import {
-    getMinMax,
     getAvailableCanvasWidth,
     getAvailableCanvasHeight,
     computeSplit,
     getFriendlyName,
     getCardColors
 } from "./utils";
+import { computeTimeseriesTicksInterval } from "./timeseries";
 
-import { formatNumber, formatValue } from "metabase/lib/formatting";
-
-import tip from 'd3-tip';
-tip(d3);
-
-const DEFAULT_INTERPOLATION = "cardinal";
-const BAR_PADDING_RATIO = 0.2;
+import { formatValue } from "metabase/lib/formatting";
 
 // agument d3 with a simple quarters range implementation
 d3.time.quarters = (start, stop, step) => d3.time.months(start, stop, 3);
 
-// ---------------------------------------- TODO - Maybe. Lots of these things never worked in the first place. ----------------------------------------
-// IMPORTANT
-// - 'titles' (tooltips)
-// - tweak padding for labels
-//
-// LESS IMPORTANT
-// - axis customization
-//   - axis.tickInterval
-//   - axis.labels_step
-//   - axis.lables.labels_staggerLines
-// - line customization
-//   - width
-//   - marker (?)
-//     - enabled
-//     - fillColor
-//     - lineColor
-//   - border color
-//   - chart customizations
-//     - plotBackgroundColor
-//     - zoomType
-//     - panning
-//     - panKey
-// - pie.dataLabels_enabled
-
-let MIN_PIXELS_PER_TICK = {
-    x: 100,
-    y: 30
-};
+const MIN_PIXELS_PER_TICK = { x: 100, y: 30 };
+const BAR_PADDING_RATIO = 0.2;
+const DEFAULT_INTERPOLATION = "cardinal";
 
 // investigate the response from a dataset query and determine if the dimension is a timeseries
 function dimensionIsTimeseries(result) {
@@ -131,22 +100,19 @@ function applyChartLegend(chart, card) {
     }
 }
 
-function applyChartTimeseriesXAxis(chart, card, coldefs, data) {
+function applyChartTimeseriesXAxis(chart, card, cols, xValues) {
     // setup an x-axis where the dimension is a timeseries
-
-    let x = card.visualization_settings.xAxis;
-    let xAxis = chart.xAxis();
-    let xDomain = getMinMax(data, 0);
+    let settings = card.visualization_settings;
 
     // set the axis label
-    if (x.labels_enabled) {
-        chart.xAxisLabel((x.title_text || null) || coldefs[0].display_name);
-        chart.renderVerticalGridLines(x.gridLine_enabled);
+    if (settings.xAxis.labels_enabled) {
+        chart.xAxisLabel((settings.xAxis.title_text || null) || cols[0].display_name);
+        chart.renderVerticalGridLines(settings.xAxis.gridLine_enabled);
 
-        if (coldefs[0] && coldefs[0].unit) {
-            xAxis.tickFormat(d => formatValue(d, coldefs[0]));
+        if (cols[0] && cols[0].unit) {
+            chart.xAxis().tickFormat(d => formatValue(d, cols[0]));
         } else {
-            xAxis.tickFormat(d3.time.format.multi([
+            chart.xAxis().tickFormat(d3.time.format.multi([
                 [".%L",    (d) => d.getMilliseconds()],
                 [":%S",    (d) => d.getSeconds()],
                 ["%I:%M",  (d) => d.getMinutes()],
@@ -159,163 +125,63 @@ function applyChartTimeseriesXAxis(chart, card, coldefs, data) {
         }
 
         // Compute a sane interval to display based on the data granularity, domain, and chart width
-        let interval = computeTimeseriesTicksInterval(data, coldefs[0], chart.width(), MIN_PIXELS_PER_TICK.x);
-        xAxis.ticks(d3.time[interval.interval], interval.count);
+        let interval = computeTimeseriesTicksInterval(xValues, cols[0], chart.width(), MIN_PIXELS_PER_TICK.x);
+        chart.xAxis().ticks(d3.time[interval.interval], interval.count);
     } else {
-        xAxis.ticks(0);
+        chart.xAxis().ticks(0);
     }
 
     // calculate the x-axis domain
+    let xDomain = d3.extent(xValues);
     chart.x(d3.time.scale().domain(xDomain));
 
     // prevents skinny time series bar charts by using xUnits that match the provided column unit, if possible
-    if (coldefs[0] && coldefs[0].unit && d3.time[coldefs[0].unit + "s"]) {
-        chart.xUnits(d3.time[coldefs[0].unit + "s"]);
+    if (cols[0] && cols[0].unit && d3.time[cols[0].unit + "s"]) {
+        chart.xUnits(d3.time[cols[0].unit + "s"]);
     }
 }
 
-// mostly matches https://github.com/mbostock/d3/wiki/Time-Scales
-// Use UTC methods to avoid issues with daylight savings
-const TIMESERIES_INTERVALS = [
-    { interval: "ms",     count: 1,  testFn: (d) => 0                      }, // millisecond
-    { interval: "second", count: 1,  testFn: (d) => d.getUTCMilliseconds() }, // 1 second
-    { interval: "second", count: 5,  testFn: (d) => d.getUTCSeconds() % 5  }, // 5 seconds
-    { interval: "second", count: 15, testFn: (d) => d.getUTCSeconds() % 15 }, // 15 seconds
-    { interval: "second", count: 30, testFn: (d) => d.getUTCSeconds() % 30 }, // 30 seconds
-    { interval: "minute", count: 1,  testFn: (d) => d.getUTCSeconds()      }, // 1 minute
-    { interval: "minute", count: 5,  testFn: (d) => d.getUTCMinutes() % 5  }, // 5 minutes
-    { interval: "minute", count: 15, testFn: (d) => d.getUTCMinutes() % 15 }, // 15 minutes
-    { interval: "minute", count: 30, testFn: (d) => d.getUTCMinutes() % 30 }, // 30 minutes
-    { interval: "hour",   count: 1,  testFn: (d) => d.getUTCMinutes()      }, // 1 hour
-    { interval: "hour",   count: 3,  testFn: (d) => d.getUTCHours() % 3    }, // 3 hours
-    { interval: "hour",   count: 6,  testFn: (d) => d.getUTCHours() % 6    }, // 6 hours
-    { interval: "hour",   count: 12, testFn: (d) => d.getUTCHours() % 12   }, // 12 hours
-    { interval: "day",    count: 1,  testFn: (d) => d.getUTCHours()        }, // 1 day
-    { interval: "day",    count: 2,  testFn: (d) => d.getUTCDate() % 2     }, // 2 day
-    { interval: "week",   count: 1,  testFn: (d) => 0                      }, // 1 week, TODO: fix this one
-    { interval: "month",  count: 1,  testFn: (d) => d.getUTCDate()         }, // 1 months
-    { interval: "month",  count: 3,  testFn: (d) => d.getUTCMonth() % 3    }, // 3 months
-    { interval: "year",   count: 1,  testFn: (d) => d.getUTCMonth()        }  // 1 year
-];
-
-const TIMESERIES_INTERVAL_INDEX_BY_UNIT = {
-    "minute": 1,
-    "hour": 9,
-    "day": 13,
-    "week": 15,
-    "month": 16,
-    "quarter": 17,
-    "year": 18,
-};
-
-function computeTimeseriesDataInvervalIndex(data) {
-    // Keep track of the value seen for each level of granularity,
-    // if any don't match then we know the data is *at least* that granular.
-    let values = [];
-    let index = TIMESERIES_INTERVALS.length;
-    for (let row of data) {
-        // Only need to check more granular than the current interval
-        for (let i = 0; i < TIMESERIES_INTERVALS.length && i < index; i++) {
-            let interval = TIMESERIES_INTERVALS[i];
-            let value = interval.testFn(row[0]);
-            if (values[i] === undefined) {
-                values[i] = value;
-            } else if (values[i] !== value) {
-                index = i;
-            }
-        }
-    }
-    return index - 1;
-}
-
-function computeTimeseriesTicksInterval(data, col, chartWidth, minPixelsPerTick) {
-    // If the interval that matches the data granularity results in too many ticks reduce the granularity until it doesn't.
-    // TODO: compute this directly instead of iteratively
-    let maxTickCount = Math.round(chartWidth / minPixelsPerTick);
-    let domain = getMinMax(data, 0);
-    let index = col && col.unit ? TIMESERIES_INTERVAL_INDEX_BY_UNIT[col.unit] : null;
-    if (typeof index !== "number") {
-        index = computeTimeseriesDataInvervalIndex(data);
-    }
-    while (index < TIMESERIES_INTERVALS.length - 1) {
-        let interval = TIMESERIES_INTERVALS[index];
-        let intervalMs = moment(0).add(interval.count, interval.interval).valueOf();
-        let tickCount = (domain[1] - domain[0]) / intervalMs;
-        if (tickCount <= maxTickCount) {
-            break;
-        }
-        index++;
-    }
-    return TIMESERIES_INTERVALS[index];
-}
-
-function applyChartOrdinalXAxis(chart, card, coldefs, data, minPixelsPerTick) {
-    // setup an x-axis where the dimension is ordinal
-
-    let keys = data.map(d => d[0]);
-
-    let x = card.visualization_settings.xAxis;
-    let xAxis = chart.xAxis();
-
-    if (x.labels_enabled) {
-        chart.xAxisLabel((x.title_text || null) || coldefs[0].display_name);
-        chart.renderVerticalGridLines(x.gridLine_enabled);
-        xAxis.ticks(data.length);
-        adjustTicksIfNeeded(xAxis, chart.width(), minPixelsPerTick);
+function applyChartOrdinalXAxis(chart, card, cols, xValues) {
+    let settings = card.visualization_settings;
+    if (settings.xAxis.labels_enabled) {
+        chart.xAxisLabel(settings.xAxis.title_text || cols[0].display_name);
+        chart.renderVerticalGridLines(settings.xAxis.gridLine_enabled);
+        chart.xAxis().ticks(xValues.length);
+        adjustTicksIfNeeded(chart.xAxis(), chart.width(), MIN_PIXELS_PER_TICK.x);
 
         // unfortunately with ordinal axis you can't rely on xAxis.ticks(num) to control the display of labels
         // so instead if we want to display fewer ticks than our full set we need to calculate visibleTicks()
-        let numTicks = typeof xAxis.ticks().length !== 'undefined' ? xAxis.ticks()[0] : xAxis.ticks();
-        if (numTicks < data.length) {
-            let keyInterval = Math.round(keys.length / numTicks);
-            let visibleKeys = [];
-            for (let i = 0; i < keys.length; i++) {
-                if (i % keyInterval === 0) {
-                    visibleKeys.push(keys[i]);
-                }
-            }
-
-            xAxis.tickValues(visibleKeys);
+        let numTicks = chart.xAxis().ticks();
+        if (Array.isArray(numTicks)) {
+            numTicks = numTicks[0];
         }
-        xAxis.tickFormat(d => formatValue(d, coldefs[0]));
+        if (numTicks < xValues.length) {
+            let keyInterval = Math.round(xValues.length / numTicks);
+            let visibleKeys = xValues.filter((v, i) => i % keyInterval === 0);
+            chart.xAxis().tickValues(visibleKeys);
+        }
+        chart.xAxis().tickFormat(d => formatValue(d, cols[0]));
     } else {
-        xAxis.ticks(0);
-        xAxis.tickFormat('');
+        chart.xAxis().ticks(0);
+        chart.xAxis().tickFormat('');
     }
 
-    chart.x(d3.scale.ordinal().domain(keys))
+    chart.x(d3.scale.ordinal().domain(xValues))
         .xUnits(dc.units.ordinal);
 }
 
-function applyChartYAxis(chart, card, coldefs, data, minPixelsPerTick) {
-    // apply some simple default settings for a y-axis
-    // NOTE: this code assumes that the data is an array of arrays and data[rowIdx][1] is our y-axis data
-
+function applyChartYAxis(chart, card, cols) {
     let settings = card.visualization_settings;
-    let y = settings.yAxis;
-
-    if (y.labels_enabled) {
-        chart.yAxisLabel(y.title_text || getFriendlyName(coldefs[1]));
+    if (settings.yAxis.labels_enabled) {
+        chart.yAxisLabel(settings.yAxis.title_text || getFriendlyName(cols[1]));
         chart.renderHorizontalGridLines(true);
-
-        if (y.min || y.max) {
-            // if the user wants explicit settings on the y-axis then we need to do some calculations
-            let yDomain = getMinMax(data, 1);  // 1 is the array index in the data to use
-            if (yDomain[0] > 0) yDomain[0] = 0;
-            if (y.min) yDomain[0] = y.min;
-            if (y.max) yDomain[1] = y.max;
-
-            chart.y(d3.scale.linear().domain(yDomain));
-        } else {
-            // by default we let dc.js handle our y-axis
-            chart.elasticY(true);
-        }
+        chart.elasticY(true);
 
         // Very small charts (i.e., Dashboard Cards) tend to render with an excessive number of ticks
         // set some limits on the ticks per pixel and adjust if needed
-        adjustTicksIfNeeded(chart.yAxis(), chart.height(), minPixelsPerTick);
+        adjustTicksIfNeeded(chart.yAxis(), chart.height(), MIN_PIXELS_PER_TICK.y);
         if (chart.rightYAxis) {
-            adjustTicksIfNeeded(chart.rightYAxis(), chart.height(), minPixelsPerTick);
+            adjustTicksIfNeeded(chart.rightYAxis(), chart.height(), MIN_PIXELS_PER_TICK.y);
         }
     } else {
         chart.yAxis().ticks(0);
@@ -325,7 +191,9 @@ function applyChartYAxis(chart, card, coldefs, data, minPixelsPerTick) {
     }
 }
 
+// HACK: This determines the index of the series the provided element belongs to since DC doesn't seem to provide another way
 function determineSeriesIndexFromElement(element) {
+    // composed charts:
     let e = element;
     while (e && e.classList && !e.classList.contains("sub")) {
         e = e.parentNode;
@@ -333,6 +201,7 @@ function determineSeriesIndexFromElement(element) {
     if (e && e.classList) {
         return [...e.classList].map(c => c.match(/^_(\d+)$/)).filter(c => c).map(c => parseInt(c[1], 10))[0];
     }
+    // stacked charts:
     e = element;
     while (e && e.classList && !e.classList.contains("dc-tooltip") && !e.classList.contains("stack")) {
         e = e.parentNode;
@@ -340,6 +209,7 @@ function determineSeriesIndexFromElement(element) {
     if (e && e.classList) {
         return [...e.classList].map(c => c.match(/^_(\d+)$/)).filter(c => c).map(c => parseInt(c[1], 10))[0];
     }
+    // none?
     return null;
 }
 
@@ -356,40 +226,6 @@ function applyChartTooltips(chart, onHoverChange) {
 
         chart.selectAll("title").remove();
     });
-}
-
-function getPieSliceCentroid(element, slice) {
-    let parent = element.parentNode.parentNode;
-    let radius = parent.getBoundingClientRect().height / 2;
-    let innerRadius = 0;
-
-    let centroid = d3.svg.arc()
-        .outerRadius(radius).innerRadius(innerRadius)
-        .padAngle(slice.padAngle).startAngle(slice.startAngle).endAngle(slice.endAngle)
-        .centroid();
-
-    let pieRect = parent.getBoundingClientRect();
-
-    return {
-        x: pieRect.left + radius + centroid[0],
-        y: pieRect.top + radius + centroid[1]
-    };
-}
-
-function getScrollOffset() {
-    let doc = document.documentElement;
-    let left = (window.pageXOffset || doc.scrollLeft) - (doc.clientLeft || 0);
-    let top = (window.pageYOffset || doc.scrollTop)  - (doc.clientTop || 0);
-    return { left, top }
-}
-
-function getTooltipOffset(tooltip) {
-    let tooltipRect = tooltip[0][0].getBoundingClientRect();
-    let scrollOffset = getScrollOffset();
-    return {
-        x: -tooltipRect.width / 2 + scrollOffset.left,
-        y: -tooltipRect.height - 30 + scrollOffset.top
-    };
 }
 
 function applyChartLineBarSettings(chart, card, chartType) {
@@ -639,14 +475,14 @@ export let CardRenderer = {
         // x-axis settings
         // TODO: we should support a linear (numeric) x-axis option
         if (isTimeseries) {
-            applyChartTimeseriesXAxis(chart, card, result.cols, data);
+            applyChartTimeseriesXAxis(chart, card, result.cols, xValues);
         } else {
-            applyChartOrdinalXAxis(chart, card, result.cols, data, MIN_PIXELS_PER_TICK.x);
+            applyChartOrdinalXAxis(chart, card, result.cols, xValues);
         }
 
         // y-axis settings
         // TODO: if we are multi-series this could be split axis
-        applyChartYAxis(chart, card, result.cols, data, MIN_PIXELS_PER_TICK.y);
+        applyChartYAxis(chart, card, result.cols, data);
 
         applyChartTooltips(chart, (index, element, data) => {
             if (onHoverChange) {
