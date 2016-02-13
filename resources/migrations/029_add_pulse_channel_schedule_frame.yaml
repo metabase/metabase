@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: 29
+      author: agilliland
+      changes:
+        - addColumn:
+            tableName: pulse_channel
+            columns:
+              - column:
+                  name: schedule_frame
+                  type: varchar(32)
+                  constraints:
+                    nullable: true
