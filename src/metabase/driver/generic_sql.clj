@@ -92,7 +92,7 @@
    (fn [spec]
      (log/debug (u/format-color 'magenta "Creating new connection pool..."))
      (kdb/connection-pool (assoc spec :minimum-pool-size 1)))
-   :ttl/threshold (* 3 60 60 1000)))
+   :ttl/threshold (* 60 60 1000)))
 
 (defn db->jdbc-connection-spec
   "Return a JDBC connection spec for DATABASE. Normally this will have a C3P0 pool as its datasource, unless the database is `short-lived`."
