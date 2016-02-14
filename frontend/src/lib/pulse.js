@@ -1,11 +1,11 @@
 
 export function channelIsValid(channel, channelSpec) {
-    console.log("channelIsValid", channel, channelSpec)
     if (!channelSpec) {
         return false;
     }
     switch (channel.schedule_type) {
         // these cases intentionally fall though
+        case "monthly": if (channel.schedule_frame == null) { return false };
         case "weekly": if (channel.schedule_day == null) { return false };
         case "daily":  if (channel.schedule_hour == null) { return false };
         case "hourly": break;

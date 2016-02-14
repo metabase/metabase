@@ -58,7 +58,8 @@ export default class PulseEditChannels extends Component {
             details: details,
             schedule_type: channelSpec.schedules[0],
             schedule_day: "mon",
-            schedule_hour: 8
+            schedule_hour: 8,
+            schedule_frame: "first"
         };
 
         this.props.setPulse({ ...pulse, channels: pulse.channels.concat(channel) });
@@ -75,7 +76,7 @@ export default class PulseEditChannels extends Component {
         let { pulse } = this.props;
         let channels = [...pulse.channels];
 
-        if (_.contains(['schedule_type', 'schedule_day', 'schedule_hour'], name)) {
+        if (_.contains(['schedule_type', 'schedule_day', 'schedule_hour', 'schedule_frame'], name)) {
             MetabaseAnalytics.trackEvent((this.props.pulseId) ? "PulseEdit" : "PulseCreate", channels[index].channel_type+":"+name, value);
         }
 
