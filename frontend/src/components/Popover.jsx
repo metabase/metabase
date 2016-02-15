@@ -131,7 +131,18 @@ export default class Popover extends Component {
 
             tetherOptions.element = this._popoverElement;
 
-            if (this.props.target) {
+            if (this.props.targetEvent) {
+                // create a fake element at the event coordinates
+                tetherOptions.target = document.getElementById("popover-event-target");
+                if (!tetherOptions.target) {
+                    tetherOptions.target = document.createElement("div");
+                    tetherOptions.target.id = "popover-event-target";
+                    document.body.appendChild(tetherOptions.target);
+
+                }
+                tetherOptions.target.style.left = (this.props.targetEvent.clientX - 3) + "px";
+                tetherOptions.target.style.top = (this.props.targetEvent.clientY - 3) + "px";
+            } else if (this.props.target) {
                 tetherOptions.target = ReactDOM.findDOMNode(this.props.target);
             } else if (this.props.getTarget) {
                 tetherOptions.target = ReactDOM.findDOMNode(this.props.getTarget());

@@ -31,7 +31,7 @@ function formatMajorMinor(major, minor, options = {}) {
     if (options.jsx) {
         return (
             <span>
-                <span style={{minWidth: options.majorWidth + "em"}} className="inline-block text-right text-bold">{major}</span>
+                <span style={{ minWidth: options.majorWidth + "em" }} className="inline-block text-right text-bold">{major}</span>
                 {" - "}
                 <span>{minor}</span>
             </span>

@@ -41,9 +41,9 @@ export default class TableInteractive extends Component {
 
     static propTypes = {
         data: PropTypes.object.isRequired,
-        sort: PropTypes.array.isRequired,
+        sort: PropTypes.array,
         setSortFn: PropTypes.func.isRequired,
-        isCellClickableFn: PropTypes.func.isRequired,
+        cellIsClickableFn: PropTypes.func.isRequired,
         cellClickedFn: PropTypes.func.isRequired,
         pivot: PropTypes.bool.isRequired
     };

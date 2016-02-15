@@ -14,7 +14,9 @@ import {
     getFriendlyName,
     getCardColors
 } from "./utils";
+
 import { computeTimeseriesTicksInterval } from "./timeseries";
+import { determineSeriesIndexFromElement, getPieSliceTextElement } from "./tooltip";
 
 import { formatValue } from "metabase/lib/formatting";
 
@@ -191,34 +193,13 @@ function applyChartYAxis(chart, card, cols) {
     }
 }
 
-// HACK: This determines the index of the series the provided element belongs to since DC doesn't seem to provide another way
-function determineSeriesIndexFromElement(element) {
-    // composed charts:
-    let e = element;
-    while (e && e.classList && !e.classList.contains("sub")) {
-        e = e.parentNode;
-    }
-    if (e && e.classList) {
-        return [...e.classList].map(c => c.match(/^_(\d+)$/)).filter(c => c).map(c => parseInt(c[1], 10))[0];
-    }
-    // stacked charts:
-    e = element;
-    while (e && e.classList && !e.classList.contains("dc-tooltip") && !e.classList.contains("stack")) {
-        e = e.parentNode;
-    }
-    if (e && e.classList) {
-        return [...e.classList].map(c => c.match(/^_(\d+)$/)).filter(c => c).map(c => parseInt(c[1], 10))[0];
-    }
-    // none?
-    return null;
-}
-
 function applyChartTooltips(chart, onHoverChange) {
     chart.on("renderlet", function(chart) {
-        chart.selectAll(".bar, .dot, .area, .line, .pie-slice")
-            .on("mouseenter", function(d) {
-                let index = determineSeriesIndexFromElement(this);
-                onHoverChange && onHoverChange(index, this, d);
+        chart.selectAll(".bar, .dot, .area, .line, g.pie-slice, g.features")
+            .on("mousemove", function(d, i) {
+                if (onHoverChange) {
+                    onHoverChange(this, d, determineSeriesIndexFromElement(this));
+                }
             })
             .on("mouseleave", function() {
                 onHoverChange && onHoverChange(null);
@@ -364,7 +345,7 @@ export let CardRenderer = {
         chart.render();
     },
 
-    lineAreaBar(element, chartType, { series, onHoverChange }) {
+    lineAreaBar(element, chartType, { series, onHoverChange, onRender }) {
         let { card, data: result } = series[0];
 
         const colors = getCardColors(card);//["#4A90E2", "#84BB4C", "#F9CF48", "#ED6E6E", "#885AB1"];
@@ -484,10 +465,13 @@ export let CardRenderer = {
         // TODO: if we are multi-series this could be split axis
         applyChartYAxis(chart, card, result.cols, data);
 
-        applyChartTooltips(chart, (index, element, data) => {
+        applyChartTooltips(chart, (e, d, seriesIndex) => {
             if (onHoverChange) {
-                let axisIndex = _.findIndex(yAxisSplit, (indexes) => _.contains(indexes, index));
-                onHoverChange(index, element, data, axisIndex);
+                // disable tooltips on lines
+                if (e && e.classList.contains("line")) {
+                    e = null;
+                }
+                onHoverChange(e, d, seriesIndex);
             }
         });
 
@@ -501,6 +485,8 @@ export let CardRenderer = {
 
         // apply any on-rendering functions
         lineAndBarOnRender(chart, card);
+
+        onRender && onRender({ yAxisSplit });
     },
 
     bar(element, props) {
@@ -515,7 +501,7 @@ export let CardRenderer = {
         return CardRenderer.lineAreaBar(element, "area", props);
     },
 
-    state(element, { card, data }) {
+    state(element, { card, data, onHoverChange }) {
         let chartData = data.rows.map(value => ({
             stateCode: value[0],
             value: value[1]
@@ -526,15 +512,24 @@ export let CardRenderer = {
             .setJson('/app/charts/us-states.json', d => d.properties.name)
             .setProjection(d3.geo.albersUsa())
             .customize(chart => {
-                // text that appears in tooltips when hovering over a state
-                chart.title(d => "State: " + d.key + "\nValue: " + (d.value || 0));
+                applyChartTooltips(chart, (e, d, seriesIndex) => {
+                    if (onHoverChange) {
+                        if (d) {
+                            let row = _.findWhere(data.rows, { [0]: d.properties.name });
+                            d = row != null && {
+                                data: { key: row[0], value: row[1] }
+                            };
+                        }
+                        onHoverChange(e, d, seriesIndex);
+                    }
+                });
             })
             .render();
 
         return chartRenderer;
     },
 
-    country(element, { card, data }) {
+    country(element, { card, data, onHoverChange }) {
         let chartData = data.rows.map(value => {
             // Does this actually make sense? If country is > 2 characters just use the first 2 letters as the country code ?? (WTF)
             let countryCode = value[0];
@@ -553,7 +548,17 @@ export let CardRenderer = {
             .setJson('/app/charts/world.json', d => d.properties.ISO_A2) // 2-letter country code
             .setProjection(d3.geo.mercator())
             .customize(chart => {
-                chart.title(d => "Country: " + d.key + "\nValue: " + (d.value || 0));
+                applyChartTooltips(chart, (e, d, seriesIndex) => {
+                    if (onHoverChange) {
+                        if (d) {
+                            let row = _.findWhere(data.rows, { [0]: d.properties.ISO_A2 });
+                            d = row != null && {
+                                data: { key: d.properties.NAME, value: row[1] }
+                            };
+                        }
+                        onHoverChange(e, d, seriesIndex);
+                    }
+                });
             })
             .render();
 

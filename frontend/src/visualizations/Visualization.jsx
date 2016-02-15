@@ -5,16 +5,19 @@ import visualizations from ".";
 import { getSettingsForVisualization } from "metabase/lib/visualization_settings";
 
 import _ from "underscore";
+import d3 from "d3";
 
 export default class Visualization extends Component {
     constructor(props, context) {
         super(props, context)
 
         this.state = {
+            renderInfo: null,
+            hovered: null,
             error: null
         };
 
-        _.bindAll(this, "onRenderError");
+        _.bindAll(this, "onRender", "onRenderError", "onHoverChange");
     }
 
     static propTypes = {
@@ -56,6 +59,26 @@ export default class Visualization extends Component {
         }
     }
 
+    onHoverChange(e, d, seriesIndex) {
+        const { renderInfo } = this.state;
+        let axisIndex = null;
+        // if we have Y axis split info then find the Y axis index (0 = left, 1 = right)
+        if (renderInfo && renderInfo.yAxisSplit) {
+            axisIndex = _.findIndex(renderInfo.yAxisSplit, (indexes) => _.contains(indexes, seriesIndex));
+        }
+        this.setState({ hovered: {
+            element: e,
+            data: d && d.data,
+            seriesIndex: seriesIndex,
+            axisIndex: axisIndex,
+            event: d3.event
+        }});
+    }
+
+    onRender(renderInfo) {
+        this.setState({ renderInfo });
+    }
+
     onRenderError(error) {
         this.setState({ error })
     }
@@ -83,15 +106,19 @@ export default class Visualization extends Component {
                     ...s.card,
                     visualization_settings: getSettingsForVisualization(s.card.visualization_settings, s.card.display)
                 }
-            }))
+            }));
+
             return (
                 <CardVisualization
                     {...this.props}
                     series={series}
                     card={series[0].card}
                     data={series[0].data}
+                    hovered={this.state.hovered}
                     onUpdateVisualizationSetting={(...args) => console.log("onUpdateVisualizationSetting", args)}
+                    onHoverChange={this.onHoverChange}
                     onRenderError={this.onRenderError}
+                    onRender={this.onRender}
                 />
             );
         }

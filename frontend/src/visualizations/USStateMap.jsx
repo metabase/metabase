@@ -1,6 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
 import CardRenderer from "./components/CardRenderer.jsx";
+import ChartTooltip from "./components/ChartTooltip.jsx";
 
 import { isString } from "metabase/lib/schema_metadata";
 
@@ -20,8 +21,12 @@ export default class USStateMap extends Component {
     }
 
     render() {
+        const { series, hovered } = this.props;
         return (
-            <CardRenderer className="flex-full" {...this.props} chartType="state" />
+            <div className="flex flex-full">
+                <CardRenderer className="flex-full" {...this.props} chartType="state" />
+                <ChartTooltip series={series} hovered={hovered} pinToMouse={true} />
+            </div>
         );
     }
 }
