@@ -25,7 +25,7 @@ d3.time.quarters = (start, stop, step) => d3.time.months(start, stop, 3);
 
 const MIN_PIXELS_PER_TICK = { x: 100, y: 30 };
 const BAR_PADDING_RATIO = 0.2;
-const DEFAULT_INTERPOLATION = "cardinal";
+const DEFAULT_INTERPOLATION = "linear";
 
 // investigate the response from a dataset query and determine if the dimension is a timeseries
 function dimensionIsTimeseries(result) {
