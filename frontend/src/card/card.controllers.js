@@ -175,20 +175,22 @@ CardControllers.controller('CardDetail', [
             isRunning: false,
             runQueryFn: runQuery,
             isObjectDetail: false,
-            setDisplayFn: setDisplay,
+            setDisplayFn: function(display) {
+                onVisualizationSettingsChanged(display, card.visualization_settings);
+            },
             setChartColorFn: function(color) {
-                var vizSettings = card.visualization_settings;
+                let vizSettings = angular.copy(card.visualization_settings);
 
                 // if someone picks the default color then clear any color settings
                 if (color === getDefaultColor()) {
                     // NOTE: this only works if setting color is the only option we allow
-                    card.visualization_settings = {};
+                    vizSettings = {};
 
                 } else {
                     // this really needs to be better
-                    var lineSettings = (vizSettings.line) ? vizSettings.line : {};
-                    var areaSettings = (vizSettings.area) ? vizSettings.area : {};
-                    var barSettings = (vizSettings.bar) ? vizSettings.bar : {};
+                    let lineSettings = (vizSettings.line) ? vizSettings.line : {};
+                    let areaSettings = (vizSettings.area) ? vizSettings.area : {};
+                    let barSettings = (vizSettings.bar) ? vizSettings.bar : {};
 
                     lineSettings.lineColor = color;
                     lineSettings.marker_fillColor = color;
@@ -201,12 +203,14 @@ CardControllers.controller('CardDetail', [
                     vizSettings.bar = barSettings;
                 }
 
-                renderAll();
+                onVisualizationSettingsChanged(card.display, vizSettings);
             },
             setSortFn: function(fieldId) {
                 // NOTE: we only allow this for structured type queries & we only allow sorting by a single column
                 if (card.dataset_query.type === "query") {
-                    var sortClause = [fieldId, "ascending"];
+                    let dataset_query = card.dataset_query,
+                        sortClause = [fieldId, "ascending"];
+
                     if (card.dataset_query.query.order_by &&
                         card.dataset_query.query.order_by.length > 0 &&
                         card.dataset_query.query.order_by[0].length > 0 &&
@@ -217,7 +221,10 @@ CardControllers.controller('CardDetail', [
                     }
 
                     // set clause
-                    card.dataset_query.query.order_by = [sortClause];
+                    dataset_query.query.order_by = [sortClause];
+
+                    // update the query
+                    onQueryChanged(dataset_query);
 
                     // run updated query
                     runQuery();
@@ -267,8 +274,11 @@ CardControllers.controller('CardDetail', [
                     setCard(newCard);
 
                 } else {
-                    Query.addFilter(card.dataset_query.query);
-                    Query.updateFilter(card.dataset_query.query, card.dataset_query.query.filter.length - 1, [filter, coldef.id, value]);
+                    // this is applying a filter by clicking on a cell value
+                    let dataset_query = angular.copy(card.dataset_query);
+                    Query.addFilter(dataset_query.query);
+                    Query.updateFilter(dataset_query.query, dataset_query.query.filter.length - 1, [filter, coldef.id, value]);
+                    onQueryChanged(dataset_query);
                     runQuery();
                  }
             },
@@ -302,7 +312,9 @@ CardControllers.controller('CardDetail', [
             setQueryFn: onQueryChanged,
             setDatabaseFn: setDatabase,
             setSourceTableFn: setSourceTable,
-            setDisplayFn: setDisplay,
+            setDisplayFn: function(display) {
+                onVisualizationSettingsChanged(display, card.visualization_settings);
+            },
             loadTableFn: loadTable
         };
 
@@ -346,12 +358,6 @@ CardControllers.controller('CardDetail', [
             visualizationModel.tableForeignKeyReferences = tableForeignKeyReferences;
             visualizationModel.isRunning = isRunning;
             visualizationModel.isObjectDetail = isObjectDetail;
-
-            if (queryResult && !queryResult.error) {
-                visualizationModel.downloadLink = '/api/dataset/csv?query=' + encodeURIComponent(JSON.stringify(card.dataset_query));
-            } else {
-                visualizationModel.downloadLink = null;
-            }
 
             ReactDOM.render(<QueryVisualization {...visualizationModel}/>, document.getElementById('react_qb_viz'));
         }
@@ -625,8 +631,22 @@ CardControllers.controller('CardDetail', [
             return card.dataset_query;
         }
 
-        function setDisplay(type) {
-            card.display = type;
+        // this indicates that the user has taken an action that changed one of the visualization settings
+        // when we are a saved card but not in edit mode this triggers the creation of a new card started from a specific card, otherwise we just apply the change
+        function onVisualizationSettingsChanged(display, cardVizSettings) {
+            // make sure that something actually changed
+            if (card.display === display && _.isEqual(card.visualization_settings, cardVizSettings)) return;
+
+            // when the visualization changes on saved card we change this into a new card w/ a known starting point
+            if (!isEditing && card.id) {
+                delete card.id;
+                delete card.name;
+                delete card.description;
+            }
+
+            card.display = display;
+            card.visualization_settings = cardVizSettings;
+
             renderAll();
         }
 

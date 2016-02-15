@@ -3,8 +3,7 @@ import React, { Component, PropTypes } from "react";
 import Icon from "metabase/components/Icon.jsx";
 
 import Query from "metabase/lib/query";
-import { parseFieldTarget, parseFieldBucketing, formatBucketing } from "metabase/lib/query_time";
-import { isDate } from "metabase/lib/schema_metadata";
+import { parseFieldTarget } from "metabase/lib/query_time";
 
 import { stripId } from "metabase/lib/formatting";
 
@@ -26,9 +25,8 @@ export default class FieldName extends Component {
 
     render() {
         let targetTitle, fkTitle, fkIcon, bucketingTitle;
-        let { field, fieldOptions, tableMetadata } = this.props;
+        let { field, fieldOptions } = this.props;
 
-        let bucketing = parseFieldBucketing(field);
         field = parseFieldTarget(field);
 
         let fieldDef;
@@ -47,11 +45,6 @@ export default class FieldName extends Component {
 
         if (fieldDef) {
             targetTitle = (<span>{fieldDef.display_name}</span>);
-        }
-
-        // Mongo doesn't support non-default time bucketing so don't show it
-        if (fieldDef && isDate(fieldDef) && tableMetadata.db.engine !== "mongo") {
-            bucketingTitle = ": " + formatBucketing(bucketing);
         }
 
         var titleElement;

@@ -51,6 +51,27 @@
       {:status 500
        :body   (:error response)})))
 
+
+(defendpoint POST "/csv"
+  "Execute an MQL query and download the result data as a CSV file."
+  [query]
+  {query [Required String->Dict]}
+  (clojure.pprint/pprint query)
+  (read-check Database (:database query))
+  (let [{{:keys [columns rows]} :data :keys [status] :as response} (driver/dataset-query query {:executed_by *current-user-id*})
+        columns (map name columns)]                         ; turn keywords into strings, otherwise we get colons in our output
+    (if (= status :completed)
+      ;; successful query, send CSV file
+      {:status  200
+       :body    (with-out-str
+                  (csv/write-csv *out* (into [columns] rows)))
+       :headers {"Content-Type" "text/csv"
+                 "Content-Disposition" (str "attachment; filename=\"query_result_" (u/date->iso-8601) ".csv\"")}}
+      ;; failed query, send error message
+      {:status 500
+       :body   (:error response)})))
+
+
 (defendpoint GET "/card/:id"
   "Execute the MQL query for a given `Card` and retrieve both the `Card` and the execution results as JSON.
    This is a convenience endpoint which simplifies the normal 2 api calls to fetch the `Card` then execute its query."

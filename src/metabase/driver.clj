@@ -304,7 +304,7 @@
         java.math.BigInteger            :BigIntegerField
         java.sql.Date                   :DateField
         java.sql.Timestamp              :DateTimeField
-        java.util.Date                  :DateField
+        java.util.Date                  :DateTimeField
         java.util.UUID                  :TextField
         clojure.lang.PersistentArrayMap :DictionaryField
         clojure.lang.PersistentHashMap  :DictionaryField

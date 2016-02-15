@@ -8,7 +8,7 @@
   :aliases {"bikeshed" ["with-profile" "+bikeshed" "bikeshed" "--max-line-length" "240"]
             "test" ["with-profile" "+expectations" "expectations"]
             "generate-sample-dataset" ["with-profile" "+generate-sample-dataset" "run"]}
-  :dependencies [[org.clojure/clojure "1.7.0"]
+  :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/core.async "0.2.374"]
                  [org.clojure/core.match "0.3.0-alpha4"]              ; optimized pattern matching library for Clojure
                  [org.clojure/core.memoize "0.5.8"]                   ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
@@ -27,11 +27,11 @@
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
                  [com.cemerick/friend "0.2.1"]                        ; auth library
                  [com.draines/postal "1.11.4"]                        ; SMTP library
-                 [com.h2database/h2 "1.4.190"]                        ; embedded SQL database
-                 [com.mattbertolini/liquibase-slf4j "1.2.1"]          ; Java Migrations lib
-                 [com.novemberain/monger "3.0.1"]                     ; MongoDB Driver
+                 [com.h2database/h2 "1.4.191"]                        ; embedded SQL database
+                 [com.mattbertolini/liquibase-slf4j "2.0.0"]          ; Java Migrations lib
+                 [com.novemberain/monger "3.0.2"]                     ; MongoDB Driver
                  [compojure "1.4.0"]                                  ; HTTP Routing library built on Ring
-                 [environ "1.0.1"]                                    ; easy environment management
+                 [environ "1.0.2"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
                  [korma "0.4.2"]                                      ; SQL lib
                  [log4j/log4j "1.2.17"
@@ -39,27 +39,27 @@
                                javax.jms/jms
                                com.sun.jdmk/jmxtools
                                com.sun.jmx/jmxri]]
-                 [medley "0.7.0"]                                     ; lightweight lib of useful functions
+                 [medley "0.7.1"]                                     ; lightweight lib of useful functions
                  [mysql/mysql-connector-java "5.1.38"]                ; MySQL JDBC driver
                  [net.sf.cssbox/cssbox "4.10"]
                  [net.sourceforge.jtds/jtds "1.3.1"]                  ; Open Source SQL Server driver
                  [org.xhtmlrenderer/flying-saucer-core "9.0.8"]
                  [org.liquibase/liquibase-core "3.4.2"]               ; migration management (Java lib)
-                 [org.slf4j/slf4j-log4j12 "1.7.13"]
+                 [org.slf4j/slf4j-log4j12 "1.7.16"]
                  [org.yaml/snakeyaml "1.16"]                          ; YAML parser (required by liquibase)
                  [org.xerial/sqlite-jdbc "3.8.11.2"]                  ; SQLite driver
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
-                 [prismatic/schema "1.0.4"]                           ; Data schema declaration and validation library
+                 [prismatic/schema "1.0.5"]                           ; Data schema declaration and validation library
                  [ring/ring-jetty-adapter "1.4.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
                  [swiss-arrows "1.0.0"]]                              ; 'Magic wand' macro -<>, etc.
-  :plugins [[lein-environ "1.0.1"]                                    ; easy access to environment variables
+  :plugins [[lein-environ "1.0.2"]                                    ; easy access to environment variables
             [lein-ring "0.9.7"]]                                      ; start the HTTP server with 'lein ring server'
   :main ^:skip-aot metabase.core
   :manifest {"Liquibase-Package" "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"}
   :target-path "target/%s"
-  :javac-options ["-target" "1.6" "-source" "1.6"]
+  :javac-options ["-target" "1.7", "-source" "1.7"]
   :uberjar-name "metabase.jar"
   :ring {:handler metabase.core/app
          :init metabase.core/init!
@@ -73,7 +73,7 @@
                                   [org.clojure/tools.reader "0.10.0"] ; Need to explictly specify this dep otherwise expectations doesn't seem to work right :'(
                                   [expectations "2.1.3"]              ; unit tests
                                   [ring/ring-mock "0.3.0"]]
-                   :plugins [[jonase/eastwood "0.2.2"]                ; Linting
+                   :plugins [[jonase/eastwood "0.2.3"]                ; Linting
                              [lein-ancient "0.6.8"]                   ; Check project for outdated dependencies + plugins w/ 'lein ancient'
                              [lein-bikeshed "0.2.0"]                  ; Linting
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'
@@ -94,7 +94,8 @@
                                        "-Dmb.jetty.port=3010"
                                        "-Dmb.api.key=test-api-key"
                                        "-Xverify:none"]}              ; disable bytecode verification when running tests so they start slightly faster
-             :uberjar {:aot :all}
+             :uberjar {:aot :all
+                       :jvm-opts ["-Dclojure.compiler.elide-meta=[:doc :added :file :line]"]}
              :generate-sample-dataset {:dependencies [[faker "0.2.2"]                   ; Fake data generator -- port of Perl/Ruby
                                                       [incanter/incanter-core "1.9.0"]] ; Satistical functions like normal distibutions}})
                                        :source-paths ["sample_dataset"]

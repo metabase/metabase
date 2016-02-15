@@ -85,11 +85,7 @@ export default class FieldList extends Component {
     }
 
     renderItemExtra(item) {
-        let { field, tableMetadata, enableTimeGrouping } = this.props;
-
-        if (tableMetadata.db.engine === "mongo") {
-            enableTimeGrouping = false
-        }
+        let { field, enableTimeGrouping } = this.props;
 
         return (
             <div className="flex align-center">
