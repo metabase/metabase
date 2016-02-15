@@ -92,22 +92,13 @@ export function getFriendlyName(col) {
 
 export function getCardColors(card) {
     let settings = card.visualization_settings;
-    let chartColor, colorList;
-    switch (card.display) {
-        case "bar":
-            if (settings.bar) {
-                chartColor = settings.bar.color;
-                colorList = settings.bar.colors;
-                break;
-            }
-        default:
-            if (settings.line) {
-                chartColor = settings.line.lineColor;
-                colorList = settings.line.colors
-            } else {
-                chartColor = colors.normal[0];
-                colorList = colors;
-            }
+    let chartColor, chartColorList;
+    if (card.display === "bar" && settings.bar) {
+        chartColor = settings.bar.color;
+        chartColorList = settings.bar.colors;
+    } else if (card.display !== "bar" && settings.line) {
+        chartColor = settings.line.lineColor;
+        chartColorList = settings.line.colors;
     }
-    return _.uniq([chartColor].concat(colorList));
+    return _.uniq([chartColor || colors.normal[0]].concat(chartColorList || colors.normal));
 }

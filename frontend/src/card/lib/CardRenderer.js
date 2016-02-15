@@ -348,7 +348,7 @@ export let CardRenderer = {
     lineAreaBar(element, chartType, { series, onHoverChange, onRender }) {
         let { card, data: result } = series[0];
 
-        const colors = getCardColors(card);//["#4A90E2", "#84BB4C", "#F9CF48", "#ED6E6E", "#885AB1"];
+        const colors = getCardColors(card);
 
         let isTimeseries = dimensionIsTimeseries(result);
         let isStacked = chartType === "area";
