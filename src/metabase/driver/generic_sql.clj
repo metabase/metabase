@@ -59,6 +59,12 @@
   (excluded-schemas ^java.util.Set [this]
     "*OPTIONAL*. Set of string names of schemas to skip syncing tables from.")
 
+  (field->alias ^String [this, ^Field field]
+    "*OPTIONAL*. Return the alias that should be used to for FIELD, i.e. in an `AS` clause. The default implementation calls `name`, which
+     returns the *unqualified* name of `Field`.
+
+     Return `nil` to prevent FIELD from being aliased.")
+
   (get-connection-for-sync ^java.sql.Connection [this details]
     "*OPTIONAL*. Get a connection used for a Sync step. By default, this returns a pooled connection.")
 
@@ -188,7 +194,9 @@
               (float (/ url-count total-non-null-count))))))
       0.0))
 
-(defn features [driver]
+(defn features
+  "Default implementation of `IDriver` `features` for SQL drivers."
+  [driver]
   (set (cond-> [:foreign-keys
                 :standard-deviation-aggregations]
          (set-timezone-sql driver) (conj :set-timezone))))
@@ -296,6 +304,7 @@
    :column->special-type    (constantly nil)
    :current-datetime-fn     (constantly (k/sqlfn* :NOW))
    :excluded-schemas        (constantly nil)
+   :field->alias            (u/drop-first-arg name)
    :get-connection-for-sync db->connection
    :prepare-value           (u/drop-first-arg :value)
    :set-timezone-sql        (constantly nil)
