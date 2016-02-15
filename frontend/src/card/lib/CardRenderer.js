@@ -16,7 +16,7 @@ import {
 } from "./utils";
 
 import { computeTimeseriesTicksInterval } from "./timeseries";
-import { determineSeriesIndexFromElement, getPieSliceTextElement } from "./tooltip";
+import { determineSeriesIndexFromElement } from "./tooltip";
 
 import { formatValue } from "metabase/lib/formatting";
 
