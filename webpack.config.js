@@ -182,7 +182,7 @@ if (NODE_ENV === "development" || NODE_ENV === "hot") {
     // replace minified files with un-minified versions
     for (var name in config.resolve.alias) {
         var minified = config.resolve.alias[name];
-        var unminified = minified.replace(/[.-]min/, '');
+        var unminified = minified.replace(/[.-\/]min\b/g, '');
         if (minified !== unminified && fs.existsSync(unminified)) {
             config.resolve.alias[name] = unminified;
         }
