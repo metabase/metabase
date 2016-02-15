@@ -123,8 +123,9 @@ export default class GridLayout extends Component {
             { ...l, x, y, w, h } :
             l
         );
-        this.setState({ resizing: false, placeholderLayout: null });
-        this.props.onLayoutChange(newLayout);
+        this.setState({ resizing: false, placeholderLayout: null }, () =>
+            this.props.onLayoutChange(newLayout)
+        );
     }
 
     computeResizedLayout(i, size) {
