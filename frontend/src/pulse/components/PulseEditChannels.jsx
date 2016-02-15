@@ -81,6 +81,22 @@ export default class PulseEditChannels extends Component {
         }
 
         channels[index] = { ...channels[index], [name]: value };
+
+        // default to Monday when user wants a weekly schedule
+        if (name === "schedule_type" && value === "weekly") {
+            channels[index] = { ...channels[index], ["schedule_day"]: "mon" };
+        }
+
+        // default to First, Monday when user wants a monthly schedule
+        if (name === "schedule_type" && value === "monthly") {
+            channels[index] = { ...channels[index], ["schedule_frame"]: "first", ["schedule_day"]: "mon" };
+        }
+
+        // when the monthly schedule frame is the 15th, clear out the schedule_day
+        if (name === "schedule_frame" && value === "mid") {
+            channels[index] = { ...channels[index], ["schedule_day"]: null };
+        }
+
         this.props.setPulse({ ...pulse, channels });
     }
 

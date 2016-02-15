@@ -29,7 +29,7 @@ const DAY_OF_WEEK_OPTIONS = [
 const MONTH_DAY_OPTIONS = [
     { name: "First", value: "first" },
     { name: "Last", value: "last" },
-    { name: "Mid-point", value: "mid" }
+    { name: "15th (Midpoint)", value: "mid" }
 ];
 
 const CHANNEL_NOUN_PLURAL = {
