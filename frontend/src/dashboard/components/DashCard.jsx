@@ -40,11 +40,11 @@ export default class DashCard extends Component {
         }
 
         try {
-            await * [
+            await Promise.all([
                 this.props.fetchCardData(dashcard.card)
             ].concat(
                 dashcard.series && dashcard.series.map(this.props.fetchCardData)
-            );
+            ));
         } catch (error) {
             console.error("DashCard error", error)
             this.setState({ error });

@@ -55,10 +55,10 @@ export const fetchRevisions = createThunkAction(FETCH_REVISIONS, ({ entity, id }
             case "segment": action = getSegment({ segmentId: id }); break;
             case "metric": action = getMetric({ metricId: id }); break;
         }
-        let [object, revisions] = await * [
+        let [object, revisions] = await Promise.all([
             dispatch(action),
             Revisions.get({ entity, id })
-        ];
+        ]);
         await dispatch(loadTableMetadata(object.payload.definition.source_table));
         return { object: object.payload, revisions };
     }

@@ -115,12 +115,12 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
         };
 
         // remove isRemoved dashboards
-        await * dashboard.ordered_cards
+        await Promise.all(dashboard.ordered_cards
             .filter(dc => dc.isRemoved && !dc.isAdded)
-            .map(dc => Dashboard.removecard({ dashId: dashboard.id, dashcardId: dc.id }));
+            .map(dc => Dashboard.removecard({ dashId: dashboard.id, dashcardId: dc.id })));
 
         // add isAdded dashboards
-        let updatedDashcards = await * dashboard.ordered_cards
+        let updatedDashcards = await Promise.all(dashboard.ordered_cards
             .filter(dc => !dc.isRemoved)
             .map(async dc => {
                 if (dc.isAdded) {
@@ -130,7 +130,7 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
                 } else {
                     return dc;
                 }
-            });
+            }));
 
         // update the dashboard itself
         if (dashboard.isDirty) {

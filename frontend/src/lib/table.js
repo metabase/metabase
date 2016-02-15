@@ -11,10 +11,10 @@ export function isQueryable(table) {
 }
 
 export async function loadTable(tableId) {
-    let [table, foreignKeys] = await * [
+    let [table, foreignKeys] = await Promise.all([
         Metabase.table_query_metadata({ tableId }),
         Metabase.table_fks({ tableId })
-    ];
+    ]);
 
     await augmentTable(table);
 
@@ -32,10 +32,10 @@ export async function augmentTable(table) {
 
 async function loadForeignKeyTables(table) {
     // Load joinable tables
-    await * table.fields.filter((f) => f.target != null).map(async (field) => {
+    await Promise.all(table.fields.filter((f) => f.target != null).map(async (field) => {
         let targetTable = await Metabase.table_query_metadata({ tableId: field.target.table_id });
         field.target.table = populateQueryOptions(targetTable);
-    });
+    }));
     return table;
 }
 
