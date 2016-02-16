@@ -1,24 +1,26 @@
 import React, { Component, PropTypes } from "react";
 
-import FieldWidget from './FieldWidget.jsx';
-import AccordianList from "./AccordianList.jsx";
-import QueryDefinitionTooltip from "./QueryDefinitionTooltip.jsx";
+import AggregationPopover from "./AggregationPopover.jsx";
+import FieldName from './FieldName.jsx';
 
-import Icon from "metabase/components/Icon.jsx";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
+import Popover from "metabase/components/Popover.jsx";
 
 import Query from "metabase/lib/query";
+import { getAggregator, getAggregators } from "metabase/lib/schema_metadata";
 
+import cx from "classnames";
 import _ from "underscore";
+
 
 export default class AggregationWidget extends Component {
     constructor(props, context) {
         super(props, context);
 
-        this.state = {};
+        this.state = {
+            isOpen: false
+        };
 
-        _.bindAll(this, "setAggregation", "setAggregationTarget");
+        _.bindAll(this, "open", "close", "setAggregation");
     }
 
     static propTypes = {
@@ -27,155 +29,108 @@ export default class AggregationWidget extends Component {
         updateAggregation: PropTypes.func.isRequired
     };
 
+
     componentWillMount() {
         this.componentWillReceiveProps(this.props);
     }
 
     componentWillReceiveProps(newProps) {
-        // build a list of aggregations that are valid, taking into account specifically if we have valid fields available
-        var aggregationFieldOptions = [];
-        var availableAggregations = [];
-        newProps.tableMetadata.aggregation_options.forEach((option) => {
-            if (option.fields &&
-                    (option.fields.length === 0 ||
-                        (option.fields.length > 0 && option.fields[0]))) {
-                availableAggregations.push(option);
-            }
-
-            if (newProps.aggregation.length > 0 &&
-                    newProps.aggregation[0] !== null &&
-                    option.short === newProps.aggregation[0]) {
-                // TODO: support multiple targets?
-                aggregationFieldOptions = Query.getFieldOptions(newProps.tableMetadata.fields, true, option.validFieldsFilters[0]);
-            }
-        });
-
+        // NOTE: previously this list was being filtered using this conditional, but it's unclear why that is needed so it was removed.
+        //       leaving this here for a bit as reference until we are sure it's not needed.
+        //       .filter(o => (o.fields && (o.fields.length === 0 || (o.fields.length > 0 && o.fields[0])))
         this.setState({
-            availableAggregations: availableAggregations,
-            aggregationFieldOptions: aggregationFieldOptions
+            availableAggregations: getAggregators(newProps.tableMetadata)
         });
     }
 
-    setAggregation(item) {
-        this.props.updateAggregation(item.value);
-        this.refs.aggregation.close();
+    setAggregation(aggregation) {
+        this.props.updateAggregation(aggregation);
     }
 
-    setAggregationTarget(target) {
-        var queryAggregation = this.props.aggregation;
-        queryAggregation[1] = target;
-
-        this.props.updateAggregation(queryAggregation);
+    open() {
+        this.setState({ isOpen: true });
     }
 
-    renderSectionIcon(section) {
-        return <Icon name={section.icon} width="18" height="18" />
+    close() {
+        this.setState({ isOpen: false });
     }
 
-    itemIsSelected(item) {
-        const { aggregation } = this.props;
-        return (aggregation[0] === item.value[0] && (aggregation[0] !== "METRIC" || aggregation[1] === item.value[1]));
-    }
+    renderStandardAggregation() {
+        const { aggregation, tableMetadata } = this.props;
+        const fieldId = Query.aggregationGetField(aggregation);
 
-    renderItemExtra(item, itemIndex) {
-        if (item.aggregation && item.aggregation.description) {
-            return (
-                <div className="p1">
-                    <Tooltip tooltipElement={item.aggregation.description}>
-                        <span className="QuestionTooltipTarget" />
-                    </Tooltip>
-                </div>
-            );
-        } else if (item.metric) {
-            return this.renderMetricTooltip(item.metric);
-        }
-    }
-
-    renderMetricTooltip(metric) {
-        let { tableMetadata } = this.props;
+        let selectedAggregation = getAggregator(Query.aggregationGetOperator(aggregation));
         return (
-            <div className="p1">
-                <Tooltip tooltipElement={<QueryDefinitionTooltip object={metric} tableMetadata={tableMetadata} />}>
-                    <span className="QuestionTooltipTarget" />
-                </Tooltip>
+            <div onClick={this.open} className="Query-section Query-section-aggregation cursor-pointer">
+                <span className="View-section-aggregation QueryOption p1">{selectedAggregation ? selectedAggregation.name.replace(" of ...", "") : "Choose an aggregation"}</span>
+                {aggregation.length > 1 &&
+                    <div className="flex align-center">
+                        <span className="text-bold">of</span>
+                        <FieldName
+                            className="View-section-aggregation-target SelectionModule p1"
+                            tableMetadata={tableMetadata}
+                            field={fieldId}
+                            fieldOptions={Query.getFieldOptions(tableMetadata.fields, true)}
+                        />
+                    </div>
+                }
             </div>
         );
     }
 
-    render() {
+    renderMetricAggregation() {
         const { aggregation, tableMetadata } = this.props;
-        const { availableAggregations } = this.state;
+        const metricId = Query.aggregationGetMetric(aggregation);
+
+        let selectedMetric = _.findWhere(tableMetadata.metrics, { id: metricId });
+        return (
+            <div onClick={this.open} className="Query-section Query-section-aggregation cursor-pointer">
+                <span className="View-section-aggregation QueryOption p1">{selectedMetric ? selectedMetric.name.replace(" of ...", "") : "Choose an aggregation"}</span>
+            </div>
+        );
+    }
+
+    renderPopover() {
+        const { aggregation, tableMetadata } = this.props;
+
+        if (this.state.isOpen) {
+            return (
+                <Popover
+                    ref="aggregationPopover"
+                    className="FilterPopover"
+                    isInitiallyOpen={true}
+                    onClose={this.close}
+                >
+                    <AggregationPopover
+                        aggregation={aggregation}
+                        availableAggregations={this.state.availableAggregations}
+                        tableMetadata={tableMetadata}
+                        onCommitAggregation={this.setAggregation}
+                        onClose={this.close}
+                    />
+                </Popover>
+            );
+        }
+    }
+
+    render() {
+        const { aggregation } = this.props;
 
         if (!aggregation || aggregation.length === 0) {
             // we can't do anything without a valid aggregation
             return <span/>;
         }
 
-        let selectedAggregation;
-        if (aggregation[0] === "METRIC") {
-            selectedAggregation = _.findWhere(tableMetadata.metrics, { id: aggregation[1] });
-        } else if (aggregation[0]) {
-            selectedAggregation = _.findWhere(availableAggregations, { short: aggregation[0] });
-        }
-
-        let sections = [{
-            name: "Metabasics",
-            items: availableAggregations.map(aggregation => ({
-                name: aggregation.name,
-                value: [aggregation.short].concat(aggregation.fields.map(field => null)),
-                aggregation: aggregation
-            })),
-            icon: "table2"
-        }];
-        if (tableMetadata.metrics && tableMetadata.metrics.length > 0) {
-            sections.push({
-                name: "Common Metrics",
-                items: tableMetadata.metrics.filter((mtrc) => mtrc.is_active === true || (selectedAggregation && selectedAggregation.id === mtrc.id)).map(metric => ({
-                    name: metric.name,
-                    value: ["METRIC", metric.id],
-                    metric: metric
-                })),
-                icon: "star-outline"
-            });
-        }
-
-        if (sections.length === 1) {
-            sections[0].name = null
-        }
-
         return (
-            <div className='Query-section Query-section-aggregation'>
-                <div className="flex align-center">
-                    <PopoverWithTrigger
-                        ref="aggregation"
-                        triggerClasses="View-section-aggregation p1 selected"
-                        triggerElement={<span className="QueryOption">{selectedAggregation ? selectedAggregation.name.replace(" of ...", "") : "Choose an aggregation"}</span>}
-                        isInitiallyOpen={!selectedAggregation}
-                    >
-                        <AccordianList
-                            className="text-green"
-                            sections={sections}
-                            onChange={this.setAggregation}
-                            itemIsSelected={this.itemIsSelected.bind(this)}
-                            renderSectionIcon={this.renderSectionIcon}
-                            renderItemExtra={this.renderItemExtra.bind(this)}
-                        />
-                    </PopoverWithTrigger>
+            <div className={cx("Query-section Query-section-aggregation", { "selected": this.state.isOpen })}>
+                <div>
+                    {Query.aggregationIsMetric(aggregation) ?
+                        this.renderMetricAggregation()
+                    :
+                        this.renderStandardAggregation()
+                    }
+                    {this.renderPopover()}
                 </div>
-                {aggregation[0] !== "METRIC" && aggregation.length > 1 &&
-                    <div className="flex align-center">
-                        <span className="text-bold">of</span>
-                        <FieldWidget
-                            color="green"
-                            className="View-section-aggregation-target SelectionModule p1"
-                            tableMetadata={this.props.tableMetadata}
-                            field={this.props.aggregation[1]}
-                            fieldOptions={this.state.aggregationFieldOptions}
-                            setField={this.setAggregationTarget}
-                            isInitiallyOpen={this.props.aggregation[1] == null}
-                        />
-                    </div>
-                }
             </div>
         );
     }

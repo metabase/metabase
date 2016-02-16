@@ -340,37 +340,44 @@ var Aggregators = [{
     "name": "Raw data",
     "short": "rows",
     "description": "Just a table with the rows in the answer, no additional operations.",
-    "validFieldsFilters": []
+    "validFieldsFilters": [],
+    "requiresField": false
 }, {
     "name": "Count of rows",
     "short": "count",
     "description": "Total number of rows in the answer.",
-    "validFieldsFilters": []
+    "validFieldsFilters": [],
+    "requiresField": false
 }, {
     "name": "Sum of ...",
     "short": "sum",
     "description": "Sum of all the values of a column.",
-    "validFieldsFilters": [summableFields]
+    "validFieldsFilters": [summableFields],
+    "requiresField": true
 }, {
     "name": "Average of ...",
     "short": "avg",
     "description": "Average of all the values of a column",
-    "validFieldsFilters": [summableFields]
+    "validFieldsFilters": [summableFields],
+    "requiresField": true
 }, {
     "name": "Number of distinct values of ...",
     "short": "distinct",
     "description":  "Number of unique values of a column among all the rows in the answer.",
-    "validFieldsFilters": [allFields]
+    "validFieldsFilters": [allFields],
+    "requiresField": true
 }, {
     "name": "Cumulative sum of ...",
     "short": "cum_sum",
     "description": "Additive sum of all the values of a column.\ne.x. total revenue over time.",
-    "validFieldsFilters": [summableFields]
+    "validFieldsFilters": [summableFields],
+    "requiresField": true
 }, {
     "name": "Standard deviation of ...",
     "short": "stddev",
     "description": "Number which expresses how much the values of a column vary among all rows in the answer.",
     "validFieldsFilters": [summableFields],
+    "requiresField": true,
     "requiredDriverFeature": "standard-deviation-aggregations"
 }];
 
@@ -389,11 +396,14 @@ function populateFields(aggregator, fields) {
         'fields': _.map(aggregator.validFieldsFilters, function(validFieldsFilterFn) {
             return validFieldsFilterFn(fields);
         }),
-        'validFieldsFilters': aggregator.validFieldsFilters
+        'validFieldsFilters': aggregator.validFieldsFilters,
+        "requiresField": aggregator.requiresField,
+        "requiredDriverFeature": aggregator.requiredDriverFeature
     };
 }
 
-function getAggregators(table) {
+// TODO: unit test
+export function getAggregators(table) {
     const supportedAggregations = Aggregators.filter(function (agg) {
         if (agg.requiredDriverFeature && table.db && !_.contains(table.db.features, agg.requiredDriverFeature)) {
             return false;
@@ -404,6 +414,11 @@ function getAggregators(table) {
     return _.map(supportedAggregations, function(aggregator) {
         return populateFields(aggregator, table.fields);
     });
+}
+
+// TODO: unit test
+export function getAggregator(short) {
+    return _.findWhere(Aggregators, { short: short });
 }
 
 function getBreakouts(fields) {

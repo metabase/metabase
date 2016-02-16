@@ -214,6 +214,53 @@ var Query = {
                     query.aggregation[0] === "rows");
     },
 
+    // TODO: unit test
+    // predicate function to test if a given aggregation clause represents a metric
+    aggregationIsMetric(aggregation) {
+        return (aggregation && aggregation.length > 1 && aggregation[0] === "METRIC");
+    },
+
+    // TODO: unit test
+    // get the metricId from a metric aggregation clause
+    aggregationGetMetric(aggregation) {
+        if (aggregation && Query.aggregationIsMetric(aggregation)) {
+            return aggregation[1];
+        } else {
+            return null;
+        }
+    },
+
+    // TODO: unit test
+    // get the operator from a standard aggregation clause
+    aggregationGetOperator(aggregation) {
+        if (aggregation && !Query.aggregationIsMetric(aggregation) && aggregation.length > 0) {
+            return aggregation[0];
+        } else {
+            return null;
+        }
+    },
+
+    // TODO: unit test
+    // get the fieldId from a standard aggregation clause
+    aggregationGetField(aggregation) {
+        if (aggregation && !Query.aggregationIsMetric(aggregation) && aggregation.length > 1) {
+            return aggregation[1];
+        } else {
+            return null;
+        }
+    },
+
+    // TODO: unit test
+    // set the fieldId on a standard aggregation clause
+    aggregationSetField(aggregation, fieldId) {
+        if (aggregation && aggregation.length > 0 && aggregation[0]) {
+            return [aggregation[0], fieldId];
+        } else {
+            // TODO: is there a better failure response than just returning the aggregation unmodified??
+            return aggregation;
+        }
+    },
+
     updateAggregation(query, aggregationClause) {
         // when switching to or from "rows" aggregation clear out any sorting clauses
         if ((query.aggregation[0] === "rows" || aggregationClause[0] === "rows") && query.aggregation[0] !== aggregationClause[0]) {
