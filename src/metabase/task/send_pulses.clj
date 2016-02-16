@@ -19,6 +19,7 @@
                              [setting :as setting])
             [metabase.task :as task]
             [metabase.util :as u]
+            [metabase.util.urls :as urls]
             [metabase.pulse :as p]))
 
 
@@ -111,7 +112,7 @@
   (let [image-byte-array (p/render-pulse-card-to-png card data false)
         slack-file-url   (slack/files-upload image-byte-array "image.png" slack-channel)]
     {:title      name
-     :title_link (format "%s/card/%d?clone" (setting/get :-site-url) id)
+     :title_link (urls/question-url id)
      :image_url  slack-file-url
      :fallback   name}))
 
