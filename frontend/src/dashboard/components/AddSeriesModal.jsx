@@ -26,7 +26,7 @@ function getQueryColumns(card, databases) {
 }
 
 function columnsAreCompatible(colsA, colsB) {
-    if (!colsA || !colsB) {
+    if (!(colsA && colsB && colsA.length >= 2 && colsB.length >= 2)) {
         return false;
     }
     // second column must be numeric

@@ -149,11 +149,6 @@ var config = module.exports = {
 
 };
 
-if (NODE_ENV === "hot" || isWatching) {
-    // enable "cheap" source maps in hot or watch mode since re-build speed overhead is < 1 second
-    config.devtool = 'eval-cheap-module-source-map';
-}
-
 if (NODE_ENV === "hot") {
     config.entry.app.unshift(
         'webpack-dev-server/client?http://localhost:8080',
@@ -187,10 +182,13 @@ if (NODE_ENV === "development" || NODE_ENV === "hot") {
             config.resolve.alias[name] = unminified;
         }
     }
+}
 
-    // SourceMaps
-    // Normal source map works better but takes longer to build
-    // config.devtool = 'source-map';
-    // Eval source map doesn't work with CSS but is faster to build
-    // config.devtool = 'eval-source-map';
+if (NODE_ENV === "hot" || isWatching) {
+    // enable "cheap" source maps in hot or watch mode since re-build speed overhead is < 1 second
+    config.devtool = "eval-cheap-module-source-map";
+}
+
+if (NODE_ENV === "production") {
+    config.devtool = "source-map";
 }
