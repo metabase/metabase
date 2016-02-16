@@ -17,11 +17,12 @@ function getQueryColumns(card, databases) {
     if (card.dataset_query.type !== "query") {
         return null;
     }
-    let table = databases && databases[dbId].tables_lookup[card.dataset_query.query.source_table];
+    let query = card.dataset_query.query;
+    let table = databases && databases[dbId] && databases[dbId].tables_lookup[query.source_table];
     if (!table) {
         return null;
     }
-    return Query.getQueryColumns(table, card.dataset_query.query);
+    return Query.getQueryColumns(table, query);
 }
 
 function columnsAreCompatible(colsA, colsB) {
