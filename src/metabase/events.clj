@@ -8,8 +8,8 @@
    `events-init` function which accepts zero arguments.  This function is dynamically resolved and called exactly
    once when the application goes through normal startup procedures.  Inside this function you can do any work
    needed and add your events subscribers to the bus as usual via `start-event-listener`."
-  (:require [clojure.java.classpath :as classpath]
-            [clojure.core.async :as async]
+  (:require [clojure.core.async :as async]
+            [clojure.java.classpath :as classpath]
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
             [colorize.core :as color]
@@ -19,7 +19,7 @@
 ;;; ## ---------------------------------------- LIFECYCLE ----------------------------------------
 
 
-(defonce ^:private events-initialized
+(defonce ^:private events-initialized?
   (atom nil))
 
 (defn- find-and-load-event-handlers!
@@ -37,9 +37,9 @@
 (defn initialize-events!
   "Initialize the asynchronous internal events system."
   []
-  (when-not @events-initialized
+  (when-not @events-initialized?
     (find-and-load-event-handlers!)
-    (reset! events-initialized true)))
+    (reset! events-initialized? true)))
 
 
 ;;; ## ---------------------------------------- PUBLICATION ----------------------------------------

@@ -1,7 +1,6 @@
 (ns metabase.models.revision.diff
   (:require [clojure.core.match :refer [match]]
-            (clojure [data :as data]
-                     [string :as s])))
+            [clojure.string :as s]))
 
 (defn- diff-string* [t k v1 v2]
   (match [t k v1 v2]

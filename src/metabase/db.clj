@@ -6,7 +6,6 @@
                      [string :as s]
                      [walk :as walk])
             [colorize.core :as color]
-            [environ.core :refer [env]]
             (korma [core :as k]
                    [db :as kdb])
             [medley.core :as m]

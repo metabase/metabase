@@ -1,14 +1,14 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
   (:require [clojure.tools.logging :as log]
-            [clojure.string :as s]
+            (clojure [string :as s]
+                     [walk :as walk])
             [cheshire.core :as json]
             [compojure.core :refer [defroutes]]
             [korma.core :as k]
             [medley.core :as m]
             [metabase.api.common.internal :refer :all]
             [metabase.db :refer :all]
-            [metabase.db.internal :refer [entity->korma]]
             [metabase.models.interface :as models]
             [metabase.util :as u]
             [metabase.util.password :as password]))
@@ -312,7 +312,7 @@
 (defannotation String->Dict
   "Param is converted from a JSON string to a dictionary."
   [symb value :nillable]
-  (try (clojure.walk/keywordize-keys (json/parse-string value))
+  (try (walk/keywordize-keys (json/parse-string value))
        (catch java.lang.Exception _
          (format "Invalid value '%s' for '%s': cannot parse as json." value symb))))
 

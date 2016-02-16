@@ -1,5 +1,5 @@
 (ns metabase.api.activity
-  (:require [compojure.core :refer [GET POST]]
+  (:require [compojure.core :refer [GET]]
             [korma.core :as k]
             [metabase.api.common :refer :all]
             [metabase.db :as db]
@@ -7,7 +7,6 @@
                              [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
                              [hydrate :refer [hydrate]]
-                             [user :refer [User]]
                              [view-log :refer [ViewLog]])))
 
 (defn- dashcard-exists [{:keys [topic] :as activity}]

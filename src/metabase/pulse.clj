@@ -1,15 +1,13 @@
 (ns metabase.pulse
   (:require [clojure.java.io :as io]
             (clojure [pprint :refer [cl-format]]
-                     [stacktrace :refer [print-stack-trace]]
                      [string :refer [upper-case]])
             [clojure.tools.logging :as log]
             (clj-time [coerce :as c]
                       [core :as t]
                       [format :as f])
             [hiccup.core :refer [html h]]
-            [metabase.models.setting :as setting]
-            [metabase.util :as u])
+            [metabase.models.setting :as setting])
   (:import (java.awt BasicStroke Color Dimension RenderingHints)
            java.awt.image.BufferedImage
            (java.io ByteArrayInputStream ByteArrayOutputStream)

@@ -1,7 +1,5 @@
 (ns metabase.models.card-favorite
-  (:require (metabase.models [card :refer [Card]]
-                             [interface :as i]
-                             [user :refer [User]])
+  (:require [metabase.models.interface :as i]
             [metabase.util :as u]))
 
 (i/defentity CardFavorite :report_cardfavorite)

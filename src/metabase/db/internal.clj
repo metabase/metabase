@@ -2,8 +2,7 @@
   "Internal functions and macros used by the public-facing functions in `metabase.db`."
   (:require [clojure.string :as s]
             [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
-            [korma.core :refer [where], :as k]
+            [korma.core :as k]
             [metabase.config :as config]
             [metabase.models.interface :as models]
             [metabase.util :as u]))
@@ -26,7 +25,7 @@
   "Pull kwargs from forms and add korma `where` form if applicable."
   [forms]
   (let [[kwargs-map forms] (pull-kwargs forms)]
-    (if-not (empty? kwargs-map) (conj forms `(where ~kwargs-map))
+    (if-not (empty? kwargs-map) (conj forms `(k/where ~kwargs-map))
             forms)))
 
 (defn destructure-entity
