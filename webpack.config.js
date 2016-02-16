@@ -27,7 +27,7 @@ var CSS_SRC = glob.sync(SRC_PATH + '/src/**/*.css');
 
 // Need to scan the CSS files for variable and custom media used across files
 // NOTE: this requires "webpack -w" (watch mode) to be restarted when variables change :(
-let isWatching = hasArg("-w") || hasArg("--watch")
+var isWatching = hasArg("-w") || hasArg("--watch");
 if (isWatching) {
     console.warn("Warning: in webpack watch mode you must restart webpack if you change any CSS variables or custom media queries");
 }
