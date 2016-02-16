@@ -73,7 +73,7 @@ export default class AddSeriesModal extends Component {
     async componentDidMount() {
         try {
             await this.props.fetchCards();
-            await Promise.all(_.uniq(this.filteredCards().map(c => c.database_id)).map(db_id =>
+            await Promise.all(_.uniq(this.props.cards.map(c => c.database_id)).map(db_id =>
                 this.props.fetchDatabaseMetadata(db_id)
             ));
         } catch (error) {
