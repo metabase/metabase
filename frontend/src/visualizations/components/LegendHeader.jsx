@@ -68,19 +68,42 @@ export default class LegendHeader extends Component {
     }
 }
 
-const LegendItem = ({ card, index, color, showDots, showTitles, muted, onHoverChange }) =>
-    <Tooltip
-        key={index}
-        tooltip={card.name}
-        verticalAttachments={["bottom", "top"]}
-        onMouseEnter={() => onHoverChange && onHoverChange(null, null, index) }
-        onMouseLeave={() => onHoverChange && onHoverChange(null, null, null) }
-    >
-        <a href={Urls.card(card.id)} className={cx(styles.LegendItem, "no-decoration h3 text-bold flex align-center", { mr1: showTitles, muted: muted })} style={{ overflowX: "hidden", flex: "0 1 auto" }}>
-            {showDots && <div className="flex-no-shrink inline-block circular" style={{width: 13, height: 13, margin: 4, marginRight: 8, backgroundColor: color}} />}
-            {showTitles && <div style={{ overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{card.name}</div> }
-        </a>
-    </Tooltip>
+class LegendItem extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.state = {
+            tooltipIsEnabled: false
+        };
+    }
+
+    componentDidUpdate() {
+        // Only show tooltip if title is hidden or ellipsified
+        const element = ReactDOM.findDOMNode(this.refs.title);
+        const tooltipIsEnabled = !element || element.offsetWidth < element.scrollWidth;
+        if (this.state.tooltipIsEnabled !== tooltipIsEnabled) {
+            this.setState({ tooltipIsEnabled });
+        }
+    }
+
+    render() {
+        const { card, index, color, showDots, showTitles, muted, onHoverChange } = this.props;
+        return (
+            <Tooltip
+                key={index}
+                tooltip={card.name}
+                verticalAttachments={["bottom", "top"]}
+                onMouseEnter={() => onHoverChange && onHoverChange(null, null, index) }
+                onMouseLeave={() => onHoverChange && onHoverChange(null, null, null) }
+                isEnabled={this.state.tooltipIsEnabled}
+            >
+                <a href={Urls.card(card.id)} className={cx(styles.LegendItem, "no-decoration h3 text-bold flex align-center", { mr1: showTitles, muted: muted })} style={{ overflowX: "hidden", flex: "0 1 auto" }}>
+                    {showDots && <div className="flex-no-shrink inline-block circular" style={{width: 13, height: 13, margin: 4, marginRight: 8, backgroundColor: color}} />}
+                    {showTitles && <div ref="title" style={{ overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{card.name}</div> }
+                </a>
+            </Tooltip>
+        );
+    }
+}
 
 const AddSeriesItem = ({ onAddSeries, showTitles }) =>
     <a className={cx(styles.AddSeriesItem, "h3 ml1 mr2 cursor-pointer flex align-center text-brand-hover")} onClick={onAddSeries}>
