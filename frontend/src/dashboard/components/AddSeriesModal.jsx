@@ -124,9 +124,11 @@ export default class AddSeriesModal extends Component {
     }
 
     filteredCards() {
-        let { cards, dashcard, databases } = this.props;
-        let { searchValue } = this.state;
-        let dashcardCols = getQueryColumns(dashcard.card, databases);
+        const { cards, dashcard, databases, cardData } = this.props;
+        const { searchValue } = this.state;
+
+        const dataset = cardData[dashcard.card.id];
+        const dashcardCols = dataset && dataset.data.cols;
         return cards.filter(card => {
             try {
                 // filter out the card itself
