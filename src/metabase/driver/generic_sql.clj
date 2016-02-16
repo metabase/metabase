@@ -97,8 +97,12 @@
   (memoize/ttl
    (fn [spec]
      (log/debug (u/format-color 'magenta "Creating new connection pool..."))
-     (kdb/connection-pool (assoc spec :minimum-pool-size 1)))
-   :ttl/threshold (* 3 60 60 1000)))
+     (kdb/connection-pool (assoc spec :minimum-pool-size           3
+                                      ;; prevent broken connections closed by dbs by testing them every 3 mins
+                                      :idle-connection-test-period (* 3 60)
+                                      ;; prevent overly large pools by condensing them when connections are idle for 15m+
+                                      :excess-timeout              (* 15 60))))
+   :ttl/threshold (* 60 60 1000)))
 
 (defn db->jdbc-connection-spec
   "Return a JDBC connection spec for DATABASE. Normally this will have a C3P0 pool as its datasource, unless the database is `short-lived`."
