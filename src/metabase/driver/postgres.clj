@@ -87,17 +87,21 @@
    :sslmode    "require"
    :sslfactory "org.postgresql.ssl.NonValidatingFactory"})  ; HACK Why enable SSL if we disable certificate validation?
 
+(def ^:const disable-ssl-params
+  "Params to include in the JDBC connection spec to disable SSL."
+  {:sslmode "disable"})
+
 (defn- connection-details->spec [_ {:keys [ssl] :as details-map}]
   (-> details-map
       (update :port (fn [port]
                       (if (string? port) (Integer/parseInt port)
                           port)))
       (dissoc :ssl)               ; remove :ssl in case it's false; DB will still try (& fail) to connect if the key is there
-      (merge (when ssl            ; merging ssl-params will add :ssl back in if desirable
-               ssl-params))
+      (merge (if ssl
+               ssl-params
+               disable-ssl-params))
       (rename-keys {:dbname :db})
       kdb/postgres))
-
 
 (defn- unix-timestamp->timestamp [_ expr seconds-or-milliseconds]
   (case seconds-or-milliseconds

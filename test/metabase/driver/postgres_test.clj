@@ -15,7 +15,8 @@
    :classname   "org.postgresql.Driver"
    :subprotocol "postgresql"
    :subname     "//localhost:5432/bird_sightings"
-   :make-pool?  true}
+   :make-pool?  true
+   :sslmode     "disable"}
   (sql/connection-details->spec (PostgresDriver.) {:ssl    false
                                                    :host   "localhost"
                                                    :port   5432
