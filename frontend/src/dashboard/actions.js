@@ -43,10 +43,10 @@ export const REVERT_TO_REVISION = 'REVERT_TO_REVISION';
 export const MARK_NEW_CARD_SEEN = 'MARK_NEW_CARD_SEEN';
 
 // resource wrappers
-const Dashboard = new AngularResourceProxy("Dashboard", ["get", "update", "delete", "reposition_cards", "addcard", "removecard"]);
-const Metabase = new AngularResourceProxy("Metabase", ["dataset"]);
-const Card = new AngularResourceProxy("Card", ["list", "delete"]);
-const Revision = new AngularResourceProxy("Revision", ["list", "revert"]);
+const DashboardApi = new AngularResourceProxy("Dashboard", ["get", "update", "delete", "reposition_cards", "addcard", "removecard"]);
+const MetabaseApi = new AngularResourceProxy("Metabase", ["dataset", "db_metadata"]);
+const CardApi = new AngularResourceProxy("Card", ["list", "delete"]);
+const RevisionApi = new AngularResourceProxy("Revision", ["list", "revert"]);
 
 // action creators
 
@@ -60,7 +60,7 @@ export const setDashCardAttributes = createAction(SET_DASHCARD_ATTRIBUTES);
 
 export const fetchCards = createThunkAction(FETCH_CARDS, function(filterMode = "all") {
     return async function(dispatch, getState) {
-        let cards = await Card.list({ filterMode });
+        let cards = await CardApi.list({ filterMode });
         for (var c of cards) {
             c.updated_at = moment(c.updated_at);
         }
@@ -70,7 +70,7 @@ export const fetchCards = createThunkAction(FETCH_CARDS, function(filterMode = "
 
 export const deleteCard = createThunkAction(DELETE_CARD, function(cardId) {
     return async function(dispatch, getState) {
-        await Card.delete({ cardId });
+        await CardApi.delete({ cardId });
         return cardId;
     };
 });
@@ -94,14 +94,14 @@ export const removeCardFromDashboard = createAction(REMOVE_CARD_FROM_DASH);
 
 export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card) {
     return async function(dispatch, getState) {
-        let result = await timeout(Metabase.dataset(card.dataset_query), DATASET_TIMEOUT * 1000, "Card took longer than " + DATASET_TIMEOUT + " seconds to load.");
+        let result = await timeout(MetabaseApi.dataset(card.dataset_query), DATASET_TIMEOUT * 1000, "Card took longer than " + DATASET_TIMEOUT + " seconds to load.");
         return { id: card.id, result };
     };
 });
 
 export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(id) {
     return async function(dispatch, getState) {
-        let result = await Dashboard.get({ dashId: id });
+        let result = await DashboardApi.get({ dashId: id });
         return normalize(result, dashboard);
     };
 });
@@ -117,14 +117,14 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
         // remove isRemoved dashboards
         await Promise.all(dashboard.ordered_cards
             .filter(dc => dc.isRemoved && !dc.isAdded)
-            .map(dc => Dashboard.removecard({ dashId: dashboard.id, dashcardId: dc.id })));
+            .map(dc => DashboardApi.removecard({ dashId: dashboard.id, dashcardId: dc.id })));
 
         // add isAdded dashboards
         let updatedDashcards = await Promise.all(dashboard.ordered_cards
             .filter(dc => !dc.isRemoved)
             .map(async dc => {
                 if (dc.isAdded) {
-                    let result = await Dashboard.addcard({ dashId, cardId: dc.card_id })
+                    let result = await DashboardApi.addcard({ dashId, cardId: dc.card_id })
                     // mark isAdded because addcard doesn't record the position
                     return { ...result, col: dc.col, row: dc.row, sizeX: dc.sizeX, sizeY: dc.sizeY, series: dc.series, isAdded: true }
                 } else {
@@ -135,13 +135,13 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
         // update the dashboard itself
         if (dashboard.isDirty) {
             let { id, name, description, public_perms } = dashboard;
-            dashboard = await Dashboard.update({ id, name, description, public_perms });
+            dashboard = await DashboardApi.update({ id, name, description, public_perms });
         }
 
         // reposition the cards
         if (_.some(updatedDashcards, (dc) => dc.isDirty || dc.isAdded)) {
             let cards = updatedDashcards.map(({ id, row, col, sizeX, sizeY, series }) => ({ id, row, col, sizeX, sizeY, series }));
-            var result = await Dashboard.reposition_cards({ dashId, cards });
+            var result = await DashboardApi.reposition_cards({ dashId, cards });
             if (result.status !== "ok") {
                 throw new Error(result.status);
             }
@@ -158,7 +158,7 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
 
 export const deleteDashboard = createThunkAction(DELETE_DASHBOARD, function(dashId) {
     return async function(dispatch, getState) {
-        await Dashboard.delete({ dashId });
+        await DashboardApi.delete({ dashId });
         MetabaseAnalytics.trackEvent("Dashboard", "Delete");
         return dashId;
     };
@@ -166,14 +166,14 @@ export const deleteDashboard = createThunkAction(DELETE_DASHBOARD, function(dash
 
 export const fetchRevisions = createThunkAction(FETCH_REVISIONS, function({ entity, id }) {
     return async function(dispatch, getState) {
-        let revisions = await Revision.list({ entity, id });
+        let revisions = await RevisionApi.list({ entity, id });
         return { entity, id, revisions };
     };
 });
 
 export const revertToRevision = createThunkAction(REVERT_TO_REVISION, function({ entity, id, revision_id }) {
     return async function(dispatch, getState) {
-        await Revision.revert({ entity, id, revision_id });
+        await RevisionApi.revert({ entity, id, revision_id });
     };
 });
 
