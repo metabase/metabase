@@ -1,7 +1,6 @@
 (ns metabase.api.card
   (:require [compojure.core :refer [GET POST DELETE PUT]]
             [korma.core :as k]
-            [medley.core :refer [mapply]]
             [metabase.events :as events]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
@@ -10,8 +9,7 @@
                              [card-favorite :refer [CardFavorite]]
                              [common :as common]
                              [database :refer [Database]]
-                             [table :refer [Table]]
-                             [user :refer [User]])))
+                             [table :refer [Table]])))
 
 (defannotation CardFilterOption
   "Option must be one of `all`, `mine`, or `fav`."

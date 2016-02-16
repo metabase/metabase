@@ -1,9 +1,7 @@
 (ns metabase.models.dashboard-card
   (:require [clojure.set :as set]
             [korma.core :as k]
-            [metabase.db :refer [sel]]
-            (metabase.models [card :refer [Card]]
-                             [interface :as i])
+            [metabase.models.interface :as i]
             [metabase.util :as u]))
 
 (i/defentity DashboardCard :report_dashboardcard
