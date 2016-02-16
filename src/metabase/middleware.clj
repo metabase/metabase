@@ -142,6 +142,7 @@
                                                       :script-src  ["'unsafe-inline'"
                                                                     "'unsafe-eval'"
                                                                     "'self'"
+                                                                    "https://maps.google.com"
                                                                     "https://www.google-analytics.com" ; Safari requires the protocol
                                                                     "https://*.googleapis.com"
                                                                     "*.gstatic.com"
