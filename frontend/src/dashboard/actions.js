@@ -5,6 +5,7 @@ import { AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
 import { normalize, Schema, arrayOf } from "normalizr";
 
 import moment from "moment";
+import { augmentDatabase } from "metabase/lib/table";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
@@ -41,6 +42,8 @@ export const FETCH_REVISIONS = 'FETCH_REVISIONS';
 export const REVERT_TO_REVISION = 'REVERT_TO_REVISION';
 
 export const MARK_NEW_CARD_SEEN = 'MARK_NEW_CARD_SEEN';
+
+export const FETCH_DATABASE_METADATA = 'FETCH_DATABASE_METADATA';
 
 // resource wrappers
 const DashboardApi = new AngularResourceProxy("Dashboard", ["get", "update", "delete", "reposition_cards", "addcard", "removecard"]);
@@ -174,6 +177,14 @@ export const fetchRevisions = createThunkAction(FETCH_REVISIONS, function({ enti
 export const revertToRevision = createThunkAction(REVERT_TO_REVISION, function({ entity, id, revision_id }) {
     return async function(dispatch, getState) {
         await RevisionApi.revert({ entity, id, revision_id });
+    };
+});
+
+export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, function(dbId) {
+    return async function(dispatch, getState) {
+        let databaseMetadata = await MetabaseApi.db_metadata({ dbId });
+        augmentDatabase(databaseMetadata);
+        return databaseMetadata;
     };
 });
 

@@ -4,12 +4,14 @@ import { createSelector } from 'reselect';
 
 const selectedDashboardSelector = state => state.selectedDashboard
 const isEditingSelector         = state => state.isEditing;
-const cardsSelector             = state => state.cards
-const dashboardsSelector        = state => state.dashboards
-const dashcardsSelector         = state => state.dashcards
-const cardDataSelector          = state => state.cardData
-const cardIdListSelector        = state => state.cardList
-const revisionsSelector         = state => state.revisions
+const cardsSelector             = state => state.cards;
+const dashboardsSelector        = state => state.dashboards;
+const dashcardsSelector         = state => state.dashcards;
+const cardDataSelector          = state => state.cardData;
+const cardIdListSelector        = state => state.cardList;
+const revisionsSelector         = state => state.revisions;
+
+const databasesSelector         = state => state.metadata.databases;
 
 const dashboardSelector = createSelector(
     [selectedDashboardSelector, dashboardsSelector],
@@ -43,6 +45,6 @@ const cardListSelector = createSelector(
 );
 
 export const dashboardSelectors = createSelector(
-    [isEditingSelector, isDirtySelector, selectedDashboardSelector, dashboardCompleteSelector, cardListSelector, revisionsSelector, cardDataSelector],
-    (isEditing, isDirty, selectedDashboard, dashboard, cards, revisions, cardData) => ({ isEditing, isDirty, selectedDashboard, dashboard, cards, revisions, cardData })
+    [isEditingSelector, isDirtySelector, selectedDashboardSelector, dashboardCompleteSelector, cardListSelector, revisionsSelector, cardDataSelector, databasesSelector],
+    (isEditing, isDirty, selectedDashboard, dashboard, cards, revisions, cardData, databases) => ({ isEditing, isDirty, selectedDashboard, dashboard, cards, revisions, cardData, databases })
 );

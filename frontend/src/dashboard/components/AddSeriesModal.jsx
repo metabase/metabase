@@ -7,21 +7,37 @@ import Tooltip from "metabase/components/Tooltip.jsx";
 import CheckBox from "metabase/components/CheckBox.jsx";
 
 import { isNumeric, isDate } from "metabase/lib/schema_metadata";
+import Query from "metabase/lib/query";
 
 import _ from "underscore";
 import cx from "classnames";
 
-function isDataCompatible(dataA, dataB) {
+function getQueryColumns(card, databases) {
+    let dbId = card.dataset_query.database;
+    if (card.dataset_query.type !== "query") {
+        return null;
+    }
+    let table = databases && databases[dbId].tables_lookup[card.dataset_query.query.source_table];
+    if (!table) {
+        return null;
+    }
+    return Query.getQueryColumns(table, card.dataset_query.query);
+}
+
+function columnsAreCompatible(colsA, colsB) {
+    if (!colsA || !colsB) {
+        return false;
+    }
     // second column must be numeric
-    if (!isNumeric(dataA.cols[1]) || !isNumeric(dataB.cols[1])) {
+    if (!isNumeric(colsA[1]) || !isNumeric(colsB[1])) {
         return false;
     }
     // both or neither must be dates
-    if (isDate(dataA.cols[0]) !== isDate(dataB.cols[0])) {
+    if (isDate(colsA[0]) !== isDate(colsB[0])) {
         return false;
     }
     // both or neither must be numeric
-    if (isNumeric(dataA.cols[0]) !== isNumeric(dataB.cols[0])) {
+    if (isNumeric(colsA[0]) !== isNumeric(colsB[0])) {
         return false;
     }
     return true;
@@ -38,7 +54,7 @@ export default class AddSeriesModal extends Component {
             badCards: {}
         };
 
-        _.bindAll(this, "onSearchChange", "onDone", "filterCards")
+        _.bindAll(this, "onSearchChange", "onDone", "filteredCards")
     }
 
     static propTypes = {
@@ -47,6 +63,7 @@ export default class AddSeriesModal extends Component {
         cardData: PropTypes.object.isRequired,
         fetchCards: PropTypes.func.isRequired,
         fetchCardData: PropTypes.func.isRequired,
+        fetchDatabaseMetadata: PropTypes.func.isRequired,
         setDashCardAttributes: PropTypes.func.isRequired,
         onClose: PropTypes.func.isRequired
     };
@@ -55,6 +72,9 @@ export default class AddSeriesModal extends Component {
     async componentDidMount() {
         try {
             await this.props.fetchCards();
+            await Promise.all(_.uniq(this.filteredCards().map(c => c.database_id)).map(db_id =>
+                this.props.fetchDatabaseMetadata(db_id)
+            ));
         } catch (error) {
             console.error(error);
             this.setState({ error });
@@ -74,7 +94,7 @@ export default class AddSeriesModal extends Component {
                 }
                 let sourceDataset = this.props.cardData[this.props.dashcard.card.id];
                 let seriesDataset = this.props.cardData[card.id];
-                if (isDataCompatible(sourceDataset.data, seriesDataset.data)) {
+                if (columnsAreCompatible(sourceDataset.data.cols, seriesDataset.data.cols)) {
                     this.setState({
                         state: null,
                         series: this.state.series.concat(card)
@@ -102,9 +122,10 @@ export default class AddSeriesModal extends Component {
         this.props.onClose();
     }
 
-    filterCards(cards) {
-        let { dashcard } = this.props;
+    filteredCards() {
+        let { cards, dashcard, databases } = this.props;
         let { searchValue } = this.state;
+        let dashcardCols = getQueryColumns(dashcard.card, databases);
         return cards.filter(card => {
             try {
                 // filter out the card itself
@@ -118,6 +139,9 @@ export default class AddSeriesModal extends Component {
                     }
                     // must have one and only one breakout
                     if (card.dataset_query.query.breakout.length !== 1) {
+                        return false;
+                    }
+                    if (!columnsAreCompatible(dashcardCols, getQueryColumns(card, databases))) {
                         return false;
                     }
                 }
@@ -142,7 +166,7 @@ export default class AddSeriesModal extends Component {
 
         let filteredCards;
         if (!error && cards) {
-            filteredCards = this.filterCards(cards);
+            filteredCards = this.filteredCards();
             if (filteredCards.length === 0) {
                 error = new Error("Whoops, no compatible questions match your search.");
             }

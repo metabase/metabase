@@ -1,4 +1,4 @@
-import { handleActions } from 'redux-actions';
+import { handleActions, combineReducers } from "metabase/lib/redux";
 
 import {
     FETCH_CARDS,
@@ -12,7 +12,8 @@ import {
     REMOVE_CARD_FROM_DASH,
     DELETE_CARD,
     FETCH_REVISIONS,
-    MARK_NEW_CARD_SEEN
+    MARK_NEW_CARD_SEEN,
+    FETCH_DATABASE_METADATA
 } from './actions';
 
 export const selectedDashboard = handleActions({
@@ -74,3 +75,11 @@ export const revisions = handleActions({
 export const cardData = handleActions({
     [FETCH_CARD_DATA]: { next: (state, { payload: { id, result }}) => ({ ...state, [id]: result }) }
 }, {});
+
+const databases = handleActions({
+    [FETCH_DATABASE_METADATA]: { next: (state, { payload }) => ({ ...state, [payload.id]: payload }) }
+}, {});
+
+export const metadata = combineReducers({
+    databases
+});

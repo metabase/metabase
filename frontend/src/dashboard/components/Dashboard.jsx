@@ -15,6 +15,10 @@ export default class Dashboard extends Component {
     }
 
     static propTypes = {
+        isEditing: PropTypes.bool.isRequired,
+        dashboard: PropTypes.object,
+        cards: PropTypes.array,
+
         addCardToDashboard: PropTypes.func.isRequired,
         deleteDashboard: PropTypes.func.isRequired,
         fetchCards: PropTypes.func.isRequired,

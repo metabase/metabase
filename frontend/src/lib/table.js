@@ -30,6 +30,19 @@ export async function augmentTable(table) {
     return table;
 }
 
+export function augmentDatabase(database) {
+    database.tables_lookup = createLookupByProperty(database.tables, "id");
+    for (let table of database.tables) {
+        addValidOperatorsToFields(table);
+        table.fields_lookup = createLookupByProperty(table.fields, "id");
+        for (let field of table.fields) {
+            addFkTargets(field, database.tables_lookup);
+            field.operators_lookup = createLookupByProperty(field.valid_operators, "name");
+        }
+    }
+    return database;
+}
+
 async function loadForeignKeyTables(table) {
     // Load joinable tables
     await Promise.all(table.fields.filter((f) => f.target != null).map(async (field) => {
@@ -54,3 +67,16 @@ function populateQueryOptions(table) {
 
     return table;
 };
+
+function addFkTargets(field, tables) {
+    if (field.target != null) {
+        field.target.table = tables[field.target.table_id];
+    }
+}
+
+function createLookupByProperty(items, property) {
+    return items.reduce((lookup, item) => {
+        lookup[item[property]] = item;
+        return lookup;
+    }, {});
+}

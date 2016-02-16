@@ -4,8 +4,8 @@ import inflection from "inflection";
 import _ from "underscore";
 
 
-export const newQueryTemplates = {
-    "query": {
+export const NEW_QUERY_TEMPLATES = {
+    query: {
         database: null,
         type: "query",
         query: {
@@ -15,7 +15,7 @@ export const newQueryTemplates = {
             filter: []
         }
     },
-    "native": {
+    native: {
         database: null,
         type: "native",
         native: {
@@ -25,27 +25,27 @@ export const newQueryTemplates = {
 };
 
 export function createQuery(type = "query", databaseId, tableId) {
-    let query = angular.copy(newQueryTemplates[type]);
+    let dataset_query = angular.copy(NEW_QUERY_TEMPLATES[type]);
 
     if (databaseId) {
-        query.database = databaseId;
+        dataset_query.database = databaseId;
     }
 
     if (type === "query" && databaseId && tableId) {
-        query.query.source_table = tableId;
+        dataset_query.query.source_table = tableId;
     }
 
-    return query;
+    return dataset_query;
 }
 
 var Query = {
 
-    isStructured(query) {
-        return query && query.type && query.type === "query";
+    isStructured(dataset_query) {
+        return dataset_query && dataset_query.type === "query";
     },
 
-    isNative(query) {
-        return query && query.type && query.type === "native";
+    isNative(dataset_query) {
+        return dataset_query && dataset_query.type === "native";
     },
 
     canRun(query) {
@@ -209,9 +209,7 @@ var Query = {
     },
 
     isBareRowsAggregation(query) {
-        return (query.aggregation &&
-                    query.aggregation.length > 0 &&
-                    query.aggregation[0] === "rows");
+        return (query.aggregation && query.aggregation[0] === "rows");
     },
 
     updateAggregation(query, aggregationClause) {
@@ -582,6 +580,44 @@ var Query = {
         } else {
             return description.join("");
         }
+    },
+
+    getDatetimeFieldUnit(field) {
+        return field && field[3];
+    },
+
+    getAggregationType(query) {
+        return query && query.aggregation && query.aggregation[0];
+    },
+
+    getAggregationField(query) {
+        return query && query.aggregation && query.aggregation[1];
+    },
+
+    getBreakouts(query) {
+        return (query && query.breakout) || [];
+    },
+
+    getQueryColumn(tableMetadata, field) {
+        let target = Query.getFieldTarget(field, tableMetadata);
+        let column = { ...target.field };
+        if (Query.isDatetimeField(field)) {
+            column.unit = Query.getDatetimeFieldUnit(field);
+        }
+        return column;
+    },
+
+    getQueryColumns(tableMetadata, query) {
+        let columns = Query.getBreakouts(query).map(b => Query.getQueryColumn(tableMetadata, b))
+        if (Query.getAggregationType(query) === "rows") {
+            if (columns.length === 0) {
+                return null;
+            }
+        } else {
+            // NOTE: incomplete (missing name etc), count/distinct are actually IntegerField, but close enough for now
+            columns.push({ base_type: "FloatField", special_type: "number" });
+        }
+        return columns;
     }
 }
 
