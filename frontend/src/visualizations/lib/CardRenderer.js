@@ -20,9 +20,6 @@ import { determineSeriesIndexFromElement } from "./tooltip";
 
 import { formatValue } from "metabase/lib/formatting";
 
-// agument d3 with a simple quarters range implementation
-d3.time.quarters = (start, stop, step) => d3.time.months(start, stop, 3);
-
 const MIN_PIXELS_PER_TICK = { x: 100, y: 30 };
 const BAR_PADDING_RATIO = 0.2;
 const DEFAULT_INTERPOLATION = "linear";

@@ -7,7 +7,7 @@ import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 
 import Urls from "metabase/lib/urls";
-import { getCardColors } from "metabase/card/lib/utils";
+import { getCardColors } from "metabase/visualizations/lib/utils";
 
 import cx from "classnames";
 

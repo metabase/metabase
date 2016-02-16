@@ -3,7 +3,7 @@ import ReactDOM from "react-dom";
 
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 
-import * as charting from "metabase/card/lib/CardRenderer";
+import * as charting from "metabase/visualizations/lib/CardRenderer";
 
 import { setLatitudeAndLongitude } from "metabase/lib/visualization_settings";
 
