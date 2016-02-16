@@ -52,6 +52,7 @@
                    :display "table"}]
    :channels     [{:schedule_type :daily,
                    :schedule_hour 15,
+                   :schedule_frame nil,
                    :channel_type  :email,
                    :details       {:other "stuff"},
                    :schedule_day  nil,
@@ -177,6 +178,7 @@
    :schedule_type schedule-type-daily
    :schedule_hour 4
    :schedule_day  nil
+   :schedule_frame nil
    :recipients    [{:email "foo@bar.com"}
                    (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]}
   (tu/with-temp Pulse [{:keys [id]} {:creator_id (user->id :rasta)
@@ -198,6 +200,7 @@
    :name       "Booyah!"
    :channels   [{:schedule_type :daily
                  :schedule_hour 18
+                 :schedule_frame nil
                  :channel_type  :email
                  :recipients    [{:email "foo@bar.com"}]
                  :schedule_day  nil}]
@@ -235,6 +238,7 @@
                    :display "table"}]
    :channels     [{:schedule_type :daily,
                    :schedule_hour 18,
+                   :schedule_frame nil,
                    :channel_type  :email,
                    :schedule_day  nil,
                    :recipients    [{:email "foo@bar.com"}

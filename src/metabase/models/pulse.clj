@@ -77,10 +77,11 @@
   ;; NOTE that we force the :id of the channel being updated to the :id we *know* from our
   ;;      existing list of `PulseChannels` pulled from the db to ensure we affect the right record
   (let [channel (when new-channel (assoc new-channel
-                                    :pulse_id      pulse-id
-                                    :id            (:id existing-channel)
-                                    :channel_type  (keyword (:channel_type new-channel))
-                                    :schedule_type (keyword (:schedule_type new-channel))))]
+                                    :pulse_id       pulse-id
+                                    :id             (:id existing-channel)
+                                    :channel_type   (keyword (:channel_type new-channel))
+                                    :schedule_type  (keyword (:schedule_type new-channel))
+                                    :schedule_frame (keyword (:schedule_frame new-channel))))]
     (cond
       ;; 1. in channels, NOT in db-channels = CREATE
       (and channel (not existing-channel))  (pulse-channel/create-pulse-channel channel)
