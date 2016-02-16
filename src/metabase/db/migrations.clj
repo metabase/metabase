@@ -10,7 +10,6 @@
                              [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]]
                              [setting :as setting])
-            [metabase.sample-data :as sample-data]
             [metabase.util :as u]))
 
 ;;; # Migration Helpers

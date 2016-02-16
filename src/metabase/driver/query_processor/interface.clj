@@ -9,11 +9,14 @@
            java.sql.Timestamp))
 
 (def ^:dynamic *driver*
+  "The driver that will be used to run the query we are currently parsing.
+   Used by `assert-driver-supports` and other places.
+   Always bound when running queries the normal way, e.g. via `metabase.driver/process-query`.
+   Not neccesarily bound when using various functions like `fk->` in the REPL."
   nil)
 
-;; *driver* is always bound when running queries the normal way, e.g. via `metabase.driver/process-query`
-;; It is not neccesarily bound when using various functions like `fk->` in the REPL.
-;; The check is not performed in those cases to allow flexibility when composing queries for tests or interactive development
+;; `assert-driver-supports` doesn't run check when `*driver*` is unbound (e.g., when used in the REPL)
+;; Allows flexibility when composing queries for tests or interactive development
 (defn assert-driver-supports
   "When `*driver*` is bound, assert that is supports keyword FEATURE."
   [feature]
@@ -31,9 +34,11 @@
 
 ;; These are just used by the QueryExpander to record information about how joins should occur.
 
-(def IntGreaterThanZero (s/constrained s/Int
-                                       (partial < 0)
-                                       "Integer greater than zero"))
+(def IntGreaterThanZero
+  "Schema representing an `s/Int` than must also be greater than zero."
+  (s/constrained s/Int
+                 (partial < 0)
+                 "Integer greater than zero"))
 
 (s/defrecord JoinTableField [field-id   :- IntGreaterThanZero
                              field-name :- s/Str])
@@ -88,13 +93,17 @@
   "Valid units for a `RelativeDateTimeValue`."
   #{:minute :hour :day :week :month :quarter :year})
 
-(def DatetimeFieldUnit (s/named (apply s/enum datetime-field-units)          "Valid datetime unit for a field"))
-(def DatetimeValueUnit (s/named (apply s/enum relative-datetime-value-units) "Valid datetime unit for a relative datetime"))
+(def DatetimeFieldUnit "Schema for datetime units that are valid for `DateTimeField` forms." (s/named (apply s/enum datetime-field-units)          "Valid datetime unit for a field"))
+(def DatetimeValueUnit "Schema for datetime units that valid for relative datetime values."  (s/named (apply s/enum relative-datetime-value-units) "Valid datetime unit for a relative datetime"))
 
-(defn datetime-field-unit? [unit]
+(defn datetime-field-unit?
+  "Is UNIT a valid datetime unit for a `DateTimeField` form?"
+  [unit]
   (contains? datetime-field-units (keyword unit)))
 
-(defn relative-datetime-value-unit? [unit]
+(defn relative-datetime-value-unit?
+  "Is UNIT a valid datetime unit for a `RelativeDateTimeValue` form?"
+  [unit]
   (contains? relative-datetime-value-units (keyword unit)))
 
 
@@ -117,7 +126,7 @@
                                     unit   :- DatetimeValueUnit
                                     field  :- DateTimeField])
 
-(defprotocol IDateTimeValue
+(defprotocol ^:private IDateTimeValue
   (unit [this]
     "Get the `unit` associated with a `DateTimeValue` or `RelativeDateTimeValue`.")
 
@@ -147,27 +156,51 @@
                                                  zero?
                                                  "Ag field index should be 0 -- MBQL currently only supports a single aggregation")])
 
-(def FieldPlaceholderOrAgRef (s/named (s/cond-pre FieldPlaceholder AgFieldRef) "Valid field (not a field ID or aggregate field reference)"))
+(def FieldPlaceholderOrAgRef
+  "Schema for either a `FieldPlaceholder` or `AgFieldRef`."
+  (s/named (s/cond-pre FieldPlaceholder AgFieldRef) "Valid field (not a field ID or aggregate field reference)"))
 
 
 (s/defrecord RelativeDatetime [amount :- s/Int
                                unit   :- DatetimeValueUnit])
 
-(def LiteralDatetimeString (s/constrained s/Str u/date-string?                         "Valid ISO-8601 datetime string literal"))
-(def LiteralDatetime       (s/named (s/cond-pre java.sql.Date LiteralDatetimeString)   "Valid datetime literal (must be ISO-8601 string or java.sql.Date)"))
-(def Datetime              (s/named (s/cond-pre RelativeDatetime LiteralDatetime)      "Valid datetime (must ISO-8601 string literal or a relative-datetime form)"))
-(def OrderableValue        (s/named (s/cond-pre s/Num Datetime)                        "Valid orderable value (must be number or datetime)"))
-(def AnyValue              (s/named (s/maybe (s/cond-pre s/Bool s/Str OrderableValue)) "Valid value (must be nil, boolean, number, string, or a relative-datetime form)"))
+(def LiteralDatetimeString
+  "Schema for an MBQL datetime string literal, in ISO-8601 format."
+  (s/constrained s/Str u/date-string? "Valid ISO-8601 datetime string literal"))
+
+(def LiteralDatetime
+  "Schema for an MBQL literal datetime value: and ISO-8601 string or `java.sql.Date`."
+  (s/named (s/cond-pre java.sql.Date LiteralDatetimeString) "Valid datetime literal (must be ISO-8601 string or java.sql.Date)"))
+
+(def Datetime
+  "Schema for an MBQL datetime value: an ISO-8601 string, `java.sql.Date`, or a relative dateitme form."
+  (s/named (s/cond-pre RelativeDatetime LiteralDatetime) "Valid datetime (must ISO-8601 string literal or a relative-datetime form)"))
+
+(def OrderableValue
+  "Schema for something that is orderable value in MBQL (either a number or datetime)."
+  (s/named (s/cond-pre s/Num Datetime) "Valid orderable value (must be number or datetime)"))
+
+(def AnyValue
+  "Schema for anything that is a considered a valid value in MBQL - `nil`, a `Boolean`, `Number`, `String`, or relative datetime form."
+  (s/named (s/maybe (s/cond-pre s/Bool s/Str OrderableValue)) "Valid value (must be nil, boolean, number, string, or a relative-datetime form)"))
 
 ;; Replace values with these during first pass over Query.
 ;; Include associated Field ID so appropriate the info can be found during Field resolution
 (s/defrecord ValuePlaceholder [field-placeholder :- FieldPlaceholder
                                value             :- AnyValue])
 
-(def OrderableValuePlaceholder (s/constrained ValuePlaceholder (comp (complement (s/checker OrderableValue)) :value) ":value must be orderable (number or datetime)"))
-(def StringValuePlaceholder    (s/constrained ValuePlaceholder (comp string? :value)                                 ":value must be a string"))
+(def OrderableValuePlaceholder
+  "`ValuePlaceholder` schema with the additional constraint that the value be orderable (a number or datetime)."
+  (s/constrained ValuePlaceholder (comp (complement (s/checker OrderableValue)) :value) ":value must be orderable (number or datetime)"))
 
-(def FieldOrAnyValue       (s/named (s/cond-pre FieldPlaceholder ValuePlaceholder)          "Field or value"))
+(def StringValuePlaceholder
+  "`ValuePlaceholder` schema with the additional constraint that the value be a string/"
+  (s/constrained ValuePlaceholder (comp string? :value) ":value must be a string"))
+
+(def FieldOrAnyValue
+  "Schema that accepts either a `FieldPlaceholder` or `ValuePlaceholder`."
+  (s/named (s/cond-pre FieldPlaceholder ValuePlaceholder) "Field or value"))
+
 ;; (def FieldOrOrderableValue (s/named (s/cond-pre FieldPlaceholder OrderableValuePlaceholder) "Field or orderable value (number or datetime)"))
 ;; (def FieldOrStringValue    (s/named (s/cond-pre FieldPlaceholder StringValuePlaceholder)    "Field or string literal"))
 
@@ -179,13 +212,15 @@
 (s/defrecord AggregationWithField [aggregation-type :- (s/named (s/enum :avg :count :cumulative-sum :distinct :stddev :sum) "Valid aggregation type")
                                    field            :- FieldPlaceholder])
 
-(def Aggregation (s/constrained
-                  (s/cond-pre AggregationWithField AggregationWithoutField)
-                  (fn [{:keys [aggregation-type]}]
-                    (when (= aggregation-type :stddev)
-                      (assert-driver-supports :standard-deviation-aggregations))
-                    true)
-                  "standard-deviation-aggregations is not supported by this driver."))
+(def Aggregation
+  "Schema for a top-level `aggregation` clause in an MBQL query."
+  (s/constrained
+   (s/cond-pre AggregationWithField AggregationWithoutField)
+   (fn [{:keys [aggregation-type]}]
+     (when (= aggregation-type :stddev)
+       (assert-driver-supports :standard-deviation-aggregations))
+     true)
+   "standard-deviation-aggregations is not supported by this driver."))
 
 
 (s/defrecord EqualityFilter [filter-type :- (s/enum := :!=)
@@ -205,8 +240,10 @@
                            field       :- FieldPlaceholder
                            value       :- StringValuePlaceholder])
 
-(def SimpleFilterClause (s/named (s/cond-pre EqualityFilter ComparisonFilter BetweenFilter StringFilter)
-                                 "Simple filter clause"))
+(def SimpleFilterClause
+  "Schema for a non-compound, non-`not` MBQL `filter` clause."
+  (s/named (s/cond-pre EqualityFilter ComparisonFilter BetweenFilter StringFilter)
+           "Simple filter clause"))
 
 (s/defrecord NotFilter [compound-type :- (s/eq :not)
                         subclause     :- SimpleFilterClause])
@@ -216,21 +253,28 @@
 (s/defrecord CompoundFilter [compound-type :- (s/enum :and :or)
                              subclauses    :- [(s/recursive #'Filter)]])
 
-(def Filter (s/named (s/cond-pre SimpleFilterClause NotFilter CompoundFilter)
-                     "Valid filter clause"))
+(def Filter
+  "Schema for top-level `filter` clause in an MBQL query."
+  (s/named (s/cond-pre SimpleFilterClause NotFilter CompoundFilter)
+           "Valid filter clause"))
 
 
-(def OrderBy (s/named {:field     FieldPlaceholderOrAgRef
-                       :direction (s/named (s/enum :ascending :descending) "Valid order-by direction")}
-                      "Valid order-by subclause"))
+(def OrderBy
+  "Schema for top-level `order-by` clause in an MBQL query."
+  (s/named {:field     FieldPlaceholderOrAgRef
+            :direction (s/named (s/enum :ascending :descending) "Valid order-by direction")}
+           "Valid order-by subclause"))
 
 
-(def Page (s/named {:page  IntGreaterThanZero
-                    :items IntGreaterThanZero}
-                   "Valid page clause"))
+(def Page
+  "Schema for the top-level `page` clause in a MBQL query."
+  (s/named {:page  IntGreaterThanZero
+            :items IntGreaterThanZero}
+           "Valid page clause"))
 
 
 (def Query
+  "Schema for an MBQL query."
   {(s/optional-key :aggregation) Aggregation
    (s/optional-key :breakout)    [FieldPlaceholder]
    (s/optional-key :fields)      [FieldPlaceholderOrAgRef]

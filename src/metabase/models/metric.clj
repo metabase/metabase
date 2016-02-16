@@ -93,13 +93,13 @@
    Returns true if `Metric` exists and is active, false otherwise."
   [id]
   {:pre [(integer? id)]}
-  (db/exists? Metric :id id :is_active true))
+  (db/exists? Metric :id id, :is_active true))
 
 (defn retrieve-metric
   "Fetch a single `Metric` by its ID value."
   [id]
   {:pre [(integer? id)]}
-  (-> (db/sel :one Metric :id id)
+  (-> (Metric id)
       (hydrate :creator)))
 
 (defn retrieve-metrics
@@ -111,8 +111,8 @@
    {:pre [(integer? table-id)
           (keyword? state)]}
    (-> (if (= :all state)
-         (db/sel :many Metric :table_id table-id (k/order :name :ASC))
-         (db/sel :many Metric :table_id table-id :is_active (if (= :active state) true false) (k/order :name :ASC)))
+         (db/sel :many Metric :table_id table-id, (k/order :name :ASC))
+         (db/sel :many Metric :table_id table-id, :is_active (if (= :active state) true false), (k/order :name :ASC)))
        (hydrate :creator))))
 
 (defn update-metric
@@ -130,11 +130,8 @@
     :name        name
     :description description
     :definition  definition)
-  (let [metric (retrieve-metric id)]
-    ;; fire off an event
-    (events/publish-event :metric-update (assoc metric :actor_id user-id :revision_message revision_message))
-    ;; return the updated metric
-    metric))
+  (u/prog1 (retrieve-metric id)
+    (events/publish-event :metric-update (assoc <> :actor_id user-id, :revision_message revision_message))))
 
 (defn delete-metric
   "Delete a `Metric`.
@@ -150,8 +147,5 @@
   ;; make Metric not active
   (db/upd Metric id :is_active false)
   ;; retrieve the updated metric (now retired)
-  (let [metric (retrieve-metric id)]
-    ;; fire off an event
-    (events/publish-event :metric-delete (assoc metric :actor_id user-id :revision_message revision-message))
-    ;; return the updated metric
-    metric))
+  (u/prog1 (retrieve-metric id)
+    (events/publish-event :metric-delete (assoc <> :actor_id user-id, :revision_message revision-message))))

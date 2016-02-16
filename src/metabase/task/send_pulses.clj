@@ -6,6 +6,7 @@
                                     [triggers :as triggers])
             [clojurewerkz.quartzite.schedule.cron :as cron]
             [clj-time.core :as time]
+            [clj-time.predicates :as timepr]
             [metabase.db :as db]
             [metabase.driver :as driver]
             [metabase.email :as email]
@@ -29,6 +30,22 @@
 (defonce ^:private send-pulses-job (atom nil))
 (defonce ^:private send-pulses-trigger (atom nil))
 
+(defn- monthday [dt]
+  (cond
+    (timepr/first-day-of-month? dt) :first
+    (timepr/last-day-of-month? dt)  :last
+    (= 15 (time/day dt))            :mid
+    :else                           :other))
+
+(defn- monthweek [dt]
+  (let [curr-day-of-month  (time/day dt)
+        last-of-month      (time/day (time/last-day-of-the-month dt))
+        start-of-last-week (- last-of-month 7)]
+    (cond
+      (> 8 curr-day-of-month)                  :first
+      (< start-of-last-week curr-day-of-month) :last
+      :else                                    :other)))
+
 ;; triggers the sending of all pulses which are scheduled to run in the current hour
 (jobs/defjob SendPulses
   [ctx]
@@ -40,8 +57,10 @@
         curr-hour          (time/hour now)
         curr-weekday       (->> (time/day-of-week now)
                                 (get pulse-channel/days-of-week)
-                                :id)]
-    (send-pulses curr-hour curr-weekday)))
+                                :id)
+        curr-monthday      (monthday now)
+        curr-monthweek     (monthweek now)]
+    (send-pulses curr-hour curr-weekday curr-monthday curr-monthweek)))
 
 (defn- task-init []
   ;; build our job
@@ -127,11 +146,13 @@
   "Send any `Pulses` which are scheduled to run in the current day/hour.  We use the current time and determine the
    hour of the day and day of the week according to the defined reporting timezone, or UTC.  We then find all `Pulses`
    that are scheduled to run and send them."
-  [hour day]
+  [hour weekday monthday monthweek]
   [:pre [(integer? hour)
          (and (< 0 hour) (> 23 hour))
-         (pulse-channel/day-of-week? day)]]
-  (let [channels-by-pulse (group-by :pulse_id (pulse-channel/retrieve-scheduled-channels hour day))]
+         (pulse-channel/day-of-week? weekday)
+         (contains? #{:first :last :mid :other} monthday)
+         (contains? #{:first :last :other} monthweek)]]
+  (let [channels-by-pulse (group-by :pulse_id (pulse-channel/retrieve-scheduled-channels hour weekday monthday monthweek))]
     (doseq [pulse-id (keys channels-by-pulse)]
       (try
         (log/debug (format "Starting Pulse Execution: %d" pulse-id))

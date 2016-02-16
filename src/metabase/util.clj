@@ -7,7 +7,6 @@
             [clj-time.coerce :as coerce]
             [clj-time.format :as time]
             [colorize.core :as color]
-            [medley.core :as m]
             [metabase.config :as config])
   (:import clojure.lang.Keyword
            (java.net Socket

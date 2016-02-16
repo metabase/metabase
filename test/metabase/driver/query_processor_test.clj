@@ -1232,7 +1232,7 @@
 
 (expect-with-non-timeseries-dbs
   (cond
-    (contains? #{:redshift :sqlserver} *engine*)
+    (contains? #{:redshift :sqlserver :bigquery} *engine*)
     [[#inst "2015-06-01T17:31" 1]
      [#inst "2015-06-01T23:06" 1]
      [#inst "2015-06-02T00:23" 1]
@@ -1453,7 +1453,7 @@
     (contains? #{:sqlserver :sqlite} *engine*)
     [[23 54] [24 46] [25 39] [26 61]]
 
-    (contains? #{:mongo :redshift} *engine*)
+    (contains? #{:mongo :redshift :bigquery} *engine*)
     [[23 46] [24 47] [25 40] [26 60] [27 7]]
 
     :else

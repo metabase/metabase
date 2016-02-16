@@ -2,8 +2,7 @@
   (:require (clojure.java [io :as io]
                           [shell :as shell])
             [clojure.string :as s]
-            [environ.core :as environ]
-            [medley.core :as m])
+            [environ.core :as environ])
   (:import clojure.lang.Keyword))
 
 (def ^:private ^:const app-defaults
