@@ -4,7 +4,6 @@ import ReactDOM from "react-dom";
 import GridLayout from "./grid/GridLayout.jsx";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import Urls from "metabase/lib/urls";
 
 import DashCard from "./DashCard.jsx";
 import Modal from "metabase/components/Modal.jsx";
@@ -156,16 +155,6 @@ export default class DashboardGrid extends Component {
         }
     }
 
-    onDashCardEdit(dc) {
-        // if editing and card is dirty prompt to save changes
-        if (this.props.isEditing && this.props.isDirty) {
-            if (!confirm("You have unsaved changes to this dashboard, are you sure you want to discard them?")) {
-                return;
-            }
-        }
-        this.props.onChangeLocation(Urls.card(dc.card_id)+"?edit=true&from=" + encodeURIComponent(Urls.dashboard(dc.dashboard_id)));
-    }
-
     onDashCardRemove(dc) {
         this.setState({ removeModalDashCard: dc });
     }
@@ -190,7 +179,6 @@ export default class DashboardGrid extends Component {
                             fetchCardData={this.props.fetchCardData}
                             markNewCardSeen={this.props.markNewCardSeen}
                             isEditing={isEditing}
-                            onEdit={this.onDashCardEdit.bind(this, dc)}
                             onRemove={this.onDashCardRemove.bind(this, dc)}
                             onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
                         />
@@ -234,7 +222,6 @@ export default class DashboardGrid extends Component {
                                 fetchCardData={this.props.fetchCardData}
                                 markNewCardSeen={this.props.markNewCardSeen}
                                 isEditing={isEditing}
-                                onEdit={this.onDashCardEdit.bind(this, dc)}
                                 onRemove={this.onDashCardRemove.bind(this, dc)}
                                 onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
                             />

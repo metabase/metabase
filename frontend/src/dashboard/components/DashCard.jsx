@@ -91,7 +91,7 @@ export default class DashCard extends Component {
                     series={series}
                     isDashboard={true}
                     onAddSeries={isEditing && CardVisualization.supportsSeries ? onAddSeries : undefined}
-                    extraActions={isEditing ? <ExtraActions onEdit={this.props.onEdit} onRemove={this.props.onRemove} /> : undefined}
+                    extraActions={isEditing ? <ExtraActions onRemove={this.props.onRemove} /> : undefined}
                 />
             );
         }
@@ -114,7 +114,7 @@ export default class DashCard extends Component {
     }
 
     render() {
-        const { dashcard, onAddSeries, onEdit, onRemove, isEditing } = this.props;
+        const { dashcard, onAddSeries, onRemove, isEditing } = this.props;
         const series = [{ card: dashcard.card }].concat(dashcard.series || []);
         const CardVisualization = visualizations.get(series[0].card.display);
         return (
@@ -124,7 +124,7 @@ export default class DashCard extends Component {
                         <LegendHeader
                             series={series}
                             onAddSeries={isEditing && CardVisualization.supportsSeries ? onAddSeries : undefined}
-                            extraActions={isEditing ? <ExtraActions onEdit={onEdit} onRemove={onRemove} /> : undefined}
+                            extraActions={isEditing ? <ExtraActions onRemove={onRemove} /> : undefined}
                         />
                     </div>
                 }
@@ -134,11 +134,8 @@ export default class DashCard extends Component {
     }
 }
 
-const ExtraActions = ({ onEdit, onRemove }) =>
+const ExtraActions = ({ onRemove }) =>
     <span className="text-brand">
-        <a href="#" onClick={onEdit}>
-            <Icon className="my1 mr1" name="pencil" width="18" height="18" />
-        </a>
         <a data-metabase-event="Dashboard;Remove Card Modal" href="#" onClick={onRemove}>
             <Icon className="my1" name="trash" width="18" height="18" />
         </a>
