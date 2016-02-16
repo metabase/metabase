@@ -11,7 +11,8 @@ export default class LineAreaBarChart extends Component {
     static propTypes = {
         series: PropTypes.array.isRequired,
         onAddSeries: PropTypes.func,
-        extraActions: PropTypes.node
+        extraActions: PropTypes.node,
+        isDashboard: PropTypes.bool
     };
 
     getHoverClasses() {
@@ -29,10 +30,10 @@ export default class LineAreaBarChart extends Component {
     }
 
     render() {
-        let { series, hovered, onAddSeries, extraActions } = this.props;
+        let { series, hovered, isDashboard, onAddSeries, extraActions } = this.props;
         return (
             <div className={cx("flex flex-full flex-column p1", this.getHoverClasses())}>
-                <LegendHeader series={series} onAddSeries={onAddSeries} extraActions={extraActions} hovered={hovered} onHoverChange={this.props.onHoverChange} />
+                { isDashboard && <LegendHeader series={series} onAddSeries={onAddSeries} extraActions={extraActions} hovered={hovered} onHoverChange={this.props.onHoverChange} /> }
                 <CardRenderer className="flex-full" {...this.props} />
                 <ChartTooltip series={series} hovered={hovered} />
             </div>
