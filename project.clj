@@ -20,12 +20,19 @@
                  [org.clojure/tools.namespace "0.2.10"]
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
                  [cheshire "5.5.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
-                 [clj-http "0.3.0"]
+                 [clj-http "0.3.0"
+                  :exclusions [commons-codec
+                               commons-io
+                               slingshot]]
                  [clj-http-lite "0.3.0"]                              ; HTTP client; lightweight version of clj-http that uses HttpURLConnection instead of Apache
                  [clj-time "0.11.0"]                                  ; library for dealing with date/time
                  [clojurewerkz/quartzite "2.0.0"]                     ; scheduling library
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
-                 [com.cemerick/friend "0.2.1"]                        ; auth library
+                 [com.cemerick/friend "0.2.1"                         ; auth library
+                  :exclusions [commons-codec
+                               org.apache.httpcomponents/httpclient
+                               net.sourceforge.nekohtml/nekohtml
+                               ring/ring-core]]
                  [com.draines/postal "1.11.4"]                        ; SMTP library
                  [com.google.apis/google-api-services-bigquery        ; Google BigQuery Java Client Library
                   "v2-rev262-1.21.0"]
@@ -43,7 +50,8 @@
                                com.sun.jmx/jmxri]]
                  [medley "0.7.1"]                                     ; lightweight lib of useful functions
                  [mysql/mysql-connector-java "5.1.38"]                ; MySQL JDBC driver
-                 [net.sf.cssbox/cssbox "4.10"]
+                 [net.sf.cssbox/cssbox "4.10"
+                  :exclusions [org.slf4j/slf4j-api]]
                  [net.sourceforge.jtds/jtds "1.3.1"]                  ; Open Source SQL Server driver
                  [org.xhtmlrenderer/flying-saucer-core "9.0.8"]
                  [org.liquibase/liquibase-core "3.4.2"]               ; migration management (Java lib)
@@ -57,7 +65,8 @@
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
                  [swiss-arrows "1.0.0"]]                              ; 'Magic wand' macro -<>, etc.
   :plugins [[lein-environ "1.0.2"]                                    ; easy access to environment variables
-            [lein-ring "0.9.7"]]                                      ; start the HTTP server with 'lein ring server'
+            [lein-ring "0.9.7"                                        ; start the HTTP server with 'lein ring server'
+             :exclusions [org.clojure/clojure]]]
   :main ^:skip-aot metabase.core
   :manifest {"Liquibase-Package" "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"}
   :target-path "target/%s"
@@ -72,15 +81,19 @@
                                :suspicious-expression                 ; core.match macros generate some forms like (and expr) which is "suspicious"
                                :unused-ret-vals]}                     ; gives too many false positives for functions with side-effects like conj!
   :profiles {:dev {:dependencies [[org.clojure/tools.nrepl "0.2.12"]  ; REPL <3
-                                  [org.clojure/tools.reader "0.10.0"] ; Need to explictly specify this dep otherwise expectations doesn't seem to work right :'(
                                   [expectations "2.1.3"]              ; unit tests
                                   [ring/ring-mock "0.3.0"]]
-                   :plugins [[jonase/eastwood "0.2.3"]                ; Linting
-                             [lein-ancient "0.6.8"]                   ; Check project for outdated dependencies + plugins w/ 'lein ancient'
+                   :plugins [[jonase/eastwood "0.2.3"
+                              :exclusions [org.clojure/clojure]]      ; Linting
+                             [lein-ancient "0.6.8"                    ; Check project for outdated dependencies + plugins w/ 'lein ancient'
+                              :exclusions [org.clojure/clojure]]
                              [lein-bikeshed "0.2.0"]                  ; Linting
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'
-                             [lein-instant-cheatsheet "2.1.4"]        ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
-                             [michaelblume/lein-marginalia "0.9.0"]]  ; generate documentation with 'lein marg'
+                             [lein-instant-cheatsheet "2.1.4"         ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
+                              :exclusions [org.clojure/clojure
+                                           org.clojure/tools.namespace]]
+                             [michaelblume/lein-marginalia "0.9.0"    ; generate documentation with 'lein marg'
+                              :exclusions [org.clojure/clojure]]]
                    :env {:mb-run-mode "dev"}
                    :jvm-opts ["-Dlogfile.path=target/log"
                               "-Xms1024m"                             ; give JVM a decent heap size to start with
