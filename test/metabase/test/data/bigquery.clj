@@ -25,6 +25,12 @@
       (throw (Exception. (format "In order to test BigQuery, you must specify the env var MB_BIGQUERY_%s."
                                  (s/upper-case (s/replace (name env-var) #"-" "_")))))))
 
+;; We'll add a unique prefix like "NR_" to every database we create for this test run so multiple tests running at the same time won't stop over each other
+;; This gives us 676 possible prefixes. This should prevent clashes but still recycle prefixes often enough that the code that destroys the test databases
+;; (ran at the end of the test suite) will still eventually run and clean up after tests that fail for one reason or another without cleaning up after themselves.
+(defonce ^:private ^:const ^String unique-prefix
+  (str (apply str (take 2 (shuffle (map char (range (int \A) (inc (int \Z))))))) \_))
+
 (def ^:private ^:const details
   (datasets/when-testing-engine :bigquery
     {:project-id    (get-env-var :project-id)
@@ -39,11 +45,14 @@
   (datasets/when-testing-engine :bigquery
     ((resolve 'metabase.driver.bigquery/database->client) {:details details})))
 
+(defn- normalize-name-and-add-prefix [database-name]
+  (str unique-prefix (normalize-name database-name)))
+
 (defn- database->connection-details
   ([_ {:keys [database-name]}]
    (database->connection-details database-name))
   ([database-name]
-   (assoc details :dataset-id (normalize-name database-name))))
+   (assoc details :dataset-id (normalize-name-and-add-prefix database-name))))
 
 
 ;;; # ------------------------------------------------------------ LOADING DATA ------------------------------------------------------------
@@ -156,9 +165,20 @@
     (create-table! dataset-name table-name (fielddefs->field-name->base-type field-definitions))
     (insert-data!  dataset-name table-name (tabledef->prepared-rows tabledef))))
 
+;; Keep track of the DBs we create so we can destroy them when tests complete
+(def ^:private created-databases
+  (atom #{}))
+
+(defn- destroy-test-databases!
+  {:expectations-options :after-run}
+  []
+  (u/pdoseq [db-name @created-databases]
+    (u/try-apply destroy-dataset! db-name)))
+
 (defn- create-db! [{:keys [database-name table-definitions]}]
   {:pre [(seq database-name) (sequential? table-definitions)]}
-  (let [database-name (normalize-name database-name)]
+  (let [database-name (normalize-name-and-add-prefix database-name)]
+    (swap! created-databases conj database-name)
     (try (destroy-dataset! database-name)
          (catch Throwable _))
     (create-dataset! database-name)
