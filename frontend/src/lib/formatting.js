@@ -3,24 +3,29 @@ import inflection from "inflection";
 import moment from "moment";
 import React from "react";
 
-var precisionNumberFormatter = d3.format(".2r");
-var fixedNumberFormatter = d3.format(",.f");
+const PRECISION_NUMBER_FORMATTER      = d3.format(".2r");
+const FIXED_NUMBER_FORMATTER          = d3.format(",.f");
+const FIXED_NUMBER_FORMATTER_NO_COMMA = d3.format(".f");
+const DECIMAL_DEGREES_FORMATTER       = d3.format(".08f");
 
-var decimalDegreesFormatter = d3.format(".08f");
-
-export function formatNumber(number) {
+export function formatNumber(number, options) {
+    options = { comma: true, ...options}
     if (number > -1 && number < 1) {
         // numbers between 1 and -1 round to 2 significant digits with extra 0s stripped off
-        return precisionNumberFormatter(number).replace(/\.?0+$/, "");
+        return PRECISION_NUMBER_FORMATTER(number).replace(/\.?0+$/, "");
     } else {
         // anything else rounds to at most 2 decimal points
-        return fixedNumberFormatter(d3.round(number, 2));
+        if (options.comma) {
+            return FIXED_NUMBER_FORMATTER(d3.round(number, 2));
+        } else {
+            return FIXED_NUMBER_FORMATTER_NO_COMMA(d3.round(number, 2));
+        }
     }
 }
 
 export function formatScalar(scalar) {
     if (typeof scalar === "number") {
-        return formatNumber(scalar);
+        return formatNumber(scalar, { comma: true });
     } else {
         return String(scalar);
     }
@@ -82,9 +87,11 @@ export function formatValue(value, column, options = {}) {
         return value;
     } else if (typeof value === "number") {
         if (column && (column.special_type === "latitude" || column.special_type === "longitude")) {
-            return decimalDegreesFormatter(value)
+            return DECIMAL_DEGREES_FORMATTER(value)
         } else {
-            return formatNumber(value);
+            // don't show comma unless it's a number special_type (and eventually currency, etc)
+            let comma = column && column.special_type === "number";
+            return formatNumber(value, { comma, ...options });
         }
     } else if (typeof value === "object") {
         // no extra whitespace for table cells
