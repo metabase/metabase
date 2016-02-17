@@ -41,7 +41,7 @@ function formatMajorMinor(major, minor, options = {}) {
     }
 }
 
-export function formatWithUnit(value, unit, options = {}) {
+export function formatTimeWithUnit(value, unit, options = {}) {
     let m = moment(value);
     switch (unit) {
         case "hour": // 12 AM - January 1, 2015
@@ -75,7 +75,9 @@ export function formatValue(value, column, options = {}) {
     if (value == undefined) {
         return null
     } else if (column && column.unit != null) {
-        return formatWithUnit(value, column.unit, options)
+        return formatTimeWithUnit(value, column.unit, options);
+    } else if (moment.isDate(value) || moment(value, moment.ISO_8601).isValid()) {
+        return moment(value).format("LLLL");
     } else if (typeof value === "string") {
         return value;
     } else if (typeof value === "number") {
