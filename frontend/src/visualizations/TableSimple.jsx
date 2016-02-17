@@ -1,5 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
+import { formatValue } from "metabase/lib/formatting";
+
 export default class TableSimple extends Component {
 
     static propTypes = {
@@ -44,7 +46,9 @@ export default class TableSimple extends Component {
                         {
                             rows.slice(0, 100).map((row, rowIndex) =>
                                 <tr key={rowIndex}>
-                                    {row.map((cell, colIndex) => <td key={colIndex}>{cell}</td>)}
+                                    {row.map((cell, colIndex) => <td key={colIndex}>
+                                        { formatValue(cell, cols[colIndex], { jsx: true }) }
+                                    </td>)}
                                 </tr>
                             )
                         }
