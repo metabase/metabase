@@ -153,7 +153,7 @@ export default class AggregationPopover extends Component {
             const [agg, fieldId] = aggregation;
             return (
                 <div style={{width: 300}}>
-                    <div className="FilterPopover-header text-grey-3 p1 mt1 flex align-center">
+                    <div className="text-grey-3 p1 py2 border-bottom flex align-center">
                         <a className="cursor-pointer flex align-center" onClick={this.onClearAggregation}>
                             <Icon name="chevronleft" width="18" height="18"/>
                             <h3 className="inline-block pl1">{selectedAggregation.name}</h3>

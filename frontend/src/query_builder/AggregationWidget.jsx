@@ -63,12 +63,12 @@ export default class AggregationWidget extends Component {
         let selectedAggregation = getAggregator(AggregationClause.getOperator(aggregation));
         return (
             <div onClick={this.open} className="Query-section Query-section-aggregation cursor-pointer">
-                <span className="View-section-aggregation QueryOption p1">{selectedAggregation ? selectedAggregation.name.replace(" of ...", "") : "Choose an aggregation"}</span>
+                <span className="View-section-aggregation QueryOption py1 pl1">{selectedAggregation ? selectedAggregation.name.replace(" of ...", "") : "Choose an aggregation"}</span>
                 {aggregation.length > 1 &&
-                    <div className="flex align-center">
-                        <span className="text-bold">of</span>
+                    <div className="View-section-aggregation flex align-center">
+                        <span style={{paddingRight: "4px", paddingLeft: "4px"}} className="text-bold">of</span>
                         <FieldName
-                            className="View-section-aggregation-target SelectionModule p1"
+                            className="View-section-aggregation-target SelectionModule py1 pr1"
                             tableMetadata={tableMetadata}
                             field={fieldId}
                             fieldOptions={Query.getFieldOptions(tableMetadata.fields, true)}
