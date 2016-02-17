@@ -8,6 +8,7 @@ import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 
 import Query from "metabase/lib/query";
+import { AggregationClause } from "metabase/lib/query";
 
 import _ from "underscore";
 
@@ -18,7 +19,7 @@ export default class AggregationPopover extends Component {
 
         this.state = {
             aggregation: (props.isNew ? [] : props.aggregation),
-            choosingField: (props.aggregation && props.aggregation.length > 1 && !Query.aggregationIsMetric(props.aggregation))
+            choosingField: (props.aggregation && props.aggregation.length > 1 && AggregationClause.isStandard(props.aggregation))
         };
 
         _.bindAll(this, "commitAggregation", "onPickAggregation", "onPickField", "onClearAggregation");
@@ -53,7 +54,7 @@ export default class AggregationPopover extends Component {
     }
 
     onPickField(fieldId) {
-        this.commitAggregation(Query.aggregationSetField(this.state.aggregation, fieldId));
+        this.commitAggregation(AggregationClause.setField(this.state.aggregation, fieldId));
     }
 
     onClearAggregation() {
@@ -105,10 +106,10 @@ export default class AggregationPopover extends Component {
         const { aggregation, choosingField } = this.state;
 
         let selectedAggregation;
-        if (Query.aggregationIsMetric(aggregation)) {
-            selectedAggregation = _.findWhere(tableMetadata.metrics, { id: Query.aggregationGetMetric(aggregation) });
-        } else if (Query.aggregationGetOperator(aggregation)) {
-            selectedAggregation = _.findWhere(availableAggregations, { short: Query.aggregationGetOperator(aggregation) });
+        if (AggregationClause.isMetric(aggregation)) {
+            selectedAggregation = _.findWhere(tableMetadata.metrics, { id: AggregationClause.getMetric(aggregation) });
+        } else if (AggregationClause.getOperator(aggregation)) {
+            selectedAggregation = _.findWhere(availableAggregations, { short: AggregationClause.getOperator(aggregation) });
         }
 
         let sections = [{

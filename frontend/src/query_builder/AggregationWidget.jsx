@@ -6,6 +6,7 @@ import FieldName from './FieldName.jsx';
 import Popover from "metabase/components/Popover.jsx";
 
 import Query from "metabase/lib/query";
+import { AggregationClause } from "metabase/lib/query";
 import { getAggregator, getAggregators } from "metabase/lib/schema_metadata";
 
 import cx from "classnames";
@@ -57,9 +58,9 @@ export default class AggregationWidget extends Component {
 
     renderStandardAggregation() {
         const { aggregation, tableMetadata } = this.props;
-        const fieldId = Query.aggregationGetField(aggregation);
+        const fieldId = AggregationClause.getField(aggregation);
 
-        let selectedAggregation = getAggregator(Query.aggregationGetOperator(aggregation));
+        let selectedAggregation = getAggregator(AggregationClause.getOperator(aggregation));
         return (
             <div onClick={this.open} className="Query-section Query-section-aggregation cursor-pointer">
                 <span className="View-section-aggregation QueryOption p1">{selectedAggregation ? selectedAggregation.name.replace(" of ...", "") : "Choose an aggregation"}</span>
@@ -80,7 +81,7 @@ export default class AggregationWidget extends Component {
 
     renderMetricAggregation() {
         const { aggregation, tableMetadata } = this.props;
-        const metricId = Query.aggregationGetMetric(aggregation);
+        const metricId = AggregationClause.getMetric(aggregation);
 
         let selectedMetric = _.findWhere(tableMetadata.metrics, { id: metricId });
         return (
@@ -124,7 +125,7 @@ export default class AggregationWidget extends Component {
         return (
             <div className={cx("Query-section Query-section-aggregation", { "selected": this.state.isOpen })}>
                 <div>
-                    {Query.aggregationIsMetric(aggregation) ?
+                    {AggregationClause.isMetric(aggregation) ?
                         this.renderMetricAggregation()
                     :
                         this.renderStandardAggregation()
