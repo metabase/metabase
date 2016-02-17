@@ -4,6 +4,7 @@ import _ from "underscore";
 import crossfilter from "crossfilter";
 import d3 from "d3";
 import dc from "dc";
+import moment from "moment";
 
 import GeoHeatmapChartRenderer from "./GeoHeatmapChartRenderer";
 
@@ -15,7 +16,11 @@ import {
     getCardColors
 } from "./utils";
 
-import { computeTimeseriesTicksInterval } from "./timeseries";
+import {
+    computeTimeseriesDataInverval,
+    computeTimeseriesTicksInterval
+} from "./timeseries";
+
 import { determineSeriesIndexFromElement } from "./tooltip";
 
 import { formatValue } from "metabase/lib/formatting";
@@ -124,20 +129,26 @@ function applyChartTimeseriesXAxis(chart, card, cols, xValues) {
         }
 
         // Compute a sane interval to display based on the data granularity, domain, and chart width
-        let interval = computeTimeseriesTicksInterval(xValues, cols[0], chart.width(), MIN_PIXELS_PER_TICK.x);
-        chart.xAxis().ticks(d3.time[interval.interval], interval.count);
+        const { interval, count } = computeTimeseriesTicksInterval(xValues, cols[0], chart.width(), MIN_PIXELS_PER_TICK.x);
+        chart.xAxis().ticks(d3.time[interval], count);
     } else {
         chart.xAxis().ticks(0);
     }
 
-    // calculate the x-axis domain
-    let xDomain = d3.extent(xValues);
-    chart.x(d3.time.scale().domain(xDomain));
+    // compute the data interval
+    const { interval, count } = computeTimeseriesDataInverval(xValues, cols[0]);
 
-    // prevents skinny time series bar charts by using xUnits that match the provided column unit, if possible
-    if (cols[0] && cols[0].unit && d3.time[cols[0].unit + "s"]) {
-        chart.xUnits(d3.time[cols[0].unit + "s"]);
-    }
+    // compute the domain
+    let xDomain = d3.extent(xValues);
+    // pad the domain slightly to prevent clipping
+    xDomain[0] = moment(xDomain[0]).subtract(count * 0.75, interval);
+    xDomain[1] = moment(xDomain[1]).add(count * 0.75, interval);
+
+    // set the x scale
+    chart.x(d3.time.scale.utc().domain(xDomain));
+
+    // set the x units (used to compute bar size)
+    chart.xUnits((start, stop) => Math.ceil(1 + moment(stop).diff(start, interval) / count));
 }
 
 function applyChartOrdinalXAxis(chart, card, cols, xValues) {
@@ -206,7 +217,7 @@ function applyChartTooltips(chart, onHoverChange) {
     });
 }
 
-function applyChartLineBarSettings(chart, card, chartType) {
+function applyChartLineBarSettings(chart, card, chartType, isLinear, isTimeseries) {
     // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
     if (chart.brushOn) {
         chart.brushOn(false);
@@ -229,7 +240,9 @@ function applyChartLineBarSettings(chart, card, chartType) {
 
     // BAR:
     if (chart.barPadding) {
-        chart.barPadding(BAR_PADDING_RATIO);
+        chart
+            .barPadding(BAR_PADDING_RATIO)
+            .centerBar(isLinear || isTimeseries);
     }
 }
 
@@ -393,7 +406,7 @@ export let CardRenderer = {
                 chart.stack(groups[i]);
             }
 
-            applyChartLineBarSettings(chart, card, chartType);
+            applyChartLineBarSettings(chart, card, chartType, isLinear, isTimeseries);
 
             chart.ordinalColors(colors);
         } else {
@@ -410,14 +423,7 @@ export let CardRenderer = {
                     .colors(colors[index % colors.length])
                     .useRightYAxis(yAxisSplit.length > 1 && yAxisSplit[1].includes(index))
 
-                applyChartLineBarSettings(subChart, card, chartType);
-
-                // BAR:
-                if (subChart.barPadding) {
-                    subChart
-                        .barPadding(BAR_PADDING_RATIO)
-                        .centerBar(isLinear)
-                }
+                applyChartLineBarSettings(subChart, card, chartType, isLinear, isTimeseries);
             });
 
             chart

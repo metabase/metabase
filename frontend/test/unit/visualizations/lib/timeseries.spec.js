@@ -1,6 +1,6 @@
 /*eslint-env jasmine */
 
-import { computeTimeseriesDataInvervalIndex, TIMESERIES_INTERVALS } from 'metabase/visualizations/lib/timeseries';
+import { computeTimeseriesDataInverval } from 'metabase/visualizations/lib/timeseries';
 
 const TEST_CASES = [
     ["ms",      1, [["2015-01-01T00:00:00.000Z"], ["2016-05-04T03:02:01.001Z"]]],
@@ -29,7 +29,7 @@ describe('visualization.lib.timeseries', () => {
     describe('computeTimeseriesDataInvervalIndex', () => {
         TEST_CASES.map(([expectedInterval, expectedCount, data]) => {
             it("should return " + expectedCount + " " + expectedInterval, () => {
-                let { interval, count } = TIMESERIES_INTERVALS[computeTimeseriesDataInvervalIndex(data.map(d => new Date(d)))];
+                let { interval, count } = computeTimeseriesDataInverval(data.map(d => new Date(d)));
                 expect(interval).toBe(expectedInterval);
                 expect(count).toBe(expectedCount);
             });
