@@ -1,6 +1,13 @@
 import d3 from "d3";
 import moment from "moment";
 
+import { isDate } from "metabase/lib/schema_metadata";
+
+// investigate the response from a dataset query and determine if the dimension is a timeseries
+export function dimensionIsTimeseries({ cols, rows }) {
+    return isDate(cols[0]) || moment(rows[0] && rows[0][0], moment.ISO_8601).isValid();
+}
+
 // mostly matches
 // https://github.com/mbostock/d3/wiki/Time-Scales
 // https://github.com/mbostock/d3/wiki/Time-Intervals

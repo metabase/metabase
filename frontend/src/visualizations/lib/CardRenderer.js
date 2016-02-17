@@ -17,6 +17,7 @@ import {
 } from "./utils";
 
 import {
+    dimensionIsTimeseries,
     computeTimeseriesDataInverval,
     computeTimeseriesTicksInterval
 } from "./timeseries";
@@ -28,19 +29,6 @@ import { formatValue } from "metabase/lib/formatting";
 const MIN_PIXELS_PER_TICK = { x: 100, y: 30 };
 const BAR_PADDING_RATIO = 0.2;
 const DEFAULT_INTERPOLATION = "linear";
-
-// investigate the response from a dataset query and determine if the dimension is a timeseries
-function dimensionIsTimeseries(result) {
-    let hasDateField = result.cols && result.cols.length > 0 && result.cols[0].base_type === "DateField";
-
-    let isDateFirstVal = false;
-    if (result.rows && result.rows.length > 0 && result.rows[0].length > 0 &&
-            !(!isNaN(parseFloat(result.rows[0][0])) && isFinite(result.rows[0][0]))) {
-        isDateFirstVal = ( (new Date(result.rows[0][0]) !== "Invalid Date" && !isNaN(new Date(result.rows[0][0])) ));
-    }
-
-    return (hasDateField || isDateFirstVal);
-}
 
 function adjustTicksIfNeeded(axis, axisSize, minPixelsPerTick) {
     let numTicks = axis.ticks();
