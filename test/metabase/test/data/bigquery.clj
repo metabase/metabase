@@ -127,17 +127,16 @@
                                                                              dataset-id table-id expected-row-count actual-row-count))))))))
 
 (def ^:private ^:const base-type->bigquery-type
-  {:BigIntegerField :INTEGER
-   :BooleanField    :BOOLEAN
-   :CharField       :STRING
-   :DateField       :TIMESTAMP
-   :DateTimeField   :TIMESTAMP
-   :DecimalField    :FLOAT
-   :DictionaryField :RECORD
-   :FloatField      :FLOAT
-   :IntegerField    :INTEGER
-   :TextField       :STRING
-   :TimeField       :TIMESTAMP})
+  {:type/boolean              :BOOLEAN
+   :type/collection.map       :RECORD
+   :type/datetime             :TIMESTAMP
+   :type/datetime.date        :TIMESTAMP
+   :type/datetime.time        :TIMESTAMP
+   :type/number.float         :FLOAT
+   :type/number.float.decimal :FLOAT
+   :type/number.integer       :INTEGER
+   :type/number.integer.big   :INTEGER
+   :type/text                 :STRING})
 
 (defn- fielddefs->field-name->base-type
   "Convert FIELD-DEFINITIONS to a format appropriate for passing to `create-table!`."

@@ -3,6 +3,7 @@ import _ from "underscore";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetadataEditor from './components/database/MetadataEditor.jsx';
 
+import { isa } from 'metabase/lib/schema_metadata';
 import { augmentTable } from "metabase/lib/table";
 
 angular
@@ -131,7 +132,7 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
         table.fields.forEach(function(field) {
             score(field.description);
             score(field.special_type);
-            if (field.special_type === "fk") {
+            if (isa(field.special_type, 'type/special.fk')) {
                 score(field.target);
             }
         });
@@ -141,7 +142,7 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
 
     $scope.updateFieldSpecialType = async function(field) {
         // If we are changing the field from a FK to something else, we should delete any FKs present
-        if (field.target && field.target.id != null && field.special_type !== "fk") {
+        if (field.target && field.target.id != null && !isa(field.special_type, 'type/special.fk')) {
             // we have something that used to be an FK and is now not an FK
             // Let's delete its foreign keys
             try {

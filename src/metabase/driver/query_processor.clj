@@ -155,8 +155,8 @@
                            (let [field (-> (resolve/rename-mb-field-keys field)
                                            map->Field
                                            (resolve/resolve-table {source-table-id source-table}))]
-                             (if (or (contains? #{:DateField :DateTimeField} (:base-type field))
-                                     (contains? #{:timestamp_seconds :timestamp_milliseconds} (:special-type field)))
+                             (if (or (isa? (:base-type field)    :type/datetime)
+                                     (isa? (:special-type field) :type/datetime))
                                (map->DateTimeField {:field field, :unit :day})
                                field)))]
               (if-not (seq fields)

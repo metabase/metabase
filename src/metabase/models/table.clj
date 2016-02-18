@@ -57,7 +57,7 @@
   "Return the ID of the primary key `Field` for TABLE."
   {:hydrate :pk_field, :arglists '([table])}
   [{:keys [id]}]
-  (db/sel :one :id Field, :table_id id, :special_type "id"))
+  (db/sel :one :id Field, :table_id id, :special_type "type/special.pk"))
 
 (def ^{:arglists '([table])} database
   "Return the `Database` associated with this `Table`."

@@ -39,7 +39,7 @@
                                          :active true}]
       (tu/with-temp Field [{field-id :id} {:table_id    table-id
                                            :name        "FK Test"
-                                           :base_type   :TextField
+                                           :base_type   :type/text
                                            :field_type  :info
                                            :active      true
                                            :preview_display true

@@ -4,6 +4,7 @@ import Input from "metabase/components/Input.jsx";
 import Select from "metabase/components/Select.jsx";
 
 import * as MetabaseCore from "metabase/lib/core";
+import { isa } from 'metabase/lib/schema_metadata';
 
 import _  from "underscore";
 
@@ -86,7 +87,7 @@ export default class Column extends Component {
 
     render() {
         var targetSelect;
-        if (this.props.field.special_type === "fk") {
+        if (isa(this.props.field.special_type, 'type/special.fk')) {
             targetSelect = (
                 <Select
                     className="TableEditor-field-target block"

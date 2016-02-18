@@ -1,0 +1,69 @@
+databaseChangeLog:
+  - changeSet:
+      id: 30
+      author: camsaul
+      changes:
+        - sql:
+            sql: UPDATE metabase_field SET base_type = 'type/collection.array' WHERE base_type = 'ArrayField'
+        - sql:
+            sql: UPDATE metabase_field SET base_type = 'type/number.integer.big' WHERE base_type = 'BigIntegerField'
+        - sql:
+            sql: UPDATE metabase_field SET base_type = 'type/boolean' WHERE base_type = 'BooleanField'
+        - sql:
+            sql: UPDATE metabase_field SET base_type = 'type/text' WHERE base_type = 'CharField'
+        - sql:
+            sql: UPDATE metabase_field SET base_type = 'type/datetime.date' WHERE base_type = 'DateField'
+        - sql:
+            sql: UPDATE metabase_field SET base_type = 'type/datetime' WHERE base_type = 'DateTimeField'
+        - sql:
+            sql: UPDATE metabase_field SET base_type = 'type/number.float.decimal' WHERE base_type = 'DecimalField'
+        - sql:
+            sql: UPDATE metabase_field SET base_type = 'type/collection.map' WHERE base_type = 'DictionaryField'
+        - sql:
+            sql: UPDATE metabase_field SET base_type = 'type/number.float' WHERE base_type = 'FloatField'
+        - sql:
+            sql: UPDATE metabase_field SET base_type = 'type/number.integer' WHERE base_type = 'IntegerField'
+        - sql:
+            sql: UPDATE metabase_field SET base_type = 'type/text' WHERE base_type = 'TextField'
+        - sql:
+            sql: UPDATE metabase_field SET base_type = 'type/datetime.time' WHERE base_type = 'TimeField'
+        - sql:
+            sql: UPDATE metabase_field SET base_type = 'type/text.uuid' WHERE base_type = 'UUIDField'
+        - sql:
+            sql: UPDATE metabase_field SET base_type = 'type/*' WHERE base_type = 'UnknownField'
+        - sql:
+            sql: UPDATE metabase_field SET special_type = 'type/special.pk' WHERE special_type = 'id'
+        - sql:
+            sql: UPDATE metabase_field SET special_type = 'type/special.fk' WHERE special_type = 'fk'
+        - sql:
+            sql: UPDATE metabase_field SET special_type = 'type/special.category' WHERE special_type = 'category'
+        - sql:
+            sql: UPDATE metabase_field SET special_type = 'type/text.url.image.avatar' WHERE special_type = 'avatar'
+        - sql:
+            sql: UPDATE metabase_field SET special_type = 'type/text.geo.city' WHERE special_type = 'city'
+        - sql:
+            sql: UPDATE metabase_field SET special_type = 'type/text.geo.country' WHERE special_type = 'country'
+        - sql:
+            sql: UPDATE metabase_field SET special_type = 'type/text.description' WHERE special_type = 'desc'
+        - sql:
+            sql: UPDATE metabase_field SET special_type = 'type/text.url.image' WHERE special_type = 'image'
+        - sql:
+            sql: UPDATE metabase_field SET special_type = 'type/text.json' WHERE special_type = 'json'
+        - sql:
+            sql: UPDATE metabase_field SET special_type = 'type/number.float.coordinate.latitude' WHERE special_type = 'latitude'
+        - sql:
+            sql: UPDATE metabase_field SET special_type = 'type/number.float.coordinate.longitude' WHERE special_type = 'longitude'
+        - sql:
+            sql: UPDATE metabase_field SET special_type = 'type/text.name' WHERE special_type = 'name'
+        - sql:
+            sql: UPDATE metabase_field SET special_type = 'type/number' WHERE special_type = 'number'
+        - sql:
+            sql: UPDATE metabase_field SET special_type = 'type/text.geo.state' WHERE special_type = 'state'
+        - sql:
+            sql: UPDATE metabase_field SET special_type = 'type/datetime.unix.milliseconds' WHERE special_type = 'timestamp_milliseconds'
+        - sql:
+            sql: UPDATE metabase_field SET special_type = 'type/datetime.unix.seconds' WHERE special_type = 'timestamp_seconds'
+        - sql:
+            sql: UPDATE metabase_field SET special_type = 'type/text.url' WHERE special_type = 'url'
+        - sql:
+            sql: UPDATE metabase_field SET special_type = 'type/number.integer.geo.zip' WHERE special_type = 'zip_code'

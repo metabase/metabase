@@ -28,36 +28,36 @@
 ;;; # IMPLEMENTATION
 
 (def ^:private ^:const column->base-type
-  {:BIGINT     :BigIntegerField
-   :BINARY     :UnknownField
-   :BIT        :BooleanField
-   :BLOB       :UnknownField
-   :CHAR       :CharField
-   :DATE       :DateField
-   :DATETIME   :DateTimeField
-   :DECIMAL    :DecimalField
-   :DOUBLE     :FloatField
-   :ENUM       :UnknownField
-   :FLOAT      :FloatField
-   :INT        :IntegerField
-   :INTEGER    :IntegerField
-   :LONGBLOB   :UnknownField
-   :LONGTEXT   :TextField
-   :MEDIUMBLOB :UnknownField
-   :MEDIUMINT  :IntegerField
-   :MEDIUMTEXT :TextField
-   :NUMERIC    :DecimalField
-   :REAL       :FloatField
-   :SET        :UnknownField
-   :TEXT       :TextField
-   :TIME       :TimeField
-   :TIMESTAMP  :DateTimeField
-   :TINYBLOB   :UnknownField
-   :TINYINT    :IntegerField
-   :TINYTEXT   :TextField
-   :VARBINARY  :UnknownField
-   :VARCHAR    :TextField
-   :YEAR       :IntegerField})
+  {:BIGINT     :type/number.integer.big
+   :BINARY     :type/*
+   :BIT        :type/boolean
+   :BLOB       :type/*
+   :CHAR       :type/text
+   :DATE       :type/datetime.date
+   :DATETIME   :type/datetime
+   :DECIMAL    :type/number.float.decimal
+   :DOUBLE     :type/number.float
+   :ENUM       :type/*
+   :FLOAT      :type/number.float
+   :INT        :type/number.integer
+   :INTEGER    :type/number.integer
+   :LONGBLOB   :type/*
+   :LONGTEXT   :type/text
+   :MEDIUMBLOB :type/*
+   :MEDIUMINT  :type/number.integer
+   :MEDIUMTEXT :type/text
+   :NUMERIC    :type/number.float.decimal
+   :REAL       :type/number.float
+   :SET        :type/*
+   :TEXT       :type/text
+   :TIME       :type/datetime.time
+   :TIMESTAMP  :type/datetime
+   :TINYBLOB   :type/*
+   :TINYINT    :type/number.integer
+   :TINYTEXT   :type/text
+   :VARBINARY  :type/*
+   :VARCHAR    :type/text
+   :YEAR       :type/number.integer})
 
 (defn- connection-details->spec [_ details]
   (-> details

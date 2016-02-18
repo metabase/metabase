@@ -4,7 +4,7 @@ import ExpandableString from './ExpandableString.jsx';
 import Icon from 'metabase/components/Icon.jsx';
 import IconBorder from 'metabase/components/IconBorder.jsx';
 import LoadingSpinner from 'metabase/components/LoadingSpinner.jsx';
-import { foreignKeyCountsByOriginTable } from 'metabase/lib/schema_metadata';
+import { foreignKeyCountsByOriginTable, isa } from 'metabase/lib/schema_metadata';
 import { singularize, inflect } from 'inflection';
 
 import cx from "classnames";
@@ -25,7 +25,7 @@ export default class QueryVisualizationObjectDetailTable extends Component {
 
         for (var i=0; i < this.props.data.cols.length; i++) {
             var coldef = this.props.data.cols[i];
-            if (coldef.special_type === "id") {
+            if (isa(coldef.special_type, 'type/special.id')) {
                 return this.props.data.rows[0][i];
             }
         }
@@ -54,7 +54,7 @@ export default class QueryVisualizationObjectDetailTable extends Component {
             var cellValue;
             if (row[1] === null || row[1] === undefined || (typeof row[1] === "string" && row[1].length === 0)) {
                 cellValue = (<span className="text-grey-2">Empty</span>);
-            } else if(row[0].special_type === "json") {
+            } else if(isa(row[0].special_type, 'type/text.json')) {
                 var formattedJson = JSON.stringify(JSON.parse(row[1]), null, 2);
                 cellValue = (<pre className="ObjectJSON">{formattedJson}</pre>);
             } else if (typeof row[1] === "object") {
@@ -139,7 +139,7 @@ export default class QueryVisualizationObjectDetailTable extends Component {
                 <div>
                     <h2>{fkCount}</h2>
                     <h5 className="block">{relationName}{via}</h5>
-                 </div>
+                </div>
             );
             var fkReference;
             var referenceClasses = cx({

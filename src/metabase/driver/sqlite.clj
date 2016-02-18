@@ -14,21 +14,21 @@
 ;; because SQLite types can have optional lengths, e.g. NVARCHAR(100) or NUMERIC(10,5)
 ;; See also http://www.sqlite.org/datatype3.html
 (def ^:private ^:const pattern->type
-  [[#"BIGINT"   :BigIntegerField]
-   [#"BIG INT"  :BigIntegerField]
-   [#"INT"      :IntegerField]
-   [#"CHAR"     :TextField]
-   [#"TEXT"     :TextField]
-   [#"CLOB"     :TextField]
-   [#"BLOB"     :UnknownField]
-   [#"REAL"     :FloatField]
-   [#"DOUB"     :FloatField]
-   [#"FLOA"     :FloatField]
-   [#"NUMERIC"  :FloatField]
-   [#"DECIMAL"  :DecimalField]
-   [#"BOOLEAN"  :BooleanField]
-   [#"DATETIME" :DateTimeField]
-   [#"DATE"     :DateField]])
+  [[#"BIGINT"   :type/number.integer.big]
+   [#"BIG INT"  :type/number.integer.big]
+   [#"INT"      :type/number.integer]
+   [#"CHAR"     :type/text]
+   [#"TEXT"     :type/text]
+   [#"CLOB"     :type/text]
+   [#"BLOB"     :type/*]
+   [#"REAL"     :type/number.float]
+   [#"DOUB"     :type/number.float]
+   [#"FLOA"     :type/number.float]
+   [#"NUMERIC"  :type/number.float]
+   [#"DECIMAL"  :type/number.float.decimal]
+   [#"BOOLEAN"  :type/boolean]
+   [#"DATETIME" :type/datetime]
+   [#"DATE"     :type/datetime.date]])
 
 (def ^:private ->date     (partial k/sqlfn* :DATE))
 (def ^:private ->datetime (partial k/sqlfn* :DATETIME))

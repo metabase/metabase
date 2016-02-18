@@ -20,36 +20,36 @@ export const UNKNOWN = "UNKNOWN";
 // NOTE: be sure not to create cycles using the "other" types
 const TYPES = {
     [DATE_TIME]: {
-        base: ["DateTimeField", "DateField", "TimeField"],
-        special: ["timestamp_milliseconds", "timestamp_seconds"]
+        base: ["type/datetime", "type/datetime.date", "type/datetime.time"],
+        special: ["type/datetime.unix.milliseconds", "type/datetime.unix.seconds"]
     },
     [NUMBER]: {
-        base: ["IntegerField", "DecimalField", "FloatField", "BigIntegerField"],
-        special: ["number"]
+        base: ["type/number.integer", "type/number.float.decimal", "type/number.float", "type/number.integer.big"],
+        special: ["type/number"]
     },
     [STRING]: {
-        base: ["CharField", "TextField"],
-        special: ["name"]
+        base: ["type/text"],
+        special: ["type/text.name"]
     },
     [BOOLEAN]: {
-        base: ["BooleanField"]
+        base: ["type/boolean"]
     },
     [COORDINATE]: {
-        special: ["latitude", "longitude"]
+        special: ["type/number.float.coordinate.latitude", "type/number.float.coordinate.longitude"]
     },
     [LOCATION]: {
-        special: ["city", "country", "state", "zip_code"]
+        special: ["type/text.geo.city", "type/text.geo.country", "type/text.geo.state", "type/number.integer.geo.zip_code"]
     },
     [ENTITY]: {
-        special: ["fk", "id", "name"]
+        special: ["type/special.fk", "type/special.pk", "type/text.name"]
     },
     [SUMMABLE]: {
         include: [NUMBER],
         exclude: [ENTITY, LOCATION, DATE_TIME]
     },
     [CATEGORY]: {
-        base: ["BooleanField"],
-        special: ["category"],
+        base: ["type/boolean"],
+        special: ["type/special.category"],
         include: [LOCATION]
     },
     [DIMENSION]: {
@@ -58,12 +58,17 @@ const TYPES = {
     }
 };
 
+export function isa(child, parent) {
+    return typeof child === 'string' && typeof parent === 'string' && child.startsWith(parent);
+}
+
 export function isFieldType(type, field) {
     let def = TYPES[type];
     // check to see if it belongs to any of the field types:
     for (let prop of ["field", "base", "special"]) {
-        if (def[prop] && _.contains(def[prop], field[prop+"_type"])) {
-            return true;
+        let fieldType = field[prop + "_type"];
+        for (let type of (def[prop] || [])) {
+            if (isa(fieldType, type)) return true;
         }
     }
     // recursively check to see if it's NOT another field type:
@@ -186,7 +191,7 @@ function longitudeFieldSelectArgument(field, table) {
     return {
         type: "select",
         values: table.fields
-            .filter(field => field.special_type === "longitude")
+            .filter(field => isa(field.special_type, 'type/number.float.coordinate.longitude'))
             .map(field => ({
                 key: field.id,
                 name: field.display_name
@@ -441,12 +446,8 @@ export function hasLatitudeAndLongitudeColumns(columnDefs) {
     let hasLatitude = false;
     let hasLongitude = false;
     for (let col of columnDefs) {
-        if (col.special_type === "latitude") {
-            hasLatitude = true;
-        }
-        if (col.special_type === "longitude") {
-            hasLongitude = true;
-        }
+        if (isa(col.special_type, 'type/number.float.coordinate.latitude'))  hasLatitude = true;
+        if (isa(col.special_type, 'type/number.float.coordinate.longitude')) hasLongitude = true;
     }
     return hasLatitude && hasLongitude;
 }

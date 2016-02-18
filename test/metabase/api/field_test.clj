@@ -44,7 +44,7 @@
                            :id              (id :users)
                            :db_id           (id)
                            :created_at      $})
-       :special_type    "name"
+       :special_type    "type/text.name"
        :name            "NAME"
        :display_name    "Name"
        :updated_at      $
@@ -54,7 +54,7 @@
        :position        0
        :preview_display true
        :created_at      $
-       :base_type       "TextField"
+       :base_type       "type/text"
        :parent_id       nil})
     ((user->client :rasta) :get 200 (format "field/%d" (id :users :name))))
 
@@ -71,12 +71,12 @@
 (expect-eval-actual-first
     (match-$ (let [field (Field (id :venues :latitude))]
                ;; this is sketchy. But return the Field back to its unmodified state so it won't affect other unit tests
-               (upd Field (id :venues :latitude) :special_type "latitude")
+               (upd Field (id :venues :latitude) :special_type :type/number.float.coordinate.latitude)
                ;; match against the modified Field
                field)
              {:description     nil
               :table_id        (id :venues)
-              :special_type    "fk"
+              :special_type    "type/special.fk"
               :name            "LATITUDE"
               :display_name    "Latitude"
               :updated_at      $
@@ -86,9 +86,9 @@
               :position        0
               :preview_display true
               :created_at      $
-              :base_type       "FloatField"
+              :base_type       "type/number.float"
               :parent_id       nil})
-  ((user->client :crowberto) :put 200 (format "field/%d" (id :venues :latitude)) {:special_type :fk}))
+  ((user->client :crowberto) :put 200 (format "field/%d" (id :venues :latitude)) {:special_type :type/special.fk}))
 
 (defn- field->field-values
   "Fetch the `FieldValues` object that corresponds to a given `Field`."
@@ -96,7 +96,7 @@
   (sel :one FieldValues :field_id (id table-kw field-kw)))
 
 ;; ## GET /api/field/:id/values
-;; Should return something useful for a field that has special_type :category
+;; Should return something useful for a field that has special_type :type/special.category
 (expect-eval-actual-first
     (match-$ (field->field-values :venues :price)
       {:field_id              (id :venues :price)
@@ -108,7 +108,7 @@
   (do (upd FieldValues (:id (field->field-values :venues :price)) :human_readable_values nil) ; clear out existing human_readable_values in case they're set
       ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))))
 
-;; Should return nothing for a field whose special_type is *not* :category
+;; Should return nothing for a field whose special_type is *not* :type/special.category
 (expect
     {:values                {}
      :human_readable_values {}}
@@ -131,9 +131,9 @@
         :created_at            $
         :id                    $})]
   [((user->client :crowberto) :post 200 (format "field/%d/value_map_update" (id :venues :price)) {:values_map {:1 "$"
-                                                                                                                    :2 "$$"
-                                                                                                                    :3 "$$$"
-                                                                                                                    :4 "$$$$"}})
+                                                                                                               :2 "$$"
+                                                                                                               :3 "$$$"
+                                                                                                               :4 "$$$$"}})
    ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))])
 
 ;; Check that we can unset values
@@ -155,7 +155,7 @@
    ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))])
 
 ;; Check that we get an error if we call value_map_update on something that isn't a category
-(expect "You can only update the mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'BooleanField'."
+(expect "You can only update the mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'type/boolean'."
   ((user->client :crowberto) :post 400 (format "field/%d/value_map_update" (id :venues :id))
    {:values_map {:1 "$"
                  :2 "$$"

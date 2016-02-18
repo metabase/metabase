@@ -86,12 +86,12 @@
    {:table_id (id :categories)
     :id       (id :categories col)}
    (case col
-     :id   {:special_type :id
+     :id   {:special_type :type/special.pk
             :base_type    (id-field-type)
             :name         (format-name "id")
             :display_name "Id"}
-     :name {:special_type :name
-            :base_type    (expected-base-type->actual :TextField)
+     :name {:special_type :type/text.name
+            :base_type    (expected-base-type->actual :type/text)
             :name         (format-name "name")
             :display_name "Name"})))
 
@@ -104,16 +104,16 @@
    {:table_id (id :users)
     :id       (id :users col)}
    (case col
-     :id         {:special_type :id
+     :id         {:special_type :type/special.pk
                   :base_type    (id-field-type)
                   :name         (format-name "id")
                   :display_name "Id"}
-     :name       {:special_type :name
-                  :base_type    (expected-base-type->actual :TextField)
+     :name       {:special_type :type/text.name
+                  :base_type    (expected-base-type->actual :type/text)
                   :name         (format-name "name")
                   :display_name "Name"}
      :last_login {:special_type nil
-                  :base_type    (expected-base-type->actual :DateTimeField)
+                  :base_type    (expected-base-type->actual :type/datetime)
                   :name         (format-name "last_login")
                   :display_name "Last Login"
                   :unit         :day})))
@@ -132,7 +132,7 @@
    {:table_id (id :venues)
     :id       (id :venues col)}
    (case col
-     :id          {:special_type :id
+     :id          {:special_type :type/special.pk
                    :base_type    (id-field-type)
                    :name         (format-name "id")
                    :display_name "Id"}
@@ -141,25 +141,25 @@
                    :target       (if (fks-supported?) (-> (categories-col :id)
                                                           (dissoc :target :extra_info :schema_name))
                                      nil)
-                   :special_type (if (fks-supported?) :fk
-                                     :category)
-                   :base_type    (expected-base-type->actual :IntegerField)
+                   :special_type (if (fks-supported?) :type/special.fk
+                                     :type/special.category)
+                   :base_type    (expected-base-type->actual :type/number.integer)
                    :name         (format-name "category_id")
                    :display_name "Category Id"}
-     :price       {:special_type :category
-                   :base_type    (expected-base-type->actual :IntegerField)
+     :price       {:special_type :type/special.category
+                   :base_type    (expected-base-type->actual :type/number.integer)
                    :name         (format-name "price")
                    :display_name "Price"}
-     :longitude   {:special_type :longitude,
-                   :base_type    (expected-base-type->actual :FloatField)
+     :longitude   {:special_type :type/number.float.coordinate.longitude
+                   :base_type    (expected-base-type->actual :type/number.float)
                    :name         (format-name "longitude")
                    :display_name "Longitude"}
-     :latitude    {:special_type :latitude
-                   :base_type    (expected-base-type->actual :FloatField)
+     :latitude    {:special_type :type/number.float.coordinate.latitude
+                   :base_type    (expected-base-type->actual :type/number.float)
                    :name         (format-name "latitude")
                    :display_name "Latitude"}
-     :name        {:special_type :name
-                   :base_type    (expected-base-type->actual :TextField)
+     :name        {:special_type :type/text.name
+                   :base_type    (expected-base-type->actual :type/text)
                    :name         (format-name "name")
                    :display_name "Name"})))
 
@@ -177,7 +177,7 @@
    {:table_id (id :checkins)
     :id       (id :checkins col)}
    (case col
-     :id       {:special_type :id
+     :id       {:special_type :type/special.pk
                 :base_type    (id-field-type)
                 :name         (format-name "id")
                 :display_name "Id"}
@@ -187,8 +187,8 @@
                                                        (dissoc :target :extra_info :schema_name))
                                   nil)
                 :special_type (when (fks-supported?)
-                                :fk)
-                :base_type    (expected-base-type->actual :IntegerField)
+                                :type/special.fk)
+                :base_type    (expected-base-type->actual :type/number.integer)
                 :name         (format-name "venue_id")
                 :display_name "Venue Id"}
      :user_id  {:extra_info   (if (fks-supported?) {:target_table_id (id :users)}
@@ -196,9 +196,9 @@
                 :target       (if (fks-supported?) (-> (users-col :id)
                                                        (dissoc :target :extra_info :schema_name))
                                   nil)
-                :special_type (if (fks-supported?) :fk
-                                  :category)
-                :base_type    (expected-base-type->actual :IntegerField)
+                :special_type (if (fks-supported?) :type/special.fk
+                                  :type/special.category)
+                :base_type    (expected-base-type->actual :type/number.integer)
                 :name         (format-name "user_id")
                 :display_name "User Id"})))
 
@@ -213,8 +213,8 @@
   {:arglists '([ag-col-kw] [ag-col-kw field])}
   ([ag-col-kw]
    (case ag-col-kw
-     :count  {:base_type    :IntegerField
-              :special_type :number
+     :count  {:base_type    :type/number.integer
+              :special_type :type/number
               :name         "count"
               :display_name "count"
               :id           nil
@@ -1485,7 +1485,7 @@
   (create-database-definition (str "a-checkin-every-" interval-seconds "-seconds")
     ["checkins"
      [{:field-name "timestamp"
-       :base-type  :DateTimeField}]
+       :base-type  :type/datetime}]
      (vec (for [i (range -15 15)]
             ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of generating `java.sql.Timestamps` here so
             ;; they'll be in the DB's native timezone. Some DBs refuse to use the same timezone we're running the tests from *cough* SQL Server *cough*

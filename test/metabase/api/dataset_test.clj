@@ -15,7 +15,7 @@
     (match-$ (sel :one :fields [QueryExecution :id :uuid] (k/order :id :desc))
       {:data      {:rows    [[1000]]
                    :columns ["count"]
-                   :cols    [{:base_type "IntegerField", :special_type "number", :name "count", :display_name "count", :id nil, :table_id nil,
+                   :cols    [{:base_type "type/number.integer", :special_type "type/number", :name "count", :display_name "count", :id nil, :table_id nil,
                               :description nil, :target nil, :extra_info {}}]}
        :row_count 1
        :status    "completed"

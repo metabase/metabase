@@ -10,15 +10,10 @@
                              [foreign-key :refer [ForeignKey] :as fk])
             [metabase.util :as u]))
 
-(defannotation FieldSpecialType
-  "Param must be a valid `Field` special type."
-  [symb value :nillable]
-  (checkp-contains? field/special-types symb (keyword value)))
-
 (defannotation FieldType
-  "Param must be a valid `Field` base type."
+  "Param must be a valid `Field` base/special type."
   [symb value :nillable]
-  (checkp-contains? field/field-types symb (keyword value)))
+  (checkp-with (comp field/valid-type? keyword) symb value (format "Not a valid field type: '%s'" value)))
 
 (defannotation ForeignKeyRelationship
   "Param must be a valid `ForeignKey` relationship: one of `1t1` (one-to-one)m
@@ -37,7 +32,7 @@
   "Update `Field` with ID."
   [id :as {{:keys [field_type special_type preview_display description display_name]} :body}]
   {field_type   FieldType
-   special_type FieldSpecialType
+   special_type FieldType
    display_name NonEmptyString}
   (write-check Field id)
   ;; update the Field.  start with keys that may be set to NULL then conditionally add other keys if they have values
@@ -79,7 +74,7 @@
 
 
 (defendpoint GET "/:id/values"
-  "If `Field`'s special type is `category`/`city`/`state`/`country`, or its base type is `BooleanField`, return
+  "If `Field`'s special type is `category`/`city`/`state`/`country`, or its base type is `type/boolean`, return
    all distinct values of the field, and a map of human-readable values defined by the user."
   [id]
   (let-404 [field (Field id)]
@@ -91,13 +86,13 @@
 
 (defendpoint POST "/:id/value_map_update"
   "Update the human-readable values for a `Field` whose special type is `category`/`city`/`state`/`country`
-   or whose base type is `BooleanField`."
+   or whose base type is `type/boolean`."
   [id :as {{:keys [fieldId values_map]} :body}] ; WTF is the reasoning behind client passing fieldId in POST params?
   {values_map [Required Dict]}
   (let-404 [field (Field id)]
     (write-check field)
     (check (field-should-have-field-values? field)
-      [400 "You can only update the mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'BooleanField'."])
+      [400 "You can only update the mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'type/boolean'."])
     (if-let [field-values-id (sel :one :id FieldValues :field_id id)]
       (check-500 (upd FieldValues field-values-id
                    :human_readable_values values_map))

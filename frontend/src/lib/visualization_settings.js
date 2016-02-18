@@ -1,7 +1,7 @@
+import _  from "underscore";
 
 import { normal, harmony } from 'metabase/lib/colors'
-
-import _  from "underscore";
+import { isa } from 'metabase/lib/schema_metadata';
 
 const DEFAULT_COLOR_HARMONY = Object.values(normal);
 const DEFAULT_COLOR = DEFAULT_COLOR_HARMONY[0];
@@ -194,7 +194,7 @@ export function setLatitudeAndLongitude(settings, columnDefs) {
         latitudeColumnIndex;
     columnDefs.forEach(function(col, index) {
         if (col.special_type &&
-                col.special_type === "latitude" &&
+                isa(col.special_type, 'type/number.float.coordinate.latitude') &&
                 latitudeColumn === undefined) {
             latitudeColumn = col;
             latitudeColumnIndex = index;
@@ -206,7 +206,7 @@ export function setLatitudeAndLongitude(settings, columnDefs) {
         longitudeColumnIndex;
     columnDefs.forEach(function(col, index) {
         if (col.special_type &&
-                col.special_type === "longitude" &&
+               isa(col.special_type, 'type/number.float.coordinate.longitude') &&
                 longitudeColumn === undefined) {
             longitudeColumn = col;
             longitudeColumnIndex = index;

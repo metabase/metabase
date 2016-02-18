@@ -129,10 +129,10 @@
     (mongo-let [field (as-> field <>
                         (->initial-rvalue <>)
                         (cond
-                          (= special-type :timestamp_milliseconds)
+                          (isa? special-type :type/datetime.unix.milliseconds)
                           {$add [(java.util.Date. 0) <>]}
 
-                          (= special-type :timestamp_seconds)
+                          (isa? special-type :type/datetime.unix.seconds)
                           {$add [(java.util.Date. 0) {$multiply [<> 1000]}]}
 
                           :else <>))]
@@ -188,7 +188,7 @@
   Value
   (->rvalue [{value :value, {:keys [field-name base-type]} :field}]
     (if (and (= field-name "_id")
-             (= base-type  :UnknownField))
+             (= base-type  :type/*)) ; = used here on purpose - we want to find something without any custom typing
       `(ObjectId. ~value)
       value))
 
@@ -221,7 +221,7 @@
   RelativeDateTimeValue
   (->rvalue [{:keys [amount unit field], :as this}]
     (->rvalue (map->DateTimeValue {:value (u/relative-date (or unit :day) amount)
-                                       :field field}))))
+                                   :field field}))))
 
 
 ;;; ## CLAUSE APPLICATION

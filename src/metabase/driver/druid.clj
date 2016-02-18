@@ -89,8 +89,8 @@
          ;; all dimensions are Strings, and all metrics as JS Numbers, I think (?)
          ;; string-encoded booleans + dates are treated as strings (!)
          (if (= :metric druid-field-type)
-           {:field-type :metric, :base-type :FloatField}
-           {:field-type :dimension, :base-type :TextField})))
+           {:field-type :metric, :base-type :type/number.float}
+           {:field-type :dimension, :base-type :type/text})))
 
 (defn- describe-table [table]
   (let [details                      (:details (table/database table))
@@ -100,7 +100,7 @@
      :fields (set (concat
                     ;; every Druid table is an event stream w/ a timestamp field
                     [{:name       "timestamp"
-                      :base-type  :DateTimeField
+                      :base-type  :type/datetime
                       :field-type :dimension
                       :pk?        true}]
                     (map (partial describe-table-field :dimension) dimensions)

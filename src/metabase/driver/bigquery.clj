@@ -116,12 +116,12 @@
    (execute (.get (.tables client) project-id dataset-id table-id))))
 
 (def ^:private ^:const  bigquery-type->base-type
-  {"BOOLEAN"   :BooleanField
-   "FLOAT"     :FloatField
-   "INTEGER"   :IntegerField
-   "RECORD"    :DictionaryField ; RECORD -> field has a nested schema
-   "STRING"    :TextField
-   "TIMESTAMP" :DateTimeField})
+  {"BOOLEAN"   :type/boolean
+   "FLOAT"     :type/number.float
+   "INTEGER"   :type/number.integer
+   "RECORD"    :type/collection.map ; RECORD -> field has a nested schema
+   "STRING"    :type/text
+   "TIMESTAMP" :type/datetime})
 
 (defn- table-schema->metabase-field-info [^TableSchema schema]
   (for [^TableFieldSchema field (.getFields schema)]

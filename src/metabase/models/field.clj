@@ -1,5 +1,6 @@
 (ns metabase.models.field
   (:require [korma.core :as k]
+            [schema.core :as schema]
             [metabase.db :refer :all]
             (metabase.models [common :as common]
                              [database :refer [Database]]
@@ -8,43 +9,70 @@
                              [interface :as i])
             [metabase.util :as u]))
 
-(def ^:const special-types
-  "Possible values for `Field.special_type`."
-  #{:avatar
-    :category
-    :city
-    :country
-    :desc
-    :fk
-    :id
-    :image
-    :json
-    :latitude
-    :longitude
-    :name
-    :number
-    :state
-    :timestamp_milliseconds
-    :timestamp_seconds
-    :url
-    :zip_code})
+(derive :type/boolean :type/*)
+(derive :type/collection :type/*)
+(derive :type/datetime :type/*)
+(derive :type/orderable :type/*)
+(derive :type/special :type/*)
+(derive :type/text :type/*)
 
-(def ^:const base-types
-  "Possible values for `Field.base_type`."
-  #{:ArrayField
-    :BigIntegerField
-    :BooleanField
-    :CharField
-    :DateField
-    :DateTimeField
-    :DecimalField
-    :DictionaryField
-    :FloatField
-    :IntegerField
-    :TextField
-    :TimeField
-    :UUIDField      ; e.g. a Postgres 'UUID' column
-    :UnknownField})
+;; TODO - Eventually I'd like to seperate these out into their own columns on Field (is_category, is_fk, and is_pk) since they are independent of the types applied to a Field
+;; (e.g. a Field could theoretically be a PK, a category, and a unix timestamp (ms) at the same time)
+(derive :type/special.fk :type/special)
+(derive :type/special.pk :type/special)
+(derive :type/special.category :type/special)
+
+(derive :type/collection.array :type/collection)
+(derive :type/collection.map   :type/collection)
+
+(derive :type/datetime :type/orderable)
+(derive :type/number   :type/orderable)
+
+(derive :type/number.float :type/number)
+(derive :type/number.float.decimal :type/number.float)
+
+(derive :type/number.float.coordinate :type/number.float)
+(derive :type/number.float.coordinate.latitude  :type/number.float.coordinate)
+(derive :type/number.float.coordinate.longitude :type/number.float.coordinate)
+
+(derive :type/number.integer :type/number)
+(derive :type/number.integer.big :type/number.integer)
+
+(derive :type/number.integer.geo :type/number.integer)
+(derive :type/number.integer.geo.zip :type/number.integer.geo)
+
+(derive :type/datetime.unix :type/datetime)
+(derive :type/datetime.unix :type/number.integer)
+
+(derive :type/datetime.unix.seconds      :type/datetime.unix)
+(derive :type/datetime.unix.milliseconds :type/datetime.unix)
+
+(derive :type/datetime.date :type/datetime)
+(derive :type/datetime.time :type/datetime)
+
+(derive :type/text.geo :type/text)
+(derive :type/text.geo.city    :type/text.geo)
+(derive :type/text.geo.state   :type/text.geo)
+(derive :type/text.geo.country :type/text.geo)
+
+(derive :type/text.description :type/text)
+(derive :type/text.name        :type/text)
+(derive :type/text.json        :type/text)
+(derive :type/text.uuid        :type/text)
+
+(derive :type/text.url              :type/text)
+(derive :type/text.url.image        :type/text.url)
+(derive :type/text.url.image.avatar :type/text.url.image)
+
+(defn valid-type?
+  "Is K a valid Field base/special type?"
+  [k]
+  (isa? k :type/*))
+
+(def ValidType
+  "Schema for valid base & special types (e.g., things that derive from `:type/*`)"
+  (schema/named (schema/constrained schema/Keyword valid-type?)
+                "Valid field type"))
 
 (def ^:const field-types
   "Possible values for `Field.field_type`."
@@ -55,13 +83,20 @@
 
 (i/defentity Field :metabase_field)
 
-(defn- pre-insert [field]
+(defn- pre-insert [{:keys [base_type special_type], :as field}]
+  (assert (valid-type? base_type))
+  (when special_type (assert (valid-type? (keyword special_type))))
   (let [defaults {:active          true
                   :preview_display true
                   :field_type      :info
                   :position        0
                   :display_name    (common/name->human-readable-name (:name field))}]
     (merge defaults field)))
+
+(defn- pre-update [{:keys [base_type special_type], :as field}]
+  (when base_type    (assert (valid-type? (keyword base_type))))
+  (when special_type (assert (valid-type? (keyword special_type))))
+  field)
 
 (defn- pre-cascade-delete [{:keys [id]}]
   (cascade-delete Field :parent_id id)
@@ -99,7 +134,7 @@
    Only evaluates if the given field has :special_type `fk`, otherwise does nothing."
   {:hydrate :target}
   [{:keys [id special_type]}]
-  (when (= :fk special_type)
+  (when (isa? special_type :type/special.fk)
     (let [dest-id (sel :one :field [ForeignKey :destination_id] :origin_id id)]
       (Field dest-id))))
 
@@ -111,6 +146,7 @@
                     :can-read?          (constantly true)
                     :can-write?         i/superuser?
                     :pre-insert         pre-insert
+                    :pre-update         pre-update
                     :pre-cascade-delete pre-cascade-delete}))
 
 

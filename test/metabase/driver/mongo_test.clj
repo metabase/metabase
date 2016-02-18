@@ -81,17 +81,17 @@
 (expect-when-testing-mongo
   {:name   "venues"
    :fields #{{:name "name",
-              :base-type :TextField}
+              :base-type :type/text}
              {:name "latitude",
-              :base-type :FloatField}
+              :base-type :type/number.float}
              {:name "longitude",
-              :base-type :FloatField}
+              :base-type :type/number.float}
              {:name "price",
-              :base-type :IntegerField}
+              :base-type :type/number.integer}
              {:name "category_id",
-              :base-type :IntegerField}
+              :base-type :type/number.integer}
              {:name "_id",
-              :base-type :IntegerField,
+              :base-type :type/number.integer,
               :pk? true}}}
   (driver/describe-table (MongoDriver.) (table-name->table :venues)))
 
@@ -120,22 +120,22 @@
 
 ;; Test that Fields got synced correctly, and types are correct
 (expect-when-testing-mongo
-    [[{:special_type :id,        :base_type :IntegerField,  :name "_id"}
-      {:special_type :name,      :base_type :TextField,     :name "name"}]
-     [{:special_type :id,        :base_type :IntegerField,  :name "_id"}
-      {:special_type nil,        :base_type :DateTimeField, :name "date"}
-      {:special_type :category,  :base_type :IntegerField,  :name "user_id"}
-      {:special_type nil,        :base_type :IntegerField,  :name "venue_id"}]
-     [{:special_type :id,        :base_type :IntegerField,  :name "_id"}
-      {:special_type nil,        :base_type :DateTimeField, :name "last_login"}
-      {:special_type :name,      :base_type :TextField,     :name "name"}
-      {:special_type :category,  :base_type :TextField,     :name "password"}]
-     [{:special_type :id,        :base_type :IntegerField,  :name "_id"}
-      {:special_type :category,  :base_type :IntegerField,  :name "category_id"}
-      {:special_type :latitude,  :base_type :FloatField,    :name "latitude"}
-      {:special_type :longitude, :base_type :FloatField,    :name "longitude"}
-      {:special_type :name,      :base_type :TextField,     :name "name"}
-      {:special_type :category,  :base_type :IntegerField,  :name "price"}]]
+    [[{:special_type :type/special.pk,                        :base_type :type/number.integer, :name "_id"}
+      {:special_type :type/text.name,                         :base_type :type/text,           :name "name"}]
+     [{:special_type :type/special.pk,                        :base_type :type/number.integer, :name "_id"}
+      {:special_type nil,                                     :base_type :type/datetime,       :name "date"}
+      {:special_type :type/special.category,                  :base_type :type/number.integer, :name "user_id"}
+      {:special_type nil,                                     :base_type :type/number.integer, :name "venue_id"}]
+     [{:special_type :type/special.pk,                        :base_type :type/number.integer, :name "_id"}
+      {:special_type nil,                                     :base_type :type/datetime,       :name "last_login"}
+      {:special_type :type/text.name,                         :base_type :type/text,           :name "name"}
+      {:special_type :type/special.category,                  :base_type :type/text,           :name "password"}]
+     [{:special_type :type/special.pk,                        :base_type :type/number.integer, :name "_id"}
+      {:special_type :type/special.category,                  :base_type :type/number.integer, :name "category_id"}
+      {:special_type :type/number.float.coordinate.latitude,  :base_type :type/number.float,   :name "latitude"}
+      {:special_type :type/number.float.coordinate.longitude, :base_type :type/number.float,   :name "longitude"}
+      {:special_type :type/text.name,                         :base_type :type/text,           :name "name"}
+      {:special_type :type/special.category,                  :base_type :type/number.integer, :name "price"}]]
     (for [nm table-names]
       (sel :many :fields [Field :name :base_type :special_type], :active true, :table_id (:id (table-name->table nm))
            (k/order :name))))

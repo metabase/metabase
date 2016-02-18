@@ -14,32 +14,32 @@ import {
 describe('schema_metadata', () => {
     describe('getFieldType', () => {
         it('should know a date', () => {
-            expect(getFieldType({ base_type: 'DateField' })).toEqual(DATE_TIME)
-            expect(getFieldType({ base_type: 'DateTimeField' })).toEqual(DATE_TIME)
-            expect(getFieldType({ base_type: 'TimeField' })).toEqual(DATE_TIME)
-            expect(getFieldType({ special_type: 'timestamp_seconds' })).toEqual(DATE_TIME)
-            expect(getFieldType({ special_type: 'timestamp_milliseconds' })).toEqual(DATE_TIME)
+            expect(getFieldType({ base_type: 'type/datetime.date' })).toEqual(DATE_TIME)
+            expect(getFieldType({ base_type: 'type/datetime' })).toEqual(DATE_TIME)
+            expect(getFieldType({ base_type: 'type/datetime.time' })).toEqual(DATE_TIME)
+            expect(getFieldType({ special_type: 'type/datetime.unix.seconds' })).toEqual(DATE_TIME)
+            expect(getFieldType({ special_type: 'type/datetime.unix.milliseconds' })).toEqual(DATE_TIME)
         });
         it('should know a number', () => {
-            expect(getFieldType({ base_type: 'BigIntegerField' })).toEqual(NUMBER)
-            expect(getFieldType({ base_type: 'IntegerField' })).toEqual(NUMBER)
-            expect(getFieldType({ base_type: 'FloatField' })).toEqual(NUMBER)
-            expect(getFieldType({ base_type: 'DecimalField' })).toEqual(NUMBER)
+            expect(getFieldType({ base_type: 'type/number.integer.big' })).toEqual(NUMBER)
+            expect(getFieldType({ base_type: 'type/number.integer' })).toEqual(NUMBER)
+            expect(getFieldType({ base_type: 'type/number.float' })).toEqual(NUMBER)
+            expect(getFieldType({ base_type: 'type/number.float.decimal' })).toEqual(NUMBER)
         });
         it('should know a string', () => {
-            expect(getFieldType({ base_type: 'CharField' })).toEqual(STRING)
-            expect(getFieldType({ base_type: 'TextField' })).toEqual(STRING)
+            expect(getFieldType({ base_type: 'type/text' })).toEqual(STRING)
+            expect(getFieldType({ base_type: 'type/text' })).toEqual(STRING)
         });
         it('should know a bool', () => {
-            expect(getFieldType({ base_type: 'BooleanField' })).toEqual(BOOLEAN)
+            expect(getFieldType({ base_type: 'type/boolean' })).toEqual(BOOLEAN)
         });
         it('should know a location', () => {
-            expect(getFieldType({ special_type: 'city' })).toEqual(LOCATION)
-            expect(getFieldType({ special_type: 'country' })).toEqual(LOCATION)
+            expect(getFieldType({ special_type: 'type/text.geo.city' })).toEqual(LOCATION)
+            expect(getFieldType({ special_type: 'type/text.geo.country' })).toEqual(LOCATION)
         });
         it('should know a coordinate', () => {
-            expect(getFieldType({ special_type: 'latitude' })).toEqual(COORDINATE)
-            expect(getFieldType({ special_type: 'longitude' })).toEqual(COORDINATE)
+            expect(getFieldType({ special_type: 'type/number.float.coordinate.latitude' })).toEqual(COORDINATE)
+            expect(getFieldType({ special_type: 'type/number.float.coordinate.longitude' })).toEqual(COORDINATE)
         });
         it('should know what it doesn\'t know', () => {
             expect(getFieldType({ base_type: 'DERP DERP DERP' })).toEqual(undefined)

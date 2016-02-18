@@ -8,16 +8,15 @@
   (:import metabase.driver.mysql.MySQLDriver))
 
 (def ^:private ^:const field-base-type->sql-type
-  {:BigIntegerField "BIGINT"
-   :BooleanField    "BOOLEAN" ; Synonym of TINYINT(1)
-   :CharField       "VARCHAR(254)"
-   :DateField       "DATE"
-   :DateTimeField   "TIMESTAMP"
-   :DecimalField    "DECIMAL"
-   :FloatField      "DOUBLE"
-   :IntegerField    "INTEGER"
-   :TextField       "TEXT"
-   :TimeField       "TIME"})
+  {:type/boolean              "BOOLEAN" ; Synonym of TINYINT(1)
+   :type/datetime             "TIMESTAMP"
+   :type/datetime.date        "DATE"
+   :type/datetime.time        "TIME"
+   :type/number.float         "DOUBLE"
+   :type/number.float.decimal "DECIMAL"
+   :type/number.integer       "INTEGER"
+   :type/number.integer.big   "BIGINT"
+   :type/text                 "VARCHAR(254)"})
 
 (defn- database->connection-details [_ context {:keys [database-name short-lived?]}]
   (merge {:host         "localhost"

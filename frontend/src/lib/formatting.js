@@ -3,6 +3,8 @@ import inflection from "inflection";
 import moment from "moment";
 import React from "react";
 
+import { isa } from 'metabase/lib/schema_metadata';
+
 var precisionNumberFormatter = d3.format(".2r");
 var fixedNumberFormatter = d3.format(",.f");
 
@@ -71,7 +73,7 @@ export function formatValue(value, column) {
     } else if (typeof value === "string") {
         return value;
     } else if (typeof value === "number") {
-        if (column && (column.special_type === "latitude" || column.special_type === "longitude")) {
+        if (column && (isa(column.special_type, 'type/number.float.coordinate'))) {
             return decimalDegreesFormatter(value)
         } else {
             return formatNumber(value);

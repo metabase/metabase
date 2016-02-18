@@ -10,78 +10,78 @@ export const user_roles = [{
 }];
 
 export const field_special_types = [{
-    'id': 'id',
+    'id': 'type/special.pk',
     'name': 'Entity Key',
     'section': 'Overall Row',
     'description': 'The primary key for this table.'
 }, {
-    'id': 'name',
+    'id': 'type/text.name',
     'name': 'Entity Name',
     'section': 'Overall Row',
     'description': 'The "name" of each record. Usually a column called "name", "title", etc.'
 }, {
-    'id': 'fk',
+    'id': 'type/special.fk',
     'name': 'Foreign Key',
     'section': 'Overall Row',
     'description': 'Points to another table to make a connection.'
 }, {
-    'id': 'avatar',
+    'id': 'type/text.url.image.avatar',
     'name': 'Avatar Image URL',
     'section': 'Common'
 }, {
-    'id': 'category',
+    'id': 'type/special.category',
     'name': 'Category',
     'section': 'Common'
 }, {
-    'id': 'city',
+    'id': 'type/text.geo.city',
     'name': 'City',
     'section': 'Common'
 }, {
-    'id': 'country',
+    'id': 'type/text.geo.country',
     'name': 'Country',
     'section': 'Common'
 }, {
-    'id': 'desc',
+    'id': 'type/text.description',
     'name': 'Description',
     'section': 'Common'
 }, {
-    'id': 'image',
+    'id': 'type/text.url.image',
     'name': 'Image URL',
     'section': 'Common'
 }, {
-    'id': 'json',
+    'id': 'type/text.json',
     'name': 'Field containing JSON',
     'section': 'Common'
 }, {
-    'id': 'latitude',
+    'id': 'type/number.float.coordinate.latitude',
     'name': 'Latitude',
     'section': 'Common'
 }, {
-    'id': 'longitude',
+    'id': 'type/number.float.coordinate.longitude',
     'name': 'Longitude',
     'section': 'Common'
 }, {
-    'id': 'number',
+    'id': 'type/number',
     'name': 'Number',
     'section': 'Common'
 }, {
-    'id': 'state',
+    'id': 'type/text.geo.state',
     'name': 'State',
     'section': 'Common'
 }, {
-    id: 'timestamp_seconds',
+    id: 'type/datetime.unix.seconds',
     name: 'UNIX Timestamp (Seconds)',
     'section': 'Common'
 }, {
-    id: 'timestamp_milliseconds',
+    id: 'type/datetime.unix.milliseconds',
     name: 'UNIX Timestamp (Milliseconds)',
     'section': 'Common'
 }, {
-    'id': 'url',
+    'id': 'type/text.url',
     'name': 'URL',
     'section': 'Common'
 }, {
-    'id': 'zip_code',
+    'id': 'type/number.integer.geo.zip',
     'name': 'Zip Code',
     'section': 'Common'
 }];

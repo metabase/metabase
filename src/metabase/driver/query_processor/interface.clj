@@ -62,8 +62,8 @@
 (s/defrecord Field [field-id           :- IntGreaterThanZero
                     field-name         :- s/Str
                     field-display-name :- s/Str
-                    base-type          :- (apply s/enum field/base-types)
-                    special-type       :- (s/maybe (apply s/enum field/special-types))
+                    base-type          :- field/ValidType
+                    special-type       :- (s/maybe field/ValidType)
                     table-id           :- IntGreaterThanZero
                     schema-name        :- (s/maybe s/Str)
                     table-name         :- (s/maybe s/Str) ; TODO - Why is this `maybe` ?

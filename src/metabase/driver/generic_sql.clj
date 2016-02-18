@@ -149,7 +149,7 @@
 (defn- field-values-lazy-seq [driver field]
   (let [table           (field/table field)
         name-components (field/qualified-name-components field)
-        transform-fn    (if (contains? #{:TextField :CharField} (:base_type field))
+        transform-fn    (if (isa? (:base_type field) :type/text)
                           u/jdbc-clob->str
                           identity)
 
@@ -244,8 +244,8 @@
          (merge {:name        column_name
                  :column-type type_name
                  :base-type   (or (column->base-type driver (keyword type_name))
-                                  (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :UnknownField." type_name))
-                                      :UnknownField))}
+                                  (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*." type_name))
+                                      :type/*))}
                 (when calculated-special-type
                   {:special-type calculated-special-type})))))
 
