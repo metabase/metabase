@@ -188,46 +188,48 @@ export default class DashboardGrid extends Component {
         )
     }
 
-    render() {
+    renderGrid() {
         const { dashboard, isEditing } = this.props;
         const { width } = this.state;
+        const rowHeight = Math.floor(width / 6);
+        return (
+            <GridLayout
+                className={cx("DashboardGrid", { "Dash--editing": isEditing, "Dash--dragging": this.state.isDragging })}
+                layout={this.state.layout}
+                cols={6}
+                rowHeight={rowHeight}
+                onLayoutChange={(...args) => this.onLayoutChange(...args)}
+                onDrag={(...args) => this.onDrag(...args)}
+                onDragStop={(...args) => this.onDragStop(...args)}
+            >
+                {dashboard.ordered_cards.map(dc =>
+                    <div key={dc.id} className="DashCard" onMouseDownCapture={this.onDashCardMouseDown}>
+                        <DashCard
+                            dashcard={dc}
+                            cardData={this.props.cardData}
+                            fetchCardData={this.props.fetchCardData}
+                            markNewCardSeen={this.props.markNewCardSeen}
+                            isEditing={isEditing}
+                            onRemove={this.onDashCardRemove.bind(this, dc)}
+                            onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
+                        />
+                    </div>
+                )}
+            </GridLayout>
+        )
+    }
 
-        // don't attempt to render if we don't know the size yet, otherwise we may end up re-rendering
-        if (width === 0) {
-            return <div />;
-        }
-
-        // Responsive™
-        if (width <= 752) {
-            return this.renderMobile();
-        }
-
-        let rowHeight = Math.floor(width / 6);
+    render() {
+        const { width } = this.state;
         return (
             <div>
-                <GridLayout
-                    className={cx("DashboardGrid", { "Dash--editing": isEditing, "Dash--dragging": this.state.isDragging })}
-                    layout={this.state.layout}
-                    cols={6}
-                    rowHeight={rowHeight}
-                    onLayoutChange={(...args) => this.onLayoutChange(...args)}
-                    onDrag={(...args) => this.onDrag(...args)}
-                    onDragStop={(...args) => this.onDragStop(...args)}
-                >
-                    {dashboard.ordered_cards.map(dc =>
-                        <div key={dc.id} className="DashCard" onMouseDownCapture={this.onDashCardMouseDown}>
-                            <DashCard
-                                dashcard={dc}
-                                cardData={this.props.cardData}
-                                fetchCardData={this.props.fetchCardData}
-                                markNewCardSeen={this.props.markNewCardSeen}
-                                isEditing={isEditing}
-                                onRemove={this.onDashCardRemove.bind(this, dc)}
-                                onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
-                            />
-                        </div>
-                    )}
-                </GridLayout>
+                { width === 0 ?
+                    <div />
+                : width <= 752 ?
+                    this.renderMobile()
+                :
+                    this.renderGrid()
+                }
                 {this.renderRemoveModal()}
                 {this.renderAddSeriesModal()}
             </div>
