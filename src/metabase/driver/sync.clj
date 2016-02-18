@@ -162,7 +162,7 @@
   (let [active-field-ids         #(set (sel :many :field [Field :id], :table_id (:id table), :active true, :parent_id nil))
         table-def                (driver/describe-table driver table)
         current-active-field-ids (active-field-ids)]
-    (schema/validate driver/describe-table-schema table-def)
+    (schema/validate driver/DescribeTable table-def)
 
     ;; Run basic schema syncing to create all the Fields / PKs
     (u/try-apply sync-table-active-fields-and-pks! table table-def)
@@ -175,7 +175,7 @@
     (when analyze?
       (let [new-field-ids (set/difference (active-field-ids) current-active-field-ids)]
         (when-let [table-stats (driver/analyze-table driver table new-field-ids)]
-          (schema/validate driver/analyze-table-schema table-stats)
+          (schema/validate driver/AnalyzeTable table-stats)
 
           ;; update table row count
           (when (:row_count table-stats)
@@ -252,7 +252,7 @@
     (events/publish-event :database-sync-begin {:database_id (:id database) :custom_id tracking-hash})
 
     (let [database-schema (driver/describe-database driver database)]
-      (schema/validate driver/describe-database-schema database-schema)
+      (schema/validate driver/DescribeDatabase database-schema)
 
       ;; now persist the list of tables, creating new ones as needed and inactivating old ones
       (save-database-tables-list! database (:tables database-schema))
@@ -464,7 +464,7 @@ infer-field-special-type
 (defn- sync-table-fks! [driver table]
   (when (contains? (driver/features driver) :foreign-keys)
     (let [fks (driver/describe-table-fks driver table)]
-      (schema/validate driver/describe-table-fks-schema fks)
+      (schema/validate driver/DescribeTableFKs fks)
       (when (seq fks)
         (let [fk-name->id (sel :many :field->id [Field :name], :table_id (:id table), :name [in (map :fk-column-name fks)], :parent_id nil)]
           (doseq [{:keys [fk-column-name dest-column-name dest-table]} fks]
