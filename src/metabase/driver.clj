@@ -53,17 +53,21 @@
              :special-type    (apply schema/enum field/special-types)
              :preview-display schema/Bool
              :pk?             schema/Bool}]})
+           
+(def DescribeTableField
+  "Schema for fields returned by `describe-table`."
+  {:name                                schema/Str
+   :base-type                           (apply schema/enum field/base-types)
+   :special-type                        (apply schema/enum field/special-types)
+   :preview-display                     schema/Bool
+   :pk?                                 schema/Bool
+   (schema/optional-key :nested-fields) #{(schema/recursive #'DescribeTableField)}})
 
 (def DescribeTable
   "Schema for the expected output of `describe-table`."
   {:name   schema/Str
    :schema (schema/maybe schema/Str)
-   :fields #{{:name                                schema/Str
-              :base-type                           (apply schema/enum field/base-types)
-              :special-type                        (apply schema/enum field/special-types)
-              :preview-display                     schema/Bool
-              :pk?                                 schema/Bool
-              (schema/optional-key :nested-fields) #{(schema/recursive #'describe-table-schema)}}}})
+   :fields #{DescribeTableField}})
 
 (def DescribeDatabase
   "Schema for the expected output of `describe-database`."
