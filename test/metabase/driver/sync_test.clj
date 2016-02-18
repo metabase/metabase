@@ -378,7 +378,7 @@
 
 
 (datasets/expect-with-engine :postgres
-  :json
+  :type/text.json
   (with-temp-db
     [_
      (create-database-definition "Postgres with a JSON Field"

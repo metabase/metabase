@@ -4,33 +4,33 @@ databaseChangeLog:
       author: camsaul
       changes:
         - sql:
-            sql: UPDATE metabase_field SET base_type = 'type/collection.array' WHERE base_type ='ArrayField'
+            sql: UPDATE metabase_field SET base_type = 'type/collection.array' WHERE base_type = 'ArrayField'
         - sql:
-            sql: UPDATE metabase_field SET base_type = 'type/number.integer.big' WHERE base_type ='BigIntegerField'
+            sql: UPDATE metabase_field SET base_type = 'type/number.integer.big' WHERE base_type = 'BigIntegerField'
         - sql:
-            sql: UPDATE metabase_field SET base_type = 'type/boolean' WHERE base_type ='BooleanField'
+            sql: UPDATE metabase_field SET base_type = 'type/boolean' WHERE base_type = 'BooleanField'
         - sql:
-            sql: UPDATE metabase_field SET base_type = 'type/text' WHERE base_type ='CharField'
+            sql: UPDATE metabase_field SET base_type = 'type/text' WHERE base_type = 'CharField'
         - sql:
-            sql: UPDATE metabase_field SET base_type = 'type/datetime.date' WHERE base_type ='DateField'
+            sql: UPDATE metabase_field SET base_type = 'type/datetime.date' WHERE base_type = 'DateField'
         - sql:
-            sql: UPDATE metabase_field SET base_type = 'type/datetime' WHERE base_type ='DateTimeField'
+            sql: UPDATE metabase_field SET base_type = 'type/datetime' WHERE base_type = 'DateTimeField'
         - sql:
-            sql: UPDATE metabase_field SET base_type = 'type/number.float.decimal' WHERE base_type ='DecimalField'
+            sql: UPDATE metabase_field SET base_type = 'type/number.float.decimal' WHERE base_type = 'DecimalField'
         - sql:
-            sql: UPDATE metabase_field SET base_type = 'type/collection.map' WHERE base_type ='DictionaryField'
+            sql: UPDATE metabase_field SET base_type = 'type/collection.map' WHERE base_type = 'DictionaryField'
         - sql:
-            sql: UPDATE metabase_field SET base_type = 'type/number.float' WHERE base_type ='FloatField'
+            sql: UPDATE metabase_field SET base_type = 'type/number.float' WHERE base_type = 'FloatField'
         - sql:
-            sql: UPDATE metabase_field SET base_type = 'type/number.integer' WHERE base_type ='IntegerField'
+            sql: UPDATE metabase_field SET base_type = 'type/number.integer' WHERE base_type = 'IntegerField'
         - sql:
-            sql: UPDATE metabase_field SET base_type = 'type/text' WHERE base_type ='TextField'
+            sql: UPDATE metabase_field SET base_type = 'type/text' WHERE base_type = 'TextField'
         - sql:
-            sql: UPDATE metabase_field SET base_type = 'type/datetime.time' WHERE base_type ='TimeField'
+            sql: UPDATE metabase_field SET base_type = 'type/datetime.time' WHERE base_type = 'TimeField'
         - sql:
-            sql: UPDATE metabase_field SET base_type = 'type/text.uuid' WHERE base_type ='UUIDField'
+            sql: UPDATE metabase_field SET base_type = 'type/text.uuid' WHERE base_type = 'UUIDField'
         - sql:
-            sql: UPDATE metabase_field SET base_type = 'type/*' WHERE base_type ='UnknownField'
+            sql: UPDATE metabase_field SET base_type = 'type/*' WHERE base_type = 'UnknownField'
         - sql:
             sql: UPDATE metabase_field SET special_type = 'type/special.pk' WHERE special_type = 'id'
         - sql:

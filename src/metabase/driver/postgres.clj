@@ -77,9 +77,9 @@
 (defn- column->special-type
   "Attempt to determine the special-type of a Field given its name and Postgres column type."
   [_ column-name column-type]
-  ;; this is really, really simple right now.  if its postgres :json type then it's :json special-type
+  ;; this is really, really simple right now.  if its postgres :json type then it's :type/text.json special-type
   (when (= column-type :json)
-    :json))
+    :type/text.json))
 
 (def ^:const ssl-params
   "Params to include in the JDBC connection spec for an SSL connection."
@@ -128,7 +128,7 @@
     :day-of-week     (kx/inc (extract-integer :dow expr))
     :day-of-month    (extract-integer :day expr)
     :day-of-year     (extract-integer :doy expr)
-    ;; Postgres weeks start on Monday, so shift this date into the proper bucket and then decrement the resulting day
+    ;; Postgres weeks start on Monday (?), so shift this date into the proper bucket and then decrement the resulting day
     :week            (kx/- (date-trunc :week (kx/+ expr one-day))
                            one-day)
     :week-of-year    (extract-integer :week (kx/+ expr one-day))
@@ -166,7 +166,7 @@
     message))
 
 (defn- prepare-value [{value :value, {:keys [base-type]} :field}]
-  (if (= base-type :type/text.uuid)
+  (if (isa? base-type :type/text.uuid)
     (java.util.UUID/fromString value)
     value))
 

@@ -20,6 +20,7 @@ import DataGrid from "metabase/lib/data_grid";
 import Query from "metabase/lib/query";
 import { createQuery } from "metabase/lib/query";
 import { createCard, serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
+import { isa } from 'metabase/lib/schema_metadata';
 import { loadTable } from "metabase/lib/table";
 import { getDefaultColor } from "metabase/lib/visualization_settings";
 
@@ -237,7 +238,7 @@ CardControllers.controller('CardDetail', [
 
                 if (!coldef || !coldef.special_type) return false;
 
-                if (coldef.table_id != null && coldef.special_type.startsWith('type/special.pk') || (coldef.special_type.startsWith('type/special.fk') && coldef.target)) {
+                if (coldef.table_id != null && isa(coldef.special_type, 'type/special.pk') || (isa(coldef.special_type, 'type/special.fk') && coldef.target)) {
                     return true;
                 } else {
                     return false;
@@ -250,7 +251,7 @@ CardControllers.controller('CardDetail', [
                 var coldef = queryResult.data.cols[columnIndex],
                     value = queryResult.data.rows[rowIndex][columnIndex];
 
-                if (coldef.special_type.startsWith('type/special.pk')) {
+                if (isa(coldef.special_type, 'type/special.pk')) {
                     // action is on a PK column
                     let newCard = startNewCard("query", card.dataset_query.database);
 
@@ -261,7 +262,7 @@ CardControllers.controller('CardDetail', [
                     // run it
                     setCard(newCard);
 
-                } else if (coldef.special_type.startsWith('type/special.fk')) {
+                } else if (isa(coldef.special_type, 'type/special.fk')) {
                     // action is on an FK column
                     let newCard = startNewCard("query", card.dataset_query.database);
 
@@ -287,7 +288,7 @@ CardControllers.controller('CardDetail', [
                 // extract the value we will use to filter our new query
                 var originValue;
                 for (var i=0; i < queryResult.data.cols.length; i++) {
-                    if (queryResult.data.cols[i].special_type.startsWith('type/special.pk')) {
+                    if (isa(queryResult.data.cols[i].special_type, 'type/special.pk')) {
                         originValue = queryResult.data.rows[0][i];
                     }
                 }
@@ -670,7 +671,7 @@ CardControllers.controller('CardDetail', [
                 for (var i=0; i < data.cols.length; i++) {
                     var coldef = data.cols[i];
                     if (coldef.table_id === card.dataset_query.query.source_table &&
-                            coldef.special_type.startsWith('type/special.pk')) {
+                            isa(coldef.special_type, 'type/special.pk')) {
                         pkField = coldef.id;
                     }
                 }
@@ -697,7 +698,7 @@ CardControllers.controller('CardDetail', [
         function getObjectDetailIdValue(data) {
             for (var i=0; i < data.cols.length; i++) {
                 var coldef = data.cols[i];
-                if (coldef.special_type.startsWith('type/special.pk')) {
+                if (isa(coldef.special_type, 'type/special.pk')) {
                     return data.rows[0][i];
                 }
             }
