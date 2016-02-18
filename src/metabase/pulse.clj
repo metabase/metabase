@@ -7,7 +7,8 @@
                       [core :as t]
                       [format :as f])
             [hiccup.core :refer [html h]]
-            [metabase.models.setting :as setting])
+            [metabase.models.setting :as setting]
+            [metabase.util.urls :as urls])
   (:import (java.awt BasicStroke Color Dimension RenderingHints)
            java.awt.image.BufferedImage
            (java.io ByteArrayInputStream ByteArrayOutputStream)
@@ -163,7 +164,7 @@
 
 (defn- card-href
   [card]
-  (h (str (setting/get :-site-url) "/card/" (:id card) "?clone")))
+  (h (urls/question-url (:id card))))
 
 ;; ported from https://github.com/radkovo/CSSBox/blob/cssbox-4.10/src/main/java/org/fit/cssbox/demo/ImageRenderer.java
 (defn- render-to-png
