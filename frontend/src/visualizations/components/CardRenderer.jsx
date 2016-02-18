@@ -30,7 +30,8 @@ export default class CardRenderer extends Component {
     }
 
     componentDidMount() {
-        this.renderChart();
+        // avoid race condition with initial layout
+        setTimeout(() => this.renderChart());
     }
 
     componentDidUpdate() {
