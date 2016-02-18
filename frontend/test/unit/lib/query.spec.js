@@ -1,7 +1,7 @@
 /*eslint-env jasmine */
 
 import Query from "metabase/lib/query";
-import { createQuery } from "metabase/lib/query";
+import { createQuery, AggregationClause } from "metabase/lib/query";
 
 
 describe('Query', () => {
@@ -241,6 +241,128 @@ describe('Query', () => {
             };
             Query.removeDimension(query, 0);
             expect(query.order_by).toBe(undefined);
+        });
+    });
+});
+
+
+describe('AggregationClause', () => {
+
+    describe('isValid', () => {
+        it("should fail on bad clauses", () => {
+            expect(AggregationClause.isValid(undefined)).toEqual(false);
+            expect(AggregationClause.isValid(null)).toEqual(false);
+            expect(AggregationClause.isValid([])).toEqual(false);
+            expect(AggregationClause.isValid([null])).toEqual(false);
+            expect(AggregationClause.isValid("ab")).toEqual(false);
+            expect(AggregationClause.isValid(["foo", null])).toEqual(false);
+            expect(AggregationClause.isValid(["a", "b", "c"])).toEqual(false);
+        });
+
+        it("should succeed on good clauses", () => {
+            expect(AggregationClause.isValid(["METRIC", 123])).toEqual(true);
+            expect(AggregationClause.isValid(["rows"])).toEqual(true);
+            expect(AggregationClause.isValid(["sum", 456])).toEqual(true);
+        });
+    });
+
+    describe('isBareRows', () => {
+        it("should fail on bad clauses", () => {
+            expect(AggregationClause.isBareRows(undefined)).toEqual(false);
+            expect(AggregationClause.isBareRows(null)).toEqual(false);
+            expect(AggregationClause.isBareRows([])).toEqual(false);
+            expect(AggregationClause.isBareRows([null])).toEqual(false);
+            expect(AggregationClause.isBareRows("ab")).toEqual(false);
+            expect(AggregationClause.isBareRows(["foo", null])).toEqual(false);
+            expect(AggregationClause.isBareRows(["a", "b", "c"])).toEqual(false);
+            expect(AggregationClause.isBareRows(["METRIC", 123])).toEqual(false);
+            expect(AggregationClause.isBareRows(["sum", 456])).toEqual(false);
+        });
+
+        it("should succeed on good clauses", () => {
+            expect(AggregationClause.isBareRows(["rows"])).toEqual(true);
+        });
+    });
+
+    describe('isStandard', () => {
+        it("should fail on bad clauses", () => {
+            expect(AggregationClause.isStandard(undefined)).toEqual(false);
+            expect(AggregationClause.isStandard(null)).toEqual(false);
+            expect(AggregationClause.isStandard([])).toEqual(false);
+            expect(AggregationClause.isStandard([null])).toEqual(false);
+            expect(AggregationClause.isStandard("ab")).toEqual(false);
+            expect(AggregationClause.isStandard(["foo", null])).toEqual(false);
+            expect(AggregationClause.isStandard(["a", "b", "c"])).toEqual(false);
+            expect(AggregationClause.isStandard(["METRIC", 123])).toEqual(false);
+        });
+
+        it("should succeed on good clauses", () => {
+            expect(AggregationClause.isStandard(["rows"])).toEqual(true);
+            expect(AggregationClause.isStandard(["sum", 456])).toEqual(true);
+        });
+    });
+
+    describe('isMetric', () => {
+        it("should fail on bad clauses", () => {
+            expect(AggregationClause.isMetric(undefined)).toEqual(false);
+            expect(AggregationClause.isMetric(null)).toEqual(false);
+            expect(AggregationClause.isMetric([])).toEqual(false);
+            expect(AggregationClause.isMetric([null])).toEqual(false);
+            expect(AggregationClause.isMetric("ab")).toEqual(false);
+            expect(AggregationClause.isMetric(["foo", null])).toEqual(false);
+            expect(AggregationClause.isMetric(["a", "b", "c"])).toEqual(false);
+            expect(AggregationClause.isMetric(["rows"])).toEqual(false);
+            expect(AggregationClause.isMetric(["sum", 456])).toEqual(false);
+        });
+
+        it("should succeed on good clauses", () => {
+            expect(AggregationClause.isMetric(["METRIC", 123])).toEqual(true);
+        });
+    });
+
+    describe('getMetric', () => {
+        it("should succeed on good clauses", () => {
+            expect(AggregationClause.getMetric(["METRIC", 123])).toEqual(123);
+        });
+
+        it("should be null on non-metric clauses", () => {
+            expect(AggregationClause.getMetric(["sum", 123])).toEqual(null);
+        });
+    });
+
+    describe('getOperator', () => {
+        it("should succeed on good clauses", () => {
+            expect(AggregationClause.getOperator(["rows"])).toEqual("rows");
+            expect(AggregationClause.getOperator(["sum", 123])).toEqual("sum");
+        });
+
+        it("should be null on metric clauses", () => {
+            expect(AggregationClause.getOperator(["METRIC", 123])).toEqual(null);
+        });
+    });
+
+    describe('getField', () => {
+        it("should succeed on good clauses", () => {
+            expect(AggregationClause.getField(["sum", 123])).toEqual(123);
+        });
+
+        it("should be null on clauses w/out a field", () => {
+            expect(AggregationClause.getField(["rows"])).toEqual(null);
+        });
+
+        it("should be null on metric clauses", () => {
+            expect(AggregationClause.getField(["METRIC", 123])).toEqual(null);
+        });
+    });
+
+    describe('setField', () => {
+        it("should succeed on good clauses", () => {
+            expect(AggregationClause.setField(["avg"], 123)).toEqual(["avg", 123]);
+            expect(AggregationClause.setField(["sum", null], 123)).toEqual(["sum", 123]);
+        });
+
+        it("should return unmodified on metric clauses", () => {
+            expect(AggregationClause.setField(["METRIC", 123], 456)).toEqual(["METRIC", 123]);
         });
     });
 });
