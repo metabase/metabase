@@ -87,7 +87,7 @@
 
   (analyze-table ^java.util.Map [this, ^TableInstance table, ^java.util.Set new-field-ids]
     "*OPTIONAL*. Return a map containing information that provides optional analysis values for TABLE.
-     Output should match `analyze-table-schema`.")
+     Output should match the `AnalyzeTable` schema.")
 
   (can-connect? ^Boolean [this, ^Map details-map]
     "Check whether we can connect to a `Database` with DETAILS-MAP and perform a simple query. For example, a SQL database might
@@ -103,16 +103,16 @@
   (describe-database ^java.util.Map [this, ^DatabaseInstance database]
     "Return a map containing information that describes all of the schema settings in DATABASE, most notably a set of tables.
      It is expected that this function will be peformant and avoid draining meaningful resources of the database.
-     Results should match `describe-database-schema`.")
+     Results should match the `DescribeDatabase` schema.")
 
   (describe-table ^java.util.Map [this, ^TableInstance table]
     "Return a map containing information that describes the physical schema of TABLE.
      It is expected that this function will be peformant and avoid draining meaningful resources of the database.
-     Results should match `describe-table-schema`.")
+     Results should match the `DescribeTable` schema.")
 
   (describe-table-fks ^java.util.Set [this, ^TableInstance table]
     "*OPTIONAL*, BUT REQUIRED FOR DRIVERS THAT SUPPORT `:foreign-keys`*
-     Results should match `describe-table-fks-schema`.")
+     Results should match the `DescribeTableFKs` schema.")
 
   (details-fields ^clojure.lang.Sequential [this]
     "A vector of maps that contain information about connection properties that should
