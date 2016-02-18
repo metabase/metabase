@@ -29,6 +29,7 @@ import { formatValue } from "metabase/lib/formatting";
 const MIN_PIXELS_PER_TICK = { x: 100, y: 30 };
 const BAR_PADDING_RATIO = 0.2;
 const DEFAULT_INTERPOLATION = "linear";
+const MIN_WIDTH_PER_DOT = 3;
 
 function adjustTicksIfNeeded(axis, axisSize, minPixelsPerTick) {
     let numTicks = axis.ticks();
@@ -137,6 +138,14 @@ function applyChartTimeseriesXAxis(chart, card, cols, xValues) {
 
     // set the x units (used to compute bar size)
     chart.xUnits((start, stop) => Math.ceil(1 + moment(stop).diff(start, interval) / count));
+
+    let xPoints = chart.xUnits()(...chart.x().domain());
+    let enableDots = chart.width() / xPoints >= MIN_WIDTH_PER_DOT;
+    chart.on("renderlet.enable-dots", (chart) => {
+        chart.svg()
+            .classed("enable-dots", enableDots)
+            .classed("enable-dots-onhover", !enableDots);
+    });
 }
 
 function applyChartOrdinalXAxis(chart, card, cols, xValues) {
@@ -166,6 +175,14 @@ function applyChartOrdinalXAxis(chart, card, cols, xValues) {
 
     chart.x(d3.scale.ordinal().domain(xValues))
         .xUnits(dc.units.ordinal);
+
+    let xPoints = chart.x().domain().length;
+    let enableDots = chart.width() / xPoints >= MIN_WIDTH_PER_DOT;
+    chart.on("renderlet.enable-dots", (chart) => {
+        chart.svg()
+            .classed("enable-dots", enableDots)
+            .classed("enable-dots-onhover", !enableDots);
+    });
 }
 
 function applyChartYAxis(chart, card, cols) {
@@ -190,7 +207,7 @@ function applyChartYAxis(chart, card, cols) {
 }
 
 function applyChartTooltips(chart, onHoverChange) {
-    chart.on("renderlet", function(chart) {
+    chart.on("renderlet.tooltips", function(chart) {
         chart.selectAll(".bar, .dot, .area, .line, g.pie-slice, g.features")
             .on("mousemove", function(d, i) {
                 if (onHoverChange) {
@@ -287,7 +304,7 @@ function lineAndBarOnRender(chart, card) {
         customizeHorzGL('style', y.gridLineColor, (colorStr) => 'stroke:' + '#ddd' + ';');
     } catch (e) {}
 
-    chart.on("renderlet.lineAndBarOnRender", (chart) => {
+    chart.on("renderlet.line-and-bar-onrender", (chart) => {
         for (let elem of chart.selectAll(".sub, .chart-body")[0]) {
             // prevents dots from being clipped:
             elem.removeAttribute("clip-path");
@@ -416,7 +433,7 @@ export let CardRenderer = {
 
             chart
                 .compose(subCharts)
-                .on("renderlet.groupedbar", function (chart) {
+                .on("renderlet.grouped-bar", function (chart) {
                     // HACK: dc.js doesn't support grouped bar charts so we need to manually resize/reposition them
                     // https://github.com/dc-js/dc.js/issues/558
                     let barCharts = chart.selectAll(".sub rect:first-child")[0].map(node => node.parentNode.parentNode.parentNode);

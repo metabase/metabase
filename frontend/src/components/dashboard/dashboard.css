@@ -197,7 +197,7 @@
   fill-opacity: 1;
 }
 
-.dc-tooltip circle.dot {
+.enable-dots .dc-tooltip circle.dot {
   r: 3 !important;
   fill: white;
   stroke: currentColor;
@@ -206,8 +206,17 @@
   stroke-opacity: 1 !important;
 }
 
-.dc-tooltip circle.dot:hover {
+.enable-dots .dc-tooltip circle.dot:hover {
   fill: currentColor;
+}
+
+.enable-dots-onhover .dc-tooltip circle.dot:hover {
+  r: 3 !important;
+  fill: white;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill-opacity: 1 !important;
+  stroke-opacity: 1 !important;
 }
 
 .dc-chart .area,
