@@ -7,8 +7,10 @@
             [colorize.core :as color]
             [korma.core :as k]
             [medley.core :as m]
+            [schema.core :as schema]
             [metabase.db :refer [ins sel upd]]
             (metabase.models [database :refer [Database]]
+                             [field :as field]
                              [query-execution :refer [QueryExecution]])
             [metabase.models.setting :refer [defsetting]]
             [metabase.util :as u])
@@ -42,6 +44,39 @@
    :username-incorrect                 "Looks like your username is incorrect."
    :username-or-password-incorrect     "Looks like the username or password is incorrect."})
 
+(def analyze-table-schema
+  "Schema for the expected output of `analyze-table`."
+  {:rows   schema/Int
+   :fields [{:name            schema/Str
+             :base-type       (apply schema/enum field/base-types)
+             :field-type      (apply schema/enum field/field-types)
+             :special-type    (apply schema/enum field/special-types)
+             :preview-display schema/Bool
+             :pk?             schema/Bool}]})
+
+(def describe-table-schema
+  "Schema for the expected output of `describe-table`."
+  {:name   schema/Str
+   :schema (schema/maybe schema/Str)
+   :fields #{{:name                           schema/Str
+              :base-type                      (apply schema/enum field/base-types)
+              :special-type                   (apply schema/enum field/special-types)
+              :preview-display                schema/Bool
+              :pk?                            schema/Bool
+              (s/optional-key :nested-fields) #{(schema/recursive #'describe-table-schema)}}}})
+
+(def describe-database-schema
+  "Schema for the expected output of `describe-database`."
+  {:tables #{{:name   schema/Str
+              :schema (schema/maybe schema/Str)}}})
+
+(def describe-table-fks-schema
+  "Schema for the expected output of `describe-table-fks`."
+  #{{:fk-column-name   schema/Str
+     :dest-table       {:name   schema/Str
+                        :schema (schema/maybe schema/Str)}
+     :dest-column-name schema/Str}})
+
 (defprotocol IDriver
   "Methods that Metabase drivers must implement. Methods marked *OPTIONAL* have default implementations in `IDriverDefaultsMixin`.
    Drivers should also implement `getName` form `clojure.lang.Named`, so we can call `name` on them:
@@ -52,16 +87,7 @@
 
   (analyze-table ^java.util.Map [this, ^TableInstance table, ^java.util.Set new-field-ids]
     "*OPTIONAL*. Return a map containing information that provides optional analysis values for TABLE.
-
-     Each map should be structured as follows:
-
-         {:rows   <row-count>
-          :fields [{:name            <field-name>
-                    :base-type       <field-base-type>
-                    :field-type      <field-field-type>
-                    :special-type    <field-special-type>
-                    :preview-display <true|false>
-                    :pk?             <true|false>]}")
+     Output should match `analyze-table-schema`.")
 
   (can-connect? ^Boolean [this, ^Map details-map]
     "Check whether we can connect to a `Database` with DETAILS-MAP and perform a simple query. For example, a SQL database might
@@ -77,37 +103,16 @@
   (describe-database ^java.util.Map [this, ^DatabaseInstance database]
     "Return a map containing information that describes all of the schema settings in DATABASE, most notably a set of tables.
      It is expected that this function will be peformant and avoid draining meaningful resources of the database.
-
-     Each map should be structured as follows (NOTE that :tables is a Set):
-
-         {:tables #{{:name   <table-name>
-                     :schema <table-schema|nil>}}}")
+     Results should match `describe-database-schema`.")
 
   (describe-table ^java.util.Map [this, ^TableInstance table]
     "Return a map containing information that describes the physical schema of TABLE.
      It is expected that this function will be peformant and avoid draining meaningful resources of the database.
-
-     Each map should be structured as follows (NOTE that :fields is a Set):
-
-         {:name   <table-name>
-          :schema <table-schema|nil>
-          :fields #{{:name            <field-name>
-                     :base-type       <field-base-type>
-                     :special-type    <field-special-type>
-                     :preview-display <true|false>
-                     :pk?             <true|false>
-                     :nested-fields   #{ same structure as a field }}}")
+     Results should match `describe-table-schema`.")
 
   (describe-table-fks ^java.util.Set [this, ^TableInstance table]
     "*OPTIONAL*, BUT REQUIRED FOR DRIVERS THAT SUPPORT `:foreign-keys`*
-
-     Return a set of maps containing info about FK columns for TABLE.
-     Each map should be structured as follows:
-
-         {:fk-column-name    <column-name-of-fk-origin>
-          :dest-table        {:name   <name-of-destination-table>,
-                              :schema <schema-of-destination-table>}
-          :dest-column-name  <column-name-of-fk-destination>}")
+     Results should match `describe-table-fks-schema`.")
 
   (details-fields ^clojure.lang.Sequential [this]
     "A vector of maps that contain information about connection properties that should
