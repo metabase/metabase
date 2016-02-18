@@ -46,39 +46,37 @@
 
 (def AnalyzeTable
   "Schema for the expected output of `analyze-table`."
-  {:rows   schema/Int
-   :fields [{:name            schema/Str
-             :base-type       (apply schema/enum field/base-types)
-             :field-type      (apply schema/enum field/field-types)
-             :special-type    (apply schema/enum field/special-types)
-             :preview-display schema/Bool
-             :pk?             schema/Bool}]})
-           
-(def DescribeTableField
-  "Schema for fields returned by `describe-table`."
-  {:name                                schema/Str
-   :base-type                           (apply schema/enum field/base-types)
-   :special-type                        (apply schema/enum field/special-types)
-   :preview-display                     schema/Bool
-   :pk?                                 schema/Bool
-   (schema/optional-key :nested-fields) #{(schema/recursive #'DescribeTableField)}})
-
-(def DescribeTable
-  "Schema for the expected output of `describe-table`."
-  {:name   schema/Str
-   :schema (schema/maybe schema/Str)
-   :fields #{DescribeTableField}})
+  {(schema/optional-key :row_count) schema/Int
+   (schema/optional-key :fields)    [{:id                                    schema/Int
+                                      (schema/optional-key :special-type)    (apply schema/enum field/special-types)
+                                      (schema/optional-key :preview-display) schema/Bool
+                                      (schema/optional-key :values)          [schema/Any]}]})
 
 (def DescribeDatabase
   "Schema for the expected output of `describe-database`."
-  {:tables #{{:name   schema/Str
-              :schema (schema/maybe schema/Str)}}})
+  {:tables #{{:name                         schema/Str
+              (schema/optional-key :schema) (schema/maybe schema/Str)}}})
+
+(def DescribeTableField
+  "Schema for a given Field as provided in `describe-table` or `analyze-table`."
+  {:name                                  schema/Str
+   :base-type                             (apply schema/enum field/base-types)
+   (schema/optional-key :special-type)    (apply schema/enum field/special-types)
+   (schema/optional-key :pk?)             schema/Bool
+   (schema/optional-key :nested-fields)   #{(schema/recursive #'DescribeTableField)}
+   (schema/optional-key :custom)          {schema/Any schema/Any}})
+
+(def DescribeTable
+  "Schema for the expected output of `describe-table`."
+  {:name                         schema/Str
+   (schema/optional-key :schema) (schema/maybe schema/Str)
+   :fields                       #{DescribeTableField}})
 
 (def DescribeTableFKs
   "Schema for the expected output of `describe-table-fks`."
   #{{:fk-column-name   schema/Str
-     :dest-table       {:name   schema/Str
-                        :schema (schema/maybe schema/Str)}
+     :dest-table       {:name                         schema/Str
+                        (schema/optional-key :schema) (schema/maybe schema/Str)}
      :dest-column-name schema/Str}})
 
 (defprotocol IDriver

@@ -37,22 +37,22 @@
   {:name   "VENUES"
    :schema "PUBLIC"
    :fields #{{:name "NAME",
-              :column-type "VARCHAR",
+              :custom {:column-type "VARCHAR"},
               :base-type :TextField}
              {:name "LATITUDE",
-              :column-type "DOUBLE",
+              :custom {:column-type "DOUBLE"},
               :base-type :FloatField}
              {:name "LONGITUDE",
-              :column-type "DOUBLE",
+              :custom {:column-type "DOUBLE"},
               :base-type :FloatField}
              {:name "PRICE",
-              :column-type "INTEGER",
+              :custom {:column-type "INTEGER"},
               :base-type :IntegerField}
              {:name "CATEGORY_ID",
-              :column-type "INTEGER",
+              :custom {:column-type "INTEGER"},
               :base-type :IntegerField}
              {:name "ID",
-              :column-type "BIGINT",
+              :custom {:column-type "BIGINT"},
               :base-type :BigIntegerField,
               :pk? true}}}
   (driver/describe-table (H2Driver.) @venues-table))

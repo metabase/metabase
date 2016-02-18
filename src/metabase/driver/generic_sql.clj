@@ -242,7 +242,7 @@
   (set (for [{:keys [column_name type_name]} (jdbc/result-set-seq (.getColumns metadata nil schema name nil))
              :let [calculated-special-type (column->special-type driver column_name (keyword type_name))]]
          (merge {:name        column_name
-                 :column-type type_name
+                 :custom      {:column-type type_name}
                  :base-type   (or (column->base-type driver (keyword type_name))
                                   (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :UnknownField." type_name))
                                       :UnknownField))}
