@@ -90,7 +90,7 @@
     "*OPTIONAL*. Return the base type type that is actually used to store `Fields` of BASE-TYPE.
      The default implementation of this method is an identity fn. This is provided so DBs that don't support a given BASE-TYPE used in the test data
      can specifiy what type we should expect in the results instead.
-     For example, Oracle has `INTEGER` data types, so `:IntegerField` test values are instead stored as `NUMBER`, which we map to `:DecimalField`.")
+     For example, Oracle has `INTEGER` data types, so `:type/number.integer` test values are instead stored as `NUMBER`, which we map to `:type/number.float.decimal`.")
 
   (format-name [this table-or-field-name]
     "*OPTIONAL* Transform a lowercase string `Table` or `Field` name in a way appropriate for this dataset
@@ -101,7 +101,7 @@
      Defaults to `(not (contains? (metabase.driver/features this) :set-timezone)`")
 
   (id-field-type [this]
-    "*OPTIONAL* Return the `base_type` of the `id` `Field` (e.g. `:IntegerField` or `:BigIntegerField`). Defaults to `:IntegerField`."))
+    "*OPTIONAL* Return the `base_type` of the `id` `Field` (e.g. `:type/number.integer` or `:type/number.integer.big`). Defaults to `:type/number.integer`."))
 
 (def IDatasetLoaderDefaultsMixin
   {:expected-base-type->actual         (fn [_ base-type] base-type)
@@ -110,7 +110,7 @@
                                          table-or-field-name)
    :has-questionable-timezone-support? (fn [driver]
                                          (not (contains? (driver/features driver) :set-timezone)))
-   :id-field-type                      (constantly :IntegerField)})
+   :id-field-type                      (constantly :type/number.integer)})
 
 
 ;; ## Helper Functions for Creating New Definitions
@@ -118,15 +118,16 @@
 (defn create-field-definition
   "Create a new `FieldDefinition`; verify its values."
   ^FieldDefinition [{:keys [field-name base-type field-type special-type fk], :as field-definition-map}]
-  (assert (or (contains? field/base-types base-type)
+  (assert (or (isa? base-type :type/*)
               (and (map? base-type)
                    (string? (:native base-type))))
     (str (format "Invalid field base type: '%s'\n" base-type)
-         "Field base-type should be either a valid base type like :TextField or be some native type wrapped in a map, like {:native \"JSON\"}."))
+         "Field base-type should be either a valid base type like :type/text or be some native type wrapped in a map, like {:native \"JSON\"}."))
   (when field-type
     (assert (contains? field/field-types field-type)))
   (when special-type
-    (assert (contains? field/special-types special-type)))
+    (assert (isa? special-type :type/*)
+      (format "Invalid special type: '%s'" special-type)))
   (map->FieldDefinition field-definition-map))
 
 (defn create-table-definition

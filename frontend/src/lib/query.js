@@ -455,10 +455,10 @@ var Query = {
             fks: []
         };
         // filter based on filterFn, then remove fks if they'll be duplicated in the joins fields
-        results.fields = filterFn(fields).filter((f) => !usedFields[f.id] && (f.special_type !== "fk" || !includeJoins));
+        results.fields = filterFn(fields).filter((f) => !usedFields[f.id] && (!f.special_type.startsWith('type/special.fk') || !includeJoins));
         results.count += results.fields.length;
         if (includeJoins) {
-            results.fks = fields.filter((f) => f.special_type === "fk" && f.target).map((joinField) => {
+            results.fks = fields.filter((f) => f.special_type.startsWith('type/special.fk') && f.target).map((joinField) => {
                 var targetFields = filterFn(joinField.target.table.fields).filter(f => (!Array.isArray(f.id) || f.id[0] !== "aggregation") && !usedFields[f.id]);
                 results.count += targetFields.length;
                 return {

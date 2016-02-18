@@ -92,10 +92,10 @@
     fields
     (conj fields (merge {:source :aggregation}
                         (if (contains? #{:count :distinct} ag-type)
-                          {:base-type          :IntegerField
+                          {:base-type          :type/number.integer
                            :field-name         :count
                            :field-display-name :count
-                           :special-type       :number}
+                           :special-type       :type/number}
                           (merge (select-keys ag-field [:base-type :special-type])
                                  {:field-name         ag-type
                                   :field-display-name ag-type}))))))
@@ -113,7 +113,7 @@
       (log/warn (u/format-color 'yellow "There are fields we weren't expecting in the results: %s\nExpected: %s\nActual: %s"
                   missing-keys expected-keys actual-keys)))
     (concat fields (for [k missing-keys]
-                     {:base-type          :UnknownField
+                     {:base-type          :type/*
                       :special-type       nil
                       :field-name         k
                       :field-display-name k}))))
@@ -128,23 +128,21 @@
    e.g. if a Field comes from a `:breakout` clause, we should return that column first in the results."
   [{:keys [fields-is-implicit]}]
   (fn [{:keys [source]}]
-    (or (when (= source :breakout)
-          :0-breakout)
-        (when (= source :aggregation)
-          :1-aggregation)
-        (when-not fields-is-implicit
-          (when (= source :fields)
-            :2-fields))
-        :3-other)))
+    (cond
+     (= source :breakout)          :0-breakout
+     (= source :aggregation)       :1-aggregation
+     (and (not fields-is-implicit)
+          (= source :fields))      :2-fields
+     :else                         :3-other)))
 
 (defn- special-type-importance
   "Return a importance for FIELD based on the relative importance of its `:special-type`.
    i.e. a Field with special type `:id` should be sorted ahead of all other Fields in the results."
   [{:keys [special-type]}]
-  (condp = special-type
-    :id   :0-id
-    :name :1-name
-          :2-other))
+  (cond
+    (isa? special-type :type/special.pk) :0-id
+    (isa? special-type :type/text.name)  :1-name
+    :else                                :2-other))
 
 (defn- field-importance-fn
   "Create a function to return an \"importance\" vector for use in sorting FIELD."
@@ -191,7 +189,7 @@
   "Fetch fk info and return a function that returns the destination Field of a given Field."
   ([fields]
    (or (fk-field->dest-fn fields (for [{:keys [special_type id]} fields
-                                       :when (= special_type :fk)]
+                                       :when (isa? special_type :type/special.fk)]
                                    id))
        (constantly nil)))
   ;; Fetch the ForeignKey objects whose origin is in the returned Fields, create a map of origin-field-id->destination-field-id
@@ -211,7 +209,7 @@
      (some-> id id->dest-id dest-id->field))))
 
 (defn- add-extra-info-to-fk-fields
-  "Add `:extra_info` about `ForeignKeys` to `Fields` whose `special_type` is `:fk`."
+  "Add `:extra_info` about `ForeignKeys` to `Fields` have a FK special type."
   [fields]
   (let [field->dest (fk-field->dest-fn fields)]
     (for [field fields]

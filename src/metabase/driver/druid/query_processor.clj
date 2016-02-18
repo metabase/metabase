@@ -54,9 +54,9 @@
 
 (extend-protocol IDimensionOrMetric
   Field         (dimension-or-metric? [this] (case (:base-type this)
-                                               :TextField    :dimension
-                                               :FloatField   :metric
-                                               :IntegerField :metric))
+                                               :type/text    :dimension
+                                               :type/number.float   :metric
+                                               :type/number.integer :metric))
   DateTimeField (dimension-or-metric? [this] (dimension-or-metric? (:field this))))
 
 

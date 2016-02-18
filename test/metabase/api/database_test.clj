@@ -233,7 +233,7 @@
                    :fields          [(match-$ (Field (id :categories :id))
                                        {:description     nil
                                         :table_id        (id :categories)
-                                        :special_type    "id"
+                                        :special_type    "type/special.pk"
                                         :name            "ID"
                                         :display_name    "Id"
                                         :updated_at      $
@@ -244,13 +244,13 @@
                                         :target          nil
                                         :preview_display true
                                         :created_at      $
-                                        :base_type       "BigIntegerField"
+                                        :base_type       "type/number.integer.big"
                                         :parent_id       nil
                                         :values          []})
                                      (match-$ (Field (id :categories :name))
                                        {:description     nil
                                         :table_id        (id :categories)
-                                        :special_type    "name"
+                                        :special_type    "type/text.name"
                                         :name            "NAME"
                                         :display_name    "Name"
                                         :updated_at      $
@@ -261,7 +261,7 @@
                                         :target          nil
                                         :preview_display true
                                         :created_at      $
-                                        :base_type       "TextField"
+                                        :base_type       "type/text"
                                         :parent_id       nil
                                         :values          []})]
                    :segments        []

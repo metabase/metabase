@@ -110,4 +110,4 @@
            last                     ; last result will be tuple with highest count
            first                    ; keep just the type
            driver/class->base-type) ; convert to Field base_type
-      :UnknownField))
+      :type/*))

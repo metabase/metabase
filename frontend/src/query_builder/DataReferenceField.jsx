@@ -145,7 +145,7 @@ export default class DataReferenceField extends Component {
             }
         }
 
-        if (this.props.field.special_type === "number") {
+        if (this.props.field.special_type.startsWith('type/number')) {
             usefulQuestions.push(<li className="border-row-divider" key="sum"><DataReferenceQueryButton icon="illustration-icon-scalar" text={"Sum of all values of " + fieldName} onClick={this.setQuerySum} /></li>);
         }
         usefulQuestions.push(<li className="border-row-divider" key="distinct-values"><DataReferenceQueryButton icon="illustration-icon-table" text={"All distinct values of " + fieldName} onClick={this.setQueryDistinct} /></li>);
@@ -163,14 +163,14 @@ export default class DataReferenceField extends Component {
                 <h1>{fieldName}</h1>
                 {description}
                 {useForCurrentQuestion.length > 0 ?
-                    <div>
-                        <p className="text-bold">Use for current question</p>
-                        <ul className="my2">{useForCurrentQuestion}</ul>
-                    </div>
-                : null }
-                <p className="text-bold">Potentially useful questions</p>
-                <ul>{usefulQuestions}</ul>
-                <div>{error}</div>
+                 <div>
+                     <p className="text-bold">Use for current question</p>
+                     <ul className="my2">{useForCurrentQuestion}</ul>
+                 </div>
+                 : null }
+                 <p className="text-bold">Potentially useful questions</p>
+                 <ul>{usefulQuestions}</ul>
+                 <div>{error}</div>
             </div>
         );
     }

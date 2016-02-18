@@ -31,12 +31,12 @@
 
 
 (def ^:private ^:const percent-valid-url-threshold
-  "Fields that have at least this percent of values that are valid URLs should be marked as `special_type = :url`."
+  "Fields that have at least this percent of values that are valid URLs should be marked as `special_type = :type/text.url`."
   0.95)
 
 
 (def ^:private ^:const low-cardinality-threshold
-  "Fields with less than this many distinct values should automatically be marked with `special_type = :category`."
+  "Fields with less than this many distinct values should automatically be marked with `special_type = :type/special.category`."
   40)
 
 
@@ -165,7 +165,7 @@
     ;; validate that the table description returned is sensibly formatted
     (assert (every? map? (:fields table-def)) "table-def should describe each field using a map.")
     (assert (every? string? (map :name (:fields table-def))) "The :name of each field in table-def should be a string.")
-    (assert (every? (partial contains? field/base-types) (map :base-type (:fields table-def))) "The :base-type of each field in table-def should be a valid Field base type.")
+    (assert (every? (u/rpartial isa? :type/*) (map :base-type (:fields table-def))) "The :base-type of each field in table-def should be a valid Field base type.")
 
     ;; Run basic schema syncing to create all the Fields / PKs
     (u/try-apply sync-table-active-fields-and-pks! table table-def)
@@ -281,74 +281,65 @@
 
 ;; ## Describe Table
 
-(def ^{:arglists '([field-def])}
-infer-field-special-type
-  "If FIELD has a `name` and `base_type` that matches a known pattern, return the `special_type` we should assign to it."
-  (let [bool-or-int #{:BooleanField :BigIntegerField :IntegerField}
-        float       #{:DecimalField :FloatField}
-        int-or-text #{:BigIntegerField :IntegerField :CharField :TextField}
-        text        #{:CharField :TextField}
-        ;; tuples of [pattern set-of-valid-base-types special-type
-        ;; * Convert field name to lowercase before matching against a pattern
-        ;; * consider a nil set-of-valid-base-types to mean "match any base type"
-        pattern+base-types+special-type [[#"^.*_lat$"       float       :latitude]
-                                         [#"^.*_lon$"       float       :longitude]
-                                         [#"^.*_lng$"       float       :longitude]
-                                         [#"^.*_long$"      float       :longitude]
-                                         [#"^.*_longitude$" float       :longitude]
-                                         [#"^.*_rating$"    int-or-text :category]
-                                         [#"^.*_type$"      int-or-text :category]
-                                         [#"^.*_url$"       text        :url]
-                                         [#"^_latitude$"    float       :latitude]
-                                         [#"^active$"       bool-or-int :category]
-                                         [#"^city$"         text        :city]
-                                         [#"^country$"      text        :country]
-                                         [#"^countryCode$"  text        :country]
-                                         [#"^currency$"     int-or-text :category]
-                                         [#"^first_name$"   text        :name]
-                                         [#"^full_name$"    text        :name]
-                                         [#"^gender$"       int-or-text :category]
-                                         [#"^last_name$"    text        :name]
-                                         [#"^lat$"          float       :latitude]
-                                         [#"^latitude$"     float       :latitude]
-                                         [#"^lon$"          float       :longitude]
-                                         [#"^lng$"          float       :longitude]
-                                         [#"^long$"         float       :longitude]
-                                         [#"^longitude$"    float       :longitude]
-                                         [#"^name$"         text        :name]
-                                         [#"^postalCode$"   int-or-text :zip_code]
-                                         [#"^postal_code$"  int-or-text :zip_code]
-                                         [#"^rating$"       int-or-text :category]
-                                         [#"^role$"         int-or-text :category]
-                                         [#"^sex$"          int-or-text :category]
-                                         [#"^state$"        text        :state]
-                                         [#"^status$"       int-or-text :category]
-                                         [#"^type$"         int-or-text :category]
-                                         [#"^url$"          text        :url]
-                                         [#"^zip_code$"     int-or-text :zip_code]
-                                         [#"^zipcode$"      int-or-text :zip_code]]]
-    ;; Check that all the pattern tuples are valid
-    (doseq [[name-pattern base-types special-type] pattern+base-types+special-type]
-      (assert (= (type name-pattern) java.util.regex.Pattern))
-      (assert (every? (partial contains? field/base-types) base-types))
-      (assert (contains? field/special-types special-type)))
+(def ^:private pattern+valid-type?+special-type
+  (let [bool-or-int (fn [t] (or (isa? t :type/boolean)
+                                (isa? t :type/number.integer)))
+        float       (fn [t] (isa? t :type/number.float))
+        int-or-text (fn [t] (or (isa? t :type/number.integer)
+                                (isa? t :type/text)))
+        text        (fn [t] (isa? t :type/text))]
+    [[#"^.*_lat$"       float       :type/number.float.coordinate.latitude]
+     [#"^.*_latitude$"  float       :type/number.float.coordinate.longitude]
+     [#"^.*_lon$"       float       :type/number.float.coordinate.longitude]
+     [#"^.*_lng$"       float       :type/number.float.coordinate.longitude]
+     [#"^.*_long$"      float       :type/number.float.coordinate.longitude]
+     [#"^.*_longitude$" float       :type/number.float.coordinate.longitude]
+     [#"^.*_rating$"    int-or-text :type/special.category]
+     [#"^.*_type$"      int-or-text :type/special.category]
+     [#"^.*_url$"       text        :type/text.url]
+     [#"^_latitude$"    float       :type/number.float.coordinate.latitude]
+     [#"^active$"       bool-or-int :type/special.category]
+     [#"^city$"         text        :type/text.geo.city]
+     [#"^country$"      text        :type/text.geo.country]
+     [#"^countryCode$"  text        :type/text.geo.country]
+     [#"^currency$"     int-or-text :type/special.category]
+     [#"^first_name$"   text        :type/text.name]
+     [#"^full_name$"    text        :type/text.name]
+     [#"^gender$"       int-or-text :type/special.category]
+     [#"^last_name$"    text        :type/text.name]
+     [#"^lat$"          float       :type/number.float.coordinate.latitude]
+     [#"^latitude$"     float       :type/number.float.coordinate.latitude]
+     [#"^lon$"          float       :type/number.float.coordinate.longitude]
+     [#"^lng$"          float       :type/number.float.coordinate.longitude]
+     [#"^long$"         float       :type/number.float.coordinate.longitude]
+     [#"^longitude$"    float       :type/number.float.coordinate.longitude]
+     [#"^name$"         text        :type/text.name]
+     [#"^postalCode$"   int-or-text :type/number.integer.geo.zip]
+     [#"^postal_code$"  int-or-text :type/number.integer.geo.zip]
+     [#"^rating$"       int-or-text :type/special.category]
+     [#"^role$"         int-or-text :type/special.category]
+     [#"^sex$"          int-or-text :type/special.category]
+     [#"^state$"        text        :type/text.geo.state]
+     [#"^status$"       int-or-text :type/special.category]
+     [#"^type$"         int-or-text :type/special.category]
+     [#"^url$"          text        :type/text.url]
+     [#"^zip_code$"     int-or-text :type/number.integer.geo.zip]
+     [#"^zipcode$"      int-or-text :type/number.integer.geo.zip]]))
 
-    (fn [{:keys [base-type special-type pk?] field-name :name}]
-      {:pre [(string? field-name)
-             (keyword? base-type)]}
-      (or special-type
-          (when pk? :id)
-          (when (= "id" (s/lower-case field-name)) :id)
-          (when-let [matching-pattern (m/find-first (fn [[name-pattern valid-base-types _]]
-                                                      (and (or (nil? valid-base-types)
-                                                               (contains? valid-base-types base-type))
-                                                           (re-matches name-pattern (s/lower-case field-name))))
-                                                    pattern+base-types+special-type)]
-            ;; a little something for the app log
-            (log/debug (u/format-color 'green "%s '%s' matches '%s'. Setting special_type to '%s'."
-                                       (name base-type) field-name (first matching-pattern) (name (last matching-pattern))))
-            ;; the actual special-type is the last element of the pattern
-            (last matching-pattern))))))
+(defn infer-field-special-type
+  "If FIELD has a `name` and `base_type` that matches a known pattern, return the `special_type` we should assign to it."
+  [{:keys [base-type special-type pk?] field-name :name}]
+  {:pre [(string? field-name)
+         (keyword? base-type)]}
+  (or special-type
+      (when pk? :type/special.pk)
+      (when (= "id" (s/lower-case field-name)) :type/special.pk)
+      (first (for [[name-pattern valid-type? special-type] pattern+valid-type?+special-type
+                   :when (and (valid-type? base-type)
+                              (re-matches name-pattern (s/lower-case field-name)))]
+               (do (u/format-color 'green "%s '%s' matches '%s'. Setting special_type to '%s'."
+                     (name base-type) field-name name-pattern (name special-type))
+                   special-type)))))
 
 (defn- insert-or-update-active-field!
   [field-def existing-field table-id]
@@ -490,7 +481,7 @@ infer-field-special-type
                       ;; TODO: do we even care about this?
                       ;:relationship  (determine-fk-type {:id fk-column-id, :table (delay table)}) ; fake a Field instance
                       :relationship   :Mt1))
-                  (upd Field fk-column-id :special_type :fk))))))))))
+                  (upd Field fk-column-id :special_type :type/special.fk))))))))))
 
 
 ;; ## Analyze Table
@@ -507,12 +498,12 @@ infer-field-special-type
 (defn test-for-cardinality?
   "Should FIELD should be tested for cardinality?"
   [field is-new?]
-  (let [not-field-values-elligible #{:ArrayField
-                                     :DateField
-                                     :DateTimeField
-                                     :DictionaryField
-                                     :TimeField
-                                     :UnknownField}]
+  (let [not-field-values-elligible #{:type/collection.array
+                                     :type/datetime.date
+                                     :type/datetime
+                                     :type/collection.map
+                                     :type/datetime.time
+                                     :type/*}]
     (or (field-values/field-should-have-field-values? field)
         (and (nil? (:special_type field))
              is-new?
@@ -522,7 +513,7 @@ infer-field-special-type
   "Extract field-values for FIELD.  If number of values exceeds `low-cardinality-threshold` then we return an empty set of values."
   [field field-stats]
   ;; TODO: we need some way of marking a field as not allowing field-values so that we can skip this work if it's not appropriate
-  ;;       for example, :category fields with more than MAX values don't need to be rescanned all the time
+  ;;       for example, :type/special.category fields with more than MAX values don't need to be rescanned all the time
   (let [non-nil-values  (filter identity (queries/field-distinct-values field (inc low-cardinality-threshold)))
         ;; only return the list if we didn't exceed our MAX values
         distinct-values (when-not (< low-cardinality-threshold (count non-nil-values))
@@ -530,13 +521,13 @@ infer-field-special-type
     ;; TODO: eventually we can check for :nullable? based on the original values above
     (cond-> (assoc field-stats :values distinct-values)
       (and (nil? (:special_type field))
-           (< 0 (count distinct-values))) (assoc :special-type :category))))
+           (< 0 (count distinct-values))) (assoc :special-type :type/special.category))))
 
 (defn- test:no-preview-display
   "If FIELD's is textual and its average length is too great, mark it so it isn't displayed in the UI."
   [driver field field-stats]
   (if-not (and (:preview_display field)
-               (contains? #{:CharField :TextField} (:base_type field)))
+               (isa? (:base_type field) :type/text))
     ;; this field isn't suited for this test
     field-stats
     ;; test for avg length
@@ -551,7 +542,7 @@ infer-field-special-type
   "If FIELD is texual, doesn't have a `special_type`, and its non-nil values are primarily URLs, mark it as `special_type` `url`."
   [driver field field-stats]
   (if-not (and (not (:special_type field))
-               (contains? #{:CharField :TextField} (:base_type field)))
+               (isa? (:base_type field) :type/text))
     ;; this field isn't suited for this test
     field-stats
     ;; test for url values
@@ -563,7 +554,7 @@ infer-field-special-type
         field-stats
         (do
           (log/debug (u/format-color 'green "Field '%s' is %d%% URLs. Marking it as a URL." (field/qualified-name field) (int (math/round (* 100 percent-urls)))))
-          (assoc field-stats :special-type :url))))))
+          (assoc field-stats :special-type :type/text.url))))))
 
 (defn- values-are-valid-json?
   "`true` if at every item in VALUES is `nil` or a valid string-encoded JSON dictionary or array, and at least one of those is non-nil."
@@ -589,16 +580,15 @@ infer-field-special-type
    are valid serialized JSON dictionaries or arrays."
   [driver field field-stats]
   (if-not (and (not (:special_type field))
-               (contains? #{:CharField :TextField} (:base_type field)))
+               (isa? (:base_type field) :type/text))
     ;; this field isn't suited for this test
     field-stats
     ;; check for json values
-    (if-not (values-are-valid-json? (->> (driver/field-values-lazy-seq driver field)
-                                         (take driver/max-sync-lazy-seq-results)))
+    (if-not (values-are-valid-json? (take driver/max-sync-lazy-seq-results (driver/field-values-lazy-seq driver field)))
       field-stats
       (do
         (log/debug (u/format-color 'green "Field '%s' looks like it contains valid JSON objects. Setting special_type to :json." (field/qualified-name field)))
-        (assoc field-stats :special-type :json, :preview-display false)))))
+        (assoc field-stats :special-type :type/text.json, :preview-display false)))))
 
 (defn- test:new-field
   "Do the various tests that should only be done for a new `Field`.

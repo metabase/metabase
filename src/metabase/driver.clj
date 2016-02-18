@@ -166,8 +166,8 @@
      Results should look something like:
 
        {:columns [\"id\", \"bird_name\"]
-        :cols    [{:name \"id\", :base_type :IntegerField}
-                  {:name \"bird_name\", :base_type :TextField}]
+        :cols    [{:name \"id\", :base_type :type/number.integer}
+                  {:name \"bird_name\", :base_type :type/text}]
         :rows    [[1 \"Lucky Bird\"]
                   [2 \"Rasta Can\"]]}")
 
@@ -294,28 +294,28 @@
 (defn class->base-type
   "Return the `Field.base_type` that corresponds to a given class returned by the DB."
   [klass]
-  (or ({Boolean                         :BooleanField
-        Double                          :FloatField
-        Float                           :FloatField
-        Integer                         :IntegerField
-        Long                            :IntegerField
-        String                          :TextField
-        java.math.BigDecimal            :DecimalField
-        java.math.BigInteger            :BigIntegerField
-        java.sql.Date                   :DateField
-        java.sql.Timestamp              :DateTimeField
-        java.util.Date                  :DateTimeField
-        java.util.UUID                  :TextField
-        clojure.lang.PersistentArrayMap :DictionaryField
-        clojure.lang.PersistentHashMap  :DictionaryField
-        clojure.lang.PersistentVector   :ArrayField
-        org.postgresql.util.PGobject    :UnknownField} klass)
+  (or ({Boolean                         :type/boolean
+        Double                          :type/number.float
+        Float                           :type/number.float
+        Integer                         :type/number.integer
+        Long                            :type/number.integer
+        String                          :type/text
+        java.math.BigDecimal            :type/number.float.decimal
+        java.math.BigInteger            :type/number.integer.big
+        java.sql.Date                   :type/datetime.date
+        java.sql.Timestamp              :type/datetime
+        java.util.Date                  :type/datetime
+        java.util.UUID                  :type/text
+        clojure.lang.PersistentArrayMap :type/collection.map
+        clojure.lang.PersistentHashMap  :type/collection.map
+        clojure.lang.PersistentVector   :type/collection.array
+        org.postgresql.util.PGobject    :type/*} klass)
       (condp isa? klass
-        clojure.lang.IPersistentMap     :DictionaryField
-        clojure.lang.IPersistentVector  :ArrayField
+        clojure.lang.IPersistentMap     :type/collection.map
+        clojure.lang.IPersistentVector  :type/collection.array
         nil)
-      (do (log/warn (format "Don't know how to map class '%s' to a Field base_type, falling back to :UnknownField." klass))
-          :UnknownField)))
+      (do (log/warn (format "Don't know how to map class '%s' to a Field base_type, falling back to :type/*." klass))
+          :type/*)))
 
 ;; ## Driver Lookup
 

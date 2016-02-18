@@ -183,7 +183,7 @@
   [id]
   (read-check Database id)
   (let [table_ids (sel :many :id Table :db_id id :active true)]
-    (sort-by #(:name (:table %)) (-> (sel :many Field :table_id [in table_ids] :special_type "id")
+    (sort-by #(:name (:table %)) (-> (sel :many Field :table_id [in table_ids] :special_type "type/special.pk")
                                      (hydrate :table)))))
 
 (defendpoint POST "/:id/sync"

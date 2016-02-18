@@ -10,16 +10,15 @@
   (:import metabase.driver.h2.H2Driver))
 
 (def ^:private ^:const field-base-type->sql-type
-  {:BigIntegerField "BIGINT"
-   :BooleanField    "BOOL"
-   :CharField       "VARCHAR(254)"
-   :DateField       "DATE"
-   :DateTimeField   "DATETIME"
-   :DecimalField    "DECIMAL"
-   :FloatField      "FLOAT"
-   :IntegerField    "INTEGER"
-   :TextField       "TEXT"
-   :TimeField       "TIME"})
+  {:type/boolean              "BOOL"
+   :type/datetime             "DATETIME"
+   :type/datetime.date        "DATE"
+   :type/datetime.time        "TIME"
+   :type/number.float         "FLOAT"
+   :type/number.float.decimal "DECIMAL"
+   :type/number.integer       "INTEGER"
+   :type/number.integer.big   "BIGINT"
+   :type/text                 "VARCHAR(254)"})
 
 ;; ## DatabaseDefinition helper functions
 
@@ -96,4 +95,4 @@
           :format-name                        (fn [_ table-or-field-name]
                                                 (s/upper-case table-or-field-name))
           :has-questionable-timezone-support? (constantly false)
-          :id-field-type                      (constantly :BigIntegerField)}))
+          :id-field-type                      (constantly :type/number.integer.big)}))

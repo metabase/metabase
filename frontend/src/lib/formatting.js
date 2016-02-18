@@ -71,7 +71,7 @@ export function formatValue(value, column) {
     } else if (typeof value === "string") {
         return value;
     } else if (typeof value === "number") {
-        if (column && (column.special_type === "latitude" || column.special_type === "longitude")) {
+        if (column && (column.special_type.startsWith('type/number.float.coordinate'))) {
             return decimalDegreesFormatter(value)
         } else {
             return formatNumber(value);

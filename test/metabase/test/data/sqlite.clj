@@ -13,16 +13,15 @@
    :db           (str (i/escaped-name dbdef) ".sqlite")})
 
 (def ^:private ^:const field-base-type->sql-type
-  {:BigIntegerField "BIGINT"
-   :BooleanField    "BOOLEAN"
-   :CharField       "VARCHAR(254)"
-   :DateField       "DATE"
-   :DateTimeField   "DATETIME"
-   :DecimalField    "DECIMAL"
-   :FloatField      "DOUBLE"
-   :IntegerField    "INTEGER"
-   :TextField       "TEXT"
-   :TimeField       "TIME"})
+  {:type/boolean              "BOOLEAN"
+   :type/datetime             "DATETIME"
+   :type/datetime.date        "DATE"
+   :type/datetime.time        "TIME"
+   :type/number.float         "DOUBLE"
+   :type/number.float.decimal "DECIMAL"
+   :type/number.integer       "INTEGER"
+   :type/number.integer.big   "BIGINT"
+   :type/text                 "VARCHAR(254)"})
 
 (defn- load-data-stringify-dates
   "Our SQLite JDBC driver doesn't seem to handle Dates/Timestamps correctly so just convert them to string before INSERTing them into the Database."

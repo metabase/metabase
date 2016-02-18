@@ -11,16 +11,15 @@
   (:import metabase.driver.sqlserver.SQLServerDriver))
 
 (def ^:private ^:const field-base-type->sql-type
-  {:BigIntegerField "BIGINT"
-   :BooleanField    "BIT"
-   :CharField       "VARCHAR(254)"
-   :DateField       "DATE"
-   :DateTimeField   "DATETIME"
-   :DecimalField    "DECIMAL"
-   :FloatField      "FLOAT"
-   :IntegerField    "INTEGER"
-   :TextField       "TEXT"
-   :TimeField       "TIME"})
+  {:type/boolean              "BIT"
+   :type/datetime             "DATETIME"
+   :type/datetime.date        "DATE"
+   :type/datetime.time        "TIME"
+   :type/number.float         "FLOAT"
+   :type/number.float.decimal "DECIMAL"
+   :type/number.integer       "INTEGER"
+   :type/number.integer.big   "BIGINT"
+   :type/text                 "VARCHAR(254)"})
 
 (def ^:private db-name-counter
   "We destroy and create the same temporary databases serveral times when running our query processor tests.
@@ -98,7 +97,7 @@
             :database->connection-details database->connection-details
             :default-schema               (constantly "dbo")
             :engine                       (constantly :sqlserver)
-            :sum-field-type               (constantly :IntegerField)})))
+            :sum-field-type               (constantly :type/number.integer)})))
 
 
 (defn- cleanup-leftover-dbs

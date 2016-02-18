@@ -22,7 +22,7 @@
                               (engine-case 0)
                               (execute-query 1)
                               (execute-sql! 2)
-                              (expect 0)
+                              (expect 1)
                               (expect-eval-actual-first 1)
                               (expect-expansion 0)
                               (expect-let 1)

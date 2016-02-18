@@ -16,63 +16,63 @@
   "Map of Postgres column types -> Field base types.
    Add more mappings here as you come across them."
   [_ column-type]
-  ({:bigint        :BigIntegerField
-    :bigserial     :BigIntegerField
-    :bit           :UnknownField
-    :bool          :BooleanField
-    :boolean       :BooleanField
-    :box           :UnknownField
-    :bpchar        :CharField       ; "blank-padded char" is the internal name of "character"
-    :bytea         :UnknownField    ; byte array
-    :cidr          :TextField       ; IPv4/IPv6 network address
-    :circle        :UnknownField
-    :date          :DateField
-    :decimal       :DecimalField
-    :float4        :FloatField
-    :float8        :FloatField
-    :geometry      :UnknownField
-    :inet          :TextField
-    :int           :IntegerField
-    :int2          :IntegerField
-    :int4          :IntegerField
-    :int8          :BigIntegerField
-    :interval      :UnknownField    ; time span
-    :json          :TextField
-    :jsonb         :TextField
-    :line          :UnknownField
-    :lseg          :UnknownField
-    :macaddr       :TextField
-    :money         :DecimalField
-    :numeric       :DecimalField
-    :path          :UnknownField
-    :pg_lsn        :IntegerField    ; PG Log Sequence #
-    :point         :UnknownField
-    :real          :FloatField
-    :serial        :IntegerField
-    :serial2       :IntegerField
-    :serial4       :IntegerField
-    :serial8       :BigIntegerField
-    :smallint      :IntegerField
-    :smallserial   :IntegerField
-    :text          :TextField
-    :time          :TimeField
-    :timetz        :TimeField
-    :timestamp     :DateTimeField
-    :timestamptz   :DateTimeField
-    :tsquery       :UnknownField
-    :tsvector      :UnknownField
-    :txid_snapshot :UnknownField
-    :uuid          :UUIDField
-    :varbit        :UnknownField
-    :varchar       :TextField
-    :xml           :TextField
-    (keyword "bit varying")                :UnknownField
-    (keyword "character varying")          :TextField
-    (keyword "double precision")           :FloatField
-    (keyword "time with time zone")        :TimeField
-    (keyword "time without time zone")     :TimeField
-    (keyword "timestamp with timezone")    :DateTimeField
-    (keyword "timestamp without timezone") :DateTimeField} column-type))
+  ({:bigint        :type/number.integer.big
+    :bigserial     :type/number.integer.big
+    :bit           :type/*
+    :bool          :type/boolean
+    :boolean       :type/boolean
+    :box           :type/*
+    :bpchar        :type/text       ; "blank-padded char" is the internal name of "character"
+    :bytea         :type/*    ; byte array
+    :cidr          :type/text       ; IPv4/IPv6 network address
+    :circle        :type/*
+    :date          :type/datetime.date
+    :decimal       :type/number.float.decimal
+    :float4        :type/number.float
+    :float8        :type/number.float
+    :geometry      :type/*
+    :inet          :type/text
+    :int           :type/number.integer
+    :int2          :type/number.integer
+    :int4          :type/number.integer
+    :int8          :type/number.integer.big
+    :interval      :type/*    ; time span
+    :json          :type/text
+    :jsonb         :type/text
+    :line          :type/*
+    :lseg          :type/*
+    :macaddr       :type/text
+    :money         :type/number.float.decimal
+    :numeric       :type/number.float.decimal
+    :path          :type/*
+    :pg_lsn        :type/number.integer    ; PG Log Sequence #
+    :point         :type/*
+    :real          :type/number.float
+    :serial        :type/number.integer
+    :serial2       :type/number.integer
+    :serial4       :type/number.integer
+    :serial8       :type/number.integer.big
+    :smallint      :type/number.integer
+    :smallserial   :type/number.integer
+    :text          :type/text
+    :time          :type/datetime.time
+    :timetz        :type/datetime.time
+    :timestamp     :type/datetime
+    :timestamptz   :type/datetime
+    :tsquery       :type/*
+    :tsvector      :type/*
+    :txid_snapshot :type/*
+    :uuid          :type/text.uuid
+    :varbit        :type/*
+    :varchar       :type/text
+    :xml           :type/text
+    (keyword "bit varying")                :type/*
+    (keyword "character varying")          :type/text
+    (keyword "double precision")           :type/number.float
+    (keyword "time with time zone")        :type/datetime.time
+    (keyword "time without time zone")     :type/datetime.time
+    (keyword "timestamp with timezone")    :type/datetime
+    (keyword "timestamp without timezone") :type/datetime} column-type))
 
 (defn- column->special-type
   "Attempt to determine the special-type of a Field given its name and Postgres column type."
@@ -166,7 +166,7 @@
     message))
 
 (defn- prepare-value [{value :value, {:keys [base-type]} :field}]
-  (if (= base-type :UUIDField)
+  (if (= base-type :type/text.uuid)
     (java.util.UUID/fromString value)
     value))
 

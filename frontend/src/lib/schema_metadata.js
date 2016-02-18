@@ -20,19 +20,19 @@ export const UNKNOWN = "UNKNOWN";
 // NOTE: be sure not to create cycles using the "other" types
 const TYPES = {
     [DATE_TIME]: {
-        base: ["DateTimeField", "DateField", "TimeField"],
-        special: ["timestamp_milliseconds", "timestamp_seconds"]
+        base: ["type/datetime", "type/datetime.date", "type/datetime.time"],
+        special: ["type/datetime.unix.milliseconds", "type/datetime.unix.seconds"]
     },
     [NUMBER]: {
-        base: ["IntegerField", "DecimalField", "FloatField", "BigIntegerField"],
+        base: ["type/number.integer", "type/number.float.decimal", "type/number.float", "type/number.integer.big"],
         special: ["number"]
     },
     [STRING]: {
-        base: ["CharField", "TextField"],
+        base: ["type/text", "type/text"],
         special: ["name"]
     },
     [BOOLEAN]: {
-        base: ["BooleanField"]
+        base: ["type/boolean"]
     },
     [COORDINATE]: {
         special: ["latitude", "longitude"]
@@ -48,7 +48,7 @@ const TYPES = {
         exclude: [ENTITY, LOCATION, DATE_TIME]
     },
     [CATEGORY]: {
-        base: ["BooleanField"],
+        base: ["type/boolean"],
         special: ["category"],
         include: [LOCATION]
     },
@@ -186,7 +186,7 @@ function longitudeFieldSelectArgument(field, table) {
     return {
         type: "select",
         values: table.fields
-            .filter(field => field.special_type === "longitude")
+            .filter(field => field.special_type.startsWith('type/number.float.coordinate.longitude'))
             .map(field => ({
                 key: field.id,
                 name: field.display_name
@@ -441,12 +441,8 @@ export function hasLatitudeAndLongitudeColumns(columnDefs) {
     let hasLatitude = false;
     let hasLongitude = false;
     for (let col of columnDefs) {
-        if (col.special_type === "latitude") {
-            hasLatitude = true;
-        }
-        if (col.special_type === "longitude") {
-            hasLongitude = true;
-        }
+        if (col.special_type.startsWith('type/number.float.coordinate.latitude'))  hasLatitude = true;
+        if (col.special_type.startsWith('type/number.float.coordinate.longitude')) hasLongitude = true;
     }
     return hasLatitude && hasLongitude;
 }

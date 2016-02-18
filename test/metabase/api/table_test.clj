@@ -96,7 +96,7 @@
 (expect [(match-$ (Field (id :categories :id))
            {:description         nil
             :table_id            (id :categories)
-            :special_type        "id"
+            :special_type        "type/special.pk"
             :name                "ID"
             :display_name        "Id"
             :updated_at          $
@@ -106,12 +106,12 @@
             :position            0
             :preview_display     true
             :created_at          $
-            :base_type           "BigIntegerField"
+            :base_type           "type/number.integer.big"
             :parent_id           nil})
          (match-$ (Field (id :categories :name))
            {:description         nil
             :table_id            (id :categories)
-            :special_type        "name"
+            :special_type        "type/text.name"
             :name                "NAME"
             :display_name        "Name"
             :updated_at          $
@@ -121,7 +121,7 @@
             :position            0
             :preview_display     true
             :created_at          $
-            :base_type           "TextField"
+            :base_type           "type/text"
             :parent_id           nil})]
   ((user->client :rasta) :get 200 (format "table/%d/fields" (id :categories))))
 
@@ -138,7 +138,7 @@
        :fields          [(match-$ (Field (id :categories :id))
                            {:description     nil
                             :table_id        (id :categories)
-                            :special_type    "id"
+                            :special_type    "type/special.pk"
                             :name            "ID"
                             :display_name    "Id"
                             :updated_at      $
@@ -149,12 +149,12 @@
                             :target          nil
                             :preview_display true
                             :created_at      $
-                            :base_type       "BigIntegerField"
+                            :base_type       "type/number.integer.big"
                             :parent_id       nil})
                          (match-$ (Field (id :categories :name))
                            {:description     nil
                             :table_id        (id :categories)
-                            :special_type    "name"
+                            :special_type    "type/text.name"
                             :name            "NAME"
                             :display_name    "Name"
                             :updated_at      $
@@ -165,7 +165,7 @@
                             :target          nil
                             :preview_display true
                             :created_at      $
-                            :base_type       "TextField"
+                            :base_type       "type/text"
                             :parent_id       nil})]
        :field_values    {}
        :rows            75
@@ -212,7 +212,7 @@
        :fields          [(match-$ (sel :one Field :id (id :users :id))
                            {:description     nil
                             :table_id        (id :users)
-                            :special_type    "id"
+                            :special_type    "type/special.pk"
                             :name            "ID"
                             :display_name    "Id"
                             :updated_at      $
@@ -223,7 +223,7 @@
                             :target          nil
                             :preview_display true
                             :created_at      $
-                            :base_type       "BigIntegerField"
+                            :base_type       "type/number.integer.big"
                             :parent_id       nil})
                          (match-$ (sel :one Field :id (id :users :last_login))
                            {:description     nil
@@ -239,12 +239,12 @@
                             :target          nil
                             :preview_display true
                             :created_at      $
-                            :base_type       "DateTimeField"
+                            :base_type       "type/datetime"
                             :parent_id       nil})
                          (match-$ (sel :one Field :id (id :users :name))
                            {:description     nil
                             :table_id        (id :users)
-                            :special_type    "name"
+                            :special_type    "type/text.name"
                             :name            "NAME"
                             :display_name    "Name"
                             :updated_at      $
@@ -255,12 +255,12 @@
                             :target          nil
                             :preview_display true
                             :created_at      $
-                            :base_type       "TextField"
+                            :base_type       "type/text"
                             :parent_id       nil})
                          (match-$ (sel :one Field :table_id (id :users) :name "PASSWORD")
                            {:description     nil
                             :table_id        (id :users)
-                            :special_type    "category"
+                            :special_type    "type/special.category"
                             :name            "PASSWORD"
                             :display_name    "Password"
                             :updated_at      $
@@ -271,7 +271,7 @@
                             :target          nil
                             :preview_display true
                             :created_at      $
-                            :base_type       "TextField"
+                            :base_type       "type/text"
                             :parent_id       nil})]
        :rows            15
        :updated_at      $
@@ -314,7 +314,7 @@
        :fields          [(match-$ (Field (id :users :id))
                            {:description     nil
                             :table_id        (id :users)
-                            :special_type    "id"
+                            :special_type    "type/special.pk"
                             :name            "ID"
                             :display_name    "Id"
                             :updated_at      $
@@ -325,7 +325,7 @@
                             :target          nil
                             :preview_display true
                             :created_at      $
-                            :base_type       "BigIntegerField"
+                            :base_type       "type/number.integer.big"
                             :parent_id       nil})
                          (match-$ (Field (id :users :last_login))
                            {:description     nil
@@ -341,12 +341,12 @@
                             :target          nil
                             :preview_display true
                             :created_at      $
-                            :base_type       "DateTimeField"
+                            :base_type       "type/datetime"
                             :parent_id       nil})
                          (match-$ (Field (id :users :name))
                            {:description     nil
                             :table_id        (id :users)
-                            :special_type    "name"
+                            :special_type    "type/text.name"
                             :name            "NAME"
                             :display_name    "Name"
                             :updated_at      $
@@ -357,7 +357,7 @@
                             :target          nil
                             :preview_display true
                             :created_at      $
-                            :base_type       "TextField"
+                            :base_type       "type/text"
                             :parent_id       nil})]
        :rows            15
        :updated_at      $
@@ -444,12 +444,12 @@
                          :name            "USER_ID"
                          :display_name    "User Id"
                          :description     nil
-                         :base_type       "IntegerField"
+                         :base_type       "type/number.integer"
                          :preview_display $
                          :position        $
                          :field_type      "info"
                          :active          true
-                         :special_type    "fk"
+                         :special_type    "type/special.fk"
                          :created_at      $
                          :updated_at      $
                          :table           (match-$ (Table (id :checkins))
@@ -474,12 +474,12 @@
                          :name            "ID"
                          :display_name    "Id"
                          :description     nil
-                         :base_type       "BigIntegerField"
+                         :base_type       "type/number.integer.big"
                          :preview_display $
                          :position        $
                          :field_type      "info"
                          :active          true
-                         :special_type    "id"
+                         :special_type    "type/special.pk"
                          :created_at      $
                          :updated_at      $
                          :table           (match-$ (Table (id :users))

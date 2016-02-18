@@ -86,7 +86,7 @@ export default class Column extends Component {
 
     render() {
         var targetSelect;
-        if (this.props.field.special_type === "fk") {
+        if (this.props.field.special_type.startsWith('type/special.fk')) {
             targetSelect = (
                 <Select
                     className="TableEditor-field-target block"

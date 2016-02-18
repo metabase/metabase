@@ -72,7 +72,7 @@ function getMinMax(data, valueAccessor) {
 function dimensionIsTimeseries(result) {
     var hasDateField = (result.cols !== undefined &&
                             result.cols.length > 0 &&
-                            (result.cols[0].base_type === "DateField")) ? true : false;
+                            (result.cols[0].base_type === "type/datetime.date")) ? true : false;
 
     var isDateFirstVal = false;
     if (result.rows !== undefined &&

@@ -61,7 +61,7 @@
     "Called by `upd` after a SQL `UPDATE` *succeeds*. (This gets called with whatever the output of `pre-update` was).
 
      A good place to schedule asynchronous tasks, such as creating a `FieldValues` object for a `Field`
-     when it is marked with `special_type` `:category`.
+     when it is marked with `special_type` `:type/special.category`.
 
      The output of this function is ignored.")
 
@@ -108,7 +108,7 @@
     "Return a map of keyword field names to their types for fields that should be serialized/deserialized in a special way. Valid types are `:json`, `:keyword`, or `:clob`.
 
      *  `:json` serializes objects as JSON strings before going into the DB, and parses JSON strings when coming out
-     *  `:keyword` calls `name` before going into the DB, and `keyword` when coming out
+     *  `:keyword` converts the keyword to a string before going into the DB, and back to a keyword when coming out. Keeps namespace qualifier if applicable.
      *  `:clob` converts clobs to Strings (via `metabase.util/jdbc-clob->str`) when coming out
 
        (types [_] {:cards :json}) ; encode `:cards` as JSON when stored in the DB"))
@@ -125,7 +125,11 @@
                       (if (string? s)
                         (json/parse-string s keyword)
                         obj)))}
-   :keyword {:in  name
+   :keyword {:in  (fn [k]
+                    (if (and (keyword? k)
+                             (namespace k))
+                      (str (namespace k) "/" (name k))
+                      (name k)))
              :out keyword}
    :clob    {:in  identity
              :out u/jdbc-clob->str}})

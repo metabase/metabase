@@ -194,7 +194,7 @@ export function setLatitudeAndLongitude(settings, columnDefs) {
         latitudeColumnIndex;
     columnDefs.forEach(function(col, index) {
         if (col.special_type &&
-                col.special_type === "latitude" &&
+                col.special_type.startsWith('type/number.float.coordinate.latitude') &&
                 latitudeColumn === undefined) {
             latitudeColumn = col;
             latitudeColumnIndex = index;
@@ -206,7 +206,7 @@ export function setLatitudeAndLongitude(settings, columnDefs) {
         longitudeColumnIndex;
     columnDefs.forEach(function(col, index) {
         if (col.special_type &&
-                col.special_type === "longitude" &&
+                col.special_type.startsWith('type/number.float.coordinate.longitude') &&
                 longitudeColumn === undefined) {
             longitudeColumn = col;
             longitudeColumnIndex = index;

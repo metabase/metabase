@@ -237,7 +237,7 @@ CardControllers.controller('CardDetail', [
 
                 if (!coldef || !coldef.special_type) return false;
 
-                if (coldef.table_id != null && coldef.special_type === 'id' || (coldef.special_type === 'fk' && coldef.target)) {
+                if (coldef.table_id != null && coldef.special_type.startsWith('type/special.pk') || (coldef.special_type.startsWith('type/special.fk') && coldef.target)) {
                     return true;
                 } else {
                     return false;
@@ -250,7 +250,7 @@ CardControllers.controller('CardDetail', [
                 var coldef = queryResult.data.cols[columnIndex],
                     value = queryResult.data.rows[rowIndex][columnIndex];
 
-                if (coldef.special_type === "id") {
+                if (coldef.special_type.startsWith('type/special.pk')) {
                     // action is on a PK column
                     let newCard = startNewCard("query", card.dataset_query.database);
 
@@ -261,7 +261,7 @@ CardControllers.controller('CardDetail', [
                     // run it
                     setCard(newCard);
 
-                } else if (coldef.special_type === "fk") {
+                } else if (coldef.special_type.startsWith('type/special.fk')) {
                     // action is on an FK column
                     let newCard = startNewCard("query", card.dataset_query.database);
 
@@ -287,7 +287,7 @@ CardControllers.controller('CardDetail', [
                 // extract the value we will use to filter our new query
                 var originValue;
                 for (var i=0; i < queryResult.data.cols.length; i++) {
-                    if (queryResult.data.cols[i].special_type === "id") {
+                    if (queryResult.data.cols[i].special_type.startsWith('type/special.pk')) {
                         originValue = queryResult.data.rows[0][i];
                     }
                 }
@@ -670,7 +670,7 @@ CardControllers.controller('CardDetail', [
                 for (var i=0; i < data.cols.length; i++) {
                     var coldef = data.cols[i];
                     if (coldef.table_id === card.dataset_query.query.source_table &&
-                            coldef.special_type === "id") {
+                            coldef.special_type.startsWith('type/special.pk')) {
                         pkField = coldef.id;
                     }
                 }
@@ -697,7 +697,7 @@ CardControllers.controller('CardDetail', [
         function getObjectDetailIdValue(data) {
             for (var i=0; i < data.cols.length; i++) {
                 var coldef = data.cols[i];
-                if (coldef.special_type === "id") {
+                if (coldef.special_type.startsWith('type/special.pk')) {
                     return data.rows[0][i];
                 }
             }
@@ -938,7 +938,7 @@ CardControllers.controller('CardDetail', [
         // NOTE: we tried listening on $locationChangeStart and simply canceling that, but doing so prevents the history and everything
         //       and ideally we'd simply listen on $routeChangeStart and cancel that when it's the same controller, but that doesn't work :(
 
-        // mildly hacky way to prevent reloading controllers as the URL changes 
+        // mildly hacky way to prevent reloading controllers as the URL changes
         // this works by setting the new route to the old route and manually moving over params
         var route = $route.current;
         $scope.$on('$locationChangeSuccess', function (event) {

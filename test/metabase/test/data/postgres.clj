@@ -7,17 +7,16 @@
   (:import metabase.driver.postgres.PostgresDriver))
 
 (def ^:private ^:const field-base-type->sql-type
-  {:BigIntegerField "BIGINT"
-   :BooleanField    "BOOL"
-   :CharField       "VARCHAR(254)"
-   :DateField       "DATE"
-   :DateTimeField   "TIMESTAMP"
-   :DecimalField    "DECIMAL"
-   :FloatField      "FLOAT"
-   :IntegerField    "INTEGER"
-   :TextField       "TEXT"
-   :TimeField       "TIME"
-   :UUIDField       "UUID"})
+  {:type/boolean              "BOOL"
+   :type/datetime             "TIMESTAMP"
+   :type/datetime.date        "DATE"
+   :type/datetime.time        "TIME"
+   :type/number.float         "FLOAT"
+   :type/number.float.decimal "DECIMAL"
+   :type/number.integer       "INTEGER"
+   :type/number.integer.big   "BIGINT"
+   :type/text                 "VARCHAR(254)"
+   :type/text.uuid            "UUID"})
 
 (defn- database->connection-details [_ context {:keys [database-name short-lived?]}]
   (merge {:host         "localhost"

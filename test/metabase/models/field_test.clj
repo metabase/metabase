@@ -9,54 +9,54 @@
 ;; field-should-have-field-values?
 
 ;; sensitive fields should always be excluded
-(expect false (field-should-have-field-values? {:base_type    :BooleanField
-                                                :special_type :category
+(expect false (field-should-have-field-values? {:base_type    :type/boolean
+                                                :special_type :type/special.category
                                                 :field_type   :sensitive}))
 ;; date/time based fields should always be excluded
-(expect false (field-should-have-field-values? {:base_type    :DateField
-                                                :special_type :category
+(expect false (field-should-have-field-values? {:base_type    :type/datetime.date
+                                                :special_type :type/special.category
                                                 :field_type   :dimension}))
-(expect false (field-should-have-field-values? {:base_type    :DateTimeField
-                                                :special_type :category
+(expect false (field-should-have-field-values? {:base_type    :type/datetime
+                                                :special_type :type/special.category
                                                 :field_type   :dimension}))
-(expect false (field-should-have-field-values? {:base_type    :TimeField
-                                                :special_type :category
+(expect false (field-should-have-field-values? {:base_type    :type/datetime.time
+                                                :special_type :type/special.category
                                                 :field_type   :dimension}))
 ;; most special types should be excluded
-(expect false (field-should-have-field-values? {:base_type    :CharField
-                                                :special_type :image
+(expect false (field-should-have-field-values? {:base_type    :type/text
+                                                :special_type :type/text.url.image
                                                 :field_type   :dimension}))
-(expect false (field-should-have-field-values? {:base_type    :CharField
-                                                :special_type :id
+(expect false (field-should-have-field-values? {:base_type    :type/text
+                                                :special_type :type/special.pk
                                                 :field_type   :dimension}))
-(expect false (field-should-have-field-values? {:base_type    :CharField
-                                                :special_type :fk
+(expect false (field-should-have-field-values? {:base_type    :type/text
+                                                :special_type :type/special.fk
                                                 :field_type   :dimension}))
-(expect false (field-should-have-field-values? {:base_type    :CharField
-                                                :special_type :latitude
+(expect false (field-should-have-field-values? {:base_type    :type/text
+                                                :special_type :type/number.float.coordinate.latitude
                                                 :field_type   :dimension}))
-(expect false (field-should-have-field-values? {:base_type    :CharField
-                                                :special_type :number
+(expect false (field-should-have-field-values? {:base_type    :type/text
+                                                :special_type :type/number
                                                 :field_type   :dimension}))
-(expect false (field-should-have-field-values? {:base_type    :CharField
-                                                :special_type :timestamp_milliseconds
+(expect false (field-should-have-field-values? {:base_type    :type/text
+                                                :special_type :type/datetime.unix.milliseconds
                                                 :field_type   :dimension}))
 ;; boolean fields + category/city/state/country fields are g2g
-(expect true (field-should-have-field-values? {:base_type    :BooleanField
-                                               :special_type :number
+(expect true (field-should-have-field-values? {:base_type    :type/boolean
+                                               :special_type :type/number
                                                :field_type   :dimension}))
-(expect true (field-should-have-field-values? {:base_type    :CharField
-                                               :special_type :category
+(expect true (field-should-have-field-values? {:base_type    :type/text
+                                               :special_type :type/special.category
                                                :field_type   :dimension}))
-(expect true (field-should-have-field-values? {:base_type    :TextField
-                                               :special_type :city
+(expect true (field-should-have-field-values? {:base_type    :type/text
+                                               :special_type :type/text.geo.city
                                                :field_type   :dimension}))
-(expect true (field-should-have-field-values? {:base_type    :TextField
-                                               :special_type :state
+(expect true (field-should-have-field-values? {:base_type    :type/text
+                                               :special_type :type/text.geo.state
                                                :field_type   :dimension}))
-(expect true (field-should-have-field-values? {:base_type    :TextField
-                                               :special_type :country
+(expect true (field-should-have-field-values? {:base_type    :type/text
+                                               :special_type :type/text.geo.country
                                                :field_type   :dimension}))
-(expect true (field-should-have-field-values? {:base_type    :TextField
-                                               :special_type :name
+(expect true (field-should-have-field-values? {:base_type    :type/text
+                                               :special_type :type/text.name
                                                :field_type   :dimension}))

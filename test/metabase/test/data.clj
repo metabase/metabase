@@ -181,11 +181,11 @@
                                                                      field-name
                                                                      (u/pprint-to-str field-definition))))))]
                      (when field-type
-                       (log/debug (format "SET FIELD TYPE %s.%s -> %s" table-name field-name field-type))
-                       (upd Field (:id @field) :field_type (name field-type)))
+                       (log/info (format "SET FIELD TYPE %s.%s -> %s" table-name field-name field-type))
+                       (upd Field (:id @field) :field_type field-type))
                      (when special-type
-                       (log/debug (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
-                       (upd Field (:id @field) :special_type (name special-type)))))))
+                       (log/info (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
+                       (upd Field (:id @field) :special_type special-type))))))
              db))))))
 
 (defn remove-database!

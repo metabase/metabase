@@ -98,8 +98,8 @@
                                                                map->Field)]
     ;; try to resolve the Field with the ones available in field-id->fields
     (let [datetime-field? (or datetime-unit
-                              (contains? #{:DateField :DateTimeField} base-type)
-                              (contains? #{:timestamp_seconds :timestamp_milliseconds} special-type))]
+                              (isa? base-type    :type/datetime)
+                              (isa? special-type :type/datetime))]
       (if-not datetime-field?
         field
         (map->DateTimeField {:field field
@@ -137,7 +137,7 @@
 
       (nil? value)
       nil
-      
+
       :else
       (throw (Exception. (format "Invalid value '%s': expected a DateTime." value))))))
 
@@ -207,7 +207,7 @@
     (when-not (seq fk-field-ids)
       (throw (Exception. "You must use the fk-> form to reference Fields that are not part of the source_table.")))
     (let [ ;; Build a map of source table FK field IDs -> field names
-          fk-field-id->field-name      (sel :many :id->field [field/Field :name], :id [in fk-field-ids], :table_id source-table-id, :special_type "fk")
+          fk-field-id->field-name      (sel :many :id->field [field/Field :name], :id [in fk-field-ids], :table_id source-table-id, :special_type "type/special.fk")
 
           ;; Build a map of join table PK field IDs -> source table FK field IDs
           pk-field-id->fk-field-id     (sel :many :field->field [ForeignKey :destination_id :origin_id],
@@ -225,7 +225,8 @@
                                 :schema       schema
                                 :pk-field     (map->JoinTableField {:field-id   pk-field-id
                                                                     :field-name pk-field-name})
-                                :source-field (let [fk-id (pk-field-id->fk-field-id pk-field-id)]
+                                :source-field (let [fk-id (or (pk-field-id->fk-field-id pk-field-id)
+                                                              (throw (Exception. (format "Couldn't find FK field to join to PK %d." pk-field-id))))]
                                                 (map->JoinTableField {:field-id   fk-id
                                                                       :field-name (fk-field-id->field-name fk-id)}))})))))))
 

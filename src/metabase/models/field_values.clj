@@ -32,10 +32,14 @@
   {:pre [field_type
          (contains? field :base_type)
          (contains? field :special_type)]}
-  (and (not= (keyword field_type) :sensitive)
-       (not (contains? #{:DateField :DateTimeField :TimeField} (keyword base_type)))
-       (or (contains? #{:category :city :state :country :name} (keyword special_type))
-           (= (keyword base_type) :BooleanField))))
+  (let [base-type    (keyword base_type)
+             special-type (keyword special_type)]
+    (and (not= (keyword field_type) :sensitive)
+         (not (isa? base-type :type/datetime))
+         (or (isa? special-type :type/special.category)
+             (isa? special-type :type/text.geo)
+             (isa? special-type :type/text.name)
+             (isa? base-type :type/boolean)))))
 
 (defn- create-field-values
   "Create `FieldValues` for a `Field`."
