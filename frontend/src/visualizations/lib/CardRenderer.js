@@ -29,7 +29,13 @@ import { formatValue } from "metabase/lib/formatting";
 const MIN_PIXELS_PER_TICK = { x: 100, y: 30 };
 const BAR_PADDING_RATIO = 0.2;
 const DEFAULT_INTERPOLATION = "linear";
-const MIN_WIDTH_PER_DOT = 3;
+
+const DOT_OVERLAP_COUNT_LIMIT = 8;
+const DOT_OVERLAP_RATIO = 0.10;
+const DOT_OVERLAP_DISTANCE = 8;
+
+const VORONOI_TARGET_RADIUS = 50;
+const VORONOI_MAX_POINTS = 300;
 
 function adjustTicksIfNeeded(axis, axisSize, minPixelsPerTick) {
     let numTicks = axis.ticks();
@@ -138,14 +144,6 @@ function applyChartTimeseriesXAxis(chart, card, cols, xValues) {
 
     // set the x units (used to compute bar size)
     chart.xUnits((start, stop) => Math.ceil(1 + moment(stop).diff(start, interval) / count));
-
-    let xPoints = chart.xUnits()(...chart.x().domain());
-    let enableDots = chart.width() / xPoints >= MIN_WIDTH_PER_DOT;
-    chart.on("renderlet.enable-dots", (chart) => {
-        chart.svg()
-            .classed("enable-dots", enableDots)
-            .classed("enable-dots-onhover", !enableDots);
-    });
 }
 
 function applyChartOrdinalXAxis(chart, card, cols, xValues) {
@@ -175,14 +173,6 @@ function applyChartOrdinalXAxis(chart, card, cols, xValues) {
 
     chart.x(d3.scale.ordinal().domain(xValues))
         .xUnits(dc.units.ordinal);
-
-    let xPoints = chart.x().domain().length;
-    let enableDots = chart.width() / xPoints >= MIN_WIDTH_PER_DOT;
-    chart.on("renderlet.enable-dots", (chart) => {
-        chart.svg()
-            .classed("enable-dots", enableDots)
-            .classed("enable-dots-onhover", !enableDots);
-    });
 }
 
 function applyChartYAxis(chart, card, cols) {
@@ -279,27 +269,27 @@ function lineAndBarOnRender(chart, card) {
     };
     // x-axis label customizations
     try {
-        let customizeX = customizer(svg.select('.x-axis-label')[0][0]);
+        let customizeX = customizer(svg.select('.x-axis-label').node());
         customizeX('fill', x.title_color);
         customizeX('font-size', x.title_font_size);
     } catch (e) {}
 
     // y-axis label customizations
     try {
-        let customizeY = customizer(svg.select('.y-axis-label')[0][0]);
+        let customizeY = customizer(svg.select('.y-axis-label').node());
         customizeY('fill', y.title_color);
         customizeY('font-size', y.title_font_size);
     } catch (e) {}
 
     // grid lines - .grid-line .horizontal, .vertical
     try {
-        let customizeVertGL = customizer(svg.select('.grid-line.vertical')[0][0].children);
+        let customizeVertGL = customizer(svg.select('.grid-line.vertical').node().children);
         customizeVertGL('stroke-width', x.gridLineWidth);
         customizeVertGL('style', x.gridLineColor, (colorStr) => 'stroke:' + colorStr + ';');
     } catch (e) {}
 
     try {
-        let customizeHorzGL = customizer(svg.select('.grid-line.horizontal')[0][0].children);
+        let customizeHorzGL = customizer(svg.select('.grid-line.horizontal').node().children);
         customizeHorzGL('stroke-width', y.gridLineWidth);
         customizeHorzGL('style', y.gridLineColor, (colorStr) => 'stroke:' + '#ddd' + ';');
     } catch (e) {}
@@ -317,9 +307,96 @@ function lineAndBarOnRender(chart, card) {
         }
     });
 
+    chart.on("renderlet.enable-dots", (chart) => {
+        let enableDots;
+        const dots = chart.svg().selectAll(".dc-tooltip .dot")[0];
+        if (dots.length > 500) {
+            // more than 500 dots is almost certainly too dense, don't waste time computing the voronoi map
+            enableDots = false;
+        } else {
+            const vertices = dots.map((e, index) => {
+                let rect = e.getBoundingClientRect();
+                return [rect.left, rect.top, index];
+            });
+            const overlappedIndex = {};
+            // essentially pairs of vertices closest to each other
+            for (let { source, target } of d3.geom.voronoi().links(vertices)) {
+                if (Math.sqrt(Math.pow(source[0] - target[0], 2) + Math.pow(source[1] - target[1], 2)) < DOT_OVERLAP_DISTANCE) {
+                    // if they overlap, mark both as overlapped
+                    overlappedIndex[source[2]] = overlappedIndex[target[2]] = true;
+                }
+            }
+            const total = vertices.length;
+            const overlapping = Object.keys(overlappedIndex).length;
+            enableDots = overlapping < DOT_OVERLAP_COUNT_LIMIT || (overlapping / total) < DOT_OVERLAP_RATIO;
+        }
+        chart.svg()
+            .classed("enable-dots", enableDots)
+            .classed("enable-dots-onhover", !enableDots);
+    });
+
+    chart.on("renderlet.voronoi-hover", (chart) => {
+        const parent = chart.svg().select("svg > g");
+        const dots = chart.svg().selectAll(".dc-tooltip .dot")[0];
+
+        if (dots.length === 0 || dots.length > VORONOI_MAX_POINTS) {
+            return;
+        }
+
+        const originRect = chart.svg().node().getBoundingClientRect();
+        const vertices = dots.map(e => {
+            let { top, left, width, height } = e.getBoundingClientRect();
+            let px = (left + width / 2) - originRect.left;
+            let py = (top + height / 2) - originRect.top;
+            return [px, py, e];
+        });
+
+        const { width, height } = parent.node().getBBox();
+        const voronoi = d3.geom.voronoi()
+            .clipExtent([[0,0], [width, height]]);
+
+        // circular clip paths to limit distance from actual point
+        parent.append("svg:g")
+            .selectAll("clipPath")
+                .data(vertices)
+            .enter().append("svg:clipPath")
+                .attr("id", (d, i) => "clip-" + i)
+            .append("svg:circle")
+                .attr('cx', (d) => d[0])
+                .attr('cy', (d) => d[1])
+                .attr('r', VORONOI_TARGET_RADIUS);
+
+        // voronoi layout with clip paths applied
+        parent.append("svg:g")
+                .classed("voronoi", true)
+            .selectAll("path")
+                .data(voronoi(vertices), (d) => d&&d.join(","))
+                .enter().append("svg:path")
+                    .filter((d) => d != undefined)
+                    .attr("d", (d) => "M" + d.join("L") + "Z")
+                    .attr("clip-path", (d,i) => "url(#clip-"+i+")")
+                    .on("mousemove", ({ point }) => {
+                        let e = point[2];
+                        dispatchUIEvent(e, "mousemove");
+                        d3.select(e).classed("hover", true);
+                    })
+                    .on("mouseleave", ({ point }) => {
+                        let e = point[2];
+                        dispatchUIEvent(e, "mouseleave");
+                        d3.select(e).classed("hover", false);
+                    })
+                .order();
+
+        function dispatchUIEvent(element, eventName) {
+            let e = document.createEvent("UIEvents");
+            e.initUIEvent(eventName, true, true, window, 1);
+            element.dispatchEvent(e);
+        }
+    });
+
     // adjust the margins to fit the Y-axis tick label sizes, and rerender
-    chart.margins().left = chart.select(".axis.y")[0][0].getBBox().width + 30;
-    chart.margins().bottom = chart.select(".axis.x")[0][0].getBBox().height + 30;
+    chart.margins().left = chart.select(".axis.y").node().getBBox().width + 30;
+    chart.margins().bottom = chart.select(".axis.x").node().getBBox().height + 30;
 
     chart.render();
 }

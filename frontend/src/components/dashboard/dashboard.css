@@ -206,11 +206,13 @@
   stroke-opacity: 1 !important;
 }
 
-.enable-dots .dc-tooltip circle.dot:hover {
+.enable-dots .dc-tooltip circle.dot:hover,
+.enable-dots .dc-tooltip circle.dot.hover {
   fill: currentColor;
 }
 
-.enable-dots-onhover .dc-tooltip circle.dot:hover {
+.enable-dots-onhover .dc-tooltip circle.dot:hover,
+.enable-dots-onhover .dc-tooltip circle.dot.hover {
   r: 3 !important;
   fill: white;
   stroke: currentColor;
@@ -283,3 +285,11 @@
 .mute-yr .dc-chart .yr-axis-label {
   opacity: 0;
 }
+
+.voronoi {
+  fill: transparent;
+}
+
+/*.voronoi path {
+  fill: rgba(255,0,0,0.05);
+}*/
