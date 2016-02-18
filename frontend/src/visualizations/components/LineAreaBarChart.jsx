@@ -32,9 +32,20 @@ export default class LineAreaBarChart extends Component {
     render() {
         let { series, hovered, isDashboard, onAddSeries, extraActions } = this.props;
         return (
-            <div className={cx("flex flex-full flex-column p1", this.getHoverClasses())}>
-                { isDashboard && <LegendHeader series={series} onAddSeries={onAddSeries} extraActions={extraActions} hovered={hovered} onHoverChange={this.props.onHoverChange} /> }
-                <CardRenderer className="flex-full" {...this.props} />
+            <div className={cx("flex flex-column p1", this.getHoverClasses(), this.props.className)}>
+                { isDashboard &&
+                    <LegendHeader
+                        series={series}
+                        onAddSeries={onAddSeries}
+                        extraActions={extraActions}
+                        hovered={hovered}
+                        onHoverChange={this.props.onHoverChange}
+                    />
+                }
+                <CardRenderer
+                    {...this.props}
+                    className="flex-full"
+                />
                 <ChartTooltip series={series} hovered={hovered} />
             </div>
         );

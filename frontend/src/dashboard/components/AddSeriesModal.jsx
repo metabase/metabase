@@ -201,9 +201,9 @@ export default class AddSeriesModal extends Component {
             <div className="absolute top left bottom right flex">
                 <div className="flex flex-column flex-full">
                     <div className="flex-no-shrink h3 pl4 pt4 pb1 text-bold">Add data</div>
-                    <div className="flex flex-full relative">
+                    <div className="flex-full relative">
                         <Visualization
-                            className="flex-full"
+                            className="absolute top left bottom right"
                             card={dashcard.card}
                             data={data}
                             series={series}

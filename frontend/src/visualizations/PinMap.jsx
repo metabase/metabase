@@ -21,7 +21,7 @@ export default class PinMap extends Component {
 
     render() {
         return (
-            <CardRenderer className="flex-full" {...this.props} chartType="pin_map" />
+            <CardRenderer {...this.props} chartType="pin_map" />
         );
     }
 }

@@ -21,10 +21,10 @@ export default class USStateMap extends Component {
     }
 
     render() {
-        const { series, hovered } = this.props;
+        const { series, hovered, className } = this.props;
         return (
-            <div className="flex flex-full">
-                <CardRenderer className="flex-full" {...this.props} chartType="state" />
+            <div className={"flex " + className}>
+                <CardRenderer {...this.props} className="flex-full" chartType="state" />
                 <ChartTooltip series={series} hovered={hovered} pinToMouse={true} />
             </div>
         );
