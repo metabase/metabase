@@ -44,7 +44,7 @@
    :username-incorrect                 "Looks like your username is incorrect."
    :username-or-password-incorrect     "Looks like the username or password is incorrect."})
 
-(def analyze-table-schema
+(def AnalyzeTable
   "Schema for the expected output of `analyze-table`."
   {:rows   schema/Int
    :fields [{:name            schema/Str
@@ -54,7 +54,7 @@
              :preview-display schema/Bool
              :pk?             schema/Bool}]})
 
-(def describe-table-schema
+(def DescribeTable
   "Schema for the expected output of `describe-table`."
   {:name   schema/Str
    :schema (schema/maybe schema/Str)
@@ -65,12 +65,12 @@
               :pk?                                 schema/Bool
               (schema/optional-key :nested-fields) #{(schema/recursive #'describe-table-schema)}}}})
 
-(def describe-database-schema
+(def DescribeDatabase
   "Schema for the expected output of `describe-database`."
   {:tables #{{:name   schema/Str
               :schema (schema/maybe schema/Str)}}})
 
-(def describe-table-fks-schema
+(def DescribeTableFKs
   "Schema for the expected output of `describe-table-fks`."
   #{{:fk-column-name   schema/Str
      :dest-table       {:name   schema/Str
