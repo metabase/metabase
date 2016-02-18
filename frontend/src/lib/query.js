@@ -172,12 +172,15 @@ var Query = {
         query.breakout.push(null);
     },
 
-    updateDimension(query, dimension, index) {
-        query.breakout[index] = dimension;
+    updateDimension(query, value, index) {
+        query.breakout = BreakoutClause.setBreakout(query.breakout, index, value);
     },
 
     removeDimension(query, index) {
-        let field = query.breakout.splice(index, 1)[0];
+        let field = query.breakout[index];
+
+        // remove the field from the breakout clause
+        query.breakout = BreakoutClause.removeBreakout(query.breakout, index);
 
         // remove sorts that referenced the dimension that was removed
         if (query.order_by) {
@@ -646,6 +649,31 @@ export const AggregationClause = {
         } else {
             // TODO: is there a better failure response than just returning the aggregation unmodified??
             return aggregation;
+        }
+    }
+}
+
+export const BreakoutClause = {
+
+    setBreakout(breakout, index, value) {
+        if (!breakout) return breakout;
+
+        if (breakout.length >= index+1) {
+            breakout[index] = value;
+            return breakout;
+
+        } else {
+            breakout.push(value);
+            return breakout;
+        }
+    },
+
+    removeBreakout(breakout, index) {
+        if (breakout && breakout.length >= index+1) {
+            breakout.splice(index, 1);
+            return breakout;
+        } else {
+            return breakout;
         }
     }
 }

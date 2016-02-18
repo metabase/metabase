@@ -1,8 +1,8 @@
 import React, { Component, PropTypes } from "react";
 
 import AggregationWidget from './AggregationWidget.jsx';
+import BreakoutWidget from './BreakoutWidget.jsx';
 import DataSelector from './DataSelector.jsx';
-import FieldWidget from './FieldWidget.jsx';
 import FilterList from './filters/FilterList.jsx';
 import FilterPopover from './filters/FilterPopover.jsx';
 import Icon from "metabase/components/Icon.jsx";
@@ -30,7 +30,7 @@ export default class GuiQueryEditor extends Component {
             this,
             "addFilter", "updateFilter", "removeFilter",
             "updateAggregation",
-            "addDimension", "updateDimension", "removeDimension",
+            "setBreakout",
             "addSort", "updateSort", "removeSort",
             "updateLimit"
         );
@@ -62,25 +62,22 @@ export default class GuiQueryEditor extends Component {
         this.props.setQueryFn(dataset_query);
     }
 
-    addDimension() {
-        Query.addDimension(this.props.query.query);
-        this.setQuery(this.props.query);
+    setBreakout(index, field) {
+        if (field == null) {
+            Query.removeDimension(this.props.query.query, index);
+            this.setQuery(this.props.query);
+            MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove GroupBy');
+        } else {
+            let isNew = index+1 > this.props.query.query.breakout.length;
+            Query.updateDimension(this.props.query.query, field, index);
+            this.setQuery(this.props.query);
 
-        MetabaseAnalytics.trackEvent('QueryBuilder', 'Add GroupBy');
-    }
-
-    updateDimension(index, dimension) {
-        Query.updateDimension(this.props.query.query, dimension, index);
-        this.setQuery(this.props.query);
-
-        MetabaseAnalytics.trackEvent('QueryBuilder', 'Modify GroupBy');
-    }
-
-    removeDimension(index) {
-        Query.removeDimension(this.props.query.query, index);
-        this.setQuery(this.props.query);
-
-        MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove GroupBy');
+            if (isNew) {
+                MetabaseAnalytics.trackEvent('QueryBuilder', 'Add GroupBy');
+            } else {
+                MetabaseAnalytics.trackEvent('QueryBuilder', 'Modify GroupBy');
+            }
+        }
     }
 
     updateAggregation(aggregationClause) {
@@ -267,72 +264,65 @@ export default class GuiQueryEditor extends Component {
             return;
         }
 
-        var enabled;
-        var breakoutList;
-        var addBreakoutButton;
+        var enabled = (this.props.tableMetadata && 
+                        this.props.tableMetadata.breakout_options.fields.length > 0 &&
+                        !Query.hasEmptyAggregation(this.props.query.query));
+        var breakoutList = [];
 
-        // breakout clause.  must have table details available & a valid aggregation defined
-        if (this.props.tableMetadata &&
-                this.props.tableMetadata.breakout_options.fields.length > 0 &&
-                !Query.hasEmptyAggregation(this.props.query.query)) {
-            enabled = true;
-
-            // include a button to add a breakout, up to 2 total
-            // don't include already used fields
-            var usedFields = {};
-            breakoutList = []
-            this.props.query.query.breakout.forEach((breakout, index) => {
-                var breakoutListOpen = breakout === null;
-                var fieldOptions = Query.getFieldOptions(this.props.tableMetadata.fields, true, this.props.tableMetadata.breakout_options.validFieldsFilter, usedFields);
-
-                if (breakout) {
-                    usedFields[breakout] = true;
-                }
-
-                if (fieldOptions.count === 0) {
-                    return null;
-                }
-
+        const breakout = this.props.query.query.breakout;
+        if (enabled) {
+            if (breakout.length === 0) {
+                // no breakouts specified yet, so just render a single widget
                 breakoutList.push(
-                    <span key={"_"+index} className="text-bold">
-                        {breakoutList.length > 0 ? "and" : "by"}
-                    </span>
-                );
-
-                breakoutList.push(
-                    <FieldWidget
-                        key={index}
-                        color="green"
+                    <BreakoutWidget
                         className="View-section-breakout SelectionModule p1"
-                        placeholder='field'
-                        field={breakout}
-                        fieldOptions={fieldOptions}
+                        fieldOptions={Query.getFieldOptions(this.props.tableMetadata.fields, true, this.props.tableMetadata.breakout_options.validFieldsFilter, {})}
                         tableMetadata={this.props.tableMetadata}
-                        isInitiallyOpen={breakoutListOpen}
-                        setField={this.updateDimension.bind(null, index)}
-                        removeField={this.removeDimension.bind(null, index)}
+                        setField={(field) => this.setBreakout(0, field)}
+                        addButton={this.renderAdd("Add a grouping")}
                     />
                 );
-            });
 
-            var remainingFieldOptions = Query.getFieldOptions(this.props.tableMetadata.fields, true, this.props.tableMetadata.breakout_options.validFieldsFilter, usedFields);
-            if (remainingFieldOptions.count > 0) {
-                if (this.props.query.query.breakout.length === 0) {
-                    addBreakoutButton = this.renderAdd("Add a grouping", this.addDimension);
-                } else if (this.props.query.query.breakout.length === 1 &&
-                                this.props.query.query.breakout[0] !== null) {
-                    addBreakoutButton = this.renderAdd(null, this.addDimension);
+            } else {
+                // we have 1+ defined breakouts, so provide 2 widgets
+                breakoutList.push(
+                    <span className="text-bold">by</span>
+                );
+
+                breakoutList.push(
+                    <BreakoutWidget
+                        key={"breakout0"}
+                        className="View-section-breakout SelectionModule p1"
+                        fieldOptions={Query.getFieldOptions(this.props.tableMetadata.fields, true, this.props.tableMetadata.breakout_options.validFieldsFilter, {})}
+                        tableMetadata={this.props.tableMetadata}
+                        field={breakout[0]}
+                        setField={(fieldId) => this.setBreakout(0, fieldId)}
+                    />
+                );
+
+                if (breakout.length === 2) {
+                    breakoutList.push(
+                        <span className="text-bold">and</span>
+                    );
                 }
+
+                breakoutList.push(
+                    <BreakoutWidget
+                        key={"breakout1"}
+                        className="View-section-breakout SelectionModule p1"
+                        fieldOptions={Query.getFieldOptions(this.props.tableMetadata.fields, true, this.props.tableMetadata.breakout_options.validFieldsFilter, {[breakout[0]]: true})}
+                        tableMetadata={this.props.tableMetadata}
+                        field={breakout.length > 1 ? breakout[1] : null}
+                        setField={(field) => this.setBreakout(1, field)}
+                        addButton={this.renderAdd()}
+                    />
+                );
             }
-        } else {
-            enabled = false;
-            addBreakoutButton = this.renderAdd("Add a grouping", this.addDimension);
         }
 
         return (
             <div className={cx("Query-section Query-section-breakout ml1", { disabled: !enabled })}>
                 {breakoutList}
-                {addBreakoutButton}
             </div>
         );
     }
