@@ -61,6 +61,7 @@
   "Schema for a given Field as provided in `describe-table` or `analyze-table`."
   {:name                                  schema/Str
    :base-type                             (apply schema/enum field/base-types)
+   (schema/optional-key :field-type)      (apply schema/enum field/field-types)
    (schema/optional-key :special-type)    (apply schema/enum field/special-types)
    (schema/optional-key :pk?)             schema/Bool
    (schema/optional-key :nested-fields)   #{(schema/recursive #'DescribeTableField)}
