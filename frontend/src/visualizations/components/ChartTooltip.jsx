@@ -2,7 +2,8 @@ import React, { Component, PropTypes } from "react";
 
 import TooltipPopover from "metabase/components/TooltipPopover.jsx"
 
-import { formatNumber, formatValue } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting";
+import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
 export default class ChartTooltip extends Component {
     constructor(props, context) {
@@ -31,10 +32,16 @@ export default class ChartTooltip extends Component {
                 targetEvent={pinToMouse ? hovered.event : null}
                 verticalAttachments={["bottom", "top"]}
             >
-                <div className="py1 px2">
-                    <div>{formatValue(hovered.data.key, s.data.cols[0], { jsx: true, majorWidth: 0 })}</div>
-                    <div>{formatNumber(hovered.data.value)}</div>
-                </div>
+                <table className="py1 px2">
+                    <tbody>
+                        { [["key", 0], ["value", 1]].map(([propName, colIndex]) =>
+                            <tr key={propName} className="">
+                                <th className="text-light text-right">{getFriendlyName(s.data.cols[colIndex])}:</th>
+                                <th className="pl1 text-bold text-left">{formatValue(hovered.data[propName], s.data.cols[colIndex], { jsx: true, majorWidth: 0 })}</th>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
             </TooltipPopover>
         );
     }
