@@ -7,6 +7,7 @@ import SegmentsList from "./SegmentsList.jsx";
 import Input from "metabase/components/Input.jsx";
 import ProgressBar from "metabase/components/ProgressBar.jsx";
 
+import _ from "underscore";
 import cx from "classnames";
 
 export default class MetadataTable extends Component {
@@ -37,7 +38,12 @@ export default class MetadataTable extends Component {
     }
 
     onNameChange(event) {
-        this.updateProperty("display_name", event.target.value);
+        if (!_.isEmpty(event.target.value)) {
+            this.updateProperty("display_name", event.target.value);
+        } else {
+            // if the user set this to empty then simply reset it because that's not allowed!
+            event.target.value = this.props.tableMetadata.display_name;
+        }
     }
 
     onDescriptionChange(event) {

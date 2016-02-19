@@ -43,7 +43,12 @@ export default class Column extends Component {
     }
 
     onNameChange(event) {
-        this.updateProperty("display_name", event.target.value);
+        if (!_.isEmpty(event.target.value)) {
+            this.updateProperty("display_name", event.target.value);
+        } else {
+            // if the user set this to empty then simply reset it because that's not allowed!
+            event.target.value = this.props.field.display_name;
+        }
     }
 
     onDescriptionChange(event) {
