@@ -677,6 +677,11 @@
     color: var(--default-font-color);
 }
 
+.List-section-title {
+  word-wrap: break-word;
+  max-width: 200px;
+}
+
 .List-item {
     display: flex;
     border-radius: 6px;
