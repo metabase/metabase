@@ -43,26 +43,6 @@
     background-color: rgba(255, 255, 255, 0.6);
 }
 
-.Modal-body {
-    min-height: 200px;
-    display: flex;
-    flex-direction: column;
-}
-
-.Modal-content.Modal-content--small .Modal-body {
-    min-height: inherit; /* using inherit here to get around overly restrictive min-height settings */
-}
-
-.Modal-body .Form-inputs {
-    flex: 1;
-}
-
-.Modal-form {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-}
-
 /* TRANSITIONS */
 
 /* backdrop */
