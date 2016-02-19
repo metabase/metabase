@@ -101,10 +101,11 @@
   "Delete a `Card`."
   [id]
   (write-check Card id)
-  (let [card (sel :one Card :id id)
-        result (cascade-delete Card :id id)]
-    (events/publish-event :card-delete (assoc card :actor_id *current-user-id*))
-    result))
+  (let-404 [card (sel :one Card :id id)]
+    (write-check card)
+    (let [result (cascade-delete Card :id id)]
+      (events/publish-event :card-delete (assoc card :actor_id *current-user-id*))
+      result)))
 
 (defendpoint GET "/:id/favorite"
   "Has current user favorited this `Card`?"
