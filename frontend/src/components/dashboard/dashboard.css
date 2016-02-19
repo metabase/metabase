@@ -277,12 +277,12 @@
 
 
 .mute-yl .dc-chart .axis.y,
-.mute-yl .dc-chart .y-axis-label {
+.mute-yl .dc-chart .y-axis-label.y-label {
   opacity: 0;
 }
 
 .mute-yr .dc-chart .axis.yr,
-.mute-yr .dc-chart .yr-axis-label {
+.mute-yr .dc-chart .y-axis-label.yr-label {
   opacity: 0;
 }
 
