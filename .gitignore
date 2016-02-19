@@ -38,3 +38,4 @@ bin/config.json
 bin/release/aws-eb/metabase-aws-eb.zip
 *.sqlite
 /reset-password-artifacts
+/.env
