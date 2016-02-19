@@ -61,7 +61,7 @@ export default class DataReferenceTable extends Component {
         if (table) {
             var queryButton;
             if (table.rows != null) {
-                var text = "Show all " + table.rows.toLocaleString() + " rows in " + table.display_name
+                var text = `See the raw data for ${table.display_name}`
                 queryButton = (<DataReferenceQueryButton className="border-bottom border-top mb3" icon="illustration-icon-table" text={text} onClick={this.setQueryAllRows} />);
             }
             var panes = {
