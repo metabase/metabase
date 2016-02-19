@@ -30,7 +30,7 @@ export default class SetupMessage extends Component {
                     </div>
                     <div className="mt2">
                         {channels.map(c =>
-                            <a className="Button Button--primary mr1" href={"/admin/settings?section="+c} target="_blank">Configure {c}</a>
+                            <a className="Button Button--primary mr1" href={"/admin/settings?section="+c} target={window.OSX ? null : "_blank"}>Configure {c}</a>
                         )}
                     </div>
                 </div>
