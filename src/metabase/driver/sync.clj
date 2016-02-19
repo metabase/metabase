@@ -7,8 +7,9 @@
             [clojure.tools.logging :as log]
             [korma.core :as k]
             [medley.core :as m]
-            [metabase.db.metadata-queries :as queries]
+            [schema.core :as schema]
             [metabase.db :refer :all]
+            [metabase.db.metadata-queries :as queries]
             [metabase.driver :as driver]
             [metabase.driver.query-processor :as qp]
             [metabase.driver :as driver]
@@ -161,11 +162,7 @@
   (let [active-field-ids         #(set (sel :many :field [Field :id], :table_id (:id table), :active true, :parent_id nil))
         table-def                (driver/describe-table driver table)
         current-active-field-ids (active-field-ids)]
-
-    ;; validate that the table description returned is sensibly formatted
-    (assert (every? map? (:fields table-def)) "table-def should describe each field using a map.")
-    (assert (every? string? (map :name (:fields table-def))) "The :name of each field in table-def should be a string.")
-    (assert (every? (partial contains? field/base-types) (map :base-type (:fields table-def))) "The :base-type of each field in table-def should be a valid Field base type.")
+    (schema/validate driver/DescribeTable table-def)
 
     ;; Run basic schema syncing to create all the Fields / PKs
     (u/try-apply sync-table-active-fields-and-pks! table table-def)
@@ -178,6 +175,7 @@
     (when analyze?
       (let [new-field-ids (set/difference (active-field-ids) current-active-field-ids)]
         (when-let [table-stats (driver/analyze-table driver table new-field-ids)]
+          (schema/validate driver/AnalyzeTable table-stats)
 
           ;; update table row count
           (when (:row_count table-stats)
@@ -254,11 +252,7 @@
     (events/publish-event :database-sync-begin {:database_id (:id database) :custom_id tracking-hash})
 
     (let [database-schema (driver/describe-database driver database)]
-      ;; do some quick validations that our tables list is sensible
-      (when-not (and (set? (:tables database-schema))
-                     (every? map? (:tables database-schema))
-                     (every? :name (:tables database-schema)))
-        (throw (Exception. "Invalid results returned by describe-database. `:tables` should be a set of maps like {:name \"table_name\", :schema \"schema_name_or_nil\"}.")))
+      (schema/validate driver/DescribeDatabase database-schema)
 
       ;; now persist the list of tables, creating new ones as needed and inactivating old ones
       (save-database-tables-list! database (:tables database-schema))
@@ -470,12 +464,7 @@ infer-field-special-type
 (defn- sync-table-fks! [driver table]
   (when (contains? (driver/features driver) :foreign-keys)
     (let [fks (driver/describe-table-fks driver table)]
-      (assert (and (set? fks)
-                   (every? map? fks)
-                   (every? :fk-column-name fks)
-                   (every? :dest-table fks)
-                   (every? :dest-column-name fks))
-              "table-fks should return a set of maps with keys :fk-column-name, :dest-table, and :dest-column-name.")
+      (schema/validate driver/DescribeTableFKs fks)
       (when (seq fks)
         (let [fk-name->id (sel :many :field->id [Field :name], :table_id (:id table), :name [in (map :fk-column-name fks)], :parent_id nil)]
           (doseq [{:keys [fk-column-name dest-column-name dest-table]} fks]

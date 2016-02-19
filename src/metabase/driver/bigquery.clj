@@ -126,10 +126,7 @@
 (defn- table-schema->metabase-field-info [^TableSchema schema]
   (for [^TableFieldSchema field (.getFields schema)]
     {:name            (.getName field)
-     :base-type       (bigquery-type->base-type (.getType field))
-     :special-type    nil
-     :preview-display true
-     :pk?             false}))
+     :base-type       (bigquery-type->base-type (.getType field))}))
 
 (defn- describe-table
   ([table]
