@@ -53,6 +53,19 @@
     :info        ; Non-numerical value that is not meant to be used
     :sensitive}) ; A Fields that should *never* be shown *anywhere*
 
+(defn valid-metadata?
+  "Predicate function that checks if the set of metadata types for a field are sensible."
+  [base-type field-type special-type]
+  (and (contains? base-types base-type)
+       (contains? field-types field-type)
+       (or (nil? special-type)
+           (contains? special-types special-type))
+       ;; this verifies that we have a numeric base-type when trying to use the unix timestamp transform (#824)
+       (or (nil? special-type)
+           (not (contains? #{:timestamp_milliseconds :timestamp_seconds} special-type))
+           (contains? #{:BigIntegerField :DecimalField :FloatField :IntegerField} base-type))))
+
+
 (i/defentity Field :metabase_field)
 
 (defn- pre-insert [field]

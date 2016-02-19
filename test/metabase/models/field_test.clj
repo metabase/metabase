@@ -6,6 +6,18 @@
             [metabase.test.data :refer :all]))
 
 
+;; valid-metadata?
+(expect false (valid-metadata? nil nil nil))
+(expect false (valid-metadata? :IntegerField nil nil))
+(expect true (valid-metadata? :IntegerField :metric nil))
+(expect false (valid-metadata? :foo :metric nil))
+(expect false (valid-metadata? :IntegerField :foo nil))
+(expect true (valid-metadata? :IntegerField :metric :timestamp_seconds))
+(expect true (valid-metadata? :IntegerField :metric :timestamp_milliseconds))
+(expect false (valid-metadata? :DateTimeField :metric :timestamp_seconds))
+(expect false (valid-metadata? :DateTimeField :metric :timestamp_milliseconds))
+
+
 ;; field-should-have-field-values?
 
 ;; sensitive fields should always be excluded
