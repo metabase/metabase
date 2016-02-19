@@ -4,7 +4,6 @@
             [clojure.string :as s]
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
-            [colorize.core :as color]
             [korma.core :as k]
             [medley.core :as m]
             [metabase.db :refer [ins sel upd]]
@@ -265,7 +264,7 @@
   [^Keyword engine, driver-instance]
   {:pre [(keyword? engine) (map? driver-instance)]}
   (swap! registered-drivers assoc engine driver-instance)
-  (log/debug (format "Registered driver %s 🚚" (color/blue engine))))
+  (log/debug (format "Registered driver %s 🚚" (u/format-color 'blue engine))))
 
 (defn available-drivers
   "Info about available drivers."

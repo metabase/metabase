@@ -430,9 +430,13 @@
   {:style/indent 2}
   ([color-symb x]
    {:pre [(symbol? color-symb)]}
-   ((ns-resolve 'colorize.core color-symb) x))
+   (if (config/config-bool :mb-colorize-logs)
+     ((ns-resolve 'colorize.core color-symb) x)
+     x))
   ([color-symb format-string & args]
-   (format-color color-symb (apply format format-string args))))
+   (if (config/config-bool :mb-colorize-logs)
+     (format-color color-symb (apply format format-string args))
+     (apply format format-string args))))
 
 (defn pprint-to-str
   "Returns the output of pretty-printing X as a string.
@@ -476,12 +480,15 @@
        (try
          (apply f args)
          (catch java.sql.SQLException e
-           (log/error (color/red exception-message "\n"
-                                 (with-out-str (jdbc/print-sql-exception-chain e)) "\n"
-                                 (pprint-to-str (filtered-stacktrace e)))))
+           (log/error (format-color 'red "%s\n%s\n%s"
+                                    exception-message
+                                    (with-out-str (jdbc/print-sql-exception-chain e))
+                                    (pprint-to-str (filtered-stacktrace e)))))
          (catch Throwable e
-           (log/error (color/red exception-message (or (.getMessage e) e) "\n"
-                                 (pprint-to-str (filtered-stacktrace e))))))))))
+           (log/error (format-color 'red "%s %s\n%s"
+                                    exception-message
+                                    (or (.getMessage e) e)
+                                    (pprint-to-str (filtered-stacktrace e))))))))))
 
 (defn try-apply
   "Like `apply`, but wraps F inside a `try-catch` block and logs exceptions caught.
