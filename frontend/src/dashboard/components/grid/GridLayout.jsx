@@ -5,6 +5,8 @@ import GridItem from "./GridItem.jsx";
 
 import _ from "underscore";
 
+const MARGIN = 10;
+
 export default class GridLayout extends Component {
     constructor(props, context) {
         super(props, context);
@@ -161,9 +163,17 @@ export default class GridLayout extends Component {
         };
     }
 
+    getMinSize() {
+        let cellSize = this.getCellSize();
+        return {
+            width: cellSize.width - MARGIN,
+            height: cellSize.height - MARGIN
+        }
+    }
+
     getStyleForLayout(l) {
         let cellSize = this.getCellSize();
-        let margin = l.i === "placeholder" ? -10 : 10;
+        let margin = l.i === "placeholder" ? -MARGIN : MARGIN;
         return {
             width: cellSize.width * l.w - margin,
             height: cellSize.height * l.h - margin,
@@ -184,6 +194,7 @@ export default class GridLayout extends Component {
                 onResizeStart={this.onResizeStart}
                 onResize={this.onResize}
                 onResizeStop={this.onResizeStop}
+                minSize={this.getMinSize()}
                 {...l}
                 {...style}
             >

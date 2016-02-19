@@ -41,8 +41,10 @@ export default class GridItem extends Component {
     onResizeHandler(handlerName) {
       return (e, {element, size}) => {
 
-        if (handlerName !== "onResizeStart") {
-            this.setState({ resizing: handlerName === "onResizeStop" ? null : size });
+        if (handlerName === "onResize") {
+            this.setState({ resizing: size });
+        } if (handlerName === "onResizeStop") {
+            this.setState({ resizing: null });
         }
 
         this.props[handlerName](this.props.i, {e, element, size});
@@ -50,7 +52,7 @@ export default class GridItem extends Component {
     }
 
     render() {
-        let { width, height, top, left } = this.props;
+        let { width, height, top, left, minSize } = this.props;
 
         if (this.state.dragging) {
             left += this.state.dragging.x;
@@ -58,8 +60,8 @@ export default class GridItem extends Component {
         }
 
         if (this.state.resizing) {
-            width = this.state.resizing.width;
-            height = this.state.resizing.height;
+            width = Math.max(minSize.width, this.state.resizing.width);
+            height = Math.max(minSize.height, this.state.resizing.height);
         }
 
         let style = {
@@ -76,8 +78,8 @@ export default class GridItem extends Component {
                 onStop={this.onDragHandler("onDragStop")}
             >
                 <Resizable
-                    width={this.props.width}
-                    height={this.props.height}
+                    width={width}
+                    height={height}
                     onResizeStart={this.onResizeHandler("onResizeStart")}
                     onResize={this.onResizeHandler("onResize")}
                     onResizeStop={this.onResizeHandler("onResizeStop")}
