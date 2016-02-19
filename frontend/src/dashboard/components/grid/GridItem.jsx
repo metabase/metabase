@@ -22,17 +22,26 @@ export default class GridItem extends Component {
                 return;
             }
 
-            let { dragStartPosition } = this.state;
+            let { dragStartPosition, dragStartScrollTop } = this.state;
             if (handlerName === "onDragStart") {
                 dragStartPosition = position;
-                this.setState({ dragStartPosition: position });
+                dragStartScrollTop = document.body.scrollTop
+                this.setState({ dragStartPosition, dragStartScrollTop });
             }
 
+            // track vertical scroll. we don't need horizontal  allow horizontal scrolling
+            let scrollTopDelta = document.body.scrollTop - dragStartScrollTop;
+            // compute new position
             let pos = {
                 x: position.clientX - dragStartPosition.clientX,
-                y: position.clientY - dragStartPosition.clientY,
+                y: position.clientY - dragStartPosition.clientY + scrollTopDelta,
+            };
+
+            if (handlerName === "onDragStop") {
+                this.setState({ dragging: null });
+            } else {
+                this.setState({ dragging: pos });
             }
-            this.setState({ dragging: handlerName === "onDragStop" ? null : pos });
 
             this.props[handlerName](this.props.i, {e, element, position: pos });
         };
