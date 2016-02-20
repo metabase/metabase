@@ -1,7 +1,7 @@
 /*eslint-env jasmine */
 
 import Query from "metabase/lib/query";
-import { createQuery, AggregationClause } from "metabase/lib/query";
+import { createQuery, AggregationClause, BreakoutClause } from "metabase/lib/query";
 
 
 describe('Query', () => {
@@ -363,6 +363,33 @@ describe('AggregationClause', () => {
 
         it("should return unmodified on metric clauses", () => {
             expect(AggregationClause.setField(["METRIC", 123], 456)).toEqual(["METRIC", 123]);
+        });
+    });
+});
+
+
+describe('BreakoutClause', () => {
+
+    describe('setBreakout', () => {
+        it("should append if index is greater than current breakouts", () => {
+            expect(BreakoutClause.setBreakout([], 0, 123)).toEqual([123]);
+            expect(BreakoutClause.setBreakout([123], 1, 456)).toEqual([123, 456]);
+            expect(BreakoutClause.setBreakout([123], 5, 456)).toEqual([123, 456]);
+        });
+
+        it("should replace if index already exists", () => {
+            expect(BreakoutClause.setBreakout([123], 0, 456)).toEqual([456]);
+        });
+    });
+
+    describe('removeBreakout', () => {
+        it("should remove breakout if index exists", () => {
+            expect(BreakoutClause.removeBreakout([123], 0)).toEqual([]);
+            expect(BreakoutClause.removeBreakout([123, 456], 1)).toEqual([123]);
+        });
+
+        it("should make no changes if index does not exist", () => {
+            expect(BreakoutClause.removeBreakout([123], 1)).toEqual([123]);
         });
     });
 });

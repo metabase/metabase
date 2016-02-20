@@ -128,13 +128,15 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
         }
 
         score(table.description);
-        table.fields.forEach(function(field) {
-            score(field.description);
-            score(field.special_type);
-            if (field.special_type === "fk") {
-                score(field.target);
-            }
-        });
+        if (table.fields) {
+            table.fields.forEach(function(field) {
+                score(field.description);
+                score(field.special_type);
+                if (field.special_type === "fk") {
+                    score(field.target);
+                }
+            });
+        }
 
         return (completed / total);
     }
