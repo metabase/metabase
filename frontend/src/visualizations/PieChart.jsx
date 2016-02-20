@@ -11,7 +11,7 @@ export default class PieChart extends Component {
     static iconName = "pie";
 
     static isSensible(cols, rows) {
-        return cols.length > 1;
+        return cols.length === 2;
     }
 
     static checkRenderable(cols, rows) {
