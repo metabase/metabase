@@ -56,7 +56,7 @@ export default class CardRenderer extends Component {
                         this.props.onUpdateVisualizationSetting(["map", "zoom"], zoom);
                     };
 
-                    charting.CardRenderer[this.props.chartType](element, card, updateMapCenter, updateMapZoom);
+                    charting.CardRenderer[this.props.chartType](element, { ...this.props, card, updateMapCenter, updateMapZoom });
                 } else {
                     // TODO: it would be nicer if this didn't require the whole card
                     charting.CardRenderer[this.props.chartType](element, this.props);

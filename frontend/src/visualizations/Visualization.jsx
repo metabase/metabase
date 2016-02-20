@@ -21,9 +21,7 @@ export default class Visualization extends Component {
     }
 
     static propTypes = {
-        card: PropTypes.object.isRequired,
-        data: PropTypes.object.isRequired,
-        series: PropTypes.array,
+        series: PropTypes.array.isRequired,
 
         isDashboard: PropTypes.bool,
 
@@ -42,15 +40,16 @@ export default class Visualization extends Component {
     }
 
     componentWillReceiveProps(newProps) {
-        if (!newProps.data) {
+        let { card, data } = newProps.series[0]
+        if (!data) {
             this.setState({ error: "No data (TODO)" });
-        } else if (!newProps.card.display) {
+        } else if (!card.display) {
             this.setState({ error: "Chart type not set" });
         } else {
-            let CardVisualization = visualizations.get(newProps.card.display);
+            let CardVisualization = visualizations.get(card.display);
             try {
                 if (CardVisualization.checkRenderable) {
-                    CardVisualization.checkRenderable(newProps.data.cols, newProps.data.rows);
+                    CardVisualization.checkRenderable(data.cols, data.rows);
                 }
                 this.setState({ error: null });
             } catch (e) {
@@ -97,10 +96,10 @@ export default class Visualization extends Component {
                 </div>
             );
         } else {
-            let { card, data, series } = this.props;
-            let CardVisualization = visualizations.get(card.display);
+            let { series } = this.props;
+            let CardVisualization = visualizations.get(series[0].card.display);
 
-            series = [{ card, data }].concat(series || []).map(s => ({
+            series = series.map(s => ({
                 ...s,
                 card: {
                     ...s.card,
@@ -112,8 +111,8 @@ export default class Visualization extends Component {
                 <CardVisualization
                     {...this.props}
                     series={series}
-                    card={series[0].card}
-                    data={series[0].data}
+                    card={series[0].card} // convienence for single-series visualizations
+                    data={series[0].data} // convienence for single-series visualizations
                     hovered={this.state.hovered}
                     onUpdateVisualizationSetting={(...args) => console.log("onUpdateVisualizationSetting", args)}
                     onHoverChange={this.onHoverChange}

@@ -427,18 +427,18 @@ function lineAndBarOnRender(chart, card) {
 }
 
 export let CardRenderer = {
-    pie(element, { card, data: result, onHoverChange }) {
+    pie(element, { card, data, onHoverChange }) {
         let settings = card.visualization_settings;
-        let data = result.rows.map(row => ({
+        let chartData = data.rows.map(row => ({
             key: row[0],
             value: row[1]
         }));
-        let sumTotalValue = data.reduce((acc, d) => acc + d.value, 0);
+        let sumTotalValue = chartData.reduce((acc, d) => acc + d.value, 0);
 
         // TODO: by default we should set a max number of slices of the pie and group everything else together
 
         // build crossfilter dataset + dimension + base group
-        let dataset = crossfilter(data);
+        let dataset = crossfilter(chartData);
         let dimension = dataset.dimension(d => d.key);
         let group = dimension.group().reduceSum(d => d.value);
         let chart = initializeChart(card, element)
@@ -446,7 +446,7 @@ export let CardRenderer = {
                         .group(group)
                         .colors(settings.pie.colors)
                         .colorCalculator((d, i) => settings.pie.colors[((i * 5) + Math.floor(i / 5)) % settings.pie.colors.length])
-                        .label(row => formatValue(row.key, result.cols[0]))
+                        .label(row => formatValue(row.key, data.cols[0]))
                         .title(d => {
                             // ghetto rounding to 1 decimal digit since Math.round() doesn't let
                             // you specify a precision and always rounds to int
@@ -711,7 +711,7 @@ export let CardRenderer = {
         return chartRenderer;
     },
 
-    pin_map(element, card, updateMapCenter, updateMapZoom) {
+    pin_map(element, { card, updateMapCenter, updateMapZoom }) {
         let query = card.dataset_query;
         let vs = card.visualization_settings;
         let latitude_dataset_col_index = vs.map.latitude_dataset_col_index;
