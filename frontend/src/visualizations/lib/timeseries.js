@@ -39,7 +39,7 @@ const TIMESERIES_INTERVALS = [
 ];
 
 // mapping from Metabase "unit" to d3 intervals above
-const TIMESERIES_INTERVAL_INDEX_BY_UNIT = {
+const INTERVAL_INDEX_BY_UNIT = {
     "minute": 1,
     "hour": 9,
     "day": 13,
@@ -49,9 +49,15 @@ const TIMESERIES_INTERVAL_INDEX_BY_UNIT = {
     "year": 17
 };
 
-function computeTimeseriesDataInvervalIndex(xValues, col) {
-    if (col && col.unit && TIMESERIES_INTERVAL_INDEX_BY_UNIT[col.unit] != undefined) {
-        return TIMESERIES_INTERVAL_INDEX_BY_UNIT[col.unit];
+export function minTimeseriesUnit(units) {
+    return units.reduce((minUnit, unit) =>
+        unit != null && (minUnit == null || INTERVAL_INDEX_BY_UNIT[unit] < INTERVAL_INDEX_BY_UNIT[minUnit]) ? unit : minUnit
+    , null);
+}
+
+function computeTimeseriesDataInvervalIndex(xValues, unit) {
+    if (unit && INTERVAL_INDEX_BY_UNIT[unit] != undefined) {
+        return INTERVAL_INDEX_BY_UNIT[unit];
     }
     // Keep track of the value seen for each level of granularity,
     // if any don't match then we know the data is *at least* that granular.
@@ -72,16 +78,16 @@ function computeTimeseriesDataInvervalIndex(xValues, col) {
     return index - 1;
 }
 
-export function computeTimeseriesDataInverval(xValues, col) {
-    return TIMESERIES_INTERVALS[computeTimeseriesDataInvervalIndex(xValues, col)];
+export function computeTimeseriesDataInverval(xValues, unit) {
+    return TIMESERIES_INTERVALS[computeTimeseriesDataInvervalIndex(xValues, unit)];
 }
 
-export function computeTimeseriesTicksInterval(xValues, col, chartWidth, minPixels) {
+export function computeTimeseriesTicksInterval(xValues, unit, chartWidth, minPixels) {
     // If the interval that matches the data granularity results in too many ticks reduce the granularity until it doesn't.
     // TODO: compute this directly instead of iteratively
     let maxTickCount = Math.round(chartWidth / minPixels);
     let xDomain = d3.extent(xValues);
-    let index = computeTimeseriesDataInvervalIndex(xValues, col);
+    let index = computeTimeseriesDataInvervalIndex(xValues, unit);
     while (index < TIMESERIES_INTERVALS.length - 1) {
         let interval = TIMESERIES_INTERVALS[index];
         let intervalMs = moment(0).add(interval.count, interval.interval).valueOf();

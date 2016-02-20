@@ -17,6 +17,7 @@ import {
 } from "./utils";
 
 import {
+    minTimeseriesUnit,
     dimensionIsTimeseries,
     computeTimeseriesDataInverval,
     computeTimeseriesTicksInterval
@@ -103,6 +104,9 @@ function applyChartTimeseriesXAxis(chart, series, xValues) {
     // setup an x-axis where the dimension is a timeseries
     const settings = series[0].card.visualization_settings;
     const dimensionColumn = series[0].data.cols[0];
+
+    let unit = minTimeseriesUnit(series.map(s => s.data.cols[0].unit));
+
     if (settings.xAxis.labels_enabled) {
         chart.xAxisLabel(settings.xAxis.title_text || getFriendlyName(dimensionColumn));
         chart.renderVerticalGridLines(settings.xAxis.gridLine_enabled);
@@ -123,14 +127,14 @@ function applyChartTimeseriesXAxis(chart, series, xValues) {
         }
 
         // Compute a sane interval to display based on the data granularity, domain, and chart width
-        const { interval, count } = computeTimeseriesTicksInterval(xValues, dimensionColumn, chart.width(), MIN_PIXELS_PER_TICK.x);
+        const { interval, count } = computeTimeseriesTicksInterval(xValues, unit, chart.width(), MIN_PIXELS_PER_TICK.x);
         chart.xAxis().ticks(d3.time[interval], count);
     } else {
         chart.xAxis().ticks(0);
     }
 
     // compute the data interval
-    const { interval, count } = computeTimeseriesDataInverval(xValues, dimensionColumn);
+    const { interval, count } = computeTimeseriesDataInverval(xValues, unit);
 
     // compute the domain
     let xDomain = d3.extent(xValues);
