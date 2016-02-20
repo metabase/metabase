@@ -25,6 +25,8 @@ import {
 
 import { determineSeriesIndexFromElement } from "./tooltip";
 
+import { colorShades } from "./utils";
+
 import { formatValue } from "metabase/lib/formatting";
 
 const MIN_PIXELS_PER_TICK = { x: 100, y: 30 };
@@ -526,19 +528,30 @@ export let CardRenderer = {
             let chart = dc[getDcjsChartType(chartType)](parent);
             let chartColors;
 
+            // multiple series
             if (groups.length > 1) {
-                chartColors = colors[index % colors.length];
+                // multiple stacks
+                if (group.length > 1) {
+                    // compute shades of the assigned color
+                    chartColors = colorShades(colors[index % colors.length], group.length);
+                } else {
+                    chartColors = colors[index % colors.length];
+                }
             } else {
-                // limit the colors for some reason stacked charts don't pick colors sequentially if there are more than enough colors?
-                chartColors = colors.slice(0, group.length);
+                chartColors = colors;
             }
 
             chart
                 .dimension(dimension)
                 .group(group[0])
-                .colors(chartColors)
                 .transitionDuration(0)
                 .useRightYAxis(yAxisSplit.length > 1 && yAxisSplit[1].includes(index))
+
+            if (chartType === "area") {
+                chart.ordinalColors(chartColors)
+            } else {
+                chart.colors(chartColors)
+            }
 
             for (var i = 1; i < group.length; i++) {
                 chart.stack(group[i])

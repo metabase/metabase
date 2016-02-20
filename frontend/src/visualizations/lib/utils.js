@@ -112,3 +112,21 @@ export function isSameSeries(seriesA, seriesB) {
             return acc && (sameData && sameDisplay && sameVizSettings);
         }, true);
 }
+
+export function colorShades(color, count) {
+    return _.range(count).map(i => colorShade(color, 1 - Math.min(0.25, 1 / count) * i))
+}
+
+export function colorShade(hex, shade = 0) {
+    let match = hex.match(/#(?:(..)(..)(..)|(.)(.)(.))/);
+    if (!match) {
+        return hex;
+    }
+    let components = (match[1] != null ? match.slice(1,4) : match.slice(4,7)).map((d) => parseInt(d, 16))
+    let min = Math.min(...components);
+    let max = Math.max(...components);
+    return "#" + components.map(c => {
+        console.log(shade, c, min, max, c * (max - min) / max * shade);
+        return Math.round(min + (max - min) * shade * (c / 255)).toString(16)
+    }).join("");
+}
