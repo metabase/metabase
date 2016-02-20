@@ -39,7 +39,8 @@ export default class CardRenderer extends Component {
     }
 
     renderChart() {
-        let element = ReactDOM.findDOMNode(this.refs.chart);
+        let parent = ReactDOM.findDOMNode(this);
+        let element = parent.firstChild;
         try {
             let s = this.props.series[0];
             if (s && s.data) {

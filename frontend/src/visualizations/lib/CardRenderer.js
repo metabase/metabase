@@ -468,57 +468,88 @@ export let CardRenderer = {
             return;
         }
 
-        // build crossfilter dataset + dimension + base group
-        let dataset = crossfilter();
-        series.map((s, index) =>
-            dataset.add(s.data.rows.map(row => ({
-                x: (isTimeseries) ? new Date(row[0]) : row[0],
-                ["y"+index]: row[1]
-            })))
+        let datas = series.map((s, index) =>
+            s.data.rows.map(row => [
+                (isTimeseries) ? new Date(row[0]) : row[0],
+                ...row.slice(1)
+            ])
         );
 
-        let dimension = dataset.dimension(d => d.x);
-        let groups = series.map((s, index) =>
-            dimension.group().reduceSum(d => (d["y"+index] || 0))
-        );
+        let dimension, groups, xValues, yAxisSplit;
+        if (isStacked && datas.length > 1) {
+            let dataset = crossfilter();
+            datas.map((data, i) =>
+                dataset.add(data.map(d => ({
+                    [0]: d[0],
+                    [i + 1]: d[1]
+                })))
+            );
 
-        let xValues = dimension.group().all().map(d => d.key);
-        let yExtents = groups.map(group => d3.extent(group.all(), d => d.value));
-        let yAxisSplit = computeSplit(yExtents);
+            dimension = dataset.dimension(d => d[0]);
+            groups = [
+                datas.map((data, i) =>
+                    dimension.group().reduceSum(d => (d[i + 1] || 0))
+                )
+            ];
 
-        let chart;
-        if (isStacked || series.length === 1) {
-            chart = initializeChart(series[0].card, element)
-                        .dimension(dimension)
-                        .group(groups[0]);
+            xValues = dimension.group().all().map(d => d.key);
+            yAxisSplit = [series.map((s,i) => i)];
+        } else {
+            let dataset = crossfilter();
+            datas.map(data => dataset.add(data));
 
-            // apply any stacked series if applicable
-            for (let i = 1; i < groups.length; i++) {
-                chart.stack(groups[i]);
+            dimension = dataset.dimension(d => d[0]);
+            groups = datas.map(data => {
+                let dim = crossfilter(data).dimension(d => d[0]);
+                return data[0].slice(1).map((_, i) =>
+                    dim.group().reduceSum(d => (d[i + 1] || 0))
+                )
+            });
+
+            xValues = dimension.group().all().map(d => d.key);
+            let yExtents = groups.map(group => d3.extent(group[0].all(), d => d.value));
+            yAxisSplit = computeSplit(yExtents);
+        }
+
+        let parent;
+        if (groups.length > 1) {
+            parent = initializeChart(series[0].card, element, "compositeChart")
+        } else {
+            parent = element;
+        }
+
+        let charts = groups.map((group, index) => {
+            let chart = dc[getDcjsChartType(chartType)](parent);
+            let chartColors;
+
+            if (groups.length > 1) {
+                chartColors = colors[index % colors.length];
+            } else {
+                // limit the colors for some reason stacked charts don't pick colors sequentially if there are more than enough colors?
+                chartColors = colors.slice(0, group.length);
+            }
+
+            chart
+                .dimension(dimension)
+                .group(group[0])
+                .colors(chartColors)
+                .transitionDuration(0)
+                .useRightYAxis(yAxisSplit.length > 1 && yAxisSplit[1].includes(index))
+
+            for (var i = 1; i < group.length; i++) {
+                chart.stack(group[i])
             }
 
             applyChartLineBarSettings(chart, series[0].card, chartType, isLinear, isTimeseries);
 
-            chart.ordinalColors(colors);
-        } else {
-            chart = initializeChart(series[0].card, element, "compositeChart")
+            return chart;
+        });
 
-            let subCharts = series.map(s =>
-                dc[getDcjsChartType(series[0].card.display)](chart)
-            );
-
-            subCharts.forEach((subChart, index) => {
-                subChart
-                    .dimension(dimension)
-                    .group(groups[index])
-                    .colors(colors[index % colors.length])
-                    .useRightYAxis(yAxisSplit.length > 1 && yAxisSplit[1].includes(index))
-
-                applyChartLineBarSettings(subChart, series[0].card, chartType, isLinear, isTimeseries);
-            });
-
+        let chart;
+        if (charts.length > 1) {
+            chart = parent;
             chart
-                .compose(subCharts)
+                .compose(charts)
                 .on("renderlet.grouped-bar", function (chart) {
                     // HACK: dc.js doesn't support grouped bar charts so we need to manually resize/reposition them
                     // https://github.com/dc-js/dc.js/issues/558
@@ -545,6 +576,10 @@ export let CardRenderer = {
             } else {
                 chart._rangeBandPadding(1) // https://github.com/dc-js/dc.js/issues/662
             }
+        } else {
+            chart = charts[0];
+            chart.transitionDuration(0)
+            applyChartBoundary(chart, element);
         }
 
         // x-axis settings
