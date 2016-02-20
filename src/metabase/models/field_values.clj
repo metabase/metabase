@@ -1,6 +1,6 @@
 (ns metabase.models.field-values
   (:require [clojure.tools.logging :as log]
-            [metabase.db :refer [ins sel upd]]
+            [metabase.db :refer [ins sel upd cascade-delete]]
             [metabase.models.interface :as i]
             [metabase.util :as u]))
 
@@ -77,6 +77,12 @@
   (if-let [field-values (sel :one FieldValues :field_id field-id)]
     (upd FieldValues (:id field-values) :values values)
     (ins FieldValues :field_id field-id, :values values)))
+
+(defn clear-field-values
+  "Remove the `FieldValues` for FIELD-ID."
+  [field-id]
+  {:pre [(integer? field-id)]}
+  (cascade-delete FieldValues :field_id field-id))
 
 
 (u/require-dox-in-this-namespace)

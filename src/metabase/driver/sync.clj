@@ -190,9 +190,10 @@
               (upd-non-nil-keys Field id
                 :preview_display preview-display
                 :special_type    special-type))
-            ;; looks like we found some field values
-            (when (and id values (< 0 (count (filter identity values))))
-              (field-values/save-field-values id values))))))))
+            ;; handle field values, setting them if applicable otherwise clearing them
+            (if (and id values (< 0 (count (filter identity values))))
+              (field-values/save-field-values id values)
+              (field-values/clear-field-values id))))))))
 
 
 (defn- sync-database-active-tables!
