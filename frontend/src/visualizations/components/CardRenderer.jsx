@@ -6,8 +6,7 @@ import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import * as charting from "metabase/visualizations/lib/CardRenderer";
 
 import { setLatitudeAndLongitude } from "metabase/lib/visualization_settings";
-
-import _ from "underscore";
+import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 @ExplicitSize
 export default class CardRenderer extends Component {
@@ -19,13 +18,7 @@ export default class CardRenderer extends Component {
     shouldComponentUpdate(nextProps, nextState) {
         // a chart only needs re-rendering when the result itself changes OR the chart type is different
         let sameSize = (this.props.width === nextProps.width && this.props.height === nextProps.height);
-        let sameSeries = (this.props.series && this.props.series.length) === (nextProps.series && nextProps.series.length) &&
-            _.zip(this.props.series, nextProps.series).reduce((acc, [a, b]) => {
-                let sameData = a.data === b.data;
-                let sameDisplay = (a.card && a.card.display) === (b.card && b.card.display);
-                let sameVizSettings = (a.card && JSON.stringify(a.card.visualization_settings)) === (b.card && JSON.stringify(b.card.visualization_settings));
-                return acc && (sameData && sameDisplay && sameVizSettings);
-            }, true);
+        let sameSeries = isSameSeries(this.props.series, nextProps.series);
         return !(sameSize && sameSeries);
     }
 

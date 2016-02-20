@@ -102,3 +102,13 @@ export function getCardColors(card) {
     }
     return _.uniq([chartColor || colors.normal[0]].concat(chartColorList || colors.normal));
 }
+
+export function isSameSeries(seriesA, seriesB) {
+    return (seriesA && seriesA.length) === (seriesB && seriesB.length) &&
+        _.zip(seriesA, seriesB).reduce((acc, [a, b]) => {
+            let sameData = a.data === b.data;
+            let sameDisplay = (a.card && a.card.display) === (b.card && b.card.display);
+            let sameVizSettings = (a.card && JSON.stringify(a.card.visualization_settings)) === (b.card && JSON.stringify(b.card.visualization_settings));
+            return acc && (sameData && sameDisplay && sameVizSettings);
+        }, true);
+}
