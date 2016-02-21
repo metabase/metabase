@@ -43,13 +43,13 @@
   [dashboard]
   (-> dashboard
       (select-keys [:description :name :public_perms])
-      (assoc :cards (for [card (ordered-cards dashboard)]
-                      (-> (select-keys card [:sizeX :sizeY :row :col :id :card_id])
-                          (assoc :series (mapv :id (dashboard-card/series card))))))))
+      (assoc :cards (vec (for [dashboard-card (ordered-cards dashboard)]
+                           (-> (select-keys dashboard-card [:sizeX :sizeY :row :col :id :card_id])
+                               (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))))
 
 (defn revert-dashboard
   "Revert a `Dashboard` to the state defined by SERIALIZED-DASHBOARD."
-  [dashboard-id serialized-dashboard]
+  [dashboard-id user-id serialized-dashboard]
   ;; Update the dashboard description / name / permissions
   (m/mapply upd Dashboard dashboard-id (dissoc serialized-dashboard :cards))
   ;; Now update the cards as needed
@@ -64,14 +64,15 @@
             current-card    (id->current-card dashcard-id)]
         (cond
           ;; If card is in current-cards but not serialized-cards then we need to delete it
-          (not serialized-card) (del DashboardCard :id dashcard-id)
+          (not serialized-card) (dashboard-card/delete-dashboard-card current-card user-id)
 
           ;; If card is in serialized-cards but not current-cards we need to add it
-          (not current-card) (m/mapply ins DashboardCard :dashboard_id dashboard-id, serialized-card)
+          (not current-card) (dashboard-card/create-dashboard-card (assoc serialized-card
+                                                                     :dashboard_id dashboard-id
+                                                                     :creator_id   user-id))
 
           ;; If card is in both we need to change :sizeX, :sizeY, :row, and :col to match serialized-card as needed
-          :else (let [[_ changes] (diff current-card serialized-card)]
-                  (m/mapply upd DashboardCard dashcard-id changes))))))
+          :else (dashboard-card/update-dashboard-card serialized-card)))))
 
   serialized-dashboard)
 
@@ -115,7 +116,7 @@
 (extend (class Dashboard)
   revision/IRevisioned
   {:serialize-instance (fn [_ _ dashboard] (serialize-dashboard dashboard))
-   :revert-to-revision (fn [_ dashboard-id serialized-dashboard] (revert-dashboard dashboard-id serialized-dashboard))
+   :revert-to-revision (fn [_ dashboard-id user-id serialized-dashboard] (revert-dashboard dashboard-id user-id serialized-dashboard))
    :diff-map           revision/default-diff-map
    :diff-str           (fn [_ d1, d2] (diff-dashboards-str d1 d2))})
 
