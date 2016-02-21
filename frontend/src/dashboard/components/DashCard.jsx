@@ -12,6 +12,7 @@ import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 import Icon from "metabase/components/Icon.jsx";
 
 import cx from "classnames";
+import _ from "underscore";
 
 export default class DashCard extends Component {
     constructor(props, context) {
@@ -53,10 +54,15 @@ export default class DashCard extends Component {
 
     renderCard(CardVisualization) {
         const { dashcard, cardData, isEditing, onAddSeries } = this.props;
-        const dataset = cardData[dashcard.card.id];
-        const data = dataset && dataset.data;
-
-        let error = (dataset && dataset.error) || this.state.error;
+        const cards = [dashcard.card].concat(dashcard.series || []);
+        const series = cards
+            .map(card => ({
+                card: card,
+                data: cardData[card.id] && cardData[card.id].data,
+                error: cardData[card.id] && cardData[card.id].error,
+            }));
+        const errors = series.map(s => s.error).filter(e => e);
+        const error = errors[0] || this.state.error;
 
         if (error) {
             let message;
@@ -76,18 +82,10 @@ export default class DashCard extends Component {
             );
         }
 
-        if (dashcard.card && data) {
-            let series = dashcard.series && dashcard.series
-            .filter(card => !!cardData[card.id])
-            .map(card => ({
-                card: card,
-                data: cardData[card.id].data
-            }));
+        if (series.length > 0 && _.every(series, (s) => s.data)) {
             return (
                 <Visualization
                     className="flex-full"
-                    card={dashcard.card}
-                    data={data}
                     series={series}
                     isDashboard={true}
                     onAddSeries={isEditing && CardVisualization.supportsSeries ? onAddSeries : undefined}

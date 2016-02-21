@@ -162,8 +162,6 @@ export default class AddSeriesModal extends Component {
 
     render() {
         const { dashcard, cardData, cards } = this.props;
-        const dataset = cardData[dashcard.card.id];
-        const data = dataset && dataset.data;
 
         let error = this.state.error;
 
@@ -192,9 +190,9 @@ export default class AddSeriesModal extends Component {
             enabledCards[c.id] = true;
         }
 
-        let series = this.state.series.map(card => ({
+        let series = [dashcard.card].concat(this.state.series).map(card => ({
             card: card,
-            data: this.props.cardData[card.id].data
+            data: cardData[card.id] && cardData[card.id].data
         })).filter(s => !!s.data);
 
         return (
@@ -204,8 +202,6 @@ export default class AddSeriesModal extends Component {
                     <div className="flex-full relative">
                         <Visualization
                             className="absolute top left bottom right"
-                            card={dashcard.card}
-                            data={data}
                             series={series}
                             isDashboard={true}
                         />
