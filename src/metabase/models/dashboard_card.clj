@@ -35,7 +35,7 @@
 ;;; ## ---------------------------------------- HYDRATION ----------------------------------------
 
 
-(defn ^:hydrate dashboard
+(defn dashboard
   "Return the `Dashboard` associated with the `DashboardCard`."
   [{:keys [dashboard_id]}]
   {:pre [(integer? dashboard_id)]}
