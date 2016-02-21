@@ -3,7 +3,6 @@
   (:require [expectations :refer :all]
             [metabase.api.card-test :refer [post-card]]
             [metabase.db :as db]
-            [metabase.driver.query-processor.expand :as ql]
             [metabase.http-client :as http]
             [metabase.middleware :as middleware]
             (metabase.models [hydrate :refer [hydrate]]
@@ -11,11 +10,11 @@
                              [dashboard :refer [Dashboard]]
                              [dashboard-card :refer [DashboardCard retrieve-dashboard-card]]
                              [dashboard-card-series :refer [DashboardCardSeries]]
+                             [revision :refer [Revision]]
                              [user :refer [User]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :as tu]
-            [korma.core :as k]))
+            [metabase.test.util :as tu]))
 
 
 ;; ## Helper Fns
@@ -368,3 +367,133 @@
                                                                                                   :row   3}]})
              [(remove-ids-and-boolean-timestamps (retrieve-dashboard-card dashcard-id1))
               (remove-ids-and-boolean-timestamps (retrieve-dashboard-card dashcard-id2))]]))))))
+
+
+
+;; ## GET /api/dashboard/:id/revisions
+
+(expect
+  [{:is_reversion false
+    :is_creation  false
+    :message      "updated"
+    :user         (-> (user-details (fetch-user :crowberto))
+                      (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+    :diff         {:before {:name        "b"
+                            :description nil
+                            :cards       [{:series nil, :col nil, :row nil, :sizeY 2, :sizeX 2}]}
+                   :after  {:name        "c"
+                            :description "something"
+                            :cards       [{:series [8 9], :col 0, :row 0, :sizeY 3, :sizeX 4}]}}
+    :description  "renamed it from \"b\" to \"c\", added a description, rearranged the cards and added some series to card 123."}
+   {:is_reversion false
+    :is_creation  true
+    :message      nil
+    :user         (-> (user-details (fetch-user :rasta))
+                      (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+    :diff         nil
+    :description  nil}]
+  (tu/with-temp Dashboard [{:keys [id]} {:name         "Test Dashboard"
+                                         :public_perms 0
+                                         :creator_id   (user->id :rasta)}]
+    (tu/with-temp Revision [_ {:model        "Dashboard"
+                               :model_id     id
+                               :user_id      (user->id :rasta)
+                               :object       {:name         "b"
+                                              :description  nil
+                                              :public_perms 0
+                                              :cards        [{:sizeX   2
+                                                              :sizeY   2
+                                                              :row     nil
+                                                              :col     nil
+                                                              :card_id 123
+                                                              :series  []}]}
+                               :is_creation  true
+                               :is_reversion false}]
+      (tu/with-temp Revision [_ {:model        "Dashboard"
+                                 :model_id     id
+                                 :user_id      (user->id :crowberto)
+                                 :object       {:name         "c"
+                                                :description  "something"
+                                                :public_perms 0
+                                                :cards        [{:sizeX   4
+                                                                :sizeY   3
+                                                                :row     0
+                                                                :col     0
+                                                                :card_id 123
+                                                                :series  [8 9]}]}
+                                 :is_creation  false
+                                 :is_reversion false
+                                 :message      "updated"}]
+        (->> ((user->client :crowberto) :get 200 (format "dashboard/%d/revisions" id))
+             (mapv #(dissoc % :timestamp :id)))))))
+
+
+;; ## POST /api/dashboard/:id/revert
+
+(expect {:errors {:revision_id "field is a required param."}}
+  ((user->client :crowberto) :post 400 "dashboard/1/revert" {}))
+
+(expect {:errors {:revision_id "Invalid value 'foobar' for 'revision_id': value must be an integer."}}
+  ((user->client :crowberto) :post 400 "dashboard/1/revert" {:revision_id "foobar"}))
+
+
+(expect
+  [;; the api response
+   {:is_reversion true
+    :is_creation  false
+    :message      nil
+    :user         (-> (user-details (fetch-user :crowberto))
+                      (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+    :diff         {:before {:name "b"}
+                   :after  {:name "a"}}
+    :description  "renamed it from \"b\" to \"a\"."}
+   ;; full list of final revisions, first one should be same as the revision returned by the endpoint
+   [{:is_reversion true
+     :is_creation  false
+     :message      nil
+     :user         (-> (user-details (fetch-user :crowberto))
+                       (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+     :diff         {:before {:name "b"}
+                    :after  {:name "a"}}
+     :description  "renamed it from \"b\" to \"a\"."}
+    {:is_reversion false
+     :is_creation  false
+     :message      "updated"
+     :user         (-> (user-details (fetch-user :crowberto))
+                       (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+     :diff         {:before {:name "a"}
+                    :after  {:name "b"}}
+     :description  "renamed it from \"a\" to \"b\"."}
+    {:is_reversion false
+     :is_creation  true
+     :message      nil
+     :user         (-> (user-details (fetch-user :rasta))
+                       (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+     :diff         nil
+     :description  nil}]]
+  (tu/with-temp Dashboard [{:keys [id]} {:name         "Test Dashboard"
+                                         :public_perms 0
+                                         :creator_id   (user->id :rasta)}]
+    (tu/with-temp Revision [{revision-id :id} {:model        "Dashboard"
+                                               :model_id     id
+                                               :user_id      (user->id :rasta)
+                                               :object       {:name         "a"
+                                                              :description  nil
+                                                              :public_perms 0
+                                                              :cards        []}
+                               :is_creation  true
+                               :is_reversion false}]
+      (tu/with-temp Revision [_ {:model        "Dashboard"
+                                 :model_id     id
+                                 :user_id      (user->id :crowberto)
+                                 :object       {:name         "b"
+                                                :description  nil
+                                                :public_perms 0
+                                                :cards        []}
+                                 :is_creation  false
+                                 :is_reversion false
+                                 :message      "updated"}]
+        [(-> ((user->client :crowberto) :post 200 (format "dashboard/%d/revert" id) {:revision_id revision-id})
+             (dissoc :id :timestamp))
+         (->> ((user->client :crowberto) :get 200 (format "dashboard/%d/revisions" id))
+              (mapv #(dissoc % :timestamp :id)))]))))

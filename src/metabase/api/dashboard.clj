@@ -9,7 +9,8 @@
                              [card :refer [Card]]
                              [common :as common]
                              [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard create-dashboard-card update-dashboard-card delete-dashboard-card]])))
+                             [dashboard-card :refer [DashboardCard create-dashboard-card update-dashboard-card delete-dashboard-card]])
+            [metabase.models.revision :as revision]))
 
 (defendpoint GET "/"
   "Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
@@ -112,5 +113,24 @@
     (when-let [dashboard-card (DashboardCard dashcardId)]
       (check-500 (delete-dashboard-card dashboard-card *current-user-id*))
       {:success true})))
+
+(defendpoint GET "/:id/revisions"
+  "Fetch `Revisions` for `Dashboard` with ID."
+  [id]
+  (check-404 (db/exists? Dashboard :id id))
+  (revision/revisions+details Dashboard id))
+
+
+(defendpoint POST "/:id/revert"
+  "Revert a `Dashboard` to a prior `Revision`."
+  [id :as {{:keys [revision_id]} :body}]
+  {revision_id [Required Integer]}
+  (check-404 (db/exists? Dashboard :id id))
+  (write-check Dashboard id)
+  (revision/revert
+    :entity      Dashboard
+    :id          id
+    :user-id     *current-user-id*
+    :revision-id revision_id))
 
 (define-routes)

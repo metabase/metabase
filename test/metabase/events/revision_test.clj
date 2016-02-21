@@ -123,7 +123,7 @@
   {:model        "Dashboard"
    :model_id     dashboard-id
    :user_id      (user->id :crowberto)
-   :object       (assoc (test-dashboard-object dashboard) :cards [(select-keys dashcard [:id :card_id :sizeX :sizeY :row :col])])
+   :object       (assoc (test-dashboard-object dashboard) :cards [(assoc (select-keys dashcard [:id :card_id :sizeX :sizeY :row :col]) :series [])])
    :is_reversion false
    :is_creation  false}
   (do
@@ -166,7 +166,8 @@
                                                                    :sizeX   4
                                                                    :sizeY   2
                                                                    :row     nil
-                                                                   :col     nil}])
+                                                                   :col     nil
+                                                                   :series  []}])
    :is_reversion false
    :is_creation  false}
   (do

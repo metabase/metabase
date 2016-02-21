@@ -21,7 +21,7 @@
   "Methods an entity may optionally implement to control how revisions of an instance are saved and reverted to."
   (serialize-instance [this id instance]
     "Prepare an instance for serialization in a `Revision`.")
-  (revert-to-revision [this id serialized-instance]
+  (revert-to-revision [this id user-id serialized-instance]
     "Return an object to the state recorded by SERIALIZED-INSTANCE.")
   (diff-map [this object1 object2]
     "Return a map describing the difference between OBJECT1 and OBJECT2.")
@@ -35,7 +35,7 @@
 
 (defn default-revert-to-revision
   "Default implementation of `revert-to-revision` which simply does an update using the values from `serialized-instance`."
-  [entity id serialized-instance]
+  [entity id user-id serialized-instance]
   (m/mapply db/upd entity id serialized-instance))
 
 (defn default-diff-map
@@ -150,7 +150,7 @@
   (let [serialized-instance (db/sel :one :field [Revision :object] :model (:name entity), :model_id id, :id revision-id)]
     (kdb/transaction
       ;; Do the reversion of the object
-      (revert-to-revision entity id serialized-instance)
+      (revert-to-revision entity id user-id serialized-instance)
       ;; Push a new revision to record this change
       (let [last-revision (db/sel :one Revision :model (:name entity), :model_id id (k/order :id :DESC))
             new-revision  (db/ins Revision
