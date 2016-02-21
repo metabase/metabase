@@ -261,7 +261,7 @@
 ;; ## DELETE /api/dashboard/:id/cards
 (expect
   [1
-   nil
+   {:success true}
    0]
   ;; fetch a dashboard WITH a dashboard card on it
   (tu/with-temp Dashboard [{dashboard-id :id} {:name         "Test Dashboard"
@@ -273,11 +273,29 @@
                                        :display                "scalar"
                                        :dataset_query          {:something "simple"}
                                        :visualization_settings {:global {:title nil}}}]
-      (tu/with-temp DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                      :card_id      card-id}]
-        [(count (db/sel :many :field [DashboardCard :id] :dashboard_id dashboard-id))
-         ((user->client :rasta) :delete 204 (format "dashboard/%d/cards" dashboard-id) :dashcardId dashcard-id)
-         (count (db/sel :many :field [DashboardCard :id] :dashboard_id dashboard-id))]))))
+      (tu/with-temp Card [{series-id1 :id} {:name                   "Additional Series Card 1"
+                                            :creator_id             (user->id :rasta)
+                                            :public_perms           0
+                                            :display                "scalar"
+                                            :dataset_query          {:something "simple"}
+                                            :visualization_settings {:global {:title nil}}}]
+        (tu/with-temp Card [{series-id2 :id} {:name                   "Additional Series Card 2"
+                                              :creator_id             (user->id :rasta)
+                                              :public_perms           0
+                                              :display                "scalar"
+                                              :dataset_query          {:something "simple"}
+                                              :visualization_settings {:global {:title nil}}}]
+          (tu/with-temp DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                          :card_id      card-id}]
+            (tu/with-temp DashboardCardSeries [_ {:dashboardcard_id dashcard-id
+                                                  :card_id          series-id1
+                                                  :position         0}]
+              (tu/with-temp DashboardCardSeries [_ {:dashboardcard_id dashcard-id
+                                                    :card_id          series-id2
+                                                    :position         1}]
+                [(count (db/sel :many :field [DashboardCard :id] :dashboard_id dashboard-id))
+                 ((user->client :rasta) :delete 200 (format "dashboard/%d/cards" dashboard-id) :dashcardId dashcard-id)
+                 (count (db/sel :many :field [DashboardCard :id] :dashboard_id dashboard-id))]))))))))
 
 
 ;; ## PUT /api/dashboard/:id/cards

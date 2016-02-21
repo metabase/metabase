@@ -9,7 +9,7 @@
                              [card :refer [Card]]
                              [common :as common]
                              [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard create-dashboard-card update-dashboard-card]])))
+                             [dashboard-card :refer [DashboardCard create-dashboard-card update-dashboard-card delete-dashboard-card]])))
 
 (defendpoint GET "/"
   "Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
@@ -107,11 +107,10 @@
   "Remove a `DashboardCard` from a `Dashboard`."
   [id dashcardId]
   {dashcardId [Required String->Integer]}
-  (write-check Dashboard id)
-  ;; TODO - it would be nicer to do this if `del` returned the object that was deleted instead of an api response
-  (let [dashcard (db/sel :one DashboardCard :id dashcardId)
-        result   (db/del DashboardCard :id dashcardId :dashboard_id id)]
-    (events/publish-event :dashboard-remove-cards {:id id :actor_id *current-user-id* :dashcards [dashcard]})
-    result))
+  (let-404 [dashboard (Dashboard id)]
+    (write-check Dashboard id)
+    (when-let [dashboard-card (DashboardCard dashcardId)]
+      (check-500 (delete-dashboard-card dashboard-card *current-user-id*))
+      {:success true})))
 
 (define-routes)
