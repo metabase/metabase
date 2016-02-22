@@ -711,15 +711,6 @@
     color: white;
 }
 
-.List-item-disabled {
-    color: var(--grey-text-color);
-}
-
-.List-item:hover .List-item-disabled,
-.List-item--selected .List-item-disabled {
-    color: white;
-}
-
 .List-item:hover .Icon,
 .List-item--selected .Icon {
     color: white;
