@@ -51,6 +51,8 @@ function cost(seriesExtents) {
     let axisRange = axisExtent[1] - axisExtent[0];
     if (seriesExtents.length === 0) {
         return SPLIT_AXIS_UNSPLIT_COST;
+    } else if (axisRange === 0) {
+        return 0;
     } else {
         return seriesExtents.reduce((sum, seriesExtent) =>
             sum + Math.pow(axisRange / (seriesExtent[1] - seriesExtent[0]), SPLIT_AXIS_COST_FACTOR)
@@ -59,13 +61,12 @@ function cost(seriesExtents) {
 }
 
 export function computeSplit(extents) {
-    let best = null;
-    let bestCost = Infinity;
+    let best, bestCost;
     let splits = generateSplits(extents.map((e,i) => i)).map(split =>
         [split, cost(split[0].map(i => extents[i])) + cost(split[1].map(i => extents[i]))]
-    )
+    );
     for (let [split, splitCost] of splits) {
-        if (splitCost < bestCost) {
+        if (!best || splitCost < bestCost) {
             best = split;
             bestCost = splitCost;
         }
