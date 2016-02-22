@@ -9,6 +9,7 @@
                              [card-favorite :refer [CardFavorite]]
                              [dashboard :refer [Dashboard]]
                              [dashboard-card :refer [DashboardCard]]
+                             [dashboard-card-series :refer [DashboardCardSeries]]
                              [database :refer [Database]]
                              [dependency :refer [Dependency]]
                              [field :refer [Field]]
@@ -50,6 +51,7 @@
    Card
    CardFavorite
    DashboardCard
+   DashboardCardSeries
    Activity
    QueryExecution
    Pulse

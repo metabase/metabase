@@ -19,6 +19,7 @@
                :last_name $
                :last_login $
                :is_superuser $
+               :is_qbnewb $
                :common_name $}))
 
 (defn remove-ids-and-boolean-timestamps [m]

@@ -44,7 +44,8 @@
   (merge driver/IDriverDefaultsMixin
          {:analyze-table       (constantly nil)
           :describe-database   (fn [_ _]
-                                 {:tables (set (vals sync-test-tables))})
+                                 {:tables (set (->> (vals sync-test-tables)
+                                                    (map #(dissoc % :fields))))})
           :describe-table      (fn [_ table]
                                  (get sync-test-tables (:name table)))
           :descrite-table-fks  (fn [_ _]

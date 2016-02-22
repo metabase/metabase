@@ -35,6 +35,13 @@
 ;;; ## ---------------------------------------- HYDRATION ----------------------------------------
 
 
+(defn dashboard
+  "Return the `Dashboard` associated with the `DashboardCard`."
+  [{:keys [dashboard_id]}]
+  {:pre [(integer? dashboard_id)]}
+  (db/sel :one 'metabase.models.dashboard/Dashboard :id dashboard_id))
+
+
 (defn ^:hydrate series
   "Return the `Cards` associated as additional series on this `DashboardCard`."
   [{:keys [id]}]
@@ -117,5 +124,14 @@
             (assoc :actor_id creator_id)
             (->> (events/publish-event :dashboard-card-create))
             (dissoc :actor_id))))))
+
+(defn delete-dashboard-card
+  "Delete a `DashboardCard`."
+  [dashboard-card user-id]
+  {:pre [(map? dashboard-card)
+         (integer? user-id)]}
+  (let [{:keys [id]} (dashboard dashboard-card)]
+    (db/cascade-delete DashboardCard :id (:id dashboard-card))
+    (events/publish-event :dashboard-remove-cards {:id id :actor_id user-id :dashcards [dashboard-card]})))
 
 (u/require-dox-in-this-namespace)

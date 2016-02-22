@@ -4,6 +4,7 @@ import Input from "metabase/components/Input.jsx";
 import Select from "metabase/components/Select.jsx";
 
 import * as MetabaseCore from "metabase/lib/core";
+import { isNumeric } from "metabase/lib/schema_metadata";
 
 import _  from "underscore";
 
@@ -43,7 +44,12 @@ export default class Column extends Component {
     }
 
     onNameChange(event) {
-        this.updateProperty("display_name", event.target.value);
+        if (!_.isEmpty(event.target.value)) {
+            this.updateProperty("display_name", event.target.value);
+        } else {
+            // if the user set this to empty then simply reset it because that's not allowed!
+            event.target.value = this.props.field.display_name;
+        }
     }
 
     onDescriptionChange(event) {
@@ -101,6 +107,10 @@ export default class Column extends Component {
 
         let specialTypes = MetabaseCore.field_special_types.slice(0);
         specialTypes.push({'id': null, 'name': 'No special type', 'section': 'Other'});
+        // if we don't have a numeric base-type then prevent the options for unix timestamp conversion (#823)
+        if (!isNumeric(this.props.field)) {
+            specialTypes = specialTypes.filter((f) => !(f.id && f.id.startsWith("timestamp_")));
+        }
 
         return (
             <li className="mt1 mb3">

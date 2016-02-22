@@ -39,14 +39,18 @@
   {field_type   FieldType
    special_type FieldSpecialType
    display_name NonEmptyString}
-  (write-check Field id)
-  ;; update the Field.  start with keys that may be set to NULL then conditionally add other keys if they have values
-  (check-500 (m/mapply upd Field id (merge {:description  description
-                                            :special_type special_type}
-                                           (when display_name               {:display_name display_name})
-                                           (when field_type                 {:field_type field_type})
-                                           (when-not (nil? preview_display) {:preview_display preview_display}))))
-  (Field id))
+  (let-404 [field (Field id)]
+    (write-check field)
+    (let [field_type   (or field_type (:field_type field))
+          special_type (or special_type (:special_type field))]
+      (check-400 (field/valid-metadata? (:base_type field) field_type special_type))
+      ;; update the Field.  start with keys that may be set to NULL then conditionally add other keys if they have values
+      (check-500 (m/mapply upd Field id (merge {:description  description
+                                                :field_type   field_type
+                                                :special_type special_type}
+                                               (when display_name               {:display_name display_name})
+                                               (when-not (nil? preview_display) {:preview_display preview_display}))))
+      (Field id))))
 
 (defendpoint GET "/:id/summary"
   "Get the count and distinct count of `Field` with ID."

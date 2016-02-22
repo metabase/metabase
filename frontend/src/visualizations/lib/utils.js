@@ -1,7 +1,11 @@
 
 import _ from "underscore";
+import d3 from "d3";
 
 import * as colors from "metabase/lib/colors";
+
+const SPLIT_AXIS_UNSPLIT_COST = -100;
+const SPLIT_AXIS_COST_FACTOR = 2;
 
 // computed size properties (drop 'px' and convert string -> Number)
 function getComputedSizeProperty(prop, element) {
@@ -30,50 +34,44 @@ export function getAvailableCanvasWidth(element) {
     return parentWidth - parentPaddingLeft - parentPaddingRight;
 }
 
+function generateSplits(list, left = [], right = []) {
+    // NOTE: currently generates all permutations, some of which are equivalent
+    if (list.length === 0) {
+        return [[left, right]];
+    } else {
+        return [
+            ...generateSplits(list.slice(1), left.concat([list[0]]), right),
+            ...generateSplits(list.slice(1), left, right.concat([list[0]]))
+        ];
+    }
+}
+
+function cost(seriesExtents) {
+    let axisExtent = d3.extent([].concat(...seriesExtents)); // concat to flatten the array
+    let axisRange = axisExtent[1] - axisExtent[0];
+    if (seriesExtents.length === 0) {
+        return SPLIT_AXIS_UNSPLIT_COST;
+    } else if (axisRange === 0) {
+        return 0;
+    } else {
+        return seriesExtents.reduce((sum, seriesExtent) =>
+            sum + Math.pow(axisRange / (seriesExtent[1] - seriesExtent[0]), SPLIT_AXIS_COST_FACTOR)
+        , 0);
+    }
+}
+
 export function computeSplit(extents) {
-    // copy and sort the intervals by the lower bound
-    let intervals = extents.map(e => e.slice()).sort((a,b) => a[0] - b[0]);
-
-    // start with a zero width gap
-    let gap = [0,0];
-
-    // iterate over each interval
-    let current = intervals[0];
-    for (let i = 1; i < intervals.length; i++) {
-        let next = intervals[i];
-        // merge next interval with the current one if appropriate
-        if (next[0] <= current[1]) {
-            if (next[1] > current[1]) {
-                current[1] = next[1];
-            }
-        // otheriwse update the gap if it's larger than the previously recorded gap
-        } else {
-            if (next[0] - current[1] > gap[1] - gap[0]) {
-                gap = [current[1], next[0]];
-            }
-            current = next;
+    let best, bestCost;
+    let splits = generateSplits(extents.map((e,i) => i)).map(split =>
+        [split, cost(split[0].map(i => extents[i])) + cost(split[1].map(i => extents[i]))]
+    );
+    for (let [split, splitCost] of splits) {
+        if (!best || splitCost < bestCost) {
+            best = split;
+            bestCost = splitCost;
         }
     }
-
-    let partitionIndexes;
-    // if there is a gap, and it's larger than an order of magnitude, then split
-    if (gap[1] - gap[0] !== 0 && (gap[1] / gap[0]) >= 10) {
-        partitionIndexes = [[],[]];
-        extents.forEach(([min, max], index) => {
-            // if the end of an extent is less or equal to than the beginning of the gap
-            // put it in the lower partition
-            if (max <= gap[0]) {
-                partitionIndexes[0].push(index);
-            } else {
-                partitionIndexes[1].push(index);
-            }
-        })
-    // otherwise don't partition
-    } else {
-        partitionIndexes = [extents.map((e,i) => i)];
-    }
-
-    return partitionIndexes;
+    return best.sort((a,b) => a[0] - b[0]);
 }
 
 const FRIENDLY_NAME_MAP = {
@@ -101,4 +99,32 @@ export function getCardColors(card) {
         chartColorList = settings.line.colors;
     }
     return _.uniq([chartColor || colors.normal[0]].concat(chartColorList || colors.normal));
+}
+
+export function isSameSeries(seriesA, seriesB) {
+    return (seriesA && seriesA.length) === (seriesB && seriesB.length) &&
+        _.zip(seriesA, seriesB).reduce((acc, [a, b]) => {
+            let sameData = a.data === b.data;
+            let sameDisplay = (a.card && a.card.display) === (b.card && b.card.display);
+            let sameVizSettings = (a.card && JSON.stringify(a.card.visualization_settings)) === (b.card && JSON.stringify(b.card.visualization_settings));
+            return acc && (sameData && sameDisplay && sameVizSettings);
+        }, true);
+}
+
+export function colorShades(color, count) {
+    return _.range(count).map(i => colorShade(color, 1 - Math.min(0.25, 1 / count) * i))
+}
+
+export function colorShade(hex, shade = 0) {
+    let match = hex.match(/#(?:(..)(..)(..)|(.)(.)(.))/);
+    if (!match) {
+        return hex;
+    }
+    let components = (match[1] != null ? match.slice(1,4) : match.slice(4,7)).map((d) => parseInt(d, 16))
+    let min = Math.min(...components);
+    let max = Math.max(...components);
+    return "#" + components.map(c => {
+        console.log(shade, c, min, max, c * (max - min) / max * shade);
+        return Math.round(min + (max - min) * shade * (c / 255)).toString(16)
+    }).join("");
 }

@@ -35,7 +35,7 @@
   IRevisioned
   (serialize-instance [_ _ obj]
     (assoc obj :serialized true))
-  (revert-to-revision [_ _ serialized-instance]
+  (revert-to-revision [_ _ _ serialized-instance]
     (reset! reverted-to (dissoc serialized-instance :serialized)))
   (diff-map [_ o1 o2]
     {:o1 o1, :o2 o2})

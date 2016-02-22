@@ -16,18 +16,18 @@ export default class Scalar extends Component {
     }
 
     render() {
-        let { data, isDashboard } = this.props;
+        let { data, isDashboard, className } = this.props;
         let formattedScalarValue = (data && data.rows && data.rows[0] && data.rows[0].length > 0) ? formatScalar(data.rows[0][0]) : "";
 
         if (isDashboard) {
             return (
-                <div className={"Card--scalar " + this.props.className}>
+                <div className={"Card--scalar " + className}>
                     <h1 className="Card-scalarValue text-normal">{formattedScalarValue}</h1>
                 </div>
             );
         } else {
             return (
-                <div className="Visualization--scalar flex full layout-centered">
+                <div className={"Visualization--scalar flex layout-centered " + className}>
                     <span>{formattedScalarValue}</span>
                 </div>
             );

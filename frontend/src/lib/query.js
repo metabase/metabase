@@ -172,12 +172,15 @@ var Query = {
         query.breakout.push(null);
     },
 
-    updateDimension(query, dimension, index) {
-        query.breakout[index] = dimension;
+    updateDimension(query, value, index) {
+        query.breakout = BreakoutClause.setBreakout(query.breakout, index, value);
     },
 
     removeDimension(query, index) {
-        let field = query.breakout.splice(index, 1)[0];
+        let field = query.breakout[index];
+
+        // remove the field from the breakout clause
+        query.breakout = BreakoutClause.removeBreakout(query.breakout, index);
 
         // remove sorts that referenced the dimension that was removed
         if (query.order_by) {
@@ -618,6 +621,96 @@ var Query = {
             columns.push({ base_type: "FloatField", special_type: "number" });
         }
         return columns;
+    }
+}
+
+export const AggregationClause = {
+
+    // predicate function to test if a given aggregation clause is fully formed
+    isValid(aggregation) {
+        if (aggregation && _.isArray(aggregation) &&
+                ((aggregation.length === 1 && aggregation[0] !== null) ||
+                 (aggregation.length === 2 && aggregation[0] !== null && aggregation[1] !== null))) {
+            return true;
+        }
+        return false;
+    },
+
+    // predicate function to test if the given aggregation clause represents a Bare Rows aggregation
+    isBareRows(aggregation) {
+        return AggregationClause.isValid(aggregation) && aggregation[0] === "rows";
+    },
+
+    // predicate function to test if a given aggregation clause represents a standard aggregation
+    isStandard(aggregation) {
+        return AggregationClause.isValid(aggregation) && aggregation[0] !== "METRIC";
+    },
+
+    // predicate function to test if a given aggregation clause represents a metric
+    isMetric(aggregation) {
+        return AggregationClause.isValid(aggregation) && aggregation[0] === "METRIC";
+    },
+
+    // get the metricId from a metric aggregation clause
+    getMetric(aggregation) {
+        if (aggregation && AggregationClause.isMetric(aggregation)) {
+            return aggregation[1];
+        } else {
+            return null;
+        }
+    },
+
+    // get the operator from a standard aggregation clause
+    getOperator(aggregation) {
+        if (aggregation && aggregation.length > 0 && aggregation[0] !== "METRIC") {
+            return aggregation[0];
+        } else {
+            return null;
+        }
+    },
+
+    // get the fieldId from a standard aggregation clause
+    getField(aggregation) {
+        if (aggregation && aggregation.length > 1 && aggregation[0] !== "METRIC") {
+            return aggregation[1];
+        } else {
+            return null;
+        }
+    },
+
+    // set the fieldId on a standard aggregation clause
+    setField(aggregation, fieldId) {
+        if (aggregation && aggregation.length > 0 && aggregation[0] && aggregation[0] !== "METRIC") {
+            return [aggregation[0], fieldId];
+        } else {
+            // TODO: is there a better failure response than just returning the aggregation unmodified??
+            return aggregation;
+        }
+    }
+}
+
+export const BreakoutClause = {
+
+    setBreakout(breakout, index, value) {
+        if (!breakout) return breakout;
+
+        if (breakout.length >= index+1) {
+            breakout[index] = value;
+            return breakout;
+
+        } else {
+            breakout.push(value);
+            return breakout;
+        }
+    },
+
+    removeBreakout(breakout, index) {
+        if (breakout && breakout.length >= index+1) {
+            breakout.splice(index, 1);
+            return breakout;
+        } else {
+            return breakout;
+        }
     }
 }
 

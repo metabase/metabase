@@ -17,11 +17,15 @@ import {
 } from "./utils";
 
 import {
+    minTimeseriesUnit,
+    dimensionIsTimeseries,
     computeTimeseriesDataInverval,
     computeTimeseriesTicksInterval
 } from "./timeseries";
 
 import { determineSeriesIndexFromElement } from "./tooltip";
+
+import { colorShades } from "./utils";
 
 import { formatValue } from "metabase/lib/formatting";
 
@@ -29,18 +33,12 @@ const MIN_PIXELS_PER_TICK = { x: 100, y: 30 };
 const BAR_PADDING_RATIO = 0.2;
 const DEFAULT_INTERPOLATION = "linear";
 
-// investigate the response from a dataset query and determine if the dimension is a timeseries
-function dimensionIsTimeseries(result) {
-    let hasDateField = result.cols && result.cols.length > 0 && result.cols[0].base_type === "DateField";
+const DOT_OVERLAP_COUNT_LIMIT = 8;
+const DOT_OVERLAP_RATIO = 0.10;
+const DOT_OVERLAP_DISTANCE = 8;
 
-    let isDateFirstVal = false;
-    if (result.rows && result.rows.length > 0 && result.rows[0].length > 0 &&
-            !(!isNaN(parseFloat(result.rows[0][0])) && isFinite(result.rows[0][0]))) {
-        isDateFirstVal = ( (new Date(result.rows[0][0]) !== "Invalid Date" && !isNaN(new Date(result.rows[0][0])) ));
-    }
-
-    return (hasDateField || isDateFirstVal);
-}
+const VORONOI_TARGET_RADIUS = 50;
+const VORONOI_MAX_POINTS = 300;
 
 function adjustTicksIfNeeded(axis, axisSize, minPixelsPerTick) {
     let numTicks = axis.ticks();
@@ -104,17 +102,19 @@ function applyChartLegend(chart, card) {
     }
 }
 
-function applyChartTimeseriesXAxis(chart, card, cols, xValues) {
+function applyChartTimeseriesXAxis(chart, series, xValues) {
     // setup an x-axis where the dimension is a timeseries
-    let settings = card.visualization_settings;
+    const settings = series[0].card.visualization_settings;
+    const dimensionColumn = series[0].data.cols[0];
 
-    // set the axis label
+    let unit = minTimeseriesUnit(series.map(s => s.data.cols[0].unit));
+
     if (settings.xAxis.labels_enabled) {
-        chart.xAxisLabel((settings.xAxis.title_text || null) || cols[0].display_name);
+        chart.xAxisLabel(settings.xAxis.title_text || getFriendlyName(dimensionColumn));
         chart.renderVerticalGridLines(settings.xAxis.gridLine_enabled);
 
-        if (cols[0] && cols[0].unit) {
-            chart.xAxis().tickFormat(d => formatValue(d, cols[0]));
+        if (dimensionColumn && dimensionColumn.unit) {
+            chart.xAxis().tickFormat(d => formatValue(d, dimensionColumn));
         } else {
             chart.xAxis().tickFormat(d3.time.format.multi([
                 [".%L",    (d) => d.getMilliseconds()],
@@ -129,14 +129,14 @@ function applyChartTimeseriesXAxis(chart, card, cols, xValues) {
         }
 
         // Compute a sane interval to display based on the data granularity, domain, and chart width
-        const { interval, count } = computeTimeseriesTicksInterval(xValues, cols[0], chart.width(), MIN_PIXELS_PER_TICK.x);
+        const { interval, count } = computeTimeseriesTicksInterval(xValues, unit, chart.width(), MIN_PIXELS_PER_TICK.x);
         chart.xAxis().ticks(d3.time[interval], count);
     } else {
         chart.xAxis().ticks(0);
     }
 
     // compute the data interval
-    const { interval, count } = computeTimeseriesDataInverval(xValues, cols[0]);
+    const { interval, count } = computeTimeseriesDataInverval(xValues, unit);
 
     // compute the domain
     let xDomain = d3.extent(xValues);
@@ -151,10 +151,11 @@ function applyChartTimeseriesXAxis(chart, card, cols, xValues) {
     chart.xUnits((start, stop) => Math.ceil(1 + moment(stop).diff(start, interval) / count));
 }
 
-function applyChartOrdinalXAxis(chart, card, cols, xValues) {
-    let settings = card.visualization_settings;
+function applyChartOrdinalXAxis(chart, series, xValues) {
+    const settings = series[0].card.visualization_settings;
+    const dimensionColumn = series[0].data.cols[0];
     if (settings.xAxis.labels_enabled) {
-        chart.xAxisLabel(settings.xAxis.title_text || cols[0].display_name);
+        chart.xAxisLabel(settings.xAxis.title_text || getFriendlyName(dimensionColumn));
         chart.renderVerticalGridLines(settings.xAxis.gridLine_enabled);
         chart.xAxis().ticks(xValues.length);
         adjustTicksIfNeeded(chart.xAxis(), chart.width(), MIN_PIXELS_PER_TICK.x);
@@ -170,7 +171,7 @@ function applyChartOrdinalXAxis(chart, card, cols, xValues) {
             let visibleKeys = xValues.filter((v, i) => i % keyInterval === 0);
             chart.xAxis().tickValues(visibleKeys);
         }
-        chart.xAxis().tickFormat(d => formatValue(d, cols[0]));
+        chart.xAxis().tickFormat(d => formatValue(d, dimensionColumn));
     } else {
         chart.xAxis().ticks(0);
         chart.xAxis().tickFormat('');
@@ -180,18 +181,28 @@ function applyChartOrdinalXAxis(chart, card, cols, xValues) {
         .xUnits(dc.units.ordinal);
 }
 
-function applyChartYAxis(chart, card, cols) {
-    let settings = card.visualization_settings;
+function applyChartYAxis(chart, series, yAxisSplit) {
+    let settings = series[0].card.visualization_settings;
     if (settings.yAxis.labels_enabled) {
-        chart.yAxisLabel(settings.yAxis.title_text || getFriendlyName(cols[1]));
         chart.renderHorizontalGridLines(true);
         chart.elasticY(true);
 
-        // Very small charts (i.e., Dashboard Cards) tend to render with an excessive number of ticks
-        // set some limits on the ticks per pixel and adjust if needed
+        // left
+        if (settings.yAxis.title_text) {
+            chart.yAxisLabel(settings.yAxis.title_text);
+        } else if (yAxisSplit[0].length === 1) {
+            chart.yAxisLabel(getFriendlyName(series[yAxisSplit[0][0]].data.cols[1]));
+        }
         adjustTicksIfNeeded(chart.yAxis(), chart.height(), MIN_PIXELS_PER_TICK.y);
-        if (chart.rightYAxis) {
-            adjustTicksIfNeeded(chart.rightYAxis(), chart.height(), MIN_PIXELS_PER_TICK.y);
+
+        // right
+        if (yAxisSplit.length > 1) {
+            if (yAxisSplit[1].length === 1) {
+                chart.rightYAxisLabel(getFriendlyName(series[yAxisSplit[1][0]].data.cols[1]));
+            }
+            if (chart.rightYAxis) {
+                adjustTicksIfNeeded(chart.rightYAxis(), chart.height(), MIN_PIXELS_PER_TICK.y);
+            }
         }
     } else {
         chart.yAxis().ticks(0);
@@ -202,7 +213,7 @@ function applyChartYAxis(chart, card, cols) {
 }
 
 function applyChartTooltips(chart, onHoverChange) {
-    chart.on("renderlet", function(chart) {
+    chart.on("renderlet.tooltips", function(chart) {
         chart.selectAll(".bar, .dot, .area, .line, g.pie-slice, g.features")
             .on("mousemove", function(d, i) {
                 if (onHoverChange) {
@@ -274,32 +285,32 @@ function lineAndBarOnRender(chart, card) {
     };
     // x-axis label customizations
     try {
-        let customizeX = customizer(svg.select('.x-axis-label')[0][0]);
+        let customizeX = customizer(svg.select('.x-axis-label').node());
         customizeX('fill', x.title_color);
         customizeX('font-size', x.title_font_size);
     } catch (e) {}
 
     // y-axis label customizations
     try {
-        let customizeY = customizer(svg.select('.y-axis-label')[0][0]);
+        let customizeY = customizer(svg.select('.y-axis-label').node());
         customizeY('fill', y.title_color);
         customizeY('font-size', y.title_font_size);
     } catch (e) {}
 
     // grid lines - .grid-line .horizontal, .vertical
     try {
-        let customizeVertGL = customizer(svg.select('.grid-line.vertical')[0][0].children);
+        let customizeVertGL = customizer(svg.select('.grid-line.vertical').node().children);
         customizeVertGL('stroke-width', x.gridLineWidth);
         customizeVertGL('style', x.gridLineColor, (colorStr) => 'stroke:' + colorStr + ';');
     } catch (e) {}
 
     try {
-        let customizeHorzGL = customizer(svg.select('.grid-line.horizontal')[0][0].children);
+        let customizeHorzGL = customizer(svg.select('.grid-line.horizontal').node().children);
         customizeHorzGL('stroke-width', y.gridLineWidth);
         customizeHorzGL('style', y.gridLineColor, (colorStr) => 'stroke:' + '#ddd' + ';');
     } catch (e) {}
 
-    chart.on("renderlet.lineAndBarOnRender", (chart) => {
+    chart.on("renderlet.line-and-bar-onrender", (chart) => {
         for (let elem of chart.selectAll(".sub, .chart-body")[0]) {
             // prevents dots from being clipped:
             elem.removeAttribute("clip-path");
@@ -312,26 +323,122 @@ function lineAndBarOnRender(chart, card) {
         }
     });
 
-    // adjust the margins to fit the Y-axis tick label sizes, and rerender
-    chart.margins().left = chart.select(".axis.y")[0][0].getBBox().width + 30;
-    chart.margins().bottom = chart.select(".axis.x")[0][0].getBBox().height + 30;
+    chart.on("renderlet.enable-dots", (chart) => {
+        let enableDots;
+        const dots = chart.svg().selectAll(".dc-tooltip .dot")[0];
+        if (dots.length > 500) {
+            // more than 500 dots is almost certainly too dense, don't waste time computing the voronoi map
+            enableDots = false;
+        } else {
+            const vertices = dots.map((e, index) => {
+                let rect = e.getBoundingClientRect();
+                return [rect.left, rect.top, index];
+            });
+            const overlappedIndex = {};
+            // essentially pairs of vertices closest to each other
+            for (let { source, target } of d3.geom.voronoi().links(vertices)) {
+                if (Math.sqrt(Math.pow(source[0] - target[0], 2) + Math.pow(source[1] - target[1], 2)) < DOT_OVERLAP_DISTANCE) {
+                    // if they overlap, mark both as overlapped
+                    overlappedIndex[source[2]] = overlappedIndex[target[2]] = true;
+                }
+            }
+            const total = vertices.length;
+            const overlapping = Object.keys(overlappedIndex).length;
+            enableDots = overlapping < DOT_OVERLAP_COUNT_LIMIT || (overlapping / total) < DOT_OVERLAP_RATIO;
+        }
+        chart.svg()
+            .classed("enable-dots", enableDots)
+            .classed("enable-dots-onhover", !enableDots);
+    });
+
+    chart.on("renderlet.voronoi-hover", (chart) => {
+        const parent = chart.svg().select("svg > g");
+        const dots = chart.svg().selectAll(".dc-tooltip .dot")[0];
+
+        if (dots.length === 0 || dots.length > VORONOI_MAX_POINTS) {
+            return;
+        }
+
+        const originRect = chart.svg().node().getBoundingClientRect();
+        const vertices = dots.map(e => {
+            let { top, left, width, height } = e.getBoundingClientRect();
+            let px = (left + width / 2) - originRect.left;
+            let py = (top + height / 2) - originRect.top;
+            return [px, py, e];
+        });
+
+        const { width, height } = parent.node().getBBox();
+        const voronoi = d3.geom.voronoi()
+            .clipExtent([[0,0], [width, height]]);
+
+        // circular clip paths to limit distance from actual point
+        parent.append("svg:g")
+            .selectAll("clipPath")
+                .data(vertices)
+            .enter().append("svg:clipPath")
+                .attr("id", (d, i) => "clip-" + i)
+            .append("svg:circle")
+                .attr('cx', (d) => d[0])
+                .attr('cy', (d) => d[1])
+                .attr('r', VORONOI_TARGET_RADIUS);
+
+        // voronoi layout with clip paths applied
+        parent.append("svg:g")
+                .classed("voronoi", true)
+            .selectAll("path")
+                .data(voronoi(vertices), (d) => d&&d.join(","))
+                .enter().append("svg:path")
+                    .filter((d) => d != undefined)
+                    .attr("d", (d) => "M" + d.join("L") + "Z")
+                    .attr("clip-path", (d,i) => "url(#clip-"+i+")")
+                    .on("mousemove", ({ point }) => {
+                        let e = point[2];
+                        dispatchUIEvent(e, "mousemove");
+                        d3.select(e).classed("hover", true);
+                    })
+                    .on("mouseleave", ({ point }) => {
+                        let e = point[2];
+                        dispatchUIEvent(e, "mouseleave");
+                        d3.select(e).classed("hover", false);
+                    })
+                .order();
+
+        function dispatchUIEvent(element, eventName) {
+            let e = document.createEvent("UIEvents");
+            e.initUIEvent(eventName, true, true, window, 1);
+            element.dispatchEvent(e);
+        }
+    });
+
+    function adjustMargin(margin, direction, axisSelector, labelSelector) {
+        let axis = chart.select(axisSelector).node();
+        let label = chart.select(labelSelector).node();
+        let axisSize = axis ? axis.getBoundingClientRect()[direction] : 0;
+        let labelSize = label ? label.getBoundingClientRect()[direction] : 0;
+        chart.margins()[margin] = axisSize + labelSize + 15;
+    }
+
+    // adjust the margins to fit the X and Y axis tick and label sizes, and rerender
+    adjustMargin("bottom", "height", ".axis.x",  ".x-axis-label");
+    adjustMargin("left",   "width",  ".axis.y",  ".y-axis-label.y-label");
+    adjustMargin("right",  "width",  ".axis.yr", ".y-axis-label.yr-label");
 
     chart.render();
 }
 
 export let CardRenderer = {
-    pie(element, { card, data: result, onHoverChange }) {
+    pie(element, { card, data, onHoverChange }) {
         let settings = card.visualization_settings;
-        let data = result.rows.map(row => ({
+        let chartData = data.rows.map(row => ({
             key: row[0],
             value: row[1]
         }));
-        let sumTotalValue = data.reduce((acc, d) => acc + d.value, 0);
+        let sumTotalValue = chartData.reduce((acc, d) => acc + d.value, 0);
 
         // TODO: by default we should set a max number of slices of the pie and group everything else together
 
         // build crossfilter dataset + dimension + base group
-        let dataset = crossfilter(data);
+        let dataset = crossfilter(chartData);
         let dimension = dataset.dimension(d => d.key);
         let group = dimension.group().reduceSum(d => d.value);
         let chart = initializeChart(card, element)
@@ -339,7 +446,7 @@ export let CardRenderer = {
                         .group(group)
                         .colors(settings.pie.colors)
                         .colorCalculator((d, i) => settings.pie.colors[((i * 5) + Math.floor(i / 5)) % settings.pie.colors.length])
-                        .label(row => formatValue(row.key, result.cols[0]))
+                        .label(row => formatValue(row.key, data.cols[0]))
                         .title(d => {
                             // ghetto rounding to 1 decimal digit since Math.round() doesn't let
                             // you specify a precision and always rounds to int
@@ -356,79 +463,111 @@ export let CardRenderer = {
     },
 
     lineAreaBar(element, chartType, { series, onHoverChange, onRender }) {
-        let { card, data: result } = series[0];
+        const colors = getCardColors(series[0].card);
 
-        const colors = getCardColors(card);
-
-        let isTimeseries = dimensionIsTimeseries(result);
-        let isStacked = chartType === "area";
-        let isLinear = false;
+        const isTimeseries = dimensionIsTimeseries(series[0].data);
+        const isStacked = chartType === "area";
+        const isLinear = false;
 
         // validation.  we require at least 2 rows for line charting
-        if (result.cols.length < 2) {
+        if (series[0].data.cols.length < 2) {
             return;
         }
 
-        // pre-process data
-        let data = result.rows.map((row) => {
-            // IMPORTANT: clone the data if you are going to modify it in any way
-            let tuple = row.slice(0);
-            tuple[0] = (isTimeseries) ? new Date(row[0]) : row[0];
-            return tuple;
-        });
-
-        // build crossfilter dataset + dimension + base group
-        let dataset = crossfilter();
-        series.map((s, index) =>
-            dataset.add(s.data.rows.map(row => ({
-                x: (isTimeseries) ? new Date(row[0]) : row[0],
-                ["y"+index]: row[1]
-            })))
+        let datas = series.map((s, index) =>
+            s.data.rows.map(row => [
+                (isTimeseries) ? new Date(row[0]) : row[0],
+                ...row.slice(1)
+            ])
         );
 
-        let dimension = dataset.dimension(d => d.x);
-        let groups = series.map((s, index) =>
-            dimension.group().reduceSum(d => (d["y"+index] || 0))
-        );
-
-        let xValues = dimension.group().all().map(d => d.key);
-        let yExtents = groups.map(group => d3.extent(group.all(), d => d.value));
-        let yAxisSplit = computeSplit(yExtents);
-
-        let chart;
-        if (isStacked || series.length === 1) {
-            chart = initializeChart(series[0].card, element)
-                        .dimension(dimension)
-                        .group(groups[0]);
-
-            // apply any stacked series if applicable
-            for (let i = 1; i < groups.length; i++) {
-                chart.stack(groups[i]);
-            }
-
-            applyChartLineBarSettings(chart, card, chartType, isLinear, isTimeseries);
-
-            chart.ordinalColors(colors);
-        } else {
-            chart = initializeChart(card, element, "compositeChart")
-
-            let subCharts = series.map(s =>
-                dc[getDcjsChartType(series[0].card.display)](chart)
+        let dimension, groups, xValues, yAxisSplit;
+        if (isStacked && datas.length > 1) {
+            let dataset = crossfilter();
+            datas.map((data, i) =>
+                dataset.add(data.map(d => ({
+                    [0]: d[0],
+                    [i + 1]: d[1]
+                })))
             );
 
-            subCharts.forEach((subChart, index) => {
-                subChart
-                    .dimension(dimension)
-                    .group(groups[index])
-                    .colors(colors[index % colors.length])
-                    .useRightYAxis(yAxisSplit.length > 1 && yAxisSplit[1].includes(index))
+            dimension = dataset.dimension(d => d[0]);
+            groups = [
+                datas.map((data, i) =>
+                    dimension.group().reduceSum(d => (d[i + 1] || 0))
+                )
+            ];
 
-                applyChartLineBarSettings(subChart, card, chartType, isLinear, isTimeseries);
+            xValues = dimension.group().all().map(d => d.key);
+            yAxisSplit = [series.map((s,i) => i)];
+        } else {
+            let dataset = crossfilter();
+            datas.map(data => dataset.add(data));
+
+            dimension = dataset.dimension(d => d[0]);
+            groups = datas.map(data => {
+                let dim = crossfilter(data).dimension(d => d[0]);
+                return data[0].slice(1).map((_, i) =>
+                    dim.group().reduceSum(d => (d[i + 1] || 0))
+                )
             });
 
+            xValues = dimension.group().all().map(d => d.key);
+            let yExtents = groups.map(group => d3.extent(group[0].all(), d => d.value));
+            yAxisSplit = computeSplit(yExtents);
+        }
+
+        let parent;
+        if (groups.length > 1) {
+            parent = initializeChart(series[0].card, element, "compositeChart")
+        } else {
+            parent = element;
+        }
+
+        let charts = groups.map((group, index) => {
+            let chart = dc[getDcjsChartType(chartType)](parent);
+            let chartColors;
+
+            // multiple series
+            if (groups.length > 1) {
+                // multiple stacks
+                if (group.length > 1) {
+                    // compute shades of the assigned color
+                    chartColors = colorShades(colors[index % colors.length], group.length);
+                } else {
+                    chartColors = colors[index % colors.length];
+                }
+            } else {
+                chartColors = colors;
+            }
+
             chart
-                .compose(subCharts)
-                .on("renderlet.groupedbar", function (chart) {
+                .dimension(dimension)
+                .group(group[0])
+                .transitionDuration(0)
+                .useRightYAxis(yAxisSplit.length > 1 && yAxisSplit[1].includes(index))
+
+            if (chartType === "area") {
+                chart.ordinalColors(chartColors)
+            } else {
+                chart.colors(chartColors)
+            }
+
+            for (var i = 1; i < group.length; i++) {
+                chart.stack(group[i])
+            }
+
+            applyChartLineBarSettings(chart, series[0].card, chartType, isLinear, isTimeseries);
+
+            return chart;
+        });
+
+        let chart;
+        if (charts.length > 1) {
+            chart = parent;
+            chart
+                .compose(charts)
+                .on("renderlet.grouped-bar", function (chart) {
                     // HACK: dc.js doesn't support grouped bar charts so we need to manually resize/reposition them
                     // https://github.com/dc-js/dc.js/issues/558
                     let barCharts = chart.selectAll(".sub rect:first-child")[0].map(node => node.parentNode.parentNode.parentNode);
@@ -454,19 +593,23 @@ export let CardRenderer = {
             } else {
                 chart._rangeBandPadding(1) // https://github.com/dc-js/dc.js/issues/662
             }
+        } else {
+            chart = charts[0];
+            chart.transitionDuration(0)
+            applyChartBoundary(chart, element);
         }
 
         // x-axis settings
         // TODO: we should support a linear (numeric) x-axis option
         if (isTimeseries) {
-            applyChartTimeseriesXAxis(chart, card, result.cols, xValues);
+            applyChartTimeseriesXAxis(chart, series, xValues);
         } else {
-            applyChartOrdinalXAxis(chart, card, result.cols, xValues);
+            applyChartOrdinalXAxis(chart, series, xValues);
         }
 
         // y-axis settings
         // TODO: if we are multi-series this could be split axis
-        applyChartYAxis(chart, card, result.cols, data);
+        applyChartYAxis(chart, series, yAxisSplit);
 
         applyChartTooltips(chart, (e, d, seriesIndex) => {
             if (onHoverChange) {
@@ -487,7 +630,7 @@ export let CardRenderer = {
         chart.render();
 
         // apply any on-rendering functions
-        lineAndBarOnRender(chart, card);
+        lineAndBarOnRender(chart, series[0].card);
 
         onRender && onRender({ yAxisSplit });
     },
@@ -568,7 +711,7 @@ export let CardRenderer = {
         return chartRenderer;
     },
 
-    pin_map(element, card, updateMapCenter, updateMapZoom) {
+    pin_map(element, { card, updateMapCenter, updateMapZoom }) {
         let query = card.dataset_query;
         let vs = card.visualization_settings;
         let latitude_dataset_col_index = vs.map.latitude_dataset_col_index;
