@@ -35,26 +35,30 @@ export default class TableSimple extends Component {
     render() {
         var { rows, cols } = this.props.data;
         return (
-                <div className={"Card--table scroll-x scroll-y " + this.props.className}>
-                    <table className="Table border-top">
-                        <thead>
-                            <tr>
-                                { cols.map((column, colIndex) => <th key={colIndex}>{this.getDatasetColumnTitleByIndex(colIndex)}</th>) }
-                            </tr>
-                        </thead>
-                        <tbody>
-                        {
-                            rows.slice(0, 100).map((row, rowIndex) =>
-                                <tr key={rowIndex}>
-                                    {row.map((cell, colIndex) => <td key={colIndex}>
-                                        { formatValue(cell, cols[colIndex], { jsx: true }) }
-                                    </td>)}
-                                </tr>
-                            )
-                        }
-                        </tbody>
-                    </table>
-                </div>
+            <div className={"Card--table scroll-x scroll-y " + this.props.className}>
+                <table className="Table border-top">
+                    <thead>
+                        <tr>
+                            {cols.map((column, colIndex) =>
+                                <th key={colIndex}>
+                                    { this.getDatasetColumnTitleByIndex(colIndex) }
+                                </th>
+                            )}
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {rows.slice(0, 100).map((row, rowIndex) =>
+                        <tr key={rowIndex}>
+                            {row.map((cell, colIndex) =>
+                                <td key={colIndex}>
+                                    { formatValue(cell, cols[colIndex], { jsx: true }) }
+                                </td>
+                            )}
+                        </tr>
+                    )}
+                    </tbody>
+                </table>
+            </div>
         );
     }
 }
