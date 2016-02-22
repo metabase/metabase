@@ -4,7 +4,7 @@ import CardRenderer from "./CardRenderer.jsx";
 import LegendHeader from "./LegendHeader.jsx";
 import ChartTooltip from "./ChartTooltip.jsx";
 
-import { isDimension } from "metabase/lib/schema_metadata";
+import { isDimension, isString } from "metabase/lib/schema_metadata";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 import crossfilter from "crossfilter";
@@ -42,22 +42,25 @@ export default class LineAreaBarChart extends Component {
         let series = newProps.series;
         let isMultiseries = false;
         let s = series && series.length === 1 && series[0];
-        if (s && s.data && s.data.cols.length > 2 && isDimension(s.data.cols[1])) {
+        if (s && s.data && s.data.cols.length > 2 && (isDimension(s.data.cols[1]) || isString(s.data.cols[1]))) {
             let dataset = crossfilter(s.data.rows);
             let groups = [0,1].map(i => dataset.dimension(d => d[i]).group());
             let cardinalities = groups.map(group => group.size())
-            let dimensionIndex = (cardinalities[0] > cardinalities[1]) ? 1 : 0;
-            series = groups[dimensionIndex].reduce(
-                (p, v) => p.concat([[...v.slice(0, dimensionIndex), ...v.slice(dimensionIndex+1)]]),
-                (p, v) => null, () => []
-            ).all().map(o => ({
-                card: { ...s.card, name: o.key },
-                data: {
-                    rows: o.value,
-                    cols: [...s.data.cols.slice(0,dimensionIndex), ...s.data.cols.slice(dimensionIndex+1)]
-                }
-            }));
-            isMultiseries = true;
+            // only if the smaller dimension has cardinality < 10
+            if (cardinalities[0] < 10 || cardinalities[1] < 10) {
+                let dimensionIndex = (cardinalities[0] > cardinalities[1]) ? 1 : 0;
+                series = groups[dimensionIndex].reduce(
+                    (p, v) => p.concat([[...v.slice(0, dimensionIndex), ...v.slice(dimensionIndex+1)]]),
+                    (p, v) => null, () => []
+                ).all().map(o => ({
+                    card: { ...s.card, name: o.key },
+                    data: {
+                        rows: o.value,
+                        cols: [...s.data.cols.slice(0,dimensionIndex), ...s.data.cols.slice(dimensionIndex+1)]
+                    }
+                }));
+                isMultiseries = true;
+            }
         }
         this.setState({
             series,
