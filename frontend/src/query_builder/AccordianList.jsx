@@ -38,9 +38,14 @@ export default class AccordianList extends Component {
         onChange: PropTypes.func,
         onChangeSection: PropTypes.func,
         itemIsSelected: PropTypes.func,
+        itemIsClickable: PropTypes.func,
         renderItem: PropTypes.func,
         renderSectionIcon: PropTypes.func,
         getItemClasses: PropTypes.func
+    };
+
+    static defaultProps = {
+        itemIsClickable: () => true
     };
 
     toggleSection(sectionIndex) {
@@ -164,7 +169,7 @@ export default class AccordianList extends Component {
                                         <a
                                             className="flex-full flex align-center px1 cursor-pointer"
                                             style={{ paddingTop: "0.25rem", paddingBottom: "0.25rem" }}
-                                            onClick={this.onChange.bind(this, item)}
+                                            onClick={this.props.itemIsClickable(item, itemIndex) ? this.onChange.bind(this, item) : null}
                                         >
                                             { this.renderItemIcon(item, itemIndex) }
                                             <h4 className="List-item-title ml2">{item.name}</h4>

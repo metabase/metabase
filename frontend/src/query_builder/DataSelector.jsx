@@ -99,6 +99,13 @@ export default class DataSelector extends Component {
     onChangeDatabase(index) {
         let database = this.state.databases[index];
         let schema = database && (database.schemas.length > 1 ? null : database.schemas[0]);
+        if (database && database.tables.length === 0) {
+            schema = {
+                database: database,
+                name: "",
+                tables: []
+            };
+        }
         this.setState({
             selectedSchema: schema,
             showTablePicker: !!schema
@@ -187,14 +194,18 @@ export default class DataSelector extends Component {
                 database: schema.database
             }))
         }];
+        if (schema.tables.length === 0) {
+            sections[0].items = [{name: "No tables found in this database.", database: null, table: null}];
+        }
         return (
             <AccordianList
                 key="tablePicker"
                 className="text-brand"
                 sections={sections}
                 onChange={this.onChangeTable}
-                itemIsSelected={(item) => item.table.id === this.getTableId()}
-                renderItemIcon={() => <Icon name="table2" width="18" height="18" />}
+                itemIsSelected={(item) => item.table ? item.table.id === this.getTableId() : false}
+                itemIsClickable={(item) => item.table}
+                renderItemIcon={(item) => item.table ? <Icon name="table2" width="18" height="18" /> : null}
             />
         );
     }
