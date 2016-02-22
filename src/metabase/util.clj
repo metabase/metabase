@@ -420,23 +420,23 @@
      ~@body
      ~'<>))
 
-(defn ^String format-color
+(def ^String ^{:style/indent 2} format-color
   "Like `format`, but uses a function in `colorize.core` to colorize the output.
    COLOR-SYMB should be a quoted symbol like `green`, `red`, `yellow`, `blue`,
    `cyan`, `magenta`, etc. See the entire list of avaliable colors
    [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj).
 
      (format-color 'red \"Fatal error: %s\" error-message)"
-  {:style/indent 2}
-  ([color-symb x]
-   {:pre [(symbol? color-symb)]}
-   (if (config/config-bool :mb-colorize-logs)
-     ((ns-resolve 'colorize.core color-symb) x)
-     x))
-  ([color-symb format-string & args]
-   (if (config/config-bool :mb-colorize-logs)
-     (format-color color-symb (apply format format-string args))
-     (apply format format-string args))))
+  (if (config/config-bool :mb-colorize-logs)
+    (fn
+      ([color-symb x]
+       {:pre [(symbol? color-symb)]}
+       ((ns-resolve 'colorize.core color-symb) x))
+      ([color-symb format-string & args]
+       (format-color color-symb (apply format format-string args))))
+    (fn
+      ([_ x] x)
+      ([_ format-string & args] (apply format format-string args)))))
 
 (defn pprint-to-str
   "Returns the output of pretty-printing X as a string.
