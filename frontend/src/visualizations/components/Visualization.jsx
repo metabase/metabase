@@ -1,8 +1,6 @@
 import React, { Component, PropTypes } from "react";
 
-import visualizations from ".";
-
-import { getSettingsForVisualization } from "metabase/lib/visualization_settings";
+import visualizations from "metabase/visualizations";
 
 import _ from "underscore";
 import d3 from "d3";
@@ -98,15 +96,6 @@ export default class Visualization extends Component {
         } else {
             let { series } = this.props;
             let CardVisualization = visualizations.get(series[0].card.display);
-
-            series = series.map(s => ({
-                ...s,
-                card: {
-                    ...s.card,
-                    visualization_settings: getSettingsForVisualization(s.card.visualization_settings, s.card.display)
-                }
-            }));
-
             return (
                 <CardVisualization
                     {...this.props}

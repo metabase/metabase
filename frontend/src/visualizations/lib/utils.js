@@ -98,7 +98,7 @@ export function getCardColors(card) {
         chartColor = settings.line.lineColor;
         chartColorList = settings.line.colors;
     }
-    return _.uniq([chartColor || colors.normal[0]].concat(chartColorList || colors.normal));
+    return _.uniq([chartColor || Object.values(colors.normal)[0]].concat(chartColorList || Object.values(colors.normal)));
 }
 
 export function isSameSeries(seriesA, seriesB) {

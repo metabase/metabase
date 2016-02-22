@@ -5,7 +5,7 @@ import ReactDOM from "react-dom";
 
 import visualizations from "metabase/visualizations";
 
-import Visualization from "metabase/visualizations/Visualization.jsx";
+import Visualization from "metabase/visualizations/components/Visualization.jsx";
 import LegendHeader from "metabase/visualizations/components/LegendHeader.jsx";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 
@@ -113,7 +113,7 @@ export default class DashCard extends Component {
 
     render() {
         const { dashcard, onAddSeries, onRemove, isEditing } = this.props;
-        const series = [{ card: dashcard.card }].concat(dashcard.series || []);
+        const series = [dashcard.card].concat(dashcard.series || []).map(card => ({ card }));
         const CardVisualization = visualizations.get(series[0].card.display);
         return (
             <div className={"Card bordered rounded flex flex-column " + cx({ "Card--recent": dashcard.isAdded })}>

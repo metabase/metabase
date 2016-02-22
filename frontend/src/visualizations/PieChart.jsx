@@ -3,7 +3,7 @@ import React, { Component, PropTypes } from "react";
 import CardRenderer from "./components/CardRenderer.jsx";
 import ChartTooltip from "./components/ChartTooltip.jsx";
 
-import { MinColumnsError } from "./errors";
+import { MinColumnsError } from "metabase/visualizations/lib/errors";
 
 export default class PieChart extends Component {
     static displayName = "Pie";

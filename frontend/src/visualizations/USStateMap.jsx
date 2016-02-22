@@ -5,7 +5,7 @@ import ChartTooltip from "./components/ChartTooltip.jsx";
 
 import { isString } from "metabase/lib/schema_metadata";
 
-import { MinColumnsError } from "./errors";
+import { MinColumnsError } from "metabase/visualizations/lib/errors";
 
 export default class USStateMap extends Component {
     static displayName = "US State Map";

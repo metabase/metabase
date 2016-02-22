@@ -1,13 +1,14 @@
 import React, { Component, PropTypes } from "react";
 
-import Visualization from "metabase/visualizations/Visualization.jsx";
+import Visualization from "metabase/visualizations/components/Visualization.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import CheckBox from "metabase/components/CheckBox.jsx";
 
-import { isNumeric, isDate } from "metabase/lib/schema_metadata";
 import Query from "metabase/lib/query";
+
+import visualizations from "metabase/visualizations";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -23,25 +24,6 @@ function getQueryColumns(card, databases) {
         return null;
     }
     return Query.getQueryColumns(table, query);
-}
-
-function columnsAreCompatible(colsA, colsB) {
-    if (!(colsA && colsB && colsA.length >= 2 && colsB.length >= 2)) {
-        return false;
-    }
-    // second column must be numeric
-    if (!isNumeric(colsA[1]) || !isNumeric(colsB[1])) {
-        return false;
-    }
-    // both or neither must be dates
-    if (isDate(colsA[0]) !== isDate(colsB[0])) {
-        return false;
-    }
-    // both or neither must be numeric
-    if (isNumeric(colsA[0]) !== isNumeric(colsB[0])) {
-        return false;
-    }
-    return true;
 }
 
 export default class AddSeriesModal extends Component {
@@ -87,15 +69,20 @@ export default class AddSeriesModal extends Component {
     }
 
     async onCardChange(card, e) {
+        const { dashcard } = this.props;
+        let CardVisualization = visualizations.get(dashcard.card.display);
         try {
             if (e.target.checked) {
                 if (this.props.cardData[card.id] === undefined) {
                     this.setState({ state: "loading" });
                     await this.props.fetchCardData(card);
                 }
-                let sourceDataset = this.props.cardData[this.props.dashcard.card.id];
+                let sourceDataset = this.props.cardData[dashcard.card.id];
                 let seriesDataset = this.props.cardData[card.id];
-                if (columnsAreCompatible(sourceDataset.data.cols, seriesDataset.data.cols)) {
+                if (CardVisualization.seriesAreCompatible(
+                    { card: dashcard.card, data: sourceDataset.data },
+                    { card: card, data: seriesDataset.data }
+                )) {
                     this.setState({
                         state: null,
                         series: this.state.series.concat(card)
@@ -127,8 +114,13 @@ export default class AddSeriesModal extends Component {
         const { cards, dashcard, databases, cardData } = this.props;
         const { searchValue } = this.state;
 
-        const dataset = cardData[dashcard.card.id];
-        const dashcardCols = dataset && dataset.data.cols;
+        const initialSeries = {
+            card: dashcard.card,
+            data: cardData[dashcard.card.id] && cardData[dashcard.card.id].data
+        };
+
+        const CardVisualization = visualizations.get(dashcard.card.display);
+
         return cards.filter(card => {
             try {
                 // filter out the card itself
@@ -136,15 +128,9 @@ export default class AddSeriesModal extends Component {
                     return false;
                 }
                 if (card.dataset_query.type === "query") {
-                    // no bare rows
-                    if (card.dataset_query.query.aggregation[0] === "rows") {
-                        return false;
-                    }
-                    // must have one and only one breakout
-                    if (card.dataset_query.query.breakout.length !== 1) {
-                        return false;
-                    }
-                    if (!columnsAreCompatible(dashcardCols, getQueryColumns(card, databases))) {
+                    if (!CardVisualization.seriesAreCompatible(initialSeries,
+                        { card: card, data: { cols: getQueryColumns(card, databases) } }
+                    )) {
                         return false;
                     }
                 }
@@ -199,11 +185,12 @@ export default class AddSeriesModal extends Component {
             <div className="absolute top left bottom right flex">
                 <div className="flex flex-column flex-full">
                     <div className="flex-no-shrink h3 pl4 pt4 pb1 text-bold">Add data</div>
-                    <div className="flex-full relative">
+                    <div className="flex-full mx1 relative">
                         <Visualization
                             className="absolute top left bottom right"
                             series={series}
                             isDashboard={true}
+                            isMultiseries={true}
                         />
                         { this.state.state &&
                             <div className="absolute top left bottom right flex layout-centered" style={{ backgroundColor: "rgba(255,255,255,0.80)" }}>
@@ -227,9 +214,9 @@ export default class AddSeriesModal extends Component {
                     </div>
                     <LoadingAndErrorWrapper className="flex flex-full" loading={!filteredCards} error={error} noBackground>
                     { () =>
-                        <ul className="flex-full scroll-y">
+                        <ul className="flex-full scroll-y scroll-show pr1">
                         {filteredCards.map(card =>
-                            <li key={card.id} className={cx("my1 px2 py1 flex align-center", { disabled: badCards[card.id] })}>
+                            <li key={card.id} className={cx("my1 pl2 py1 flex align-center", { disabled: badCards[card.id] })}>
                                 <span className="px1 flex-no-shrink">
                                     <CheckBox checked={enabledCards[card.id]} onChange={this.onCardChange.bind(this, card)}/>
                                 </span>

@@ -4,7 +4,7 @@ import CardRenderer from "./components/CardRenderer.jsx";
 
 import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 
-import { LatitudeLongitudeError } from "./errors";
+import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
 
 export default class PinMap extends Component {
     static displayName = "Pin Map";

@@ -4,14 +4,41 @@ import CardRenderer from "./CardRenderer.jsx";
 import LegendHeader from "./LegendHeader.jsx";
 import ChartTooltip from "./ChartTooltip.jsx";
 
-import { isDimension, isString } from "metabase/lib/schema_metadata";
+import { isNumeric, isDate, isDimension, isString } from "metabase/lib/schema_metadata";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
+
+import { MinColumnsError, MinRowsError } from "metabase/visualizations/lib/errors";
 
 import crossfilter from "crossfilter";
 import _ from "underscore";
 import cx from "classnames";
 
 export default class LineAreaBarChart extends Component {
+    static noHeader = true;
+    static supportsSeries = true;
+
+    static isSensible(cols, rows) {
+        return rows.length > 1 && cols.length > 1;
+    }
+
+    static checkRenderable(cols, rows) {
+        if (cols.length < 2) { throw new MinColumnsError(2, cols.length); }
+        if (rows.length < 1) { throw new MinRowsError(1, rows.length); }
+    }
+
+    static seriesAreCompatible(initialSeries, newSeries) {
+        // no bare rows
+        if (newSeries.card.dataset_query.query.aggregation[0] === "rows") {
+            return false;
+        }
+        // must have one and only one breakout
+        if (newSeries.card.dataset_query.query.breakout.length !== 1) {
+            return false;
+        }
+
+        return columnsAreCompatible(initialSeries.data.cols, newSeries.data.cols);
+    }
+
     constructor(props, context) {
         super(props, context);
         this.state = {
@@ -85,6 +112,9 @@ export default class LineAreaBarChart extends Component {
     render() {
         let { hovered, isDashboard, onAddSeries, extraActions } = this.props;
         let { series, isMultiseries } = this.state;
+
+        const chartType = this.constructor.identifier;
+
         return (
             <div className={cx("flex flex-column p1", this.getHoverClasses(), this.props.className)}>
                 { (isDashboard || isMultiseries) &&
@@ -98,6 +128,7 @@ export default class LineAreaBarChart extends Component {
                 }
                 <CardRenderer
                     {...this.props}
+                    chartType={chartType}
                     series={series}
                     className="flex-full"
                 />
@@ -105,4 +136,23 @@ export default class LineAreaBarChart extends Component {
             </div>
         );
     }
+}
+
+function columnsAreCompatible(colsA, colsB) {
+    if (!(colsA && colsB && colsA.length >= 2 && colsB.length >= 2)) {
+        return false;
+    }
+    // second column must be numeric
+    if (!isNumeric(colsA[1]) || !isNumeric(colsB[1])) {
+        return false;
+    }
+    // both or neither must be dates
+    if (isDate(colsA[0]) !== isDate(colsB[0])) {
+        return false;
+    }
+    // both or neither must be numeric
+    if (isNumeric(colsA[0]) !== isNumeric(colsB[0])) {
+        return false;
+    }
+    return true;
 }

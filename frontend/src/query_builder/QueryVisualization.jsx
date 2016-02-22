@@ -7,7 +7,7 @@ import QueryVisualizationObjectDetailTable from './QueryVisualizationObjectDetai
 import RunButton from './RunButton.jsx';
 import VisualizationSettings from './VisualizationSettings.jsx';
 
-import Visualization from "metabase/visualizations/Visualization.jsx";
+import Visualization from "metabase/visualizations/components/Visualization.jsx";
 
 import MetabaseSettings from "metabase/lib/settings";
 import Modal from "metabase/components/Modal.jsx";

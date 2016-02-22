@@ -462,7 +462,7 @@ export let CardRenderer = {
         chart.render();
     },
 
-    lineAreaBar(element, chartType, { series, onHoverChange, onRender }) {
+    lineAreaBar(element, chartType, { series, onHoverChange, onRender, isScalarSeries }) {
         const colors = getCardColors(series[0].card);
 
         const isTimeseries = dimensionIsTimeseries(series[0].data);
@@ -517,6 +517,10 @@ export let CardRenderer = {
             yAxisSplit = computeSplit(yExtents);
         }
 
+        if (isScalarSeries) {
+            xValues = datas.map(data => data[0][0]);
+        }
+
         let parent;
         if (groups.length > 1) {
             parent = initializeChart(series[0].card, element, "compositeChart")
@@ -564,10 +568,10 @@ export let CardRenderer = {
 
         let chart;
         if (charts.length > 1) {
-            chart = parent;
-            chart
-                .compose(charts)
-                .on("renderlet.grouped-bar", function (chart) {
+            chart = parent.compose(charts);
+
+            if (!isScalarSeries) {
+                chart.on("renderlet.grouped-bar", function (chart) {
                     // HACK: dc.js doesn't support grouped bar charts so we need to manually resize/reposition them
                     // https://github.com/dc-js/dc.js/issues/558
                     let barCharts = chart.selectAll(".sub rect:first-child")[0].map(node => node.parentNode.parentNode.parentNode);
@@ -586,6 +590,7 @@ export let CardRenderer = {
                         });
                     }
                 })
+            }
 
             // HACK: compositeChart + ordinal X axis shenanigans
             if (chartType === "bar") {
