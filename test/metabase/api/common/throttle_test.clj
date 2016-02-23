@@ -47,6 +47,7 @@
   ([n k]
    (let [attempt-once (fn []
                       (try
+                        (Thread/sleep 1)
                         (throttle/check test-throttler k)
                         :success
                         (catch Throwable e
