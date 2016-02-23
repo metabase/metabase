@@ -73,7 +73,7 @@ var config = module.exports = {
             // { test: /\.css$/, loader: 'style!css!cssnext' }
         ],
         noParse: [
-            /node_modules\/(angular|ng-|ace|moment|underscore|d3-tip)/ // doesn't include 'crossfilter', 'dc', and 'tether' due to use of 'require'
+            /node_modules\/(angular|ace|moment|underscore)/ // doesn't include 'crossfilter', 'dc', and 'tether' due to use of 'require'
         ]
     },
 
@@ -88,10 +88,8 @@ var config = module.exports = {
             'angular-resource':     __dirname + '/node_modules/angular-resource/angular-resource.min.js',
             'angular-route':        __dirname + '/node_modules/angular-route/angular-route.min.js',
             // angular 3rd-party
-            'angular-ui-bootstrap': __dirname + '/node_modules/angular-ui-bootstrap/ui-bootstrap-tpls.min.js',
             'angular-cookie':       __dirname + '/node_modules/angular-cookie/angular-cookie.min.js',
             'angular-http-auth':    __dirname + '/node_modules/angular-http-auth/src/http-auth-interceptor.js',
-            'angular-ui-ace':       __dirname + '/node_modules/angular-ui-ace/src/ui-ace.js',
             // ace
             'ace/ace':              __dirname + '/node_modules/ace-builds/src-min-noconflict/ace.js',
             'ace/ext-language_tools':__dirname+ '/node_modules/ace-builds/src-min-noconflict/ext-language_tools.js',
@@ -106,7 +104,6 @@ var config = module.exports = {
             'd3':                   __dirname + '/node_modules/d3/d3.min.js',
             'crossfilter':          __dirname + '/node_modules/crossfilter/index.js',
             'dc':                   __dirname + '/node_modules/dc/dc.min.js',
-            'd3-tip':               __dirname + '/node_modules/d3-tip/index.js',
             'humanize':             __dirname + '/node_modules/humanize-plus/public/src/humanize.js'
         }
     },
