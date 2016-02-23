@@ -206,8 +206,9 @@
          (with-connection [_ database]
            (f)))")
 
-  (table-rows-seq ^clojure.lang.Sequential [this, ^DatabaseInstance database, ^String table-name]
-    "*OPTIONAL*. Return a sequence of all the rows in a table with a given TABLE-NAME.
+  (table-rows-seq ^clojure.lang.Sequential [this, ^DatabaseInstance database, ^Map table]
+    "*OPTIONAL*. Return a sequence of all the rows in a given TABLE.
+     The TABLE argument is a Map that requires the `:name` key as the table name and optionally uses the `:schema` key for databases that support schemas.
      Currently, this is only used for iterating over the values in a `_metabase_metadata` table. As such, the results are not expected to be returned lazily."))
 
 

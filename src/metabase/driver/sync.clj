@@ -230,7 +230,7 @@
 
    This functionality is currently only used by the Sample Dataset. In order to use this functionality, drivers must implement optional fn `:table-rows-seq`."
   [driver database _metabase_metadata]
-  (doseq [{:keys [keypath value]} (driver/table-rows-seq driver database (:name _metabase_metadata))]
+  (doseq [{:keys [keypath value]} (driver/table-rows-seq driver database _metabase_metadata)]
     (let [[_ table-name field-name k] (re-matches #"^([^.]+)\.(?:([^.]+)\.)?([^.]+)$" keypath)]
       (try (when (not= 1 (if field-name
                            (k/update Field

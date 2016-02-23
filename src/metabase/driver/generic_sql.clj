@@ -172,8 +172,8 @@
                                                (-fetch-page (inc page-num)))))))]
     (fetch-page 0)))
 
-(defn- table-rows-seq [_ database table-name]
-  (k/select (korma-entity database {:table-name table-name})))
+(defn- table-rows-seq [_ database table]
+  (k/select (korma-entity database table)))
 
 (defn- field-avg-length [driver field]
   (or (some-> (korma-entity (field/table field))
