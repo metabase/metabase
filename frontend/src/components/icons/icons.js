@@ -67,14 +67,4 @@ angular.module('metabase.components')
             };
         });
 
-    angular.module('metabase.components')
-        .directive('mbLoadingIcon', function () {
-            return {
-                restrict: 'E',
-                templateUrl: '/app/components/icons/loading.html',
-                scope: ICON_SCOPE,
-                compile: iconCompile
-            };
-        });
-
 }());
