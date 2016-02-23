@@ -123,8 +123,7 @@ export function colorShade(hex, shade = 0) {
     let components = (match[1] != null ? match.slice(1,4) : match.slice(4,7)).map((d) => parseInt(d, 16))
     let min = Math.min(...components);
     let max = Math.max(...components);
-    return "#" + components.map(c => {
-        console.log(shade, c, min, max, c * (max - min) / max * shade);
-        return Math.round(min + (max - min) * shade * (c / 255)).toString(16)
-    }).join("");
+    return "#" + components.map(c =>
+        Math.round(min + (max - min) * shade * (c / 255)).toString(16)
+    ).join("");
 }
