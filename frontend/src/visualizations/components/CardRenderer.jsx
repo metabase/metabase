@@ -72,7 +72,7 @@ export default class CardRenderer extends Component {
 
                     charting.CardRenderer[this.props.chartType](element, { ...this.props, card, updateMapCenter, updateMapZoom });
                 } else {
-                    charting.CardRenderer[this.props.chartType](element, { ...this.props, series });
+                    charting.CardRenderer[this.props.chartType](element, { ...this.props, series, card: series[0].card, data: series[0].data });
                 }
             }
         } catch (err) {
