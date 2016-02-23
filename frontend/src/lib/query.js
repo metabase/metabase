@@ -275,7 +275,7 @@ var Query = {
         if (queryFilters.length === 0) {
             queryFilters = ["AND", [null, null, null]];
         } else {
-            queryFilters.push([null, null, null]);
+            queryFilters = queryFilters.concat([[null, null, null]]);
         }
 
         query.filter = queryFilters;
