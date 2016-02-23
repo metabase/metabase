@@ -878,8 +878,7 @@ CardControllers.controller('CardDetail', [
             setDatabase(sampleDataset.id);
         }
 
-        // needs to be performed asynchronously otherwise we get weird infinite recursion
-        var updateUrl = (replaceState) => setTimeout(function() {
+        function updateUrl(replaceState) {
             // don't update the URL if we're currently showing the tutorial
             if (isShowingTutorial) {
                 return;
@@ -901,12 +900,20 @@ CardControllers.controller('CardDetail', [
             // if the serialized card is identical replace the previous state instead of adding a new one
             // e.x. when saving a new card we want to replace the state and URL with one with the new card ID
             replaceState = replaceState || (window.history.state && window.history.state.serializedCard === newState.serializedCard);
-            if (replaceState) {
-                window.history.replaceState(newState, null, url);
-            } else {
-                window.history.pushState(newState, null, url);
-            }
-        }, 0);
+
+            // ensure the digest cycle is run, otherwise pending location changes will prevent navigation away from query builder on the first click
+            $scope.$apply(() => {
+                // prevents infinite digest loop
+                // https://stackoverflow.com/questions/22914228/successfully-call-history-pushstate-from-angular-without-inifinite-digest
+                $location.url(url);
+                $location.replace();
+                if (replaceState) {
+                    window.history.replaceState(newState, null, $location.absUrl());
+                } else {
+                    window.history.pushState(newState, null, $location.absUrl());
+                }
+            });
+        }
 
         function popStateListener(e) {
             if (e.state && e.state.card) {
