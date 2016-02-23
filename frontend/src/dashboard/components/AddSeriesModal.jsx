@@ -98,7 +98,12 @@ export default class AddSeriesModal extends Component {
                 this.setState({ series: this.state.series.filter(c => c.id !== card.id) });
             }
         } catch (e) {
-            console.error("onCardChange", e)
+            console.error("onCardChange", e);
+            this.setState({
+                state: "incompatible",
+                badCards: { ...this.state.badCards, [card.id]: true }
+            });
+            setTimeout(() => this.setState({ state: null }), 2000);
         }
     }
 

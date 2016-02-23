@@ -27,13 +27,15 @@ export default class LineAreaBarChart extends Component {
     }
 
     static seriesAreCompatible(initialSeries, newSeries) {
-        // no bare rows
-        if (newSeries.card.dataset_query.query.aggregation[0] === "rows") {
-            return false;
-        }
-        // must have one and only one breakout
-        if (newSeries.card.dataset_query.query.breakout.length !== 1) {
-            return false;
+        if (newSeries.card.dataset_query.type === "query") {
+            // no bare rows
+            if (newSeries.card.dataset_query.query.aggregation[0] === "rows") {
+                return false;
+            }
+            // must have one and only one breakout
+            if (newSeries.card.dataset_query.query.breakout.length !== 1) {
+                return false;
+            }
         }
 
         return columnsAreCompatible(initialSeries.data.cols, newSeries.data.cols);
