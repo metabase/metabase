@@ -1,8 +1,4 @@
 
-.modal { /* used by angular-ui-bootstrap */
-    outline: none;
-}
-
 .Modal {
   position: fixed;
 
@@ -33,7 +29,6 @@
   width: 480px;
 }
 
-.modal-backdrop, /* used by angular-ui-bootstrap */
 .Modal-backdrop {
     position: fixed;
     top: 0;
