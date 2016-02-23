@@ -121,8 +121,8 @@
     transition: transform 0s;
 }
 
-.Dash--editing .DashCard.react-draggable {
-    cursor: url(/app/components/icons/assets/cursor_move.svg) 16 16, auto;
+.Dash--editing .DashCard {
+    cursor: move;
 }
 
 .Dash--editing .DashCard .react-resizable-handle {
@@ -131,7 +131,7 @@
     height: 40px;
     bottom: 0;
     right: 0;
-    cursor: url(/app/components/icons/assets/cursor_resize.svg) 16 16, auto;
+    cursor: nwse-resize;
 }
 
 .Dash--editing .react-grid-placeholder {
