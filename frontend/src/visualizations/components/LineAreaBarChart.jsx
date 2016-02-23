@@ -116,7 +116,7 @@ export default class LineAreaBarChart extends Component {
     }
 
     render() {
-        let { hovered, isDashboard, onAddSeries, extraActions, allowSplitAxis } = this.props;
+        let { hovered, isDashboard, onAddSeries, onRemoveSeries, extraActions, allowSplitAxis } = this.props;
         let { series, isMultiseries } = this.state;
 
         const chartType = this.constructor.identifier;
@@ -127,6 +127,7 @@ export default class LineAreaBarChart extends Component {
                     <LegendHeader
                         series={series}
                         onAddSeries={isMultiseries ? undefined : onAddSeries}
+                        onRemoveSeries={onRemoveSeries}
                         extraActions={extraActions}
                         hovered={hovered}
                         onHoverChange={this.props.onHoverChange}

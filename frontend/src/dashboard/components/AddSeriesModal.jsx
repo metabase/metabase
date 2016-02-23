@@ -37,7 +37,7 @@ export default class AddSeriesModal extends Component {
             badCards: {}
         };
 
-        _.bindAll(this, "onSearchChange", "onDone", "filteredCards")
+        _.bindAll(this, "onSearchChange", "onDone", "filteredCards", "onRemoveSeries")
     }
 
     static propTypes = {
@@ -105,6 +105,10 @@ export default class AddSeriesModal extends Component {
             });
             setTimeout(() => this.setState({ state: null }), 2000);
         }
+    }
+
+    onRemoveSeries(card) {
+        this.setState({ series: this.state.series.filter(c => c.id !== card.id) });
     }
 
     onDone() {
@@ -189,13 +193,14 @@ export default class AddSeriesModal extends Component {
         return (
             <div className="absolute top left bottom right flex">
                 <div className="flex flex-column flex-full">
-                    <div className="flex-no-shrink h3 pl4 pt4 pb1 text-bold">Add data</div>
+                    <div className="flex-no-shrink h3 pl4 pt4 pb1 text-bold">Edit data</div>
                     <div className="flex-full mx1 relative">
                         <Visualization
                             className="absolute top left bottom right"
                             series={series}
                             isDashboard={true}
                             isMultiseries={true}
+                            onRemoveSeries={this.onRemoveSeries}
                         />
                         { this.state.state &&
                             <div className="absolute top left bottom right flex layout-centered" style={{ backgroundColor: "rgba(255,255,255,0.80)" }}>
