@@ -1,45 +1,68 @@
 /*global $clamp*/
 
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
-import Visualization from "metabase/visualizations/Visualization.jsx";
+import visualizations from "metabase/visualizations";
+
+import Visualization from "metabase/visualizations/components/Visualization.jsx";
+import LegendHeader from "metabase/visualizations/components/LegendHeader.jsx";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 
-import Urls from "metabase/lib/urls";
-
-import { fetchDashCardData, markNewCardSeen } from "../actions";
+import Icon from "metabase/components/Icon.jsx";
 
 import cx from "classnames";
+import _ from "underscore";
 
 export default class DashCard extends Component {
     constructor(props, context) {
         super(props, context);
-        this.state = { error: null };
+
+        this.state = {
+            error: null
+        };
     }
 
     static propTypes = {
-        dispatch: PropTypes.func.isRequired,
-        dashcard: PropTypes.object.isRequired
+        dashcard: PropTypes.object.isRequired,
+        cardData: PropTypes.object.isRequired,
+
+        markNewCardSeen: PropTypes.func.isRequired,
+        fetchCardData: PropTypes.func.isRequired,
     };
 
     async componentDidMount() {
+        const { dashcard } = this.props;
+
         // HACK: way to scroll to a newly added card
-        if (this.props.dashcard.justAdded) {
-            React.findDOMNode(this).scrollIntoView();
-            this.props.dispatch(markNewCardSeen(this.props.dashcard.id));
+        if (dashcard.justAdded) {
+            ReactDOM.findDOMNode(this).scrollIntoView();
+            this.props.markNewCardSeen(dashcard.id);
         }
 
         try {
-            await this.props.dispatch(fetchDashCardData(this.props.dashcard.id));
+            await Promise.all([
+                this.props.fetchCardData(dashcard.card)
+            ].concat(
+                dashcard.series && dashcard.series.map(this.props.fetchCardData)
+            ));
         } catch (error) {
+            console.error("DashCard error", error)
             this.setState({ error });
         }
     }
 
-    renderCard() {
-        let { card, dataset } = this.props.dashcard;
-        let data = (dataset && dataset.data);
-        let error = (dataset && dataset.error) || this.state.error;
+    renderCard(CardVisualization) {
+        const { dashcard, cardData, isEditing, onAddSeries } = this.props;
+        const cards = [dashcard.card].concat(dashcard.series || []);
+        const series = cards
+            .map(card => ({
+                card: card,
+                data: cardData[card.id] && cardData[card.id].data,
+                error: cardData[card.id] && cardData[card.id].error,
+            }));
+        const errors = series.map(s => s.error).filter(e => e);
+        const error = errors[0] || this.state.error;
 
         if (error) {
             let message;
@@ -59,8 +82,16 @@ export default class DashCard extends Component {
             );
         }
 
-        if (card && data) {
-            return <Visualization className="flex-full" card={card} data={data} isDashboard={true} />;
+        if (series.length > 0 && _.every(series, (s) => s.data)) {
+            return (
+                <Visualization
+                    className="flex-full"
+                    series={series}
+                    isDashboard={true}
+                    onAddSeries={isEditing && CardVisualization.supportsSeries ? onAddSeries : undefined}
+                    extraActions={isEditing ? <ExtraActions onRemove={this.props.onRemove} /> : undefined}
+                />
+            );
         }
 
         return (
@@ -72,26 +103,38 @@ export default class DashCard extends Component {
     }
 
     componentDidUpdate() {
-        let titleElement = React.findDOMNode(this.refs.title);
-        // have to restore the text in case we previously clamped it :-/
-        titleElement.textContent = this.props.dashcard.card.name;
-        $clamp(titleElement, { clamp: 2 });
+        let titleElement = ReactDOM.findDOMNode(this.refs.title);
+        if (titleElement) {
+            // have to restore the text in case we previously clamped it :-/
+            titleElement.textContent = this.props.dashcard.card.name;
+            $clamp(titleElement, { clamp: 2 });
+        }
     }
 
     render() {
-        let { card } = this.props.dashcard;
-        let recent = this.props.dashcard.isAdded;
+        const { dashcard, onAddSeries, onRemove, isEditing } = this.props;
+        const series = [dashcard.card].concat(dashcard.series || []).map(card => ({ card }));
+        const CardVisualization = visualizations.get(series[0].card.display);
         return (
-            <div className={"Card bordered rounded flex flex-column " + cx({ "Card--recent": recent })}>
-                <div className="Card-heading my1 px2">
-                    <a data-metabase-event={"Dashboard;Card Link;"+card.display} className="Card-title link" href={Urls.card(card.id)}>
-                        <div ref="title" className="h3 text-normal my1">
-                            {card.name}
-                        </div>
-                    </a>
-                </div>
-                {this.renderCard()}
+            <div className={"Card bordered rounded flex flex-column " + cx({ "Card--recent": dashcard.isAdded })}>
+                { !CardVisualization.noHeader &&
+                    <div className="p1">
+                        <LegendHeader
+                            series={series}
+                            onAddSeries={isEditing && CardVisualization.supportsSeries ? onAddSeries : undefined}
+                            extraActions={isEditing ? <ExtraActions onRemove={onRemove} /> : undefined}
+                        />
+                    </div>
+                }
+                {this.renderCard(CardVisualization)}
             </div>
         );
     }
 }
+
+const ExtraActions = ({ onRemove }) =>
+    <span className="text-brand">
+        <a data-metabase-event="Dashboard;Remove Card Modal" href="#" onClick={onRemove}>
+            <Icon className="my1" name="trash" width="18" height="18" />
+        </a>
+    </span>

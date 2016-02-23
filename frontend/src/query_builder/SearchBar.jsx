@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 export default class SearchBar extends React.Component {
     constructor(props, context) {
@@ -12,7 +13,7 @@ export default class SearchBar extends React.Component {
     };
 
     handleInputChange() {
-        this.props.onFilter(React.findDOMNode(this.refs.filterTextInput).value);
+        this.props.onFilter(ReactDOM.findDOMNode(this.refs.filterTextInput).value);
     }
 
     render() {

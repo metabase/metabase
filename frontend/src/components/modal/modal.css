@@ -35,7 +35,7 @@
 
 .modal-backdrop, /* used by angular-ui-bootstrap */
 .Modal-backdrop {
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     right: 0;
@@ -47,11 +47,13 @@
 
 /* backdrop */
 
+.Modal-backdrop.Modal-appear,
 .Modal-backdrop.Modal-enter {
   transition: background-color 200ms ease-in-out;
   background-color: rgba(255, 255, 255, 0.01);
 }
 
+.Modal-backdrop.Modal-appear-active,
 .Modal-backdrop.Modal-enter-active {
   background-color: rgba(255, 255, 255, 0.6);
 }
@@ -67,12 +69,14 @@
 
 /* modal */
 
+.Modal-backdrop.Modal-appear .Modal,
 .Modal-backdrop.Modal-enter .Modal {
   transition: opacity 200ms linear, transform 200ms ease-in-out;
   opacity: 0.01;
   transform: translate(-50%, -55%);
 }
 
+.Modal-backdrop.Modal-appear-active .Modal,
 .Modal-backdrop.Modal-enter-active .Modal {
   opacity: 1;
   transform: translate(-50%, -50%);

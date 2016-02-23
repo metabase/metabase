@@ -5,33 +5,39 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.j
 import ModalContent from "metabase/components/ModalContent.jsx";
 import SortableItemList from "metabase/components/SortableItemList.jsx";
 
-import { fetchCards, setEditingDashboard, addCardToDashboard } from "../actions";
-
 
 export default class AddToDashSelectQuestionModal extends Component {
     constructor(props, context) {
         super(props, context);
-        this.state = { error: null };
+
+        this.state = {
+            error: null
+        };
     }
 
     static propTypes = {
-        dispatch: PropTypes.func.isRequired,
         dashboard: PropTypes.object.isRequired,
         cards: PropTypes.array,
+
+        fetchCards: PropTypes.func.isRequired,
+        addCardToDashboard: PropTypes.func.isRequired,
+        setEditingDashboard: PropTypes.func.isRequired,
+
         onClose: PropTypes.func.isRequired
     };
 
     async componentDidMount() {
         try {
-            await this.props.dispatch(fetchCards());
+            await this.props.fetchCards();
         } catch (error) {
+            console.error(error);
             this.setState({ error });
         }
     }
 
     onAdd(card) {
-        this.props.dispatch(addCardToDashboard({ dashId: this.props.dashboard.id, cardId: card.id }));
-        this.props.dispatch(setEditingDashboard(true));
+        this.props.addCardToDashboard({ dashId: this.props.dashboard.id, cardId: card.id });
+        this.props.setEditingDashboard(true);
         this.props.onClose();
         MetabaseAnalytics.trackEvent("Dashboard", "Add Card");
     }

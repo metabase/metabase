@@ -1,10 +1,11 @@
 import React, { Component, PropTypes } from "react";
 
-import CardRenderer from "./CardRenderer.jsx";
+import CardRenderer from "./components/CardRenderer.jsx";
+import ChartTooltip from "./components/ChartTooltip.jsx";
 
 import { isString } from "metabase/lib/schema_metadata";
 
-import { MinColumnsError } from "./errors";
+import { MinColumnsError } from "metabase/visualizations/lib/errors";
 
 export default class USStateMap extends Component {
     static displayName = "US State Map";
@@ -20,8 +21,12 @@ export default class USStateMap extends Component {
     }
 
     render() {
+        const { series, hovered, className } = this.props;
         return (
-            <CardRenderer className="flex-full" {...this.props} />
+            <div className={"flex " + className}>
+                <CardRenderer {...this.props} className="flex-full" chartType="state" />
+                <ChartTooltip series={series} hovered={hovered} pinToMouse={true} />
+            </div>
         );
     }
 }

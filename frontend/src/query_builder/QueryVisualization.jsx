@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import Icon from "metabase/components/Icon.jsx";
 import LoadingSpinner from 'metabase/components/LoadingSpinner.jsx';
@@ -6,7 +7,7 @@ import QueryVisualizationObjectDetailTable from './QueryVisualizationObjectDetai
 import RunButton from './RunButton.jsx';
 import VisualizationSettings from './VisualizationSettings.jsx';
 
-import Visualization from "metabase/visualizations/Visualization.jsx";
+import Visualization from "metabase/visualizations/components/Visualization.jsx";
 
 import MetabaseSettings from "metabase/lib/settings";
 import Modal from "metabase/components/Modal.jsx";
@@ -206,8 +207,8 @@ export default class QueryVisualization extends Component {
 
     showDetailError() {
         if (this._detailErrorLink && this._detailErrorBody ) {
-            this._detailErrorLink.getDOMNode().style.display = "none";
-            this._detailErrorBody.getDOMNode().style.display = "inherit";
+            ReactDOM.findDOMNode(this._detailErrorLink).style.display = "none";
+            ReactDOM.findDOMNode(this._detailErrorBody).style.display = "inherit";
         }
     }
 
@@ -332,8 +333,8 @@ export default class QueryVisualization extends Component {
                     };
                     viz = (
                         <Visualization
-                            card={card}
-                            data={this.props.result.data}
+                            className="full"
+                            series={[{ card: card, data: this.props.result.data }]}
                             // Table:
                             setSortFn={this.props.setSortFn}
                             cellIsClickableFn={this.props.cellIsClickableFn}

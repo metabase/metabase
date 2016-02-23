@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import AggregationWidget from './AggregationWidget.jsx';
 import BreakoutWidget from './BreakoutWidget.jsx';
@@ -221,7 +222,7 @@ export default class GuiQueryEditor extends Component {
                 <PopoverWithTrigger ref="filterPopover"
                                     triggerElement={addFilterButton}
                                     triggerClasses="flex align-center"
-                                    getTriggerTarget={() => this.refs.addFilterTarget}
+                                    getTarget={() => this.refs.addFilterTarget}
                 >
                     <FilterPopover
                         isNew={true}
@@ -469,10 +470,10 @@ export default class GuiQueryEditor extends Component {
     componentDidUpdate() {
         // HACK: magic number "5" accounts for the borders between the sections?
         let contentWidth = ["data", "filter", "view", "sortLimit"].reduce((acc, ref) => {
-            let node = React.findDOMNode(this.refs[`${ref}Section`]);
+            let node = ReactDOM.findDOMNode(this.refs[`${ref}Section`]);
             return acc + (node ? node.offsetWidth : 0);
         }, 0) + 5;
-        let guiBuilderWidth = React.findDOMNode(this.refs.guiBuilder).offsetWidth;
+        let guiBuilderWidth = ReactDOM.findDOMNode(this.refs.guiBuilder).offsetWidth;
 
         let expanded = (contentWidth < guiBuilderWidth);
         if (this.state.expanded !== expanded) {

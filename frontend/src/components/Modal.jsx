@@ -1,17 +1,11 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
-import TimeoutTransitionGroup from "react-components/timeout-transition-group";
+import ReactCSSTransitionGroup from "react-addons-css-transition-group";
 
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper.jsx";
 
 export default class Modal extends Component {
-    constructor(props, context) {
-        super(props, context);
-        this.state = {
-            isOpen: false
-        };
-    }
-
     static propTypes = {
         isOpen: PropTypes.bool
     };
@@ -21,21 +15,11 @@ export default class Modal extends Component {
         isOpen: true
     };
 
-    componentWillReceiveProps(nextProps) {
-        this.setState({
-            isOpen: nextProps.isOpen
-        });
-    }
-
     componentWillMount() {
         this._modalElement = document.createElement('span');
         this._modalElement.className = 'ModalContainer';
         this._modalElement.id = Math.floor((Math.random() * 698754) + 1);
         document.querySelector('body').appendChild(this._modalElement);
-
-        // HACK: TimeoutTransitionGroup doesn't support "appear" transition
-        // NOTE: Use "appear" transition in ReactCSSTransitionGroup once upgraded to React 0.14+
-        setTimeout(() => this.setState({ isOpen: this.props.isOpen }), 1);
     }
 
     componentDidMount() {
@@ -47,7 +31,7 @@ export default class Modal extends Component {
     }
 
     componentWillUnmount() {
-        React.unmountComponentAtNode(this._modalElement);
+        ReactDOM.unmountComponentAtNode(this._modalElement);
         if (this._modalElement.parentNode) {
             this._modalElement.parentNode.removeChild(this._modalElement);
         }
@@ -70,14 +54,14 @@ export default class Modal extends Component {
     }
 
     _renderPopover() {
-        React.render(
-            <TimeoutTransitionGroup transitionName="Modal" enterTimeout={250} leaveTimeout={250}>
-                { this.state.isOpen &&
+        ReactDOM.render(
+            <ReactCSSTransitionGroup transitionName="Modal" transitionAppear={true} transitionAppearTimeout={250} transitionEnterTimeout={250} transitionLeaveTimeout={250}>
+                { this.props.isOpen &&
                     <div key="modal" className="Modal-backdrop" style={this.props.style}>
                         {this._modalComponent()}
                     </div>
                 }
-            </TimeoutTransitionGroup>
+            </ReactCSSTransitionGroup>
         , this._modalElement);
     }
 

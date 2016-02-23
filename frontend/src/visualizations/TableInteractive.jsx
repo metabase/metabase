@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import { Table, Column } from "fixed-data-table";
 
@@ -6,7 +7,6 @@ import Icon from "metabase/components/Icon.jsx";
 import Popover from "metabase/components/Popover.jsx";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import DataGrid from "metabase/lib/data_grid";
 import { formatValue, capitalize } from "metabase/lib/formatting";
 
 import _ from "underscore";
@@ -26,10 +26,8 @@ export default class TableInteractive extends Component {
         this.state = {
             width: 0,
             height: 0,
-            columnWidths: [],
             popover: null,
-            data: null,
-            rawData: null,
+            columnWidths: [],
             contentWidths: null
         };
 
@@ -40,11 +38,17 @@ export default class TableInteractive extends Component {
 
     static propTypes = {
         data: PropTypes.object.isRequired,
-        sort: PropTypes.array.isRequired,
-        setSortFn: PropTypes.func.isRequired,
-        isCellClickableFn: PropTypes.func.isRequired,
-        cellClickedFn: PropTypes.func.isRequired,
-        pivot: PropTypes.bool.isRequired
+        isPivoted: PropTypes.bool.isRequired,
+        sort: PropTypes.array,
+        setSortFn: PropTypes.func,
+        cellIsClickableFn: PropTypes.func.isRequired,
+        cellClickedFn: PropTypes.func.isRequired
+    };
+
+    static defaultProps = {
+        isPivoted: false,
+        cellIsClickableFn: () => false,
+        cellClickedFn: () => {}
     };
 
     componentWillMount() {
@@ -52,18 +56,11 @@ export default class TableInteractive extends Component {
     }
 
     componentWillReceiveProps(newProps) {
-        if (newProps.data && newProps.data !== this.state.rawData) {
-            let gridData = (newProps.pivot) ? DataGrid.pivot(newProps.data) : newProps.data;
+        if (JSON.stringify(this.props.data && this.props.data.cols) !== JSON.stringify(newProps.data && newProps.data.cols)) {
             this.setState({
-                data: gridData,
-                rawData: this.props.data
+                columnWidths: newProps.data.cols ? newProps.data.cols.map(col => 0) : [], // content cells don't wrap so this is fine
+                contentWidths: null
             });
-            if (JSON.stringify(this.state.data && this.state.data.cols) !== JSON.stringify(gridData.cols)) {
-                this.setState({
-                    columnWidths: gridData.cols.map(col => 0), // content cells don't wrap so this is fine
-                    contentWidths: null
-                });
-            }
         }
     }
 
@@ -87,7 +84,7 @@ export default class TableInteractive extends Component {
 
     componentDidUpdate() {
         if (!this.state.contentWidths) {
-            let tableElement = React.findDOMNode(this.refs.table);
+            let tableElement = ReactDOM.findDOMNode(this.refs.table);
             let contentWidths = [];
             let rowElements = tableElement.querySelectorAll(".fixedDataTableRowLayout_rowWrapper");
             for (var rowIndex = 0; rowIndex < rowElements.length; rowIndex++) {
@@ -96,7 +93,7 @@ export default class TableInteractive extends Component {
                     contentWidths[cellIndex] = Math.max(contentWidths[cellIndex] || 0, cellElements[cellIndex].offsetWidth);
                 }
             }
-            this.setState({ contentWidths }, () => this.calculateColumnWidths(this.state.data.cols));
+            this.setState({ contentWidths }, () => this.calculateColumnWidths(this.props.data.cols));
         }
     }
 
@@ -112,7 +109,7 @@ export default class TableInteractive extends Component {
     }
 
     calculateSizing(prevState, force) {
-        var element = React.findDOMNode(this);
+        var element = ReactDOM.findDOMNode(this);
 
         // account for padding of our parent
         var style = window.getComputedStyle(element.parentElement, null);
@@ -158,8 +155,8 @@ export default class TableInteractive extends Component {
         var row = {
             hasPopover: this.state.popover && this.state.popover.rowIndex === rowIndex || false
         };
-        for (var i = 0; i < this.state.data.rows[rowIndex].length; i++) {
-            row[i] = this.state.data.rows[rowIndex][i];
+        for (var i = 0; i < this.props.data.rows[rowIndex].length; i++) {
+            row[i] = this.props.data.rows[rowIndex][i];
         }
         return row;
     }
@@ -178,7 +175,7 @@ export default class TableInteractive extends Component {
     }
 
     cellRenderer(cellData, cellDataKey, rowData, rowIndex, columnData, width) {
-        cellData = cellData != null ? formatValue(cellData, this.state.data.cols[cellDataKey]) : null;
+        cellData = cellData != null ? formatValue(cellData, this.props.data.cols[cellDataKey], { jsx: true }) : null;
 
         var key = 'cl'+rowIndex+'_'+cellDataKey;
         if (this.props.cellIsClickableFn(rowIndex, cellDataKey)) {
@@ -226,7 +223,7 @@ export default class TableInteractive extends Component {
     }
 
     tableHeaderRenderer(columnIndex) {
-        var column = this.state.data.cols[columnIndex],
+        var column = this.props.data.cols[columnIndex],
             colVal = (column && column.display_name && column.display_name.toString()) ||
                      (column && column.name && column.name.toString());
 
@@ -234,7 +231,7 @@ export default class TableInteractive extends Component {
             colVal += ": " + capitalize(column.unit.replace(/-/g, " "))
         }
 
-        if (!colVal && this.props.pivot && columnIndex !== 0) {
+        if (!colVal && this.props.isPivoted && columnIndex !== 0) {
             colVal = "Unset";
         }
 
@@ -270,11 +267,11 @@ export default class TableInteractive extends Component {
     }
 
     render() {
-        if(!this.state.data) {
+        if(!this.props.data) {
             return false;
         }
 
-        var tableColumns = this.state.data.cols.map((column, idx) => {
+        var tableColumns = this.props.data.cols.map((column, idx) => {
             var colVal = (column !== null) ? column.name.toString() : null;
             var colWidth = this.state.columnWidths[idx];
 
@@ -297,12 +294,12 @@ export default class TableInteractive extends Component {
         });
 
         return (
-            <span className={cx('MB-DataTable', { 'MB-DataTable--pivot': this.props.pivot, 'MB-DataTable--ready': this.state.contentWidths })}>
+            <span className={cx('MB-DataTable', { 'MB-DataTable--pivot': this.props.isPivoted, 'MB-DataTable--ready': this.state.contentWidths })}>
                 <Table
                     ref="table"
                     rowHeight={35}
                     rowGetter={this.rowGetter}
-                    rowsCount={this.state.data.rows.length}
+                    rowsCount={this.props.data.rows.length}
                     width={this.state.width}
                     height={this.state.height}
                     headerHeight={50}

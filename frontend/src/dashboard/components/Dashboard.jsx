@@ -4,19 +4,33 @@ import DashboardHeader from "../components/DashboardHeader.jsx";
 import DashboardGrid from "../components/DashboardGrid.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
-import { addCardToDashboard, fetchCards, fetchDashboard, setEditingDashboard } from "../actions";
-
 export default class Dashboard extends Component {
 
     constructor(props, context) {
         super(props, context);
-        this.state = { error: null };
+
+        this.state = {
+            error: null
+        };
     }
 
     static propTypes = {
-        dispatch: PropTypes.func.isRequired,
+        isEditing: PropTypes.bool.isRequired,
+        dashboard: PropTypes.object,
+        cards: PropTypes.array,
+
+        addCardToDashboard: PropTypes.func.isRequired,
+        deleteDashboard: PropTypes.func.isRequired,
+        fetchCards: PropTypes.func.isRequired,
+        fetchDashboard: PropTypes.func.isRequired,
+        fetchRevisions: PropTypes.func.isRequired,
+        revertToRevision: PropTypes.func.isRequired,
+        saveDashboard: PropTypes.func.isRequired,
+        setDashboardAttributes: PropTypes.func.isRequired,
+        setEditingDashboard: PropTypes.func.isRequired,
+
         onChangeLocation: PropTypes.func.isRequired,
-        onDashboardDeleted: PropTypes.func.isRequired
+        onDashboardDeleted: PropTypes.func.isRequired,
     };
 
     async componentDidMount() {
@@ -24,13 +38,12 @@ export default class Dashboard extends Component {
         document.body.classList.add("MB-lightBG");
 
         try {
-            await this.props.dispatch(fetchDashboard(this.props.selectedDashboard));
-
+            await this.props.fetchDashboard(this.props.selectedDashboard);
             if (this.props.addCardOnLoad) {
                 // we have to load our cards before we can add one
-                await this.props.dispatch(fetchCards());
-                this.props.dispatch(setEditingDashboard(true));
-                this.props.dispatch(addCardToDashboard({ dashId: this.props.selectedDashboard, cardId: this.props.addCardOnLoad }));
+                await this.props.fetchCards();
+                this.props.setEditingDashboard(true);
+                this.props.addCardToDashboard({ dashId: this.props.selectedDashboard, cardId: this.props.addCardOnLoad });
             }
         } catch (error) {
             if (error.status === 404) {
@@ -52,7 +65,7 @@ export default class Dashboard extends Component {
         return (
             <LoadingAndErrorWrapper className="Dashboard full-height" loading={!dashboard} error={error}>
             {() =>
-                <div className="full">
+                <div className="full" style={{ overflowX: "hidden" }}>
                     <header className="bg-white border-bottom relative z2">
                         <DashboardHeader {...this.props} />
                     </header>

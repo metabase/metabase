@@ -1,8 +1,9 @@
 import React, { Component, PropTypes } from "react";
 
-import CardRenderer from "./CardRenderer.jsx";
+import CardRenderer from "./components/CardRenderer.jsx";
+import ChartTooltip from "./components/ChartTooltip.jsx";
 
-import { MinColumnsError } from "./errors";
+import { MinColumnsError } from "metabase/visualizations/lib/errors";
 
 export default class PieChart extends Component {
     static displayName = "Pie";
@@ -10,7 +11,7 @@ export default class PieChart extends Component {
     static iconName = "pie";
 
     static isSensible(cols, rows) {
-        return cols.length > 1;
+        return cols.length === 2;
     }
 
     static checkRenderable(cols, rows) {
@@ -18,8 +19,12 @@ export default class PieChart extends Component {
     }
 
     render() {
+        const { series, hovered, className } = this.props;
         return (
-            <CardRenderer className="flex-full" {...this.props} />
+            <div className={"flex " + className}>
+                <CardRenderer {...this.props} className="flex-full" chartType="pie" />
+                <ChartTooltip series={series} hovered={hovered} pinToMouse={true} />
+            </div>
         );
     }
 }

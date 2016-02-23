@@ -8,47 +8,46 @@ import HistoryModal from "metabase/components/HistoryModal.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 
-import {
-    setEditingDashboard,
-    fetchDashboard,
-    setDashboardAttributes,
-    saveDashboard,
-    deleteDashboard,
-    fetchRevisions,
-    revertToRevision
-} from '../actions';
-
 import cx from "classnames";
 
 export default class DashboardHeader extends Component {
     static propTypes = {
-        dispatch: PropTypes.func.isRequired,
-        isEditing: PropTypes.bool.isRequired,
         dashboard: PropTypes.object.isRequired,
-        revisions: PropTypes.object.isRequired
+        revisions: PropTypes.object.isRequired,
+        isEditing: PropTypes.bool.isRequired,
+
+        addCardToDashboard: PropTypes.func.isRequired,
+        deleteDashboard: PropTypes.func.isRequired,
+        fetchCards: PropTypes.func.isRequired,
+        fetchDashboard: PropTypes.func.isRequired,
+        fetchRevisions: PropTypes.func.isRequired,
+        revertToRevision: PropTypes.func.isRequired,
+        saveDashboard: PropTypes.func.isRequired,
+        setDashboardAttributes: PropTypes.func.isRequired,
+        setEditingDashboard: PropTypes.func.isRequired,
     };
 
     onEdit() {
-        this.props.dispatch(setEditingDashboard(true))
+        this.props.setEditingDashboard(true);
     }
 
     onDoneEditing() {
-        this.props.dispatch(setEditingDashboard(false));
+        this.props.setEditingDashboard(false);
     }
 
     onRevert() {
-        this.props.dispatch(fetchDashboard(this.props.dashboard.id));
+        this.props.fetchDashboard(this.props.dashboard.id);
     }
 
     onAttributeChange(attribute, value) {
-        this.props.dispatch(setDashboardAttributes({
+        this.props.setDashboardAttributes({
             id: this.props.dashboard.id,
             attributes: { [attribute]: value }
-        }));
+        });
     }
 
     async onSave() {
-        await this.props.dispatch(saveDashboard(this.props.dashboard.id));
+        await this.props.saveDashboard(this.props.dashboard.id);
         this.onDoneEditing();
     }
 
@@ -58,25 +57,25 @@ export default class DashboardHeader extends Component {
     }
 
     async onDelete() {
-        await this.props.dispatch(deleteDashboard(this.props.dashboard.id));
+        await this.props.deleteDashboard(this.props.dashboard.id);
         this.props.onDashboardDeleted(this.props.dashboard.id)
         this.props.onChangeLocation("/")
     }
 
     // 1. fetch revisions
     onFetchRevisions({ entity, id }) {
-        return this.props.dispatch(fetchRevisions({ entity, id }));
+        return this.props.fetchRevisions({ entity, id });
     }
 
     // 2. revert to a revision
     onRevertToRevision({ entity, id, revision_id }) {
-        return this.props.dispatch(revertToRevision({ entity, id, revision_id }));
+        return this.props.revertToRevision({ entity, id, revision_id });
     }
 
     // 3. finished reverting to a revision
     onRevertedRevision() {
         this.refs.dashboardHistory.toggle();
-        this.props.dispatch(fetchDashboard(this.props.dashboard.id));
+        this.props.fetchDashboard(this.props.dashboard.id);
     }
 
     getEditingButtons() {
@@ -100,7 +99,6 @@ export default class DashboardHeader extends Component {
                 triggerElement="Delete"
             >
                 <DeleteDashboardModal
-                    dispatch={this.props.dispatch}
                     dashboard={this.props.dashboard}
                     onClose={() => this.refs.deleteDashboardModal.toggle()}
                     onDelete={() => this.onDelete()}
@@ -122,7 +120,6 @@ export default class DashboardHeader extends Component {
                     triggerElement={<Icon className="text-brand-hover" name="history" width="16px" height="16px" />}
                 >
                     <HistoryModal
-                        dispatch={this.props.dispatch}
                         entityType="dashboard"
                         entityId={dashboard.id}
                         revisions={this.props.revisions["dashboard-"+dashboard.id]}
@@ -149,15 +146,17 @@ export default class DashboardHeader extends Component {
                 key="add"
                 ref="addQuestionModal"
                 triggerElement={
-                    <a data-metabase-event="Dashboard;Add Card Modal" title="Add a question to this dashboard">
+                    <span data-metabase-event="Dashboard;Add Card Modal" title="Add a question to this dashboard">
                         <Icon className={cx("text-brand-hover cursor-pointer", { "Icon--pulse": isEmpty })} name="add" width="16px" height="16px" />
-                    </a>
+                    </span>
                 }
             >
                 <AddToDashSelectQuestionModal
-                    dispatch={this.props.dispatch}
                     dashboard={dashboard}
                     cards={this.props.cards}
+                    fetchCards={this.props.fetchCards}
+                    addCardToDashboard={this.props.addCardToDashboard}
+                    setEditingDashboard={this.props.setEditingDashboard}
                     onClose={() => this.refs.addQuestionModal.toggle()}
                 />
             </ModalWithTrigger>

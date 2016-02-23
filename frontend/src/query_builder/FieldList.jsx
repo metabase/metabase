@@ -138,7 +138,7 @@ export default class FieldList extends Component {
         let { tableMetadata } = this.props;
         return (
             <div className="p1">
-                <Tooltip tooltipElement={<QueryDefinitionTooltip object={segment} tableMetadata={tableMetadata} />}>
+                <Tooltip tooltip={<QueryDefinitionTooltip object={segment} tableMetadata={tableMetadata} />}>
                     <span className="QuestionTooltipTarget" />
                 </Tooltip>
             </div>

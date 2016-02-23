@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import cx from "classnames";
 
@@ -14,7 +15,7 @@ export default class PulseListItem extends Component {
 
     componentDidMount() {
         if (this.props.scrollTo) {
-            const element = React.findDOMNode(this.refs.pulseListItem);
+            const element = ReactDOM.findDOMNode(this.refs.pulseListItem);
             element.scrollIntoView(true);
         }
     }

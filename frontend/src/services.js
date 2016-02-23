@@ -363,8 +363,8 @@ CoreServices.factory('Dashboard', ['$resource', '$cookies', function($resource, 
             params:{dashId:'@dashId'}
         },
         reposition_cards: {
-            url:'/api/dashboard/:dashId/reposition',
-            method:'POST',
+            url:'/api/dashboard/:dashId/cards',
+            method:'PUT',
             params:{dashId:'@dashId'}
         }
     });

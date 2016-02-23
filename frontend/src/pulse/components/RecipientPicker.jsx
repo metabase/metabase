@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import Icon from "metabase/components/Icon.jsx";
 import Popover from "metabase/components/Popover.jsx";
@@ -114,7 +115,7 @@ export default class RecipientPicker extends Component {
     }
 
     onMouseDownCapture(e) {
-        let input = React.findDOMNode(this.refs.input);
+        let input = ReactDOM.findDOMNode(this.refs.input);
         input.focus();
         // prevents clicks from blurring input while still allowing text selection:
         if (input !== e.target) {
@@ -123,7 +124,7 @@ export default class RecipientPicker extends Component {
     }
 
     addCurrentRecipient() {
-        let input = React.findDOMNode(this.refs.input);
+        let input = ReactDOM.findDOMNode(this.refs.input);
         let user = _.find(this.state.filteredUsers, (u) => u.id === this.state.selectedUser);
         if (user) {
             this.addRecipient(user);

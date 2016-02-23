@@ -78,7 +78,7 @@ export default class RelativeDatePicker extends Component {
                     <section key={sectionName}>
                         <div style={{}} className="border-bottom text-uppercase flex layout-centered mb2">
                             <h6 style={{"position": "relative", "backgroundColor": "white", "top": "6px" }} className="px2">
-                                {{sectionName}}
+                                {sectionName}
                             </h6>
                         </div>
                         <div className="flex">

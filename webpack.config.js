@@ -27,7 +27,8 @@ var CSS_SRC = glob.sync(SRC_PATH + '/src/**/*.css');
 
 // Need to scan the CSS files for variable and custom media used across files
 // NOTE: this requires "webpack -w" (watch mode) to be restarted when variables change :(
-if (hasArg("-w") || hasArg("--watch")) {
+var isWatching = hasArg("-w") || hasArg("--watch");
+if (isWatching) {
     console.warn("Warning: in webpack watch mode you must restart webpack if you change any CSS variables or custom media queries");
 }
 
@@ -72,7 +73,7 @@ var config = module.exports = {
             // { test: /\.css$/, loader: 'style!css!cssnext' }
         ],
         noParse: [
-            /node_modules\/(angular|ng-|ace|moment|underscore|d3)/ // doesn't include 'crossfilter', 'dc', and 'tether' due to use of 'require'
+            /node_modules\/(angular|ng-|ace|moment|underscore|d3-tip)/ // doesn't include 'crossfilter', 'dc', and 'tether' due to use of 'require'
         ]
     },
 
@@ -176,15 +177,18 @@ if (NODE_ENV === "development" || NODE_ENV === "hot") {
     // replace minified files with un-minified versions
     for (var name in config.resolve.alias) {
         var minified = config.resolve.alias[name];
-        var unminified = minified.replace(/[.-]min/, '');
+        var unminified = minified.replace(/[.-\/]min\b/g, '');
         if (minified !== unminified && fs.existsSync(unminified)) {
             config.resolve.alias[name] = unminified;
         }
     }
+}
 
-    // SourceMaps
-    // Normal source map works better but takes longer to build
-    // config.devtool = 'source-map';
-    // Eval source map doesn't work with CSS but is faster to build
-    // config.devtool = 'eval-source-map';
+if (NODE_ENV === "hot" || isWatching) {
+    // enable "cheap" source maps in hot or watch mode since re-build speed overhead is < 1 second
+    config.devtool = "eval-cheap-module-source-map";
+}
+
+if (NODE_ENV === "production") {
+    config.devtool = "source-map";
 }

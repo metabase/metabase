@@ -1,4 +1,6 @@
-import React, { Component, PropTypes, findDOMNode } from 'react';
+import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
+
 import cx from "classnames";
 
 /*
@@ -14,7 +16,9 @@ usage:
 export default class IconBorder extends Component {
     constructor(props, context) {
         super(props, context);
-        this.state = {};
+        this.state = {
+            childWidth: 0
+        };
     }
 
     static propTypes = {
@@ -35,35 +39,26 @@ export default class IconBorder extends Component {
 
     componentDidMount() {
         this.setState({
-            childWidth: findDOMNode(this.refs.child).offsetWidth
+            childWidth: ReactDOM.findDOMNode(this.refs.child).offsetWidth
         });
-    }
-    computeSize () {
-        let width = parseInt(this.state.childWidth, 10);
-        return width * 2;
     }
 
     render() {
         const { borderWidth, borderStyle, borderColor, borderRadius, className, style, children } = this.props;
-
-        const classes = {
-            'flex': true,
-            'layout-centered': true
-        };
-        classes[className] = true;
-
+        const width = this.state.childWidth;
         const styles = {
-            width: this.computeSize(),
-            height: this.computeSize(),
+            width: width * 2,
+            height: width * 2,
             borderWidth: borderWidth,
             borderStyle: borderStyle,
             borderColor: borderColor,
             borderRadius: borderRadius,
             lineHeight: '1px', /* HACK this is dumb but it centers the icon in the border */
+            ...style
         }
 
         return (
-            <span className={cx(classes)} style={Object.assign(styles, style)}>
+            <span className={cx("flex layout-centered", className)} style={styles}>
                 <span ref="child">{children}</span>
             </span>
         );

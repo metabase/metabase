@@ -5,6 +5,7 @@ import { AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
 import { normalize, Schema, arrayOf } from "normalizr";
 
 import moment from "moment";
+import { augmentDatabase } from "metabase/lib/table";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
@@ -36,17 +37,19 @@ export const REMOVE_CARD_FROM_DASH = 'REMOVE_CARD_FROM_DASH';
 export const SET_DASHCARD_ATTRIBUTES = 'SET_DASHCARD_ATTRIBUTES';
 export const SAVE_DASHCARD = 'SAVE_DASHCARD';
 
-export const FETCH_DASHCARD_DATASET = 'FETCH_DASHCARD_DATASET';
+export const FETCH_CARD_DATA = 'FETCH_CARD_DATA';
 export const FETCH_REVISIONS = 'FETCH_REVISIONS';
 export const REVERT_TO_REVISION = 'REVERT_TO_REVISION';
 
 export const MARK_NEW_CARD_SEEN = 'MARK_NEW_CARD_SEEN';
 
+export const FETCH_DATABASE_METADATA = 'FETCH_DATABASE_METADATA';
+
 // resource wrappers
-const Dashboard = new AngularResourceProxy("Dashboard", ["get", "update", "delete", "reposition_cards", "addcard", "removecard"]);
-const Metabase = new AngularResourceProxy("Metabase", ["dataset"]);
-const Card = new AngularResourceProxy("Card", ["list", "delete"]);
-const Revision = new AngularResourceProxy("Revision", ["list", "revert"]);
+const DashboardApi = new AngularResourceProxy("Dashboard", ["get", "update", "delete", "reposition_cards", "addcard", "removecard"]);
+const MetabaseApi = new AngularResourceProxy("Metabase", ["dataset", "db_metadata"]);
+const CardApi = new AngularResourceProxy("Card", ["list", "delete"]);
+const RevisionApi = new AngularResourceProxy("Revision", ["list", "revert"]);
 
 // action creators
 
@@ -60,7 +63,7 @@ export const setDashCardAttributes = createAction(SET_DASHCARD_ATTRIBUTES);
 
 export const fetchCards = createThunkAction(FETCH_CARDS, function(filterMode = "all") {
     return async function(dispatch, getState) {
-        let cards = await Card.list({ filterMode });
+        let cards = await CardApi.list({ filterMode });
         for (var c of cards) {
             c.updated_at = moment(c.updated_at);
         }
@@ -70,7 +73,7 @@ export const fetchCards = createThunkAction(FETCH_CARDS, function(filterMode = "
 
 export const deleteCard = createThunkAction(DELETE_CARD, function(cardId) {
     return async function(dispatch, getState) {
-        await Card.delete({ cardId });
+        await CardApi.delete({ cardId });
         return cardId;
     };
 });
@@ -92,18 +95,17 @@ export const addCardToDashboard = function({ dashId, cardId }) {
 
 export const removeCardFromDashboard = createAction(REMOVE_CARD_FROM_DASH);
 
-export const fetchDashCardData = createThunkAction(FETCH_DASHCARD_DATASET, function(id) {
+export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card) {
     return async function(dispatch, getState) {
-        let dashcard = getState().dashcards[id];
-        let result = await timeout(Metabase.dataset(dashcard.card.dataset_query), DATASET_TIMEOUT * 1000, "Card took longer than " + DATASET_TIMEOUT + " seconds to load.");
-        return { id, result };
+        let result = await timeout(MetabaseApi.dataset(card.dataset_query), DATASET_TIMEOUT * 1000, "Card took longer than " + DATASET_TIMEOUT + " seconds to load.");
+        return { id: card.id, result };
     };
 });
 
 export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(id) {
     return async function(dispatch, getState) {
-        let result = await Dashboard.get({ dashId: id });
-        return normalize(result, { dashboard: dashboard });
+        let result = await DashboardApi.get({ dashId: id });
+        return normalize(result, dashboard);
     };
 });
 
@@ -116,33 +118,33 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
         };
 
         // remove isRemoved dashboards
-        await * dashboard.ordered_cards
+        await Promise.all(dashboard.ordered_cards
             .filter(dc => dc.isRemoved && !dc.isAdded)
-            .map(dc => Dashboard.removecard({ dashId: dashboard.id, dashcardId: dc.id }));
+            .map(dc => DashboardApi.removecard({ dashId: dashboard.id, dashcardId: dc.id })));
 
         // add isAdded dashboards
-        let updatedDashcards = await * dashboard.ordered_cards
+        let updatedDashcards = await Promise.all(dashboard.ordered_cards
             .filter(dc => !dc.isRemoved)
             .map(async dc => {
                 if (dc.isAdded) {
-                    let result = await Dashboard.addcard({ dashId, cardId: dc.card_id })
+                    let result = await DashboardApi.addcard({ dashId, cardId: dc.card_id })
                     // mark isAdded because addcard doesn't record the position
-                    return { ...result, col: dc.col, row: dc.row, sizeX: dc.sizeX, sizeY: dc.sizeY, isAdded: true }
+                    return { ...result, col: dc.col, row: dc.row, sizeX: dc.sizeX, sizeY: dc.sizeY, series: dc.series, isAdded: true }
                 } else {
                     return dc;
                 }
-            });
+            }));
 
         // update the dashboard itself
         if (dashboard.isDirty) {
             let { id, name, description, public_perms } = dashboard;
-            dashboard = await Dashboard.update({ id, name, description, public_perms });
+            dashboard = await DashboardApi.update({ id, name, description, public_perms });
         }
 
         // reposition the cards
         if (_.some(updatedDashcards, (dc) => dc.isDirty || dc.isAdded)) {
-            let cards = updatedDashcards.map(({ id, row, col, sizeX, sizeY }) => ({ id, row, col, sizeX, sizeY }));
-            var result = await Dashboard.reposition_cards({ dashId, cards });
+            let cards = updatedDashcards.map(({ id, row, col, sizeX, sizeY, series }) => ({ id, row, col, sizeX, sizeY, series }));
+            var result = await DashboardApi.reposition_cards({ dashId, cards });
             if (result.status !== "ok") {
                 throw new Error(result.status);
             }
@@ -159,7 +161,7 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
 
 export const deleteDashboard = createThunkAction(DELETE_DASHBOARD, function(dashId) {
     return async function(dispatch, getState) {
-        await Dashboard.delete({ dashId });
+        await DashboardApi.delete({ dashId });
         MetabaseAnalytics.trackEvent("Dashboard", "Delete");
         return dashId;
     };
@@ -167,14 +169,22 @@ export const deleteDashboard = createThunkAction(DELETE_DASHBOARD, function(dash
 
 export const fetchRevisions = createThunkAction(FETCH_REVISIONS, function({ entity, id }) {
     return async function(dispatch, getState) {
-        let revisions = await Revision.list({ entity, id });
+        let revisions = await RevisionApi.list({ entity, id });
         return { entity, id, revisions };
     };
 });
 
 export const revertToRevision = createThunkAction(REVERT_TO_REVISION, function({ entity, id, revision_id }) {
     return async function(dispatch, getState) {
-        await Revision.revert({ entity, id, revision_id });
+        await RevisionApi.revert({ entity, id, revision_id });
+    };
+});
+
+export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, function(dbId) {
+    return async function(dispatch, getState) {
+        let databaseMetadata = await MetabaseApi.db_metadata({ dbId });
+        augmentDatabase(databaseMetadata);
+        return databaseMetadata;
     };
 });
 

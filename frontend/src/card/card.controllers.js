@@ -1,6 +1,7 @@
 /*global ace*/
 
 import React from "react";
+import ReactDOM from "react-dom";
 
 import DataReference from '../query_builder/DataReference.jsx';
 import GuiQueryEditor from '../query_builder/GuiQueryEditor.jsx';
@@ -327,7 +328,7 @@ CardControllers.controller('CardDetail', [
             headerModel.tableMetadata = tableMetadata;
             headerModel.isShowingDataReference = $scope.isShowingDataReference;
 
-            React.render(<QueryHeader {...headerModel}/>, document.getElementById('react_qb_header'));
+            ReactDOM.render(<QueryHeader {...headerModel}/>, document.getElementById('react_qb_header'));
         }
 
         function renderEditor() {
@@ -341,9 +342,9 @@ CardControllers.controller('CardDetail', [
             editorModel.query = card.dataset_query;
 
             if (card.dataset_query && card.dataset_query.type === "native") {
-                React.render(<NativeQueryEditor {...editorModel}/>, document.getElementById('react_qb_editor'));
+                ReactDOM.render(<NativeQueryEditor {...editorModel}/>, document.getElementById('react_qb_editor'));
             } else {
-                React.render(<div className="wrapper"><GuiQueryEditor {...editorModel}/></div>, document.getElementById('react_qb_editor'));
+                ReactDOM.render(<div className="wrapper"><GuiQueryEditor {...editorModel}/></div>, document.getElementById('react_qb_editor'));
             }
         }
 
@@ -358,13 +359,13 @@ CardControllers.controller('CardDetail', [
             visualizationModel.isRunning = isRunning;
             visualizationModel.isObjectDetail = isObjectDetail;
 
-            React.render(<QueryVisualization {...visualizationModel}/>, document.getElementById('react_qb_viz'));
+            ReactDOM.render(<QueryVisualization {...visualizationModel}/>, document.getElementById('react_qb_viz'));
         }
 
         function renderDataReference() {
             dataReferenceModel.databases = databases;
             dataReferenceModel.query = card.dataset_query;
-            React.render(<DataReference {...dataReferenceModel}/>, document.getElementById('react_data_reference'));
+            ReactDOM.render(<DataReference {...dataReferenceModel}/>, document.getElementById('react_data_reference'));
         }
 
         let tutorialModel = {
@@ -377,7 +378,7 @@ CardControllers.controller('CardDetail', [
 
         function renderTutorial() {
             tutorialModel.isShowingTutorial = isShowingTutorial;
-            React.render(
+            ReactDOM.render(
                 <span>{tutorialModel.isShowingTutorial && <QueryBuilderTutorial {...tutorialModel} /> }</span>
             , document.getElementById('react_qb_tutorial'));
         }
@@ -395,13 +396,13 @@ CardControllers.controller('CardDetail', [
 
         function renderNewbModal() {
             newbModalModel.isShowingNewbModal = isShowingNewbModal;
-            React.render(
+            ReactDOM.render(
                 <span>{newbModalModel.isShowingNewbModal && <SavedQuestionIntroModal {...newbModalModel} /> }</span>
             , document.getElementById('react_qbnewb_modal'));
         }
 
         function renderNotFound() {
-            React.render(<NotFound></NotFound>, document.getElementById('react_qb_viz'));
+            ReactDOM.render(<NotFound></NotFound>, document.getElementById('react_qb_viz'));
         }
 
         var renderAll = _.debounce(function() {
@@ -928,17 +929,17 @@ CardControllers.controller('CardDetail', [
 
             // any time we route away from the query builder force unmount our react components to make sure they have a chance
             // to fully clean themselves up and remove things like popover elements which may be on the screen
-            React.unmountComponentAtNode(document.getElementById('react_qb_header'));
-            React.unmountComponentAtNode(document.getElementById('react_qb_editor'));
-            React.unmountComponentAtNode(document.getElementById('react_qb_viz'));
-            React.unmountComponentAtNode(document.getElementById('react_data_reference'));
+            ReactDOM.unmountComponentAtNode(document.getElementById('react_qb_header'));
+            ReactDOM.unmountComponentAtNode(document.getElementById('react_qb_editor'));
+            ReactDOM.unmountComponentAtNode(document.getElementById('react_qb_viz'));
+            ReactDOM.unmountComponentAtNode(document.getElementById('react_data_reference'));
         });
 
         // prevent angular route change when we manually update the url
         // NOTE: we tried listening on $locationChangeStart and simply canceling that, but doing so prevents the history and everything
         //       and ideally we'd simply listen on $routeChangeStart and cancel that when it's the same controller, but that doesn't work :(
 
-        // mildly hacky way to prevent reloading controllers as the URL changes 
+        // mildly hacky way to prevent reloading controllers as the URL changes
         // this works by setting the new route to the old route and manually moving over params
         var route = $route.current;
         $scope.$on('$locationChangeSuccess', function (event) {

@@ -1,0 +1,13 @@
+:local(.LegendHeader) {
+}
+
+:local(.LegendItem) {
+  transition: opacity 0.25s linear;
+  opacity: 1;
+}
+:local(.LegendItem).muted {
+  opacity: 0.4;
+}
+
+:local(.AddSeriesItem) {
+}

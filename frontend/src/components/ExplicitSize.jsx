@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 export default ComposedComponent => class extends Component {
     constructor(props, context) {
@@ -23,7 +24,7 @@ export default ComposedComponent => class extends Component {
     }
 
     componentDidUpdate() {
-        const { width, height } = React.findDOMNode(this).getBoundingClientRect()
+        const { width, height } = ReactDOM.findDOMNode(this).getBoundingClientRect();
         if (this.state.width !== width || this.state.height !== height) {
             this.setState({ width, height });
         }

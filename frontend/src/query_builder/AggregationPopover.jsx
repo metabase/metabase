@@ -80,7 +80,7 @@ export default class AggregationPopover extends Component {
         if (item.aggregation && item.aggregation.description) {
             return (
                 <div className="p1">
-                    <Tooltip tooltipElement={item.aggregation.description}>
+                    <Tooltip tooltip={item.aggregation.description}>
                         <span className="QuestionTooltipTarget" />
                     </Tooltip>
                 </div>
@@ -94,7 +94,7 @@ export default class AggregationPopover extends Component {
         let { tableMetadata } = this.props;
         return (
             <div className="p1">
-                <Tooltip tooltipElement={<QueryDefinitionTooltip object={metric} tableMetadata={tableMetadata} />}>
+                <Tooltip tooltip={<QueryDefinitionTooltip object={metric} tableMetadata={tableMetadata} />}>
                     <span className="QuestionTooltipTarget" />
                 </Tooltip>
             </div>

@@ -1,6 +1,5 @@
 import React, { Component, PropTypes } from "react";
-import _ from "underscore";
-import cx from "classnames";
+import ReactDOM from "react-dom";
 
 import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
@@ -11,8 +10,11 @@ import MetabaseUtils from "metabase/lib/utils";
 
 import StepTitle from './StepTitle.jsx'
 import CollapsedStep from "./CollapsedStep.jsx";
+
 import { setUserDetails, validatePassword } from "../actions";
 
+import _ from "underscore";
+import cx from "classnames";
 
 export default class UserStep extends Component {
     constructor(props, context) {
@@ -31,7 +33,7 @@ export default class UserStep extends Component {
 
         // required: first_name, last_name, email, password
         for (var fieldName in this.refs) {
-            let node = React.findDOMNode(this.refs[fieldName]);
+            let node = ReactDOM.findDOMNode(this.refs[fieldName]);
             if (node.required && MetabaseUtils.isEmpty(node.value)) isValid = false;
         };
 
@@ -48,7 +50,7 @@ export default class UserStep extends Component {
 
     async onPasswordBlur() {
         try {
-            await this.props.dispatch(validatePassword(React.findDOMNode(this.refs.password).value));
+            await this.props.dispatch(validatePassword(ReactDOM.findDOMNode(this.refs.password).value));
 
             this.setState({
                 passwordError: null,
@@ -78,14 +80,14 @@ export default class UserStep extends Component {
         let formErrors = {data:{errors:{}}};
 
         // validate email address
-        if (!MetabaseUtils.validEmail(React.findDOMNode(this.refs.email).value)) {
+        if (!MetabaseUtils.validEmail(ReactDOM.findDOMNode(this.refs.email).value)) {
             formErrors.data.errors.email = "Not a valid formatted email address";
         }
 
         // TODO - validate password complexity
 
         // validate password match
-        if (React.findDOMNode(this.refs.password).value !== React.findDOMNode(this.refs.passwordConfirm).value) {
+        if (ReactDOM.findDOMNode(this.refs.password).value !== ReactDOM.findDOMNode(this.refs.passwordConfirm).value) {
             formErrors.data.errors.password_confirm = "Passwords do not match";
         }
 
@@ -99,11 +101,11 @@ export default class UserStep extends Component {
         this.props.dispatch(setUserDetails({
             'nextStep': ++this.props.stepNumber,
             'details': {
-                'first_name': React.findDOMNode(this.refs.firstName).value,
-                'last_name': React.findDOMNode(this.refs.lastName).value,
-                'email': React.findDOMNode(this.refs.email).value,
-                'password': React.findDOMNode(this.refs.password).value,
-                'site_name': React.findDOMNode(this.refs.siteName).value
+                'first_name': ReactDOM.findDOMNode(this.refs.firstName).value,
+                'last_name': ReactDOM.findDOMNode(this.refs.lastName).value,
+                'email': ReactDOM.findDOMNode(this.refs.email).value,
+                'password': ReactDOM.findDOMNode(this.refs.password).value,
+                'site_name': ReactDOM.findDOMNode(this.refs.siteName).value
             }
         }));
 

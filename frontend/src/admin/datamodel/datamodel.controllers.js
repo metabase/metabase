@@ -65,11 +65,11 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
 
     async function loadDatabaseMetadata() {
         $scope.databaseMetadata = await Metabase.db_metadata({ 'dbId': $scope.databaseId }).$promise;
-        $scope.databaseMetadata.tables = await * $scope.databaseMetadata.tables.map(async (table) => {
+        $scope.databaseMetadata.tables = await Promise.all($scope.databaseMetadata.tables.map(async (table) => {
             table = await augmentTable(table);
             table.metadataStrength = computeMetadataStrength(table);
             return table;
-        });
+        }));
     }
 
     async function loadIdFields() {
@@ -180,9 +180,9 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
 
     async function deleteAllFieldForeignKeys(field) {
         var fks = await Metabase.field_foreignkeys({ 'fieldId': field.id }).$promise;
-        return await* fks.map(function(fk) {
+        return await Promise.all(fks.map(function(fk) {
             return ForeignKey.delete({ 'fkID': fk.id }).$promise;
-        });
+        }));
     }
 
     $scope.onRetireSegment = async function(segment) {

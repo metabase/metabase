@@ -1,18 +1,19 @@
-import { handleActions } from 'redux-actions';
+import { handleActions, combineReducers } from "metabase/lib/redux";
 
 import {
     FETCH_CARDS,
     SELECT_DASHBOARD,
     SET_EDITING_DASHBOARD,
     FETCH_DASHBOARD,
-    FETCH_DASHCARD_DATASET,
+    FETCH_CARD_DATA,
     SET_DASHBOARD_ATTRIBUTES,
     SET_DASHCARD_ATTRIBUTES,
     ADD_CARD_TO_DASH,
     REMOVE_CARD_FROM_DASH,
     DELETE_CARD,
     FETCH_REVISIONS,
-    MARK_NEW_CARD_SEEN
+    MARK_NEW_CARD_SEEN,
+    FETCH_DATABASE_METADATA
 } from './actions';
 
 export const selectedDashboard = handleActions({
@@ -71,6 +72,14 @@ export const revisions = handleActions({
     [FETCH_REVISIONS]: { next: (state, { payload: { entity, id, revisions } }) => ({ ...state, [entity+'-'+id]: revisions })}
 }, {});
 
-export const dashcardDatasets = handleActions({
-    [FETCH_DASHCARD_DATASET]: { next: (state, { payload: { id, result }}) => ({ ...state, [id]: result }) }
+export const cardData = handleActions({
+    [FETCH_CARD_DATA]: { next: (state, { payload: { id, result }}) => ({ ...state, [id]: result }) }
 }, {});
+
+const databases = handleActions({
+    [FETCH_DATABASE_METADATA]: { next: (state, { payload }) => ({ ...state, [payload.id]: payload }) }
+}, {});
+
+export const metadata = combineReducers({
+    databases
+});

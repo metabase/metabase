@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 export default ComposedComponent => class extends Component {
     componentWillMount() {
@@ -15,7 +16,7 @@ export default ComposedComponent => class extends Component {
     }
 
     componentWillUnmount() {
-        React.unmountComponentAtNode(this._element);
+        ReactDOM.unmountComponentAtNode(this._element);
         if (this._element.parentNode) {
             this._element.parentNode.removeChild(this._element);
         }
@@ -23,7 +24,7 @@ export default ComposedComponent => class extends Component {
 
     _render() {
         this._element.className = this.props.className;
-        React.render(<ComposedComponent {...this.props} className={undefined} />, this._element);
+        ReactDOM.render(<ComposedComponent {...this.props} className={undefined} />, this._element);
     }
 
     render() {

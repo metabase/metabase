@@ -1,0 +1,55 @@
+databaseChangeLog:
+  - changeSet:
+      id: 27
+      author: agilliland
+      changes:
+        - createTable:
+            tableName: dashboardcard_series
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: dashboardcard_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: report_dashboardcard(id)
+                    foreignKeyName: fk_dashboardcard_series_ref_dashboardcard_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: card_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: report_card(id)
+                    foreignKeyName: fk_dashboardcard_series_ref_card_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: position
+                  type: int
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: dashboardcard_series
+            indexName: idx_dashboardcard_series_dashboardcard_id
+            columns:
+              column:
+                name: dashboardcard_id
+        - createIndex:
+            tableName: dashboardcard_series
+            indexName: idx_dashboardcard_series_card_id
+            columns:
+              column:
+                name: card_id
+        - modifySql:
+            dbms: postgresql
+            replace:
+              replace: WITHOUT
+              with: WITH

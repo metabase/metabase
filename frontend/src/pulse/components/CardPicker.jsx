@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import Popover from "metabase/components/Popover.jsx";
 
@@ -72,7 +73,7 @@ export default class CardPicker extends Component {
 
     // keep the modal width in sync with the input width :-/
     componentDidUpdate() {
-        let { scrollWidth } = React.findDOMNode(this.refs.input);
+        let { scrollWidth } = ReactDOM.findDOMNode(this.refs.input);
         if (this.state.inputWidth !== scrollWidth) {
             this.setState({ inputWidth: scrollWidth });
         }
