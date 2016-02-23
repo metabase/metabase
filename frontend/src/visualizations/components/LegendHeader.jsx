@@ -96,7 +96,7 @@ class LegendItem extends Component {
                 onMouseLeave={() => onHoverChange && onHoverChange(null, null, null) }
                 isEnabled={this.state.tooltipIsEnabled}
             >
-                <a href={Urls.card(card.id)} className={cx(styles.LegendItem, "no-decoration h3 text-bold flex align-center", { mr1: showTitles, muted: muted })} style={{ overflowX: "hidden", flex: "0 1 auto" }}>
+                <a href={card.id && Urls.card(card.id)} className={cx(styles.LegendItem, "no-decoration h3 text-bold flex align-center", { mr1: showTitles, muted: muted })} style={{ overflowX: "hidden", flex: "0 1 auto" }}>
                     {showDots && <div className="flex-no-shrink inline-block circular" style={{width: 13, height: 13, margin: 4, marginRight: 8, backgroundColor: color}} />}
                     {showTitles && <div ref="title" style={{ overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{card.name}</div> }
                 </a>
