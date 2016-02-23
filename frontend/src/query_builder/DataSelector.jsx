@@ -99,6 +99,13 @@ export default class DataSelector extends Component {
     onChangeDatabase(index) {
         let database = this.state.databases[index];
         let schema = database && (database.schemas.length > 1 ? null : database.schemas[0]);
+        if (database && database.tables.length === 0) {
+            schema = {
+                database: database,
+                name: "",
+                tables: []
+            };
+        }
         this.setState({
             selectedSchema: schema,
             showTablePicker: !!schema
@@ -179,24 +186,41 @@ export default class DataSelector extends Component {
                 }
             </span>
         );
-        let sections = [{
-            name: header,
-            items: schema.tables.map(table => ({
-                name: table.display_name,
-                table: table,
-                database: schema.database
-            }))
-        }];
-        return (
-            <AccordianList
-                key="tablePicker"
-                className="text-brand"
-                sections={sections}
-                onChange={this.onChangeTable}
-                itemIsSelected={(item) => item.table.id === this.getTableId()}
-                renderItemIcon={() => <Icon name="table2" width="18" height="18" />}
-            />
-        );
+
+        if (schema.tables.length === 0) {
+            // this is a database with no tables!
+            return (
+                <section className="List-section List-section--open" style={{width: '300px'}}>
+                    <div className="p1 border-bottom">
+                        <div className="px1 py1 flex align-center">
+                            <h3 className="text-default">{header}</h3>
+                        </div>
+                    </div>
+                    <div className="p4 text-centered">No tables found in this database.</div>
+                </section>
+            );
+
+        } else {
+            let sections = [{
+                name: header,
+                items: schema.tables.map(table => ({
+                    name: table.display_name,
+                    table: table,
+                    database: schema.database
+                }))
+            }];
+            return (
+                <AccordianList
+                    key="tablePicker"
+                    className="text-brand"
+                    sections={sections}
+                    onChange={this.onChangeTable}
+                    itemIsSelected={(item) => item.table ? item.table.id === this.getTableId() : false}
+                    itemIsClickable={(item) => item.table}
+                    renderItemIcon={(item) => item.table ? <Icon name="table2" width="18" height="18" /> : null}
+                />
+            );
+        }
     }
 
     render() {
