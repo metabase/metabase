@@ -27,13 +27,15 @@ export default class LineAreaBarChart extends Component {
     }
 
     static seriesAreCompatible(initialSeries, newSeries) {
-        // no bare rows
-        if (newSeries.card.dataset_query.query.aggregation[0] === "rows") {
-            return false;
-        }
-        // must have one and only one breakout
-        if (newSeries.card.dataset_query.query.breakout.length !== 1) {
-            return false;
+        if (newSeries.card.dataset_query.type === "query") {
+            // no bare rows
+            if (newSeries.card.dataset_query.query.aggregation[0] === "rows") {
+                return false;
+            }
+            // must have one and only one breakout
+            if (newSeries.card.dataset_query.query.breakout.length !== 1) {
+                return false;
+            }
         }
 
         return columnsAreCompatible(initialSeries.data.cols, newSeries.data.cols);
@@ -52,6 +54,10 @@ export default class LineAreaBarChart extends Component {
         onAddSeries: PropTypes.func,
         extraActions: PropTypes.node,
         isDashboard: PropTypes.bool
+    };
+
+    static defaultProps = {
+        allowSplitAxis: true
     };
 
     componentWillMount() {
@@ -110,7 +116,7 @@ export default class LineAreaBarChart extends Component {
     }
 
     render() {
-        let { hovered, isDashboard, onAddSeries, extraActions } = this.props;
+        let { hovered, isDashboard, onAddSeries, onRemoveSeries, extraActions, allowSplitAxis } = this.props;
         let { series, isMultiseries } = this.state;
 
         const chartType = this.constructor.identifier;
@@ -121,6 +127,7 @@ export default class LineAreaBarChart extends Component {
                     <LegendHeader
                         series={series}
                         onAddSeries={isMultiseries ? undefined : onAddSeries}
+                        onRemoveSeries={onRemoveSeries}
                         extraActions={extraActions}
                         hovered={hovered}
                         onHoverChange={this.props.onHoverChange}
@@ -131,6 +138,7 @@ export default class LineAreaBarChart extends Component {
                     chartType={chartType}
                     series={series}
                     className="flex-full"
+                    allowSplitAxis={isMultiseries ? false : allowSplitAxis}
                 />
                 <ChartTooltip series={series} hovered={hovered} />
             </div>
