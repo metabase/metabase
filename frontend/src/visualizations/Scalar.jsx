@@ -88,6 +88,7 @@ export default class Scalar extends Component {
                     isScalarSeries={true}
                     hovered={this.props.hovered}
                     onHoverChange={this.props.onHoverChange}
+                    allowSplitAxis={false}
                 />
             );
         }

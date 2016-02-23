@@ -56,6 +56,10 @@ export default class LineAreaBarChart extends Component {
         isDashboard: PropTypes.bool
     };
 
+    static defaultProps = {
+        allowSplitAxis: true
+    };
+
     componentWillMount() {
         this.transformSeries(this.props);
     }
@@ -112,7 +116,7 @@ export default class LineAreaBarChart extends Component {
     }
 
     render() {
-        let { hovered, isDashboard, onAddSeries, extraActions } = this.props;
+        let { hovered, isDashboard, onAddSeries, extraActions, allowSplitAxis } = this.props;
         let { series, isMultiseries } = this.state;
 
         const chartType = this.constructor.identifier;
@@ -133,6 +137,7 @@ export default class LineAreaBarChart extends Component {
                     chartType={chartType}
                     series={series}
                     className="flex-full"
+                    allowSplitAxis={isMultiseries ? false : allowSplitAxis}
                 />
                 <ChartTooltip series={series} hovered={hovered} />
             </div>

@@ -462,7 +462,7 @@ export let CardRenderer = {
         chart.render();
     },
 
-    lineAreaBar(element, chartType, { series, onHoverChange, onRender, isScalarSeries }) {
+    lineAreaBar(element, chartType, { series, onHoverChange, onRender, isScalarSeries, allowSplitAxis }) {
         const colors = getCardColors(series[0].card);
 
         const isTimeseries = dimensionIsTimeseries(series[0].data);
@@ -514,7 +514,12 @@ export let CardRenderer = {
 
             xValues = dimension.group().all().map(d => d.key);
             let yExtents = groups.map(group => d3.extent(group[0].all(), d => d.value));
-            yAxisSplit = computeSplit(yExtents);
+
+            if (allowSplitAxis) {
+                yAxisSplit = computeSplit(yExtents);
+            } else {
+                yAxisSplit = [series.map((s,i) => i)];
+            }
         }
 
         if (isScalarSeries) {
