@@ -54,7 +54,9 @@ export function formatTimeWithUnit(value, unit, options = {}) {
         case "day": // January 1, 2015
             return m.format("MMMM D, YYYY");
         case "week": // 1st - 2015
-            return formatMajorMinor(m.format("wo"), m.format("YYYY"), options);
+            // force 'en' locale for now since our weeks currently always start on Sundays
+            m = m.locale("en");
+            return formatMajorMinor(m.format("wo"), m.format("gggg"), options);
         case "month": // January 2015
             return options.jsx ?
                 <div><span className="text-bold">{m.format("MMMM")}</span> {m.format("YYYY")}</div> :
