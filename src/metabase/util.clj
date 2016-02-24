@@ -420,19 +420,23 @@
      ~@body
      ~'<>))
 
-(defn ^String format-color
+(def ^String ^{:style/indent 2} format-color
   "Like `format`, but uses a function in `colorize.core` to colorize the output.
    COLOR-SYMB should be a quoted symbol like `green`, `red`, `yellow`, `blue`,
    `cyan`, `magenta`, etc. See the entire list of avaliable colors
    [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj).
 
      (format-color 'red \"Fatal error: %s\" error-message)"
-  {:style/indent 2}
-  ([color-symb x]
-   {:pre [(symbol? color-symb)]}
-   ((ns-resolve 'colorize.core color-symb) x))
-  ([color-symb format-string & args]
-   (format-color color-symb (apply format format-string args))))
+  (if (config/config-bool :mb-colorize-logs)
+    (fn
+      ([color-symb x]
+       {:pre [(symbol? color-symb)]}
+       ((ns-resolve 'colorize.core color-symb) x))
+      ([color-symb format-string & args]
+       (format-color color-symb (apply format format-string args))))
+    (fn
+      ([_ x] x)
+      ([_ format-string & args] (apply format format-string args)))))
 
 (defn pprint-to-str
   "Returns the output of pretty-printing X as a string.
@@ -476,12 +480,15 @@
        (try
          (apply f args)
          (catch java.sql.SQLException e
-           (log/error (color/red exception-message "\n"
-                                 (with-out-str (jdbc/print-sql-exception-chain e)) "\n"
-                                 (pprint-to-str (filtered-stacktrace e)))))
+           (log/error (format-color 'red "%s\n%s\n%s"
+                                    exception-message
+                                    (with-out-str (jdbc/print-sql-exception-chain e))
+                                    (pprint-to-str (filtered-stacktrace e)))))
          (catch Throwable e
-           (log/error (color/red exception-message (or (.getMessage e) e) "\n"
-                                 (pprint-to-str (filtered-stacktrace e))))))))))
+           (log/error (format-color 'red "%s %s\n%s"
+                                    exception-message
+                                    (or (.getMessage e) e)
+                                    (pprint-to-str (filtered-stacktrace e))))))))))
 
 (defn try-apply
   "Like `apply`, but wraps F inside a `try-catch` block and logs exceptions caught.

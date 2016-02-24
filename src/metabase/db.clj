@@ -145,7 +145,7 @@
   "Test connection to database with DETAILS and throw an exception if we have any troubles connecting."
   [engine details]
   {:pre [(keyword? engine) (map? details)]}
-  (log/info (color/cyan "Verifying Database Connection ..."))
+  (log/info (u/format-color 'cyan "Verifying Database Connection ..."))
   (assert (binding [*allow-potentailly-unsafe-connections* true]
             (require 'metabase.driver)
             (@(resolve 'metabase.driver/can-connect-with-details?) engine details))

@@ -3,7 +3,6 @@
   (:gen-class)
   (:require [clojure.string :as s]
             [clojure.tools.logging :as log]
-            [colorize.core :as color]
             [ring.adapter.jetty :as ring-jetty]
             (ring.middleware [cookies :refer [wrap-cookies]]
                              [gzip :refer [wrap-gzip]]
@@ -101,9 +100,8 @@
                          (or hostname "localhost")
                          (when-not (= 80 port) (str ":" port))
                          "/setup/")]
-    (log/info (color/green "Please use the following url to setup your Metabase installation:\n\n"
-                           setup-url
-                           "\n\n"))))
+    (log/info (u/format-color 'green "Please use the following url to setup your Metabase installation:\n\n%s\n\n"
+                              setup-url))))
 
 (defn destroy
   "General application shutdown function which should be called once at application shuddown."

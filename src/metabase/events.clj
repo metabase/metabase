@@ -12,8 +12,8 @@
             [clojure.java.classpath :as classpath]
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
-            [colorize.core :as color]
-            [metabase.config :as config]))
+            (metabase [config :as config]
+                      [util :as u])))
 
 
 ;;; ## ---------------------------------------- LIFECYCLE ----------------------------------------
@@ -31,7 +31,7 @@
       (require ns-symb)
       ;; look for `events-init` function in the namespace and call it if it exists
       (when-let [init-fn (ns-resolve ns-symb 'events-init)]
-        (log/info "Starting events listener:" (color/blue ns-symb) "👂")
+        (log/info "Starting events listener:" (u/format-color 'blue ns-symb) "👂")
         (init-fn)))))
 
 (defn initialize-events!

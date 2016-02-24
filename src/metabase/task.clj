@@ -11,7 +11,7 @@
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
             [clojurewerkz.quartzite.scheduler :as qs]
-            [colorize.core :as color]))
+            [metabase.util :as u]))
 
 
 (defonce ^:private quartz-scheduler
@@ -22,7 +22,7 @@
   []
   (doseq [ns-symb (ns-find/find-namespaces (classpath/classpath))
           :when   (re-find #"^metabase\.task\." (name ns-symb))]
-    (log/info "Loading tasks namespace:" (color/blue ns-symb) "📆")
+    (log/info "Loading tasks namespace:" (u/format-color 'blue ns-symb) "📆")
     (require ns-symb)
     ;; look for `task-init` function in the namespace and call it if it exists
     (when-let [init-fn (ns-resolve ns-symb 'task-init)]
