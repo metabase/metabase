@@ -1,4 +1,4 @@
-When you open an issue, please fill in the blanks, if relevant: 
+Please fill in the blanks, if relevant: 
 
 *  I am using the _____ browser.
 *  My computer's OS is _____.
