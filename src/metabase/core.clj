@@ -17,6 +17,7 @@
                       [driver :as driver]
                       [events :as events]
                       [middleware :as mb-middleware]
+                      [metabot :refer [start-metabot!]]
                       [routes :as routes]
                       [sample-data :as sample-data]
                       [setup :as setup]
@@ -154,6 +155,8 @@
       (sample-data/add-sample-dataset!)
       ;; otherwise update if appropriate
       (sample-data/update-sample-dataset-if-needed!)))
+
+  (start-metabot!)
 
   (initialization-complete!)
   (log/info "Metabase Initialization COMPLETE"))

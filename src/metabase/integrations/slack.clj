@@ -17,6 +17,10 @@
   []
   (not (empty? (slack-token))))
 
+(defn metabot-enabled?
+  "Predicate function which returns `true` if Metabot is configured and enabled"
+  []
+  (slack-configured?))
 
 (defn slack-api-get
   "Generic function which calls a given method on the Slack api via HTTP GET."
@@ -131,3 +135,9 @@
                                                          :text        text
                                                          :attachments attachments})
        (handle-api-response))))
+
+(defn get-websocket-url
+  []
+  (-> (slack-api-get (slack-token) "rtm.start")
+      (handle-api-response)
+      (get "url")))
