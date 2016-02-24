@@ -65,7 +65,8 @@
       kdb/mysql
       ;; 0000-00-00 dates are valid in MySQL, but JDBC barfs when queries return them because java.sql.Date doesn't allow it.
       ;; Add a param to the end of the connection string that tells MySQL to convert 0000-00-00 dates to NULL when returning them.
-      (update :subname (u/rpartial str "?zeroDateTimeBehavior=convertToNull"))))
+      ;; Also add params to force UTF-8 encoding of results
+      (update :subname (u/rpartial str "?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF8&characterSetResults=UTF8"))))
 
 (defn- unix-timestamp->timestamp [_ expr seconds-or-milliseconds]
   (k/sqlfn :FROM_UNIXTIME (case seconds-or-milliseconds
