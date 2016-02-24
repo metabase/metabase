@@ -48,6 +48,7 @@
                                com.sun.jdmk/jmxtools
                                com.sun.jmx/jmxri]]
                  [medley "0.7.2"]                                     ; lightweight lib of useful functions
+                 [metabase/throttle "1.0.1"]                          ; Tools for throttling access to API endpoints and other code pathways
                  [mysql/mysql-connector-java "5.1.38"]                ; MySQL JDBC driver
                  [net.sf.cssbox/cssbox "4.10"
                   :exclusions [org.slf4j/slf4j-api]]
