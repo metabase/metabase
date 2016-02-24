@@ -6,13 +6,13 @@
             [hiccup.core :refer [html]]
             [korma.core :as k]
             [metabase.api.common :refer :all]
-            [metabase.api.common.throttle :as throttle]
             [metabase.db :refer :all]
             [metabase.email.messages :as email]
             [metabase.events :as events]
             (metabase.models [user :refer [User set-user-password set-user-password-reset-token]]
                              [session :refer [Session]]
                              [setting :as setting])
+            [metabase.throttle :as throttle]
             [metabase.util.password :as pass]))
 
 
