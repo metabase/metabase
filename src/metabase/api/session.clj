@@ -5,6 +5,7 @@
             [compojure.core :refer [defroutes GET POST DELETE]]
             [hiccup.core :refer [html]]
             [korma.core :as k]
+            [throttle.core :as throttle]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             [metabase.email.messages :as email]
@@ -12,7 +13,6 @@
             (metabase.models [user :refer [User set-user-password set-user-password-reset-token]]
                              [session :refer [Session]]
                              [setting :as setting])
-            [metabase.throttle :as throttle]
             [metabase.util.password :as pass]))
 
 
