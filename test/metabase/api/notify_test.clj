@@ -1,5 +1,5 @@
 (ns metabase.api.notify-test
-  (:require [clj-http.lite.client :as client]
+  (:require [clj-http.client :as client]
             [expectations :refer :all]
             (metabase [http-client :as http]
                       [middleware :as middleware])))

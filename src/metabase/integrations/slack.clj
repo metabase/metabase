@@ -1,6 +1,5 @@
 (ns metabase.integrations.slack
   (:require [cheshire.core :as cheshire]
-            [clj-http.lite.client :as client]
             [clj-http.client :as http]
             [clojure.tools.logging :as log]
             [metabase.models.setting :refer [defsetting]]))
@@ -22,15 +21,15 @@
 (defn slack-api-get
   "Generic function which calls a given method on the Slack api via HTTP GET."
   ([token method]
-    (slack-api-get token method {}))
+   (slack-api-get token method {}))
   ([token method params]
-    {:pre [(string? method)
-           (map? params)]}
+   {:pre [(string? method)
+          (map? params)]}
    (when token
      (try
-       (client/get (str slack-api-baseurl "/" method) {:query-params   (merge params {:token token})
-                                                       :conn-timeout   1000
-                                                       :socket-timeout 1000})
+       (http/get (str slack-api-baseurl "/" method) {:query-params   (merge params {:token token})
+                                                     :conn-timeout   1000
+                                                     :socket-timeout 1000})
        (catch Throwable t
          (log/warn "Error making Slack API call:" (.getMessage t)))))))
 
@@ -43,9 +42,9 @@
           (map? params)]}
    (when token
      (try
-       (client/post (str slack-api-baseurl "/" method) {:form-params   (merge params {:token token})
-                                                        :conn-timeout   1000
-                                                        :socket-timeout 1000})
+       (http/post (str slack-api-baseurl "/" method) {:form-params   (merge params {:token token})
+                                                      :conn-timeout   1000
+                                                      :socket-timeout 1000})
        (catch Throwable t
          (log/warn "Error making Slack API call:" (.getMessage t)))))))
 

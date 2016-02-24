@@ -20,11 +20,10 @@
                  [org.clojure/tools.namespace "0.2.10"]
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
                  [cheshire "5.5.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
-                 [clj-http "0.3.0"
+                 [clj-http "2.1.0"                                    ; HTTP client
                   :exclusions [commons-codec
                                commons-io
                                slingshot]]
-                 [clj-http-lite "0.3.0"]                              ; HTTP client; lightweight version of clj-http that uses HttpURLConnection instead of Apache
                  [clj-time "0.11.0"]                                  ; library for dealing with date/time
                  [clojurewerkz/quartzite "2.0.0"]                     ; scheduling library
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
@@ -35,7 +34,7 @@
                                ring/ring-core]]
                  [com.draines/postal "1.11.4"]                        ; SMTP library
                  [com.google.apis/google-api-services-bigquery        ; Google BigQuery Java Client Library
-                  "v2-rev262-1.21.0"]
+                  "v2-rev270-1.21.0"]
                  [com.h2database/h2 "1.4.191"]                        ; embedded SQL database
                  [com.mattbertolini/liquibase-slf4j "2.0.0"]          ; Java Migrations lib
                  [com.novemberain/monger "3.0.2"]                     ; MongoDB Driver
@@ -48,7 +47,7 @@
                                javax.jms/jms
                                com.sun.jdmk/jmxtools
                                com.sun.jmx/jmxri]]
-                 [medley "0.7.1"]                                     ; lightweight lib of useful functions
+                 [medley "0.7.2"]                                     ; lightweight lib of useful functions
                  [mysql/mysql-connector-java "5.1.38"]                ; MySQL JDBC driver
                  [net.sf.cssbox/cssbox "4.10"
                   :exclusions [org.slf4j/slf4j-api]]
@@ -56,7 +55,7 @@
                  [org.xhtmlrenderer/flying-saucer-core "9.0.8"]
                  [org.liquibase/liquibase-core "3.4.2"]               ; migration management (Java lib)
                  [org.slf4j/slf4j-log4j12 "1.7.16"]
-                 [org.yaml/snakeyaml "1.16"]                          ; YAML parser (required by liquibase)
+                 [org.yaml/snakeyaml "1.17"]                          ; YAML parser (required by liquibase)
                  [org.xerial/sqlite-jdbc "3.8.11.2"]                  ; SQLite driver
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
                  [prismatic/schema "1.0.5"]                           ; Data schema declaration and validation library
@@ -87,7 +86,7 @@
                               :exclusions [org.clojure/clojure]]      ; Linting
                              [lein-ancient "0.6.8"                    ; Check project for outdated dependencies + plugins w/ 'lein ancient'
                               :exclusions [org.clojure/clojure]]
-                             [lein-bikeshed "0.2.0"]                  ; Linting
+                             [lein-bikeshed "0.3.0"]                  ; Linting
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'
                              [lein-instant-cheatsheet "2.1.5"         ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
                               :exclusions [org.clojure/clojure
