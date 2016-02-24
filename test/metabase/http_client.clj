@@ -1,8 +1,8 @@
 (ns metabase.http-client
   "HTTP client for making API calls against the Metabase API. For test/REPL purposes."
   (:require [clojure.tools.logging :as log]
-            [cheshire.core :as cheshire]
-            [clj-http.lite.client :as client]
+            [cheshire.core :as json]
+            [clj-http.client :as client]
             [metabase.config :as config]
             [metabase.util :as u]))
 
@@ -67,7 +67,7 @@
                                                                                   credentials))}}
                       (seq http-body) (assoc
                                        :content-type :json
-                                       :body         (cheshire/generate-string http-body)))
+                                       :body         (json/generate-string http-body)))
         request-fn  (case method
                       :get    client/get
                       :post   client/post
@@ -80,14 +80,14 @@
         {:keys [status body]} (try (request-fn url request-map)
                                    (catch clojure.lang.ExceptionInfo e
                                      (log/debug method-name url)
-                                     (:object (.getData ^clojure.lang.ExceptionInfo e))))]
+                                     (:object (ex-data e))))]
 
     ;; -check the status code if EXPECTED-STATUS was passed
     (log/debug method-name url status)
     (when expected-status
       (when-not (= status expected-status)
         (let [message (format "%s %s expected a status code of %d, got %d." method-name url expected-status status)
-              body    (try (-> (cheshire/parse-string body)
+              body    (try (-> (json/parse-string body)
                                clojure.walk/keywordize-keys)
                            (catch Exception _ body))]
           (log/error (u/pprint-to-str 'red body))
@@ -95,7 +95,7 @@
 
     ;; Deserialize the JSON response or return as-is if that fails
     (try (-> body
-             cheshire/parse-string
+             json/parse-string
              clojure.walk/keywordize-keys
              auto-deserialize-dates)
          (catch Exception _
