@@ -195,6 +195,14 @@ By default Metabase will launch on port 3000, but if you prefer to run the appli
 In this example once the application starts up you will access it on port `12345` instead of the default port of 3000.
 
 
+### Listening on a specific network interface
+
+By default, Metabase will be listening on `localhost`.  In some production environments you may want to listen on a different interface, which can be done by using the `MB_JETTY_HOST` environment variable:
+
+    export MB_JETTY_HOST=0.0.0.0
+    java -jar metabase.jar
+
+
 ### Using HTTPS with Metabase
 
 If you have an ssl certificate and would prefer to have Metabase run over HTTPS directly using its webserver you can do so by using the following environment variables:

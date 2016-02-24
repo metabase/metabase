@@ -43,13 +43,9 @@ In this scenario all you need to do is make sure you launch Metabase with the co
 
 Keep in mind that Metabase will be connecting from within your docker container, so make sure that either you're using a fully qualified hostname or that you've set a proper entry in your container's `/etc/hosts file`.
 
-### More than just `localhost`
 
-By default, Metabase will be listening on `localhost`. For a production server, you will want it to be listening on an external interface. This can be done by using the `MB_JETTY_HOST` environment variable.
+### Additional custom settings
 
-    docker run -d -p 3000:3000 \
-      -e "MB_JETTY_HOST=0.0.0.0" \
-      --name metabase metabase/metabase
-
+While running Metabase on docker you can use any of the custom settings from [Customizing the Metabase Jetty Webserver](./start.md#customizing-the-metabase-jetty-webserver) by setting environment variables on your docker run command.
 
 Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../setting-up-metabase.md).
