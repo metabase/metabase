@@ -1,8 +1,8 @@
 
-> **This guide will teach you:**  
-> How to compile your own copy of Metabase  
-> How to set up a development environment    
-> How to run the Metabase Server  
+> **This guide will teach you:**
+> How to compile your own copy of Metabase
+> How to set up a development environment
+> How to run the Metabase Server
 > How to contribute back to the Metabase project
 
 
@@ -137,43 +137,13 @@ By default, the tests only run against the `h2` driver. You can specify which dr
 
     ENGINES=h2,postgres,mysql,mongo lein test
 
-At the time of this writing, the valid datasets are `h2`, `postgres`, `mysql`, `mongo`, `sqlserver`, and `sqlite`.
+At the time of this writing, the valid engines are `h2`, `postgres`, `mysql`, `mongo`, `sqlserver`, `sqlite`, `druid`, `bigquery`, and `redshift`. Some of these engines require additional parameters
+when testing since they are impossible to run locally (such as Redshift and Bigquery). The tests will fail on launch and let you know what parameters to supply if needed.
 
-Run the linters with
+Run the linters:
 
-    lein eastwood                        # Clojure linters
-    lein bikeshed --max-line-length 240
+    lein eastwood && lein bikeshed
 
-
-#### Bootstrapping (for REPL)
-
-To quickly get your dev environment set up, use the `bootstrap` function to create a new User and Organization.
-Open a REPL in Emacs or with `lein repl` and enter the following:
-
-```clojure
-(use 'metabase.db)
-(setup-db)
-(use 'metabase.bootstrap)
-(bootstrap)
-```
-
-You'll be walked through the steps to get started.
-
-#### API Client (for REPL)
-
-You can make API calls from the REPL using `metabase.http-client`:
-
-```clojure
-(use 'metabase.http-client)
-(defn cl [& args]
-  (-> (apply client {:email "crowberto@metabase.com", :password "squawk"} args)
-      clojure.pprint/pprint))
-(cl :get "user/current")
-;; -> {:email "crowbetro@metabase.com",
-;;     :first_name "Crowbero",
-;;     :last_login #inst "2015-03-13T22:55:05.390000000-00:00",
-;;     ...}
-```
 
 #### Developing with Emacs
 
@@ -204,22 +174,9 @@ Start up an instant cheatsheet for the project + dependencies by running
 
     lein instant-cheatsheet
 
-#### Marginalia
-
-You can generate and view documentation with
-
-    lein marg
-    open ./docs/uberdoc.html
-
-You can update the GitHub pages documentation using
-
-    make dox
-
-You should be on the `master` branch without any uncommited local changes before doing so. Also, make sure you've fetched the branch `gh-pages` and can push it back to `origin`.
-
 
 ## License
 
-Copyright © 2015 Metabase, Inc
+Copyright © 2016 Metabase, Inc
 
 Distributed under the terms of the GNU Affero General Public License (AGPL) except as otherwise noted.  See individual files for details.

@@ -89,11 +89,9 @@
                               :exclusions [org.clojure/clojure]]
                              [lein-bikeshed "0.2.0"]                  ; Linting
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'
-                             [lein-instant-cheatsheet "2.1.4"         ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
+                             [lein-instant-cheatsheet "2.1.5"         ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
                               :exclusions [org.clojure/clojure
-                                           org.clojure/tools.namespace]]
-                             [michaelblume/lein-marginalia "0.9.0"    ; generate documentation with 'lein marg'
-                              :exclusions [org.clojure/clojure]]]
+                                           org.clojure/tools.namespace]]]
                    :env {:mb-run-mode "dev"}
                    :jvm-opts ["-Dlogfile.path=target/log"
                               "-Xms1024m"                             ; give JVM a decent heap size to start with
