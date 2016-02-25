@@ -108,10 +108,10 @@
   [file filename channels]
   {:pre [(string? filename)
          (string? channels)]}
-  (let [response (http/post (str slack-api-baseurl "/files.upload") {:multipart [["token" (slack-token)]
-                                                                                 ["file" file]
-                                                                                 ["filename" filename]
-                                                                                 ["channels" channels]]
+  (let [response (http/post (str slack-api-baseurl "/files.upload") {:multipart [{:name "token",    :content (slack-token)}
+                                                                                 {:name "file",     :content file}
+                                                                                 {:name "filename", :content filename}
+                                                                                 {:name "channels", :content channels}]
                                                                      :as :json})]
     (if (= 200 (:status response))
       (get-in (:body response) [:file :url_private])
