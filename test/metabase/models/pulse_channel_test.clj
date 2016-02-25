@@ -101,7 +101,7 @@
       (dissoc :date_joined :last_login :is_superuser :is_qbnewb)))
 
 ;; create a channel then select its details
-(defn- create-channel-then-select
+(defn- create-channel-then-select!
   [channel]
   (when-let [new-channel-id (create-pulse-channel channel)]
     (-> (db/sel :one PulseChannel :id new-channel-id)
@@ -110,7 +110,7 @@
         (dissoc :id :pulse_id :created_at :updated_at)
         (m/dissoc-in [:details :emails]))))
 
-(defn- update-channel-then-select
+(defn- update-channel-then-select!
   [{:keys [id] :as channel}]
   (update-pulse-channel channel)
   (-> (db/sel :one PulseChannel :id id)
@@ -130,11 +130,11 @@
                    (user-details :rasta)]}
   (tu/with-temp Pulse [{:keys [id]} {:creator_id (user->id :rasta)
                                      :name       (tu/random-name)}]
-    (create-channel-then-select {:pulse_id      id
-                                 :channel_type  :email
-                                 :schedule_type schedule-type-daily
-                                 :schedule_hour 18
-                                 :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)} {:id (user->id :crowberto)}]})))
+    (create-channel-then-select! {:pulse_id     id
+                                  :channel_type  :email
+                                  :schedule_type schedule-type-daily
+                                  :schedule_hour 18
+                                  :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)} {:id (user->id :crowberto)}]})))
 
 (expect
   {:channel_type  :slack
@@ -146,11 +146,11 @@
    :details       {:something "random"}}
   (tu/with-temp Pulse [{:keys [id]} {:creator_id (user->id :rasta)
                                      :name       (tu/random-name)}]
-    (create-channel-then-select {:pulse_id      id
-                                 :channel_type  :slack
-                                 :schedule_type schedule-type-hourly
-                                 :details       {:something "random"}
-                                 :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)} {:id (user->id :crowberto)}]})))
+    (create-channel-then-select! {:pulse_id     id
+                                  :channel_type  :slack
+                                  :schedule_type schedule-type-hourly
+                                  :details       {:something "random"}
+                                  :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)} {:id (user->id :crowberto)}]})))
 
 
 ;; update-pulse-channel
@@ -169,11 +169,11 @@
                                                               :details       {}
                                                               :schedule_type schedule-type-daily
                                                               :schedule_hour 15}]
-      (update-channel-then-select {:id            channel-id
-                                   :channel_type  :email
-                                   :schedule_type schedule-type-daily
-                                   :schedule_hour 18
-                                   :recipients    [{:email "foo@bar.com"}]}))))
+      (update-channel-then-select! {:id           channel-id
+                                    :channel_type  :email
+                                    :schedule_type schedule-type-daily
+                                    :schedule_hour 18
+                                    :recipients    [{:email "foo@bar.com"}]}))))
 
 ;; monthly schedules require a schedule_frame and can optionally omit they schedule_day
 (expect
@@ -190,13 +190,13 @@
                                                               :details       {}
                                                               :schedule_type schedule-type-daily
                                                               :schedule_hour 15}]
-      (update-channel-then-select {:id            channel-id
-                                   :channel_type  :email
-                                   :schedule_type schedule-type-monthly
-                                   :schedule_hour 8
-                                   :schedule_day  nil
-                                   :schedule_frame schedule-frame-mid
-                                   :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)}]}))))
+      (update-channel-then-select! {:id            channel-id
+                                    :channel_type   :email
+                                    :schedule_type  schedule-type-monthly
+                                    :schedule_hour  8
+                                    :schedule_day   nil
+                                    :schedule_frame schedule-frame-mid
+                                    :recipients     [{:email "foo@bar.com"} {:id (user->id :rasta)}]}))))
 
 ;; weekly schedule should have a day in it, show that we can get full users
 (expect
@@ -213,12 +213,12 @@
                                                               :details       {}
                                                               :schedule_type schedule-type-daily
                                                               :schedule_hour 15}]
-      (update-channel-then-select {:id            channel-id
-                                   :channel_type  :email
-                                   :schedule_type schedule-type-weekly
-                                   :schedule_hour 8
-                                   :schedule_day  "mon"
-                                   :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)}]}))))
+      (update-channel-then-select! {:id           channel-id
+                                    :channel_type  :email
+                                    :schedule_type schedule-type-weekly
+                                    :schedule_hour 8
+                                    :schedule_day  "mon"
+                                    :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)}]}))))
 
 ;; hourly schedules don't require day/hour settings (should be nil), fully change recipients
 (expect
@@ -236,12 +236,12 @@
                                                               :schedule_type schedule-type-daily
                                                               :schedule_hour 15}]
       (update-recipients! channel-id [(user->id :rasta)])
-      (update-channel-then-select {:id            channel-id
-                                   :channel_type  :email
-                                   :schedule_type schedule-type-hourly
-                                   :schedule_hour 12
-                                   :schedule_day  "tue"
-                                   :recipients    [{:id (user->id :crowberto)}]}))))
+      (update-channel-then-select! {:id           channel-id
+                                    :channel_type  :email
+                                    :schedule_type schedule-type-hourly
+                                    :schedule_hour 12
+                                    :schedule_day  "tue"
+                                    :recipients    [{:id (user->id :crowberto)}]}))))
 
 ;; custom details for channels that need it
 (expect
@@ -259,13 +259,13 @@
                                                               :details       {}
                                                               :schedule_type schedule-type-daily
                                                               :schedule_hour 15}]
-      (update-channel-then-select {:id            channel-id
-                                   :channel_type  :email
-                                   :schedule_type schedule-type-daily
-                                   :schedule_hour 12
-                                   :schedule_day  "tue"
-                                   :recipients    [{:email "foo@bar.com"} {:email "blah@bar.com"}]
-                                   :details       {:channel "#metabaserocks"}}))))
+      (update-channel-then-select! {:id            channel-id
+                                    :channel_type  :email
+                                    :schedule_type schedule-type-daily
+                                    :schedule_hour 12
+                                    :schedule_day  "tue"
+                                    :recipients    [{:email "foo@bar.com"} {:email "blah@bar.com"}]
+                                    :details       {:channel "#metabaserocks"}}))))
 
 ;; update-recipients!
 (expect
