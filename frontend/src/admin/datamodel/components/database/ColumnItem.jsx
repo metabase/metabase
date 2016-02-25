@@ -4,6 +4,7 @@ import Input from "metabase/components/Input.jsx";
 import Select from "metabase/components/Select.jsx";
 
 import * as MetabaseCore from "metabase/lib/core";
+import { titleize, humanize } from "metabase/lib/formatting";
 import { isNumeric } from "metabase/lib/schema_metadata";
 
 import _  from "underscore";
@@ -99,7 +100,7 @@ export default class Column extends Component {
                     placeholder="Select a target"
                     value={this.props.field.target && _.find(this.props.idfields, (field) => field.id === this.props.field.target.id)}
                     options={this.props.idfields}
-                    optionNameFn={(field) => field.displayName}
+                    optionNameFn={(field) => field.table.schema && field.table.schema !== "public" ? titleize(humanize(field.table.schema))+"."+field.displayName : field.displayName}
                     onChange={this.onTargetChange}
                 />
             );
