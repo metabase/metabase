@@ -81,7 +81,7 @@ export default class SaveQuestionModal extends Component {
 
         card.name = details.name.trim();
         // since description is optional, it can be null, so check for a description before trimming it
-        details.description ? card.description = details.description.trim() : details.description;
+        card.details = details.description ? details.description.trim() : null;
         card.public_perms = 2; // public read/write
 
         if (details.saveType === "create") {
