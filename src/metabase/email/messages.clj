@@ -6,7 +6,7 @@
             [stencil.loader :as loader]
             [metabase.email :as email]
             [metabase.models.setting :as setting]
-            [metabase.pulse :as p, :refer [render-pulse-section]]
+            [metabase.pulse :as p]
             [metabase.util :as u]
             (metabase.util [quotation :as quotation]
                            [urls :as url])))
@@ -109,8 +109,10 @@
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
   [pulse results]
   (let [images       (atom [])
-        body         (apply vector :div (for [result results]
-                                          (render-pulse-section (partial render-image images) :include-buttons result)))
+        body         (binding [p/*include-title* true
+                               p/*render-img-fn* (partial render-image images)]
+                       (vec (cons :div (for [result results]
+                                         (p/render-pulse-section result)))))
         data-quote   (quotation/random-quote)
         message-body (stencil/render-file "metabase/email/pulse"
                                           {:emailType       "pulse"

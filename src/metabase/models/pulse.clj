@@ -155,20 +155,20 @@
   `PulseCards`, `PulseChannels`, and `PulseChannelRecipients`.
 
    Returns the newly created `Pulse` or throws an Exception."
-  [pulse-name creator-id cards channels]
+  [pulse-name creator-id card-ids channels]
   {:pre [(string? pulse-name)
          (integer? creator-id)
-         (sequential? cards)
-         (> (count cards) 0)
-         (every? integer? cards)
+         (sequential? card-ids)
+         (> (count card-ids) 0)
+         (every? integer? card-ids)
          (coll? channels)
          (every? map? channels)]}
   (kdb/transaction
     (let [{:keys [id] :as pulse} (db/ins Pulse
                                    :creator_id creator-id
                                    :name pulse-name)]
-      ;; add cards to the Pulse
-      (update-pulse-cards pulse cards)
+      ;; add card-ids to the Pulse
+      (update-pulse-cards pulse card-ids)
       ;; add channels to the Pulse
       (update-pulse-channels pulse channels)
       ;; return the full Pulse (and record our create event)

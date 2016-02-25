@@ -1,12 +1,13 @@
 (ns metabase.task.send-pulses
   "Tasks related to running `Pulses`."
   (:require [clojure.tools.logging :as log]
-            [cheshire.core :as cheshire]
+            [cheshire.core :as json]
             (clojurewerkz.quartzite [jobs :as jobs]
                                     [triggers :as triggers])
             [clojurewerkz.quartzite.schedule.cron :as cron]
             [clj-time.core :as time]
             [clj-time.predicates :as timepr]
+            [metabase.api.common :refer [let-404]]
             [metabase.db :as db]
             [metabase.driver :as driver]
             [metabase.email :as email]
@@ -23,10 +24,10 @@
             [metabase.pulse :as p]))
 
 
-(declare send-pulses)
+(declare send-pulses!)
 
-(def send-pulses-job-key "metabase.task.send-pulses.job")
-(def send-pulses-trigger-key "metabase.task.send-pulses.trigger")
+(def ^:private ^:const send-pulses-job-key     "metabase.task.send-pulses.job")
+(def ^:private ^:const send-pulses-trigger-key "metabase.task.send-pulses.trigger")
 
 (defonce ^:private send-pulses-job (atom nil))
 (defonce ^:private send-pulses-trigger (atom nil))
@@ -61,7 +62,7 @@
                                 :id)
         curr-monthday      (monthday now)
         curr-monthweek     (monthweek now)]
-    (send-pulses curr-hour curr-weekday curr-monthday curr-monthweek)))
+    (send-pulses! curr-hour curr-weekday curr-monthday curr-monthweek)))
 
 (defn- task-init []
   ;; build our job
@@ -83,18 +84,18 @@
 
 
 ;; TODO: this is probably something that could live somewhere else and just be reused by us
-(defn- ^:private execute-card
+(defn- execute-card
   "Execute the query for a single card."
   [card-id]
   {:pre [(integer? card-id)]}
-  (let [card (db/sel :one Card :id card-id)
-        {:keys [creator_id dataset_query]} card]
-    (try
-      {:card card :result (driver/dataset-query dataset_query {:executed_by creator_id})}
-      (catch Throwable t
-        (log/warn (format "Error running card query (%n)" card-id) t)))))
+  (let-404 [card (Card card-id)]
+    (let [{:keys [creator_id dataset_query]} card]
+      (try
+        {:card card :result (driver/dataset-query dataset_query {:executed_by creator_id})}
+        (catch Throwable t
+          (log/warn (format "Error running card query (%n)" card-id) t))))))
 
-(defn send-pulse-email
+(defn- send-email-pulse!
   "Send a `Pulse` email given a list of card results to render and a list of recipients to send to."
   [{:keys [id name] :as pulse} results recipients]
   (log/debug (format "Sending Pulse (%d: %s) via Channel :email" id name))
@@ -106,44 +107,48 @@
       :message-type :attachments
       :message      (messages/render-pulse-email pulse results))))
 
-(defn- create-slack-attachment
+(defn- create-and-upload-slack-attachment!
   "Create an attachment in Slack for a given Card by rendering its result into an image and uploading it."
-  [slack-channel {{:keys [id name] :as card} :card, {:keys [data]} :result}]
-  (let [image-byte-array (p/render-pulse-card-to-png card data false)
-        slack-file-url   (slack/files-upload image-byte-array "image.png" slack-channel)]
-    {:title      name
-     :title_link (urls/question-url id)
+  [channel-id {{card-id :id, card-name :name, :as card} :card, {:keys [data]} :result}]
+  (let [image-byte-array (p/render-pulse-card-to-png card data)
+        slack-file-url   (slack/upload-file! image-byte-array "image.png" channel-id)]
+    {:title      card-name
+     :title_link (urls/question-url card-id)
      :image_url  slack-file-url
-     :fallback   name}))
+     :fallback   card-name}))
 
-(defn send-pulse-slack
+(defn send-slack-pulse!
   "Post a `Pulse` to a slack channel given a list of card results to render and details about the slack destination."
-  [{:keys [id name]} results details]
-  (log/debug (format "Sending Pulse (%d: %s) via Channel :slack" id name))
-  (when-let [metabase-files-channel (slack/get-or-create-files-channel)]
-    (let [attachments (mapv (partial create-slack-attachment (:id metabase-files-channel)) results)]
-      (slack/chat-post-message (:channel details)
-                               (str "Pulse: " name)
-                               (cheshire/generate-string attachments)))))
+  [pulse results channel-id]
+  {:pre [(string? channel-id)]}
+  (log/debug (u/format-color 'cyan "Sending Pulse (%d: %s) via Slack" (:id pulse) (:name pulse)))
+  (when-let [metabase-files-channel (slack/get-or-create-files-channel!)]
+    (let [attachments (doall (for [result results]
+                               (create-and-upload-slack-attachment! (:id metabase-files-channel) result)))]
+      (slack/post-chat-message! channel-id
+                                (str "Pulse: " (:name pulse))
+                                attachments))))
 
-(defn send-pulse
+(defn send-pulse!
   "Execute and Send a `Pulse`, optionally specifying the specific `PulseChannels`.  This includes running each
    `PulseCard`, formatting the results, and sending the results to any specified destination.
 
    Example:
-       (send-pulse pulse)                       Send to all Channels
-       (send-pulse pulse :channel-ids [312])    Send only to Channel with :id = 312"
+       (send-pulse! pulse)                       Send to all Channels
+       (send-pulse! pulse :channel-ids [312])    Send only to Channel with :id = 312"
   [{:keys [cards] :as pulse} & {:keys [channel-ids]}]
-  {:pre [(map? pulse)]}
-  (let [results  (map execute-card (mapv :id cards))
-        channels (or channel-ids (mapv :id (:channels pulse)))]
-    (doseq [channel-id channels]
-      (let [{:keys [channel_type details recipients]} (first (filter #(= channel-id (:id %)) (:channels pulse)))]
-        (cond
-          (= :email (keyword channel_type)) (send-pulse-email pulse results recipients)
-          (= :slack (keyword channel_type)) (send-pulse-slack pulse results details))))))
+  {:pre [(map? pulse) (every? map? cards) (every? :id cards)]}
+  (let [results     (for [card cards]
+                      (execute-card (:id card)))
+        channel-ids (or channel-ids (mapv :id (:channels pulse)))]
+    (doseq [channel-id channel-ids]
+      (let [{:keys [channel_type details recipients]} (some #(when (= channel-id (:id %)) %)
+                                                            (:channels pulse))]
+        (condp = (keyword channel_type)
+          :email (send-email-pulse! pulse results recipients)
+          :slack (send-slack-pulse! pulse results (:channel details)))))))
 
-(defn send-pulses
+(defn- send-pulses!
   "Send any `Pulses` which are scheduled to run in the current day/hour.  We use the current time and determine the
    hour of the day and day of the week according to the defined reporting timezone, or UTC.  We then find all `Pulses`
    that are scheduled to run and send them."
@@ -158,7 +163,7 @@
       (try
         (log/debug (format "Starting Pulse Execution: %d" pulse-id))
         (when-let [pulse (pulse/retrieve-pulse pulse-id)]
-          (send-pulse pulse :channel-ids (mapv :id (get channels-by-pulse pulse-id))))
+          (send-pulse! pulse :channel-ids (mapv :id (get channels-by-pulse pulse-id))))
         (log/debug (format "Finished Pulse Execution: %d" pulse-id))
         (catch Exception e
           (log/error "Error sending pulse:" pulse-id e))))))

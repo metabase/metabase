@@ -10,11 +10,11 @@
             [metabase.integrations.slack :as slack]
             (metabase.models [card :refer [Card]]
                              [database :refer [Database]]
-                             [pulse :refer [Pulse] :as pulse]
+                             [pulse :refer [Pulse retrieve-pulse] :as pulse]
                              [pulse-channel :refer [channel-types]])
             [metabase.pulse :as p]
-            [metabase.task.send-pulses :refer [send-pulse]]
-            [metabase.models.pulse :refer [retrieve-pulse]]))
+            [metabase.task.send-pulses :refer [send-pulse!]]
+            [metabase.util :as u]))
 
 
 (defendpoint GET "/"
@@ -59,10 +59,9 @@
 (defendpoint DELETE "/:id"
   "Delete a `Pulse`."
   [id]
-  (let [pulse  (db/sel :one Pulse :id id)
-        result (db/cascade-delete Pulse :id id)]
-    (events/publish-event :pulse-delete (assoc pulse :actor_id *current-user-id*))
-    result))
+  (let-404 [pulse (Pulse id)]
+    (u/prog1 (db/cascade-delete Pulse :id id)
+      (events/publish-event :pulse-delete (assoc pulse :actor_id *current-user-id*)))))
 
 
 (defendpoint GET "/form_input"
@@ -75,8 +74,10 @@
                  ;; no Slack integration, so we are g2g
                  chan-types
                  ;; if we have Slack enabled build a dynamic list of channels/users
-                 (let [slack-channels (mapv (fn [ch] (str "#" (get ch "name"))) (get (slack/channels-list) "channels"))
-                       slack-users    (mapv (fn [u] (str "@" (get u "name"))) (get (slack/users-list) "members"))]
+                 (let [slack-channels (for [channel (slack/channels-list)]
+                                        (str \# (:name channel)))
+                       slack-users    (for [user (slack/users-list)]
+                                        (str \@ (:name user)))]
                    (assoc-in chan-types [:slack :fields 0 :options] (concat slack-channels slack-users))))}))
 
 
@@ -86,7 +87,9 @@
   (let [card (Card id)]
     (read-check Database (:database (:dataset_query card)))
     (let [data (:data (driver/dataset-query (:dataset_query card) {:executed_by *current-user-id*}))]
-      {:status 200, :body (html [:html [:body {:style "margin: 0;"} (p/render-pulse-card card data p/render-img-data-uri :include-title :include-buttons)]])})))
+      {:status 200, :body (html [:html [:body {:style "margin: 0;"} (binding [p/*include-title* true
+                                                                              p/*include-buttons* true]
+                                                                      (p/render-pulse-card card data))]])})))
 
 (defendpoint GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a `Card` with ID and other information."
@@ -96,7 +99,8 @@
     (let [result    (driver/dataset-query (:dataset_query card) {:executed_by *current-user-id*})
           data      (:data result)
           card-type (p/detect-pulse-card-type card data)
-          card-html (html (p/render-pulse-card card data p/render-img-data-uri :include-title (not :include-buttons)))]
+          card-html (html (binding [p/*include-title* true]
+                            (p/render-pulse-card card data)))]
       {:id              id
        :pulse_card_type card-type
        :pulse_card_html card-html
@@ -108,7 +112,8 @@
   (let [card (Card id)]
     (read-check Database (:database (:dataset_query card)))
     (let [data (:data (driver/dataset-query (:dataset_query card) {:executed_by *current-user-id*}))
-          ba (p/render-pulse-card-to-png card data true)]
+          ba   (binding [p/*include-title* true]
+                 (p/render-pulse-card-to-png card data))]
       {:status 200, :headers {"Content-Type" "image/png"}, :body (new java.io.ByteArrayInputStream ba) })))
 
 (defendpoint POST "/test"
@@ -117,7 +122,7 @@
   {name     [Required NonEmptyString]
    cards    [Required ArrayOfMaps]
    channels [Required ArrayOfMaps]}
-  (send-pulse body)
+  (send-pulse! body)
   {:ok true})
 
 (define-routes)
