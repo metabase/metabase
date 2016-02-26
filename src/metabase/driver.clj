@@ -299,6 +299,11 @@
   (when engine
     (contains? (set (keys (available-drivers))) (keyword engine))))
 
+(defn driver-supports?
+  "Predicate function that tests if a driver supports a given feature."
+  [driver feature]
+  (contains? (features driver) feature))
+
 (defn class->base-type
   "Return the `Field.base_type` that corresponds to a given class returned by the DB."
   [klass]
