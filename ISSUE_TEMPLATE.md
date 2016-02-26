@@ -1,4 +1,4 @@
-Please fill in the blanks, if relevant: 
+Unless this is a feature request, please fill in the blanks:
 
 *  I am using the _____ browser.
 *  My computer's OS is _____.
