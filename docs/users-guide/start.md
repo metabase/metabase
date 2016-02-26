@@ -18,4 +18,6 @@
 
 > [Some helpful tips on building your data model](08-data-model-reference.md)
 
+> [Visualizing multiple series](09-data-model-reference.md)
+
 Let's get started with an overview of [What Metabase does](01-what-is-metabase.md).
