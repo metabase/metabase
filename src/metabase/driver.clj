@@ -45,7 +45,7 @@
 
 (def AnalyzeTable
   "Schema for the expected output of `analyze-table`."
-  {(schema/optional-key :row_count) schema/Int
+  {(schema/optional-key :row_count) (schema/maybe schema/Int)
    (schema/optional-key :fields)    [{:id                                    schema/Int
                                       (schema/optional-key :special-type)    (apply schema/enum field/special-types)
                                       (schema/optional-key :preview-display) schema/Bool
