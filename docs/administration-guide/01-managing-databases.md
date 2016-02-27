@@ -11,6 +11,7 @@ Cool, now you’re in the admin panel. Next, select **Databases** from the menu 
 Now you’ll see a list of your databases. To connect another database to Metabase, click **Add database**. Metabase currently supports the following types of databases:
 
 * Amazon Redshift
+* [Google BigQuery](databases/bigquery.md)
 * H2
 * MongoDB (version 3.0 or higher)
 * MySQL
