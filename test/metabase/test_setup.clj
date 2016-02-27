@@ -100,51 +100,24 @@
 
 
 
-;; Check that we're on target for every public var in Metabase having a docstring
-;; This will abort unit tests if we don't hit our target
-(defn- expected-docstr-percentage-for-day-of-year
-  "Calculate the percentage of public vars we expect to have a docstring by the current date in time.
-   This ranges from 80% for the end of January to 100% a quarter of the way through the year."
-  ([]
-   (expected-docstr-percentage-for-day-of-year (u/date-extract :day-of-year)))
-  ([doy]
-   (let [start-day                  30
-         start-percent              85.0
-         target-doy-for-100-percent 90
-         remaining-percent          (- 100.0 start-percent)
-         remaining-days             (- target-doy-for-100-percent start-day)]
-     (Math/min (+ start-percent (* (/ remaining-percent remaining-days)
-                                   (- doy start-day)))
-               100.0))))
-
-(defn- does-metabase-need-more-dox? []
-  (let [symb->has-doc?      (into {} (for [ns          (ns-find/find-namespaces (classpath/classpath))
-                                           :let        [nm (try (str (ns-name ns))
-                                                                (catch Throwable _))]
-                                           :when       nm
-                                           :when       (re-find #"^metabase" nm)
-                                           :when       (not (re-find #"test" nm))
-                                           [symb varr] (ns-publics ns)]
-                                       {(symbol (str nm "/" symb)) (boolean (:doc (meta varr)))}))
-        vs                  (vals symb->has-doc?)
-        total               (count vs)
-        num-with-dox        (count (filter identity vs))
-        percentage          (float (* (/ num-with-dox total)
-                                      100.0))
-        expected-percentage (expected-docstr-percentage-for-day-of-year)
-        needs-more-dox?     (< percentage expected-percentage)]
-    (println (u/format-color (if needs-more-dox? 'red 'green)
-                 "%.1f%% of Metabase public vars have docstrings. (%d/%d) Expected for today: %.1f%%" percentage num-with-dox total expected-percentage))
-    (println (u/format-color 'cyan "While you're waiting, why don't you go write a docstr for %s?"
-               (color/bold (first (shuffle (for [[symb has-doc?] symb->has-doc?
-                                                 :when           (not has-doc?)]
-                                             symb))))))
-    needs-more-dox?))
-
+;; Check that every public var in Metabase has a docstring
+(defn- things-that-need-dox []
+  (sort (for [ns          (ns-find/find-namespaces (classpath/classpath))
+              :let        [nm (try (str (ns-name ns))
+                                   (catch Throwable _))]
+              :when       (and nm
+                               (re-find #"^metabase" nm)
+                               (not (re-find #"test" nm))
+                               (not= nm "metabase.sample-data")
+                               (not= nm "metabase.http-client"))
+              [symb varr] (ns-publics ns)
+              :when       (not (:doc (meta varr)))]
+          (symbol (str (ns-name ns) "/" symb)))))
 
 (defn- throw-if-metabase-doesnt-have-enough-docstrings!
   {:expectations-options :before-run}
   []
-  (when (does-metabase-need-more-dox?)
-    (println (u/format-color 'red "Metabase needs more docstrings! Go write some more (or make some vars ^:private) before proceeding."))
+  (when-let [things-that-need-dox (seq (things-that-need-dox))]
+    (println (u/format-color 'red "Every public var in Metabase might as well have a docstring! Go write some for the following (or make them ^:private):\n%s"
+               (u/pprint-to-str things-that-need-dox)))
     (System/exit -1)))

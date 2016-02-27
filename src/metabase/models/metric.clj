@@ -27,10 +27,10 @@
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
 
 
-(defn serialize-metric [_ _ instance]
+(defn- serialize-metric [_ _ instance]
   (dissoc instance :created_at :updated_at))
 
-(defn diff-metrics [this metric1 metric2]
+(defn- diff-metrics [this metric1 metric2]
   (if-not metric1
     ;; this is the first version of the metric
     (u/update-values (select-keys metric2 [:name :description :definition]) (fn [v] {:after v}))

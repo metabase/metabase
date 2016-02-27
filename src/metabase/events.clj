@@ -96,7 +96,7 @@
     (try
       (let [evt (async/<! channel)]
         (handler-fn evt))
-      (catch Exception e
+      (catch Throwable e
         (log/error "Unexpected error listening on events" e)))
     (recur)))
 

@@ -165,5 +165,5 @@
         (when-let [pulse (pulse/retrieve-pulse pulse-id)]
           (send-pulse! pulse :channel-ids (mapv :id (get channels-by-pulse pulse-id))))
         (log/debug (format "Finished Pulse Execution: %d" pulse-id))
-        (catch Exception e
+        (catch Throwable e
           (log/error "Error sending pulse:" pulse-id e))))))

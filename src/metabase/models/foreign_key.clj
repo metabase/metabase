@@ -1,12 +1,9 @@
 (ns metabase.models.foreign-key
-  (:require [metabase.models.interface :as i]
-            [metabase.util :as u]))
+  (:require [metabase.models.interface :as i]))
 
 (def ^:const relationships
   "Valid values for `ForeginKey.relationship`."
-  #{:1t1
-    :Mt1
-    :MtM})
+  #{:1t1 :Mt1 :MtM})
 
 (i/defentity ForeignKey :metabase_foreignkey)
 
@@ -17,6 +14,3 @@
           :timestamped? (constantly true)
           :can-read?    (constantly true)
           :can-write?   i/superuser?}))
-
-
-(u/require-dox-in-this-namespace)

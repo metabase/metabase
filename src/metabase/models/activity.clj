@@ -76,6 +76,3 @@
       :details     (if (fn? details-fn)
                      (details-fn object)
                      object))))
-
-
-(u/require-dox-in-this-namespace)

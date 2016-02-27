@@ -445,6 +445,3 @@
    obj)
   ([entity id]
    (check-403 (models/can-write? entity id))))
-
-
-(u/require-dox-in-this-namespace)

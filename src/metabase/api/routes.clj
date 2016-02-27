@@ -32,7 +32,7 @@
   "Wrap API-ROUTES so they may only be accessed with proper authentiaction credentials."
   middleware/enforce-authentication)
 
-(defroutes routes
+(defroutes ^{:doc "Ring routes for API endpoints."} routes
   (context "/activity"     [] (+auth activity/routes))
   (context "/card"         [] (+auth card/routes))
   (context "/dashboard"    [] (+auth dashboard/routes))

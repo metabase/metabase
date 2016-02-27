@@ -7,8 +7,7 @@
                              [interface :as i]
                              [revision :as revision]
                              [user :refer [User]])
-            [metabase.query :as q]
-            [metabase.util :as u]))
+            [metabase.query :as q]))
 
 (def ^:const display-types
   "Valid values of `Card.display_type`."
@@ -94,6 +93,3 @@
 
   dependency/IDependent
   {:dependencies card-dependencies})
-
-
-(u/require-dox-in-this-namespace)

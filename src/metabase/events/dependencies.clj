@@ -22,7 +22,7 @@
 ;;; ## ---------------------------------------- EVENT PROCESSING ----------------------------------------
 
 
-(def model->entity
+(def ^:private model->entity
   {:card   Card
    :metric Metric})
 
