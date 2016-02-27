@@ -63,7 +63,7 @@
          (u/is-email? email)
          (map? context)]}
   (let [model->url-fn #(case %
-                        "Card"      url/question-url
+                        "Card"      url/card-url
                         "Dashboard" url/dashboard-url
                         "Pulse"     url/pulse-url
                         "Segment"   url/segment-url)

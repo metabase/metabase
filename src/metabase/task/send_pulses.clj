@@ -113,7 +113,7 @@
   (let [image-byte-array (p/render-pulse-card-to-png card data)
         slack-file-url   (slack/upload-file! image-byte-array "image.png" channel-id)]
     {:title      card-name
-     :title_link (urls/question-url card-id)
+     :title_link (urls/card-url card-id)
      :image_url  slack-file-url
      :fallback   card-name}))
 

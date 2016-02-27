@@ -109,7 +109,7 @@
    (expected-docstr-percentage-for-day-of-year (u/date-extract :day-of-year)))
   ([doy]
    (let [start-day                  30
-         start-percent              80.0
+         start-percent              85.0
          target-doy-for-100-percent 90
          remaining-percent          (- 100.0 start-percent)
          remaining-days             (- target-doy-for-100-percent start-day)]
