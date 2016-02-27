@@ -170,7 +170,9 @@
   (let [setting-key (keyword nm)
         value       (gensym "value")]
     `(defn ~nm ~(str description "\n\n" (setting-extra-dox nm default-value))
-       {::is-setting?   true
+       {:arglists       '~'([] [new-value])
+        ::description   ~description
+        ::is-setting?   true
         ::default-value ~default-value
         ::options       ~options}
        ([]       ~(if (:getter options)
@@ -197,7 +199,7 @@
   []
   (let [settings (all)]
     (->> (settings-list)
-         (map (fn [{k :key :as setting}]
+         (map (fn [{k :key, :as setting}]
                 (assoc setting
                        :value (k settings))))
          (sort-by :key))))
@@ -254,9 +256,9 @@
        (map meta)
        (filter ::is-setting?)
        (filter (complement (u/rpartial get-in [::options :internal]))) ; filter out :internal Settings
-       (map (fn [{k :name desc :doc default ::default-value}]
+       (map (fn [{k :name, description ::description, default ::default-value}]
               {:key         (keyword k)
-               :description desc
+               :description description
                :default     (or (when (get-from-env-var k)
                                   (format "Using $MB_%s" (-> (name k)
                                                              (s/replace "-" "_")
