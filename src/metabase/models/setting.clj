@@ -160,10 +160,10 @@
    You may optionally pass any of the kwarg OPTIONS below, which are kept as part of the
    metadata of the `Setting` under the key `::options`:
 
-     *  `:internal` - This `Setting` is for internal use and shouldn't be exposed in the UI (i.e., not
-                      returned by the corresponding endpoints). Default: `false`
-     *  `:getter` - A custom getter fn, which takes no arguments. Overrides the default implementation.
-     *  `:setter` - A custom setter fn, which takes a single argument. Overrides the default implementation."
+   *  `:internal` - This `Setting` is for internal use and shouldn't be exposed in the UI (i.e., not
+                    returned by the corresponding endpoints). Default: `false`
+   *  `:getter` - A custom getter fn, which takes no arguments. Overrides the default implementation.
+   *  `:setter` - A custom setter fn, which takes a single argument. Overrides the default implementation."
   [nm description & [default-value & {:as options}]]
   {:pre [(symbol? nm)
          (string? description)]}
