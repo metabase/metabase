@@ -261,9 +261,14 @@
 (declare driver)
 
 ;; this is never actually connected to, just passed to korma so it applies appropriate delimiters when building SQL
-(def ^:private korma-db (-> (kdb/create-db (kdb/postgres {}))
-                            (update :options assoc :delimiters [\[ \]])))
-
+(def ^:private ^:const korma-db
+  {:pool {:subprotocol "sqlite"
+          :subname     ""}
+   :options {:naming          {:keys   identity
+                               :fields identity}
+             :delimiters      [\[ \]]
+             :alias-delimiter " AS "
+             :subprotocol     ""}})
 
 (defn- entity [dataset-id table-name]
   (-> (k/create-entity (k/raw (format "[%s.%s]" dataset-id table-name)))
