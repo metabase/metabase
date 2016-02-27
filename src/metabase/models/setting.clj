@@ -132,6 +132,18 @@
 
 ;;; ## DEFSETTING
 
+(defn- setting-extra-dox
+  "Generate some extra documentation for a `Setting`."
+  [symb default-value]
+  (str (format "`%s` is a `Setting`. You can get its value by calling\n\n" symb)
+       (format  "    (%s)\n\n" symb)
+       "and set its value by calling\n\n"
+       (format "    (%s <new-value>)\n\n" symb)
+       "Clear its value by calling\n\n"
+       (format "    (%s nil)." symb)
+       (when default-value
+         (format "\n\nIts default value is `%s`." default-value))))
+
 (defmacro defsetting
   "Defines a new `Setting` that will be added to the DB at some point in the future.
    Conveniently can be used as a getter/setter as well:
@@ -156,7 +168,7 @@
          (string? description)]}
   (let [setting-key (keyword nm)
         value       (gensym "value")]
-    `(defn ~nm ~description
+    `(defn ~nm ~(str description "\n\n" (setting-extra-dox nm default-value))
        {::is-setting?   true
         ::default-value ~default-value
         ::options       ~options}
