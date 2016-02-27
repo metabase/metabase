@@ -175,7 +175,7 @@
 
 (defn- card-href
   [card]
-  (h (urls/question-url (:id card))))
+  (h (urls/card-url (:id card))))
 
 ;; ported from https://github.com/radkovo/CSSBox/blob/cssbox-4.10/src/main/java/org/fit/cssbox/demo/ImageRenderer.java
 (defn- render-to-png

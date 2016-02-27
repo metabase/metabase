@@ -26,21 +26,18 @@
 
 ;; extract session-id from header
 (expect "foobar"
-  (-> (wrapped-handler (mock/header (mock/request :get "/anyurl") metabase-session-header "foobar"))
-      :metabase-session-id))
+  (:metabase-session-id (wrapped-handler (mock/header (mock/request :get "/anyurl") @(resolve 'metabase.middleware/metabase-session-header) "foobar"))))
 
 
 ;; extract session-id from cookie
 (expect "cookie-session"
-  (-> (wrapped-handler (assoc (mock/request :get "/anyurl") :cookies {metabase-session-cookie {:value "cookie-session"}}))
-      :metabase-session-id))
+  (:metabase-session-id (wrapped-handler (assoc (mock/request :get "/anyurl") :cookies {@(resolve 'metabase.middleware/metabase-session-cookie) {:value "cookie-session"}}))))
 
 
 ;; if both header and cookie session-ids exist, then we expect the cookie to take precedence
 (expect "cookie-session"
-  (-> (wrapped-handler (-> (mock/header (mock/request :get "/anyurl") metabase-session-header "foobar")
-                           (assoc :cookies {metabase-session-cookie {:value "cookie-session"}})))
-      :metabase-session-id))
+  (:metabase-session-id (wrapped-handler (assoc (mock/header (mock/request :get "/anyurl") @(resolve 'metabase.middleware/metabase-session-header) "foobar")
+                                                :cookies {@(resolve 'metabase.middleware/metabase-session-cookie) {:value "cookie-session"}}))))
 
 
 ;;  ===========================  TEST enforce-authentication middleware  ===========================
@@ -132,14 +129,12 @@
 
 ;; no apikey in the request
 (expect nil
-  (-> (wrapped-api-key-handler (mock/request :get "/anyurl") )
-      :metabase-session-id))
+  (:metabase-session-id (wrapped-api-key-handler (mock/request :get "/anyurl"))))
 
 
 ;; extract apikey from header
 (expect "foobar"
-  (-> (wrapped-api-key-handler (mock/header (mock/request :get "/anyurl") metabase-api-key-header "foobar"))
-      :metabase-api-key))
+  (:metabase-api-key (wrapped-api-key-handler (mock/header (mock/request :get "/anyurl") @(resolve 'metabase.middleware/metabase-api-key-header) "foobar"))))
 
 
 ;;  ===========================  TEST enforce-api-key middleware  ===========================
