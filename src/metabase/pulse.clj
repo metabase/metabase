@@ -36,18 +36,20 @@
 ;;; ## STYLES
 (def ^:private ^:const color-brand  "rgb(45,134,212)")
 (def ^:private ^:const color-purple "rgb(135,93,175)")
-(def ^:private ^:const color-grey-1 "rgb(248,248,248)")
-(def ^:private ^:const color-grey-2 "rgb(189,193,191)")
-(def ^:private ^:const color-grey-3 "rgb(124,131,129)")
-(def ^:const color-grey-4 "rgb(57,67,64)")
+(def ^:private ^:const color-gray-1 "rgb(248,248,248)")
+(def ^:private ^:const color-gray-2 "rgb(189,193,191)")
+(def ^:private ^:const color-gray-3 "rgb(124,131,129)")
+(def ^:const color-gray-4 "A ~25% Gray color." "rgb(57,67,64)")
 
 (def ^:private ^:const font-style    {:font-family "Lato, \"Helvetica Neue\", Helvetica, Arial, sans-serif"})
-(def ^:const section-style font-style)
+(def ^:const section-style
+  "CSS style for a Pulse section."
+  font-style)
 
 (def ^:private ^:const header-style
   (merge font-style {:font-size       :16px
                      :font-weight     700
-                     :color           color-grey-4
+                     :color           color-gray-4
                      :text-decoration :none}))
 
 (def ^:private ^:const scalar-style
@@ -58,8 +60,8 @@
 (def ^:private ^:const bar-th-style
   (merge font-style {:font-size      :10px
                      :font-weight    400
-                     :color          color-grey-4
-                     :border-bottom  (str "4px solid " color-grey-1)
+                     :color          color-gray-4
+                     :border-bottom  (str "4px solid " color-gray-1)
                      :padding-top    :0px
                      :padding-bottom :10px}))
 
@@ -218,7 +220,7 @@
 (defn- render-table
   [card rows cols col-indexes bar-column]
   (let [max-value (if bar-column (apply max (map bar-column rows)))]
-    [:table {:style (style {:padding-bottom :8px, :border-bottom (str "4px solid " color-grey-1)})}
+    [:table {:style (style {:padding-bottom :8px, :border-bottom (str "4px solid " color-gray-1)})}
      [:thead
       [:tr
        (for [col-idx col-indexes :let [col (-> cols (nth col-idx))]]
@@ -228,7 +230,7 @@
          [:th {:style (style bar-td-style bar-th-style {:width "99%"})}])]]
      [:tbody
       (map-indexed (fn [row-idx row]
-                     [:tr {:style (style {:color (if (odd? row-idx) color-grey-2 color-grey-3)})}
+                     [:tr {:style (style {:color (if (odd? row-idx) color-gray-2 color-gray-3)})}
                       (for [col-idx col-indexes :let [col (-> cols (nth col-idx))]]
                         [:td {:style (style bar-td-style (when (and bar-column (= col-idx 1)) {:font-weight 700}))}
                          (-> row (nth col-idx) (format-cell col) h)])
@@ -249,17 +251,17 @@
     [:div {:style (style {:padding-top :16px})}
      (cond
        (> (count rows) rows-limit)
-       [:div {:style (style {:color color-grey-2
+       [:div {:style (style {:color color-gray-2
                              :padding-bottom :10px})}
-        "Showing " [:strong {:style (style {:color color-grey-3})} (format-number rows-limit)]
-        " of "     [:strong {:style (style {:color color-grey-3})} (format-number (count rows))]
+        "Showing " [:strong {:style (style {:color color-gray-3})} (format-number rows-limit)]
+        " of "     [:strong {:style (style {:color color-gray-3})} (format-number (count rows))]
         " rows."]
 
        (> (count cols) cols-limit)
-       [:div {:style (style {:color          color-grey-2
+       [:div {:style (style {:color          color-gray-2
                              :padding-bottom :10px})}
-        "Showing " [:strong {:style (style {:color color-grey-3})} (format-number cols-limit)]
-        " of "     [:strong {:style (style {:color color-grey-3})} (format-number (count cols))]
+        "Showing " [:strong {:style (style {:color color-gray-3})} (format-number cols-limit)]
+        " of "     [:strong {:style (style {:color color-gray-3})} (format-number (count cols))]
         " columns."])]))
 
 (defn- render:table
@@ -341,7 +343,7 @@
                             :font-weight   700
                             :padding-right :16px})}
         (first values)]
-       [:td {:style (style {:color       color-grey-3
+       [:td {:style (style {:color       color-gray-3
                             :font-size   :24px
                             :font-weight 700})}
         (second values)]]
@@ -351,7 +353,7 @@
                             :font-weight   700
                             :padding-right :16px})}
         (first labels)]
-       [:td {:style (style {:color     color-grey-3
+       [:td {:style (style {:color     color-gray-3
                             :font-size :16px})}
         (second labels)]]]]))
 
@@ -364,7 +366,7 @@
    [:img {:style (style {:width :104px})
           :src   (render-image-with-filename "frontend_client/app/img/pulse_no_results@2x.png")}]
    [:div {:style (style {:margin-top :8px
-                         :color      color-grey-4})}
+                         :color      color-gray-4})}
     "No results"]])
 
 (defn detect-pulse-card-type
@@ -390,6 +392,7 @@
       :else                                                        :table)))
 
 (defn render-pulse-card
+  "Render a single CARD for a `Pulse`. DATA is the `:data` from QP results (I think)."
   [card data]
   (try
     [:a {:href   (card-href card)

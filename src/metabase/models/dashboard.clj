@@ -119,6 +119,3 @@
          {:serialize-instance (fn [_ _ dashboard] (serialize-dashboard dashboard))
           :revert-to-revision (u/drop-first-arg revert-dashboard)
           :diff-str           (u/drop-first-arg diff-dashboards-str)}))
-
-
-(u/require-dox-in-this-namespace)

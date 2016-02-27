@@ -137,7 +137,7 @@
 
       (nil? value)
       nil
-      
+
       :else
       (throw (Exception. (format "Invalid value '%s': expected a DateTime." value))))))
 
@@ -253,6 +253,3 @@
           resolve-fields
           resolve-database
           resolve-tables))
-
-
-(u/require-dox-in-this-namespace)

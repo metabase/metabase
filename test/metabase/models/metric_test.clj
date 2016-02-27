@@ -200,6 +200,8 @@
 
 ;; ## Metric Revisions
 
+(tu/resolve-private-fns metabase.models.metric serialize-metric diff-metrics)
+
 ;; serialize-metric
 (expect
   {:id          true
@@ -228,6 +230,7 @@
             (update :table_id boolean))))))
 
 ;; diff-metrics
+
 (expect
   {:definition  {:before {:filter ["AND" [">" 4 "2014-10-19"]]}
                  :after  {:filter ["AND" ["BETWEEN" 4 "2014-07-01" "2014-10-19"]]}}

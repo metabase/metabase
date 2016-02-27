@@ -7,8 +7,7 @@
                              [field-values :refer [FieldValues]]
                              [interface :as i]
                              [metric :refer [Metric retrieve-metrics]]
-                             [segment :refer [Segment retrieve-segments]])
-            [metabase.util :as u]))
+                             [segment :refer [Segment retrieve-segments]])))
 
 (def ^:const entity-types
   "Valid values for `Table.entity_type` (field may also be `nil`)."
@@ -81,6 +80,3 @@
   [table-id]
   {:pre [(integer? table-id)]}
   (db/sel :one :field [Table :db_id] :id table-id))
-
-
-(u/require-dox-in-this-namespace)

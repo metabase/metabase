@@ -448,7 +448,7 @@
           (log/error (u/pprint-to-str 'red query-result))
           (throw (Exception. (str (get query-result :error "general error")))))
         (query-complete query-execution query-result))
-      (catch Exception e
+      (catch Throwable e
         (log/error (u/format-color 'red "Query failure: %s" (.getMessage e)))
         (query-fail query-execution (.getMessage e))))))
 
@@ -497,6 +497,3 @@
       query-execution)
     ;; first time saving execution, so insert it
     (m/mapply ins QueryExecution query-execution)))
-
-
-(u/require-dox-in-this-namespace)

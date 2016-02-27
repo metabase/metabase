@@ -133,5 +133,3 @@
   (let [{:keys [id]} (dashboard dashboard-card)]
     (db/cascade-delete DashboardCard :id (:id dashboard-card))
     (events/publish-event :dashboard-remove-cards {:id id :actor_id user-id :dashcards [dashboard-card]})))
-
-(u/require-dox-in-this-namespace)

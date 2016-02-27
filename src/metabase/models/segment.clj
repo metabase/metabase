@@ -25,10 +25,10 @@
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
 
 
-(defn serialize-segment [_ _ instance]
+(defn- serialize-segment [_ _ instance]
   (dissoc instance :created_at :updated_at))
 
-(defn diff-segments [this segment1 segment2]
+(defn- diff-segments [this segment1 segment2]
   (if-not segment1
     ;; this is the first version of the segment
     (u/update-values (select-keys segment2 [:name :description :definition]) (fn [v] {:after v}))

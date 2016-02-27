@@ -168,6 +168,3 @@
                             :is_creation  false
                             :is_reversion true)]
         (add-revision-details entity new-revision last-revision)))))
-
-
-(u/require-dox-in-this-namespace)

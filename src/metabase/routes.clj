@@ -17,7 +17,7 @@
       (resp/content-type "text/html")))
 
 ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
-(defroutes routes
+(defroutes ^{:doc "Top-level ring routes for Metabase."} routes
   (GET "/" [] index)                                     ; ^/$           -> index.html
   (GET "/favicon.ico" [] (resp/resource-response "frontend_client/favicon.ico"))
   (context "/api" [] api/routes)                         ; ^/api/        -> API routes

@@ -119,7 +119,7 @@
                                            :pulse           (html body)
                                            :pulseName       (:name pulse)
                                            :sectionStyle    p/section-style
-                                           :colorGrey4      p/color-grey-4
+                                           :colorGrey4      p/color-gray-4
                                            :quotation       (:quote data-quote)
                                            :quotationAuthor (:author data-quote)
                                            :logoFooter      true})]

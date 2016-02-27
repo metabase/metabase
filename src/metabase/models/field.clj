@@ -5,8 +5,7 @@
                              [database :refer [Database]]
                              [field-values :refer [FieldValues]]
                              [foreign-key :refer [ForeignKey]]
-                             [interface :as i])
-            [metabase.util :as u]))
+                             [interface :as i])))
 
 (def ^:const special-types
   "Possible values for `Field.special_type`."
@@ -125,6 +124,3 @@
                     :can-write?         i/superuser?
                     :pre-insert         pre-insert
                     :pre-cascade-delete pre-cascade-delete}))
-
-
-(u/require-dox-in-this-namespace)

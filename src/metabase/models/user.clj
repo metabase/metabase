@@ -118,6 +118,3 @@
   [reset-token]
   {:pre [(string? reset-token)]}
   (str (setting/get :-site-url) "/auth/reset_password/" reset-token))
-
-
-(u/require-dox-in-this-namespace)

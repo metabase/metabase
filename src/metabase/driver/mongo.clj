@@ -21,8 +21,7 @@
             [metabase.driver.sync :as sync])
   (:import com.mongodb.DB))
 
-(declare driver field-values-lazy-seq)
-
+(declare field-values-lazy-seq)
 
 ;;; ## MongoDriver
 

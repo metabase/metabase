@@ -11,8 +11,7 @@
                              [interface :as i]
                              [pulse-card :refer [PulseCard]]
                              [pulse-channel :refer [PulseChannel] :as pulse-channel]
-                             [user :refer [User]])
-            [metabase.util :as u]))
+                             [user :refer [User]])))
 
 
 (i/defentity Pulse :pulse)
@@ -172,8 +171,4 @@
       ;; add channels to the Pulse
       (update-pulse-channels pulse channels)
       ;; return the full Pulse (and record our create event)
-      (->> (retrieve-pulse id)
-           (events/publish-event :pulse-create)))))
-
-
-(u/require-dox-in-this-namespace)
+      (events/publish-event :pulse-create (retrieve-pulse id)))))
