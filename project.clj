@@ -89,7 +89,7 @@
                               :exclusions [org.clojure/clojure]]
                              [lein-bikeshed "0.3.0"]                  ; Linting
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'
-                             [lein-instant-cheatsheet "2.2.0"         ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
+                             [lein-instant-cheatsheet "2.2.1"         ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
                               :exclusions [org.clojure/clojure
                                            org.clojure/tools.namespace]]]
                    :env {:mb-run-mode "dev"}
