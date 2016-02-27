@@ -139,8 +139,10 @@
        (format  "    (%s)\n\n" symb)
        "and set its value by calling\n\n"
        (format "    (%s <new-value>)\n\n" symb)
+       (format "You can also set its value with the env var `MB_%s`.\n"
+               (s/upper-case (s/replace (name symb) #"-" "_")))
        "Clear its value by calling\n\n"
-       (format "    (%s nil)." symb)
+       (format "    (%s nil)" symb)
        (when default-value
          (format "\n\nIts default value is `%s`." default-value))))
 
