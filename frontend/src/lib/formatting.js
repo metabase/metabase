@@ -83,8 +83,7 @@ export function formatValue(value, column, options = {}) {
         return null
     } else if (column && column.unit != null) {
         return formatTimeWithUnit(value, column.unit, options);
-    // NOTE: the day based format here is highly dangerous because we have no timezone info :(
-    } else if (moment.isDate(value) || moment(value, ["YYYY-MM-DD", "YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()) {
+    } else if (moment.isDate(value) || moment(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()) {
         return moment(value).format("LLLL");
     } else if (typeof value === "string") {
         return value;
