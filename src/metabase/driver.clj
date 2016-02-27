@@ -328,10 +328,13 @@
 ;; ## Driver Lookup
 
 (defn engine->driver
-  "Return the driver instance that should be used for given ENGINE.
-   This loads the corresponding driver if needed; it is expected that it resides in a var named
+  "Return the driver instance that should be used for given ENGINE keyword.
+   This loads the corresponding driver if needed; this is done with a call like
 
-     metabase.driver.<engine>/<engine>"
+     (require 'metabase.driver.<engine>)
+
+   The namespace itself should register itself by passing an instance of a class that
+   implements `IDriver` to `metabase.driver/register-driver!`."
   [engine]
   {:pre [engine]}
   (or ((keyword engine) @registered-drivers)
