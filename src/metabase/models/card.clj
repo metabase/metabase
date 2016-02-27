@@ -89,10 +89,8 @@
           :pre-cascade-delete pre-cascade-delete})
 
   revision/IRevisioned
-  {:serialize-instance serialize-instance
-   :revert-to-revision revision/default-revert-to-revision
-   :diff-map           revision/default-diff-map
-   :diff-str           revision/default-diff-str}
+  (assoc revision/IRevisionedDefaults
+         :serialize-instance serialize-instance)
 
   dependency/IDependent
   {:dependencies card-dependencies})

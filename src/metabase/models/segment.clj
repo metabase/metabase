@@ -46,10 +46,9 @@
 
 (extend (class Segment)
   revision/IRevisioned
-  {:serialize-instance serialize-segment
-   :revert-to-revision revision/default-revert-to-revision
-   :diff-map           diff-segments
-   :diff-str           revision/default-diff-str})
+  (merge revision/IRevisionedDefaults
+         {:serialize-instance serialize-segment
+          :diff-map           diff-segments}))
 
 
 ;; ## Persistence Functions

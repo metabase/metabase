@@ -46,7 +46,8 @@
 
 
 (defprotocol ^:private IGenericSQLFormattable
-  (formatted [this]))
+  (formatted [this]
+    "Return an appropriate korma form for an object."))
 
 (extend-protocol IGenericSQLFormattable
   nil (formatted [_] nil)

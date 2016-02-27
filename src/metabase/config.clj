@@ -43,21 +43,13 @@
 
 
 ;; These are convenience functions for accessing config values that ensures a specific return type
-(defn ^Integer config-int  [k] (some-> k config-str Integer/parseInt))
-(defn ^Boolean config-bool [k] (some-> k config-str Boolean/parseBoolean))
-(defn ^Keyword config-kw   [k] (some-> k config-str keyword))
+(defn ^Integer config-int  "Fetch a configuration key and parse it as an integer." [k] (some-> k config-str Integer/parseInt))
+(defn ^Boolean config-bool "Fetch a configuration key and parse it as a boolean."  [k] (some-> k config-str Boolean/parseBoolean))
+(defn ^Keyword config-kw   "Fetch a configuration key and parse it as a keyword."  [k] (some-> k config-str keyword))
 
-
-(def ^:const config-all
-  "Global application configuration as a dictionary.
-   Combines hard coded defaults with optional user specified overrides from environment variables."
-  (into {} (for [k (keys app-defaults)]
-               [k (config-str k)])))
-
-
-(def ^:const ^Boolean is-dev?  (= :dev  (config-kw :mb-run-mode)))
-(def ^:const ^Boolean is-prod? (= :prod (config-kw :mb-run-mode)))
-(def ^:const ^Boolean is-test? (= :test (config-kw :mb-run-mode)))
+(def ^:const ^Boolean is-dev?  "Are we running in `dev` mode (i.e. in a REPL or via `lein ring server`)?" (= :dev  (config-kw :mb-run-mode)))
+(def ^:const ^Boolean is-prod? "Are we running in `prod` mode (i.e. from a JAR)?"                         (= :prod (config-kw :mb-run-mode)))
+(def ^:const ^Boolean is-test? "Are we running in `test` mode (i.e. via `lein test`)?"                    (= :test (config-kw :mb-run-mode)))
 
 
 ;;; Version stuff

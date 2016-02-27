@@ -47,10 +47,9 @@
 
 (extend (class Metric)
   revision/IRevisioned
-  {:serialize-instance serialize-metric
-   :revert-to-revision revision/default-revert-to-revision
-   :diff-map           diff-metrics
-   :diff-str           revision/default-diff-str})
+  (merge revision/IRevisionedDefaults
+         {:serialize-instance serialize-metric
+          :diff-map           diff-metrics}))
 
 
 ;;; ## ---------------------------------------- DEPENDENCIES ----------------------------------------
