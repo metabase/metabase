@@ -143,7 +143,9 @@
                (s/upper-case (s/replace (name symb) #"-" "_")))
        "Clear its value by calling\n\n"
        (format "    (%s nil)\n\n" symb)
-       (format "Its default value is `%s`." default-value)))
+       (format "Its default value is `%s`." (if (nil? default-value)
+                                              "nil"
+                                              default-value))))
 
 (defmacro defsetting
   "Defines a new `Setting` that will be added to the DB at some point in the future.
