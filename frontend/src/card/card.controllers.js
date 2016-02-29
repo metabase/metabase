@@ -133,14 +133,17 @@ CardControllers.controller('CardDetail', [
             onBeginEditing: function() {
                 isEditing = true;
                 renderAll();
+                MetabaseAnalytics.trackEvent('QueryBuilder', 'Edit Begin');
             },
             onCancelEditing: function() {
                 // reset back to our original card
                 isEditing = false;
                 setCard(originalCard, {resetDirty: true});
+                MetabaseAnalytics.trackEvent('QueryBuilder', 'Edit Cancel');
             },
             onRestoreOriginalQuery: function () {
                 setCard(originalCard, {resetDirty: true});
+                MetabaseAnalytics.trackEvent('QueryBuilder', 'Restore Original');
             },
             cardIsNewFn: cardIsNew,
             cardIsDirtyFn: cardIsDirty
