@@ -103,7 +103,6 @@ export default class Visualization extends Component {
                     card={series[0].card} // convienence for single-series visualizations
                     data={series[0].data} // convienence for single-series visualizations
                     hovered={this.state.hovered}
-                    onUpdateVisualizationSetting={(...args) => console.log("onUpdateVisualizationSetting", args)}
                     onHoverChange={this.onHoverChange}
                     onRenderError={this.onRenderError}
                     onRender={this.onRender}

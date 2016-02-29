@@ -35,7 +35,8 @@ export default class QueryVisualization extends Component {
         tableForeignKeys: PropTypes.array,
         tableForeignKeyReferences: PropTypes.object,
         setDisplayFn: PropTypes.func.isRequired,
-        setChartColorFn: PropTypes.func.isRequired,
+        onUpdateVisualizationSetting: PropTypes.func.isRequired,
+        onUpdateVisualizationSettings: PropTypes.func.isRequired,
         setSortFn: PropTypes.func.isRequired,
         cellIsClickableFn: PropTypes.func,
         cellClickedFn: PropTypes.func,
@@ -339,6 +340,8 @@ export default class QueryVisualization extends Component {
                             setSortFn={this.props.setSortFn}
                             cellIsClickableFn={this.props.cellIsClickableFn}
                             cellClickedFn={this.props.cellClickedFn}
+                            onUpdateVisualizationSetting={this.props.onUpdateVisualizationSetting}
+                            onUpdateVisualizationSettings={this.props.onUpdateVisualizationSettings}
                         />
                     );
                 }
