@@ -210,7 +210,7 @@
     ;; Ok, now block forever while Jetty does its thing
     (when (config/config-bool :mb-jetty-join)
       (.join ^org.eclipse.jetty.server.Server @jetty-instance))
-    (catch Exception e
+    (catch Throwable e
       (.printStackTrace e)
       (log/error "Metabase Initialization FAILED: " (.getMessage e))
       (System/exit 1))))

@@ -5,8 +5,6 @@
             [metabase.models.interface :as i]
             [metabase.util :as u]))
 
-;;; # IRevisioned Protocl
-
 (defprotocol IDependent
   "Methods an entity may optionally implement to control how dependencies of an instance are captured."
   (dependencies [this id instance]

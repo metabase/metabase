@@ -62,6 +62,6 @@
   [password salt hashed-password]
   (try
     (creds/bcrypt-verify (str salt password) hashed-password)
-    (catch Exception e
+    (catch Throwable e
       ;; we wrap the friend/bcrypt-verify with this function specifically to avoid unintended exceptions getting out
       false)))

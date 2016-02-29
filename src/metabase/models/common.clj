@@ -2,6 +2,8 @@
   (:require [clojure.string :as s]))
 
 (def ^:const timezones
+  "The different timezones supported by Metabase.
+   Presented as options for the `report-timezone` Setting in the admin panel."
   ["Africa/Algiers"
    "Africa/Cairo"
    "Africa/Casablanca"
@@ -88,14 +90,15 @@
    "GMT"
    "UTC"])
 
-(def ^:const perms-none 0)
-(def ^:const perms-read 1)
-(def ^:const perms-readwrite 2)
+(def ^:const perms-none      "Integer used to signify neither permission to read nor to write." 0)
+(def ^:const perms-read      "Integer used to signify public read permissions."                 1)
+(def ^:const perms-readwrite "Integer used to signify public read/write permissions."           2)
 
 (def ^:const permissions
-  [{:id perms-none :name "None"},
-   {:id perms-read :name "Read Only"},
-   {:id perms-readwrite :name "Read & Write"}])
+  "Sequence of maps describing each permissions level."
+  [{:id perms-none,      :name "None"},
+   {:id perms-read,      :name "Read Only"},
+   {:id perms-readwrite, :name "Read & Write"}])
 
 (defn name->human-readable-name
   "Convert a string NAME of some object like a `Table` or `Field` to one more friendly to humans.

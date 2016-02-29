@@ -481,7 +481,9 @@
 
 ;;; ### process-structured-query
 
-(defn process-structured-query [do-query query]
+(defn process-structured-query
+  "Process a structured query for a Druid DB."
+  [do-query query]
   (binding [*query* query]
     (let [[query-type druid-query] (build-druid-query query)]
       (log-druid-query druid-query)

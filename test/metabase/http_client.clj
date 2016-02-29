@@ -6,10 +6,7 @@
             [metabase.config :as config]
             [metabase.util :as u]))
 
-(declare authenticate
-         auto-deserialize-dates
-         build-url
-         -client)
+(declare authenticate auto-deserialize-dates build-url -client)
 
 ;; ## API CLIENT
 
@@ -89,7 +86,7 @@
         (let [message (format "%s %s expected a status code of %d, got %d." method-name url expected-status status)
               body    (try (-> (json/parse-string body)
                                clojure.walk/keywordize-keys)
-                           (catch Exception _ body))]
+                           (catch Throwable _ body))]
           (log/error (u/pprint-to-str 'red body))
           (throw (ex-info message {:status-code status})))))
 
@@ -98,17 +95,15 @@
              json/parse-string
              clojure.walk/keywordize-keys
              auto-deserialize-dates)
-         (catch Exception _
+         (catch Throwable _
            (if (clojure.string/blank? body) nil
                body)))))
 
 (defn authenticate [{:keys [email password] :as credentials}]
-  {:pre [(string? email)
-         (string? password)]}
+  {:pre [(string? email) (string? password)]}
   (try
-    (-> (client :post 200 "session" credentials)
-        :id)
-    (catch Exception e
+    (:id (client :post 200 "session" credentials))
+    (catch Throwable e
       (log/error "Failed to authenticate with email:" email "and password:" password ". Does user exist?"))))
 
 (defn- build-url [url url-param-kwargs]

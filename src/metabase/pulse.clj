@@ -24,7 +24,7 @@
 
 ;; NOTE: hiccup does not escape content by default so be sure to use "h" to escape any user-controlled content :-/
 
-;;; ## CONFIG
+;;; # ------------------------------------------------------------ STYLES ------------------------------------------------------------
 
 (def ^:private ^:const card-width 400)
 (def ^:private ^:const rows-limit 10)
@@ -36,18 +36,20 @@
 ;;; ## STYLES
 (def ^:private ^:const color-brand  "rgb(45,134,212)")
 (def ^:private ^:const color-purple "rgb(135,93,175)")
-(def ^:private ^:const color-grey-1 "rgb(248,248,248)")
-(def ^:private ^:const color-grey-2 "rgb(189,193,191)")
-(def ^:private ^:const color-grey-3 "rgb(124,131,129)")
-(def ^:const color-grey-4 "rgb(57,67,64)")
+(def ^:private ^:const color-gray-1 "rgb(248,248,248)")
+(def ^:private ^:const color-gray-2 "rgb(189,193,191)")
+(def ^:private ^:const color-gray-3 "rgb(124,131,129)")
+(def ^:const color-gray-4 "A ~25% Gray color." "rgb(57,67,64)")
 
 (def ^:private ^:const font-style    {:font-family "Lato, \"Helvetica Neue\", Helvetica, Arial, sans-serif"})
-(def ^:const section-style font-style)
+(def ^:const section-style
+  "CSS style for a Pulse section."
+  font-style)
 
 (def ^:private ^:const header-style
   (merge font-style {:font-size       :16px
                      :font-weight     700
-                     :color           color-grey-4
+                     :color           color-gray-4
                      :text-decoration :none}))
 
 (def ^:private ^:const scalar-style
@@ -58,8 +60,8 @@
 (def ^:private ^:const bar-th-style
   (merge font-style {:font-size      :10px
                      :font-weight    400
-                     :color          color-grey-4
-                     :border-bottom  (str "4px solid " color-grey-1)
+                     :color          color-gray-4
+                     :border-bottom  (str "4px solid " color-gray-1)
                      :padding-top    :0px
                      :padding-bottom :10px}))
 
@@ -70,16 +72,8 @@
                      :padding-right :1em
                      :padding-top   :8px}))
 
-#_(def ^:private ^:const button-style
-  (merge font-style {:display         :inline-block
-                     :box-sizing      :border-box
-                     :padding         :8px
-                     :color           color-brand
-                     :border          (str "1px solid " color-brand)
-                     :border-radius   :4px
-                     :text-decoration :none}))
 
-;;; ## HELPER FNS
+;;; # ------------------------------------------------------------ HELPER FNS ------------------------------------------------------------
 
 (defn- style
   "Compile one or more CSS style maps into a string.
@@ -101,7 +95,8 @@
   (or (contains? #{:IntegerField :DecimalField :FloatField :BigIntegerField} (:base_type field))
       (contains? #{:number} (:special_type field))))
 
-;;; ## FORMATTING
+
+;;; # ------------------------------------------------------------ FORMATTING ------------------------------------------------------------
 
 (defn- format-number
   [n]
@@ -160,11 +155,29 @@
     (and (number? value) (not (datetime-field? col))) (format-number value)
     :else (str value)))
 
-;;; ## RENDERING
+
+(defn- render-img-data-uri
+  "Takes a PNG byte array and returns a Base64 encoded URI"
+  [img-bytes]
+  (str "data:image/png;base64," (String. (Base64Coder/encode img-bytes))))
+
+;;; # ------------------------------------------------------------ RENDERING ------------------------------------------------------------
+
+(def ^:dynamic *include-buttons*
+  "Should the rendered pulse include buttons? (default: `false`)"
+  false)
+
+(def ^:dynamic *include-title*
+  "Should the rendered pulse include a title? (default: `false`)"
+  false)
+
+(def ^:dynamic *render-img-fn*
+  "The function that should be used for rendering image bytes. Defaults to `render-img-data-uri`."
+  render-img-data-uri)
 
 (defn- card-href
   [card]
-  (h (urls/question-url (:id card))))
+  (h (urls/card-url (:id card))))
 
 ;; ported from https://github.com/radkovo/CSSBox/blob/cssbox-4.10/src/main/java/org/fit/cssbox/demo/ImageRenderer.java
 (defn- render-to-png
@@ -180,8 +193,8 @@
         da            (doto (DOMAnalyzer. doc (.getURL doc-source))
                         (.setMediaSpec media)
                         .attributesToStyles
-                        (.addStyleSheet nil (CSSNorm/stdStyleSheet) DOMAnalyzer$Origin/AGENT)
-                        (.addStyleSheet nil (CSSNorm/userStyleSheet) DOMAnalyzer$Origin/AGENT)
+                        (.addStyleSheet nil (CSSNorm/stdStyleSheet)   DOMAnalyzer$Origin/AGENT)
+                        (.addStyleSheet nil (CSSNorm/userStyleSheet)  DOMAnalyzer$Origin/AGENT)
                         (.addStyleSheet nil (CSSNorm/formsStyleSheet) DOMAnalyzer$Origin/AGENT)
                         .getStyleSheets)
         content-canvas (doto (BrowserCanvas. (.getRoot da) da (.getURL doc-source))
@@ -204,24 +217,10 @@
     (render-to-png html os width)
     (.toByteArray os)))
 
-(defn render-img-data-uri
-  "Takes a PNG byte array and returns a Base64 encoded URI"
-  [img-bytes]
-  (str "data:image/png;base64," (String. (Base64Coder/encode img-bytes))))
-
-;; This isn't being used, not sure what the point of it was. Commented out until mystery is solved.
-#_(defn render-button
-  [text href icon render-img]
-  [:a {:style button-style :href href}
-    [:span (h text)]
-    (if icon [:img {:style (style {:margin-left :4px, :width :16px})
-                    :width 16
-                    :src (-> (str "frontend_client/app/img/" icon "@2x.png") io/resource io/input-stream IOUtils/toByteArray render-img)}])])
-
 (defn- render-table
-  [card rows cols render-img include-buttons col-indexes bar-column]
+  [card rows cols col-indexes bar-column]
   (let [max-value (if bar-column (apply max (map bar-column rows)))]
-    [:table {:style (style {:padding-bottom :8px, :border-bottom (str "4px solid " color-grey-1)})}
+    [:table {:style (style {:padding-bottom :8px, :border-bottom (str "4px solid " color-gray-1)})}
      [:thead
       [:tr
        (for [col-idx col-indexes :let [col (-> cols (nth col-idx))]]
@@ -231,7 +230,7 @@
          [:th {:style (style bar-td-style bar-th-style {:width "99%"})}])]]
      [:tbody
       (map-indexed (fn [row-idx row]
-                     [:tr {:style (style {:color (if (odd? row-idx) color-grey-2 color-grey-3)})}
+                     [:tr {:style (style {:color (if (odd? row-idx) color-gray-2 color-gray-3)})}
                       (for [col-idx col-indexes :let [col (-> cols (nth col-idx))]]
                         [:td {:style (style bar-td-style (when (and bar-column (= col-idx 1)) {:font-weight 700}))}
                          (-> row (nth col-idx) (format-cell col) h)])
@@ -246,45 +245,45 @@
                    rows)]]))
 
 (defn- render-truncation-warning
-  [card {:keys [cols rows] :as data} render-img include-buttons rows-limit cols-limit]
+  [card {:keys [cols rows] :as data} rows-limit cols-limit]
   (if (or (> (count rows) rows-limit)
           (> (count cols) cols-limit))
     [:div {:style (style {:padding-top :16px})}
      (cond
        (> (count rows) rows-limit)
-       [:div {:style (style {:color color-grey-2
+       [:div {:style (style {:color color-gray-2
                              :padding-bottom :10px})}
-        "Showing " [:strong {:style (style {:color color-grey-3})} (format-number rows-limit)]
-        " of "     [:strong {:style (style {:color color-grey-3})} (format-number (count rows))]
+        "Showing " [:strong {:style (style {:color color-gray-3})} (format-number rows-limit)]
+        " of "     [:strong {:style (style {:color color-gray-3})} (format-number (count rows))]
         " rows."]
 
        (> (count cols) cols-limit)
-       [:div {:style (style {:color          color-grey-2
+       [:div {:style (style {:color          color-gray-2
                              :padding-bottom :10px})}
-        "Showing " [:strong {:style (style {:color color-grey-3})} (format-number cols-limit)]
-        " of "     [:strong {:style (style {:color color-grey-3})} (format-number (count cols))]
+        "Showing " [:strong {:style (style {:color color-gray-3})} (format-number cols-limit)]
+        " of "     [:strong {:style (style {:color color-gray-3})} (format-number (count cols))]
         " columns."])]))
 
-(defn- render-card-table
-  [card {:keys [cols rows] :as data} render-img include-buttons]
+(defn- render:table
+  [card {:keys [cols rows] :as data}]
   (let [truncated-rows (take rows-limit rows)
         truncated-cols (take cols-limit cols)
         col-indexes    (map-indexed (fn [i _] i) truncated-cols)]
     [:div
-      (render-table card truncated-rows truncated-cols render-img include-buttons col-indexes nil)
-      (render-truncation-warning card data render-img include-buttons rows-limit cols-limit)]))
+     (render-table card truncated-rows truncated-cols col-indexes nil)
+     (render-truncation-warning card data rows-limit cols-limit)]))
 
-(defn- render-card-bar
-  [card {:keys [cols rows] :as data} render-img include-buttons]
+(defn- render:bar
+  [card {:keys [cols rows] :as data}]
   (let [truncated-rows (take rows-limit rows)]
     [:div
-      (render-table card truncated-rows cols render-img include-buttons [0 1] second)
-      (render-truncation-warning card data render-img include-buttons rows-limit 2)]))
+     (render-table card truncated-rows cols [0 1] second)
+     (render-truncation-warning card data rows-limit 2)]))
 
-(defn- render-card-scalar
-  [card {:keys [cols rows] :as data} render-img include-buttons]
+(defn- render:scalar
+  [card {:keys [cols rows] :as data}]
   [:div {:style (style scalar-style)}
-    (-> rows first first (format-cell (first cols)) h)])
+   (-> rows first first (format-cell (first cols)) h)])
 
 (defn- render-sparkline-to-png
   "Takes two arrays of numbers between 0 and 1 and plots them as a sparkline"
@@ -314,8 +313,8 @@
     (ImageIO/write image "png" os)
     (.toByteArray os)))
 
-(defn- render-card-sparkline
-  [card {:keys [rows cols] :as data} render-img include-buttons]
+(defn- render:sparkline
+  [card {:keys [rows cols] :as data}]
   (let [xs     (for [row  rows
                      :let [x (first row)]]
                  (if (instance? Date x)
@@ -328,7 +327,7 @@
         ys     (map second rows)
         ymin   (apply min ys)
         ymax   (apply max ys)
-        yrange (max 1 (- ymax ymin)) ; `(max 1 ...)` so we don't divide by zero
+        yrange (max 1 (- ymax ymin))                    ; `(max 1 ...)` so we don't divide by zero
         ys'    (map #(/ (double (- % ymin)) yrange) ys) ; cast to double to avoid "Non-terminating decimal expansion" errors
         rows'  (reverse (take-last 2 rows))
         values (map (comp format-number second) rows')
@@ -336,7 +335,7 @@
     [:div
      [:img {:style (style {:display :block
                            :width :100%})
-            :src   (render-img (render-sparkline-to-png xs' ys' 524 130))}]
+            :src   (*render-img-fn* (render-sparkline-to-png xs' ys' 524 130))}]
      [:table
       [:tr
        [:td {:style (style {:color         color-brand
@@ -344,7 +343,7 @@
                             :font-weight   700
                             :padding-right :16px})}
         (first values)]
-       [:td {:style (style {:color       color-grey-3
+       [:td {:style (style {:color       color-gray-3
                             :font-size   :24px
                             :font-weight 700})}
         (second values)]]
@@ -354,20 +353,24 @@
                             :font-weight   700
                             :padding-right :16px})}
         (first labels)]
-       [:td {:style (style {:color     color-grey-3
+       [:td {:style (style {:color     color-gray-3
                             :font-size :16px})}
         (second labels)]]]]))
 
-(defn- render-card-empty
-  [card {:keys [rows cols] :as data} render-img include-buttons]
+(defn- render-image-with-filename [^String filename]
+  (*render-img-fn* (IOUtils/toByteArray (io/input-stream (io/resource filename)))))
+
+(defn- render:empty
+  [card {:keys [rows cols] :as data}]
   [:div {:style (style {:text-align :center})}
    [:img {:style (style {:width :104px})
-          :src   (-> (str "frontend_client/app/img/pulse_no_results@2x.png") io/resource io/input-stream IOUtils/toByteArray render-img)}]
+          :src   (render-image-with-filename "frontend_client/app/img/pulse_no_results@2x.png")}]
    [:div {:style (style {:margin-top :8px
-                         :color      color-grey-4})}
+                         :color      color-gray-4})}
     "No results"]])
 
 (defn detect-pulse-card-type
+  "Determine the pulse (visualization) type of a CARD, e.g. `:scalar` or `:bar`."
   [card data]
   (let [col-count (-> data :cols count)
         row-count (-> data :rows count)
@@ -389,7 +392,8 @@
       :else                                                        :table)))
 
 (defn render-pulse-card
-  [card data render-img include-title include-buttons]
+  "Render a single CARD for a `Pulse`. DATA is the `:data` from QP results (I think)."
+  [card data]
   (try
     [:a {:href   (card-href card)
          :target "_blank"
@@ -398,7 +402,7 @@
                          :margin-bottom   :16px
                          :display         :block
                          :text-decoration :none})}
-     (when include-title
+     (when *include-title*
        [:table {:style (style {:margin-bottom :8px
                                :width         :100%})}
         [:tbody
@@ -406,15 +410,16 @@
           [:td [:span {:style header-style}
                 (-> card :name h)]]
           [:td {:style (style {:text-align :right})}
-           (when include-buttons [:img {:style (style {:width :16px})
-                                        :width 16
-                                        :src   (-> (str "frontend_client/app/img/external_link.png") io/resource io/input-stream IOUtils/toByteArray render-img)}])]]]])
+           (when *include-buttons*
+             [:img {:style (style {:width :16px})
+                    :width 16
+                    :src   (render-image-with-filename "frontend_client/app/img/external_link.png")}])]]]])
      (case (detect-pulse-card-type card data)
-       :empty     (render-card-empty     card data render-img include-buttons)
-       :scalar    (render-card-scalar    card data render-img include-buttons)
-       :sparkline (render-card-sparkline card data render-img include-buttons)
-       :bar       (render-card-bar       card data render-img include-buttons)
-       :table     (render-card-table     card data render-img include-buttons)
+       :empty     (render:empty     card data)
+       :scalar    (render:scalar    card data)
+       :sparkline (render:sparkline card data)
+       :bar       (render:bar       card data)
+       :table     (render:table     card data)
        [:div {:style (style font-style
                             {:color       "#F9D45C"
                              :font-weight 700})}
@@ -429,15 +434,19 @@
 
 
 (defn render-pulse-section
-  [render-img include-buttons {:keys [card result]}]
+  "Render a specific section of a Pulse, i.e. a single Card."
+  [{:keys [card result]}]
   [:div {:style (style {:margin-top       :10px
                         :margin-bottom    :20px
                         :border           "1px solid #dddddd"
                         :border-radius    :2px
                         :background-color :white
                         :box-shadow       "0 1px 2px rgba(0, 0, 0, .08)"})}
-   (render-pulse-card card (:data result) render-img true include-buttons)])
+   (binding [*include-title* true]
+     (render-pulse-card card (:data result)))])
 
 (defn render-pulse-card-to-png
-  [card data include-title]
-  (render-html-to-png (render-pulse-card card data render-img-data-uri include-title false) card-width))
+  "Render a PULSE-CARD as a PNG. DATA is the `:data` from a QP result (I think...)"
+
+  [pulse-card data]
+  (render-html-to-png (render-pulse-card pulse-card data) card-width))

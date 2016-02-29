@@ -132,6 +132,21 @@
 
 ;;; ## DEFSETTING
 
+(defn- setting-extra-dox
+  "Generate some extra documentation for a `Setting`."
+  [symb default-value]
+  (str (format "`%s` is a `Setting`. You can get its value by calling\n\n" symb)
+       (format  "    (%s)\n\n" symb)
+       "and set its value by calling\n\n"
+       (format "    (%s <new-value>)\n\n" symb)
+       (format "You can also set its value with the env var `MB_%s`.\n"
+               (s/upper-case (s/replace (name symb) #"-" "_")))
+       "Clear its value by calling\n\n"
+       (format "    (%s nil)\n\n" symb)
+       (format "Its default value is `%s`." (if (nil? default-value)
+                                              "nil"
+                                              default-value))))
+
 (defmacro defsetting
   "Defines a new `Setting` that will be added to the DB at some point in the future.
    Conveniently can be used as a getter/setter as well:
@@ -147,17 +162,19 @@
    You may optionally pass any of the kwarg OPTIONS below, which are kept as part of the
    metadata of the `Setting` under the key `::options`:
 
-     *  `:internal` - This `Setting` is for internal use and shouldn't be exposed in the UI (i.e., not
-                      returned by the corresponding endpoints). Default: `false`
-     *  `:getter` - A custom getter fn, which takes no arguments. Overrides the default implementation.
-     *  `:setter` - A custom setter fn, which takes a single argument. Overrides the default implementation."
+   *  `:internal` - This `Setting` is for internal use and shouldn't be exposed in the UI (i.e., not
+                    returned by the corresponding endpoints). Default: `false`
+   *  `:getter` - A custom getter fn, which takes no arguments. Overrides the default implementation.
+   *  `:setter` - A custom setter fn, which takes a single argument. Overrides the default implementation."
   [nm description & [default-value & {:as options}]]
   {:pre [(symbol? nm)
          (string? description)]}
   (let [setting-key (keyword nm)
         value       (gensym "value")]
-    `(defn ~nm ~description
-       {::is-setting?   true
+    `(defn ~nm ~(str description "\n\n" (setting-extra-dox nm default-value))
+       {:arglists       '~'([] [new-value])
+        ::description   ~description
+        ::is-setting?   true
         ::default-value ~default-value
         ::options       ~options}
        ([]       ~(if (:getter options)
@@ -184,7 +201,7 @@
   []
   (let [settings (all)]
     (->> (settings-list)
-         (map (fn [{k :key :as setting}]
+         (map (fn [{k :key, :as setting}]
                 (assoc setting
                        :value (k settings))))
          (sort-by :key))))
@@ -241,14 +258,11 @@
        (map meta)
        (filter ::is-setting?)
        (filter (complement (u/rpartial get-in [::options :internal]))) ; filter out :internal Settings
-       (map (fn [{k :name desc :doc default ::default-value}]
+       (map (fn [{k :name, description ::description, default ::default-value}]
               {:key         (keyword k)
-               :description desc
+               :description description
                :default     (or (when (get-from-env-var k)
                                   (format "Using $MB_%s" (-> (name k)
                                                              (s/replace "-" "_")
                                                              s/upper-case)))
                                 default)}))))
-
-
-(u/require-dox-in-this-namespace)

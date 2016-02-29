@@ -83,6 +83,3 @@
   [field-id]
   {:pre [(integer? field-id)]}
   (cascade-delete FieldValues :field_id field-id))
-
-
-(u/require-dox-in-this-namespace)

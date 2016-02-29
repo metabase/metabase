@@ -346,7 +346,7 @@
       (with-open [sock (Socket.)]
         (.connect sock sock-addr host-up-timeout)
         true))
-    (catch Exception _ false)))
+    (catch Throwable _ false)))
 
 (defn host-up?
   "Returns true if the host given by hostname is reachable, false otherwise "
@@ -354,7 +354,7 @@
   (try
     (let [host-addr (InetAddress/getByName hostname)]
       (.isReachable host-addr host-up-timeout))
-    (catch Exception _ false)))
+    (catch Throwable _ false)))
 
 (defn rpartial
   "Like `partial`, but applies additional args *before* BOUND-ARGS.
@@ -365,14 +365,6 @@
   [f & bound-args]
   (fn [& args]
     (apply f (concat args bound-args))))
-
-(defn require-dox-in-this-namespace
-  "Throw an exception if any public interned symbol in this namespace is missing a docstring."
-  []
-  (when-not config/is-prod?
-    (doseq [[symb varr] (ns-publics *ns*)
-            :when       (not (:doc (meta varr)))]
-      (throw (Exception. (format "All public symbols in %s are required to have a docstring, but %s is missing one." (.getName *ns*) symb))))))
 
 (defmacro pdoseq
   "(Almost) just like `doseq` but runs in parallel. Doesn't support advanced binding forms like `:let` or `:when` and only supports a single binding </3"
@@ -590,11 +582,8 @@
 
 (defn drop-first-arg
   "Returns a new fn that drops its first arg and applies the rest to the original.
-   Useful for creating `extend` method maps when you don't care about the `this` param.
+   Useful for creating `extend` method maps when you don't care about the `this` param. :flushed:
 
      ((drop-first-arg :value) xyz {:value 100}) -> (apply :value [{:value 100}]) -> 100"
   ^clojure.lang.IFn [^clojure.lang.IFn f]
   (comp (partial apply f) rest list))
-
-
-(require-dox-in-this-namespace)

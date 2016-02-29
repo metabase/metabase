@@ -107,7 +107,10 @@
 
 ;;; ## ROUTE TYPING / AUTO-PARSE SHARED FNS
 
-(defn parse-int [value]
+(defn parse-int
+  "Parse VALUE (presumabily a string) as an Integer, or throw a 400 exception.
+   Used to automatically to parse `id` parameters in `defendpoint` functions."
+  [^String value]
   (try (Integer/parseInt value)
        (catch java.lang.NumberFormatException _
          (throw (ex-info (format "Not a valid integer: '%s'" value) {:status-code 400})))))
@@ -117,10 +120,10 @@
 
      :route-param-regex Regex pattern that should be used for params in Compojure route forms
      :parser            Function that should be used to parse args"
-  {:int {:route-param-regex #"[0-9]+"
-         :parser 'metabase.api.common.internal/parse-int}
+  {:int  {:route-param-regex #"[0-9]+"
+          :parser            'metabase.api.common.internal/parse-int}
    :uuid {:route-param-regex #"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-          :parser nil}})
+          :parser            nil}})
 
 (def ^:private ^:const  auto-parse-arg-name-patterns
   "Sequence of `[param-pattern parse-type]` pairs.
@@ -262,7 +265,9 @@
          (symbol? arg-symb)]}
   `[~arg-symb (~((resolve 'metabase.api.common/-arg-annotation-fn) annotation-kw) '~arg-symb ~arg-symb)])
 
-(defn process-arg-annotations [annotations-map]
+(defn process-arg-annotations
+  "Internal function used by `defendpoint` for handling a parameter annotations map. Don't call this directly! "
+  [annotations-map]
   {:pre [(or (nil? annotations-map)
              (map? annotations-map))]}
   (some->> annotations-map

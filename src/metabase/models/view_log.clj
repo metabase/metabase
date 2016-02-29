@@ -14,6 +14,3 @@
                    {:can-read?  i/publicly-readable?
                     :can-write? i/publicly-writeable?
                     :pre-insert pre-insert}))
-
-
-(u/require-dox-in-this-namespace)

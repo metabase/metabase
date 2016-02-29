@@ -23,7 +23,7 @@
       (try
         ;; NOTE: this happens synchronously for now to avoid excessive load if there are lots of databases
         (driver/sync-database! database)
-        (catch Exception e
+        (catch Throwable e
           (log/error "Error syncing database: " (:id database) e))))))
 
 (defn- task-init []

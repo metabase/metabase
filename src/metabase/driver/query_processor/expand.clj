@@ -453,6 +453,3 @@
   {:style/indent 0}
   [& body]
   `(run-query* (query ~@body)))
-
-
-(u/require-dox-in-this-namespace)

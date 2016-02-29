@@ -115,10 +115,7 @@
 
 (extend (class Dashboard)
   revision/IRevisioned
-  {:serialize-instance (fn [_ _ dashboard] (serialize-dashboard dashboard))
-   :revert-to-revision (fn [_ dashboard-id user-id serialized-dashboard] (revert-dashboard dashboard-id user-id serialized-dashboard))
-   :diff-map           revision/default-diff-map
-   :diff-str           (fn [_ d1, d2] (diff-dashboards-str d1 d2))})
-
-
-(u/require-dox-in-this-namespace)
+  (merge revision/IRevisionedDefaults
+         {:serialize-instance (fn [_ _ dashboard] (serialize-dashboard dashboard))
+          :revert-to-revision (u/drop-first-arg revert-dashboard)
+          :diff-str           (u/drop-first-arg diff-dashboards-str)}))

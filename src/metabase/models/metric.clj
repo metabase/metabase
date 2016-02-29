@@ -27,10 +27,10 @@
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
 
 
-(defn serialize-metric [_ _ instance]
+(defn- serialize-metric [_ _ instance]
   (dissoc instance :created_at :updated_at))
 
-(defn diff-metrics [this metric1 metric2]
+(defn- diff-metrics [this metric1 metric2]
   (if-not metric1
     ;; this is the first version of the metric
     (u/update-values (select-keys metric2 [:name :description :definition]) (fn [v] {:after v}))
@@ -47,10 +47,9 @@
 
 (extend (class Metric)
   revision/IRevisioned
-  {:serialize-instance serialize-metric
-   :revert-to-revision revision/default-revert-to-revision
-   :diff-map           diff-metrics
-   :diff-str           revision/default-diff-str})
+  (merge revision/IRevisionedDefaults
+         {:serialize-instance serialize-metric
+          :diff-map           diff-metrics}))
 
 
 ;;; ## ---------------------------------------- DEPENDENCIES ----------------------------------------

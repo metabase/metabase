@@ -7,8 +7,7 @@
                              [interface :as i]
                              [revision :as revision]
                              [user :refer [User]])
-            [metabase.query :as q]
-            [metabase.util :as u]))
+            [metabase.query :as q]))
 
 (def ^:const display-types
   "Valid values of `Card.display_type`."
@@ -89,13 +88,8 @@
           :pre-cascade-delete pre-cascade-delete})
 
   revision/IRevisioned
-  {:serialize-instance serialize-instance
-   :revert-to-revision revision/default-revert-to-revision
-   :diff-map           revision/default-diff-map
-   :diff-str           revision/default-diff-str}
+  (assoc revision/IRevisionedDefaults
+         :serialize-instance serialize-instance)
 
   dependency/IDependent
   {:dependencies card-dependencies})
-
-
-(u/require-dox-in-this-namespace)

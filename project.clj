@@ -34,7 +34,7 @@
                                ring/ring-core]]
                  [com.draines/postal "1.11.4"]                        ; SMTP library
                  [com.google.apis/google-api-services-bigquery        ; Google BigQuery Java Client Library
-                  "v2-rev270-1.21.0"]
+                  "v2-rev271-1.21.0"]
                  [com.h2database/h2 "1.4.191"]                        ; embedded SQL database
                  [com.mattbertolini/liquibase-slf4j "2.0.0"]          ; Java Migrations lib
                  [com.novemberain/monger "3.0.2"]                     ; MongoDB Driver
@@ -55,7 +55,7 @@
                  [net.sourceforge.jtds/jtds "1.3.1"]                  ; Open Source SQL Server driver
                  [org.xhtmlrenderer/flying-saucer-core "9.0.8"]
                  [org.liquibase/liquibase-core "3.4.2"]               ; migration management (Java lib)
-                 [org.slf4j/slf4j-log4j12 "1.7.16"]
+                 [org.slf4j/slf4j-log4j12 "1.7.18"]
                  [org.yaml/snakeyaml "1.17"]                          ; YAML parser (required by liquibase)
                  [org.xerial/sqlite-jdbc "3.8.11.2"]                  ; SQLite driver
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
@@ -89,7 +89,7 @@
                               :exclusions [org.clojure/clojure]]
                              [lein-bikeshed "0.3.0"]                  ; Linting
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'
-                             [lein-instant-cheatsheet "2.1.5"         ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
+                             [lein-instant-cheatsheet "2.2.1"         ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
                               :exclusions [org.clojure/clojure
                                            org.clojure/tools.namespace]]]
                    :env {:mb-run-mode "dev"}

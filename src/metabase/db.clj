@@ -185,7 +185,9 @@
   (require 'metabase.db.migrations)
   (@(resolve 'metabase.db.migrations/run-all)))
 
-(defn setup-db-if-needed [& args]
+(defn setup-db-if-needed
+  "Call `setup-db` if DB is not already setup; otherwise no-op."
+  [& args]
   (when-not @setup-db-has-been-called?
     (apply setup-db args)))
 

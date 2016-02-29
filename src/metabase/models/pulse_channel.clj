@@ -24,42 +24,27 @@
    {:id "fri", :name "Fri"},
    {:id "sat", :name "Sat"}])
 
-(defn day-of-week?
-  "Predicate function which returns `true` if the given day is a valid day-of-week choice, `false` otherwise."
-  [day]
-  (contains? (set (map :id days-of-week)) day))
+(def ^{:arglists '([day])} day-of-week?
+  "Is DAY a valid `day-of-week` choice?"
+  (partial contains? (set (map :id days-of-week))))
 
 (defn hour-of-day?
   "Predicate function which returns `true` if the given hour is a valid hour of the day (24 hour), `false` otherwise."
   [hour]
   (and (integer? hour) (<= 0 hour 23)))
 
-(def ^:const schedule-frame-first :first)
-(def ^:const schedule-frame-mid :mid)
-(def ^:const schedule-frame-last :last)
-
-(def ^:const schedule-frames
+(def ^:private ^:const schedule-frames
   "Set of possible schedule-frames allowe for a pulse channel."
-  #{schedule-frame-first
-    schedule-frame-mid
-    schedule-frame-last})
+  #{:first :mid :last})
 
 (defn schedule-frame?
-  "Predicate function which returns `true` if the given day is a valid schedule-frame choice, `false` otherwise."
+  "Is FRAME a valid schedule frame?"
   [frame]
   (contains? schedule-frames frame))
 
-(def ^:const schedule-type-hourly :hourly)
-(def ^:const schedule-type-daily :daily)
-(def ^:const schedule-type-weekly :weekly)
-(def ^:const schedule-type-monthly :monthly)
-
-(def ^:const schedule-types
+(def ^:private ^:const schedule-types
   "Set of the possible schedule-types allowed for a pulse channel."
-  #{schedule-type-hourly
-    schedule-type-daily
-    schedule-type-weekly
-    schedule-type-monthly})
+  #{:hourly :daily :weekly :monthly})
 
 (defn schedule-type?
   "Predicate function which returns `true` if the given argument is a valid value as a schedule-type, `false` otherwise."
@@ -71,20 +56,20 @@
   [schedule-type schedule-hour schedule-day schedule-frame]
   (or
     ;; hourly schedule does not care about other inputs
-    (= schedule-type schedule-type-hourly)
+    (= schedule-type :hourly)
     ;; daily schedule requires a valid `hour`
-    (and (= schedule-type schedule-type-daily)
+    (and (= schedule-type :daily)
          (hour-of-day? schedule-hour))
     ;; weekly schedule requires a valid `hour` and `day`
-    (and (= schedule-type schedule-type-weekly)
+    (and (= schedule-type :weekly)
          (hour-of-day? schedule-hour)
          (day-of-week? schedule-day))
     ;; monthly schedule requires a valid `hour` and `frame`.  also a `day` if frame = first or last
-    (and (= schedule-type schedule-type-monthly)
+    (and (= schedule-type :monthly)
          (schedule-frame? schedule-frame)
          (hour-of-day? schedule-hour)
-         (or (contains? #{schedule-frame-first schedule-frame-last} schedule-frame)
-             (and (= schedule-frame-mid schedule-frame)
+         (or (contains? #{:first :last} schedule-frame)
+             (and (= :mid schedule-frame)
                   (nil? schedule-day))))))
 
 (def ^:const channel-types
@@ -97,11 +82,11 @@
            :name              "Email"
            :allows_recipients true
            :recipients        ["user", "email"]
-           :schedules         [schedule-type-daily schedule-type-weekly schedule-type-monthly]}
+           :schedules         [:daily :weekly :monthly]}
    :slack {:type              "slack"
            :name              "Slack"
            :allows_recipients false
-           :schedules         [schedule-type-hourly schedule-type-daily schedule-type-weekly schedule-type-monthly]
+           :schedules         [:hourly :daily :weekly :monthly]
            :fields            [{:name "channel"
                                 :type "select"
                                 :displayName "Post to"
@@ -109,12 +94,12 @@
                                 :required true}]}})
 
 (defn channel-type?
-  "Predicate function which returns `true` if the given argument is a valid value as a channel-type, `false` otherwise."
+  "Is CHANNEL-TYPE a valid value as a channel type? :tv:"
   [channel-type]
   (contains? (set (keys channel-types)) channel-type))
 
 (defn supports-recipients?
-  "Predicate function which returns `true` if the given channel type supports a list of recipients, `false` otherwise."
+  "Does given CHANNEL type support a list of recipients? :tv:"
   [channel]
   (boolean (:allows_recipients (get channel-types channel))))
 
@@ -161,21 +146,21 @@
          (contains? #{:first :last :mid :other} monthday)
          (contains? #{:first :last :other} monthweek)]]
   (let [schedule-frame              (cond
-                                      (= :mid monthday)    (name schedule-frame-mid)
-                                      (= :first monthweek) (name schedule-frame-first)
-                                      (= :last monthweek)  (name schedule-frame-last)
+                                      (= :mid monthday)    (name :mid)
+                                      (= :first monthweek) (name :first)
+                                      (= :last monthweek)  (name :last)
                                       :else                "invalid")
         monthly-schedule-day-or-nil (when (= :other monthday)
                                       weekday)]
     (k/select PulseChannel
       (k/fields :id :pulse_id :schedule_type :channel_type)
-      (k/where (or (= :schedule_type (name schedule-type-hourly))
-                   (and (= :schedule_type (name schedule-type-daily))
+      (k/where (or (= :schedule_type (name :hourly))
+                   (and (= :schedule_type (name :daily))
                         (= :schedule_hour hour))
-                   (and (= :schedule_type (name schedule-type-weekly))
+                   (and (= :schedule_type (name :weekly))
                         (= :schedule_hour hour)
                         (= :schedule_day weekday))
-                   (and (= :schedule_type (name schedule-type-monthly))
+                   (and (= :schedule_type (name :monthly))
                         (= :schedule_hour hour)
                         (= :schedule_frame schedule-frame)
                         (or (= :schedule_day weekday)
@@ -218,11 +203,11 @@
       :details        (cond-> details
                               (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
       :schedule_type  schedule_type
-      :schedule_hour  (when (not= schedule_type schedule-type-hourly)
+      :schedule_hour  (when (not= schedule_type :hourly)
                         schedule_hour)
-      :schedule_day   (when (contains? #{schedule-type-weekly schedule-type-monthly} schedule_type)
+      :schedule_day   (when (contains? #{:weekly :monthly} schedule_type)
                         schedule_day)
-      :schedule_frame (when (= schedule_type schedule-type-monthly)
+      :schedule_frame (when (= schedule_type :monthly)
                         schedule_frame))
     (when (supports-recipients? channel_type)
       (update-recipients! id (or (get recipients-by-type true) [])))))
@@ -245,11 +230,11 @@
                        :details          (cond-> details
                                            (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
                        :schedule_type    schedule_type
-                       :schedule_hour    (when (not= schedule_type schedule-type-hourly)
+                       :schedule_hour    (when (not= schedule_type :hourly)
                                            schedule_hour)
-                       :schedule_day     (when (contains? #{schedule-type-weekly schedule-type-monthly} schedule_type)
+                       :schedule_day     (when (contains? #{:weekly :monthly} schedule_type)
                                            schedule_day)
-                       :schedule_frame   (when (= schedule_type schedule-type-monthly)
+                       :schedule_frame   (when (= schedule_type :monthly)
                                            schedule_frame))]
     (when (and (supports-recipients? channel_type) (seq (get recipients-by-type true)))
       (update-recipients! id (get recipients-by-type true)))
