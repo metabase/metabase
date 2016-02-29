@@ -7,6 +7,8 @@ import Portal from "./Portal.jsx";
 import PageFlag from "./PageFlag.jsx";
 import TutorialModal from "./TutorialModal.jsx";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 import _ from "underscore";
 
 export function qs(selector) {
@@ -90,6 +92,7 @@ export default class Tutorial extends Component {
     next() {
         if (this.state.step + 1 === this.props.steps.length) {
             this.close();
+            MetabaseAnalytics.trackEvent('QueryBuilder', 'Tutorial Finish');
         } else {
             this.setStep(this.state.step + 1);
         }
@@ -129,6 +132,7 @@ export default class Tutorial extends Component {
             step,
             stepTimeout: setTimeout(() => this.setState({ stepTimeout: null }), STEP_WARNING_TIMEOUT)
         });
+        MetabaseAnalytics.trackEvent('QueryBuilder', 'Tutorial Step', step);
     }
 
     close() {

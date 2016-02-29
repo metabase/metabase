@@ -107,7 +107,7 @@ class LegendItem extends Component {
 }
 
 const AddSeriesItem = ({ onAddSeries, showTitles }) =>
-    <a className={cx(styles.AddSeriesItem, "h3 ml1 mr2 cursor-pointer flex align-center text-brand-hover")} onClick={onAddSeries}>
+    <a data-metabase-event={"Dashboard;Edit Series Modal;open"} className={cx(styles.AddSeriesItem, "h3 ml1 mr2 cursor-pointer flex align-center text-brand-hover")} onClick={onAddSeries}>
         <span className="flex-no-shrink circular bordered border-brand flex layout-centered" style={{ width: 20, height: 20, marginRight: 8 }}>
             <Icon className="text-brand" name="add" width={10} height={10} />
         </span>
