@@ -631,6 +631,8 @@ CardControllers.controller('CardDetail', [
             card.display = display;
             card.visualization_settings = cardVizSettings;
 
+            updateUrl();
+
             renderAll();
         }
 
