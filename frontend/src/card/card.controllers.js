@@ -376,6 +376,7 @@ CardControllers.controller('CardDetail', [
                 isShowingTutorial = false;
                 updateUrl();
                 renderAll();
+                MetabaseAnalytics.trackEvent('QueryBuilder', 'Tutorial Close');
             }
         }
 
@@ -992,6 +993,7 @@ CardControllers.controller('CardDetail', [
 
                 if (isShowingTutorial) {
                     setSampleDataset();
+                    MetabaseAnalytics.trackEvent('QueryBuilder', 'Tutorial Start');
                 }
             } catch (error) {
                 console.log('error getting database list', error);
