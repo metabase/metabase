@@ -207,7 +207,7 @@ export default React.createClass({
 
                 // cancel button
                 buttonSections.push([
-                    <a key="cancel" className="cursor-pointer text-brand-hover text-uppercase" onClick={() => this.onCancel()}>
+                    <a key="cancel" className="cursor-pointer text-brand-hover text-grey-4 text-uppercase" onClick={() => this.onCancel()}>
                         CANCEL
                     </a>
                 ]);
