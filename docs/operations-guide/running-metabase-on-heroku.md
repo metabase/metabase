@@ -22,6 +22,12 @@ This will launch a Heroku deployment using a github repository that Metabase mai
 Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../setting-up-metabase.md).
 
 
+### Troubleshooting
+
+* If your Metabase instance is getting stuck part way through the initialization process and only every shows roughly 30% completion on the loading progress.
+    * The most likely culprit here is a stale database migrations lock that was not cleared.  This can happen if for some reason Heroku kills your Metabase dyno at the wrong time during startup.  __To fix it:__ you can either clear the lock using the built-in [release-locks](start.md#metabase-fails-to-startup) command line function, or if needed you can login to your Metabase application database directly and delete the row in the `DATABASECHANGELOGLOCK` table.  Then just restart Metabase.
+
+
 # Deploying New Versions of Metabase
 
 Upgrading to the next version of Metabase is a simple process where you will grab the latest version of [metabase-deploy](https://github.com/metabase/metabase-deploy) and push it to Heroku.

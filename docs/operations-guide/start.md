@@ -32,6 +32,9 @@ Step-by-step instructions on how to deploy Metabase on Elastic Beanstalk using R
 #### [Running on Heroku](running-metabase-on-heroku.md)
 Currently in beta.  We've run Metabase on Heroku and it works just fine, but it's not hardened for production use just yet.  If you're up for it then give it a shot and let us know how we can make it better!
 
+#### [Running on Cloud66](running-metabase-on-cloud66.md)
+Community support only at this time, but we have reports of Metabase instances running on Cloud66!
+
 
 # Troubleshooting Common Problems
 

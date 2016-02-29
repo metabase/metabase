@@ -170,7 +170,7 @@
 (defn- render-to-png
   [^String html, ^ByteArrayOutputStream os, width]
   (let [is            (ByteArrayInputStream. (.getBytes html StandardCharsets/UTF_8))
-        doc-source    (StreamDocumentSource. is nil "text/html")
+        doc-source    (StreamDocumentSource. is nil "text/html; charset=utf-8")
         parser        (DefaultDOMSource. doc-source)
         doc           (.parse parser)
         window-size   (Dimension. width 1)

@@ -183,7 +183,11 @@
      :cols    cols
      :rows    (for [^TableRow row (.getRows response)]
                 (for [[^TableCell cell, parser] (partition 2 (interleave (.getF row) parsers))]
-                  (parser (.getV cell))))}))
+                  (when-let [v (.getV cell)]
+                    ;; There is a weird error where everything that *should* be NULL comes back as an Object. See https://jira.talendforge.org/browse/TBD-1592
+                    ;; Everything else comes back as a String luckily so we can proceed normally.
+                    (when-not (= (class v) Object)
+                      (parser v)))))}))
 
 (defn- process-native* [database query-string]
   (post-process-native (execute-query database query-string)))
@@ -261,9 +265,14 @@
 (declare driver)
 
 ;; this is never actually connected to, just passed to korma so it applies appropriate delimiters when building SQL
-(def ^:private korma-db (-> (kdb/create-db (kdb/postgres {}))
-                            (update :options assoc :delimiters [\[ \]])))
-
+(def ^:private ^:const korma-db
+  {:pool {:subprotocol "sqlite"
+          :subname     ""}
+   :options {:naming          {:keys   identity
+                               :fields identity}
+             :delimiters      [\[ \]]
+             :alias-delimiter " AS "
+             :subprotocol     ""}})
 
 (defn- entity [dataset-id table-name]
   (-> (k/create-entity (k/raw (format "[%s.%s]" dataset-id table-name)))
