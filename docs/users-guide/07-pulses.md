@@ -7,7 +7,7 @@ You can create a pulse and view all of the existing pulses by clicking the `Puls
 ![Create a pulse](images/pulses/01-empty-state.png)
 
 ### Name It
-First, choose a name for your pulse. This will show up in the email subject line and the Slack message title, so choose something that will let people know what kind of updates the pulse will contain, like “Daily Marketing Update,” or “Users Metrics.” 
+First, choose a name for your pulse. This will show up in the email subject line and the Slack message title, so choose something that will let people know what kind of updates the pulse will contain, like “Daily Marketing Update,” or “Users Metrics.”
 
 ![Giving it a name](images/pulses/02-name-it.png)
 
@@ -26,7 +26,7 @@ Currently, there are a few restrictions on what kinds of saved questions you can
 * Bar charts (and pie charts which get turned into bar charts) will be cropped to one column for the labels, one column for the values, and 10 total rows
 
 ### Choose How and When to Deliver Your Data
-Each pulse you create can be delivered by email, Slack, or both. You can also set a different delivery schedule for email versus Slack. To deliver by email, just type in the email addresses you want to send the pulse to, separated by commas. Then, choose to either send it daily or weekly, and the time you want it to be sent.
+Each pulse you create can be delivered by email, Slack, or both. You can also set a different delivery schedule for email versus Slack. To deliver by email, just type in the email addresses you want to send the pulse to, separated by commas. Then, choose to either send it daily, weekly, or monthly, and the time you want it to be sent.
 
 ![Setting the email schedule](images/pulses/05-email-schedule.png)
 
@@ -37,7 +37,7 @@ Once you’re done, just click `Create pulse`. You’ll see your new pulse, alon
 ![A beautiful, completed pulse](images/pulses/06-created.png)
 
 ### Editing and Deleting a Pulse
-If you ever need to make changes to a pulse, just hover over the pulse from the list and click the `edit` button that appears. 
+If you ever need to make changes to a pulse, just hover over the pulse from the list and click the `edit` button that appears.
 
 ![Edit button](images/pulses/07-edit-button.png)
 

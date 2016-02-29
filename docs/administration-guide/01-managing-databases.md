@@ -11,6 +11,7 @@ Cool, now you’re in the admin panel. Next, select **Databases** from the menu 
 Now you’ll see a list of your databases. To connect another database to Metabase, click **Add database**. Metabase currently supports the following types of databases:
 
 * Amazon Redshift
+* [Google BigQuery](databases/bigquery.md)
 * H2
 * MongoDB (version 3.0 or higher)
 * MySQL
@@ -56,7 +57,9 @@ When Metabase connects to your database, it tries to decipher the field types in
 
 ### Metadata Syncing
 
-Metabase automatically syncs its copy of your database with the original database source every night, but if you'd like to sync your database manually at any time:
+Metabase maintains it's own information about the various tables and fields in each Database that is added to aid in querying.  This information is generally updated once each night to look for changes to the database such as new tables, but if you'd like to sync your database manually at any time:
+
+NOTE: Metabase does NOT copy any data from your database, it only maintains lists of the tables and columns.
 
 1. Go to the Admin Panel.
 
