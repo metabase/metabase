@@ -229,8 +229,8 @@ export default class GridLayout extends Component {
         if (isEditing) {
             // render grid as a background image:
             backgroundImage  = this.getGridBackground();
-            // add some rows to provide place to drag to:
-            bottom += 8;
+            // add one vertical screen worth of rows to ensure the grid fills the screen
+            bottom += Math.ceil(window.innerHeight / cellSize.height);
         }
 
         let width = cellSize.width * cols;
