@@ -5534,7 +5534,7 @@
           "version": "3.0.0",
           "dependencies": {
             "brace-expansion": {
-              "version": "1.1.2",
+              "version": "1.1.3",
               "dependencies": {
                 "balanced-match": {
                   "version": "0.3.0"
@@ -8982,10 +8982,10 @@
       }
     },
     "normalizr": {
-      "version": "1.4.1",
+      "version": "2.0.0",
       "dependencies": {
         "lodash": {
-          "version": "3.10.1"
+          "version": "4.5.1"
         }
       }
     },
@@ -10192,21 +10192,22 @@
       "version": "2.0.4"
     },
     "react-redux": {
-      "version": "3.1.2",
+      "version": "4.4.0",
       "dependencies": {
         "hoist-non-react-statics": {
-          "version": "1.0.3"
+          "version": "1.0.5"
         },
         "invariant": {
-          "version": "2.2.0",
+          "version": "2.2.0"
+        },
+        "lodash": {
+          "version": "4.5.1"
+        },
+        "loose-envify": {
+          "version": "1.1.0",
           "dependencies": {
-            "loose-envify": {
-              "version": "1.1.0",
-              "dependencies": {
-                "js-tokens": {
-                  "version": "1.0.2"
-                }
-              }
+            "js-tokens": {
+              "version": "1.0.2"
             }
           }
         }
@@ -10318,19 +10319,19 @@
       }
     },
     "redux-form": {
-      "version": "3.1.0",
+      "version": "4.2.0",
       "dependencies": {
         "deep-equal": {
           "version": "1.0.1"
         },
         "hoist-non-react-statics": {
-          "version": "1.0.3"
+          "version": "1.0.5"
         },
         "is-promise": {
           "version": "2.1.0"
         },
         "react-lazy-cache": {
-          "version": "3.0.0"
+          "version": "3.0.1"
         }
       }
     },
