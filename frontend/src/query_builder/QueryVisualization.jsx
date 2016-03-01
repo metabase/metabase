@@ -185,7 +185,7 @@ export default class QueryVisualization extends Component {
             } else {
                 if (window.OSX) {
                     return (
-                        <a classname="mx1" title="Download this data" onClick={function() {
+                        <a className="mx1" title="Download this data" onClick={function() {
                             window.OSX.saveCSV(JSON.stringify(card.dataset_query));
                         }}>
                             <Icon name='download' width="16px" height="16px" />

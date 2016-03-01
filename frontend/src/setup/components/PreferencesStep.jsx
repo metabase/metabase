@@ -46,7 +46,7 @@ export default class PreferencesStep extends Component {
             return (
                 <section className="SetupStep rounded full relative SetupStep--active">
                     <StepTitle title={stepText} number={stepNumber} />
-                    <form onSubmit={this.formSubmitted.bind(this)} novalidate>
+                    <form onSubmit={this.formSubmitted.bind(this)} noValidate>
                         <div className="Form-field Form-offset">
                             In order to help us improve Metabase, we'd like to collect certain data about usage through Google Analytics.  <a className="link" href={"http://www.metabase.com/docs/"+tag+"/information-collection.html"} target="_blank">Here's a full list of everything we track and why.</a>
                         </div>
