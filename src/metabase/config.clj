@@ -35,7 +35,7 @@
 
    We resolve properties from these places:
    1.  environment variables (ex: MB_DB_TYPE -> :mb-db-type)
-   2.  jvm opitons (ex: -Dmb.db.type -> :mb-db-type)
+   2.  jvm options (ex: -Dmb.db.type -> :mb-db-type)
    3.  hard coded `app-defaults`"
   [k]
   (let [k (keyword k)]
