@@ -12,7 +12,7 @@
   "dependencies": {
     "ace-builds": "^1.2.2",
     "angular": "1.2.28",
-    "angular-cookie": "git://github.com/ivpusic/angular-cookie#v4.0.6",
+    "angular-cookie": "^4.1.0",
     "angular-cookies": "1.2.28",
     "angular-http-auth": "1.2.1",
     "angular-resource": "1.2.28",

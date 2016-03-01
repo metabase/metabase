@@ -9,8 +9,7 @@
       "version": "1.2.28"
     },
     "angular-cookie": {
-      "version": "1.0.0",
-      "resolved": "git://github.com/ivpusic/angular-cookie.git#3440b84102bf97d83d344ab6db726b4f8cadd09a"
+      "version": "4.1.0"
     },
     "angular-cookies": {
       "version": "1.2.28"
