@@ -70,6 +70,7 @@
   :main ^:skip-aot metabase.core
   :manifest {"Liquibase-Package" "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"}
   :target-path "target/%s"
+  :jvm-opts ["-Djava.awt.headless=true"]                              ; prevent Java icon from randomly popping up in dock when running `lein ring server`
   :javac-options ["-target" "1.7", "-source" "1.7"]
   :uberjar-name "metabase.jar"
   :ring {:handler metabase.core/app
