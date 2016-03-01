@@ -173,12 +173,11 @@ export default class GridLayout extends Component {
 
     getStyleForLayout(l) {
         let cellSize = this.getCellSize();
-        let margin = l.i === "placeholder" ? -MARGIN : MARGIN;
         return {
-            width: cellSize.width * l.w - margin,
-            height: cellSize.height * l.h - margin,
-            left: cellSize.width * l.x + margin / 2,
-            top: cellSize.height * l.y + margin / 2
+            width: cellSize.width * l.w - MARGIN,
+            height: cellSize.height * l.h - MARGIN,
+            left: cellSize.width * l.x + MARGIN / 2,
+            top: cellSize.height * l.y + MARGIN / 2
         };
     }
 
@@ -214,14 +213,26 @@ export default class GridLayout extends Component {
         }
     }
 
-    render() {
-        const { className, layout, rowHeight } = this.props;
+    getGridBackground() {
+        let cellSize = this.getCellSize();
+        return `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='${cellSize.width}' height='${cellSize.height}'><rect stroke='rgba(0, 0, 0, 0.117647)' stroke-width='1' fill='none' x='${MARGIN / 2 + 1.5}' y='${MARGIN / 2 + 1.5}' width='${cellSize.width - MARGIN - 3}' height='${cellSize.height - MARGIN - 3}'/></svg>")`;
+    }
 
+    render() {
+        const { className, layout, cols, rowHeight, showGrid } = this.props;
+
+        let cellSize = this.getCellSize();
         let bottom = Math.max(...layout.map(l => l.y + l.h));
-        let totalHeight = (bottom + 3) * rowHeight;
+
+        let width = cellSize.width * cols;
+        let height = (bottom + 3) * rowHeight;
+        let backgroundImage;
+        if (showGrid) {
+            backgroundImage  = this.getGridBackground();
+        }
 
         return (
-            <div className={className} style={{ position: "relative", height: totalHeight }}>
+            <div className={className} style={{ position: "relative", width, height, backgroundImage }}>
                 {this.props.children.map(child =>
                     this.renderChild(child)
                 )}
