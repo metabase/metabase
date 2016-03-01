@@ -153,7 +153,7 @@
   (log/info (str "Verify Database Connection ... ✅")))
 
 (defn setup-db
-  "Do general perparation of database by validating that we can connect.
+  "Do general preparation of database by validating that we can connect.
    Caller can specify if we should run any pending database migrations."
   [& {:keys [db-details auto-migrate]
       :or   {db-details   @db-connection-details
@@ -288,7 +288,7 @@
 
   ENTITY may be either an entity like `User` or a vector like `[entity & field-keys]`.
   If just an entity is passed, `sel` will return `default-fields` for ENTITY.
-  Otherwise is a vector is passed `sel` will return the fields specified by FIELD-KEYS.
+  Otherwise, if a vector is passed `sel` will return the fields specified by FIELD-KEYS.
 
     (sel :many [OrgPerm :admin :id] :user_id 1) -> return admin and id of OrgPerms whose user_id is 1
 
@@ -321,7 +321,7 @@
   "Wrapper around `korma.core/insert` that renames the `:scope_identity()` keyword in output to `:id`
    and automatically passes &rest KWARGS to `korma.core/values`.
 
-   Returns newly created object by calling `sel`."
+   Returns a newly created object by calling `sel`."
   [entity & {:as kwargs}]
   (let [vals         (models/do-pre-insert entity kwargs)
         ;; take database-specific keys returned from a jdbc insert and map them to :id
