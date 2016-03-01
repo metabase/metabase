@@ -46,7 +46,7 @@
 
 .Dash--editing .DashCard .Card {
     pointer-events: none;
-    border: 1px dashed rgba(149, 149, 149, 0.5);
+    border: 1px solid rgba(149, 149, 149, 0.5);
     transition: border .3s, background-color .3s;
 }
 
@@ -79,16 +79,20 @@
     user-select: none;
 }
 
-.Dash--dragging .DashCard.dragging .Card {
+.Dash--editing .DashCard:hover {
+    box-shadow: 0px 1px 3px rgba(0,0,0,0.1);
+}
+
+.Dash--editing .DashCard.dragging {
     box-shadow: 3px 3px 8px rgba(0,0,0,0.1);
 }
 
-.Dash--dragging .DashCard.dragging,
+.Dash--editing .DashCard.dragging,
 .Dash--editing .DashCard.resizing {
     z-index: 2;
 }
 
-.Dash--dragging .DashCard.dragging .Card,
+.Dash--editing .DashCard.dragging .Card,
 .Dash--editing .DashCard.resizing .Card {
     background-color: #E5F1FB !important;
     border: 1px solid var(--brand-color);
@@ -106,7 +110,7 @@
   pointer-events: all;
 }
 
-.Dash--dragging .DashCard.dragging .DashCard-actions,
+.Dash--editing .DashCard.dragging .DashCard-actions,
 .Dash--editing .DashCard.resizing .DashCard-actions {
     opacity: 0;
     transition: opacity .3s linear;
@@ -116,7 +120,7 @@
     transition: transform .3s;
 }
 
-.Dash--dragging .DashCard.dragging,
+.Dash--editing .DashCard.dragging,
 .Dash--editing .DashCard.resizing {
     transition: transform 0s;
 }
@@ -134,6 +138,33 @@
     cursor: nwse-resize;
 }
 
+.Dash--editing .DashCard .react-resizable-handle:after {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  bottom: 10px;
+  right: 10px;
+  border-bottom: 2px solid color(var(--base-grey) shade(20%));
+  border-right: 2px solid color(var(--base-grey) shade(20%));
+  border-bottom-right-radius: 2px;
+  transition: opacity .2s;
+  opacity: 0.01;
+}
+
+.Dash--editing .DashCard .react-resizable-handle:hover:after {
+  border-color: color(var(--base-grey) shade(40%));
+}
+
+.Dash--editing .DashCard:hover .react-resizable-handle:after {
+  opacity: 1;
+}
+
+.Dash--editing .DashCard.dragging .react-resizable-handle:after,
+.Dash--editing .DashCard.resizing .react-resizable-handle:after {
+  opacity: 0.01;
+}
+
 .Dash--editing .react-grid-placeholder {
     z-index: 0;
     background-color: #F2F2F2;
@@ -145,7 +176,7 @@
 }
 
 /* ensure action buttons do not respond to events when dragging */
-.Dash--dragging .DashCard-actions {
+.Dash--editing.Dash--dragging .DashCard-actions {
     pointer-events: none !important;
 }
 

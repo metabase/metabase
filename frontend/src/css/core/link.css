@@ -16,3 +16,11 @@
 .link--nohover:hover {
   text-decoration: none;
 }
+
+.expand-clickable {
+  display: inline-block;
+  position: relative;
+  z-index: 1;
+  padding: 1em;
+  margin: -1em;
+}

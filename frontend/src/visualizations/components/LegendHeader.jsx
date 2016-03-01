@@ -6,6 +6,8 @@ import styles from "./LegendHeader.css";
 import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 
+import visualizations from "metabase/visualizations";
+
 import Urls from "metabase/lib/urls";
 import { getCardColors } from "metabase/visualizations/lib/utils";
 
@@ -47,16 +49,19 @@ export default class LegendHeader extends Component {
         const showTitles = !showDots || !isNarrow;
         const hoveredSeriesIndex = hovered && hovered.seriesIndex;
 
+        const display = series[0].card.display;
+        const addSeriesIconName = visualizations.get(display === "scalar" ? "bar" : display).iconName;
+
         let colors = getCardColors(series[0].card);
         return (
-            <div  className={cx(styles.LegendHeader, "Card-title m1 flex flex-no-shrink flex-row align-center")}>
+            <div  className={cx(styles.LegendHeader, "Card-title mx1 flex flex-no-shrink flex-row align-center")}>
                 { series.map((s, index) => [
                     <LegendItem key={index} card={s.card} index={index} color={colors[index % colors.length]} showDots={showDots} showTitles={showTitles} muted={hoveredSeriesIndex != null && index !== hoveredSeriesIndex} onHoverChange={onHoverChange} />,
                     onRemoveSeries && index > 0 && <Icon className="text-grey-2 flex-no-shrink mr1 cursor-pointer" name="close" width={12} height={12} onClick={() => onRemoveSeries(s.card)} />
                 ])}
                 { onAddSeries &&
                     <span className="DashCard-actions flex-no-shrink">
-                        <AddSeriesItem onAddSeries={onAddSeries} showTitles={!isNarrow} />
+                        <AddSeriesItem onAddSeries={onAddSeries} showTitles={!isNarrow} iconName={addSeriesIconName} />
                     </span>
                 }
                 { extraActions &&
@@ -106,10 +111,11 @@ class LegendItem extends Component {
     }
 }
 
-const AddSeriesItem = ({ onAddSeries, showTitles }) =>
+const AddSeriesItem = ({ onAddSeries, showTitles, iconName }) =>
     <a className={cx(styles.AddSeriesItem, "h3 ml1 mr2 cursor-pointer flex align-center text-brand-hover")} onClick={onAddSeries}>
-        <span className="flex-no-shrink circular bordered border-brand flex layout-centered" style={{ width: 20, height: 20, marginRight: 8 }}>
-            <Icon className="text-brand" name="add" width={10} height={10} />
+        <span className="flex-no-shrink relative" style={{ top: 1, marginRight: 2 }}>
+            <Icon className="absolute" style={{ top: 2, left: 2 }} name="add" width={8} height={8} />
+            <Icon name={iconName} width={24} height={24} />
         </span>
         { showTitles && <span className="flex-no-shrink">Edit data</span> }
     </a>

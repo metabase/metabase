@@ -133,8 +133,8 @@ export default class DashCard extends Component {
 }
 
 const ExtraActions = ({ onRemove }) =>
-    <span className="text-brand">
-        <a data-metabase-event="Dashboard;Remove Card Modal" href="#" onClick={onRemove}>
-            <Icon className="my1" name="trash" width="18" height="18" />
+    <span className="text-grey-2 text-grey-4-hover">
+        <a className="expand-clickable" data-metabase-event="Dashboard;Remove Card Modal" href="#" onClick={onRemove}>
+            <Icon name="close" width="14" height="14" />
         </a>
     </span>
