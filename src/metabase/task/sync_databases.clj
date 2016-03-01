@@ -9,8 +9,8 @@
                       [task :as task])
             [metabase.models.database :refer [Database]]))
 
-(def sync-databases-job-key "metabase.task.sync-databases.job")
-(def sync-databases-trigger-key "metabase.task.sync-databases.trigger")
+(def ^:private ^:const sync-databases-job-key     "metabase.task.sync-databases.job")
+(def ^:private ^:const sync-databases-trigger-key "metabase.task.sync-databases.trigger")
 
 (defonce ^:private sync-databases-job (atom nil))
 (defonce ^:private sync-databases-trigger (atom nil))
