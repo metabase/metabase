@@ -113,11 +113,3 @@
               [symb varr] (ns-publics ns)
               :when       (not (:doc (meta varr)))]
           (symbol (str (ns-name ns) "/" symb)))))
-
-(defn- throw-if-metabase-doesnt-have-enough-docstrings!
-  {:expectations-options :before-run}
-  []
-  (when-let [things-that-need-dox (seq (things-that-need-dox))]
-    (println (u/format-color 'red "Every public var in Metabase might as well have a docstring! Go write some for the following (or make them ^:private):\n%s"
-               (u/pprint-to-str things-that-need-dox)))
-    (System/exit -1)))
