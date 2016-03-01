@@ -21,6 +21,14 @@ const GRID_WIDTH = 6;
 const GRID_ASPECT_RATIO = 1;
 const GRID_MARGIN = 10;
 
+function compareDashcardPosition(a, b) {
+    if (a.row < b.row) { return -1; }
+    if (a.row > b.row) { return  1; }
+    if (a.col < b.col) { return -1; }
+    if (a.col > b.col) { return  1; }
+    return 0;
+}
+
 export default class DashboardGrid extends Component {
     constructor(props, context) {
         super(props, context);
@@ -51,6 +59,7 @@ export default class DashboardGrid extends Component {
 
     componentWillReceiveProps(nextProps) {
         this.setState({
+            dashcards: nextProps.dashboard.ordered_cards.sort(compareDashcardPosition),
             layout: this.getLayout(nextProps)
         });
     }
@@ -172,14 +181,14 @@ export default class DashboardGrid extends Component {
     }
 
     renderMobile() {
-        const { dashboard, isEditing } = this.props;
-        const { width } = this.state;
+        const { isEditing } = this.props;
+        const { width, dashcards } = this.state;
         return (
             <div
                 className={cx("DashboardGrid", { "Dash--editing": isEditing, "Dash--dragging": this.state.isDragging })}
                 style={{ margin: 0 }}
             >
-                {dashboard.ordered_cards.map(dc =>
+                {dashcards.map(dc =>
                     <div key={dc.id} className="DashCard" style={{ left: 10, width: width - 20, marginTop: 10, marginBottom: 10, height: width / (6 / 4)}}>
                         <DashCard
                             dashcard={dc}
@@ -197,8 +206,8 @@ export default class DashboardGrid extends Component {
     }
 
     renderGrid() {
-        const { dashboard, isEditing } = this.props;
-        const { width } = this.state;
+        const { isEditing } = this.props;
+        const { width, dashcards } = this.state;
         const rowHeight = Math.floor(width / GRID_WIDTH / GRID_ASPECT_RATIO);
         return (
             <GridLayout
@@ -212,7 +221,7 @@ export default class DashboardGrid extends Component {
                 onDragStop={(...args) => this.onDragStop(...args)}
                 isEditing={isEditing}
             >
-                {dashboard.ordered_cards.map(dc =>
+                {dashcards.map(dc =>
                     <div key={dc.id} className="DashCard" onMouseDownCapture={this.onDashCardMouseDown}>
                         <DashCard
                             dashcard={dc}
