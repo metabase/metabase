@@ -251,9 +251,9 @@
         (recur korma-form more)
         korma-form))))
 
-(defn- do-with-timezone [driver f]
+(defn- do-with-timezone [driver timezone f]
   (log/debug (u/format-color 'blue (sql/set-timezone-sql driver)))
-  (try (kdb/transaction (k/exec-raw [(sql/set-timezone-sql driver) [(driver/report-timezone)]])
+  (try (kdb/transaction (k/exec-raw [(sql/set-timezone-sql driver) [timezone]])
                         (f))
        (catch Throwable e
          (log/error (u/format-color 'red "Failed to set timezone:\n%s"
@@ -279,16 +279,15 @@
 
 (defn process-structured
   "Convert QUERY into a korma `select` form, execute it, and annotate the results."
-  [driver {{:keys [source-table]} :query, database :database, :as outer-query}]
-  (let [set-timezone? (and (seq (driver/report-timezone))
-                           (contains? (driver/features driver) :set-timezone))
-        entity        ((resolve 'metabase.driver.generic-sql/korma-entity) database source-table)
+  [driver {{:keys [source-table]} :query, database :database, settings :settings, :as outer-query}]
+  (let [timezone     (:report-timezone settings)
+        entity       ((resolve 'metabase.driver.generic-sql/korma-entity) database source-table)
         korma-form   (build-korma-form driver outer-query entity)
         f             (partial k/exec korma-form)
         f             (fn []
                         (kdb/with-db (:db entity)
-                          (if set-timezone?
-                            (do-with-timezone driver f)
+                          (if (seq timezone)
+                            (do-with-timezone driver timezone f)
                             (f))))]
     (log-korma-form korma-form)
     (do-with-try-catch f)))

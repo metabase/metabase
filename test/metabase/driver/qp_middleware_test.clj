@@ -37,17 +37,17 @@
 ;; post-format-rows
 
 (expect
-  [["2011-04-18T10:12:47.232Z"]
-   ["2011-04-18T00:00:00.000Z"]
-   ["2011-04-18T10:12:47.232Z"]]
+  {:rows [["2011-04-18T10:12:47.232Z"]
+          ["2011-04-18T00:00:00.000Z"]
+          ["2011-04-18T10:12:47.232Z"]]}
   ((post-format-rows (constantly {:rows [[(tc/to-sql-time 1303121567232)]
                                          [(tc/to-sql-date "2011-04-18")] ; joda-time assumes this is UTC time when parsing it
                                          [(tc/to-date 1303121567232)]]})) {:settings {}}))
 
 (expect
-  [["2011-04-18T19:12:47.232+09:00"]
-   ["2011-04-18T09:00:00.000+09:00"]
-   ["2011-04-18T19:12:47.232+09:00"]]
+  {:rows [["2011-04-18T19:12:47.232+09:00"]
+          ["2011-04-18T09:00:00.000+09:00"]
+          ["2011-04-18T19:12:47.232+09:00"]]}
   ((post-format-rows (constantly {:rows [[(tc/to-sql-time 1303121567232)]
                                          [(tc/to-sql-date "2011-04-18")] ; joda-time assumes this is UTC time when parsing it
                                          [(tc/to-date 1303121567232)]]})) {:settings {:report-timezone "Asia/Tokyo"}}))

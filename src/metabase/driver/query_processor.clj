@@ -113,7 +113,7 @@
 
 (defn- pre-add-settings [qp]
   (fn [{:keys [driver] :as query}]
-    (let [settings (->> {:report_timezone (when (driver/driver-supports? driver :set-timezone)
+    (let [settings (->> {:report-timezone (when (driver/driver-supports? driver :set-timezone)
                                             (setting/get :report-timezone))}
                         (filter (comp not nil? val))
                         (into {}))]
