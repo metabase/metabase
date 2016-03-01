@@ -13,15 +13,9 @@ import AddSeriesModal from "./AddSeriesModal.jsx";
 import _ from "underscore";
 import cx from "classnames";
 
-// const GRID_WIDTH = 12;
-// const GRID_ASPECT_RATIO = 4 / 3;
-// const GRID_MARGIN = 6;
-
-const GRID_WIDTH = 6;
-const GRID_ASPECT_RATIO = 1;
-const GRID_MARGIN = 10;
-
-
+const GRID_WIDTH = 12;
+const GRID_ASPECT_RATIO = 4 / 3;
+const GRID_MARGIN = 6;
 
 export default class DashboardGrid extends Component {
     constructor(props, context) {
