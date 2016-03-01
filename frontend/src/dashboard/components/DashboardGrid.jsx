@@ -13,6 +13,14 @@ import AddSeriesModal from "./AddSeriesModal.jsx";
 import _ from "underscore";
 import cx from "classnames";
 
+// const GRID_WIDTH = 12;
+// const GRID_ASPECT_RATIO = 4 / 3;
+// const GRID_MARGIN = 6;
+
+const GRID_WIDTH = 6;
+const GRID_ASPECT_RATIO = 1;
+const GRID_MARGIN = 10;
+
 export default class DashboardGrid extends Component {
     constructor(props, context) {
         super(props, context);
@@ -191,12 +199,13 @@ export default class DashboardGrid extends Component {
     renderGrid() {
         const { dashboard, isEditing } = this.props;
         const { width } = this.state;
-        const rowHeight = Math.floor(width / 6);
+        const rowHeight = Math.floor(width / GRID_WIDTH / GRID_ASPECT_RATIO);
         return (
             <GridLayout
                 className={cx("DashboardGrid", { "Dash--editing": isEditing, "Dash--dragging": this.state.isDragging })}
                 layout={this.state.layout}
-                cols={6}
+                cols={GRID_WIDTH}
+                margin={GRID_MARGIN}
                 rowHeight={rowHeight}
                 onLayoutChange={(...args) => this.onLayoutChange(...args)}
                 onDrag={(...args) => this.onDrag(...args)}
