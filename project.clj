@@ -81,10 +81,15 @@
              :exclude-linters [:constant-test                         ; korma macros generate some forms with if statements that are always logically true or false
                                :suspicious-expression                 ; core.match macros generate some forms like (and expr) which is "suspicious"
                                :unused-ret-vals]}                     ; gives too many false positives for functions with side-effects like conj!
+  :docstring-checker {:include [#"^metabase"]
+                      :exclude [#"test"
+                                #"^metabase\.sample-data$"
+                                #"^metabase\.http-client$"]}
   :profiles {:dev {:dependencies [[org.clojure/tools.nrepl "0.2.12"]  ; REPL <3
                                   [expectations "2.1.3"]              ; unit tests
                                   [ring/ring-mock "0.3.0"]]
-                   :plugins [[jonase/eastwood "0.2.3"
+                   :plugins [[docstring-checker "1.0.0"]              ; Check that all public vars have docstrings
+                             [jonase/eastwood "0.2.3"
                               :exclusions [org.clojure/clojure]]      ; Linting
                              [lein-ancient "0.6.8"                    ; Check project for outdated dependencies + plugins w/ 'lein ancient'
                               :exclusions [org.clojure/clojure]]
