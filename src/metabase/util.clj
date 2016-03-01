@@ -85,7 +85,7 @@
 ;;; ## Date Stuff
 
 (defn is-temporal? [v]
-  (and v (contains? #{:java.sql.Timestamp :java.sql.Date :java.util.Date :org.joda.time.DateTime} (keyword (.getName (type v))))))
+  (and v (contains? #{:java.sql.Timestamp :java.sql.Date :java.util.Date :org.joda.time.DateTime} (keyword (.getName ^Class (type v))))))
 
 (defn new-sql-timestamp
   "`java.sql.Date` doesn't have an empty constructor so this is a convenience that lets you make one with the current date.
