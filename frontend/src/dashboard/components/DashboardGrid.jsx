@@ -201,7 +201,7 @@ export default class DashboardGrid extends Component {
                 onLayoutChange={(...args) => this.onLayoutChange(...args)}
                 onDrag={(...args) => this.onDrag(...args)}
                 onDragStop={(...args) => this.onDragStop(...args)}
-                showGrid={isEditing}
+                isEditing={isEditing}
             >
                 {dashboard.ordered_cards.map(dc =>
                     <div key={dc.id} className="DashCard" onMouseDownCapture={this.onDashCardMouseDown}>

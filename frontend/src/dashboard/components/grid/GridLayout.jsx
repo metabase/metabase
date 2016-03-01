@@ -219,17 +219,21 @@ export default class GridLayout extends Component {
     }
 
     render() {
-        const { className, layout, cols, rowHeight, showGrid } = this.props;
+        const { className, layout, cols, isEditing } = this.props;
 
         let cellSize = this.getCellSize();
         let bottom = Math.max(...layout.map(l => l.y + l.h));
 
-        let width = cellSize.width * cols;
-        let height = (bottom + 3) * rowHeight;
         let backgroundImage;
-        if (showGrid) {
+        if (isEditing) {
+            // render grid as a background image:
             backgroundImage  = this.getGridBackground();
+            // add some rows to provide place to drag to:
+            bottom += 8;
         }
+
+        let width = cellSize.width * cols;
+        let height = cellSize.height * bottom;
 
         return (
             <div className={className} style={{ position: "relative", width, height, backgroundImage }}>
