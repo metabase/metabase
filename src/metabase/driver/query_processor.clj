@@ -149,29 +149,17 @@
         ;; Add :rows_truncated if we've hit the limit so the UI can let the user know
         (= num-results results-limit) (assoc-in [:data :rows_truncated] results-limit)))))
 
-(defn format-timestamp [ts & {:keys [tz]}]
-  (let [formatter (if tz
-                    (tf/formatter "yyyy-MM-dd'T'HH:mm:ss.SSSZ'" (t/time-zone-for-id tz))
-                    (tf/formatter "yyyy-MM-dd'T'HH:mm:ss.SSSZ'"))]
-    (tf/unparse formatter ts)))
-
-(defn- format-rows [{:keys [report_timezone]} rows]
-  (let [format-ts    #(format-timestamp % :tz report_timezone)
-        format-value (fn [v]
-                       (condp = (keyword (.getName (type v)))
-                         :java.sql.Timestamp (format-ts (tc/from-sql-time v))
-                         :java.sql.Date      (format-ts (tc/from-sql-date v))
-                         :java.util.Date     (format-ts (tc/from-date v))
-                         v))]
+(defn- format-rows [{:keys [report-timezone]} rows]
+  (let [format-value #(if (u/is-temporal? %)
+                       (u/->ISO8601DateTime % report-timezone)
+                       %)]
     (for [row rows]
       (map format-value row))))
 
 (defn- post-format-rows
-  "Format temporal values as strings."
+  "Format individual query result values as needed.  Ex: format temporal values as iso8601 strings w/ timezone."
   [qp]
   (fn [{:keys [settings] :as query}]
-    (log/info "query" query)
-    (log/info "settings" settings)
     (let [results (qp query)]
       (if-not (:rows results)
         results
