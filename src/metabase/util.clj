@@ -4,6 +4,7 @@
             (clojure [pprint :refer [pprint]]
                      [string :as s])
             [clojure.tools.logging :as log]
+            [clj-time.core :as t]
             [clj-time.coerce :as coerce]
             [clj-time.format :as time]
             [colorize.core :as color]
@@ -62,7 +63,29 @@
                                                                                (pprint-to-str (sort (keys time/formatters)))))))))
 
 
+(defprotocol ISO8601
+  "Protocol for converting objects to ISO8601 formatted strings."
+  (->ISO8601DateTime ^String [this timezone-id]
+    "Coerce object to an ISO8601 date-time string such as \"2015-11-18T23:55:03.841Z\" with a given TIMEZONE."))
+
+(def ^:private ISO8601Formatter
+  ;; memoize this because the formatters are static.  they must be distinct per timezone though.
+  (memoize (fn [timezone-id]
+             (if timezone-id (time/with-zone (time/formatters :date-time) (t/time-zone-for-id timezone-id))
+                             (time/formatters :date-time)))))
+
+(extend-protocol ISO8601
+  nil                    (->ISO8601DateTime [_ _] nil)
+  java.util.Date         (->ISO8601DateTime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) (coerce/from-date this)))
+  java.sql.Date          (->ISO8601DateTime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) (coerce/from-sql-date this)))
+  java.sql.Timestamp     (->ISO8601DateTime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) (coerce/from-sql-time this)))
+  org.joda.time.DateTime (->ISO8601DateTime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) this)))
+
+
 ;;; ## Date Stuff
+
+(defn is-temporal? [v]
+  (and v (contains? #{:java.sql.Timestamp :java.sql.Date :java.util.Date :org.joda.time.DateTime} (keyword (.getName (type v))))))
 
 (defn new-sql-timestamp
   "`java.sql.Date` doesn't have an empty constructor so this is a convenience that lets you make one with the current date.
