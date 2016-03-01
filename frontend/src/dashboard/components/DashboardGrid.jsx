@@ -21,13 +21,7 @@ const GRID_WIDTH = 6;
 const GRID_ASPECT_RATIO = 1;
 const GRID_MARGIN = 10;
 
-function compareDashcardPosition(a, b) {
-    if (a.row < b.row) { return -1; }
-    if (a.row > b.row) { return  1; }
-    if (a.col < b.col) { return -1; }
-    if (a.col > b.col) { return  1; }
-    return 0;
-}
+
 
 export default class DashboardGrid extends Component {
     constructor(props, context) {
@@ -35,6 +29,7 @@ export default class DashboardGrid extends Component {
 
         this.state = {
             layout: this.getLayout(props),
+            dashcards: this.getSortedDashcards(props),
             removeModalDashCard: null,
             addSeriesModalDashCard: null,
             width: 0,
@@ -59,7 +54,7 @@ export default class DashboardGrid extends Component {
 
     componentWillReceiveProps(nextProps) {
         this.setState({
-            dashcards: nextProps.dashboard.ordered_cards.sort(compareDashcardPosition),
+            dashcards: this.getSortedDashcards(nextProps),
             layout: this.getLayout(nextProps)
         });
     }
@@ -80,6 +75,16 @@ export default class DashboardGrid extends Component {
         if (changes && changes.length > 0) {
             MetabaseAnalytics.trackEvent("Dashboard", "Layout Changed");
         }
+    }
+
+    getSortedDashcards(props) {
+        return props.dashboard && props.dashboard.ordered_cards.sort((a, b) => {
+            if (a.row < b.row) { return -1; }
+            if (a.row > b.row) { return  1; }
+            if (a.col < b.col) { return -1; }
+            if (a.col > b.col) { return  1; }
+            return 0;
+        });
     }
 
     getLayoutForDashCard(dc) {
@@ -188,7 +193,7 @@ export default class DashboardGrid extends Component {
                 className={cx("DashboardGrid", { "Dash--editing": isEditing, "Dash--dragging": this.state.isDragging })}
                 style={{ margin: 0 }}
             >
-                {dashcards.map(dc =>
+                {dashcards && dashcards.map(dc =>
                     <div key={dc.id} className="DashCard" style={{ left: 10, width: width - 20, marginTop: 10, marginBottom: 10, height: width / (6 / 4)}}>
                         <DashCard
                             dashcard={dc}
@@ -221,7 +226,7 @@ export default class DashboardGrid extends Component {
                 onDragStop={(...args) => this.onDragStop(...args)}
                 isEditing={isEditing}
             >
-                {dashcards.map(dc =>
+                {dashcards && dashcards.map(dc =>
                     <div key={dc.id} className="DashCard" onMouseDownCapture={this.onDashCardMouseDown}>
                         <DashCard
                             dashcard={dc}

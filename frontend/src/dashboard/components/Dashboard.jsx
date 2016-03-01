@@ -46,6 +46,7 @@ export default class Dashboard extends Component {
                 this.props.addCardToDashboard({ dashId: this.props.selectedDashboard, cardId: this.props.addCardOnLoad });
             }
         } catch (error) {
+            console.error(error)
             if (error.status === 404) {
                 this.props.onChangeLocation("/404");
             } else {
