@@ -26,7 +26,9 @@
         (catch Throwable e
           (log/error "Error syncing database: " (:id database) e))))))
 
-(defn- task-init []
+(defn task-init
+  "Automatically called during startup; start the job for syncing databases."
+  []
   ;; build our job
   (reset! sync-databases-job (jobs/build
                                (jobs/of-type SyncDatabases)
