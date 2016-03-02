@@ -1,5 +1,3 @@
-/*global $clamp*/
-
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
@@ -52,8 +50,8 @@ export default class DashCard extends Component {
         }
     }
 
-    renderCard(CardVisualization) {
-        const { dashcard, cardData, isEditing, onAddSeries } = this.props;
+    renderCard(Viz) {
+        const { dashcard, cardData, isEditing, onAddSeries, onRemove } = this.props;
         const cards = [dashcard.card].concat(dashcard.series || []);
         const series = cards
             .map(card => ({
@@ -88,8 +86,7 @@ export default class DashCard extends Component {
                     className="flex-full"
                     series={series}
                     isDashboard={true}
-                    onAddSeries={isEditing && CardVisualization.supportsSeries ? onAddSeries : undefined}
-                    extraActions={isEditing ? <ExtraActions onRemove={this.props.onRemove} /> : undefined}
+                    extraActions={isEditing ? <ExtraActions series={series} visualization={Viz} onRemove={onRemove} onAddSeries={onAddSeries} /> : undefined}
                 />
             );
         }
@@ -102,39 +99,51 @@ export default class DashCard extends Component {
         );
     }
 
-    componentDidUpdate() {
-        let titleElement = ReactDOM.findDOMNode(this.refs.title);
-        if (titleElement) {
-            // have to restore the text in case we previously clamped it :-/
-            titleElement.textContent = this.props.dashcard.card.name;
-            $clamp(titleElement, { clamp: 2 });
-        }
-    }
-
     render() {
         const { dashcard, onAddSeries, onRemove, isEditing } = this.props;
         const series = [dashcard.card].concat(dashcard.series || []).map(card => ({ card }));
-        const CardVisualization = visualizations.get(series[0].card.display);
+        const Viz = visualizations.get(series[0].card.display);
         return (
             <div className={"Card bordered rounded flex flex-column " + cx({ "Card--recent": dashcard.isAdded })}>
-                { !CardVisualization.noHeader &&
+                { !Viz.noHeader &&
                     <div className="p1">
                         <LegendHeader
                             series={series}
-                            onAddSeries={isEditing && CardVisualization.supportsSeries ? onAddSeries : undefined}
-                            extraActions={isEditing ? <ExtraActions onRemove={onRemove} /> : undefined}
+                            extraActions={isEditing ? <ExtraActions visualization={Viz} series={series} onRemove={onRemove} onAddSeries={onAddSeries} /> : undefined}
                         />
                     </div>
                 }
-                {this.renderCard(CardVisualization)}
+                {this.renderCard(Viz)}
             </div>
         );
     }
 }
 
-const ExtraActions = ({ onRemove }) =>
-    <span className="text-grey-2 text-grey-4-hover">
-        <a className="expand-clickable" data-metabase-event="Dashboard;Remove Card Modal" href="#" onClick={onRemove}>
-            <Icon name="close" width="14" height="14" />
-        </a>
+const ExtraActions = ({ series, visualization, onRemove, onAddSeries }) =>
+    <span className="flex align-center">
+        { visualization.supportsSeries &&
+            <AddSeriesButton series={series} onAddSeries={onAddSeries} />
+        }
+        <RemoveButton onRemove={onRemove} />
     </span>
+
+const RemoveButton = ({ onRemove }) =>
+    <a className="text-grey-2 text-grey-4-hover expand-clickable" data-metabase-event="Dashboard;Remove Card Modal" href="#" onClick={onRemove}>
+        <Icon name="close" width="14" height="14" />
+    </a>
+
+const AddSeriesButton = ({ series, onAddSeries }) =>
+    <a className="text-grey-2 text-grey-4-hover cursor-pointer h3 ml1 mr2 flex align-center flex-no-shrink relative" onClick={onAddSeries}>
+        <Icon className="absolute" style={{ top: 2, left: 2 }} name="add" width={8} height={8} />
+        <Icon name={getSeriesIconName(series)} width={24} height={24} />
+        <span className="flex-no-shrink">{ series.length > 1 ? "Edit" : "Add" }</span>
+    </a>
+
+function getSeriesIconName(series) {
+    try {
+        let display = series[0].card.display;
+        return visualizations.get(display === "scalar" ? "bar" : display).iconName;
+    } catch (e) {
+        return "bar";
+    }
+}
