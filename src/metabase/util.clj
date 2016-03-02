@@ -85,11 +85,10 @@
 ;;; ## Date Stuff
 
 (defn is-temporal?
-  "Tests if the given VALUE is a temporal class such as `java.util.Date` or `org.joda.time.DateTime`."
+  "Is VALUE an instance of a datetime class like `java.util.Date` or `org.joda.time.DateTime`?"
   [v]
-  (and v
-       (or (instance? java.util.Date v)
-           (instance? org.joda.time.DateTime v))))
+  (or (instance? java.util.Date v)
+      (instance? org.joda.time.DateTime v)))
 
 (defn new-sql-timestamp
   "`java.sql.Date` doesn't have an empty constructor so this is a convenience that lets you make one with the current date.

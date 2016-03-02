@@ -9,6 +9,13 @@
 (def ^:private ^:const friday-the-13th   #inst "2015-11-13T19:05:55")
 (def ^:private ^:const saturday-the-14th #inst "2015-11-14T04:18:26")
 
+(expect false (is-temporal? nil))
+(expect false (is-temporal? 123))
+(expect false (is-temporal? "abc"))
+(expect false (is-temporal? [1 2 3]))
+(expect false (is-temporal? {:a "b"}))
+(expect true (is-temporal? friday-the-13th))
+
 (expect friday-the-13th (->Timestamp (->Date friday-the-13th)))
 (expect friday-the-13th (->Timestamp (->Calendar friday-the-13th)))
 (expect friday-the-13th (->Timestamp (->Calendar (.getTime friday-the-13th))))
