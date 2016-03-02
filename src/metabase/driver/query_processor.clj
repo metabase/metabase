@@ -150,7 +150,7 @@
   (for [row rows]
     (for [v row]
       (if (u/is-temporal? v)
-        (u/->ISO8601DateTime v report-timezone)
+        (u/->iso-8601-datetime v report-timezone)
         v))))
 
 (defn- post-format-rows

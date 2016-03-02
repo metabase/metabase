@@ -65,7 +65,7 @@
 
 (defprotocol ISO8601
   "Protocol for converting objects to ISO8601 formatted strings."
-  (->ISO8601DateTime ^String [this timezone-id]
+  (->iso-8601-datetime ^String [this timezone-id]
     "Coerce object to an ISO8601 date-time string such as \"2015-11-18T23:55:03.841Z\" with a given TIMEZONE."))
 
 (def ^:private ISO8601Formatter
@@ -75,11 +75,11 @@
                              (time/formatters :date-time)))))
 
 (extend-protocol ISO8601
-  nil                    (->ISO8601DateTime [_ _] nil)
-  java.util.Date         (->ISO8601DateTime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) (coerce/from-date this)))
-  java.sql.Date          (->ISO8601DateTime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) (coerce/from-sql-date this)))
-  java.sql.Timestamp     (->ISO8601DateTime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) (coerce/from-sql-time this)))
-  org.joda.time.DateTime (->ISO8601DateTime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) this)))
+  nil                    (->iso-8601-datetime [_ _] nil)
+  java.util.Date         (->iso-8601-datetime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) (coerce/from-date this)))
+  java.sql.Date          (->iso-8601-datetime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) (coerce/from-sql-date this)))
+  java.sql.Timestamp     (->iso-8601-datetime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) (coerce/from-sql-time this)))
+  org.joda.time.DateTime (->iso-8601-datetime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) this)))
 
 
 ;;; ## Date Stuff
