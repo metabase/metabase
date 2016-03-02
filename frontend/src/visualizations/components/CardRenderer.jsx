@@ -2,6 +2,7 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
+import AbsoluteContainer from "metabase/components/AbsoluteContainer.jsx";
 
 import * as charting from "metabase/visualizations/lib/CardRenderer";
 
@@ -11,6 +12,7 @@ import { isSameSeries } from "metabase/visualizations/lib/utils";
 import { getSettingsForVisualization } from "metabase/lib/visualization_settings";
 
 @ExplicitSize
+@AbsoluteContainer
 export default class CardRenderer extends Component {
     static propTypes = {
         chartType: PropTypes.string.isRequired,

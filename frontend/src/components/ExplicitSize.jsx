@@ -1,7 +1,7 @@
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
-const ExplicitSize = ComposedComponent => class extends Component {
+export default ComposedComponent => class extends Component {
     constructor(props, context) {
         super(props, context);
         this.state = {
@@ -25,5 +25,3 @@ const ExplicitSize = ComposedComponent => class extends Component {
         return <ComposedComponent {...this.state} {...this.props} />
     }
 }
-
-export default ExplicitSize;
