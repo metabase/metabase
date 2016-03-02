@@ -80,7 +80,14 @@
 (defn upload-file!
   "Calls Slack api `files.upload` function and returns the body of the uploaded file."
   [file filename channel-ids-str]
-  {:pre [file (instance? (Class/forName "[B") file) (not (zero? (count file))) (string? filename) (seq filename) (string? channel-ids-str) (seq channel-ids-str) (seq (slack-token))]}
+  {:pre [file
+         (instance? (Class/forName "[B") file)
+         (not (zero? (count file)))
+         (string? filename)
+         (seq filename)
+         (string? channel-ids-str)
+         (seq channel-ids-str)
+         (seq (slack-token))]}
   (let [response (http/post (str slack-api-base-url "/files.upload") {:multipart [{:name "token",    :content (slack-token)}
                                                                                   {:name "file",     :content file}
                                                                                   {:name "filename", :content filename}

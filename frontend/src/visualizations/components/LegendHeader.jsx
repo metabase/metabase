@@ -102,5 +102,3 @@ class LegendItem extends Component {
         );
     }
 }
-
-export default LegendHeader;

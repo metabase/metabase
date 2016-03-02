@@ -13,6 +13,7 @@ import QueryModeToggle from './QueryModeToggle.jsx';
 import QuestionSavedModal from 'metabase/components/QuestionSavedModal.jsx';
 import SaveQuestionModal from 'metabase/components/SaveQuestionModal.jsx';
 
+import MetabaseAnalytics from "metabase/lib/analytics";
 import Query from "metabase/lib/query";
 
 import cx from "classnames";
@@ -101,6 +102,7 @@ export default React.createClass({
     onDelete: async function () {
         await this.props.cardApi.delete({ 'cardId': this.props.card.id }).$promise;
         this.onGoBack();
+        MetabaseAnalytics.trackEvent("QueryBuilder", "Delete");
     },
 
     onFollowBreadcrumb: function() {
@@ -207,7 +209,7 @@ export default React.createClass({
 
                 // cancel button
                 buttonSections.push([
-                    <a key="cancel" className="cursor-pointer text-brand-hover text-uppercase" onClick={() => this.onCancel()}>
+                    <a key="cancel" className="cursor-pointer text-brand-hover text-grey-4 text-uppercase" onClick={() => this.onCancel()}>
                         CANCEL
                     </a>
                 ]);
@@ -233,7 +235,7 @@ export default React.createClass({
         if (!this.props.cardIsNewFn() && !this.props.isEditing) {
             // simply adding an existing saved card to a dashboard, so show the modal to do so
             buttonSections.push([
-                <span className="cursor-pointer text-brand-hover" onClick={() => this.setState({ modal: "add-to-dashboard" })}>
+                <span data-metabase-event={"QueryBuilder;AddToDash Modal;normal"} className="cursor-pointer text-brand-hover" onClick={() => this.setState({ modal: "add-to-dashboard" })}>
                     <Icon name="addtodash" width="16px" height="16px" />
                 </span>
             ]);
@@ -244,7 +246,7 @@ export default React.createClass({
                     key="addtodashsave"
                     ref="addToDashSaveModal"
                     triggerClasses="h4 px1 text-grey-4 text-brand-hover text-uppercase"
-                    triggerElement={<span className="text-brand-hover"><Icon name="addtodash" width="16px" height="16px" /></span>}
+                    triggerElement={<span data-metabase-event={"QueryBuilder;AddToDash Modal;pre-save"} className="text-brand-hover"><Icon name="addtodash" width="16px" height="16px" /></span>}
                 >
                     <SaveQuestionModal
                         card={this.props.card}

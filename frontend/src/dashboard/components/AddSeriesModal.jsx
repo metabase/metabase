@@ -6,12 +6,14 @@ import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import CheckBox from "metabase/components/CheckBox.jsx";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
 import Query from "metabase/lib/query";
 
 import visualizations from "metabase/visualizations";
 
 import _ from "underscore";
 import cx from "classnames";
+
 
 function getQueryColumns(card, databases) {
     let dbId = card.dataset_query.database;
@@ -37,7 +39,7 @@ export default class AddSeriesModal extends Component {
             badCards: {}
         };
 
-        _.bindAll(this, "onSearchChange", "onDone", "filteredCards", "onRemoveSeries")
+        _.bindAll(this, "onSearchChange", "onSearchFocus", "onDone", "filteredCards", "onRemoveSeries")
     }
 
     static propTypes = {
@@ -64,6 +66,10 @@ export default class AddSeriesModal extends Component {
         }
     }
 
+    onSearchFocus() {
+        MetabaseAnalytics.trackEvent("Dashboard", "Edit Series Modal", "search");
+    }
+
     onSearchChange(e) {
         this.setState({ searchValue: e.target.value.toLowerCase() });
     }
@@ -87,15 +93,21 @@ export default class AddSeriesModal extends Component {
                         state: null,
                         series: this.state.series.concat(card)
                     });
+
+                    MetabaseAnalytics.trackEvent("Dashboard", "Add Series", card.display+", success");
                 } else {
                     this.setState({
                         state: "incompatible",
                         badCards: { ...this.state.badCards, [card.id]: true }
                     });
                     setTimeout(() => this.setState({ state: null }), 2000);
+
+                    MetabaseAnalytics.trackEvent("Dashboard", "Add Series", card.dataset_query.type+", "+card.display+", fail");
                 }
             } else {
                 this.setState({ series: this.state.series.filter(c => c.id !== card.id) });
+
+                MetabaseAnalytics.trackEvent("Dashboard", "Remove Series");
             }
         } catch (e) {
             console.error("onCardChange", e);
@@ -109,6 +121,7 @@ export default class AddSeriesModal extends Component {
 
     onRemoveSeries(card) {
         this.setState({ series: this.state.series.filter(c => c.id !== card.id) });
+        MetabaseAnalytics.trackEvent("Dashboard", "Remove Series");
     }
 
     onDone() {
@@ -117,6 +130,7 @@ export default class AddSeriesModal extends Component {
             attributes: { series: this.state.series }
         });
         this.props.onClose();
+        MetabaseAnalytics.trackEvent("Dashboard", "Edit Series Modal", "done");
     }
 
     filteredCards() {
@@ -214,13 +228,13 @@ export default class AddSeriesModal extends Component {
                     </div>
                     <div className="flex-no-shrink pl4 pb4 pt1">
                         <button className="Button Button--primary" onClick={this.onDone}>Done</button>
-                        <button className="Button Button--borderless" onClick={this.props.onClose}>Cancel</button>
+                        <button data-metabase-event={"Dashboard;Edit Series Modal;cancel"} className="Button Button--borderless" onClick={this.props.onClose}>Cancel</button>
                     </div>
                 </div>
                 <div className="border-left flex flex-column" style={{width: 370, backgroundColor: "#F8FAFA", borderColor: "#DBE1DF" }}>
                     <div className="flex-no-shrink border-bottom flex flex-row align-center" style={{ borderColor: "#DBE1DF" }}>
                         <Icon className="ml2" name="search" width={16} height={16} />
-                        <input className="h4 input full pl1" style={{ border: "none", backgroundColor: "transparent" }} type="search" placeholder="Search for a question" onChange={this.onSearchChange}/>
+                        <input className="h4 input full pl1" style={{ border: "none", backgroundColor: "transparent" }} type="search" placeholder="Search for a question" onFocus={this.onSearchFocus} onChange={this.onSearchChange}/>
                     </div>
                     <LoadingAndErrorWrapper className="flex flex-full" loading={!filteredCards} error={error} noBackground>
                     { () =>

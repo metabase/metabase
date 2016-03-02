@@ -154,7 +154,7 @@
   [id prefix] ; TODO - should prefix be Required/NonEmptyString ?
   (read-check Database id)
   (let [prefix-len (count prefix)
-        table-id->name (->> (sel :many [Table :id :name] :db_id id)                                             ; fetch all name + ID of all Tables for this DB
+        table-id->name (->> (sel :many [Table :id :name] :db_id id :active true)                                             ; fetch all name + ID of all Tables for this DB
                             (map (fn [{:keys [id name]}]                                                         ; make a map of Table ID -> Table Name
                                    {id name}))
                             (into {}))
@@ -166,7 +166,8 @@
                                     [table-name "Table"])))
         fields (->> (sel :many [Field :name :base_type :special_type :table_id]                                 ; get all Fields with names that start with PREFIX
                          :table_id [in (keys table-id->name)]                                                   ; whose Table is in this DB
-                         :name [like (str prefix "%")])
+                         :name [like (str prefix "%")]
+                         :active true)
                     (map (fn [{:keys [name base_type special_type table_id]}]                                    ; return them in the format
                            [name (str (table-id->name table_id) " " base_type (when special_type                ; [field_name "table_name base_type special_type"]
                                                                                 (str " " special_type)))])))]

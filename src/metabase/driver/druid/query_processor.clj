@@ -97,7 +97,7 @@
                 :fnAggregate "function(current, x) { return current + (parseFloat(x) || 0); }"
                 :fnCombine   "function(x, y) { return x + y; }"}))
 
-(defn- ag:filtered  [filter aggregator] {:type :filtered, :filter filter, :aggregator aggregator})
+(defn- ag:filtered  [filtr aggregator] {:type :filtered, :filter filtr, :aggregator aggregator})
 
 (defn- ag:count
   ([output-name]       {:type :count, :name output-name})
@@ -208,11 +208,11 @@
 
 ;;; ### handle-filter
 
-(defn- filter:not [filter]
-  {:pre [filter]}
-  (if (= (:type filter) :not)     ; it looks like "two nots don't make an identity" with druid
-    (:field filter)
-    {:type :not, :field filter}))
+(defn- filter:not [filtr]
+  {:pre [filtr]}
+  (if (= (:type filtr) :not)     ; it looks like "two nots don't make an identity" with druid
+    (:field filtr)
+    {:type :not, :field filtr}))
 
 (defn- filter:= [field value]
   {:type      :selector
@@ -282,8 +282,13 @@
     nil  (parse-filter-subclause:filter clause)))
 
 
-(defn- make-intervals [min max & more]
-  (vec (concat [(str (or (->rvalue min) -5000) "/" (or (->rvalue max) 5000))]
+(defn- make-intervals
+  "Make a value for the `:intervals` in a Druid query.
+
+     ;; Return results in 2012 or 2015
+     (make-intervals 2012 2013 2015 2016) -> [\"2012/2013\" \"2015/2016\"]"
+  [interval-min interval-max & more]
+  (vec (concat [(str (or (->rvalue interval-min) -5000) "/" (or (->rvalue interval-max) 5000))]
                (when (seq more)
                  (apply make-intervals more)))))
 

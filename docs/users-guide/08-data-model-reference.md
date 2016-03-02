@@ -5,8 +5,8 @@ Sometimes, as you’re looking at all the various tables and data in your databa
 
 ![bookicon](./images/Bookicon.png)
 
-After clicking the icon, the **Data Reference** sidebar will open. It lists all the databases you have access to and the tables inside them. 
- 
+After clicking the icon, the **Data Reference** sidebar will open. It lists all the databases you have access to and the tables inside them.
+
 ![datareference](images/DataReference.png)
 
 Click on the table you would like to explore further to see a description of it and a list of all the fields it contains. Each table or field will only contain a description if your admin wrote something there.
@@ -20,6 +20,5 @@ If you click on a field you’re interested in, you’ll see a description of th
 In addition to looking at a table's fields, you can also look at its connections if your table includes any. Connections show up here if there’s a field in the table you’re looking at that’s included in another table. Click on **Connections** (located next to **Field** button) to view the connected tables.
 
 ---
-## That’s it!
-If you still have questions, or want to share Metabase tips and tricks, head over to our [discussion board](http://discourse.metabase.com/). See you there!
-
+## Next: Multi series charting
+Next we'll take a look at how to combine what we've learned so far and [visualize multiple series on a chart](09-multi-series-charting.md).

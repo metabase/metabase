@@ -5,7 +5,8 @@
   :description "Metabase Community Edition"
   :url "http://metabase.com/"
   :min-lein-version "2.5.0"
-  :aliases {"bikeshed" ["with-profile" "+bikeshed" "bikeshed" "--max-line-length" "240"]
+  :aliases {"bikeshed" ["bikeshed" "--max-line-length" "240"]
+            "check-reflection-warnings" ["with-profile" "+reflection-warnings" "check"]
             "test" ["with-profile" "+expectations" "expectations"]
             "generate-sample-dataset" ["with-profile" "+generate-sample-dataset" "run"]}
   :dependencies [[org.clojure/clojure "1.8.0"]
@@ -70,23 +71,28 @@
   :main ^:skip-aot metabase.core
   :manifest {"Liquibase-Package" "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"}
   :target-path "target/%s"
+  :jvm-opts ["-Djava.awt.headless=true"]                              ; prevent Java icon from randomly popping up in dock when running `lein ring server`
   :javac-options ["-target" "1.7", "-source" "1.7"]
   :uberjar-name "metabase.jar"
   :ring {:handler metabase.core/app
          :init metabase.core/init!
          :destroy metabase.core/destroy}
-  :eastwood {:exclude-namespaces [:test-paths]
+  :eastwood {:exclude-namespaces [:test-paths
+                                  metabase.driver.generic-sql]        ; ISQLDriver causes Eastwood to fail. Skip this ns until issue is fixed: https://github.com/jonase/eastwood/issues/191
              :add-linters [:unused-private-vars]
              :exclude-linters [:constant-test                         ; korma macros generate some forms with if statements that are always logically true or false
                                :suspicious-expression                 ; core.match macros generate some forms like (and expr) which is "suspicious"
                                :unused-ret-vals]}                     ; gives too many false positives for functions with side-effects like conj!
+  :docstring-checker {:include [#"^metabase"]
+                      :exclude [#"test"
+                                #"^metabase\.sample-data$"
+                                #"^metabase\.http-client$"]}
   :profiles {:dev {:dependencies [[org.clojure/tools.nrepl "0.2.12"]  ; REPL <3
                                   [expectations "2.1.3"]              ; unit tests
                                   [ring/ring-mock "0.3.0"]]
-                   :plugins [[jonase/eastwood "0.2.3"
+                   :plugins [[docstring-checker "1.0.0"]              ; Check that all public vars have docstrings. Run with 'lein docstring-checker'
+                             [jonase/eastwood "0.2.3"
                               :exclusions [org.clojure/clojure]]      ; Linting
-                             [lein-ancient "0.6.8"                    ; Check project for outdated dependencies + plugins w/ 'lein ancient'
-                              :exclusions [org.clojure/clojure]]
                              [lein-bikeshed "0.3.0"]                  ; Linting
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'
                              [lein-instant-cheatsheet "2.2.1"         ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
@@ -98,6 +104,7 @@
                               "-Xmx2048m"                             ; hard limit of 2GB so we stop hitting the 4GB container limit on CircleCI
                               "-XX:+CMSClassUnloadingEnabled"         ; let Clojure's dynamically generated temporary classes be GC'ed from PermGen
                               "-XX:+UseConcMarkSweepGC"]}             ; Concurrent Mark Sweep GC needs to be used for Class Unloading (above)
+             :reflection-warnings {:global-vars {*warn-on-reflection* true}} ; run `lein check-reflection-warnings` to check for reflection warnings
              :expectations {:injections [(require 'metabase.test-setup)]
                             :resource-paths ["test_resources"]
                             :env {:mb-test-setting-1 "ABCDEFG"
