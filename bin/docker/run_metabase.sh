@@ -26,4 +26,4 @@ fi
 
 
 # Launch the application
-java -Dlogfile.path=target/log -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -jar /app/metabase.jar
+exec java -Dlogfile.path=target/log -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -jar /app/metabase.jar
