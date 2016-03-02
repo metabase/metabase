@@ -28,11 +28,10 @@
              (try
                ;; Set the timezone if applicable
                (when-let [timezone (:report-timezone settings)]
-                 (when (seq timezone)
-                   (log/debug (u/format-color 'green "%s" (sql/set-timezone-sql driver)))
-                   (try (jdbc/db-do-prepared t-conn (sql/set-timezone-sql driver) [timezone])
-                        (catch Throwable e
-                          (log/error (u/format-color 'red "Failed to set timezone: %s" (.getMessage e)))))))
+                 (log/debug (u/format-color 'green "%s" (sql/set-timezone-sql driver)))
+                 (try (jdbc/db-do-prepared t-conn (sql/set-timezone-sql driver) [timezone])
+                      (catch Throwable e
+                        (log/error (u/format-color 'red "Failed to set timezone: %s" (.getMessage e))))))
 
                ;; Now run the query itself
                (log/debug (u/format-color 'green "%s" sql))

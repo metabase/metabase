@@ -1,11 +1,6 @@
 (ns metabase.driver.query-processor
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific implementations."
-  (:require [clj-time.core :as t]
-            [clj-time.coerce :as tc]
-            [clj-time.format :as tf]
-            (clojure [pprint :as pprint]
-                     [string :as s]
-                     [walk :as walk])
+  (:require [clojure.walk :as walk]
             [clojure.tools.logging :as log]
             [korma.core :as k]
             [medley.core :as m]
@@ -113,11 +108,13 @@
 
 (defn- pre-add-settings [qp]
   (fn [{:keys [driver] :as query}]
-    (let [settings (->> {:report-timezone (when (driver/driver-supports? driver :set-timezone)
-                                            (setting/get :report-timezone))}
-                        (filter (comp not nil? val))
-                        (into {}))]
-      (qp (assoc query :settings settings)))))
+    (let [settings {:report-timezone (when (driver/driver-supports? driver :set-timezone)
+                                       (let [report-tz (setting/get :report-timezone)]
+                                         (when-not (empty? report-tz)
+                                           report-tz)))}]
+      (->> (u/filter-nil-values settings)
+           (assoc query :settings)
+           qp))))
 
 
 (defn- pre-expand [qp]
@@ -150,11 +147,11 @@
         (= num-results results-limit) (assoc-in [:data :rows_truncated] results-limit)))))
 
 (defn- format-rows [{:keys [report-timezone]} rows]
-  (let [format-value #(if (u/is-temporal? %)
-                       (u/->ISO8601DateTime % report-timezone)
-                       %)]
-    (for [row rows]
-      (map format-value row))))
+  (for [row rows]
+    (for [v row]
+      (if (u/is-temporal? v)
+        (u/->ISO8601DateTime v report-timezone)
+        v))))
 
 (defn- post-format-rows
   "Format individual query result values as needed.  Ex: format temporal values as iso8601 strings w/ timezone."

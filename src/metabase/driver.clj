@@ -300,7 +300,7 @@
     (contains? (set (keys (available-drivers))) (keyword engine))))
 
 (defn driver-supports?
-  "Predicate function that tests if a driver supports a given feature."
+  "Tests if a driver supports a given feature."
   [driver feature]
   (contains? (features driver) feature))
 

@@ -84,8 +84,12 @@
 
 ;;; ## Date Stuff
 
-(defn is-temporal? [v]
-  (and v (contains? #{:java.sql.Timestamp :java.sql.Date :java.util.Date :org.joda.time.DateTime} (keyword (.getName ^Class (type v))))))
+(defn is-temporal?
+  "Tests if the given VALUE is a temporal class such as `java.util.Date` or `org.joda.time.DateTime`."
+  [v]
+  (and v
+       (or (instance? java.util.Date v)
+           (instance? org.joda.time.DateTime v))))
 
 (defn new-sql-timestamp
   "`java.sql.Date` doesn't have an empty constructor so this is a convenience that lets you make one with the current date.
@@ -339,6 +343,13 @@
    Function expects the map value as an arg and optionally accepts additional args as passed."
   [m f & args]
   (reduce (fn [r [k v]] (assoc r k (apply f v args))) {} m))
+
+(defn filter-nil-values
+  "Remove any keys from a MAP when the value is `nil`."
+  [m]
+  (into {} (for [[k v] m
+                 :when (not (nil? v))]
+             {k v})))
 
 (defn is-email?
   "Is STRING a valid email address?"
