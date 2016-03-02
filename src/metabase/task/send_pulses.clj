@@ -64,7 +64,9 @@
         curr-monthweek     (monthweek now)]
     (send-pulses! curr-hour curr-weekday curr-monthday curr-monthweek)))
 
-(defn- task-init []
+(defn task-init
+  "Automatically called during startup; start the job for sending pulses."
+  []
   ;; build our job
   (reset! send-pulses-job (jobs/build
                                (jobs/of-type SendPulses)

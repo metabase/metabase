@@ -122,7 +122,9 @@
                                       :when (not (contains? (set fields-fields) field))]
                                   (as (formatted field) field)))))
 
-(defn- apply-fields [_ korma-form {fields :fields}]
+(defn apply-fields
+  "Apply a `fields` clause to KORMA-FORM. Default implementation of `apply-fields` for SQL drivers."
+  [_ korma-form {fields :fields}]
   (apply k/fields korma-form (for [field fields]
                                 (as (formatted field) field))))
 
@@ -150,10 +152,14 @@
     :not (kfns/pred-not (kengine/pred-map (filter-subclause->predicate subclause)))
     nil  (filter-subclause->predicate clause)))
 
-(defn- apply-filter [_ korma-form {clause :filter}]
+(defn apply-filter
+  "Apply a `filter` clause to KORMA-FORM. Default implementation of `apply-filter` for SQL drivers."
+  [_ korma-form {clause :filter}]
   (k/where korma-form (filter-clause->predicate clause)))
 
-(defn- apply-join-tables [_ korma-form {join-tables :join-tables, {source-table-name :name, source-schema :schema} :source-table}]
+(defn apply-join-tables
+  "Apply expanded query `join-tables` clause to KORMA-FORM. Default implementation of `apply-join-tables` for SQL drivers."
+  [_ korma-form {join-tables :join-tables, {source-table-name :name, source-schema :schema} :source-table}]
   (loop [korma-form korma-form, [{:keys [table-name pk-field source-field schema]} & more] join-tables]
     (let [table-name        (if (seq schema)
                               (str schema \. table-name)
@@ -168,10 +174,14 @@
         (recur korma-form more)
         korma-form))))
 
-(defn- apply-limit [_ korma-form {value :limit}]
+(defn apply-limit
+  "Apply `limit` clause to KORMA-FORM. Default implementation of `apply-limit` for SQL drivers."
+  [_ korma-form {value :limit}]
   (k/limit korma-form value))
 
-(defn- apply-order-by [_ korma-form {subclauses :order-by}]
+(defn apply-order-by
+  "Apply `order-by` clause to KORMA-FORM. Default implementation of `apply-order-by` for SQL drivers."
+  [_ korma-form {subclauses :order-by}]
   (loop [korma-form korma-form, [{:keys [field direction]} & more] subclauses]
     (let [korma-form (k/order korma-form (formatted field) (case direction
                                                                :ascending  :ASC
@@ -180,7 +190,9 @@
         (recur korma-form more)
         korma-form))))
 
-(defn- apply-page [_ korma-form {{:keys [items page]} :page}]
+(defn apply-page
+  "Apply `page` clause to KORMA-FORM. Default implementation of `apply-page` for SQL drivers."
+  [_ korma-form {{:keys [items page]} :page}]
   (-> korma-form
       (k/limit items)
       (k/offset (* items (dec page)))))

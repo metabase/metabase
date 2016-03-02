@@ -1,10 +1,9 @@
 (ns metabase.test-setup
   "Functions that run before + after unit tests (setup DB, start web server, load test data)."
-  (:require (clojure.java [classpath :as classpath]
-                          [io :as io])
+  (:require clojure.data
+            [clojure.java.io :as io]
             [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [clojure.tools.namespace.find :as ns-find]
             [colorize.core :as color]
             [expectations :refer :all]
             (metabase [core :as core]
@@ -97,19 +96,3 @@
   []
   (log/info "Shutting down Metabase unit test runner")
   (core/stop-jetty))
-
-
-
-;; Check that every public var in Metabase has a docstring
-(defn- things-that-need-dox []
-  (sort (for [ns          (ns-find/find-namespaces (classpath/classpath))
-              :let        [nm (try (str (ns-name ns))
-                                   (catch Throwable _))]
-              :when       (and nm
-                               (re-find #"^metabase" nm)
-                               (not (re-find #"test" nm))
-                               (not= nm "metabase.sample-data")
-                               (not= nm "metabase.http-client"))
-              [symb varr] (ns-publics ns)
-              :when       (not (:doc (meta varr)))]
-          (symbol (str (ns-name ns) "/" symb)))))

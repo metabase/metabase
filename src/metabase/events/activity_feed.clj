@@ -149,5 +149,7 @@
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
-(defn- events-init []
+(defn events-init
+  "Automatically called during startup; start the events listener for the activity feed."
+  []
   (events/start-event-listener activity-feed-topics activity-feed-channel process-activity-event))

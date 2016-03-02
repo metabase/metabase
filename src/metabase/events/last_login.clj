@@ -37,5 +37,7 @@
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
-(defn- events-init []
+(defn events-init
+  "Automatically called during startup; start the events listener for last login events."
+  []
   (events/start-event-listener last-login-topics last-login-channel process-last-login-event))
