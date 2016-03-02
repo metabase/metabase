@@ -518,7 +518,7 @@ CardControllers.controller('CardDetail', [
             MetabaseAnalytics.trackEvent('QueryBuilder', 'Run Query', dataset_query.type);
 
             // HACK: prevent SQL editor from losing focus
-            try { ace.edit("id_sql").focus() } catch (e) {};
+            try { ace.edit("id_sql").focus() } catch (e) {}
         }
 
         function loadTableInfo(tableId) {

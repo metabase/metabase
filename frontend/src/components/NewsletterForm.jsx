@@ -64,7 +64,7 @@ export default class NewsletterForm extends Component {
                             Get infrequent emails about new releases and feature updates.
                         </div>
 
-                        <form onSubmit={this.subscribeUser.bind(this)} novalidate>
+                        <form onSubmit={this.subscribeUser.bind(this)} noValidate>
                             <div>
                                 { !submitted ?
                                     <div className="">

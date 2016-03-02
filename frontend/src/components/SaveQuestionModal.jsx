@@ -168,7 +168,7 @@ export default class SaveQuestionModal extends Component {
                             displayName="Name"
                             fieldName="name"
                             errors={this.state.errors}>
-                            <input className="Form-input full" name="name" placeholder="What is the name of your card?" value={this.state.details.name} onChange={(e) => this.onChange("name", e.target.value)} autofocus/>
+                            <input className="Form-input full" name="name" placeholder="What is the name of your card?" value={this.state.details.name} onChange={(e) => this.onChange("name", e.target.value)} autoFocus/>
                         </FormField>
 
                         <FormField

@@ -96,7 +96,7 @@ export default class CreateDashboardModal extends Component {
                             fieldName="name"
                             errors={this.state.errors}>
                             <input className="Form-input
-                            full" name="name" placeholder="What is the name of your dashboard?" value={this.state.name} onChange={this.setName} autofocus />
+                            full" name="name" placeholder="What is the name of your dashboard?" value={this.state.name} onChange={this.setName} autoFocus />
                         </FormField>
 
                         <FormField

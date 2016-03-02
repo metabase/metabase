@@ -66,7 +66,7 @@ function populateQueryOptions(table) {
     });
 
     return table;
-};
+}
 
 function addFkTargets(field, tables) {
     if (field.target != null) {

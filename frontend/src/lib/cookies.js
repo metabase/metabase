@@ -27,7 +27,7 @@ var MetabaseCookies = {
             mb_cookies.scope.$broadcast('appstate:login', sessionId);
 
         } else {
-            var sessionId = mb_cookies.ipCookie(METABASE_SESSION_COOKIE);
+            sessionId = mb_cookies.ipCookie(METABASE_SESSION_COOKIE);
 
             // delete the current session cookie
             mb_cookies.ipCookie.remove(METABASE_SESSION_COOKIE);

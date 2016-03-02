@@ -86,7 +86,7 @@ export default class SettingsSlackForm extends Component {
                     validationErrors[element.key] = this.validateElement(validation, formData[element.key], element);
                     if (validationErrors[element.key]) valid = false;
                 }, this);
-            };
+            }
         }, this);
 
         if (this.state.valid !== valid || !_.isEqual(this.state.validationErrors, validationErrors)) {
