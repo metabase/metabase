@@ -62,8 +62,6 @@ const MetabaseSettings = {
         } else {
             return description;
         }
-
-        return description;
     }
 }
 

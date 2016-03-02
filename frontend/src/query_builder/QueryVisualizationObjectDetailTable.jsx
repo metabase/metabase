@@ -55,10 +55,10 @@ export default class QueryVisualizationObjectDetailTable extends Component {
             if (row[1] === null || row[1] === undefined || (typeof row[1] === "string" && row[1].length === 0)) {
                 cellValue = (<span className="text-grey-2">Empty</span>);
             } else if(row[0].special_type === "json") {
-                var formattedJson = JSON.stringify(JSON.parse(row[1]), null, 2);
+                let formattedJson = JSON.stringify(JSON.parse(row[1]), null, 2);
                 cellValue = (<pre className="ObjectJSON">{formattedJson}</pre>);
             } else if (typeof row[1] === "object") {
-                var formattedJson = JSON.stringify(row[1], null, 2);
+                let formattedJson = JSON.stringify(row[1], null, 2);
                 cellValue = (<pre className="ObjectJSON">{formattedJson}</pre>);
             } else {
                 // TODO: should we be casting all values toString()?

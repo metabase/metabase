@@ -35,7 +35,7 @@ export default class SetUserPassword extends Component {
         for (var fieldName in this.refs) {
             let node = ReactDOM.findDOMNode(this.refs[fieldName]);
             if (node.required && MetabaseUtils.isEmpty(node.value)) isValid = false;
-        };
+        }
 
         if(isValid !== valid) {
             this.setState({
@@ -87,7 +87,7 @@ export default class SetUserPassword extends Component {
 
         return (
             <div>
-                <form className="Form-new bordered rounded shadowed" onSubmit={this.formSubmitted.bind(this)} novalidate>
+                <form className="Form-new bordered rounded shadowed" onSubmit={this.formSubmitted.bind(this)} noValidate>
                     <FormField fieldName="old_password" formError={formError}>
                         <FormLabel title="Current password" fieldName="old_password" formError={formError}></FormLabel>
                         <input ref="oldPassword" type="password" className="Form-input Form-offset full" name="old_password" placeholder="Shhh..." onChange={this.onChange.bind(this)} autoFocus={true} required />
