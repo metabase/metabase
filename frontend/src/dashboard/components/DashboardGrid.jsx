@@ -205,8 +205,8 @@ export default class DashboardGrid extends Component {
     }
 
     renderGrid() {
-        const { isEditing } = this.props;
-        const { width, dashcards } = this.state;
+        const { dashboard, isEditing } = this.props;
+        const { width } = this.state;
         const rowHeight = Math.floor(width / GRID_WIDTH / GRID_ASPECT_RATIO);
         return (
             <GridLayout
@@ -220,7 +220,7 @@ export default class DashboardGrid extends Component {
                 onDragStop={(...args) => this.onDragStop(...args)}
                 isEditing={isEditing}
             >
-                {dashcards && dashcards.map(dc =>
+                {dashboard && dashboard.ordered_cards.map(dc =>
                     <div key={dc.id} className="DashCard" onMouseDownCapture={this.onDashCardMouseDown}>
                         <DashCard
                             dashcard={dc}

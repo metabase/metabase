@@ -53,7 +53,7 @@ export default class LineAreaBarChart extends Component {
     static propTypes = {
         series: PropTypes.array.isRequired,
         onAddSeries: PropTypes.func,
-        extraActions: PropTypes.node,
+        actionButtons: PropTypes.node,
         isDashboard: PropTypes.bool
     };
 
@@ -117,7 +117,7 @@ export default class LineAreaBarChart extends Component {
     }
 
     render() {
-        let { hovered, isDashboard, onAddSeries, onRemoveSeries, extraActions, allowSplitAxis } = this.props;
+        let { hovered, isDashboard, onAddSeries, onRemoveSeries, actionButtons, allowSplitAxis } = this.props;
         let { series, isMultiseries } = this.state;
 
         let card = this.props.series[0].card;
@@ -134,7 +134,7 @@ export default class LineAreaBarChart extends Component {
                         series={series}
                         onAddSeries={isMultiseries ? undefined : onAddSeries}
                         onRemoveSeries={onRemoveSeries}
-                        extraActions={extraActions}
+                        actionButtons={actionButtons}
                         hovered={hovered}
                         onHoverChange={this.props.onHoverChange}
                     />

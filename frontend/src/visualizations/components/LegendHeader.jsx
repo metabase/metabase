@@ -43,7 +43,7 @@ export default class LegendHeader extends Component {
     }
 
     render() {
-        const { series, hovered, onRemoveSeries, extraActions, onHoverChange } = this.props;
+        const { series, hovered, onRemoveSeries, actionButtons, onHoverChange } = this.props;
         const showDots = series.length > 1;
         const isNarrow = this.state.width < 150;
         const showTitles = !showDots || !isNarrow;
@@ -56,9 +56,9 @@ export default class LegendHeader extends Component {
                     <LegendItem key={index} card={s.card} index={index} color={colors[index % colors.length]} showDots={showDots} showTitles={showTitles} muted={hoveredSeriesIndex != null && index !== hoveredSeriesIndex} onHoverChange={onHoverChange} />,
                     onRemoveSeries && index > 0 && <Icon className="text-grey-2 flex-no-shrink mr1 cursor-pointer" name="close" width={12} height={12} onClick={() => onRemoveSeries(s.card)} />
                 ])}
-                { extraActions &&
-                    <span className="DashCard-actions flex-no-shrink flex-align-right">
-                        {extraActions}
+                { actionButtons &&
+                    <span className="flex-no-shrink flex-align-right">
+                        {actionButtons}
                     </span>
                 }
             </div>

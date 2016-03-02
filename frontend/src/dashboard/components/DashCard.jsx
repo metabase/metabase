@@ -86,7 +86,8 @@ export default class DashCard extends Component {
                     className="flex-full"
                     series={series}
                     isDashboard={true}
-                    extraActions={isEditing ? <ExtraActions series={series} visualization={Viz} onRemove={onRemove} onAddSeries={onAddSeries} /> : undefined}
+                    size={{ width: dashcard.sizeX, height: dashcard.sizeY }}
+                    actionButtons={isEditing ? <DashCardActionButtons series={series} visualization={Viz} onRemove={onRemove} onAddSeries={onAddSeries} /> : undefined}
                 />
             );
         }
@@ -109,7 +110,7 @@ export default class DashCard extends Component {
                     <div className="p1">
                         <LegendHeader
                             series={series}
-                            extraActions={isEditing ? <ExtraActions visualization={Viz} series={series} onRemove={onRemove} onAddSeries={onAddSeries} /> : undefined}
+                            actionButtons={isEditing ? <DashCardActionButtons visualization={Viz} series={series} onRemove={onRemove} onAddSeries={onAddSeries} /> : undefined}
                         />
                     </div>
                 }
@@ -119,8 +120,8 @@ export default class DashCard extends Component {
     }
 }
 
-const ExtraActions = ({ series, visualization, onRemove, onAddSeries }) =>
-    <span className="flex align-center">
+const DashCardActionButtons = ({ series, visualization, onRemove, onAddSeries }) =>
+    <span className="DashCard-actions flex align-center">
         { visualization.supportsSeries &&
             <AddSeriesButton series={series} onAddSeries={onAddSeries} />
         }

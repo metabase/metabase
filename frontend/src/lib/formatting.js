@@ -1,6 +1,7 @@
 import d3 from "d3";
 import inflection from "inflection";
 import moment from "moment";
+import Humanize from "humanize";
 import React from "react";
 
 const PRECISION_NUMBER_FORMATTER      = d3.format(".2r");
@@ -8,9 +9,11 @@ const FIXED_NUMBER_FORMATTER          = d3.format(",.f");
 const FIXED_NUMBER_FORMATTER_NO_COMMA = d3.format(".f");
 const DECIMAL_DEGREES_FORMATTER       = d3.format(".08f");
 
-export function formatNumber(number, options) {
+export function formatNumber(number, options = {}) {
     options = { comma: true, ...options}
-    if (number > -1 && number < 1) {
+    if (options.compact) {
+        return Humanize.compactInteger(number, 1);
+    } else if (number > -1 && number < 1) {
         // numbers between 1 and -1 round to 2 significant digits with extra 0s stripped off
         return PRECISION_NUMBER_FORMATTER(number).replace(/\.?0+$/, "");
     } else {
@@ -23,9 +26,9 @@ export function formatNumber(number, options) {
     }
 }
 
-export function formatScalar(scalar) {
+export function formatScalar(scalar, options = {}) {
     if (typeof scalar === "number") {
-        return formatNumber(scalar, { comma: true });
+        return formatNumber(scalar, { comma: true, ...options });
     } else {
         return String(scalar);
     }
