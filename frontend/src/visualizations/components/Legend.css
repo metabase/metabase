@@ -1,0 +1,26 @@
+:local .LegendHeader {
+  height: 24px;
+}
+
+:local .LegendItem {
+  transition: opacity 0.25s linear;
+  opacity: 1;
+}
+:local(.LegendItem).muted {
+  opacity: 0.4;
+}
+
+:local .Legend.none {
+  display: none;
+}
+
+:local .Legend.vertical {
+  display: flex;
+  flex-direction: column;
+}
+
+:local .Legend.horizontal {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+}

@@ -1,0 +1,75 @@
+:local .Pie {
+  display: flex;
+}
+
+:local .Pie.vertical {
+  flex-direction: column-reverse;
+}
+:local .Pie.horizontal {
+  flex-direction: row;
+}
+
+:local .Pie .Legend {
+  display: flex;
+  justify-content: center;
+  flex: 0 1 auto;
+}
+
+:local .Pie.small .Legend {
+  display: none;
+}
+
+:local .Pie.horizontal .Legend {
+  margin-right: 1em;
+  margin-left: 1em;
+}
+
+:local .Pie.vertical .Legend {
+  margin-right: 1em;
+  margin-left: 1em;
+  margin-top: 0.5em;
+  margin-bottom: 1.5em;
+}
+
+:local .Pie .ChartAndDetail {
+  flex: 1;
+  position: relative;
+  margin: 1em;
+  flex-shrink: 0;
+}
+
+:local .Pie .Chart,
+:local .Pie .Detail {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+}
+
+:local .Pie .Chart {
+}
+
+:local .Pie .Detail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+:local .Pie .Value {
+  color: #676C72;
+  font-size: 22px;
+  font-weight: bolder;
+}
+
+:local .Pie .Title {
+  color: #B8C0C9;
+  font-size: 14px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+:local(.Donut) path {
+  transition: opacity 0.3s linear;
+}

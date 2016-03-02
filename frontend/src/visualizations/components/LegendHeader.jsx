@@ -1,12 +1,9 @@
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
-
-import styles from "./LegendHeader.css";
+import styles from "./Legend.css";
 
 import Icon from "metabase/components/Icon.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
-
-import visualizations from "metabase/visualizations";
+import LegendItem from "./LegendItem.jsx";
 
 import Urls from "metabase/lib/urls";
 import { getCardColors } from "metabase/visualizations/lib/utils";
@@ -22,9 +19,11 @@ export default class LegendHeader extends Component {
     }
 
     static propTypes = {
-         series: PropTypes.array.isRequired,
-         onAddSeries: PropTypes.func,
-         hovered: PropTypes.object
+        series: PropTypes.array.isRequired,
+        hovered: PropTypes.object,
+        onHoverChange: PropTypes.func,
+        onRemoveSeries: PropTypes.func,
+        actionButtons: PropTypes.node
     };
 
     static defaultProps = {
@@ -53,8 +52,24 @@ export default class LegendHeader extends Component {
         return (
             <div  className={cx(styles.LegendHeader, "Card-title mx1 flex flex-no-shrink flex-row align-center")}>
                 { series.map((s, index) => [
-                    <LegendItem key={index} card={s.card} index={index} color={colors[index % colors.length]} showDots={showDots} showTitles={showTitles} muted={hoveredSeriesIndex != null && index !== hoveredSeriesIndex} onHoverChange={onHoverChange} />,
-                    onRemoveSeries && index > 0 && <Icon className="text-grey-2 flex-no-shrink mr1 cursor-pointer" name="close" width={12} height={12} onClick={() => onRemoveSeries(s.card)} />
+                    <LegendItem
+                        key={index}
+                        title={s.card.name}
+                        href={s.card.id && Urls.card(s.card.id)}
+                        color={colors[index % colors.length]}
+                        showDot={showDots}
+                        showTitle={showTitles}
+                        isMuted={hoveredSeriesIndex != null && index !== hoveredSeriesIndex}
+                        onMouseEnter={() => onHoverChange && onHoverChange(null, null, index) }
+                        onMouseLeave={() => onHoverChange && onHoverChange(null, null, null) }
+                    />,
+                    onRemoveSeries && index > 0 &&
+                        <Icon
+                            name="close"
+                            className="text-grey-2 flex-no-shrink mr1 cursor-pointer"
+                            width={12} height={12}
+                            onClick={() => onRemoveSeries(s.card)}
+                        />
                 ])}
                 { actionButtons &&
                     <span className="flex-no-shrink flex-align-right">
@@ -62,43 +77,6 @@ export default class LegendHeader extends Component {
                     </span>
                 }
             </div>
-        );
-    }
-}
-
-class LegendItem extends Component {
-    constructor(props, context) {
-        super(props, context);
-        this.state = {
-            tooltipIsEnabled: false
-        };
-    }
-
-    componentDidUpdate() {
-        // Only show tooltip if title is hidden or ellipsified
-        const element = ReactDOM.findDOMNode(this.refs.title);
-        const tooltipIsEnabled = !element || element.offsetWidth < element.scrollWidth;
-        if (this.state.tooltipIsEnabled !== tooltipIsEnabled) {
-            this.setState({ tooltipIsEnabled });
-        }
-    }
-
-    render() {
-        const { card, index, color, showDots, showTitles, muted, onHoverChange } = this.props;
-        return (
-            <Tooltip
-                key={index}
-                tooltip={card.name}
-                verticalAttachments={["bottom", "top"]}
-                onMouseEnter={() => onHoverChange && onHoverChange(null, null, index) }
-                onMouseLeave={() => onHoverChange && onHoverChange(null, null, null) }
-                isEnabled={this.state.tooltipIsEnabled}
-            >
-                <a href={card.id && Urls.card(card.id)} className={cx(styles.LegendItem, "no-decoration h3 text-bold flex align-center", { mr1: showTitles, muted: muted })} style={{ overflowX: "hidden", flex: "0 1 auto" }}>
-                    {showDots && <div className="flex-no-shrink inline-block circular" style={{width: 13, height: 13, margin: 4, marginRight: 8, backgroundColor: color}} />}
-                    {showTitles && <div ref="title" style={{ overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{card.name}</div> }
-                </a>
-            </Tooltip>
         );
     }
 }

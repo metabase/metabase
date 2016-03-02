@@ -1,14 +1,12 @@
 import React, { Component, PropTypes } from "react";
-
-import { formatScalar } from "metabase/lib/formatting";
-import { isSameSeries } from "metabase/visualizations/lib/utils";
+import styles from "./Scalar.css";
 
 import Ellipsified from "metabase/components/Ellipsified.jsx";
-import Urls from "metabase/lib/urls";
-
 import BarChart from "./BarChart.jsx";
 
-import styles from "./Scalar.css";
+import Urls from "metabase/lib/urls";
+import { formatScalar } from "metabase/lib/formatting";
+import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 import cx from "classnames";
 

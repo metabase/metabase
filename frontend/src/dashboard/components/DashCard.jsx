@@ -134,7 +134,7 @@ const RemoveButton = ({ onRemove }) =>
     </a>
 
 const AddSeriesButton = ({ series, onAddSeries }) =>
-    <a className="text-grey-2 text-grey-4-hover cursor-pointer h3 ml1 mr2 flex align-center flex-no-shrink relative" onClick={onAddSeries}>
+    <a data-metabase-event={"Dashboard;Edit Series Modal;open"} className="text-grey-2 text-grey-4-hover cursor-pointer h3 ml1 mr2 flex align-center flex-no-shrink relative" onClick={onAddSeries}>
         <Icon className="absolute" style={{ top: 2, left: 2 }} name="add" width={8} height={8} />
         <Icon name={getSeriesIconName(series)} width={24} height={24} />
         <span className="flex-no-shrink">{ series.length > 1 ? "Edit" : "Add" }</span>
