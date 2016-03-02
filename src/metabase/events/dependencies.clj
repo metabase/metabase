@@ -7,7 +7,7 @@
                              [metric :refer [Metric]])))
 
 
-(def ^:const dependencies-topics
+(def ^:private ^:const dependencies-topics
   "The `Set` of event topics which are subscribed to for use in dependencies tracking."
   #{:card-create
     :card-update
@@ -47,5 +47,7 @@
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
-(defn- events-init []
+(defn events-init
+  "Automatically called during startup; start the events listener for dependencies topics."
+  []
   (events/start-event-listener dependencies-topics dependencies-channel process-dependencies-event))
