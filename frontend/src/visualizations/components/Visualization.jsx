@@ -2,6 +2,7 @@ import React, { Component, PropTypes } from "react";
 
 import visualizations from "metabase/visualizations";
 
+import i from "icepick";
 import _ from "underscore";
 import d3 from "d3";
 
@@ -56,20 +57,17 @@ export default class Visualization extends Component {
         }
     }
 
-    onHoverChange(e, d, seriesIndex) {
+    onHoverChange(hovered) {
         const { renderInfo } = this.state;
-        let axisIndex = null;
-        // if we have Y axis split info then find the Y axis index (0 = left, 1 = right)
-        if (renderInfo && renderInfo.yAxisSplit) {
-            axisIndex = _.findIndex(renderInfo.yAxisSplit, (indexes) => _.contains(indexes, seriesIndex));
+        if (hovered) {
+            hovered = i.assoc(hovered, "event", d3.event);
+            // if we have Y axis split info then find the Y axis index (0 = left, 1 = right)
+            if (renderInfo && renderInfo.yAxisSplit) {
+                const axisIndex = _.findIndex(renderInfo.yAxisSplit, (indexes) => _.contains(indexes, hovered.index));
+                hovered = i.assoc(hovered, "axisIndex", axisIndex);
+            }
         }
-        this.setState({ hovered: {
-            element: e,
-            data: d && d.data,
-            seriesIndex: seriesIndex,
-            axisIndex: axisIndex,
-            event: d3.event
-        }});
+        this.setState({ hovered });
     }
 
     onRender(renderInfo) {

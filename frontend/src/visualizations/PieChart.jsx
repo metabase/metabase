@@ -56,8 +56,8 @@ export default class PieChart extends Component {
         }
 
         let value, title;
-        if (hovered && hovered.seriesIndex != null) {
-            const row = series[0].data.rows[hovered.seriesIndex];
+        if (hovered && hovered.index != null) {
+            const row = series[0].data.rows[hovered.index];
             title = String(row[0]);
             value = formatNumber(row[1]);
         } else {
@@ -117,9 +117,9 @@ const Donut = ExplicitSize(({ data, width, height, colors, className, hovered, o
                             key={index}
                             d={arc(slice)}
                             fill={colors[index % colors.length]}
-                            opacity={(hovered && hovered.seriesIndex != null && hovered.seriesIndex !== index) ? 0.3 : 1}
-                            onMouseEnter={() => onHoverChange && onHoverChange(null, null, index)}
-                            onMouseLeave={() => onHoverChange && onHoverChange(null, null, null)}
+                            opacity={(hovered && hovered.index != null && hovered.index !== index) ? 0.3 : 1}
+                            onMouseEnter={() => onHoverChange && onHoverChange({ index })}
+                            onMouseLeave={() => onHoverChange && onHoverChange(null)}
                         />
                     )}
                 </g>

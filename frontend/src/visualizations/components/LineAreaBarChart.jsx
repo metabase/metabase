@@ -104,8 +104,8 @@ export default class LineAreaBarChart extends Component {
 
     getHoverClasses() {
         const { hovered } = this.props;
-        if (hovered != null && hovered.seriesIndex != null) {
-            let seriesClasses = _.range(0,5).filter(n => n !== hovered.seriesIndex).map(n => "mute-"+n);
+        if (hovered && hovered.index != null) {
+            let seriesClasses = _.range(0,5).filter(n => n !== hovered.index).map(n => "mute-"+n);
             let axisClasses =
                 hovered.axisIndex === 0 ? "mute-yr" :
                 hovered.axisIndex === 1 ? "mute-yl" :

@@ -216,9 +216,12 @@ function applyChartTooltips(chart, onHoverChange) {
     chart.on("renderlet.tooltips", function(chart) {
         chart.selectAll(".bar, .dot, .area, .line, g.pie-slice, g.features")
             .on("mousemove", function(d, i) {
-                if (onHoverChange) {
-                    onHoverChange(this, d, determineSeriesIndexFromElement(this));
-                }
+                onHoverChange && onHoverChange({
+                    index: determineSeriesIndexFromElement(this),
+                    element: this,
+                    d: d,
+                    data: d.data
+                });
             })
             .on("mouseleave", function() {
                 onHoverChange && onHoverChange(null);
@@ -621,13 +624,13 @@ export let CardRenderer = {
         // TODO: if we are multi-series this could be split axis
         applyChartYAxis(chart, series, yAxisSplit);
 
-        applyChartTooltips(chart, (e, d, seriesIndex) => {
+        applyChartTooltips(chart, (hovered) => {
             if (onHoverChange) {
                 // disable tooltips on lines
-                if (e && e.classList.contains("line")) {
-                    e = null;
+                if (hovered && hovered.element && hovered.element.classList.contains("line")) {
+                    delete hovered.element;
                 }
-                onHoverChange(e, d, seriesIndex);
+                onHoverChange(hovered);
             }
         });
 
@@ -668,15 +671,13 @@ export let CardRenderer = {
             .setJson('/app/charts/us-states.json', d => d.properties.name)
             .setProjection(d3.geo.albersUsa())
             .customize(chart => {
-                applyChartTooltips(chart, (e, d, seriesIndex) => {
+                applyChartTooltips(chart, (hovered) => {
                     if (onHoverChange) {
-                        if (d) {
-                            let row = _.findWhere(data.rows, { [0]: d.properties.name });
-                            d = row != null && {
-                                data: { key: row[0], value: row[1] }
-                            };
+                        if (hovered && hovered.d) {
+                            let row = _.findWhere(data.rows, { [0]: hovered.d.properties.name });
+                            hovered.data = { key: row[0], value: row[1] };
                         }
-                        onHoverChange(e, d, seriesIndex);
+                        onHoverChange && onHoverChange(hovered);
                     }
                 });
             })
@@ -704,15 +705,13 @@ export let CardRenderer = {
             .setJson('/app/charts/world.json', d => d.properties.ISO_A2) // 2-letter country code
             .setProjection(d3.geo.mercator())
             .customize(chart => {
-                applyChartTooltips(chart, (e, d, seriesIndex) => {
+                applyChartTooltips(chart, (hovered) => {
                     if (onHoverChange) {
-                        if (d) {
-                            let row = _.findWhere(data.rows, { [0]: d.properties.ISO_A2 });
-                            d = row != null && {
-                                data: { key: d.properties.NAME, value: row[1] }
-                            };
+                        if (hovered && hovered.d) {
+                            let row = _.findWhere(data.rows, { [0]: hovered.d.properties.ISO_A2 });
+                            hovered.data = { key: hovered.d.properties.NAME, value: row[1] };
                         }
-                        onHoverChange(e, d, seriesIndex);
+                        onHoverChange(hovered);
                     }
                 });
             })

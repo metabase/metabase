@@ -46,7 +46,6 @@ export default class LegendHeader extends Component {
         const showDots = series.length > 1;
         const isNarrow = this.state.width < 150;
         const showTitles = !showDots || !isNarrow;
-        const hoveredSeriesIndex = hovered && hovered.seriesIndex;
 
         let colors = getCardColors(series[0].card);
         return (
@@ -59,9 +58,9 @@ export default class LegendHeader extends Component {
                         color={colors[index % colors.length]}
                         showDot={showDots}
                         showTitle={showTitles}
-                        isMuted={hoveredSeriesIndex != null && index !== hoveredSeriesIndex}
-                        onMouseEnter={() => onHoverChange && onHoverChange(null, null, index) }
-                        onMouseLeave={() => onHoverChange && onHoverChange(null, null, null) }
+                        isMuted={hovered && hovered.index != null && index !== hovered.index}
+                        onMouseEnter={() => onHoverChange && onHoverChange({ index })}
+                        onMouseLeave={() => onHoverChange && onHoverChange(null) }
                     />,
                     onRemoveSeries && index > 0 &&
                         <Icon

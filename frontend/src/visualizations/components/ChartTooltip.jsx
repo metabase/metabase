@@ -25,7 +25,7 @@ export default class ChartTooltip extends Component {
         if (!hovered || !hovered.data || (pinToMouse ? !hovered.event : !hovered.element)) {
             return <span className="hidden" />;
         }
-        let s = series[hovered.seriesIndex] || series[0];
+        let s = series[hovered.index] || series[0];
         return (
             <TooltipPopover
                 target={pinToMouse ? null : hovered.element}

@@ -25,6 +25,7 @@
     "fixed-data-table": "^0.4.7",
     "history": "1.12.0",
     "humanize-plus": "^1.5.0",
+    "icepick": "^1.1.0",
     "inflection": "^1.7.1",
     "moment": "^2.10.6",
     "normalizr": "^1.4.0",

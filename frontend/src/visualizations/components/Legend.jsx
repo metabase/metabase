@@ -12,9 +12,9 @@ const Legend = ({ type, className, titles, colors, hovered, onHoverChange }) =>
                 <LegendItem
                     title={title}
                     color={colors[index % colors.length]}
-                    isMuted={hovered && hovered.seriesIndex != null && index !== hovered.seriesIndex}
-                    onMouseEnter={() => onHoverChange && onHoverChange(null, null, index) }
-                    onMouseLeave={() => onHoverChange && onHoverChange(null, null, null) }
+                    isMuted={hovered && hovered.index != null && index !== hovered.index}
+                    onMouseEnter={() => onHoverChange && onHoverChange({ index })}
+                    onMouseLeave={() => onHoverChange && onHoverChange(null) }
                 />
             </li>
         )}
