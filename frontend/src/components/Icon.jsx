@@ -9,7 +9,9 @@ import { loadIcon } from 'metabase/icon_paths';
 export default class Icon extends Component {
     render() {
         var icon = loadIcon(this.props.name);
-        if (icon.img) {
+        if (!icon) {
+            return <span className="hide" />;
+        } else if (icon.img) {
             return (<RetinaImage forceOriginalDimensions={false} {...icon.attrs} {...this.props} src={icon.img} />);
         } else if (icon.svg) {
             return (<svg {...icon.attrs} {...this.props} dangerouslySetInnerHTML={{__html: icon.svg}}></svg>);

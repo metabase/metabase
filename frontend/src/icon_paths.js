@@ -164,8 +164,9 @@ ICON_PATHS["illustration-line"] = ICON_PATHS['illustration-area'];
 
 export function loadIcon(name) {
     var def = ICON_PATHS[name];
-    if (name && def == undefined) {
+    if (!def) {
         console.warn('Icon "' + name + '" does not exist.');
+        return;
     }
 
     if (def.img) {
