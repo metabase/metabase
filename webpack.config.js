@@ -93,6 +93,10 @@ var config = module.exports = {
                 loader: 'eslint'
             },
             {
+                test: /\.(eot|woff2?|ttf|svg)$/,
+                loader: "file-loader"
+            },
+            {
                 test: /\.css$/,
                 loader: ExtractTextPlugin.extract("style-loader", "css-loader?-restructuring&compatibility!postcss-loader")
             }

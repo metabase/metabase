@@ -20,7 +20,8 @@
     :scalar
     :state
     :table
-    :timeseries})
+    :timeseries
+    :xkcd})
 
 (i/defentity Card :report_card)
 
