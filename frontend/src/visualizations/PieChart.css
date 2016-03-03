@@ -9,10 +9,14 @@
   flex-direction: row;
 }
 
+/*:local .Pie .Legend,
+:local .Pie .ChartAndDetail {
+  background-color: rgba(0,255,0,0.1);
+}*/
+
 :local .Pie .Legend {
   display: flex;
   justify-content: center;
-  flex: 0 1 auto;
 }
 
 :local .Pie.small .Legend {
@@ -20,22 +24,23 @@
 }
 
 :local .Pie.horizontal .Legend {
-  margin-right: 1em;
-  margin-left: 1em;
+  margin: 0 0 1em 1em;
+  flex: 0.5;
+  flex-shrink: 1;
+  overflow: hidden;
 }
 
 :local .Pie.vertical .Legend {
-  margin-right: 1em;
-  margin-left: 1em;
-  margin-top: 0.5em;
-  margin-bottom: 1.5em;
+  margin: 0em 1em 1em 1em;
+  flex-shrink: 1;
+  overflow: hidden;
 }
 
 :local .Pie .ChartAndDetail {
-  flex: 1;
+  margin: 0 1em 1em 1em;
   position: relative;
-  margin: 1em;
-  flex-shrink: 0;
+  flex: 1;
+  flex-shrink: 0.25;
 }
 
 :local .Pie .Chart,
@@ -48,6 +53,11 @@
 }
 
 :local .Pie .Chart {
+  display: flex;
+}
+
+:local .Pie .Donut {
+  flex: 1;
 }
 
 :local .Pie .Detail {

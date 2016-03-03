@@ -60,7 +60,9 @@ export default class Visualization extends Component {
     onHoverChange(hovered) {
         const { renderInfo } = this.state;
         if (hovered) {
-            hovered = i.assoc(hovered, "event", d3.event);
+            if (!hovered.event) {
+                hovered = i.assoc(hovered, "event", d3.event);
+            }
             // if we have Y axis split info then find the Y axis index (0 = left, 1 = right)
             if (renderInfo && renderInfo.yAxisSplit) {
                 const axisIndex = _.findIndex(renderInfo.yAxisSplit, (indexes) => _.contains(indexes, hovered.index));

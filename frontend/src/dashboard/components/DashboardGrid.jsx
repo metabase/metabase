@@ -2,13 +2,14 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
 import GridLayout from "./grid/GridLayout.jsx";
-
-import MetabaseAnalytics from "metabase/lib/analytics";
-
 import DashCard from "./DashCard.jsx";
+
 import Modal from "metabase/components/Modal.jsx";
 import RemoveFromDashboardModal from "./RemoveFromDashboardModal.jsx";
 import AddSeriesModal from "./AddSeriesModal.jsx";
+
+import visualizations from "metabase/visualizations";
+import MetabaseAnalytics from "metabase/lib/analytics";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -16,6 +17,8 @@ import cx from "classnames";
 const GRID_WIDTH = 12;
 const GRID_ASPECT_RATIO = 4 / 3;
 const GRID_MARGIN = 6;
+
+const DEFAULT_MIN_SIZE = { width: 3, height: 3 };
 
 export default class DashboardGrid extends Component {
     constructor(props, context) {
@@ -81,14 +84,17 @@ export default class DashboardGrid extends Component {
         });
     }
 
-    getLayoutForDashCard(dc) {
+    getLayoutForDashCard(dashcard) {
+        let Viz = visualizations.get(dashcard.card.display);
+        let minSize = Viz.minSize || DEFAULT_MIN_SIZE;
         return ({
-            i: String(dc.id),
-            x: dc.col || 0,
-            y: dc.row || 0,
-            w: dc.sizeX || 2,
-            h: dc.sizeY || 2,
-            dashcard: dc
+            i: String(dashcard.id),
+            x: dashcard.col || 0,
+            y: dashcard.row || 0,
+            w: dashcard.sizeX || minSize.width,
+            h: dashcard.sizeY || minSize.height,
+            dashcard: dashcard,
+            minSize: minSize
         });
     }
 
