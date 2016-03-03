@@ -17,7 +17,7 @@
 
 (defn process-and-run
   "Process and run a native (raw SQL) QUERY."
-  [driver {{sql :query} :native, database-id :database, :as query}]
+  [driver {{sql :query} :native, database-id :database, settings :settings, :as query}]
   (try (let [database (sel :one :fields [Database :engine :details] :id database-id)
              db-conn  (sql/db->jdbc-connection-spec database)]
 
@@ -27,13 +27,11 @@
              (.setAutoCommit jdbc-connection false)
              (try
                ;; Set the timezone if applicable
-               (when-let [timezone (driver/report-timezone)]
-                 (when (and (seq timezone)
-                            (contains? (driver/features driver) :set-timezone))
-                   (log/debug (u/format-color 'green "%s" (sql/set-timezone-sql driver)))
-                   (try (jdbc/db-do-prepared t-conn (sql/set-timezone-sql driver) [timezone])
-                        (catch Throwable e
-                          (log/error (u/format-color 'red "Failed to set timezone: %s" (.getMessage e)))))))
+               (when-let [timezone (:report-timezone settings)]
+                 (log/debug (u/format-color 'green "%s" (sql/set-timezone-sql driver)))
+                 (try (jdbc/db-do-prepared t-conn (sql/set-timezone-sql driver) [timezone])
+                      (catch Throwable e
+                        (log/error (u/format-color 'red "Failed to set timezone: %s" (.getMessage e))))))
 
                ;; Now run the query itself
                (log/debug (u/format-color 'green "%s" sql))

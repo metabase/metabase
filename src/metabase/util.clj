@@ -4,6 +4,7 @@
             (clojure [pprint :refer [pprint]]
                      [string :as s])
             [clojure.tools.logging :as log]
+            [clj-time.core :as t]
             [clj-time.coerce :as coerce]
             [clj-time.format :as time]
             [colorize.core :as color]
@@ -62,7 +63,32 @@
                                                                                (pprint-to-str (sort (keys time/formatters)))))))))
 
 
+(defprotocol ISO8601
+  "Protocol for converting objects to ISO8601 formatted strings."
+  (->iso-8601-datetime ^String [this timezone-id]
+    "Coerce object to an ISO8601 date-time string such as \"2015-11-18T23:55:03.841Z\" with a given TIMEZONE."))
+
+(def ^:private ISO8601Formatter
+  ;; memoize this because the formatters are static.  they must be distinct per timezone though.
+  (memoize (fn [timezone-id]
+             (if timezone-id (time/with-zone (time/formatters :date-time) (t/time-zone-for-id timezone-id))
+                             (time/formatters :date-time)))))
+
+(extend-protocol ISO8601
+  nil                    (->iso-8601-datetime [_ _] nil)
+  java.util.Date         (->iso-8601-datetime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) (coerce/from-date this)))
+  java.sql.Date          (->iso-8601-datetime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) (coerce/from-sql-date this)))
+  java.sql.Timestamp     (->iso-8601-datetime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) (coerce/from-sql-time this)))
+  org.joda.time.DateTime (->iso-8601-datetime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) this)))
+
+
 ;;; ## Date Stuff
+
+(defn is-temporal?
+  "Is VALUE an instance of a datetime class like `java.util.Date` or `org.joda.time.DateTime`?"
+  [v]
+  (or (instance? java.util.Date v)
+      (instance? org.joda.time.DateTime v)))
 
 (defn new-sql-timestamp
   "`java.sql.Date` doesn't have an empty constructor so this is a convenience that lets you make one with the current date.
@@ -316,6 +342,13 @@
    Function expects the map value as an arg and optionally accepts additional args as passed."
   [m f & args]
   (reduce (fn [r [k v]] (assoc r k (apply f v args))) {} m))
+
+(defn filter-nil-values
+  "Remove any keys from a MAP when the value is `nil`."
+  [m]
+  (into {} (for [[k v] m
+                 :when (not (nil? v))]
+             {k v})))
 
 (defn is-email?
   "Is STRING a valid email address?"
