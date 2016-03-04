@@ -13,6 +13,11 @@ angular
         }
     };
 
+    $routeProvider.when('/admin/datamodel/database/:databaseId/virtualtable', {
+        template:   '<div mb-redux-component class="flex flex-column flex-full" />',
+        controller: 'VirtualTable'
+    });
+
     $routeProvider.when('/admin/datamodel/database', metadataRoute);
     $routeProvider.when('/admin/datamodel/database/:databaseId', metadataRoute);
     $routeProvider.when('/admin/datamodel/database/:databaseId/:mode', metadataRoute);

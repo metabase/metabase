@@ -714,6 +714,43 @@ export const BreakoutClause = {
     }
 }
 
+export const FilterClause = {
+
+    addFilter(filters, filter) {
+        if (!filters) return filters;
+
+        // TODO: this should really check if there is a starting conjunction like "AND" or "OR" before just pushing onto the end
+        if (filters.length === 0) {
+            filters = ["AND", filter]
+        } else {
+            filters.push(filter);
+        }
+
+        return filters;
+    },
+
+    updateFilter(filters, index, filter) {
+        if (!filters) return filters;
+
+        filters[index] = filter;
+
+        return filters;
+    },
+
+    removeFilter(filters, index) {
+        if (!filters) return filters;
+
+        if (filters.length === 2) {
+            // this equates to having a single filter because the arry looks like ... ["AND" [a filter def array]]
+            filters = [];
+        } else {
+            filters.splice(index, 1);
+        }
+
+        return filters;
+    }
+}
+
 function joinList(list, joiner) {
     return _.flatten(list.map((l, i) => i === list.length - 1 ? [l] : [l, joiner]), true);
 }
