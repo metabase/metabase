@@ -12,6 +12,7 @@ export default class CheckBox extends Component {
     static defaultProps = {
         size: 16,
         borderColor: "#ddd",
+        borderSize: "2px",
         checkColor: "currentColor"
     };
 
@@ -23,12 +24,12 @@ export default class CheckBox extends Component {
     }
 
     render() {
-        const { checked, size, borderColor, checkColor, className } = this.props;
+        const { checked, size, borderColor, borderSize, checkColor, className } = this.props;
         const style = {
             width: size+'px',
             height: size+'px',
             color: checkColor,
-            border: '2px solid ' + borderColor,
+            border: borderSize + ' solid ' + borderColor,
             borderRadius: '4px',
             display: 'flex',
             alignItems: 'center',
