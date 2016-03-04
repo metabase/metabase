@@ -5,6 +5,7 @@ import crossfilter from "crossfilter";
 import d3 from "d3";
 import dc from "dc";
 import moment from "moment";
+import i from "icepick";
 
 import GeoHeatmapChartRenderer from "./GeoHeatmapChartRenderer";
 
@@ -102,12 +103,15 @@ function applyChartLegend(chart, card) {
     }
 }
 
-function applyChartTimeseriesXAxis(chart, series, xValues) {
+function applyChartTimeseriesXAxis(chart, settings, series, xValues) {
     // setup an x-axis where the dimension is a timeseries
-    const settings = series[0].card.visualization_settings;
     const dimensionColumn = series[0].data.cols[0];
 
     let unit = minTimeseriesUnit(series.map(s => s.data.cols[0].unit));
+
+    // compute the data interval
+    let dataInterval = computeTimeseriesDataInverval(xValues, unit);
+    let tickInterval = dataInterval;
 
     if (settings.xAxis.labels_enabled) {
         chart.xAxisLabel(settings.xAxis.title_text || getFriendlyName(dimensionColumn));
@@ -129,30 +133,26 @@ function applyChartTimeseriesXAxis(chart, series, xValues) {
         }
 
         // Compute a sane interval to display based on the data granularity, domain, and chart width
-        const { interval, count } = computeTimeseriesTicksInterval(xValues, unit, chart.width(), MIN_PIXELS_PER_TICK.x);
-        chart.xAxis().ticks(d3.time[interval], count);
+        tickInterval = computeTimeseriesTicksInterval(xValues, unit, chart.width(), MIN_PIXELS_PER_TICK.x);
+        chart.xAxis().ticks(d3.time[tickInterval.interval], tickInterval.count);
     } else {
         chart.xAxis().ticks(0);
     }
 
-    // compute the data interval
-    const { interval, count } = computeTimeseriesDataInverval(xValues, unit);
-
     // compute the domain
     let xDomain = d3.extent(xValues);
     // pad the domain slightly to prevent clipping
-    xDomain[0] = moment(xDomain[0]).subtract(count * 0.75, interval);
-    xDomain[1] = moment(xDomain[1]).add(count * 0.75, interval);
+    xDomain[0] = moment(xDomain[0]).subtract(dataInterval.count * 0.75, dataInterval.interval);
+    xDomain[1] = moment(xDomain[1]).add(dataInterval.count * 0.75, dataInterval.interval);
 
     // set the x scale
-    chart.x(d3.time.scale.utc().domain(xDomain));
+    chart.x(d3.time.scale.utc().domain(xDomain));//.nice(d3.time[dataInterval.interval]));
 
     // set the x units (used to compute bar size)
-    chart.xUnits((start, stop) => Math.ceil(1 + moment(stop).diff(start, interval) / count));
+    chart.xUnits((start, stop) => Math.ceil(1 + moment(stop).diff(start, dataInterval.interval) / dataInterval.count));
 }
 
-function applyChartOrdinalXAxis(chart, series, xValues) {
-    const settings = series[0].card.visualization_settings;
+function applyChartOrdinalXAxis(chart, settings, series, xValues) {
     const dimensionColumn = series[0].data.cols[0];
     if (settings.xAxis.labels_enabled) {
         chart.xAxisLabel(settings.xAxis.title_text || getFriendlyName(dimensionColumn));
@@ -181,8 +181,7 @@ function applyChartOrdinalXAxis(chart, series, xValues) {
         .xUnits(dc.units.ordinal);
 }
 
-function applyChartYAxis(chart, series, yAxisSplit) {
-    let settings = series[0].card.visualization_settings;
+function applyChartYAxis(chart, settings, series, yAxisSplit) {
     if (settings.yAxis.labels_enabled) {
         chart.renderHorizontalGridLines(true);
         chart.elasticY(true);
@@ -231,7 +230,7 @@ function applyChartTooltips(chart, onHoverChange) {
     });
 }
 
-function applyChartLineBarSettings(chart, card, chartType, isLinear, isTimeseries) {
+function applyChartLineBarSettings(chart, settings, chartType, isLinear, isTimeseries) {
     // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
     if (chart.brushOn) {
         chart.brushOn(false);
@@ -240,8 +239,8 @@ function applyChartLineBarSettings(chart, card, chartType, isLinear, isTimeserie
     // LINE/AREA:
     // for chart types that have an 'interpolate' option (line/area charts), enable based on settings
     if (chart.interpolate) {
-        if (card.visualization_settings.line.step) {
-            chart.interpolate("step");
+        if (settings.line.interpolate) {
+            chart.interpolate(settings.line.interpolate);
         } else {
             chart.interpolate(DEFAULT_INTERPOLATION);
         }
@@ -260,10 +259,9 @@ function applyChartLineBarSettings(chart, card, chartType, isLinear, isTimeserie
     }
 }
 
-function lineAndBarOnRender(chart, card) {
+function lineAndBarOnRender(chart, settings) {
     // once chart has rendered and we can access the SVG, do customizations to axis labels / etc that you can't do through dc.js
     let svg = chart.svg();
-    let settings = card.visualization_settings;
     let x = settings.xAxis;
     let y = settings.yAxis;
 
@@ -313,23 +311,34 @@ function lineAndBarOnRender(chart, card) {
         customizeHorzGL('style', y.gridLineColor, (colorStr) => 'stroke:' + '#ddd' + ';');
     } catch (e) {}
 
-    chart.on("renderlet.line-and-bar-onrender", (chart) => {
+
+    function removeClipPath() {
         for (let elem of chart.selectAll(".sub, .chart-body")[0]) {
             // prevents dots from being clipped:
             elem.removeAttribute("clip-path");
+        }
+    }
+
+    function moveContentToTop() {
+        for (let elem of chart.selectAll(".sub, .chart-body")[0]) {
             // move chart content on top of axis (z-index doesn't work on SVG):
             elem.parentNode.appendChild(elem);
         }
+    }
+
+    function setDotStyle() {
         for (let elem of chart.svg().selectAll('.dc-tooltip circle.dot')[0]) {
             // set the color of the dots to the fill color so we can use currentColor in CSS rules:
             elem.style.color = elem.getAttribute("fill");
         }
-    });
+    }
 
-    chart.on("renderlet.enable-dots", (chart) => {
+    function enableDots() {
         let enableDots;
         const dots = chart.svg().selectAll(".dc-tooltip .dot")[0];
-        if (dots.length > 500) {
+        if (settings.line && !settings.line.marker_enabled) {
+            enableDots = false;
+        } else if (dots.length > 500) {
             // more than 500 dots is almost certainly too dense, don't waste time computing the voronoi map
             enableDots = false;
         } else {
@@ -352,9 +361,9 @@ function lineAndBarOnRender(chart, card) {
         chart.svg()
             .classed("enable-dots", enableDots)
             .classed("enable-dots-onhover", !enableDots);
-    });
+    }
 
-    chart.on("renderlet.voronoi-hover", (chart) => {
+    function voronoiHover() {
         const parent = chart.svg().select("svg > g");
         const dots = chart.svg().selectAll(".dc-tooltip .dot")[0];
 
@@ -411,20 +420,83 @@ function lineAndBarOnRender(chart, card) {
             e.initUIEvent(eventName, true, true, window, 1);
             element.dispatchEvent(e);
         }
-    });
-
-    function adjustMargin(margin, direction, axisSelector, labelSelector) {
-        let axis = chart.select(axisSelector).node();
-        let label = chart.select(labelSelector).node();
-        let axisSize = axis ? axis.getBoundingClientRect()[direction] : 0;
-        let labelSize = label ? label.getBoundingClientRect()[direction] : 0;
-        chart.margins()[margin] = axisSize + labelSize + 15;
     }
 
-    // adjust the margins to fit the X and Y axis tick and label sizes, and rerender
-    adjustMargin("bottom", "height", ".axis.x",  ".x-axis-label");
-    adjustMargin("left",   "width",  ".axis.y",  ".y-axis-label.y-label");
-    adjustMargin("right",  "width",  ".axis.yr", ".y-axis-label.yr-label");
+    function hideDisabledLabels() {
+       if (!x.labels_enabled) {
+           chart.selectAll(".x-axis-label").remove();
+       }
+       if (!y.labels_enabled) {
+           chart.selectAll(".y-axis-label").remove();
+       }
+    }
+
+    function hideDisabledAxis() {
+       if (!x.axis_enabled) {
+           chart.selectAll(".axis.x").remove();
+       }
+       if (!y.axis_enabled) {
+           chart.selectAll(".axis.y, .axis.yr").remove();
+       }
+    }
+
+    function hideBadAxis() {
+        if (chart.selectAll(".axis.x .tick")[0].length === 1) {
+            chart.selectAll(".axis.x").remove();
+        }
+    }
+
+    function adjustMargin(margin, direction, axisSelector, labelSelector, enabled) {
+        if (enabled) {
+            let axis = chart.select(axisSelector).node();
+            let label = chart.select(labelSelector).node();
+            let axisSize = axis ? axis.getBoundingClientRect()[direction] + 10 : 0;
+            let labelSize = label ? label.getBoundingClientRect()[direction] + 5 : 0;
+            chart.margins()[margin] = axisSize + labelSize;
+        } else {
+            chart.margins()[margin] = 0;
+        }
+    }
+
+    function computeMinHorizontalMargins() {
+        let min = { left: 0, right: 0 };
+        let ticks = chart.selectAll(".axis.x .tick text")[0];
+        if (ticks.length > 0) {
+            let chartRect = chart.select("svg").node().getBoundingClientRect();
+            min.left = chart.margins().left - (ticks[0].getBoundingClientRect().left - chartRect.left);
+            min.right = chart.margins().right - (chartRect.right - ticks[ticks.length - 1].getBoundingClientRect().right);
+        }
+        return min;
+    }
+
+    // run these first so the rest of the margin computations take it into account
+    hideDisabledLabels();
+    hideDisabledAxis();
+    hideBadAxis();
+
+    // should be run before adjusting margins
+    let mins = computeMinHorizontalMargins()
+
+    // adjust the margins to fit the X and Y axis tick and label sizes, if enabled
+    adjustMargin("bottom", "height", ".axis.x",  ".x-axis-label", x.labels_enabled);
+    adjustMargin("left",   "width",  ".axis.y",  ".y-axis-label.y-label", y.labels_enabled);
+    adjustMargin("right",  "width",  ".axis.yr", ".y-axis-label.yr-label", y.labels_enabled);
+
+    // set margins to the max of the various mins
+    chart.margins().left = Math.max(5, mins.left, chart.margins().left);
+    chart.margins().right = Math.max(5, mins.right, chart.margins().right);
+    chart.margins().bottom = Math.max(10, chart.margins().bottom);
+
+    chart.on("renderlet.on-render", function() {
+        removeClipPath();
+        moveContentToTop();
+        setDotStyle();
+        enableDots();
+        voronoiHover();
+        hideDisabledLabels();
+        hideDisabledAxis();
+        hideBadAxis();
+    });
 
     chart.render();
 }
@@ -467,6 +539,8 @@ export let CardRenderer = {
 
     lineAreaBar(element, chartType, { series, onHoverChange, onRender, isScalarSeries, allowSplitAxis }) {
         const colors = getCardColors(series[0].card);
+
+        const settings = series[0].card.visualization_settings;
 
         const isTimeseries = dimensionIsTimeseries(series[0].data);
         const isStacked = chartType === "area";
@@ -569,7 +643,7 @@ export let CardRenderer = {
                 chart.stack(group[i])
             }
 
-            applyChartLineBarSettings(chart, series[0].card, chartType, isLinear, isTimeseries);
+            applyChartLineBarSettings(chart, settings, chartType, isLinear, isTimeseries);
 
             return chart;
         });
@@ -615,14 +689,14 @@ export let CardRenderer = {
         // x-axis settings
         // TODO: we should support a linear (numeric) x-axis option
         if (isTimeseries) {
-            applyChartTimeseriesXAxis(chart, series, xValues);
+            applyChartTimeseriesXAxis(chart, settings, series, xValues);
         } else {
-            applyChartOrdinalXAxis(chart, series, xValues);
+            applyChartOrdinalXAxis(chart, settings, series, xValues);
         }
 
         // y-axis settings
         // TODO: if we are multi-series this could be split axis
-        applyChartYAxis(chart, series, yAxisSplit);
+        applyChartYAxis(chart, settings, series, yAxisSplit);
 
         applyChartTooltips(chart, (hovered) => {
             if (onHoverChange) {
@@ -643,7 +717,7 @@ export let CardRenderer = {
         chart.render();
 
         // apply any on-rendering functions
-        lineAndBarOnRender(chart, series[0].card);
+        lineAndBarOnRender(chart, settings);
 
         onRender && onRender({ yAxisSplit });
     },

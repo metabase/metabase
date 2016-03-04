@@ -219,6 +219,10 @@
   fill: #A2A2A2;
 }
 
+.dc-chart .tick line {
+  display: none;
+}
+
 /* gridline at 0 overlaps with X axis */
 .dc-chart .grid-line.horizontal line:first-child {
   display: none;

@@ -13,6 +13,7 @@ import { MinColumnsError, MinRowsError } from "metabase/visualizations/lib/error
 import crossfilter from "crossfilter";
 import _ from "underscore";
 import cx from "classnames";
+import i from "icepick";
 
 export default class LineAreaBarChart extends Component {
     static noHeader = true;
@@ -118,12 +119,46 @@ export default class LineAreaBarChart extends Component {
         }
     }
 
-    render() {
-        let { hovered, isDashboard, onAddSeries, onRemoveSeries, actionButtons, allowSplitAxis } = this.props;
-        let { series, isMultiseries } = this.state;
+    getSettings() {
+        let fidelity = { x: 0, y: 0 };
+        let size = this.props.size ||  { width: Infinity, height: Infinity };
+        if (size.width >= 6) {
+            fidelity.x = 2;
+        } else if (size.width >= 5) {
+            fidelity.x = 1;
+        }
+        if (size.height >= 5) {
+            fidelity.y = 2;
+        } else if (size.height >= 4) {
+            fidelity.y = 1;
+        }
 
-        let card = this.props.series[0].card;
+        let settings = this.props.series[0].card.visualization_settings;
+
+        if (fidelity.x < 1 || fidelity.y < 1) {
+            settings = i.assocIn(settings, ["yAxis", "labels_enabled"], false);
+            settings = i.assocIn(settings, ["yAxis", "axis_enabled"], false);
+        }
+        if (fidelity.y < 1) {
+            settings = i.assocIn(settings, ["xAxis", "labels_enabled"], false);
+            settings = i.assocIn(settings, ["xAxis", "axis_enabled"], false);
+        }
+        if (fidelity.x < 1 || fidelity.y < 1) {
+            settings = i.assocIn(settings, ["line", "marker_enabled"], false);
+            settings = i.assocIn(settings, ["line", "interpolate"], "cardinal");
+        }
+
+        return settings;
+    }
+
+    render() {
+        const { hovered, isDashboard, onAddSeries, onRemoveSeries, actionButtons, allowSplitAxis } = this.props;
+        const { series, isMultiseries } = this.state;
+
+        const card = this.props.series[0].card;
         const chartType = this.constructor.identifier;
+
+        let settings = this.getSettings();
 
         return (
             <div className={cx("flex flex-column p1", this.getHoverClasses(), this.props.className)}>
@@ -144,7 +179,7 @@ export default class LineAreaBarChart extends Component {
                 <CardRenderer
                     {...this.props}
                     chartType={chartType}
-                    series={series}
+                    series={i.assocIn(series, [0, "card", "visualization_settings"], settings)}
                     className="flex-full"
                     allowSplitAxis={isMultiseries ? false : allowSplitAxis}
                 />

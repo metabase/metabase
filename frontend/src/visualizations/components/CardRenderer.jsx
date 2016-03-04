@@ -85,7 +85,7 @@ export default class CardRenderer extends Component {
 
     render() {
         return (
-            <div className="Card-outer px1">
+            <div className="Card-outer">
                 <div ref="chart"></div>
             </div>
         );
