@@ -3,11 +3,9 @@
             [korma.core :as k]
             [medley.core :as m]
             [metabase.db :refer :all]
-            (metabase.models [common :refer :all]
-                             [dashboard-card :refer [DashboardCard] :as dashboard-card]
+            (metabase.models [dashboard-card :refer [DashboardCard] :as dashboard-card]
                              [interface :as i]
-                             [revision :as revision]
-                             [user :refer [User]])
+                             [revision :as revision])
             [metabase.models.revision.diff :refer [build-sentence]]
             [metabase.util :as u]))
 

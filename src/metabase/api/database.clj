@@ -62,7 +62,7 @@
 
 (defendpoint POST "/"
   "Add a new `Database`."
-  [:as {{:keys [name engine details is_full_sync] :as body} :body}]
+  [:as {{:keys [name engine details is_full_sync]} :body}]
   {name         [Required NonEmptyString]
    engine       [Required DBEngine]
    details      [Required Dict]}

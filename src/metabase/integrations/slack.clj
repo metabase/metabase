@@ -24,7 +24,7 @@
   (boolean (seq (slack-token))))
 
 
-(defn- handle-response [{:keys [status body], :as response}]
+(defn- handle-response [{:keys [status body]}]
   (let [body (json/parse-string body keyword)]
     (if (and (= 200 status) (:ok body))
       body

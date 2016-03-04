@@ -78,5 +78,5 @@
 
 (def ^:const mb-version-string
   "A formatted version string representing the currently running application."
-  (let [{:keys [tag hash branch date]} mb-version-info]
+  (let [{:keys [tag hash branch]} mb-version-info]
     (format "%s (%s %s)" tag hash branch)))

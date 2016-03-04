@@ -47,7 +47,7 @@
     ;; we have an aggregation clause, so lets see if we are using a METRIC
     (if-let [metric-def (match (get-in query-dict [:query :aggregation])
                                ["METRIC" (metric-id :guard integer?)] (db/sel :one :field [metabase.models.metric/Metric :definition] :id metric-id)
-                               other                                  nil)]
+                               _                                      nil)]
       ;; we have a metric, so merge its definition into the existing query-dict
       (-> query-dict
           (assoc-in [:query :aggregation] (:aggregation metric-def))

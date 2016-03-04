@@ -44,9 +44,9 @@
   DateTimeField         (->rvalue [this] (->rvalue (:field this)))
   Value                 (->rvalue [this] (:value this))
   DateTimeValue         (->rvalue [{{unit :unit} :field, value :value}] (u/date->iso-8601 (u/date-trunc-or-extract unit value)))
-  RelativeDateTimeValue (->rvalue [{:keys [unit amount], :as this}]     (if (zero? amount)
-                                                                          (u/date->iso-8601)
-                                                                          (u/date->iso-8601 (u/date-trunc-or-extract unit (u/relative-date unit amount))))))
+  RelativeDateTimeValue (->rvalue [{:keys [unit amount]}] (if (zero? amount)
+                                                            (u/date->iso-8601)
+                                                            (u/date->iso-8601 (u/date-trunc-or-extract unit (u/relative-date unit amount))))))
 
 (defprotocol ^:private IDimensionOrMetric
   (^:private dimension-or-metric? [this]
@@ -65,10 +65,10 @@
                   :granularity :all
                   :context     {:timeout 60000}}]
     {::select     (merge defaults {:queryType  :select
-                                   :pagingSpec {:threshold 100 #_qp/absolute-max-results}})
+                                   :pagingSpec {:threshold qp/absolute-max-results}})
      ::timeseries (merge defaults {:queryType :timeseries})
      ::topN       (merge defaults {:queryType :topN
-                                   :threshold 100 #_qp/absolute-max-results})
+                                   :threshold qp/absolute-max-results})
      ::groupBy    (merge defaults {:queryType :groupBy})}))
 
 
@@ -189,7 +189,7 @@
   Object (->dimension-rvalue [this] (->rvalue this))
   ;; :timestamp is a special case, and we need to do an 'extraction' against the secret special value :__time to get at it
   DateTimeField
-  (->dimension-rvalue [{:keys [unit], :as this}]
+  (->dimension-rvalue [{:keys [unit]}]
     {:type         :extraction
      :dimension    :__time
      :outputName   :timestamp
@@ -295,27 +295,26 @@
 
 (defn- parse-filter-subclause:intervals [{:keys [filter-type field value] :as filter}]
   (when (instance? DateTimeField field)
-    (let [field (->rvalue field)]
-      (case filter-type
-        ;; BETWEEN "2015-12-09", "2015-12-11" -> ["2015-12-09/2015-12-12"], because BETWEEN is inclusive
-        :between  (let [{:keys [min-val max-val]} filter]
-                    (make-intervals min-val (i/add-date-time-units max-val 1)))
-        ;; =  "2015-12-11" -> ["2015-12-11/2015-12-12"]
-        :=        (make-intervals value (i/add-date-time-units value 1))
-        ;; != "2015-12-11" -> ["-5000/2015-12-11", "2015-12-12/5000"]
-        :!=       (make-intervals nil value, (i/add-date-time-units value 1) nil)
-        ;; >  "2015-12-11" -> ["2015-12-12/5000"]
-        :>        (make-intervals (i/add-date-time-units value 1) nil)
-        ;; >= "2015-12-11" -> ["2015-12-11/5000"]
-        :>=       (make-intervals value nil)
-        ;; <  "2015-12-11" -> ["-5000/2015-12-11"]
-        :<        (make-intervals nil value)
-        ;; <= "2015-12-11" -> ["-5000/2015-12-12"]
-        :<=       (make-intervals nil (i/add-date-time-units value 1))
-        ;; This is technically allowed by the QL here but doesn't make sense since every Druid event has a timestamp. Just ignore it
-        :is-null  (log/warn (u/format-color 'red "WARNING: timestamps can never be nil. Ignoring IS_NULL filter for timestamp."))
-        ;; :timestamp is always non-nil so nothing to do here
-        :not-null nil))))
+    (case filter-type
+      ;; BETWEEN "2015-12-09", "2015-12-11" -> ["2015-12-09/2015-12-12"], because BETWEEN is inclusive
+      :between  (let [{:keys [min-val max-val]} filter]
+                  (make-intervals min-val (i/add-date-time-units max-val 1)))
+      ;; =  "2015-12-11" -> ["2015-12-11/2015-12-12"]
+      :=        (make-intervals value (i/add-date-time-units value 1))
+      ;; != "2015-12-11" -> ["-5000/2015-12-11", "2015-12-12/5000"]
+      :!=       (make-intervals nil value, (i/add-date-time-units value 1) nil)
+      ;; >  "2015-12-11" -> ["2015-12-12/5000"]
+      :>        (make-intervals (i/add-date-time-units value 1) nil)
+      ;; >= "2015-12-11" -> ["2015-12-11/5000"]
+      :>=       (make-intervals value nil)
+      ;; <  "2015-12-11" -> ["-5000/2015-12-11"]
+      :<        (make-intervals nil value)
+      ;; <= "2015-12-11" -> ["-5000/2015-12-12"]
+      :<=       (make-intervals nil (i/add-date-time-units value 1))
+      ;; This is technically allowed by the QL here but doesn't make sense since every Druid event has a timestamp. Just ignore it
+      :is-null  (log/warn (u/format-color 'red "WARNING: timestamps can never be nil. Ignoring IS_NULL filter for timestamp."))
+      ;; :timestamp is always non-nil so nothing to do here
+      :not-null nil)))
 
 (defn- parse-filter-clause:intervals [{:keys [compound-type subclauses], :as clause}]
   (if-not compound-type
@@ -417,7 +416,7 @@
 
 (defmulti ^:private handle-page query-type-dispatch-fn)
 
-(defmethod handle-page ::query [_ {{page-num :page items-per-page :items, :as page-clause} :page} druid-query]
+(defmethod handle-page ::query [_ {page-clause :page} druid-query]
   (when page-clause
     (log/warn (u/format-color 'red "WARNING: 'page' is not yet implemented."))))
 

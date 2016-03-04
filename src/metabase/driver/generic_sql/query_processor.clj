@@ -1,24 +1,20 @@
 (ns metabase.driver.generic-sql.query-processor
   "The Query Processor is responsible for translating the Metabase Query Language into korma SQL forms."
-  (:require [clojure.core.match :refer [match]]
-            [clojure.java.jdbc :as jdbc]
-            (clojure [pprint :as pprint]
-                     [string :as s]
+  (:require [clojure.java.jdbc :as jdbc]
+            (clojure [string :as s]
                      [walk :as walk])
             [clojure.tools.logging :as log]
             (korma [core :as k]
                    [db :as kdb])
-            (korma.sql [fns :as kfns]
-                       [utils :as utils])
+            (korma.sql [engine :as kengine]
+                       [fns :as kfns])
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.query-processor :as qp]
             metabase.driver.query-processor.interface
             [metabase.util :as u]
-            [metabase.util.korma-extensions :as kx]
-            [korma.sql.utils :as kutils]
-            [korma.sql.engine :as kengine])
+            [metabase.util.korma-extensions :as kx])
   (:import java.sql.Timestamp
            java.util.Date
            (metabase.driver.query_processor.interface AgFieldRef

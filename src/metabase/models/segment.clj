@@ -2,11 +2,9 @@
   (:require [korma.core :as k]
             [metabase.db :as db]
             [metabase.events :as events]
-            (metabase.models [common :refer [perms-readwrite]]
-                             [hydrate :refer :all]
+            (metabase.models [hydrate :refer [hydrate]]
                              [interface :as i]
-                             [revision :as revision]
-                             [user :refer [User]])
+                             [revision :as revision])
             [metabase.util :as u]))
 
 

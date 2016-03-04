@@ -13,9 +13,7 @@
                                              [interface :refer :all]
                                              [macros :as macros]
                                              [resolve :as resolve])
-            (metabase.models [field :refer [Field], :as field]
-                             [foreign-key :refer [ForeignKey]]
-                             [setting :as setting])
+            [metabase.models.field :refer [Field], :as field]
             [metabase.util :as u])
   (:import (schema.utils NamedError ValidationError)))
 
@@ -109,7 +107,7 @@
 (defn- pre-add-settings [qp]
   (fn [{:keys [driver] :as query}]
     (let [settings {:report-timezone (when (driver/driver-supports? driver :set-timezone)
-                                       (let [report-tz (setting/get :report-timezone)]
+                                       (let [report-tz (driver/report-timezone)]
                                          (when-not (empty? report-tz)
                                            report-tz)))}]
       (->> (u/filter-nil-values settings)

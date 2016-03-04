@@ -1,8 +1,6 @@
 (ns metabase.api.slack
   "/api/slack endpoints"
-  (:require [clojure.set :as set]
-            [clojure.tools.logging :as log]
-            [compojure.core :refer [PUT]]
+  (:require [compojure.core :refer [PUT]]
             [metabase.api.common :refer :all]
             [metabase.config :as config]
             [metabase.integrations.slack :as slack]))

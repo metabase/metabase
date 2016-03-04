@@ -2,8 +2,6 @@
   "The `native` query processor."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
-            (korma [core :as korma]
-                   db)
             [metabase.db :refer [sel]]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
@@ -17,7 +15,7 @@
 
 (defn process-and-run
   "Process and run a native (raw SQL) QUERY."
-  [driver {{sql :query} :native, database-id :database, settings :settings, :as query}]
+  [driver {{sql :query} :native, database-id :database, settings :settings}]
   (try (let [database (sel :one :fields [Database :engine :details] :id database-id)
              db-conn  (sql/db->jdbc-connection-spec database)]
 
