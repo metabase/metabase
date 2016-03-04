@@ -94,8 +94,7 @@
   (async/go-loop []
     ;; try/catch here to get possible exceptions thrown by core.async trying to read from the channel
     (try
-      (let [evt (async/<! channel)]
-        (handler-fn evt))
+      (handler-fn (async/<! channel))
       (catch Throwable e
         (log/error "Unexpected error listening on events" e)))
     (recur)))

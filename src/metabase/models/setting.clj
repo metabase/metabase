@@ -58,7 +58,13 @@
   "Fetch value of `Setting`, first trying our cache, or fetching the value
    from the DB if that fails. (Cached lookup time is ~60µs, compared to ~1800µs for DB lookup)
 
-   Unlike using the setting getter fn, this will *not* return default values or values specified by env vars."
+     (get :mandrill-api-key)
+
+   Unlike using the setting getter fn, this will *not* return default values or values specified by env vars.
+
+   Prefer using the automatically generated getter function unless absolutely necessary:
+
+     (mandrill-api-key)"
   [k]
   {:pre [(keyword? k)]}
   (restore-cache-if-needed)
@@ -88,9 +94,9 @@
 
     (set :mandrill-api-key \"xyz123\")
 
-   Prefer using the setting directly instead:
+   Don't use this directly unless absolutely neccesary! Prefer using the setting directly instead:
 
-    (mandrill-api-key \"xyz123\")"
+     (mandrill-api-key \"xyz123\")"
   [k v]
   {:pre [(keyword? k)
          (string? v)]}
@@ -113,9 +119,9 @@
   (del Setting :key (name k)))
 
 (defn set-all
-  "Set the value of a `Setting`.
+  "Set the value of several `Settings` at once.
 
-    (set :mandrill-api-key \"xyz123\")"
+    (set-all {:mandrill-api-key \"xyz123\", :another-setting \"ABC\"})"
   [settings]
   {:pre [(map? settings)]}
   (doseq [k (keys settings)]

@@ -1,7 +1,6 @@
 (ns metabase.driver.mongo.util
   "`*mongo-connection*`, `with-mongo-connection`, and other functions shared between several Mongo driver namespaces."
-  (:require [clojure.string :as s]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             (monger [core :as mg]
                     [credentials :as mcred])
             (metabase [driver :as driver]

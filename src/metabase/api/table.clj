@@ -5,7 +5,6 @@
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             (metabase.models [hydrate :refer :all]
-                             [database :refer [Database]]
                              [field :refer [Field]]
                              [foreign-key :refer [ForeignKey]]
                              [table :refer [Table] :as table])

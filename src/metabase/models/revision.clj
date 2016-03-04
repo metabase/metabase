@@ -3,7 +3,6 @@
             [korma.core :as k]
             [medley.core :as m]
             [metabase.db :as db]
-            [metabase.api.common :refer [*current-user-id* let-404]]
             (metabase.models [hydrate :refer [hydrate]]
                              [interface :as i]
                              [user :refer [User]])

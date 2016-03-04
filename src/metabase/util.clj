@@ -7,7 +7,7 @@
             [clj-time.core :as t]
             [clj-time.coerce :as coerce]
             [clj-time.format :as time]
-            [colorize.core :as color]
+            colorize.core
             [metabase.config :as config])
   (:import clojure.lang.Keyword
            (java.net Socket
@@ -487,7 +487,7 @@
   [^Throwable e]
   (when e
     (when-let [stacktrace (.getStackTrace e)]
-      (vec (for [frame (.getStackTrace e)
+      (vec (for [frame stacktrace
                  :let  [s (str frame)]
                  :when (re-find #"metabase" s)]
              (s/replace s #"^metabase\." ""))))))

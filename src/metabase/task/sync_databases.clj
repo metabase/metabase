@@ -3,8 +3,7 @@
             (clojurewerkz.quartzite [jobs :as jobs]
                                     [triggers :as triggers])
             [clojurewerkz.quartzite.schedule.cron :as cron]
-            (metabase [config :as config]
-                      [db :as db]
+            (metabase [db :as db]
                       [driver :as driver]
                       [task :as task])
             [metabase.models.database :refer [Database]]))
@@ -39,6 +38,6 @@
                                    (triggers/start-now)
                                    (triggers/with-schedule
                                      ;; run at midnight daily
-                                     (cron/schedule (cron/cron-schedule "0 0 0 * * ? *")))))
+                                     (cron/cron-schedule "0 0 0 * * ? *"))))
   ;; submit ourselves to the scheduler
   (task/schedule-task! @sync-databases-job @sync-databases-trigger))

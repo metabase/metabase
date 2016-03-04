@@ -3,7 +3,6 @@
    NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails."
   (:require [hiccup.core :refer [html]]
             [stencil.core :as stencil]
-            [stencil.loader :as loader]
             [metabase.email :as email]
             [metabase.models.setting :as setting]
             [metabase.pulse :as p]
@@ -12,7 +11,7 @@
                            [urls :as url])))
 
 ;; NOTE: uncomment this in development to disable template caching
-;; (loader/set-cache (clojure.core.cache/ttl-cache-factory {} :ttl 0))
+;; (stencil.loader/set-cache (clojure.core.cache/ttl-cache-factory {} :ttl 0))
 
 ;;; ### Public Interface
 

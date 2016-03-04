@@ -27,7 +27,7 @@
 
 (defendpoint POST "/"
   "Create a new `Dashboard`."
-  [:as {{:keys [name description public_perms] :as body} :body}]
+  [:as {{:keys [name description public_perms]} :body}]
   {name         [Required NonEmptyString]
    public_perms [Required PublicPerms]}
   (->> (db/ins Dashboard
@@ -50,13 +50,13 @@
 
 (defendpoint PUT "/:id"
   "Update a `Dashboard`."
-  [id :as {{:keys [description name public_perms]} :body}]
-  {name NonEmptyString, public_perms PublicPerms}
+  [id :as {{:keys [description name]} :body}]
+  {name NonEmptyString}
   (write-check Dashboard id)
   (check-500 (db/upd-non-nil-keys Dashboard id
-                                  :description description
-                                  :name name))
-  (events/publish-event :dashboard-update (assoc (db/sel :one Dashboard :id id) :actor_id *current-user-id*)))
+               :description description
+               :name        name))
+  (events/publish-event :dashboard-update (assoc (Dashboard id) :actor_id *current-user-id*)))
 
 (defendpoint DELETE "/:id"
   "Delete a `Dashboard`."
@@ -108,11 +108,11 @@
   "Remove a `DashboardCard` from a `Dashboard`."
   [id dashcardId]
   {dashcardId [Required String->Integer]}
-  (let-404 [dashboard (Dashboard id)]
-    (write-check Dashboard id)
-    (when-let [dashboard-card (DashboardCard dashcardId)]
-      (check-500 (delete-dashboard-card dashboard-card *current-user-id*))
-      {:success true})))
+  (check-404 (db/exists? Dashboard :id id))
+  (write-check Dashboard id)
+  (when-let [dashboard-card (DashboardCard dashcardId)]
+    (check-500 (delete-dashboard-card dashboard-card *current-user-id*))
+    {:success true}))
 
 (defendpoint GET "/:id/revisions"
   "Fetch `Revisions` for `Dashboard` with ID."

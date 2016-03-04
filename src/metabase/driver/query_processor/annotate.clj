@@ -1,7 +1,5 @@
 (ns metabase.driver.query-processor.annotate
-  (:refer-clojure :exclude [==])
-  (:require (clojure [set :as set]
-                     [string :as s])
+  (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.db :refer [sel]]
@@ -86,7 +84,7 @@
 
 (defn- add-aggregate-field-if-needed
   "Add a Field containing information about an aggregate column such as `:count` or `:distinct` if needed."
-  [{{ag-type :aggregation-type, ag-field :field, :as ag} :aggregation} fields]
+  [{{ag-type :aggregation-type, ag-field :field} :aggregation} fields]
   (if (or (not ag-type)
           (= ag-type :rows))
     fields
