@@ -86,7 +86,11 @@
 (defn set
   "Set the value of a `Setting`.
 
-    (set :mandrill-api-key \"xyz123\")"
+    (set :mandrill-api-key \"xyz123\")
+
+   Prefer using the setting directly instead:
+
+    (mandrill-api-key \"xyz123\")"
   [k v]
   {:pre [(keyword? k)
          (string? v)]}

@@ -20,6 +20,7 @@
                  [org.clojure/tools.logging "0.3.1"]                  ; logging framework
                  [org.clojure/tools.namespace "0.2.10"]
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
+                 [aleph "0.4.1-beta4"]                                ; Async HTTP library; WebSockets
                  [cheshire "5.5.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
                  [clj-http "2.1.0"                                    ; HTTP client
                   :exclusions [commons-codec
