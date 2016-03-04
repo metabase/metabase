@@ -64,6 +64,11 @@ export default class PinMap extends Component {
     }
 
     componentDidMount() {
+        if (typeof google === undefined) {
+            setTimeout(() => this.componentDidMount(), 500);
+            return;
+        }
+
         try {
             let element = ReactDOM.findDOMNode(this);
 
@@ -81,14 +86,31 @@ export default class PinMap extends Component {
                 scrollwheel: false
             };
 
-            let markerImageMapType = new google.maps.ImageMapType({
-                getTileUrl: this.getTileUrl.bind(this, settings),
-                tileSize: new google.maps.Size(256, 256)
-            });
-
             let map = this.map = new google.maps.Map(element, mapOptions);
 
-            map.overlayMapTypes.push(markerImageMapType);
+            if (data.rows.length < 2000) {
+                let tooltip = new google.maps.InfoWindow();
+                let latColIndex = settings.map.latitude_dataset_col_index;
+                let lonColIndex = settings.map.longitude_dataset_col_index;
+                for (let row of data.rows) {
+                    let marker = new google.maps.Marker({
+                        position: new google.maps.LatLng(row[latColIndex], row[lonColIndex]),
+                        map: map,
+                        icon: "/app/img/pin.png"
+                    });
+                    marker.addListener("click", () => {
+                        let tooltipElement = document.createElement("div");
+                        ReactDOM.render(<ObjectDetailTooltip row={row} cols={data.cols} />, tooltipElement);
+                        tooltip.setContent(tooltipElement);
+                        tooltip.open(map, marker);
+                    });
+                }
+            } else {
+                map.overlayMapTypes.push(new google.maps.ImageMapType({
+                    getTileUrl: this.getTileUrl.bind(this, settings),
+                    tileSize: new google.maps.Size(256, 256)
+                }));
+            }
 
             map.addListener("center_changed", () => {
                 let center = map.getCenter();
@@ -105,10 +127,24 @@ export default class PinMap extends Component {
     }
 
     componentDidUpdate() {
-        google.maps.event.trigger(this.map, "resize");
+        if (typeof google !== "undefined") {
+            google.maps.event.trigger(this.map, "resize");
+        }
     }
 
     render() {
         return <div {...this.props}>x</div>;
     }
 }
+
+const ObjectDetailTooltip = ({ row, cols }) =>
+    <table>
+        <tbody>
+            { cols.map((col, index) =>
+                <tr>
+                    <td>{col.display_name}</td>
+                    <td>{row[index]}</td>
+                </tr>
+            )}
+        </tbody>
+    </table>
