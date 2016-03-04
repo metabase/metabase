@@ -5,7 +5,6 @@ import crossfilter from "crossfilter";
 import d3 from "d3";
 import dc from "dc";
 import moment from "moment";
-import i from "icepick";
 
 import GeoHeatmapChartRenderer from "./GeoHeatmapChartRenderer";
 
@@ -54,7 +53,6 @@ function adjustTicksIfNeeded(axis, axisSize, minPixelsPerTick) {
 
 function getDcjsChartType(cardType) {
     switch (cardType) {
-        case "pie":  return "pieChart";
         case "line": return "lineChart";
         case "area": return "lineChart";
         case "bar":  return "barChart";
@@ -69,9 +67,6 @@ function initializeChart(card, element, chartType = getDcjsChartType(card.displa
     // set width and height
     chart = applyChartBoundary(chart, element);
 
-    // specify legend
-    chart = applyChartLegend(chart, card);
-
     // disable animations
     chart.transitionDuration(0);
 
@@ -82,25 +77,6 @@ function applyChartBoundary(chart, element) {
     return chart
         .width(getAvailableCanvasWidth(element))
         .height(getAvailableCanvasHeight(element));
-}
-
-function applyChartLegend(chart, card) {
-    // ENABLE LEGEND IF SPECIFIED IN VISUALIZATION SETTINGS
-    // I'm sure it made sense to somebody at some point to make this setting live in two different places depending on the type of chart.
-    let settings = card.visualization_settings;
-    let legendEnabled = false;
-
-    if (card.display === "pie" && settings.pie) {
-        legendEnabled = settings.pie.legend_enabled;
-    } else if (settings.chart) {
-        legendEnabled = settings.chart.legend_enabled;
-    }
-
-    if (legendEnabled) {
-        return chart.legend(dc.legend());
-    } else {
-        return chart;
-    }
 }
 
 function applyChartTimeseriesXAxis(chart, settings, series, xValues) {
@@ -502,41 +478,6 @@ function lineAndBarOnRender(chart, settings) {
 }
 
 export let CardRenderer = {
-    pie(element, { card, data, onHoverChange }) {
-        let settings = card.visualization_settings;
-        let chartData = data.rows.map(row => ({
-            key: row[0],
-            value: row[1]
-        }));
-        let sumTotalValue = chartData.reduce((acc, d) => acc + d.value, 0);
-
-        // TODO: by default we should set a max number of slices of the pie and group everything else together
-
-        // build crossfilter dataset + dimension + base group
-        let dataset = crossfilter(chartData);
-        let dimension = dataset.dimension(d => d.key);
-        let group = dimension.group().reduceSum(d => d.value);
-        let chart = initializeChart(card, element)
-                        .dimension(dimension)
-                        .group(group)
-                        .colors(settings.pie.colors)
-                        .colorCalculator((d, i) => settings.pie.colors[((i * 5) + Math.floor(i / 5)) % settings.pie.colors.length])
-                        .label(row => formatValue(row.key, data.cols[0]))
-                        .title(d => {
-                            // ghetto rounding to 1 decimal digit since Math.round() doesn't let
-                            // you specify a precision and always rounds to int
-                            let percent = Math.round((d.value / sumTotalValue) * 1000) / 10.0;
-                            return d.key + ': ' + d.value + ' (' + percent + '%)';
-                        });
-
-        // disables ability to select slices
-        chart.filter = () => {};
-
-        applyChartTooltips(chart, onHoverChange);
-
-        chart.render();
-    },
-
     lineAreaBar(element, chartType, { series, onHoverChange, onRender, isScalarSeries, allowSplitAxis }) {
         const colors = getCardColors(series[0].card);
 
