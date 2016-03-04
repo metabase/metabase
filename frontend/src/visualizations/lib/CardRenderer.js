@@ -1,5 +1,3 @@
-/*global google*/
-
 import _ from "underscore";
 import crossfilter from "crossfilter";
 import d3 from "d3";
@@ -733,80 +731,5 @@ export let CardRenderer = {
             .render();
 
         return chartRenderer;
-    },
-
-    pin_map(element, { card, updateMapCenter, updateMapZoom }) {
-        let query = card.dataset_query;
-        let vs = card.visualization_settings;
-        let latitude_dataset_col_index = vs.map.latitude_dataset_col_index;
-        let longitude_dataset_col_index = vs.map.longitude_dataset_col_index;
-        let latitude_source_table_field_id = vs.map.latitude_source_table_field_id;
-        let longitude_source_table_field_id = vs.map.longitude_source_table_field_id;
-
-        if (latitude_dataset_col_index == null || longitude_dataset_col_index == null) {
-            return;
-        }
-
-        if (latitude_source_table_field_id == null || longitude_source_table_field_id == null) {
-            throw ("Map ERROR: latitude and longitude column indices must be specified");
-        }
-        if (latitude_dataset_col_index == null || longitude_dataset_col_index == null) {
-            throw ("Map ERROR: unable to find specified latitude / longitude columns in source table");
-        }
-
-        let mapOptions = {
-            zoom: vs.map.zoom,
-            center: new google.maps.LatLng(vs.map.center_latitude, vs.map.center_longitude),
-            mapTypeId: google.maps.MapTypeId.MAP,
-            scrollwheel: false
-        };
-
-        let markerImageMapType = new google.maps.ImageMapType({
-            getTileUrl: (coord, zoom) =>
-                '/api/tiles/' + zoom + '/' + coord.x + '/' + coord.y + '/' +
-                    latitude_source_table_field_id + '/' + longitude_source_table_field_id + '/' +
-                    latitude_dataset_col_index + '/' + longitude_dataset_col_index + '/' +
-                    '?query=' + encodeURIComponent(JSON.stringify(query))
-            ,
-            tileSize: new google.maps.Size(256, 256)
-        });
-
-        let height = getAvailableCanvasHeight(element);
-        if (height != null) {
-            element.style.height = height + "px";
-        }
-
-        let width = getAvailableCanvasWidth(element);
-        if (width != null) {
-            element.style.width = width + "px";
-        }
-
-        let map = new google.maps.Map(element, mapOptions);
-
-        map.overlayMapTypes.push(markerImageMapType);
-
-        map.addListener("center_changed", () => {
-            let center = map.getCenter();
-            updateMapCenter(center.lat(), center.lng());
-        });
-
-        map.addListener("zoom_changed", () => {
-            updateMapZoom(map.getZoom());
-        });
-
-        /* We need to trigger resize at least once after
-         * this function (re)configures the map, because if
-         * a map already existed in this div (i.e. this
-         * function was called as a result of a settings
-         * change), then the map will re-render with
-         * the new options once resize is called.
-         * Otherwise, the map will not re-render.
-         */
-        google.maps.event.trigger(map, 'resize');
-
-        //listen for resize event (internal to CardRenderer)
-        //to let google maps api know about the resize
-        //(see https://developers.google.com/maps/documentation/javascript/reference)
-        element.addEventListener('cardrenderer-card-resized', () => google.maps.event.trigger(map, 'resize'));
     }
 };

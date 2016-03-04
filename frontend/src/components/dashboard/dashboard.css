@@ -73,6 +73,16 @@
   z-index: 2;
 }
 
+/* Google Maps widgets */
+.DashCard .gm-style-mtc,
+.DashCard .gm-bundled-control {
+  opacity: 0.01;
+  transition: opacity 0.3s linear;
+}
+.DashCard:hover .gm-style-mtc,
+.DashCard:hover .gm-bundled-control {
+  opacity: 1;
+}
 
 .Dash--editing .DashCard .Card {
     background: #fff;

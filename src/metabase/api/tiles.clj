@@ -1,5 +1,6 @@
 (ns metabase.api.tiles
   (:require [clojure.core.match :refer [match]]
+            [clojure.java.io :as io]
             [compojure.core :refer [GET]]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
@@ -14,10 +15,12 @@
 
 (def ^:private ^:const tile-size             256.0)
 (def ^:private ^:const pixel-origin          (float (/ tile-size 2)))
-(def ^:private ^:const pin-size              5)
+(def ^:private ^:const pin-size              2)
 (def ^:private ^:const pixels-per-lon-degree (float (/ tile-size 360)))
 (def ^:private ^:const pixels-per-lon-radian (float (/ tile-size (* 2 Math/PI))))
 
+(def ^:private ^:const pin-filename          "frontend_client/app/img/pin.png")
+(def ^:private pin-image                     (ImageIO/read (io/resource pin-filename)))
 
 ;;; # ------------------------------------------------------------ UTIL FNS ------------------------------------------------------------
 
@@ -79,7 +82,7 @@
               tile-pixel {:x (mod (map-pixel :x) tile-size)
                           :y (mod (map-pixel :y) tile-size)}]
           ;; now draw a "pin" at the given tile pixel location
-          (.fillOval graphics (tile-pixel :x) (tile-pixel :y) pin-size pin-size)))
+          (.drawImage graphics pin-image (- (tile-pixel :x) 14) (- (tile-pixel :y) 24) nil nil)))
       (catch Throwable e
         (.printStackTrace e))
       (finally
