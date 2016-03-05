@@ -80,3 +80,12 @@
         max-width: var(--sm-width);
     }
 }
+
+/* fully fit the parent element - use as a base for app-y pages like QB or settings */
+.spread {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
