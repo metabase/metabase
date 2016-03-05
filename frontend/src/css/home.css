@@ -11,15 +11,10 @@
   background-position-y: -15px;
 }
 
-.Main {
-    height: 100%;
-    z-index: 1;
-    position: relative;
-}
-
 .NavItem {
     border-radius: 8px;
 }
+
 .NavItem:hover, .NavItem.NavItem--selected {
     background-color: rgba(255, 255, 255, 0.08);
 }
