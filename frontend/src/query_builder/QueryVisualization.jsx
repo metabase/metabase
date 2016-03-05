@@ -218,7 +218,7 @@ export default class QueryVisualization extends Component {
 
         if(this.props.isRunning) {
             loading = (
-                <div className="Loading absolute top left bottom right flex flex-column layout-centered text-brand z2">
+                <div className="Loading spread flex flex-column layout-centered text-brand z2">
                     <LoadingSpinner />
                     <h2 className="Loading-message text-brand text-uppercase mt3">Doing science...</h2>
                 </div>
