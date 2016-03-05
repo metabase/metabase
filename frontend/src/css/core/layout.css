@@ -23,8 +23,13 @@
     }
 }
 
-/* height */
+/* set height full relative to the parent */
 .full-height {
+  height: 100%;
+}
+
+/* set height to that of the viewport */
+.viewport-height {
   height: 100vh;
 }
 

@@ -63,7 +63,7 @@ export default class Dashboard extends Component {
         let { dashboard } = this.props;
         let { error } = this.state;
         return (
-            <LoadingAndErrorWrapper className="Dashboard full-height" loading={!dashboard} error={error}>
+            <LoadingAndErrorWrapper className="Dashboard viewport-height" loading={!dashboard} error={error}>
             {() =>
                 <div className="full" style={{ overflowX: "hidden" }}>
                     <header className="bg-white border-bottom relative z2">
