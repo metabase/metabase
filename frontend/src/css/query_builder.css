@@ -8,6 +8,7 @@
 
 #react_qb_viz {
     z-index: 1;
+    flex-grow: 1;
 }
 
 /* @layout */
