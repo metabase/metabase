@@ -38,12 +38,10 @@ export default class VirtualTableApp extends Component {
 
     render() {
         return (
-            <div>
-                <VirtualTableEditor
-                    {...this.props}
-                    onSubmit={this.onSubmit.bind(this)}
-                />
-            </div>
+            <VirtualTableEditor
+                {...this.props}
+                onSubmit={this.onSubmit.bind(this)}
+            />
         );
     }
 }

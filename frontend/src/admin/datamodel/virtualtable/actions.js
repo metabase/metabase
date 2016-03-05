@@ -55,7 +55,7 @@ export const updatePreviewData = createAction(UPDATE_PREVIEW_DATA, async (virtua
         query: {
             source_table: virtualTable.table_id,
             aggregation: ["rows"],
-            limit: 100
+            limit: 10
         }
     };
 

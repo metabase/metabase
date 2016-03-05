@@ -3,8 +3,6 @@
     background-color: #F9FBFC;
     border: var(--border-size) var(--border-style) var(--border-color);
     border-radius: var(--default-border-radius);
-    width: 320px;
-    max-width: 320px;
 }
 
 .VirtualTableMainContent {

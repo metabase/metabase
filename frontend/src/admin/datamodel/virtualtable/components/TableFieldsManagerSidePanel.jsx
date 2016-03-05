@@ -49,7 +49,7 @@ export default class TableFieldsManagerSidePanel extends Component {
                     />
                 </div>
 
-                <div className="flex-full p1">
+                <div className="p1">
                     <div>
                         <ButtonGroup 
                             className="Button-group--blue"
@@ -58,7 +58,7 @@ export default class TableFieldsManagerSidePanel extends Component {
                         />
                     </div>
 
-                    <div style={{maxHeight: "350px"}} className="pt1 scroll-x scroll-y">
+                    <div style={{maxHeight: "320px"}} className="pt1 scroll-y">
                         {/* Always rendering the base table and its fields as the first table. */}
                         {metadata.tableMetadata && metadata.tableMetadata.table &&
                             <TableFieldList

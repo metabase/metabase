@@ -9,6 +9,7 @@ import TableFieldsManagerSidePanel from "./TableFieldsManagerSidePanel.jsx";
 import NameAndDescription from "./NameAndDescription.jsx";
 import Filters from "./Filters.jsx";
 import Table from "metabase/visualizations/Table.jsx";
+import Visualization from "metabase/visualizations/components/Visualization.jsx";
 
 
 export default class VirtualTableEditor extends Component {
@@ -47,13 +48,13 @@ export default class VirtualTableEditor extends Component {
         const { metadata, previewData, virtualTable } = this.props;
 
         return (
-            <div style={{height: "100%"}} className="">
-                <div className="wrapper pt4 pb2 flex flex-row">
-                    <div className="VirtualTableSidePanel full">
+            <div style={{position: "relative", width: "100%"}}>
+                <div style={{position: "absolute", top: 0, bottom: 76, right: 0, left: 0}} className="wrapper clearfix pt4 pb2">
+                    <div style={{height: "100%", width: 320}} className="VirtualTableSidePanel float-left">
                         {this.renderSidePanel()}
                     </div>
 
-                    <div className="VirtualTableMainContent full">
+                    <div style={{position: "relative", height: "100%", marginLeft: 320}} className="VirtualTableMainContent">
                         { virtualTable && virtualTable.table_id &&
                             <NameAndDescription 
                                 name={virtualTable.name} 
@@ -65,7 +66,7 @@ export default class VirtualTableEditor extends Component {
                         }
 
                         { virtualTable && metadata.tableMetadata &&
-                            <div className="bordered rounded p2 my2">
+                            <div className="bordered rounded p2 my2 inline-block">
                                 <Filters
                                     filters={virtualTable.filters}
                                     tableMetadata={metadata.tableMetadata.table}
@@ -74,22 +75,28 @@ export default class VirtualTableEditor extends Component {
                             </div>
                         }
 
-                        { previewData && false &&
-                            <Table
-                                card={{display: "table", dataset_query: {type: "query", query: {aggregation: ["rows"]}}}}
-                                data={previewData.data}
-                            />
+                        { previewData &&
+                            <div style={{position: "absolute", bottom: 0, top: 150, left: 0, right: 0}} className="pl4 pt2">
+                                <Visualization
+                                    series={[{card: {display: "table", dataset_query: {type: "query", query: {aggregation: ["rows"]}}}, data: previewData.data}]}
+                                    card={{display: "table", dataset_query: {type: "query", query: {aggregation: ["rows"]}}}}
+                                    data={previewData.data}
+                                />
+                            </div>
                         }
                     </div>
                 </div>
-                <div className="wrapper py2 border-top flex align-center justify-between">
-                    <div className="text-brand">
-                        <a className="link">Help</a>
-                    </div>
 
-                    <div>
-                        <a className="text-grey-3 text-bold">Cancel</a>
-                        <a className="Button ml3">Create Table</a>
+                <div style={{position: "absolute", bottom: 0, left: 0, right: 0}} className="wrapper py2 border-top">
+                    <div className="flex align-center justify-between">
+                        <div className="text-brand">
+                            <a className="link">Help</a>
+                        </div>
+
+                        <div>
+                            <a className="text-grey-3 text-bold">Cancel</a>
+                            <a className="Button ml3">Create Table</a>
+                        </div>
                     </div>
                 </div>
             </div>

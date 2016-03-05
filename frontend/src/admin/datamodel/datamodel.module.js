@@ -14,7 +14,7 @@ angular
     };
 
     $routeProvider.when('/admin/datamodel/database/:databaseId/virtualtable', {
-        template:   '<div mb-redux-component class="flex flex-column flex-full" />',
+        template:   '<div mb-redux-component class="flex" style="flex-grow:1;" />',
         controller: 'VirtualTable'
     });
 

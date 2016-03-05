@@ -24,7 +24,7 @@ export default class TableList extends Component {
 
         const tables = _.sortBy(this.props.tables.filter((t) => !t.visibility_type), "display_name");
         return (
-            <ul style={{maxHeight: 400}} className="p1 scroll-y scroll-show">
+            <ul className="p1 scroll-y scroll-show">
                 { tables.map((table, idx) =>
                     <li key={table.id} className="List-item flex">
                         <a
