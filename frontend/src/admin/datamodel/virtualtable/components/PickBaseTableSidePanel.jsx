@@ -18,10 +18,6 @@ export default class PickBaseTableSidePanel extends Component {
         }
 	}
 
-	onPickTable(table) {
-		this.props.pickBaseTable(table);
-	}
-
     render() {
     	const { metadata, virtualTable } = this.props;
 
@@ -34,14 +30,16 @@ export default class PickBaseTableSidePanel extends Component {
 	        );
 
     	// otherwise we expect virtualTable to exist, but not base table has been chosen (yet!)
-    	} else {
+    	} else if (metadata.tables) {
     		return (
-    			<LoadingAndErrorWrapper loading={!metadata.tables}>
-    				{ metadata.tables &&
-    					<TableList tables={metadata.tables} selectTable={(table) => this.onPickTable(table)} />
-    				}
-                </LoadingAndErrorWrapper>
+                <div style={{height: "100%"}} className="p1 scroll-y scroll-show">
+				   <TableList tables={metadata.tables} selectTable={(table) => this.props.pickBaseTable(table)} />
+                </div>
     		);
-    	}
+
+        // loading or error state
+    	} else {
+            return null;
+        }
     }
 }

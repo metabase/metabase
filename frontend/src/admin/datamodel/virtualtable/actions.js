@@ -1,5 +1,7 @@
 
 import { createAction } from "redux-actions";
+import _ from "underscore";
+
 import { AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
 
 import { loadTable } from "metabase/lib/table";
@@ -16,6 +18,74 @@ export const startNewTable = createAction(START_NEW_TABLE);
 // set the state of our "add field" workflow.  options are: null, picking, custom, join
 export const SHOW_ADD_FIELD_PICKER = "SHOW_ADD_FIELD_PICKER";
 export const setShowAddFieldPicker = createAction(SHOW_ADD_FIELD_PICKER);
+export const UI_PICK_JOIN_TABLE = "UI_PICK_JOIN_TABLE";
+export const uiPickJoinTable = createThunkAction(UI_PICK_JOIN_TABLE, (table) => {
+    return (dispatch, getState) => {
+        dispatch(setShowAddFieldPicker("joinCondition"));
+        return table;
+    }
+});
+
+// set the base table for a new virtual table
+export const PICK_BASE_TABLE = "PICK_BASE_TABLE";
+export const pickBaseTable = createThunkAction(PICK_BASE_TABLE, (table) => {
+    return (dispatch, getState) => {
+        dispatch(updateTableMetadata(table));
+        dispatch(updatePreviewData({database_id: table.db_id, table_id: table.id}));
+        return table;
+    };
+});
+
+// update the name/description on the virtual table
+export const SET_NAME_DESCRIPTION = "SET_NAME_DESCRIPTION";
+export const setNameAndDescription = createAction(SET_NAME_DESCRIPTION, (name, description) => ({ name, description }));
+
+
+// update the filters on the virtual table
+export const SET_FILTERS = "SET_FILTERS";
+export const setFilters = createThunkAction(SET_FILTERS, (filters) => {
+    return (dispatch, getState) => {
+        const { virtualTable } = getState();
+
+        // clone and modify the current virtual table to kick of a proper refresh of preview data
+        const previewTable = _.cloneDeep(virtualTable);
+        previewTable.filter = filters;
+        dispatch(updatePreviewData(previewTable));
+
+        return filters;
+    };
+});
+
+// mark a field for inclusion/exclusion in the virtual table
+// TODO: update the preview data accordingly
+export const INCLUDE_FIELD = "INCLUDE_FIELD";
+export const EXCLUDE_FIELD = "EXCLUDE_FIELD";
+export const includeField = createAction(INCLUDE_FIELD);
+export const excludeField = createAction(EXCLUDE_FIELD);
+export const INCLUDE_CUSTOM_FIELD = "INCLUDE_CUSTOM_FIELD";
+export const EXCLUDE_CUSTOM_FIELD = "EXCLUDE_CUSTOM_FIELD";
+export const includeCustomField = createAction(INCLUDE_CUSTOM_FIELD, (field) => {
+    console.log("include custom field");
+    return field;
+});
+export const excludeCustomField = createAction(EXCLUDE_CUSTOM_FIELD, (field) => {
+    console.log("exclude custom field");
+    return field;
+});
+
+
+// add/remove a custom field
+// TODO: update the preview data accordingly
+export const ADD_CUSTOM_FIELD = "ADD_CUSTOM_FIELD";
+export const REMOVE_CUSTOM_FIELD = "REMOVE_CUSTOM_FIELD";
+export const addCustomField = createAction(ADD_CUSTOM_FIELD, (customField) => {
+    // new custom fields always start out visible
+    customField.hash = Math.random().toString(36).substring(7);
+    customField.isVisible = true;
+    return customField;
+});
+export const removeCustomField = createAction(REMOVE_CUSTOM_FIELD);
+
 
 
 // fetch tables for the database, filtered by schema if appropriate
@@ -26,17 +96,6 @@ export const fetchTables = createAction(FETCH_TABLES, async (databaseId, schema)
         // TODO: filter results by schema
     }
     return tables;
-});
-
-
-// set the base table for a new virtual table
-export const PICK_BASE_TABLE = "PICK_BASE_TABLE";
-export const pickBaseTable = createThunkAction(PICK_BASE_TABLE, (table) => {
-    return (dispatch, getState) => {
-        dispatch(updateTableMetadata(table));
-        dispatch(updatePreviewData({database_id: table.db_id, table_id: table.id}));
-        return table;
-    };
 });
 
 // update the table metadata
@@ -60,33 +119,10 @@ export const updatePreviewData = createAction(UPDATE_PREVIEW_DATA, async (virtua
     };
 
     // apply filters if they exist
-    if (virtualTable.filters && virtualTable.filters.length > 0) {
-        query.query.filter = virtualTable.filters;
+    if (virtualTable.filter && virtualTable.filter.length > 0) {
+        query.query.filter = virtualTable.filter;
     }
 
     return await Metabase.dataset(query);
 });
-
-// update the filters on the virtual table
-export const SET_FILTERS = "SET_FILTERS";
-export const setFilters = createThunkAction(SET_FILTERS, (filters) => {
-    return (dispatch, getState) => {
-        const { virtualTable } = getState();
-        // TODO: check if this impacts our state through mutability :(
-        virtualTable.filters = filters;
-        dispatch(updatePreviewData(virtualTable));
-        return filters;
-    };
-});
-
-// update the name/description on the virtual table
-export const SET_NAME_DESCRIPTION = "SET_NAME_DESCRIPTION";
-export const setNameAndDescription = createAction(SET_NAME_DESCRIPTION, (name, description) => ({ name, description }));
-
-
-// mark a field for inclusion/exclusion in the virtual table
-export const INCLUDE_FIELD = "INCLUDE_FIELD";
-export const EXCLUDE_FIELD = "EXCLUDE_FIELD";
-export const includeField = createAction(INCLUDE_FIELD);
-export const excludeField = createAction(EXCLUDE_FIELD);
 

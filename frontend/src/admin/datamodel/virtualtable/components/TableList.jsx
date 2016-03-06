@@ -13,6 +13,10 @@ export default class TableList extends Component {
         selectTable: PropTypes.func.isRequired
     };
 
+    static defaultProps = {
+        className: ""
+    };
+
     onPickTable(table) {
         if (this.props.selectTable) {
             this.props.selectTable(table);
@@ -24,11 +28,11 @@ export default class TableList extends Component {
 
         const tables = _.sortBy(this.props.tables.filter((t) => !t.visibility_type), "display_name");
         return (
-            <ul className="p1 scroll-y scroll-show">
+            <ul className={this.props.className}>
                 { tables.map((table, idx) =>
                     <li key={table.id} className="List-item flex">
                         <a
-                            className="flex-full flex align-center px1 cursor-pointer"
+                            className="flex flex-full align-center px1 cursor-pointer"
                             style={{ paddingTop: "0.25rem", paddingBottom: "0.25rem" }}
                             onClick={(e) => this.onPickTable(tables[idx])}
                         >

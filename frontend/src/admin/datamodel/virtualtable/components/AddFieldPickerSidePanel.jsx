@@ -7,8 +7,8 @@ export default class AddFieldPickerSidePanel extends Component {
 
     render() {
         return (
-            <div className="flex flex-column justify-between">
-                <div>
+            <div style={{height: "100%"}} className="flex flex-column">
+                <div style={{flexGrow: "1"}}>
                     <div className="py3 pl3 pr1 flex flex-row align-center border-bottom cursor-pointer" onClick={() => this.props.setShowAddFieldPicker("custom")}>
                         <div className="pr2">
                         	<h3>Add a custom or calculated field</h3>

@@ -22,7 +22,6 @@ export default class FieldList extends Component {
     };
 
     onToggleChecked(field, checked) {
-        console.log("toggleField", field);
         if (this.props.onToggleChecked) {
             this.props.onToggleChecked(field, checked);
         }
@@ -45,7 +44,7 @@ export default class FieldList extends Component {
         return (
             <ul className="scroll-y scroll-show">
                 { fields.map((field, idx) =>
-                    <li key={field.id} className="pb1 flex align-center justify-between">
+                    <li key={field.id || "f"+idx} className="pb1 flex align-center justify-between">
                         { isChecked(field) ?
                             <div className="text-brand flex flex-row">
                                 <CheckBox borderColor="#509EE3" borderSize="1px" checked={true} onChange={(e) => this.onToggleChecked(field, e.target.checked)} />
