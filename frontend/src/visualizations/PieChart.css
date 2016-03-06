@@ -1,50 +1,8 @@
-:local .Pie {
-  display: flex;
+:local .ChartAndDetail {
 }
 
-:local .Pie.vertical {
-  flex-direction: column-reverse;
-}
-:local .Pie.horizontal {
-  flex-direction: row;
-}
-
-/*:local .Pie .Legend,
-:local .Pie .ChartAndDetail {
-  background-color: rgba(0,255,0,0.1);
-}*/
-
-:local .Pie .Legend {
-  display: flex;
-  justify-content: center;
-}
-
-:local .Pie.small .Legend {
-  display: none;
-}
-
-:local .Pie.horizontal .Legend {
-  margin: 0 0 1em 1em;
-  flex: 0.5;
-  flex-shrink: 1;
-  overflow: hidden;
-}
-
-:local .Pie.vertical .Legend {
-  margin: 0em 1em 1em 1em;
-  flex-shrink: 1;
-  overflow: hidden;
-}
-
-:local .Pie .ChartAndDetail {
-  margin: 0 1em 1em 1em;
-  position: relative;
-  flex: 1;
-  flex-shrink: 0.25;
-}
-
-:local .Pie .Chart,
-:local .Pie .Detail {
+:local .Chart,
+:local .Detail {
   position: absolute;
   top: 0;
   left: 0;
@@ -52,28 +10,28 @@
   right: 0;
 }
 
-:local .Pie .Chart {
+:local .Chart {
   display: flex;
 }
 
-:local .Pie .Donut {
+:local .Donut {
   flex: 1;
 }
 
-:local .Pie .Detail {
+:local .Detail {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
 }
 
-:local .Pie .Value {
+:local .Value {
   color: #676C72;
   font-size: 22px;
   font-weight: bolder;
 }
 
-:local .Pie .Title {
+:local .Title {
   color: #B8C0C9;
   font-size: 14px;
   font-weight: bold;

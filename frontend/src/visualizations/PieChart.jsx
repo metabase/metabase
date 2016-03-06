@@ -3,7 +3,7 @@ import ReactDOM from "react-dom";
 import styles from "./PieChart.css";
 
 import ChartTooltip from "./components/ChartTooltip.jsx";
-import Legend from "./components/Legend.jsx";
+import ChartWithLegend from "./components/ChartWithLegend.jsx";
 
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
 
@@ -12,9 +12,6 @@ import { formatNumber } from "metabase/lib/formatting";
 import * as colors from "metabase/lib/colors";
 
 import d3 from "d3";
-import cx from "classnames";
-
-const GRID_ASPECT_RATIO = (4 / 3);
 
 export default class PieChart extends Component {
     static displayName = "Pie";
@@ -32,30 +29,15 @@ export default class PieChart extends Component {
     }
 
     render() {
-        let { series, hovered, onHoverChange, className, size } = this.props;
-
-        let type, legendType;
-        let isLandscape = size && size.width > size.height / GRID_ASPECT_RATIO;
-        if (!size || (isLandscape && size.width > 3 && size.height > 2)) {
-            type = "horizontal";
-            legendType = "vertical";
-        } else if (!isLandscape && size.height > 3 && size.width > 2) {
-            type = "vertical";
-            legendType = "horizontal";
-        } else {
-            type = "small";
-            legendType = "none";
-        }
+        let { series, hovered, onHoverChange, className, gridSize } = this.props;
 
         let rows = series[0].data.rows;
         let total = rows.reduce((sum, row) => sum + row[1], 0);
 
-        let titles = [];
-        if (legendType === "vertical") {
-            titles = series[0].data.rows.map(row => String(row[0]) + " - " + (100 * row[1] / total).toFixed(2) + "%");
-        } else if (legendType === "horizontal") {
-            titles = series[0].data.rows.map(row => String(row[0]));
-        }
+        let legendTitles = {
+            horizontal: rows.map(row => String(row[0])),
+            vertical: rows.map(row => String(row[0]) + " - " + (100 * row[1] / total).toFixed(2) + "%")
+        };
 
         let value, title;
         if (hovered && hovered.index != null) {
@@ -82,15 +64,7 @@ export default class PieChart extends Component {
         const slices = pie(rows);
 
         return (
-            <div className={cx(className, styles.Pie, styles[type])}>
-                <Legend
-                    className={styles.Legend}
-                    type={legendType}
-                    titles={titles}
-                    colors={sliceColors}
-                    hovered={hovered}
-                    onHoverChange={onHoverChange}
-                />
+            <ChartWithLegend className={className} legendTitles={legendTitles} legendColors={sliceColors} gridSize={gridSize} hovered={hovered} onHoverChange={onHoverChange}>
                 <div className={styles.ChartAndDetail}>
                     <div className={styles.Detail}>
                         <div className={styles.Value}>{value}</div>
@@ -114,7 +88,7 @@ export default class PieChart extends Component {
                     </div>
                 </div>
                 <ChartTooltip series={series} hovered={hovered} pinToMouse={true} />
-            </div>
-        )
+            </ChartWithLegend>
+        );
     }
 }

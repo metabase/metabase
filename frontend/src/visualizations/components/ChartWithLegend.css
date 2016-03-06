@@ -1,0 +1,46 @@
+:local .ChartWithLegend {
+  display: flex;
+}
+
+:local .ChartWithLegend.vertical {
+  flex-direction: column-reverse;
+}
+:local .ChartWithLegend.horizontal {
+  flex-direction: row;
+}
+
+:local .ChartWithLegend .Legend,
+:local .ChartWithLegend .Chart {
+  background-color: rgba(0,255,0,0.1);
+}
+
+:local .ChartWithLegend .Legend {
+  display: flex;
+  justify-content: center;
+}
+
+:local .ChartWithLegend.small .Legend {
+  display: none;
+}
+
+:local .ChartWithLegend.horizontal .Legend {
+  margin: 0 0 1em 1em;
+  flex: 0.5;
+  flex-shrink: 1;
+  overflow: hidden;
+  /*max-width: 33%;*/
+}
+
+:local .ChartWithLegend.vertical .Legend {
+  margin: 0em 1em 1em 1em;
+  flex-shrink: 1;
+  overflow: hidden;
+  /*max-height: 25%;*/
+}
+
+:local .ChartWithLegend .Chart {
+  margin: 0 1em 1em 1em;
+  position: relative;
+  flex: 1;
+  flex-shrink: 0.25;
+}
