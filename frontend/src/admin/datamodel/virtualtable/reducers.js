@@ -4,20 +4,20 @@ import _ from "underscore";
 import {
     START_NEW_TABLE,
     PICK_BASE_TABLE,
-    SHOW_ADD_FIELD_PICKER,
+    UI_ADD_FIELD_CHOOSER,
+    UI_EDIT_CUSTOM_FIELD,
     UI_PICK_JOIN_TABLE,
+    UI_CANCEL_EDITING,
 
     SET_NAME_DESCRIPTION,
     SET_FILTERS,
     INCLUDE_FIELD,
     EXCLUDE_FIELD,
-    INCLUDE_CUSTOM_FIELD,
-    EXCLUDE_CUSTOM_FIELD,
     ADD_CUSTOM_FIELD,
+    UPDATE_CUSTOM_FIELD,
     REMOVE_CUSTOM_FIELD,
 
     FETCH_TABLES,
-    UPDATE_TABLE_METADATA,
     UPDATE_PREVIEW_DATA,
 } from "./actions";
 
@@ -25,38 +25,61 @@ import {
 export const databaseId = handleActions({}, null);
 
 export const uiControls = handleActions({
-    [SHOW_ADD_FIELD_PICKER]: { next: (state, { payload }) => ({ ...state, showAddFieldPicker: payload, joinTable: null }) },
-    [UI_PICK_JOIN_TABLE]: { next: (state, { payload }) => ({ ...state, joinTable: payload }) }
+    [UI_ADD_FIELD_CHOOSER]: { next: (state, { payload }) => ({ ...state, editing: {} }) },
+    [UI_CANCEL_EDITING]: { next: (state, { payload }) => ({ ...state, editing: null })},
+
+    // custom field
+    [UI_EDIT_CUSTOM_FIELD]: { next: (state, { payload }) => ({ ...state, editing: payload }) },
+    [ADD_CUSTOM_FIELD]: { next: (state, { payload }) => ({ ...state, editing: null }) },
+    [UPDATE_CUSTOM_FIELD]: { next: (state, { payload }) => ({ ...state, editing: null }) },
+    [REMOVE_CUSTOM_FIELD]: { next: (state, { payload }) => ({ ...state, editing: null }) },
+
+    // joins
+    [UI_PICK_JOIN_TABLE]: { next: (state, { payload }) => ({ ...state, editing: payload }) },
 }, {});
 
 
 export const virtualTable = handleActions({
-    [START_NEW_TABLE]: { next: (state, { payload }) => ({ name: "", description: "", fields: [], custom: [], join: [], filter: [] })},
-    [PICK_BASE_TABLE]: { next: (state, { payload }) => ({ ...state, database_id: payload.db_id, table_id: payload.id })},
+    [START_NEW_TABLE]: { next: (state, { payload }) => ({ name: "", description: "", fields: [], filters: [], joins: [] })},
+    [PICK_BASE_TABLE]: { next: (state, { payload }) => ({ 
+        ...state, 
+        database_id: payload.table.db_id, 
+        table_id: payload.table.id,
+        fields: payload.table.fields.map((field) => ({
+            field_id: field.id,
+            display_name: field.display_name,
+            source: "core",
+            included: true
+        }))
+    })},
 
-    // set any filters or name/description
+    // set name & description
     [SET_NAME_DESCRIPTION]: { next: (state, { payload }) => ({ ...state, ...payload })},
-    [SET_FILTERS]: { next: (state, { payload }) => ({ ...state, filter: payload })},
+
+    // set any filters
+    [SET_FILTERS]: { next: (state, { payload }) => ({ ...state, filters: payload })},
 
     // include/exclude a field as visible in the table
-    [UPDATE_TABLE_METADATA]: { next: (state, { payload }) => ({ ...state, fields: payload.table.fields.map((f) => f.id) })},
-    [INCLUDE_FIELD]: { next: (state, { payload }) => ({ ...state, fields: [...state.fields, payload] })},
-    [EXCLUDE_FIELD]: { next: (state, { payload }) => ({ ...state, fields: state.fields.filter((fieldId) => fieldId !== payload) })},
-    [INCLUDE_CUSTOM_FIELD]: { next: (state, { payload }) => ({ ...state, custom: state.custom.map((field) => {
-        return (payload == field) ? { ...payload, isVisible: true } : field;
+    [INCLUDE_FIELD]: { next: (state, { payload }) => ({ ...state, fields: state.fields.map((field) => {
+        return (payload == field) ? { ...payload, included: true } : field;
     })})},
-    [EXCLUDE_CUSTOM_FIELD]: { next: (state, { payload }) => ({ ...state, custom: state.custom.map((field) => {
-        return (payload == field) ? { ...payload, isVisible: false } : field;
+    [EXCLUDE_FIELD]: { next: (state, { payload }) => ({ ...state, fields: state.fields.map((field) => {
+        return (payload == field) ? { ...payload, included: false } : field;
     })})},
 
-    // add/remove a custom field definition
-    [ADD_CUSTOM_FIELD]: { next: (state, { payload }) => ({ ...state, custom: [...state.custom, payload] })},
-    [REMOVE_CUSTOM_FIELD]: { next: (state, { payload }) => ({ ...state, custom: state.custom.filter((field, index) => index !== payload)})},
+    // add/update/remove a CUSTOM field
+    [ADD_CUSTOM_FIELD]: { next: (state, { payload }) => ({ ...state, fields: [...state.fields, payload] })},
+    [UPDATE_CUSTOM_FIELD]: { next: (state, { payload }) => ({ ...state, fields: state.fields.map((field) => {
+        return (field.source === "custom" && field.hash === payload.hash) ? payload : field;
+    })})},
+    [REMOVE_CUSTOM_FIELD]: { next: (state, { payload }) => ({ ...state, fields: state.fields.filter((field) => {
+        return field.source !== "custom" || (field.source === "custom" && field.hash !== payload.hash)
+    })})},
 }, null);
 
 export const metadata = handleActions({
     [FETCH_TABLES]: { next: (state, { payload }) => ({ ...state, tables: payload })},
-    [UPDATE_TABLE_METADATA]: { next: (state, { payload }) => ({ ...state, tableMetadata: payload })}
+    [PICK_BASE_TABLE]: { next: (state, { payload }) => ({ ...state, tableMetadata: payload })}
 }, {});
 
 export const previewData = handleActions({

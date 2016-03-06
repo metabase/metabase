@@ -16,6 +16,10 @@ export const START_NEW_TABLE = "START_NEW_TABLE";
 export const startNewTable = createAction(START_NEW_TABLE);
 
 // set the state of our "add field" workflow.  options are: null, picking, custom, join
+export const UI_ADD_FIELD_CHOOSER = "UI_ADD_FIELD_CHOOSER";
+export const uiAddFieldChooser = createAction(UI_ADD_FIELD_CHOOSER);
+export const UI_EDIT_CUSTOM_FIELD = "UI_EDIT_CUSTOM_FIELD";
+export const uiEditCustomField = createAction(UI_EDIT_CUSTOM_FIELD);
 export const SHOW_ADD_FIELD_PICKER = "SHOW_ADD_FIELD_PICKER";
 export const setShowAddFieldPicker = createAction(SHOW_ADD_FIELD_PICKER);
 export const UI_PICK_JOIN_TABLE = "UI_PICK_JOIN_TABLE";
@@ -25,14 +29,19 @@ export const uiPickJoinTable = createThunkAction(UI_PICK_JOIN_TABLE, (table) => 
         return table;
     }
 });
+export const UI_CANCEL_EDITING = "UI_CANCEL_EDITING";
+export const uiCancelEditing = createAction(UI_CANCEL_EDITING);
 
 // set the base table for a new virtual table
 export const PICK_BASE_TABLE = "PICK_BASE_TABLE";
 export const pickBaseTable = createThunkAction(PICK_BASE_TABLE, (table) => {
-    return (dispatch, getState) => {
-        dispatch(updateTableMetadata(table));
+    return async (dispatch, getState) => {
+        let tableMetadata = await loadTable(table.id);
+
+        // dispatch a separate action which will update our preview data
         dispatch(updatePreviewData({database_id: table.db_id, table_id: table.id}));
-        return table;
+
+        return tableMetadata;
     };
 });
 
@@ -62,28 +71,21 @@ export const INCLUDE_FIELD = "INCLUDE_FIELD";
 export const EXCLUDE_FIELD = "EXCLUDE_FIELD";
 export const includeField = createAction(INCLUDE_FIELD);
 export const excludeField = createAction(EXCLUDE_FIELD);
-export const INCLUDE_CUSTOM_FIELD = "INCLUDE_CUSTOM_FIELD";
-export const EXCLUDE_CUSTOM_FIELD = "EXCLUDE_CUSTOM_FIELD";
-export const includeCustomField = createAction(INCLUDE_CUSTOM_FIELD, (field) => {
-    console.log("include custom field");
-    return field;
-});
-export const excludeCustomField = createAction(EXCLUDE_CUSTOM_FIELD, (field) => {
-    console.log("exclude custom field");
-    return field;
-});
 
 
 // add/remove a custom field
 // TODO: update the preview data accordingly
 export const ADD_CUSTOM_FIELD = "ADD_CUSTOM_FIELD";
 export const REMOVE_CUSTOM_FIELD = "REMOVE_CUSTOM_FIELD";
+export const UPDATE_CUSTOM_FIELD = "UPDATE_CUSTOM_FIELD";
 export const addCustomField = createAction(ADD_CUSTOM_FIELD, (customField) => {
     // new custom fields always start out visible
     customField.hash = Math.random().toString(36).substring(7);
-    customField.isVisible = true;
+    customField.source = "custom";
+    customField.included = true;
     return customField;
 });
+export const updateCustomField = createAction(UPDATE_CUSTOM_FIELD);
 export const removeCustomField = createAction(REMOVE_CUSTOM_FIELD);
 
 
@@ -96,12 +98,6 @@ export const fetchTables = createAction(FETCH_TABLES, async (databaseId, schema)
         // TODO: filter results by schema
     }
     return tables;
-});
-
-// update the table metadata
-export const UPDATE_TABLE_METADATA = "UPDATE_TABLE_METADATA";
-export const updateTableMetadata = createAction(UPDATE_TABLE_METADATA, async (table) => {
-    return await loadTable(table.id);
 });
 
 // update the data preview

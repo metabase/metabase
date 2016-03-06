@@ -37,32 +37,45 @@ export default class VirtualTableEditor extends Component {
                 <PickBaseTableSidePanel {...this.props} />
             );
 
-        } else if (this.props.uiControls.showAddFieldPicker) {
+        } else if (this.props.uiControls.editing) {
+            const editing = this.props.uiControls.editing;
+            // not shown = null
+            // picking = {}
+            // custom (add) = {source: "custom"}
+            // custom (edit) = {source: "custom", expression: "", display_name: ""}
+            // join (add) = same as above
+            // join (edit) = same as above
+
             // user is trying to add a field of some sort
-            switch (this.props.uiControls.showAddFieldPicker) {
+            switch (editing.source) {
                 case "custom":
                     return (
                         <CustomFieldSidePanel
                             {...this.props}
-                            expression={null}
-                            display_name={null}
-                            onSave={(field) => {
-                                this.props.addCustomField(field);
-                                this.props.setShowAddFieldPicker(null);
-                            }}
-                            onCancel={() => this.props.setShowAddFieldPicker(null)}
+                            expression={editing.expression || null}
+                            display_name={editing.display_name || null}
+                            onSave={editing.hash ? 
+                                (field) => this.props.updateCustomField({ ...editing, ...field })
+                                :
+                                (field) => this.props.addCustomField(field)
+                            }
+                            onDelete={editing.hash ? () => this.props.removeCustomField(editing) : null}
+                            onCancel={() => this.props.uiCancelEditing()}
                         />
                     );
                 case "join":
-                    SidePanel = JoinPickTableSidePanel;
-                    break;
-                case "joinCondition":
-                    SidePanel = JoinSetConditionSidePanel;
+                    if (editing.target_table_id) {
+                        // target join table is already chosen, so we are working on join condition
+                        SidePanel = JoinSetConditionSidePanel;
+                    } else {
+                        // no target join table yet, this must be a new join we are defining
+                        SidePanel = JoinPickTableSidePanel;
+                    }
                     break;
                 default:
+                    // this should only happen when there is no 'source' on the editing, meaning we are staring a new workflow
                     SidePanel = AddFieldPickerSidePanel;
             }
-            //SidePanel = panels[this.props.uiControls.showAddFieldPicker];
 
         } else if (this.props.uiControls.showEditFieldPicker) {
             // user is trying to edit a field of some sort (custom field or join clause)
@@ -107,7 +120,7 @@ export default class VirtualTableEditor extends Component {
                         :active   true}
                        {:id       <vt-field-id>
                         :field_id <real-field-id>
-                        :type     "basic"
+                        :type     "joined"
                         :included false
                         :active   false}
                        {:id         <vt-field-id>
@@ -124,6 +137,7 @@ export default class VirtualTableEditor extends Component {
         
         field states = inactive (deleted), active-not-checked (part of a filter, etc), active-checked
         isChecked = vt-fields.contains(real-field-id) && vt-field.is-checked
+        unchecking a field in a VT is just a shorthand for marking it as hidden/do-not-include
 
         should we expect the full list of fields on all api calls to update a VT?  meaning fields not included get deactivated?  fields included but not existing get added.  everything else gets updated?
         should we simplify things and simply include all possible fields in the VT?  and simply mark them with their state, even if they aren't used?

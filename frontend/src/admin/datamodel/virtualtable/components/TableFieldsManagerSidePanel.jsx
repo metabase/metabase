@@ -56,35 +56,36 @@ export default class TableFieldsManagerSidePanel extends Component {
 
                 <div style={{flexGrow: "2"}} className="p1 scroll-y">
                     {/* Always rendering the base table and its fields as the first table. */}
-                    {metadata.tableMetadata && metadata.tableMetadata.table &&
+                    {virtualTable && virtualTable.fields && virtualTable.fields.length > 0 &&
                         <TableFieldList
-                            table={metadata.tableMetadata.table}
+                            table={virtualTable}
+                            fieldsFilterPredicate={(field) => field.source === "core"}
                             canAction={() => false}
                             onAction={() => null}
-                            fieldIsChecked={(field) => _.contains(virtualTable.fields, field.id)}
-                            onFieldToggleChecked={(field, checked) => checked ? this.props.includeField(field.id) : this.props.excludeField(field.id) }
+                            fieldIsChecked={(field) => field.included}
+                            onFieldToggleChecked={(field, checked) => checked ? this.props.includeField(field) : this.props.excludeField(field) }
                             fieldCanAction={() => false}
                             onFieldAction={(field) => null}
                         />
                     }
 
                     {/* Always put any custom field definitions at the end */}
-                    {virtualTable && virtualTable.custom && virtualTable.custom.length > 0 &&
+                    {virtualTable && virtualTable.fields && virtualTable.fields.length > 0 && _.some(virtualTable.fields, (f) => f.source === "custom") &&
                         <div className="pt2">
                             <h5 className="text-uppercase text-grey-4 pb1">Custom</h5>
                             <FieldList
-                                fields={virtualTable.custom}
-                                isChecked={(field) => field.isVisible}
-                                onToggleChecked={(field, checked) => checked ? this.props.includeCustomField(field) : this.props.excludeCustomField(field)}
+                                fields={virtualTable.fields.filter((f) => f.source === "custom")}
+                                isChecked={(field) => field.included}
+                                onToggleChecked={(field, checked) => checked ? this.props.includeField(field) : this.props.excludeField(field)}
                                 canAction={() => true}
-                                onAction={(field) => null}
+                                onAction={(field) => this.props.uiEditCustomField(field)}
                             />
                         </div>
                     }
                 </div>
 
                 <div className="p1 border-top">
-	            	<a className="Button Button--primary full text-centered" onClick={() => this.props.setShowAddFieldPicker("picking")}>Add more fields</a>
+	            	<a className="Button Button--primary full text-centered" onClick={() => this.props.uiAddFieldChooser()}>Add more fields</a>
 	            </div>
             </div>
         );

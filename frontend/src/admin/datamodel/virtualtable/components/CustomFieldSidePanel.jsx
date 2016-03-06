@@ -61,6 +61,7 @@ export default class CustomFieldSidePanel extends Component {
                 <div style={{flexGrow: "1"}} className="p2">
                 	<h5 className="text-uppercase text-grey-4 pb1">Field Formula</h5>
                 	<ExpressionInput
+                        expression={expression}
                         onBlur={(expression) => this.setState({expression: expression})}
                         autoFocus={true}
                     />
@@ -82,24 +83,26 @@ export default class CustomFieldSidePanel extends Component {
 
                     { onDelete && 
                         <div>
-                            <h5 className="text-uppercase text-grey-4 pb1 pt2">Danger zone</h5>
-                            <a className="link text-danger" onClick={() => this.setState({showDeleteConfirmModal: true})}>Delete this field</a>
-                            <Modal className="Modal Modal--small">
-                                <ModalContent title={"Delete this custom field?"}
-                                              closeFn={() => this.setState({showDeleteConfirmModal: false})}
-                                              className="Modal-content Modal-content--small NewForm">
-                                    <div>
-                                        <div className="px4 pb4">
-                                            <span className="text-bold">{display_name}</span> will be permanently removed from the table.
-                                        </div>
+                            <h5 className="text-uppercase text-grey-4 pb1 pt4">Danger zone</h5>
+                            <a className="link text-error" onClick={(e) => this.setState({showDeleteConfirmModal: true})}>Delete this field</a>
+                            { this.state.showDeleteConfirmModal &&
+                                <Modal className="Modal Modal--small">
+                                    <ModalContent title={"Delete this custom field?"}
+                                                  closeFn={() => this.setState({showDeleteConfirmModal: false})}
+                                                  className="Modal-content Modal-content--small NewForm">
+                                        <div>
+                                            <div className="px4 pb4">
+                                                <span className="text-bold">{display_name}</span> will be permanently removed from the table.
+                                            </div>
 
-                                        <div className="Form-actions">
-                                            <button className="Button Button--warning" type="button" onClick={this.onDelete.bind(this)}>Yes</button>
-                                            <button className="Button Button--primary ml2" type="button" onClick={() => this.setState({showDeleteConfirmModal: false})}>No</button>
+                                            <div className="Form-actions">
+                                                <button className="Button Button--warning" type="button" onClick={() => this.onDelete()}>Yes</button>
+                                                <button className="Button Button--primary ml2" type="button" onClick={() => this.setState({showDeleteConfirmModal: false})}>No</button>
+                                            </div>
                                         </div>
-                                    </div>
-                                </ModalContent>
-                            </Modal>
+                                    </ModalContent>
+                                </Modal>
+                            }
                         </div>
                     }
                 </div>

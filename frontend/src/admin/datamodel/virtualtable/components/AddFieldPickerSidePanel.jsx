@@ -9,7 +9,7 @@ export default class AddFieldPickerSidePanel extends Component {
         return (
             <div style={{height: "100%"}} className="flex flex-column">
                 <div style={{flexGrow: "1"}}>
-                    <div className="py3 pl3 pr1 flex flex-row align-center border-bottom cursor-pointer" onClick={() => this.props.setShowAddFieldPicker("custom")}>
+                    <div className="py3 pl3 pr1 flex flex-row align-center border-bottom cursor-pointer" onClick={() => this.props.uiEditCustomField({source: "custom"})}>
                         <div className="pr2">
                         	<h3>Add a custom or calculated field</h3>
                         	<span>Use math, functions, or string manipulation to create a custom field.</span>
@@ -19,7 +19,7 @@ export default class AddFieldPickerSidePanel extends Component {
                         </div>
                     </div>
 
-                    <div className="py3 pl3 pr1 flex flex-row align-center border-bottom cursor-pointer" onClick={() => this.props.setShowAddFieldPicker("join")}>
+                    <div className="py3 pl3 pr1 flex flex-row align-center border-bottom cursor-pointer" onClick={() => this.props.uiEditJoin({source: "join"})}>
                         <div className="pr2">
                         	<h3>Add fields through a join</h3>
                         	<span>Combine the current working table with another table.</span>
@@ -31,7 +31,7 @@ export default class AddFieldPickerSidePanel extends Component {
                 </div>
 
                 <div className="p1 border-top">
-	            	<a className="Button Button--primary full text-centered" onClick={() => this.props.setShowAddFieldPicker(null)}>Cancel</a>
+	            	<a className="Button Button--primary full text-centered" onClick={() => this.props.uiCancelEditing(null)}>Cancel</a>
 	            </div>
             </div>
         );
