@@ -2,9 +2,6 @@ import React, { Component, PropTypes } from "react";
 import cx from "classnames";
 import _ from "underscore";
 
-import Modal from "metabase/components/Modal.jsx";
-import ModalContent from "metabase/components/ModalContent.jsx";
-
 
 export default class ExpressionInput extends Component {
     static propTypes = {

@@ -1,5 +1,4 @@
 import React, { Component, PropTypes } from "react";
-import _ from "underscore";
 
 import AddFieldPickerSidePanel from "./AddFieldPickerSidePanel.jsx";
 import CustomFieldSidePanel from "./CustomFieldSidePanel.jsx";
@@ -21,14 +20,14 @@ export default class VirtualTableEditor extends Component {
         const { metadata, uiControls, virtualTable } = this.props;
 
         let SidePanel;
-        if (!this.props.virtualTable || !this.props.virtualTable.table_id) {
+        if (!virtualTable || !virtualTable.table_id) {
             // user hasn't picked the starting table yet, so force that to happen now
             return (
                 <PickBaseTableSidePanel {...this.props} />
             );
 
-        } else if (this.props.uiControls.editing) {
-            const editing = this.props.uiControls.editing;
+        } else if (uiControls.editing) {
+            const editing = uiControls.editing;
             // not shown = null
             // picking = {}
             // custom (add) = {source: "custom"}

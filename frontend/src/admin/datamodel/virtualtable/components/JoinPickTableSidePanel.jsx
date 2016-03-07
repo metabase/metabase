@@ -1,9 +1,4 @@
 import React, { Component, PropTypes } from "react";
-import _ from "underscore";
-import cx from "classnames";
-
-import ButtonGroup from "metabase/components/ButtonGroup.jsx";
-import Icon from "metabase/components/Icon.jsx";
 
 import TableList from "./TableList.jsx";
 

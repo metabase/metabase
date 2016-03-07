@@ -1,5 +1,4 @@
 import { handleActions } from "redux-actions";
-import _ from "underscore";
 
 import {
     START_NEW_TABLE,

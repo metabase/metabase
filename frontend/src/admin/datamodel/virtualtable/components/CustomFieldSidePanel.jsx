@@ -2,7 +2,6 @@ import React, { Component, PropTypes } from "react";
 import cx from "classnames";
 import _ from "underscore";
 
-import Icon from "metabase/components/Icon.jsx";
 import Modal from "metabase/components/Modal.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
 
@@ -53,7 +52,7 @@ export default class CustomFieldSidePanel extends Component {
     }
 
     render() {
-        const { metadata, onDelete, onCancel } = this.props;
+        const { onDelete } = this.props;
         const { expression, display_name } = this.state;
 
         return (

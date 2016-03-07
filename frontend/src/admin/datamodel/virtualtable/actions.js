@@ -7,7 +7,6 @@ import { AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
 import { loadTable } from "metabase/lib/table";
 
 const Metabase = new AngularResourceProxy("Metabase", ["db_tables", "dataset"]);
-const Revisions = new AngularResourceProxy("Revisions", ["get"]);
 
 
 

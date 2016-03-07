@@ -48,8 +48,9 @@ export default class TableFieldsManagerSidePanel extends Component {
             </div>
         );
     }
+
     render() {
-        const { metadata, virtualTable } = this.props;
+        const { virtualTable } = this.props;
 
         return (
             <div style={{height: "100%"}} className="flex flex-column">

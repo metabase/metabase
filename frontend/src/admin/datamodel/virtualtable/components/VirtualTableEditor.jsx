@@ -5,7 +5,6 @@ import VirtualTableSidePanel from "./VirtualTableSidePanel.jsx";
 
 import NameAndDescription from "./NameAndDescription.jsx";
 import Filters from "./Filters.jsx";
-import Table from "metabase/visualizations/Table.jsx";
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 
 

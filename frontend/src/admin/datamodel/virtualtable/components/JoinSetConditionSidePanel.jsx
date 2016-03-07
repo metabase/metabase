@@ -1,11 +1,5 @@
 import React, { Component, PropTypes } from "react";
-import _ from "underscore";
 import cx from "classnames";
-
-import ButtonGroup from "metabase/components/ButtonGroup.jsx";
-import Icon from "metabase/components/Icon.jsx";
-
-import TableFieldList from "./TableFieldList.jsx";
 
 
 export default class JoinSetConditionSidePanel extends Component {

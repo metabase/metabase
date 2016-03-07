@@ -1,8 +1,5 @@
 import React, { Component, PropTypes } from "react";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
-import MetadataTableList from "metabase/admin/datamodel/components/database/MetadataTableList.jsx";
-
 import TableList from "./TableList.jsx";
 
 

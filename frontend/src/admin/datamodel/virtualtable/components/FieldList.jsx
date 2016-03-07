@@ -3,8 +3,6 @@ import React, { Component, PropTypes } from "react";
 import CheckBox from "metabase/components/CheckBox.jsx";
 import Icon from "metabase/components/Icon.jsx";
 
-import _ from "underscore";
-
 
 export default class FieldList extends Component {
 
