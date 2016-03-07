@@ -1,6 +1,8 @@
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
+import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
+
 import { isString } from "metabase/lib/schema_metadata";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
 
@@ -59,11 +61,15 @@ export default class ChoroplethMap extends Component {
     }
 
     render() {
-        let { series, gridSize, hovered, onHoverChange } = this.props;
+        let { series, gridSize, hovered, onHoverChange, className } = this.props;
         let { features } = this.state;
 
         if (!features) {
-            return <div>Loading</div>
+            return (
+                <div className={className + " flex layout-centered"}>
+                    <LoadingSpinner />
+                </div>
+            );
         }
 
         const getRowKey = (row) => row[0].toLowerCase();
@@ -104,29 +110,32 @@ export default class ChoroplethMap extends Component {
 
         return (
             <ChartWithLegend
-                className={this.props.className + " flex"}
+                className={className}
+                aspectRatio={width / height}
                 legendTitles={legendTitles} legendColors={legendColors}
                 gridSize={gridSize}
                 hovered={hovered} onHoverChange={onHoverChange}
             >
-                <ShouldUpdate series={series} shouldUpdate={(props, nextProps) => !isSameSeries(props.series, nextProps.series)}>
-                    { () =>
-                        <svg className="flex-full" viewBox={`0 0 ${width} ${height}`}>
-                        {features && features.map((feature, index) =>
-                            <path
-                                d={geo(feature, index)}
-                                fill={getColor(feature)}
-                                onMouseMove={(e) => onHoverChange && onHoverChange({
-                                    index: HEAT_MAP_COLORS.indexOf(getColor(feature)),
-                                    event: e.nativeEvent,
-                                    data: { key: getFeatureName(feature), value: getFeatureValue(feature)
-                                } })}
-                                onMouseLeave={() => onHoverChange && onHoverChange(null)}
-                            />
-                        )}
-                        </svg>
-                    }
-                </ShouldUpdate>
+                <div className="absolute top bottom left right flex layout-centered">
+                    <ShouldUpdate series={series} shouldUpdate={(props, nextProps) => !isSameSeries(props.series, nextProps.series)}>
+                        { () =>
+                            <svg className="flex-full" viewBox={`0 0 ${width} ${height}`}>
+                            {features && features.map((feature, index) =>
+                                <path
+                                    d={geo(feature, index)}
+                                    fill={getColor(feature)}
+                                    onMouseMove={(e) => onHoverChange && onHoverChange({
+                                        index: HEAT_MAP_COLORS.indexOf(getColor(feature)),
+                                        event: e.nativeEvent,
+                                        data: { key: getFeatureName(feature), value: getFeatureValue(feature)
+                                    } })}
+                                    onMouseLeave={() => onHoverChange && onHoverChange(null)}
+                                />
+                            )}
+                            </svg>
+                        }
+                    </ShouldUpdate>
+                </div>
                 <ChartTooltip series={series} hovered={hovered} pinToMouse={true} />
             </ChartWithLegend>
         );
