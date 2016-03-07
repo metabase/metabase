@@ -28,7 +28,6 @@ export default class ChartWithLegend extends Component {
         if (legendTitles && !Array.isArray(legendTitles)) {
             legendTitles = legendTitles[legendType] || [];
         }
-        console.log("legendTitles", legendTitles, this.props.legendTitles)
 
         return (
             <div className={cx(className, styles.ChartWithLegend, styles[type])}>
