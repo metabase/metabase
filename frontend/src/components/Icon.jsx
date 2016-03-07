@@ -8,13 +8,13 @@ import { loadIcon } from 'metabase/icon_paths';
 export default class Icon extends Component {
     static propTypes = {
       name: PropTypes.string.isRequired,
-      width: React.PropTypes.oneOfType([
-        React.PropTypes.string,
-        React.PropTypes.number,
+      width: PropTypes.oneOfType([
+        PropTypes.string,
+        PropTypes.number,
       ]),
-      height: React.PropTypes.oneOfType([
-        React.PropTypes.string,
-        React.PropTypes.number,
+      height: PropTypes.oneOfType([
+        PropTypes.string,
+        PropTypes.number,
       ]),
     }
 
