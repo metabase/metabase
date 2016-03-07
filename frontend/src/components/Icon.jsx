@@ -1,12 +1,28 @@
 /*eslint-disable react/no-danger */
 
 import React, { Component, PropTypes } from "react";
-
 import RetinaImage from "react-retina-image";
 
 import { loadIcon } from 'metabase/icon_paths';
 
 export default class Icon extends Component {
+    static propTypes = {
+      name: PropTypes.string.isRequired,
+      width: React.PropTypes.oneOfType([
+        React.PropTypes.string,
+        React.PropTypes.number,
+      ]),
+      height: React.PropTypes.oneOfType([
+        React.PropTypes.string,
+        React.PropTypes.number,
+      ]),
+    }
+
+    static defaultProps = {
+      width: 16,
+      height: 16
+    }
+
     render() {
         var icon = loadIcon(this.props.name);
         if (icon.img) {
