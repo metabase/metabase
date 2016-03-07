@@ -122,9 +122,9 @@ export default class LineAreaBarChart extends Component {
     getSettings() {
         let fidelity = { x: 0, y: 0 };
         let size = this.props.size ||  { width: Infinity, height: Infinity };
-        if (size.width >= 6) {
+        if (size.width >= 5) {
             fidelity.x = 2;
-        } else if (size.width >= 5) {
+        } else if (size.width >= 4) {
             fidelity.x = 1;
         }
         if (size.height >= 5) {
@@ -135,7 +135,7 @@ export default class LineAreaBarChart extends Component {
 
         let settings = this.props.series[0].card.visualization_settings;
 
-        if (fidelity.x < 1 || fidelity.y < 1) {
+        if (fidelity.x < 1) {
             settings = i.assocIn(settings, ["yAxis", "labels_enabled"], false);
             settings = i.assocIn(settings, ["yAxis", "axis_enabled"], false);
         }
