@@ -30,6 +30,24 @@ export default class TableFieldsManagerSidePanel extends Component {
         }
     }
 
+    renderJoin(join) {
+        const { metadata, virtualTable } = this.props;
+
+        const targetTable = metadata[join.target_table_id].table;
+        const targetFieldIds = _.pluck(targetTable.fields, "id");
+
+        return (
+            <div className="pt2">
+                <h5 className="text-uppercase text-grey-4 pb1">{targetTable.display_name}</h5>
+                <FieldList
+                    fields={virtualTable.fields.filter((f) => f.source === "join" && _.contains(targetFieldIds, f.field_id))}
+                    isChecked={(field) => field.included}
+                    onToggleChecked={(field, checked) => checked ? this.props.includeField(field) : this.props.excludeField(field)}
+                    canAction={() => false}
+                />
+            </div>
+        );
+    }
     render() {
         const { metadata, virtualTable } = this.props;
 
@@ -68,6 +86,11 @@ export default class TableFieldsManagerSidePanel extends Component {
                             onFieldAction={(field) => null}
                         />
                     }
+
+                    {/* Next come any of our join tables */}
+                    {virtualTable && virtualTable.joins && virtualTable.joins.length > 0 && virtualTable.joins.map((join) =>
+                        this.renderJoin(join)
+                    )}
 
                     {/* Always put any custom field definitions at the end */}
                     {virtualTable && virtualTable.fields && virtualTable.fields.length > 0 && _.some(virtualTable.fields, (f) => f.source === "custom") &&

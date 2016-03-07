@@ -19,7 +19,7 @@ export default class AddFieldPickerSidePanel extends Component {
                         </div>
                     </div>
 
-                    <div className="py3 pl3 pr1 flex flex-row align-center border-bottom cursor-pointer" onClick={() => this.props.uiEditJoin({source: "join"})}>
+                    <div className="py3 pl3 pr1 flex flex-row align-center border-bottom cursor-pointer" onClick={() => this.props.uiEditJoin({"join_type": "inner"})}>
                         <div className="pr2">
                         	<h3>Add fields through a join</h3>
                         	<span>Combine the current working table with another table.</span>

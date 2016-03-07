@@ -18,19 +18,18 @@ export const startNewTable = createAction(START_NEW_TABLE);
 // set the state of our "add field" workflow.  options are: null, picking, custom, join
 export const UI_ADD_FIELD_CHOOSER = "UI_ADD_FIELD_CHOOSER";
 export const uiAddFieldChooser = createAction(UI_ADD_FIELD_CHOOSER);
-export const UI_EDIT_CUSTOM_FIELD = "UI_EDIT_CUSTOM_FIELD";
-export const uiEditCustomField = createAction(UI_EDIT_CUSTOM_FIELD);
-export const SHOW_ADD_FIELD_PICKER = "SHOW_ADD_FIELD_PICKER";
-export const setShowAddFieldPicker = createAction(SHOW_ADD_FIELD_PICKER);
-export const UI_PICK_JOIN_TABLE = "UI_PICK_JOIN_TABLE";
-export const uiPickJoinTable = createThunkAction(UI_PICK_JOIN_TABLE, (table) => {
-    return (dispatch, getState) => {
-        dispatch(setShowAddFieldPicker("joinCondition"));
-        return table;
-    }
-});
 export const UI_CANCEL_EDITING = "UI_CANCEL_EDITING";
 export const uiCancelEditing = createAction(UI_CANCEL_EDITING);
+export const UI_EDIT_CUSTOM_FIELD = "UI_EDIT_CUSTOM_FIELD";
+export const uiEditCustomField = createAction(UI_EDIT_CUSTOM_FIELD);
+export const UI_EDIT_JOIN = "UI_EDIT_JOIN";
+export const uiEditJoin = createAction(UI_EDIT_JOIN);
+export const UI_PICK_JOIN_TABLE = "UI_PICK_JOIN_TABLE";
+export const uiPickJoinTable = createThunkAction(UI_PICK_JOIN_TABLE, (table) => {
+    return async (dispatch, getState) => {
+        return await loadTable(table.id);
+    };
+});
 
 // set the base table for a new virtual table
 export const PICK_BASE_TABLE = "PICK_BASE_TABLE";
@@ -57,8 +56,8 @@ export const setFilters = createThunkAction(SET_FILTERS, (filters) => {
         const { virtualTable } = getState();
 
         // clone and modify the current virtual table to kick of a proper refresh of preview data
-        const previewTable = _.cloneDeep(virtualTable);
-        previewTable.filter = filters;
+        const previewTable = _.clone(virtualTable);
+        previewTable.filters = filters;
         dispatch(updatePreviewData(previewTable));
 
         return filters;
@@ -89,6 +88,24 @@ export const updateCustomField = createAction(UPDATE_CUSTOM_FIELD);
 export const removeCustomField = createAction(REMOVE_CUSTOM_FIELD);
 
 
+// add/update/remove joins
+export const ADD_JOIN = "ADD_JOIN";
+export const REMOVE_JOIN = "REMOVE_JOIN";
+export const UPDATE_JOIN = "UPDATE_JOIN";
+export const addJoin = createThunkAction(ADD_JOIN, (join) => {
+    return (dispatch, getState) => {
+        const { metadata } = getState();
+        join.hash = Math.random().toString(36).substring(7);
+        let targetTable = metadata[join.target_table_id].table;
+        return {
+            join,
+            targetTable
+        };
+    }
+});
+export const updateJoin = createAction(UPDATE_JOIN);
+export const removeJoin = createAction(REMOVE_JOIN);
+
 
 // fetch tables for the database, filtered by schema if appropriate
 export const FETCH_TABLES = "FETCH_TABLES";
@@ -115,8 +132,8 @@ export const updatePreviewData = createAction(UPDATE_PREVIEW_DATA, async (virtua
     };
 
     // apply filters if they exist
-    if (virtualTable.filter && virtualTable.filter.length > 0) {
-        query.query.filter = virtualTable.filter;
+    if (virtualTable.filters && virtualTable.filters.length > 0) {
+        query.query.filter = virtualTable.filters;
     }
 
     return await Metabase.dataset(query);

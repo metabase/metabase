@@ -1,12 +1,7 @@
 import React, { Component, PropTypes } from "react";
 import _ from "underscore";
 
-import AddFieldPickerSidePanel from "./AddFieldPickerSidePanel.jsx";
-import CustomFieldSidePanel from "./CustomFieldSidePanel.jsx";
-import JoinPickTableSidePanel from "./JoinPickTableSidePanel.jsx";
-import JoinSetConditionSidePanel from "./JoinSetConditionSidePanel.jsx";
-import PickBaseTableSidePanel from "./PickBaseTableSidePanel.jsx";
-import TableFieldsManagerSidePanel from "./TableFieldsManagerSidePanel.jsx";
+import VirtualTableSidePanel from "./VirtualTableSidePanel.jsx";
 
 import NameAndDescription from "./NameAndDescription.jsx";
 import Filters from "./Filters.jsx";
@@ -21,75 +16,6 @@ export default class VirtualTableEditor extends Component {
         metadata: PropTypes.object,
         previewData: PropTypes.object
     };
-
-    renderSidePanel() {
-        const panels = {
-            picking: AddFieldPickerSidePanel,
-            custom: CustomFieldSidePanel,
-            join: JoinPickTableSidePanel,
-            joinCondition: JoinSetConditionSidePanel
-        };
-
-        let SidePanel, args;
-        if (!this.props.virtualTable || !this.props.virtualTable.table_id) {
-            // user hasn't picked the starting table yet, so force that to happen now
-            return (
-                <PickBaseTableSidePanel {...this.props} />
-            );
-
-        } else if (this.props.uiControls.editing) {
-            const editing = this.props.uiControls.editing;
-            // not shown = null
-            // picking = {}
-            // custom (add) = {source: "custom"}
-            // custom (edit) = {source: "custom", expression: "", display_name: ""}
-            // join (add) = same as above
-            // join (edit) = same as above
-
-            // user is trying to add a field of some sort
-            switch (editing.source) {
-                case "custom":
-                    return (
-                        <CustomFieldSidePanel
-                            {...this.props}
-                            expression={editing.expression || null}
-                            display_name={editing.display_name || null}
-                            onSave={editing.hash ? 
-                                (field) => this.props.updateCustomField({ ...editing, ...field })
-                                :
-                                (field) => this.props.addCustomField(field)
-                            }
-                            onDelete={editing.hash ? () => this.props.removeCustomField(editing) : null}
-                            onCancel={() => this.props.uiCancelEditing()}
-                        />
-                    );
-                case "join":
-                    if (editing.target_table_id) {
-                        // target join table is already chosen, so we are working on join condition
-                        SidePanel = JoinSetConditionSidePanel;
-                    } else {
-                        // no target join table yet, this must be a new join we are defining
-                        SidePanel = JoinPickTableSidePanel;
-                    }
-                    break;
-                default:
-                    // this should only happen when there is no 'source' on the editing, meaning we are staring a new workflow
-                    SidePanel = AddFieldPickerSidePanel;
-            }
-
-        } else if (this.props.uiControls.showEditFieldPicker) {
-            // user is trying to edit a field of some sort (custom field or join clause)
-            SidePanel = panels[this.props.uiControls.showAddFieldPicker];
-
-        } else {
-            // we are just showing the default field management side panel
-            SidePanel = TableFieldsManagerSidePanel;
-        }
-
-        return (
-            <SidePanel {...this.props} />
-        );
-    }
 
     isValid() {
         const { virtualTable } = this.props;
@@ -168,7 +94,7 @@ export default class VirtualTableEditor extends Component {
             <div style={{position: "relative", width: "100%"}}>
                 <div style={{position: "absolute", top: 0, bottom: 76, right: 0, left: 0}} className="wrapper clearfix pt4 pb2">
                     <div style={{height: "100%", width: 320}} className="VirtualTableSidePanel float-left">
-                        {this.renderSidePanel()}
+                        <VirtualTableSidePanel {...this.props} />
                     </div>
 
                     <div style={{position: "relative", height: "100%", marginLeft: 320}} className="VirtualTableMainContent">
@@ -183,8 +109,8 @@ export default class VirtualTableEditor extends Component {
 
                         <div className="bordered rounded p2 my2 inline-block">
                             <Filters
-                                filters={virtualTable && virtualTable.filter || []}
-                                tableMetadata={metadata && metadata.tableMetadata && metadata.tableMetadata.table || null}
+                                filters={virtualTable && virtualTable.filters || []}
+                                tableMetadata={metadata && virtualTable && metadata[virtualTable.table_id] && metadata[virtualTable.table_id].table || null}
                                 onChange={(filters) => this.props.setFilters(filters)}
                             />
                         </div>
