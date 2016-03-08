@@ -272,7 +272,7 @@
 
 (defn- describe-table-fks [driver table]
   (with-metadata [metadata driver (table/database table)]
-    (set (->> (.getImportedKeys metadata nil nil (:name table))
+    (set (->> (.getImportedKeys metadata nil (:schema table) (:name table))
               jdbc/result-set-seq
               (mapv (fn [result]
                       {:fk-column-name   (:fkcolumn_name result)
