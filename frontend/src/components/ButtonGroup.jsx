@@ -9,7 +9,7 @@ export default class ButtonGroup extends Component {
         selectedItem: null,
         className: "",
         buttonClassName: "Button",
-        buttonActiveClassName: ""
+        buttonActiveClassName: "bg-brand text-white"
     };
 
     render() {
@@ -18,7 +18,7 @@ export default class ButtonGroup extends Component {
         return (
         	<ul className={cx("Button-group", className)}>
                 {items.map((item, index) =>
-                    <li key={"bgroup"+index} className={cx(buttonClassName, { [buttonActiveClassName]:  item.value === selectedItem })} onClick={this.props.onChange.bind(null, item)}>
+                    <li key={"bgroup"+index} className={item.value === selectedItem ? cx(buttonClassName, buttonActiveClassName) : cx(buttonClassName)} onClick={this.props.onChange.bind(null, item)}>
                         {item.name}
                     </li>
                 )}
