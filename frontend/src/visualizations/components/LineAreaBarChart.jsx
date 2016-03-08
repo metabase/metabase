@@ -19,7 +19,7 @@ export default class LineAreaBarChart extends Component {
     static noHeader = true;
     static supportsSeries = true;
 
-    static minSize = { width: 3, height: 2 };
+    static minSize = { width: 2, height: 2 };
 
     static isSensible(cols, rows) {
         return rows.length > 1 && cols.length > 1;
@@ -119,9 +119,9 @@ export default class LineAreaBarChart extends Component {
         }
     }
 
-    getSettings() {
+    getFidelity() {
         let fidelity = { x: 0, y: 0 };
-        let size = this.props.size ||  { width: Infinity, height: Infinity };
+        let size = this.props.gridSize ||  { width: Infinity, height: Infinity };
         if (size.width >= 5) {
             fidelity.x = 2;
         } else if (size.width >= 4) {
@@ -133,20 +133,36 @@ export default class LineAreaBarChart extends Component {
             fidelity.y = 1;
         }
 
+        return fidelity;
+    }
+
+    getSettings() {
+        let fidelity = this.getFidelity();
+
         let settings = this.props.series[0].card.visualization_settings;
 
+        console.log("fidelity", fidelity)
+        // no axis in < 1 fidelity
         if (fidelity.x < 1) {
-            settings = i.assocIn(settings, ["yAxis", "labels_enabled"], false);
             settings = i.assocIn(settings, ["yAxis", "axis_enabled"], false);
         }
         if (fidelity.y < 1) {
-            settings = i.assocIn(settings, ["xAxis", "labels_enabled"], false);
             settings = i.assocIn(settings, ["xAxis", "axis_enabled"], false);
         }
-        if (fidelity.x < 1 || fidelity.y < 1) {
-            settings = i.assocIn(settings, ["line", "marker_enabled"], false);
+
+        // no labels in < 2 fidelity
+        if (fidelity.x < 2) {
+            settings = i.assocIn(settings, ["yAxis", "labels_enabled"], false);
+        }
+        if (fidelity.y < 2) {
+            settings = i.assocIn(settings, ["xAxis", "labels_enabled"], false);
+        }
+
+        // smooth interpolation at smallest x/y fidelity
+        if (fidelity.x === 0 && fidelity.y === 0) {
             settings = i.assocIn(settings, ["line", "interpolate"], "cardinal");
         }
+        console.log(settings)
 
         return settings;
     }

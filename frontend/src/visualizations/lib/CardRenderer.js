@@ -27,7 +27,7 @@ import { colorShades } from "./utils";
 
 import { formatValue } from "metabase/lib/formatting";
 
-const MIN_PIXELS_PER_TICK = { x: 100, y: 30 };
+const MIN_PIXELS_PER_TICK = { x: 100, y: 32 };
 const BAR_PADDING_RATIO = 0.2;
 const DEFAULT_INTERPOLATION = "linear";
 
@@ -89,6 +89,8 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues) {
 
     if (settings.xAxis.labels_enabled) {
         chart.xAxisLabel(settings.xAxis.title_text || getFriendlyName(dimensionColumn));
+    }
+    if (settings.xAxis.axis_enabled) {
         chart.renderVerticalGridLines(settings.xAxis.gridLine_enabled);
 
         if (dimensionColumn && dimensionColumn.unit) {
@@ -128,8 +130,11 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues) {
 
 function applyChartOrdinalXAxis(chart, settings, series, xValues) {
     const dimensionColumn = series[0].data.cols[0];
+
     if (settings.xAxis.labels_enabled) {
         chart.xAxisLabel(settings.xAxis.title_text || getFriendlyName(dimensionColumn));
+    }
+    if (settings.xAxis.axis_enabled) {
         chart.renderVerticalGridLines(settings.xAxis.gridLine_enabled);
         chart.xAxis().ticks(xValues.length);
         adjustTicksIfNeeded(chart.xAxis(), chart.width(), MIN_PIXELS_PER_TICK.x);
@@ -156,26 +161,27 @@ function applyChartOrdinalXAxis(chart, settings, series, xValues) {
 }
 
 function applyChartYAxis(chart, settings, series, yAxisSplit) {
-    if (settings.yAxis.labels_enabled) {
-        chart.renderHorizontalGridLines(true);
-        chart.elasticY(true);
 
+    if (settings.yAxis.labels_enabled) {
         // left
         if (settings.yAxis.title_text) {
             chart.yAxisLabel(settings.yAxis.title_text);
         } else if (yAxisSplit[0].length === 1) {
             chart.yAxisLabel(getFriendlyName(series[yAxisSplit[0][0]].data.cols[1]));
         }
-        adjustTicksIfNeeded(chart.yAxis(), chart.height(), MIN_PIXELS_PER_TICK.y);
-
         // right
-        if (yAxisSplit.length > 1) {
-            if (yAxisSplit[1].length === 1) {
-                chart.rightYAxisLabel(getFriendlyName(series[yAxisSplit[1][0]].data.cols[1]));
-            }
-            if (chart.rightYAxis) {
-                adjustTicksIfNeeded(chart.rightYAxis(), chart.height(), MIN_PIXELS_PER_TICK.y);
-            }
+        if (yAxisSplit.length > 1 && yAxisSplit[1].length === 1) {
+            chart.rightYAxisLabel(getFriendlyName(series[yAxisSplit[1][0]].data.cols[1]));
+        }
+    }
+
+    if (settings.yAxis.axis_enabled) {
+        chart.renderHorizontalGridLines(true);
+        chart.elasticY(true);
+
+        adjustTicksIfNeeded(chart.yAxis(), chart.height(), MIN_PIXELS_PER_TICK.y);
+        if (yAxisSplit.length > 1 && chart.rightYAxis) {
+            adjustTicksIfNeeded(chart.rightYAxis(), chart.height(), MIN_PIXELS_PER_TICK.y);
         }
     } else {
         chart.yAxis().ticks(0);
@@ -398,19 +404,21 @@ function lineAndBarOnRender(chart, settings) {
 
     function hideDisabledLabels() {
        if (!x.labels_enabled) {
-           chart.selectAll(".x-axis-label").remove();
+        //    chart.selectAll(".x-axis-label").remove();
        }
        if (!y.labels_enabled) {
-           chart.selectAll(".y-axis-label").remove();
+        //    chart.selectAll(".y-axis-label").remove();
        }
     }
 
     function hideDisabledAxis() {
        if (!x.axis_enabled) {
            chart.selectAll(".axis.x").remove();
+        //    chart.selectAll(".x-axis-label").remove();
        }
        if (!y.axis_enabled) {
            chart.selectAll(".axis.y, .axis.yr").remove();
+        //    chart.selectAll(".y-axis-label").remove();
        }
     }
 
@@ -421,15 +429,11 @@ function lineAndBarOnRender(chart, settings) {
     }
 
     function adjustMargin(margin, direction, axisSelector, labelSelector, enabled) {
-        if (enabled) {
-            let axis = chart.select(axisSelector).node();
-            let label = chart.select(labelSelector).node();
-            let axisSize = axis ? axis.getBoundingClientRect()[direction] + 10 : 0;
-            let labelSize = label ? label.getBoundingClientRect()[direction] + 5 : 0;
-            chart.margins()[margin] = axisSize + labelSize;
-        } else {
-            chart.margins()[margin] = 0;
-        }
+        let axis = chart.select(axisSelector).node();
+        let label = chart.select(labelSelector).node();
+        let axisSize = axis ? axis.getBoundingClientRect()[direction] + 10 : 0;
+        let labelSize = label ? label.getBoundingClientRect()[direction] + 5 : 0;
+        chart.margins()[margin] = axisSize + labelSize;
     }
 
     function computeMinHorizontalMargins() {
