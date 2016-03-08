@@ -9,7 +9,7 @@ export default class PickBaseTableSidePanel extends Component {
         this.props.startNewTable();
 
         try {
-            await this.props.fetchTables(this.props.databaseId);
+            await this.props.fetchTables(this.props.databaseId, this.props.schema);
         } catch (error) {
             this.setState({ error });
         }

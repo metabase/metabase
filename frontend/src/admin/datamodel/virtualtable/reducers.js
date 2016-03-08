@@ -26,6 +26,7 @@ import {
 
 
 export const databaseId = handleActions({}, null);
+export const schema = handleActions({}, null);
 
 export const uiControls = handleActions({
     [UI_ADD_FIELD_CHOOSER]: { next: (state, { payload }) => ({ ...state, editing: {} }) },
@@ -47,7 +48,7 @@ export const uiControls = handleActions({
 
 
 export const virtualTable = handleActions({
-    [START_NEW_TABLE]: { next: (state, { payload }) => ({ name: "", description: "", fields: [], filters: [], joins: [] })},
+    [START_NEW_TABLE]: { next: (state, { payload }) => ({ display_name: "", description: "", fields: [], filters: [], joins: [] })},
     [PICK_BASE_TABLE]: { next: (state, { payload }) => ({ 
         ...state, 
         database_id: payload.table.db_id, 

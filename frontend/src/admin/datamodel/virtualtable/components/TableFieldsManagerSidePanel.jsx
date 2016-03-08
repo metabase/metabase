@@ -50,7 +50,7 @@ export default class TableFieldsManagerSidePanel extends Component {
     }
 
     render() {
-        const { virtualTable } = this.props;
+        const { metadata, virtualTable } = this.props;
 
         return (
             <div style={{height: "100%"}} className="flex flex-column">
@@ -76,16 +76,15 @@ export default class TableFieldsManagerSidePanel extends Component {
                 <div style={{flexGrow: "2"}} className="p1 scroll-y">
                     {/* Always rendering the base table and its fields as the first table. */}
                     {virtualTable && virtualTable.fields && virtualTable.fields.length > 0 &&
-                        <TableFieldList
-                            table={virtualTable}
-                            fieldsFilterPredicate={(field) => field.source === "core"}
-                            canAction={() => false}
-                            onAction={() => null}
-                            fieldIsChecked={(field) => field.included}
-                            onFieldToggleChecked={(field, checked) => checked ? this.props.includeField(field) : this.props.excludeField(field) }
-                            fieldCanAction={() => false}
-                            onFieldAction={(field) => null}
-                        />
+                        <div>
+                            <h5 className="text-uppercase text-grey-4 pb1">{metadata[virtualTable.table_id].table.display_name}</h5>
+                            <FieldList
+                                fields={virtualTable.fields.filter((f) => f.source === "core")}
+                                isChecked={(field) => field.included}
+                                onToggleChecked={(field, checked) => checked ? this.props.includeField(field) : this.props.excludeField(field)}
+                                canAction={() => false}
+                            />
+                        </div>
                     }
 
                     {/* Next come any of our join tables */}

@@ -211,5 +211,5 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
             $scope.$apply(() => $location.url(url));
         }
     };
-    $scope.store = createStore(virtualTableReducer, {databaseId: parseInt($routeParams.databaseId) });
+    $scope.store = createStore(virtualTableReducer, {databaseId: parseInt($routeParams.databaseId), schema: $routeParams.schema });
 }]);

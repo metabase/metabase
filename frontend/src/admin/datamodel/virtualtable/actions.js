@@ -45,7 +45,7 @@ export const pickBaseTable = createThunkAction(PICK_BASE_TABLE, (table) => {
 
 // update the name/description on the virtual table
 export const SET_NAME_DESCRIPTION = "SET_NAME_DESCRIPTION";
-export const setNameAndDescription = createAction(SET_NAME_DESCRIPTION, (name, description) => ({ name, description }));
+export const setNameAndDescription = createAction(SET_NAME_DESCRIPTION, (name, description) => ({ display_name: name, description }));
 
 
 // update the filters on the virtual table
@@ -111,7 +111,7 @@ export const FETCH_TABLES = "FETCH_TABLES";
 export const fetchTables = createAction(FETCH_TABLES, async (databaseId, schema) => {
     let tables = await Metabase.db_tables({dbId: databaseId});
     if (schema) {
-        // TODO: filter results by schema
+        tables = tables.filter((table) => table.schema === schema);
     }
     return tables;
 });

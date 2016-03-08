@@ -1,5 +1,6 @@
 import React, { Component, PropTypes } from "react";
 import _ from "underscore";
+import cx from "classnames";
 
 import VirtualTableSidePanel from "./VirtualTableSidePanel.jsx";
 
@@ -18,12 +19,13 @@ export default class VirtualTableEditor extends Component {
 
     isValid() {
         const { virtualTable } = this.props;
-        return virtualTable && virtualTable.table_id && virtualTable.name && virtualTable.fields && virtualTable.fields.length > 0;
+        return virtualTable && virtualTable.table_id && virtualTable.display_name && virtualTable.fields && virtualTable.fields.length > 0;
     }
 
     onCreateTable() {
         if (this.isValid()) {
-            console.log("create that table yo!", this.props.virtualTable);
+            alert("create that table yo!");
+            console.log("creating table", this.props.virtualTable);
         }
     }
 
@@ -98,7 +100,7 @@ export default class VirtualTableEditor extends Component {
 
                     <div style={{position: "relative", height: "100%", marginLeft: 320}} className="VirtualTableMainContent">
                         <NameAndDescription 
-                            name={virtualTable && virtualTable.name || null} 
+                            name={virtualTable && virtualTable.display_name || null} 
                             description={virtualTable && virtualTable.description || null} 
                             namePlaceholder="Give your table a name"
                             descriptionPlaceholder="Give your table a description" 
@@ -115,7 +117,7 @@ export default class VirtualTableEditor extends Component {
                         </div>
 
                         <div style={{position: "absolute", bottom: 0, top: 150, left: 0, right: 0}} className="pl4 pt2">
-                            { previewData && false ?
+                            { previewData ?
                                 <Visualization
                                     series={[{card: {display: "table", dataset_query: {type: "query", query: {aggregation: ["rows"]}}}, data: previewData.data}]}
                                     card={{display: "table", dataset_query: {type: "query", query: {aggregation: ["rows"]}}}}
@@ -146,8 +148,8 @@ export default class VirtualTableEditor extends Component {
                         </div>
 
                         <div>
-                            <a className="text-grey-3 text-bold">Cancel</a>
-                            <a className="Button ml3" disabled={!this.isValid()} onClick={() => this.onCreateTable()}>Create Table</a>
+                            <a className="text-grey-3 no-decoration text-bold" href={"/admin/datamodel/database/"+this.props.databaseId}>Cancel</a>
+                            <button className={cx("Button ml3", {"Button--primary": this.isValid()})} type="button" disabled={!this.isValid()} onClick={() => this.onCreateTable()}>Create Table</button>
                         </div>
                     </div>
                 </div>
