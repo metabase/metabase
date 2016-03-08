@@ -38,6 +38,14 @@ const HEAT_MAP_COLORS = [
 const HEAT_MAP_ZERO_COLOR = '#CCC';
 
 export default class ChoroplethMap extends Component {
+    static propTypes = {
+        geoJsonPath: PropTypes.string.isRequired,
+        projection: PropTypes.object.isRequired,
+        getRowKey: PropTypes.func.isRequired,
+        getRowValue: PropTypes.func.isRequired,
+        getFeatureKey: PropTypes.func.isRequired,
+        getFeatureName: PropTypes.func.isRequired
+    };
 
     static isSensible(cols, rows) {
         return cols.length > 1 && isString(cols[0]);
@@ -55,14 +63,23 @@ export default class ChoroplethMap extends Component {
     }
 
     componentWillMount() {
-        d3.json("/app/charts/us-states.json", (json) => {
+        d3.json(this.props.geoJsonPath, (json) => {
             this.setState({ features: json.features });
         });
     }
 
     render() {
-        let { series, gridSize, hovered, onHoverChange, className } = this.props;
-        let { features } = this.state;
+        const {
+            series,
+            className,
+            gridSize,
+            hovered, onHoverChange,
+            projection,
+            getRowKey, getRowValue,
+            getFeatureKey, getFeatureName
+        } = this.props;
+
+        const { features } = this.state;
 
         if (!features) {
             return (
@@ -72,10 +89,6 @@ export default class ChoroplethMap extends Component {
             );
         }
 
-        const getRowKey = (row) => row[0].toLowerCase();
-        const getRowValue = (row) => row[1] || 0
-        const getFeatureKey = (feature) => feature.properties.name.toLowerCase();
-        const getFeatureName = (feature) => feature.properties.name
         const getFeatureValue = (feature) => valuesMap[getFeatureKey(feature)]
 
         let rows = series[0].data.rows;
@@ -100,7 +113,6 @@ export default class ChoroplethMap extends Component {
             return value == null ? HEAT_MAP_ZERO_COLOR : colorScale(value);
         }
 
-        let projection = d3.geo.albersUsa();
         let geo = d3.geo.path()
             .projection(projection);
 
