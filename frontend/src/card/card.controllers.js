@@ -23,7 +23,6 @@ import Query from "metabase/lib/query";
 import { createQuery } from "metabase/lib/query";
 import { createCard, serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
 import { loadTable } from "metabase/lib/table";
-import { getDefaultColor } from "metabase/lib/visualization_settings";
 
 import NotFound from "metabase/components/NotFound.jsx";
 
