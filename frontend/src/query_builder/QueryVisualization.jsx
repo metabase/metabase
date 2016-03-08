@@ -10,7 +10,6 @@ import VisualizationSettings from './VisualizationSettings.jsx';
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 
 import MetabaseSettings from "metabase/lib/settings";
-import Modal from "metabase/components/Modal.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import Query from "metabase/lib/query";
 
