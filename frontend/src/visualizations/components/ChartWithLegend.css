@@ -36,10 +36,10 @@
   max-height: 25%;
 }
 :local .ChartWithLegend.vertical.flexChart .Chart {
-  background-color: rgba(255,0,0,0.1);
   flex-grow: 1;
   flex-shrink: 1;
   min-height: 75%;
+  /*background-color: rgba(255,0,0,0.1);*/
 }
 
 /* HORIZONTAL */
@@ -58,15 +58,15 @@
   max-width: 33%;
 }
 :local .ChartWithLegend.horizontal.flexChart .Chart {
-  background-color: rgba(255,0,0,0.1);
   flex-grow: 1;
   flex-shrink: 1;
   min-width: 66%;
+  /*background-color: rgba(255,0,0,0.1);*/
 }
 
 :local .ChartWithLegend .Legend {
-  background-color: rgba(0,0,255,0.1);
+  /*background-color: rgba(0,0,255,0.1);*/
 }
 :local .ChartWithLegend .Chart {
-  background-color: rgba(0,255,0,0.1);
+  /*background-color: rgba(0,255,0,0.1);*/
 }
