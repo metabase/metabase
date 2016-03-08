@@ -23,18 +23,29 @@ export default class ChartWithLegend extends Component {
         width -= PADDING * 2
         height -= PADDING;
 
-        let chartWidth, chartHeight;
+        let chartWidth, chartHeight, flexChart = false;
         let type, legendType;
-        let isLandscape = gridSize && gridSize.width > gridSize.height / GRID_ASPECT_RATIO;
-        if (!gridSize || (isLandscape && gridSize.width > 3 && gridSize.height > 2)) {
+        let isHorizontal = gridSize && gridSize.width > gridSize.height / GRID_ASPECT_RATIO;
+        if (!gridSize || (isHorizontal && gridSize.width > 3 && gridSize.height > 2)) {
             type = "horizontal";
             legendType = "vertical";
-            chartWidth = Math.min(height * (aspectRatio), width * (2 / 3));
+            let desiredWidth = height * aspectRatio;
+            if (desiredWidth > width * (2 / 3)) {
+                flexChart = true;
+            } else {
+                chartWidth = desiredWidth;
+            }
             chartHeight = height;
-        } else if (!isLandscape && gridSize.height > 3 && gridSize.width > 2) {
+        } else if (!isHorizontal && gridSize.height > 3 && gridSize.width > 2) {
             type = "vertical";
             legendType = "horizontal";
-            chartHeight = Math.min(width * (1 / aspectRatio), height * (3 / 4));
+            let desiredHeight = width * (1 / aspectRatio);
+            if (desiredHeight > height * (3 / 4)) {
+                // chartHeight = height * (3 / 4);
+                flexChart = true;
+            } else {
+                chartHeight = desiredHeight;
+            }
             chartWidth = width;
         } else {
             type = "small";
@@ -46,7 +57,7 @@ export default class ChartWithLegend extends Component {
         }
 
         return (
-            <div className={cx(className, styles.ChartWithLegend, styles[type])} style={{ paddingBottom: PADDING, paddingLeft: PADDING, paddingRight: PADDING }}>
+            <div className={cx(className, styles.ChartWithLegend, styles[type], flexChart && styles.flexChart)} style={{ paddingBottom: PADDING, paddingLeft: PADDING, paddingRight: PADDING }}>
                 <Legend
                     className={styles.Legend}
                     type={legendType}
@@ -55,7 +66,7 @@ export default class ChartWithLegend extends Component {
                     hovered={hovered}
                     onHoverChange={onHoverChange}
                 />
-                <div className={styles.Chart} style={{ width: chartWidth, height: chartHeight }}>
+                <div className={cx(styles.Chart)} style={{ width: chartWidth, height: chartHeight }}>
                     {children}
                 </div>
             </div>
