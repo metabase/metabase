@@ -54,7 +54,7 @@ const RevisionApi = new AngularResourceProxy("Revision", ["list", "revert"]);
 
 // FIXME: REMOVE SCALING ONCE WE ADD A DB MIGRATION TO SCALE DASHCARD SIZES
 const FIXME_DASHCARD_X_SCALE = 2;
-const FIXME_DASHCARD_Y_SCALE = 2;
+const FIXME_DASHCARD_Y_SCALE = 3;
 
 // action creators
 
