@@ -10,7 +10,7 @@ import cx from "classnames";
 const LegendItem = ({ title, href, color, showDot = true, showTitle = true, isMuted = false, showTooltip = true, onMouseEnter, onMouseLeave, className }) =>
     <a
         href={href}
-        className={cx(styles.LegendItem, className, "no-decoration h3 text-bold flex align-center", { mr1: showTitle, muted: isMuted })}
+        className={cx(styles.LegendItem, className, "no-decoration flex align-center", { mr1: showTitle, muted: isMuted })}
         style={{ overflowX: "hidden", flex: "0 1 auto" }}
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
@@ -27,6 +27,5 @@ const LegendItem = ({ title, href, color, showDot = true, showTitle = true, isMu
             <Ellipsified showTooltip={showTooltip}>{title}</Ellipsified>
         }
     </a>
-
 
 export default LegendItem;

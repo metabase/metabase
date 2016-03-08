@@ -34,10 +34,7 @@ export default class PieChart extends Component {
         let rows = series[0].data.rows;
         let total = rows.reduce((sum, row) => sum + row[1], 0);
 
-        let legendTitles = {
-            horizontal: rows.map(row => String(row[0])),
-            vertical: rows.map(row => String(row[0]) + " - " + (100 * row[1] / total).toFixed(2) + "%")
-        };
+        let legendTitles = rows.map(row => [String(row[0]), (100 * row[1] / total).toFixed(2) + "%"]);
 
         let value, title;
         if (hovered && hovered.index != null) {
@@ -64,7 +61,12 @@ export default class PieChart extends Component {
         const slices = pie(rows);
 
         return (
-            <ChartWithLegend className={className} legendTitles={legendTitles} legendColors={sliceColors} gridSize={gridSize} hovered={hovered} onHoverChange={onHoverChange}>
+            <ChartWithLegend
+                className={className}
+                legendTitles={legendTitles} legendColors={sliceColors}
+                gridSize={gridSize}
+                hovered={hovered} onHoverChange={onHoverChange}
+            >
                 <div className={styles.ChartAndDetail}>
                     <div className={styles.Detail}>
                         <div className={styles.Value}>{value}</div>

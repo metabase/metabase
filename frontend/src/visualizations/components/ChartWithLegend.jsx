@@ -2,7 +2,9 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 import styles from "./ChartWithLegend.css";
 
-import Legend from "./Legend.jsx";
+import LegendVertical from "./LegendVertical.jsx";
+import LegendHorizontal from "./LegendHorizontal.jsx";
+
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 
 import cx from "classnames";
@@ -24,11 +26,14 @@ export default class ChartWithLegend extends Component {
         height -= PADDING;
 
         let chartWidth, chartHeight, flexChart = false;
-        let type, legendType;
+        let type, LegendComponent;
         let isHorizontal = gridSize && gridSize.width > gridSize.height / GRID_ASPECT_RATIO;
         if (!gridSize || (isHorizontal && gridSize.width > 3 && gridSize.height > 2)) {
             type = "horizontal";
-            legendType = "vertical";
+            LegendComponent = LegendVertical;
+            if (gridSize && gridSize.width < 6) {
+                legendTitles = legendTitles.map(title => Array.isArray(title) ? title.slice(0,1) : title);
+            }
             let desiredWidth = height * aspectRatio;
             if (desiredWidth > width * (2 / 3)) {
                 flexChart = true;
@@ -38,7 +43,8 @@ export default class ChartWithLegend extends Component {
             chartHeight = height;
         } else if (!isHorizontal && gridSize.height > 3 && gridSize.width > 2) {
             type = "vertical";
-            legendType = "horizontal";
+            LegendComponent = LegendHorizontal;
+            legendTitles = legendTitles.map(title => Array.isArray(title) ? title[0] : title);
             let desiredHeight = width * (1 / aspectRatio);
             if (desiredHeight > height * (3 / 4)) {
                 // chartHeight = height * (3 / 4);
@@ -49,23 +55,19 @@ export default class ChartWithLegend extends Component {
             chartWidth = width;
         } else {
             type = "small";
-            legendType = "none";
-        }
-
-        if (legendTitles && !Array.isArray(legendTitles)) {
-            legendTitles = legendTitles[legendType] || [];
         }
 
         return (
             <div className={cx(className, styles.ChartWithLegend, styles[type], flexChart && styles.flexChart)} style={{ paddingBottom: PADDING, paddingLeft: PADDING, paddingRight: PADDING }}>
-                <Legend
-                    className={styles.Legend}
-                    type={legendType}
-                    titles={legendTitles}
-                    colors={legendColors}
-                    hovered={hovered}
-                    onHoverChange={onHoverChange}
-                />
+                { LegendComponent ?
+                    <LegendComponent
+                        className={styles.Legend}
+                        titles={legendTitles}
+                        colors={legendColors}
+                        hovered={hovered}
+                        onHoverChange={onHoverChange}
+                    />
+                : null }
                 <div className={cx(styles.Chart)} style={{ width: chartWidth, height: chartHeight }}>
                     {children}
                 </div>
