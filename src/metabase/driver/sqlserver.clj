@@ -2,7 +2,6 @@
   (:require [clojure.string :as s]
             (korma [core :as k]
                    [db :as kdb])
-            [korma.sql.utils :as kutils]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.util.korma-extensions :as kx])

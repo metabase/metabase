@@ -7,8 +7,7 @@
             (metabase.models [hydrate :refer [hydrate]]
                              [field :refer [Field] :as field]
                              [field-values :refer [FieldValues create-field-values-if-needed field-should-have-field-values?]]
-                             [foreign-key :refer [ForeignKey] :as fk])
-            [metabase.util :as u]))
+                             [foreign-key :refer [ForeignKey] :as fk])))
 
 (defannotation FieldSpecialType
   "Param must be a valid `Field` special type."
@@ -96,7 +95,7 @@
 (defendpoint POST "/:id/value_map_update"
   "Update the human-readable values for a `Field` whose special type is `category`/`city`/`state`/`country`
    or whose base type is `BooleanField`."
-  [id :as {{:keys [fieldId values_map]} :body}] ; WTF is the reasoning behind client passing fieldId in POST params?
+  [id :as {{:keys [values_map]} :body}]
   {values_map [Required Dict]}
   (let-404 [field (Field id)]
     (write-check field)

@@ -1,8 +1,6 @@
 (ns metabase.api.slack
   "/api/slack endpoints"
-  (:require [clojure.set :as set]
-            [clojure.tools.logging :as log]
-            [compojure.core :refer [PUT]]
+  (:require [compojure.core :refer [PUT]]
             [metabase.api.common :refer :all]
             [metabase.config :as config]
             [metabase.integrations.slack :as slack]))
@@ -16,6 +14,7 @@
     ;; just check that channels.list doesn't throw an exception (that the connection works)
     (when-not config/is-test?
       (slack/GET :channels.list, :exclude_archived 1, :token slack-token))
+    (slack/slack-token slack-token)
     {:ok true}
     (catch clojure.lang.ExceptionInfo info
       {:status 400, :body (ex-data info)})))

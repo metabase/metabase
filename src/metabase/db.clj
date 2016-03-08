@@ -5,7 +5,6 @@
             (clojure [set :as set]
                      [string :as s]
                      [walk :as walk])
-            [colorize.core :as color]
             (korma [core :as k]
                    [db :as kdb])
             [medley.core :as m]
@@ -215,6 +214,7 @@
 
 (defn upd-non-nil-keys
   "Calls `upd`, but filters out KWARGS with `nil` values."
+  {:style/indent 2}
   [entity entity-id & {:as kwargs}]
   (->> (m/filter-vals (complement nil?) kwargs)
        (m/mapply upd entity entity-id)))

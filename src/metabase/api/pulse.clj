@@ -25,24 +25,24 @@
 
 (defendpoint POST "/"
   "Create a new `Pulse`."
-  [:as {{:keys [name cards channels] :as body} :body}]
+  [:as {{:keys [name cards channels]} :body}]
   {name     [Required NonEmptyString]
    cards    [Required ArrayOfMaps]
    channels [Required ArrayOfMaps]}
   ;; prevent more than 5 cards
   ;; limit channel types to :email and :slack
-  (->500 (pulse/create-pulse name *current-user-id* (filter identity (map :id cards)) channels)))
+  (check-500 (pulse/create-pulse name *current-user-id* (filter identity (map :id cards)) channels)))
 
 
 (defendpoint GET "/:id"
   "Fetch `Pulse` with ID."
   [id]
-  (->404 (pulse/retrieve-pulse id)))
+  (check-404 (pulse/retrieve-pulse id)))
 
 
 (defendpoint PUT "/:id"
   "Update a `Pulse` with ID."
-  [id :as {{:keys [name cards channels] :as body} :body}]
+  [id :as {{:keys [name cards channels]} :body}]
   {name     [Required NonEmptyString]
    cards    [Required ArrayOfMaps]
    channels [Required ArrayOfMaps]}

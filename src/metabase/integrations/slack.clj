@@ -2,12 +2,18 @@
   (:require [clojure.tools.logging :as log]
             [cheshire.core :as json]
             [clj-http.client :as http]
-            [metabase.models.setting :refer [defsetting]]
+            [metabase.models.setting :as setting, :refer [defsetting]]
             [metabase.util :as u]))
 
 
 ;; Define a setting which captures our Slack api token
-(defsetting slack-token "Slack API bearer token obtained from https://api.slack.com/web#authentication")
+(defsetting slack-token "Slack API bearer token obtained from https://api.slack.com/web#authentication" nil
+  :setter (fn [new-value]
+            (setting/set* :slack-token new-value)
+            (require 'metabase.metabot)
+            ((ns-resolve 'metabase.metabot (if (seq new-value)
+                                              'start-metabot!
+                                              'stop-metabot!)))))
 
 (def ^:private ^:const ^String slack-api-base-url "https://slack.com/api")
 (def ^:private ^:const ^String files-channel-name "metabase_files")
@@ -18,7 +24,7 @@
   (boolean (seq (slack-token))))
 
 
-(defn- handle-response [{:keys [status body], :as response}]
+(defn- handle-response [{:keys [status body]}]
   (let [body (json/parse-string body keyword)]
     (if (and (= 200 status) (:ok body))
       body
@@ -111,3 +117,8 @@
     :text        text
     :attachments (when (seq attachments)
                    (json/generate-string attachments))))
+
+(def ^{:arglists '([& {:as params}])} websocket-url
+  "Return a new WebSocket URL for [Slack's Real Time Messaging API](https://api.slack.com/rtm)
+   This makes an API request so don't call it more often than needed."
+  (comp :url (partial GET :rtm.start)))

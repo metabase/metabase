@@ -1,12 +1,10 @@
 (ns metabase.models.card
-  (:require [clojure.core.match :refer [match]]
-            [korma.core :as k]
+  (:require [korma.core :as k]
             [medley.core :as m]
             [metabase.db :as db]
             (metabase.models [dependency :as dependency]
                              [interface :as i]
-                             [revision :as revision]
-                             [user :refer [User]])
+                             [revision :as revision])
             [metabase.query :as q]))
 
 (def ^:const display-types
@@ -68,7 +66,7 @@
 
 (defn card-dependencies
   "Calculate any dependent objects for a given `Card`."
-  [this id {:keys [dataset_query] :as instance}]
+  [this id {:keys [dataset_query]}]
   (when (and dataset_query
              (= :query (keyword (:type dataset_query))))
     {:Metric  (q/extract-metric-ids (:query dataset_query))

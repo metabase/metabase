@@ -120,7 +120,7 @@
             :active       true)
           ;; Otherwise update the Table if needed
           (when (nil? (:display_name existing-table))
-            (upd Field (:id existing-table)
+            (upd Table (:id existing-table)
               :display_name display-name)))))))
 
 

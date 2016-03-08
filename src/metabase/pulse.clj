@@ -7,7 +7,6 @@
                       [core :as t]
                       [format :as f])
             [hiccup.core :refer [html h]]
-            [metabase.models.setting :as setting]
             [metabase.util.urls :as urls])
   (:import (java.awt BasicStroke Color Dimension RenderingHints)
            java.awt.image.BufferedImage
@@ -245,7 +244,7 @@
                    rows)]]))
 
 (defn- render-truncation-warning
-  [card {:keys [cols rows] :as data} rows-limit cols-limit]
+  [card {:keys [cols rows]} rows-limit cols-limit]
   (if (or (> (count rows) rows-limit)
           (> (count cols) cols-limit))
     [:div {:style (style {:padding-top :16px})}
@@ -281,7 +280,7 @@
      (render-truncation-warning card data rows-limit 2)]))
 
 (defn- render:scalar
-  [card {:keys [cols rows] :as data}]
+  [card {:keys [cols rows]}]
   [:div {:style (style scalar-style)}
    (-> rows first first (format-cell (first cols)) h)])
 
@@ -310,11 +309,12 @@
                  (- (last yt) sparkline-dot-radius)
                  (* 2 sparkline-dot-radius)
                  (* 2 sparkline-dot-radius)))
-    (ImageIO/write image "png" os)
+    (when-not (ImageIO/write image "png" os)                    ; returns `true` if successful -- see JavaDoc
+      (throw (Exception. "No approprate image writer found!")))
     (.toByteArray os)))
 
 (defn- render:sparkline
-  [card {:keys [rows cols] :as data}]
+  [card {:keys [rows cols]}]
   (let [xs     (for [row  rows
                      :let [x (first row)]]
                  (if (instance? Date x)
@@ -360,8 +360,7 @@
 (defn- render-image-with-filename [^String filename]
   (*render-img-fn* (IOUtils/toByteArray (io/input-stream (io/resource filename)))))
 
-(defn- render:empty
-  [card {:keys [rows cols] :as data}]
+(defn- render:empty [_ _]
   [:div {:style (style {:text-align :center})}
    [:img {:style (style {:width :104px})
           :src   (render-image-with-filename "frontend_client/app/img/pulse_no_results@2x.png")}]

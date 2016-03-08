@@ -16,6 +16,7 @@
                       [db :as db]
                       [driver :as driver]
                       [events :as events]
+                      [metabot :as metabot]
                       [middleware :as mb-middleware]
                       [routes :as routes]
                       [sample-data :as sample-data]
@@ -23,7 +24,6 @@
                       [task :as task]
                       [util :as u])
             (metabase.models [setting :refer [defsetting]]
-                             [database :refer [Database]]
                              [user :refer [User]])))
 
 ;; ## CONFIG
@@ -153,7 +153,10 @@
       ;; add the sample dataset DB for fresh installs
       (sample-data/add-sample-dataset!)
       ;; otherwise update if appropriate
-      (sample-data/update-sample-dataset-if-needed!)))
+      (sample-data/update-sample-dataset-if-needed!))
+
+    ;; start the metabot thread
+    (metabot/start-metabot!))
 
   (initialization-complete!)
   (log/info "Metabase Initialization COMPLETE"))
@@ -165,7 +168,7 @@
 (def ^:private jetty-instance
   (atom nil))
 
-(defn start-jetty
+(defn start-jetty!
   "Start the embedded Jetty web server."
   []
   (when-not @jetty-instance
@@ -188,7 +191,7 @@
       (->> (ring-jetty/run-jetty app (assoc jetty-config :join? false))
            (reset! jetty-instance)))))
 
-(defn stop-jetty
+(defn stop-jetty!
   "Stop the embedded Jetty web server."
   []
   (when @jetty-instance
@@ -204,7 +207,7 @@
   (log/info "Starting Metabase in STANDALONE mode")
   (try
     ;; launch embedded webserver async
-    (start-jetty)
+    (start-jetty!)
     ;; run our initialization process
     (init!)
     ;; Ok, now block forever while Jetty does its thing

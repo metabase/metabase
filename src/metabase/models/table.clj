@@ -23,7 +23,7 @@
   (let [defaults {:display_name (common/name->human-readable-name (:name table))}]
     (merge defaults table)))
 
-(defn- pre-cascade-delete [{:keys [id] :as table}]
+(defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete Segment :table_id id)
   (db/cascade-delete Metric :table_id id)
   (db/cascade-delete Field :table_id id))

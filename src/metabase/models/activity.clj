@@ -3,19 +3,16 @@
                       [events :as events])
             (metabase.models [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
-                             [database :refer [Database]]
                              [interface :as i]
                              [metric :refer [Metric]]
                              [pulse :refer [Pulse]]
-                             [segment :refer [Segment]]
-                             [table :refer [Table]]
-                             [user :refer [User]])
+                             [segment :refer [Segment]])
             [metabase.util :as u]))
 
 
 (i/defentity Activity :activity)
 
-(defn- pre-insert [{:keys [details] :as activity}]
+(defn- pre-insert [activity]
   (let [defaults {:timestamp (u/new-sql-timestamp)
                   :details {}}]
     (merge defaults activity)))

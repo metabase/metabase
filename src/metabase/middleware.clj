@@ -1,11 +1,9 @@
 (ns metabase.middleware
   "Metabase-specific middleware functions & configuration."
   (:require [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
             (cheshire factory
                       [generate :refer [add-encoder encode-str encode-nil]])
             [korma.core :as k]
-            [medley.core :refer [filter-vals map-vals]]
             [metabase.api.common :refer [*current-user* *current-user-id*]]
             [metabase.config :as config]
             [metabase.db :refer [sel]]
