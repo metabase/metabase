@@ -75,13 +75,25 @@
 
 /* Google Maps widgets */
 .DashCard .gm-style-mtc,
-.DashCard .gm-bundled-control {
+.DashCard .gm-bundled-control,
+.DashCard .PinMapUpdateButton {
   opacity: 0.01;
   transition: opacity 0.3s linear;
 }
 .DashCard:hover .gm-style-mtc,
-.DashCard:hover .gm-bundled-control {
+.DashCard:hover .gm-bundled-control,
+.DashCard:hover .PinMapUpdateButton {
   opacity: 1;
+}
+
+.Dash--editing .PinMap {
+  /* allow map to pan. need to stopPropagation in PinMap to prevent weird dragging interaction */
+  pointer-events: all;
+}
+
+.PinMapUpdateButton--disabled {
+  pointer-events: none;
+  color: color(var(--base-grey) shade(10%));
 }
 
 .Dash--editing .DashCard .Card {

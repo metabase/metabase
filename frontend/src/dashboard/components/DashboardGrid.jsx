@@ -63,10 +63,6 @@ export default class DashboardGrid extends Component {
                 id: change.dashcard.id,
                 attributes: { col: change.x, row: change.y, sizeX: change.w, sizeY: change.h }
             });
-            change.dashcard.col = change.x;
-            change.dashcard.row = change.y;
-            change.dashcard.sizeX = change.w;
-            change.dashcard.sizeY = change.h;
         }
 
         if (changes && changes.length > 0) {
@@ -185,6 +181,14 @@ export default class DashboardGrid extends Component {
         this.setState({ addSeriesModalDashCard: dc });
     }
 
+    onUpdateVisualizationSetting(dc, setting, value) {
+        this.props.setDashCardVisualizationSetting({
+            id: dc.id,
+            setting: setting,
+            value: value
+        });
+    }
+
     renderMobile() {
         const { isEditing } = this.props;
         const { width, dashcards } = this.state;
@@ -203,6 +207,7 @@ export default class DashboardGrid extends Component {
                             isEditing={isEditing}
                             onRemove={this.onDashCardRemove.bind(this, dc)}
                             onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
+                            onUpdateVisualizationSetting={this.onUpdateVisualizationSetting.bind(this, dc)}
                         />
                     </div>
                 )}
@@ -236,6 +241,7 @@ export default class DashboardGrid extends Component {
                             isEditing={isEditing}
                             onRemove={this.onDashCardRemove.bind(this, dc)}
                             onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
+                            onUpdateVisualizationSetting={this.onUpdateVisualizationSetting.bind(this, dc)}
                         />
                     </div>
                 )}

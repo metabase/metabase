@@ -336,6 +336,7 @@ export default class QueryVisualization extends Component {
                         <Visualization
                             className="full"
                             series={[{ card: card, data: this.props.result.data }]}
+                            isEditing={true}
                             // Table:
                             setSortFn={this.props.setSortFn}
                             cellIsClickableFn={this.props.cellIsClickableFn}

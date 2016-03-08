@@ -86,8 +86,10 @@ export default class DashCard extends Component {
                     className="flex-full"
                     series={series}
                     isDashboard={true}
+                    isEditing={isEditing}
                     gridSize={{ width: dashcard.sizeX, height: dashcard.sizeY }}
                     actionButtons={isEditing ? <DashCardActionButtons series={series} visualization={Viz} onRemove={onRemove} onAddSeries={onAddSeries} /> : undefined}
+                    onUpdateVisualizationSetting={this.props.onUpdateVisualizationSetting}
                 />
             );
         }

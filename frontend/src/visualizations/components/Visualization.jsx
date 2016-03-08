@@ -23,6 +23,7 @@ export default class Visualization extends Component {
         series: PropTypes.array.isRequired,
 
         isDashboard: PropTypes.bool,
+        isEditing: PropTypes.bool,
 
         // used by TableInteractive
         setSortFn: PropTypes.func,
@@ -31,7 +32,9 @@ export default class Visualization extends Component {
     };
 
     static defaultProps = {
-        isDashboard: false
+        isDashboard: false,
+        isEditing: false,
+        onUpdateVisualizationSetting: (...args) => console.warn("onUpdateVisualizationSetting", args)
     };
 
     componentWillMount() {

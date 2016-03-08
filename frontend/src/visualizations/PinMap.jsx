@@ -9,6 +9,7 @@ import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
 
 import _ from "underscore";
+import cx from "classnames";
 
 export default class PinMap extends Component {
     static displayName = "Pin Map";
@@ -25,17 +26,33 @@ export default class PinMap extends Component {
 
     constructor(props, context) {
         super(props, context);
-        this.state = {};
-        _.bindAll(this, "updateMapZoom", "updateMapCenter");
+        this.state = {
+            lat: null,
+            lon: null,
+            zoom: null
+        };
+        _.bindAll(this, "onMapZoomChange", "onMapCenterChange", "updateSettings");
     }
 
-    updateMapCenter(lat, lon) {
-        this.props.onUpdateVisualizationSetting(["map", "center_latitude"], lat);
-        this.props.onUpdateVisualizationSetting(["map", "center_longitude"], lat);
+    updateSettings() {
+        if (this.state.lat != null) {
+            this.props.onUpdateVisualizationSetting(["map", "center_latitude"], this.state.lat);
+        }
+        if (this.state.lon != null) {
+            this.props.onUpdateVisualizationSetting(["map", "center_longitude"], this.state.lon);
+        }
+        if (this.state.zoom != null) {
+            this.props.onUpdateVisualizationSetting(["map", "zoom"], this.state.zoom);
+        }
+        this.setState({ lat: null, lon: null, zoom: null });
     }
 
-    updateMapZoom(zoom) {
-        this.props.onUpdateVisualizationSetting(["map", "zoom"], zoom);
+    onMapCenterChange(lat, lon) {
+        this.setState({ lat, lon });
+    }
+
+    onMapZoomChange(zoom) {
+        this.setState({ zoom });
     }
 
     getTileUrl(settings, coord, zoom) {
@@ -70,7 +87,7 @@ export default class PinMap extends Component {
         }
 
         try {
-            let element = ReactDOM.findDOMNode(this);
+            let element = ReactDOM.findDOMNode(this.refs.map);
 
             let { card, data } = this.props.series[0];
 
@@ -114,11 +131,11 @@ export default class PinMap extends Component {
 
             map.addListener("center_changed", () => {
                 let center = map.getCenter();
-                this.updateMapCenter(center.lat(), center.lng());
+                this.onMapCenterChange(center.lat(), center.lng());
             });
 
             map.addListener("zoom_changed", () => {
-                this.updateMapZoom(map.getZoom());
+                this.onMapZoomChange(map.getZoom());
             });
         } catch (err) {
             console.error(err);
@@ -133,7 +150,19 @@ export default class PinMap extends Component {
     }
 
     render() {
-        return <div {...this.props}>x</div>;
+        const { className, isEditing } = this.props;
+        const { lat, lon, zoom } = this.state;
+        const disableUpdateButton = lat == null && lon == null && zoom == null;
+        return (
+            <div className={className + " PinMap relative"} onMouseDownCapture={(e) =>e.stopPropagation() /* prevent dragging */}>
+                <div className="absolute top left bottom right" ref="map"></div>
+                { isEditing ?
+                    <div className={cx("PinMapUpdateButton Button Button--small absolute top right m1", { "PinMapUpdateButton--disabled": disableUpdateButton })} onClick={this.updateSettings}>
+                        Save as default view
+                    </div>
+                : null }
+            </div>
+        );
     }
 }
 
