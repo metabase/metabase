@@ -13,12 +13,17 @@ import AddSeriesModal from "./AddSeriesModal.jsx";
 import _ from "underscore";
 import cx from "classnames";
 
+const GRID_WIDTH = 12;
+const GRID_ASPECT_RATIO = 4 / 3;
+const GRID_MARGIN = 6;
+
 export default class DashboardGrid extends Component {
     constructor(props, context) {
         super(props, context);
 
         this.state = {
             layout: this.getLayout(props),
+            dashcards: this.getSortedDashcards(props),
             removeModalDashCard: null,
             addSeriesModalDashCard: null,
             width: 0,
@@ -43,6 +48,7 @@ export default class DashboardGrid extends Component {
 
     componentWillReceiveProps(nextProps) {
         this.setState({
+            dashcards: this.getSortedDashcards(nextProps),
             layout: this.getLayout(nextProps)
         });
     }
@@ -63,6 +69,16 @@ export default class DashboardGrid extends Component {
         if (changes && changes.length > 0) {
             MetabaseAnalytics.trackEvent("Dashboard", "Layout Changed");
         }
+    }
+
+    getSortedDashcards(props) {
+        return props.dashboard && props.dashboard.ordered_cards.sort((a, b) => {
+            if (a.row < b.row) { return -1; }
+            if (a.row > b.row) { return  1; }
+            if (a.col < b.col) { return -1; }
+            if (a.col > b.col) { return  1; }
+            return 0;
+        });
     }
 
     getLayoutForDashCard(dc) {
@@ -164,14 +180,14 @@ export default class DashboardGrid extends Component {
     }
 
     renderMobile() {
-        const { dashboard, isEditing } = this.props;
-        const { width } = this.state;
+        const { isEditing } = this.props;
+        const { width, dashcards } = this.state;
         return (
             <div
                 className={cx("DashboardGrid", { "Dash--editing": isEditing, "Dash--dragging": this.state.isDragging })}
                 style={{ margin: 0 }}
             >
-                {dashboard.ordered_cards.map(dc =>
+                {dashcards && dashcards.map(dc =>
                     <div key={dc.id} className="DashCard" style={{ left: 10, width: width - 20, marginTop: 10, marginBottom: 10, height: width / (6 / 4)}}>
                         <DashCard
                             dashcard={dc}
@@ -189,20 +205,22 @@ export default class DashboardGrid extends Component {
     }
 
     renderGrid() {
-        const { dashboard, isEditing } = this.props;
-        const { width } = this.state;
-        const rowHeight = Math.floor(width / 6);
+        const { isEditing } = this.props;
+        const { width, dashcards } = this.state;
+        const rowHeight = Math.floor(width / GRID_WIDTH / GRID_ASPECT_RATIO);
         return (
             <GridLayout
                 className={cx("DashboardGrid", { "Dash--editing": isEditing, "Dash--dragging": this.state.isDragging })}
                 layout={this.state.layout}
-                cols={6}
+                cols={GRID_WIDTH}
+                margin={GRID_MARGIN}
                 rowHeight={rowHeight}
                 onLayoutChange={(...args) => this.onLayoutChange(...args)}
                 onDrag={(...args) => this.onDrag(...args)}
                 onDragStop={(...args) => this.onDragStop(...args)}
+                isEditing={isEditing}
             >
-                {dashboard.ordered_cards.map(dc =>
+                {dashcards && dashcards.map(dc =>
                     <div key={dc.id} className="DashCard" onMouseDownCapture={this.onDashCardMouseDown}>
                         <DashCard
                             dashcard={dc}

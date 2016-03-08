@@ -5,8 +5,6 @@ import GridItem from "./GridItem.jsx";
 
 import _ from "underscore";
 
-const MARGIN = 10;
-
 export default class GridLayout extends Component {
     constructor(props, context) {
         super(props, context);
@@ -158,22 +156,23 @@ export default class GridLayout extends Component {
 
     getCellSize() {
         return {
-            width: this.state.width / this.props.cols,
+            width: Math.floor(this.state.width / this.props.cols),
             height: this.props.rowHeight
         };
     }
 
     getMinSize() {
+        let { margin } = this.props;
         let cellSize = this.getCellSize();
         return {
-            width: cellSize.width - MARGIN,
-            height: cellSize.height - MARGIN
+            width: cellSize.width - margin,
+            height: cellSize.height - margin
         }
     }
 
     getStyleForLayout(l) {
+        let { margin } = this.props;
         let cellSize = this.getCellSize();
-        let margin = l.i === "placeholder" ? -MARGIN : MARGIN;
         return {
             width: cellSize.width * l.w - margin,
             height: cellSize.height * l.h - margin,
@@ -214,14 +213,31 @@ export default class GridLayout extends Component {
         }
     }
 
-    render() {
-        const { className, layout, rowHeight } = this.props;
+    getGridBackground() {
+        let { margin } = this.props;
+        let cellSize = this.getCellSize();
+        return `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='${cellSize.width}' height='${cellSize.height}'><rect stroke='rgba(0, 0, 0, 0.117647)' stroke-width='1' fill='none' x='${margin / 2 + 1.5}' y='${margin / 2 + 1.5}' width='${cellSize.width - margin - 3}' height='${cellSize.height - margin - 3}'/></svg>")`;
+    }
 
+    render() {
+        const { className, layout, cols, isEditing } = this.props;
+
+        let cellSize = this.getCellSize();
         let bottom = Math.max(...layout.map(l => l.y + l.h));
-        let totalHeight = (bottom + 3) * rowHeight;
+
+        let backgroundImage;
+        if (isEditing) {
+            // render grid as a background image:
+            backgroundImage  = this.getGridBackground();
+            // add some rows to provide place to drag to:
+            bottom += 8;
+        }
+
+        let width = cellSize.width * cols;
+        let height = cellSize.height * bottom;
 
         return (
-            <div className={className} style={{ position: "relative", height: totalHeight }}>
+            <div className={className} style={{ position: "relative", width, height, backgroundImage }}>
                 {this.props.children.map(child =>
                     this.renderChild(child)
                 )}

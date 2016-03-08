@@ -51,6 +51,10 @@ const MetabaseApi = new AngularResourceProxy("Metabase", ["dataset", "db_metadat
 const CardApi = new AngularResourceProxy("Card", ["list", "delete"]);
 const RevisionApi = new AngularResourceProxy("Revision", ["list", "revert"]);
 
+// FIXME: REMOVE SCALING ONCE WE ADD A DB MIGRATION TO SCALE DASHCARD SIZES
+const FIXME_DASHCARD_X_SCALE = 2;
+const FIXME_DASHCARD_Y_SCALE = 2;
+
 // action creators
 
 export const setEditingDashboard = createAction(SET_EDITING_DASHBOARD);
@@ -105,6 +109,17 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card) {
 export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(id) {
     return async function(dispatch, getState) {
         let result = await DashboardApi.get({ dashId: id });
+        // FIXME: REMOVE SCALING ONCE WE ADD A DB MIGRATION TO SCALE DASHCARD SIZES
+        result = {
+            ...result,
+            ordered_cards: result.ordered_cards.map((dc) => ({
+                ...dc,
+                row: dc.row * FIXME_DASHCARD_Y_SCALE,
+                col: dc.col * FIXME_DASHCARD_X_SCALE,
+                sizeX: dc.sizeX * FIXME_DASHCARD_X_SCALE,
+                sizeY: dc.sizeY * FIXME_DASHCARD_Y_SCALE
+            }))
+        };
         return normalize(result, dashboard);
     };
 });
@@ -143,7 +158,15 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
 
         // reposition the cards
         if (_.some(updatedDashcards, (dc) => dc.isDirty || dc.isAdded)) {
-            let cards = updatedDashcards.map(({ id, row, col, sizeX, sizeY, series }) => ({ id, row, col, sizeX, sizeY, series }));
+            let cards = updatedDashcards.map(({ id, row, col, sizeX, sizeY, series }) => ({
+                id,
+                // FIXME: REMOVE SCALING ONCE WE ADD A DB MIGRATION TO SCALE DASHCARD SIZES
+                row: Math.floor(row / FIXME_DASHCARD_Y_SCALE),
+                col: Math.floor(col / FIXME_DASHCARD_X_SCALE),
+                sizeX: Math.floor(sizeX / FIXME_DASHCARD_X_SCALE),
+                sizeY: Math.floor(sizeY / FIXME_DASHCARD_Y_SCALE),
+                series
+            }));
             var result = await DashboardApi.reposition_cards({ dashId, cards });
             if (result.status !== "ok") {
                 throw new Error(result.status);
