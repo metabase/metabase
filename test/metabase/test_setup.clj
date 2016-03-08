@@ -141,10 +141,3 @@
                                              symb))))))
     needs-more-dox?))
 
-
-(defn- throw-if-metabase-doesnt-have-enough-docstrings!
-  {:expectations-options :before-run}
-  []
-  (when (does-metabase-need-more-dox?)
-    (println (u/format-color 'red "Metabase needs more docstrings! Go write some more (or make some vars ^:private) before proceeding."))
-    (System/exit -1)))
