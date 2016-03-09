@@ -318,7 +318,7 @@
   [_ {:keys [rows cols]}]
   (let [xs     (for [row  rows
                      :let [x (first row)]]
-                 (if (string? x)
+                 (if (datetime-field? (first cols))
                    (.getTime ^Date (u/->Timestamp x))
                    x))
         xmin   (apply min xs)
