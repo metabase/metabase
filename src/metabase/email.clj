@@ -100,7 +100,7 @@
         (.connect transport host port user pass)))
     {:error   :SUCCESS
      :message nil}
-    (catch Exception e
+    (catch Throwable e
       (println "err" (.getMessage e))
       {:error   :ERROR
        :message (.getMessage e)})))

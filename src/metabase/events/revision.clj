@@ -77,5 +77,7 @@
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
-(defn- events-init []
+(defn events-init
+  "Automatically called during startup; start event listener for revision events."
+  []
   (events/start-event-listener revisions-topics revisions-channel process-revision-event))

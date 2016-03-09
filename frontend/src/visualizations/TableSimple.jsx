@@ -30,7 +30,7 @@ export default class TableSimple extends Component {
                 return data.columns[index];
             }
         }
-    };
+    }
 
     render() {
         var { rows, cols } = this.props.data;

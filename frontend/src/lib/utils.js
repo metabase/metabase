@@ -8,29 +8,26 @@ var MetabaseUtils = {
 
         if (!complexity) {
             return generatePassword(len, false);
-
         } else {
-
-            function isStrongEnough(password) {
-                var uc = password.match(/([A-Z])/g);
-                var lc = password.match(/([a-z])/g);
-                var di = password.match(/([\d])/g);
-                var sc = password.match(/([!@#\$%\^\&*\)\(+=._-{}])/g);
-
-                return (uc && uc.length >= (complexity.upper || 0) &&
-                        lc && lc.length >= (complexity.lower || 0) &&
-                        di && di.length >= (complexity.digit || 0) &&
-                        sc && sc.length >= (complexity.special || 0));
-            }
-
-            let password="",
-                tries=0;
+            let password = "";
+            let tries = 0;
             while(!isStrongEnough(password) && tries < 100) {
                 password = generatePassword(len, false, /[\w\d\?\-]/);
                 tries++;
             }
-
             return password;
+        }
+
+        function isStrongEnough(password) {
+            var uc = password.match(/([A-Z])/g);
+            var lc = password.match(/([a-z])/g);
+            var di = password.match(/([\d])/g);
+            var sc = password.match(/([!@#\$%\^\&*\)\(+=._-{}])/g);
+
+            return (uc && uc.length >= (complexity.upper || 0) &&
+                    lc && lc.length >= (complexity.lower || 0) &&
+                    di && di.length >= (complexity.digit || 0) &&
+                    sc && sc.length >= (complexity.special || 0));
         }
     },
 

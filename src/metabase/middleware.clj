@@ -1,11 +1,9 @@
 (ns metabase.middleware
   "Metabase-specific middleware functions & configuration."
   (:require [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
             (cheshire factory
                       [generate :refer [add-encoder encode-str encode-nil]])
             [korma.core :as k]
-            [medley.core :refer [filter-vals map-vals]]
             [metabase.api.common :refer [*current-user* *current-user-id*]]
             [metabase.config :as config]
             [metabase.db :refer [sel]]
@@ -35,12 +33,12 @@
 
 ;;; # ------------------------------------------------------------ AUTH & SESSION MANAGEMENT ------------------------------------------------------------
 
-(def ^:const metabase-session-cookie "metabase.SESSION_ID")
-(def ^:const metabase-session-header "x-metabase-session")
-(def ^:const metabase-api-key-header "x-metabase-apikey")
+(def ^:private ^:const metabase-session-cookie "metabase.SESSION_ID")
+(def ^:private ^:const metabase-session-header "x-metabase-session")
+(def ^:private ^:const metabase-api-key-header "x-metabase-apikey")
 
-(def ^:const response-unauthentic {:status 401, :body "Unauthenticated"})
-(def ^:const response-forbidden   {:status 403, :body "Forbidden"})
+(def ^:const response-unauthentic "Generic `401 (Unauthenticated)` Ring response map." {:status 401, :body "Unauthenticated"})
+(def ^:const response-forbidden   "Generic `403 (Forbidden)` Ring response map."       {:status 403, :body "Forbidden"})
 
 
 (defn wrap-session-id

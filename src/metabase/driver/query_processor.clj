@@ -1,22 +1,19 @@
 (ns metabase.driver.query-processor
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific implementations."
-  (:require (clojure [pprint :as pprint]
-                     [string :as s]
-                     [walk :as walk])
+  (:require [clojure.walk :as walk]
             [clojure.tools.logging :as log]
             [korma.core :as k]
             [medley.core :as m]
             schema.utils
             [swiss.arrows :refer [<<-]]
-            [metabase.db :refer :all]
+            [metabase.db :as db]
             [metabase.driver :as driver]
             (metabase.driver.query-processor [annotate :as annotate]
                                              [expand :as expand]
                                              [interface :refer :all]
                                              [macros :as macros]
                                              [resolve :as resolve])
-            (metabase.models [field :refer [Field], :as field]
-                             [foreign-key :refer [ForeignKey]])
+            [metabase.models.field :refer [Field], :as field]
             [metabase.util :as u])
   (:import (schema.utils NamedError ValidationError)))
 
@@ -107,6 +104,17 @@
            (fail query e)))))
 
 
+(defn- pre-add-settings [qp]
+  (fn [{:keys [driver] :as query}]
+    (let [settings {:report-timezone (when (driver/driver-supports? driver :set-timezone)
+                                       (let [report-tz (driver/report-timezone)]
+                                         (when-not (empty? report-tz)
+                                           report-tz)))}]
+      (->> (u/filter-nil-values settings)
+           (assoc query :settings)
+           qp))))
+
+
 (defn- pre-expand [qp]
   (fn [query]
     (qp (if (structured-query? query)
@@ -136,6 +144,23 @@
         ;; Add :rows_truncated if we've hit the limit so the UI can let the user know
         (= num-results results-limit) (assoc-in [:data :rows_truncated] results-limit)))))
 
+(defn- format-rows [{:keys [report-timezone]} rows]
+  (for [row rows]
+    (for [v row]
+      (if (u/is-temporal? v)
+        (u/->iso-8601-datetime v report-timezone)
+        v))))
+
+(defn- post-format-rows
+  "Format individual query result values as needed.  Ex: format temporal values as iso8601 strings w/ timezone."
+  [qp]
+  (fn [{:keys [settings] :as query}]
+    (let [results (qp query)]
+      (if-not (:rows results)
+        results
+        (update results :rows (partial format-rows settings))))))
+
+
 (defn- should-add-implicit-fields? [{{:keys [fields breakout], {ag-type :aggregation-type} :aggregation} :query}]
   (not (or ag-type breakout fields)))
 
@@ -146,7 +171,7 @@
     (if (structured-query? query)
       (qp (if-not (should-add-implicit-fields? query)
             query
-            (let [fields (for [field (sel :many :fields [Field :name :display_name :base_type :special_type :preview_display :display_name :table_id :id :position :description]
+            (let [fields (for [field (db/sel :many :fields [Field :name :display_name :base_type :special_type :preview_display :display_name :table_id :id :position :description]
                                           :table_id   source-table-id
                                           :active     true
                                           :field_type [not= "sensitive"]
@@ -328,9 +353,11 @@
                                           driver/process-structured
                                           driver/process-native) driver)]
       ((<<- wrap-catch-exceptions
+            pre-add-settings
             pre-expand
             (driver/process-query-in-context driver)
             post-add-row-count-and-status
+            post-format-rows
             pre-add-implicit-fields
             pre-add-implicit-breakout-order-by
             cumulative-sum

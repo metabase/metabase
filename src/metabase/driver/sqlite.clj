@@ -1,9 +1,7 @@
 (ns metabase.driver.sqlite
-  (:require (clojure [set :as set]
-                     [string :as s])
+  (:require [clojure.set :as set]
             (korma [core :as k]
                    [db :as kdb])
-            [korma.sql.utils :as kutils]
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]

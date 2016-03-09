@@ -1,14 +1,9 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
-  (:require [clojure.core.reducers :as r]
-            [clojure.set :as set]
-            [clojure.tools.logging :as log]
-            [colorize.core :as color]
-            [medley.core :as m]
+  (:require [clojure.set :as set]
             (monger [collection :as mc]
                     [command :as cmd]
                     [conversion :as conv]
-                    [core :as mg]
                     [db :as mdb]
                     [query :as mq])
             [metabase.driver :as driver]
@@ -21,8 +16,7 @@
             [metabase.driver.sync :as sync])
   (:import com.mongodb.DB))
 
-(declare driver field-values-lazy-seq)
-
+(declare field-values-lazy-seq)
 
 ;;; ## MongoDriver
 

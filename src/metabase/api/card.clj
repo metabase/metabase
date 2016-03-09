@@ -121,7 +121,7 @@
 (defendpoint DELETE "/:card-id/favorite"
   "Unfavorite a Card."
   [card-id]
-  (let-404 [{:keys [id] :as card-favorite} (sel :one CardFavorite :card_id card-id :owner_id *current-user-id*)]
+  (let-404 [id (sel :one :id CardFavorite :card_id card-id, :owner_id *current-user-id*)]
     (del CardFavorite :id id)))
 
 (define-routes)

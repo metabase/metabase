@@ -5,7 +5,8 @@
   :description "Metabase Community Edition"
   :url "http://metabase.com/"
   :min-lein-version "2.5.0"
-  :aliases {"bikeshed" ["with-profile" "+bikeshed" "bikeshed" "--max-line-length" "240"]
+  :aliases {"bikeshed" ["bikeshed" "--max-line-length" "240"]
+            "check-reflection-warnings" ["with-profile" "+reflection-warnings" "check"]
             "test" ["with-profile" "+expectations" "expectations"]
             "generate-sample-dataset" ["with-profile" "+generate-sample-dataset" "run"]}
   :dependencies [[org.clojure/clojure "1.8.0"]
@@ -19,6 +20,7 @@
                  [org.clojure/tools.logging "0.3.1"]                  ; logging framework
                  [org.clojure/tools.namespace "0.2.10"]
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
+                 [aleph "0.4.1-beta4"]                                ; Async HTTP library; WebSockets
                  [cheshire "5.5.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
                  [clj-http "2.1.0"                                    ; HTTP client
                   :exclusions [commons-codec
@@ -34,7 +36,7 @@
                                ring/ring-core]]
                  [com.draines/postal "1.11.4"]                        ; SMTP library
                  [com.google.apis/google-api-services-bigquery        ; Google BigQuery Java Client Library
-                  "v2-rev270-1.21.0"]
+                  "v2-rev271-1.21.0"]
                  [com.h2database/h2 "1.4.191"]                        ; embedded SQL database
                  [com.mattbertolini/liquibase-slf4j "2.0.0"]          ; Java Migrations lib
                  [com.novemberain/monger "3.0.2"]                     ; MongoDB Driver
@@ -55,7 +57,7 @@
                  [net.sourceforge.jtds/jtds "1.3.1"]                  ; Open Source SQL Server driver
                  [org.xhtmlrenderer/flying-saucer-core "9.0.8"]
                  [org.liquibase/liquibase-core "3.4.2"]               ; migration management (Java lib)
-                 [org.slf4j/slf4j-log4j12 "1.7.16"]
+                 [org.slf4j/slf4j-log4j12 "1.7.18"]
                  [org.yaml/snakeyaml "1.17"]                          ; YAML parser (required by liquibase)
                  [org.xerial/sqlite-jdbc "3.8.11.2"]                  ; SQLite driver
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
@@ -70,26 +72,35 @@
   :main ^:skip-aot metabase.core
   :manifest {"Liquibase-Package" "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"}
   :target-path "target/%s"
+  :jvm-opts ["-Djava.awt.headless=true"]                              ; prevent Java icon from randomly popping up in dock when running `lein ring server`
   :javac-options ["-target" "1.7", "-source" "1.7"]
   :uberjar-name "metabase.jar"
   :ring {:handler metabase.core/app
          :init metabase.core/init!
          :destroy metabase.core/destroy}
-  :eastwood {:exclude-namespaces [:test-paths]
-             :add-linters [:unused-private-vars]
-             :exclude-linters [:constant-test                         ; korma macros generate some forms with if statements that are always logically true or false
-                               :suspicious-expression                 ; core.match macros generate some forms like (and expr) which is "suspicious"
-                               :unused-ret-vals]}                     ; gives too many false positives for functions with side-effects like conj!
+  :eastwood {:exclude-namespaces [:test-paths
+                                  metabase.driver.generic-sql]        ; ISQLDriver causes Eastwood to fail. Skip this ns until issue is fixed: https://github.com/jonase/eastwood/issues/191
+             :add-linters [:unused-private-vars
+                           ;; These linters are pretty useful but give a few false positives and can't be selectively disabled. See https://github.com/jonase/eastwood/issues/192
+                           ;; and https://github.com/jonase/eastwood/issues/193
+                           ;; It's still useful to re-enable them and run them every once in a while because they catch a lot of actual errors too. Keep an eye on the issues above
+                           ;; and re-enable them if they ever get resolved
+                           #_:unused-locals
+                           #_:unused-namespaces]
+             :exclude-linters [:constant-test]}                       ; gives us false positives with forms like (when config/is-test? ...)
+  :docstring-checker {:include [#"^metabase"]
+                      :exclude [#"test"
+                                #"^metabase\.sample-data$"
+                                #"^metabase\.http-client$"]}
   :profiles {:dev {:dependencies [[org.clojure/tools.nrepl "0.2.12"]  ; REPL <3
                                   [expectations "2.1.3"]              ; unit tests
                                   [ring/ring-mock "0.3.0"]]
-                   :plugins [[jonase/eastwood "0.2.3"
+                   :plugins [[docstring-checker "1.0.0"]              ; Check that all public vars have docstrings. Run with 'lein docstring-checker'
+                             [jonase/eastwood "0.2.3"
                               :exclusions [org.clojure/clojure]]      ; Linting
-                             [lein-ancient "0.6.8"                    ; Check project for outdated dependencies + plugins w/ 'lein ancient'
-                              :exclusions [org.clojure/clojure]]
                              [lein-bikeshed "0.3.0"]                  ; Linting
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'
-                             [lein-instant-cheatsheet "2.1.5"         ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
+                             [lein-instant-cheatsheet "2.2.1"         ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
                               :exclusions [org.clojure/clojure
                                            org.clojure/tools.namespace]]]
                    :env {:mb-run-mode "dev"}
@@ -98,6 +109,7 @@
                               "-Xmx2048m"                             ; hard limit of 2GB so we stop hitting the 4GB container limit on CircleCI
                               "-XX:+CMSClassUnloadingEnabled"         ; let Clojure's dynamically generated temporary classes be GC'ed from PermGen
                               "-XX:+UseConcMarkSweepGC"]}             ; Concurrent Mark Sweep GC needs to be used for Class Unloading (above)
+             :reflection-warnings {:global-vars {*warn-on-reflection* true}} ; run `lein check-reflection-warnings` to check for reflection warnings
              :expectations {:injections [(require 'metabase.test-setup)]
                             :resource-paths ["test_resources"]
                             :env {:mb-test-setting-1 "ABCDEFG"

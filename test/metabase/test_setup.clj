@@ -1,10 +1,9 @@
 (ns metabase.test-setup
   "Functions that run before + after unit tests (setup DB, start web server, load test data)."
-  (:require (clojure.java [classpath :as classpath]
-                          [io :as io])
+  (:require clojure.data
+            [clojure.java.io :as io]
             [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [clojure.tools.namespace.find :as ns-find]
             [colorize.core :as color]
             [expectations :refer :all]
             (metabase [core :as core]
@@ -77,7 +76,7 @@
   []
   ;; We can shave about a second from unit test launch time by doing the various setup stages in on different threads
   ;; Start Jetty in the BG so if test setup fails we have an easier time debugging it -- it's trickier to debug things on a BG thread
-  (let [start-jetty! (future (core/start-jetty))]
+  (let [start-jetty! (future (core/start-jetty!))]
 
     (try
       (log/info "Setting up test DB and running migrations...")
@@ -96,48 +95,4 @@
   {:expectations-options :after-run}
   []
   (log/info "Shutting down Metabase unit test runner")
-  (core/stop-jetty))
-
-
-
-;; Check that we're on target for every public var in Metabase having a docstring
-;; This will abort unit tests if we don't hit our target
-(defn- expected-docstr-percentage-for-day-of-year
-  "Calculate the percentage of public vars we expect to have a docstring by the current date in time.
-   This ranges from 80% for the end of January to 100% a quarter of the way through the year."
-  ([]
-   (expected-docstr-percentage-for-day-of-year (u/date-extract :day-of-year)))
-  ([doy]
-   (let [start-day                  30
-         start-percent              80.0
-         target-doy-for-100-percent 90
-         remaining-percent          (- 100.0 start-percent)
-         remaining-days             (- target-doy-for-100-percent start-day)]
-     (Math/min (+ start-percent (* (/ remaining-percent remaining-days)
-                                   (- doy start-day)))
-               100.0))))
-
-(defn- does-metabase-need-more-dox? []
-  (let [symb->has-doc?      (into {} (for [ns          (ns-find/find-namespaces (classpath/classpath))
-                                           :let        [nm (try (str (ns-name ns))
-                                                                (catch Throwable _))]
-                                           :when       nm
-                                           :when       (re-find #"^metabase" nm)
-                                           :when       (not (re-find #"test" nm))
-                                           [symb varr] (ns-publics ns)]
-                                       {(symbol (str nm "/" symb)) (boolean (:doc (meta varr)))}))
-        vs                  (vals symb->has-doc?)
-        total               (count vs)
-        num-with-dox        (count (filter identity vs))
-        percentage          (float (* (/ num-with-dox total)
-                                      100.0))
-        expected-percentage (expected-docstr-percentage-for-day-of-year)
-        needs-more-dox?     (< percentage expected-percentage)]
-    (println (u/format-color (if needs-more-dox? 'red 'green)
-                 "%.1f%% of Metabase public vars have docstrings. (%d/%d) Expected for today: %.1f%%" percentage num-with-dox total expected-percentage))
-    (println (u/format-color 'cyan "While you're waiting, why don't you go write a docstr for %s?"
-               (color/bold (first (shuffle (for [[symb has-doc?] symb->has-doc?
-                                                 :when           (not has-doc?)]
-                                             symb))))))
-    needs-more-dox?))
-
+  (core/stop-jetty!))

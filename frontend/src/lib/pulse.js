@@ -5,10 +5,10 @@ export function channelIsValid(channel, channelSpec) {
     }
     switch (channel.schedule_type) {
         case "monthly": if (channel.schedule_frame != null &&
-                            channel.schedule_hour != null) { return true };
+                            channel.schedule_hour != null) { return true }
         // these cases intentionally fall though
-        case "weekly": if (channel.schedule_day == null) { return false };
-        case "daily":  if (channel.schedule_hour == null) { return false };
+        case "weekly": if (channel.schedule_day == null) { return false }
+        case "daily":  if (channel.schedule_hour == null) { return false }
         case "hourly": break;
         default:       return false;
     }

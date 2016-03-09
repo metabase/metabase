@@ -58,7 +58,13 @@
   "Fetch value of `Setting`, first trying our cache, or fetching the value
    from the DB if that fails. (Cached lookup time is ~60µs, compared to ~1800µs for DB lookup)
 
-   Unlike using the setting getter fn, this will *not* return default values or values specified by env vars."
+     (get :mandrill-api-key)
+
+   Unlike using the setting getter fn, this will *not* return default values or values specified by env vars.
+
+   Prefer using the automatically generated getter function unless absolutely necessary:
+
+     (mandrill-api-key)"
   [k]
   {:pre [(keyword? k)]}
   (restore-cache-if-needed)
@@ -86,7 +92,11 @@
 (defn set
   "Set the value of a `Setting`.
 
-    (set :mandrill-api-key \"xyz123\")"
+    (set :mandrill-api-key \"xyz123\")
+
+   Don't use this directly unless absolutely neccesary! Prefer using the setting directly instead:
+
+     (mandrill-api-key \"xyz123\")"
   [k v]
   {:pre [(keyword? k)
          (string? v)]}
@@ -109,9 +119,9 @@
   (del Setting :key (name k)))
 
 (defn set-all
-  "Set the value of a `Setting`.
+  "Set the value of several `Settings` at once.
 
-    (set :mandrill-api-key \"xyz123\")"
+    (set-all {:mandrill-api-key \"xyz123\", :another-setting \"ABC\"})"
   [settings]
   {:pre [(map? settings)]}
   (doseq [k (keys settings)]
@@ -132,6 +142,21 @@
 
 ;;; ## DEFSETTING
 
+(defn- setting-extra-dox
+  "Generate some extra documentation for a `Setting`."
+  [symb default-value]
+  (str (format "`%s` is a `Setting`. You can get its value by calling\n\n" symb)
+       (format  "    (%s)\n\n" symb)
+       "and set its value by calling\n\n"
+       (format "    (%s <new-value>)\n\n" symb)
+       (format "You can also set its value with the env var `MB_%s`.\n"
+               (s/upper-case (s/replace (name symb) #"-" "_")))
+       "Clear its value by calling\n\n"
+       (format "    (%s nil)\n\n" symb)
+       (format "Its default value is `%s`." (if (nil? default-value)
+                                              "nil"
+                                              default-value))))
+
 (defmacro defsetting
   "Defines a new `Setting` that will be added to the DB at some point in the future.
    Conveniently can be used as a getter/setter as well:
@@ -147,17 +172,19 @@
    You may optionally pass any of the kwarg OPTIONS below, which are kept as part of the
    metadata of the `Setting` under the key `::options`:
 
-     *  `:internal` - This `Setting` is for internal use and shouldn't be exposed in the UI (i.e., not
-                      returned by the corresponding endpoints). Default: `false`
-     *  `:getter` - A custom getter fn, which takes no arguments. Overrides the default implementation.
-     *  `:setter` - A custom setter fn, which takes a single argument. Overrides the default implementation."
+   *  `:internal` - This `Setting` is for internal use and shouldn't be exposed in the UI (i.e., not
+                    returned by the corresponding endpoints). Default: `false`
+   *  `:getter` - A custom getter fn, which takes no arguments. Overrides the default implementation.
+   *  `:setter` - A custom setter fn, which takes a single argument. Overrides the default implementation."
   [nm description & [default-value & {:as options}]]
   {:pre [(symbol? nm)
          (string? description)]}
   (let [setting-key (keyword nm)
         value       (gensym "value")]
-    `(defn ~nm ~description
-       {::is-setting?   true
+    `(defn ~nm ~(str description "\n\n" (setting-extra-dox nm default-value))
+       {:arglists       '~'([] [new-value])
+        ::description   ~description
+        ::is-setting?   true
         ::default-value ~default-value
         ::options       ~options}
        ([]       ~(if (:getter options)
@@ -184,7 +211,7 @@
   []
   (let [settings (all)]
     (->> (settings-list)
-         (map (fn [{k :key :as setting}]
+         (map (fn [{k :key, :as setting}]
                 (assoc setting
                        :value (k settings))))
          (sort-by :key))))
@@ -241,14 +268,11 @@
        (map meta)
        (filter ::is-setting?)
        (filter (complement (u/rpartial get-in [::options :internal]))) ; filter out :internal Settings
-       (map (fn [{k :name desc :doc default ::default-value}]
+       (map (fn [{k :name, description ::description, default ::default-value}]
               {:key         (keyword k)
-               :description desc
+               :description description
                :default     (or (when (get-from-env-var k)
                                   (format "Using $MB_%s" (-> (name k)
                                                              (s/replace "-" "_")
                                                              s/upper-case)))
                                 default)}))))
-
-
-(u/require-dox-in-this-namespace)

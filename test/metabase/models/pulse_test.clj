@@ -64,7 +64,7 @@
                                                               :channel_type  :email
                                                               :details       {:other  "stuff"
                                                                               :emails ["foo@bar.com"]}
-                                                              :schedule_type schedule-type-daily
+                                                              :schedule_type :daily
                                                               :schedule_hour 15}]
       (tu/with-temp Card [{card-id :id} {:creator_id            (user->id :rasta)
                                         :name                   "Test Card"
@@ -113,7 +113,7 @@
 ;                                                              :channel_type  :email
 ;                                                              :details       {:other  "stuff"
 ;                                                                              :emails ["foo@bar.com"]}
-;                                                              :schedule_type schedule-type-daily
+;                                                              :schedule_type :daily
 ;                                                              :schedule_hour 15}]
 ;      (tu/with-temp Card [{card-id :id} {:creator_id            (user->id :rasta)
 ;                                         :name                   "Test Card"
@@ -175,7 +175,7 @@
 ;; update-pulse-channels
 (expect
   {:channel_type  :email
-   :schedule_type schedule-type-daily
+   :schedule_type :daily
    :schedule_hour 4
    :schedule_day  nil
    :schedule_frame nil
@@ -185,7 +185,7 @@
                                      :name       (tu/random-name)}]
     (do
       (update-pulse-channels {:id id} [{:channel_type  :email
-                                        :schedule_type schedule-type-daily
+                                        :schedule_type :daily
                                         :schedule_hour 4
                                         :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)}]}])
       (-> (db/sel :one PulseChannel :pulse_id id)
@@ -214,7 +214,7 @@
                                     :dataset_query          {:type :native}
                                     :visualization_settings {}}]
     (create-pulse-then-select "Booyah!" (user->id :rasta) [id] [{:channel_type  :email
-                                                                 :schedule_type schedule-type-daily
+                                                                 :schedule_type :daily
                                                                  :schedule_hour 18
                                                                  :recipients    [{:email "foo@bar.com"}]}])))
 
@@ -262,7 +262,7 @@
                                    :creator_id (user->id :crowberto)
                                    :cards      [card-id2 card-id1]
                                    :channels   [{:channel_type  :email
-                                                 :schedule_type schedule-type-daily
+                                                 :schedule_type :daily
                                                  :schedule_hour 18
                                                  :recipients    [{:email "foo@bar.com"}
                                                                  {:id (user->id :crowberto)}]}]})))))

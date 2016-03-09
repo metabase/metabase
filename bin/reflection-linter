@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-warnings=`lein check 2>&1 | grep Reflection | grep metabase`
+echo -e "\e[1;34mChecking for reflection warnings. This may take a few minutes, so sit tight...\e[0m"
+
+warnings=`lein check-reflection-warnings 2>&1 | grep Reflection | grep metabase | uniq`
 
 if [ ! -z "$warnings" ]; then
     echo -e "\e[1;31mYour code has cased introduced some reflection warnings.\e[0m 😞"

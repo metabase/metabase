@@ -94,7 +94,8 @@
 		self.task.launchPath		= JREPath();
 		self.task.environment		= @{@"MB_DB_FILE": DBPath(),
 										@"MB_JETTY_PORT": @(self.port)};
-		self.task.arguments			= @[@"-jar", UberjarPath()];
+		self.task.arguments			= @[@"-Djava.awt.headless=true",
+										@"-jar", UberjarPath()];
 				
 		__weak MetabaseTask *weakSelf = self;
 		self.task.terminationHandler = ^(NSTask *task){

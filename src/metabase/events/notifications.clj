@@ -66,7 +66,7 @@
                                                  :updated-by   updated-by
                                                  :dependencies deps-by-model})))
 
-(defn send-notification [model object]
+(defn- send-notification [model object]
   (when-let [deps (pull-dependencies model (:id object))]
     (let [deps-by-user (group-by :creator_id deps)
           updated-by   (User (events/object->user-id object))]
@@ -92,5 +92,7 @@
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
-(defn- events-init []
+(defn events-init
+  "Automatically called during startup; start event listener for notifications events."
+  []
   (events/start-event-listener notifications-topics notifications-channel process-notifications-event))

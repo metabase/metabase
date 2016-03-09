@@ -35,7 +35,7 @@ export default class UserStep extends Component {
         for (var fieldName in this.refs) {
             let node = ReactDOM.findDOMNode(this.refs[fieldName]);
             if (node.required && MetabaseUtils.isEmpty(node.value)) isValid = false;
-        };
+        }
 
         if (!validPassword) {
             isValid = false;

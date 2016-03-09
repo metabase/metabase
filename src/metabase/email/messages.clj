@@ -3,16 +3,15 @@
    NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails."
   (:require [hiccup.core :refer [html]]
             [stencil.core :as stencil]
-            [stencil.loader :as loader]
             [metabase.email :as email]
             [metabase.models.setting :as setting]
-            [metabase.pulse :as p, :refer [render-pulse-section]]
+            [metabase.pulse :as p]
             [metabase.util :as u]
             (metabase.util [quotation :as quotation]
                            [urls :as url])))
 
 ;; NOTE: uncomment this in development to disable template caching
-;; (loader/set-cache (clojure.core.cache/ttl-cache-factory {} :ttl 0))
+;; (stencil.loader/set-cache (clojure.core.cache/ttl-cache-factory {} :ttl 0))
 
 ;;; ### Public Interface
 
@@ -63,7 +62,7 @@
          (u/is-email? email)
          (map? context)]}
   (let [model->url-fn #(case %
-                        "Card"      url/question-url
+                        "Card"      url/card-url
                         "Dashboard" url/dashboard-url
                         "Pulse"     url/pulse-url
                         "Segment"   url/segment-url)
@@ -109,15 +108,17 @@
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
   [pulse results]
   (let [images       (atom [])
-        body         (apply vector :div (for [result results]
-                                          (render-pulse-section (partial render-image images) :include-buttons result)))
+        body         (binding [p/*include-title* true
+                               p/*render-img-fn* (partial render-image images)]
+                       (vec (cons :div (for [result results]
+                                         (p/render-pulse-section result)))))
         data-quote   (quotation/random-quote)
         message-body (stencil/render-file "metabase/email/pulse"
                                           {:emailType       "pulse"
                                            :pulse           (html body)
                                            :pulseName       (:name pulse)
                                            :sectionStyle    p/section-style
-                                           :colorGrey4      p/color-grey-4
+                                           :colorGrey4      p/color-gray-4
                                            :quotation       (:quote data-quote)
                                            :quotationAuthor (:author data-quote)
                                            :logoFooter      true})]

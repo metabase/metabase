@@ -1,14 +1,11 @@
 (ns metabase.models.metric
   (:require [korma.core :as k]
-            [metabase.config :as config]
             [metabase.db :as db]
             [metabase.events :as events]
-            (metabase.models [common :refer [perms-readwrite]]
-                             [dependency :as dependency]
+            (metabase.models [dependency :as dependency]
                              [hydrate :refer :all]
                              [interface :as i]
-                             [revision :as revision]
-                             [user :refer [User]])
+                             [revision :as revision])
             [metabase.query :as q]
             [metabase.util :as u]))
 
@@ -27,10 +24,10 @@
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
 
 
-(defn serialize-metric [_ _ instance]
+(defn- serialize-metric [_ _ instance]
   (dissoc instance :created_at :updated_at))
 
-(defn diff-metrics [this metric1 metric2]
+(defn- diff-metrics [this metric1 metric2]
   (if-not metric1
     ;; this is the first version of the metric
     (u/update-values (select-keys metric2 [:name :description :definition]) (fn [v] {:after v}))
@@ -47,10 +44,9 @@
 
 (extend (class Metric)
   revision/IRevisioned
-  {:serialize-instance serialize-metric
-   :revert-to-revision revision/default-revert-to-revision
-   :diff-map           diff-metrics
-   :diff-str           revision/default-diff-str})
+  (merge revision/IRevisionedDefaults
+         {:serialize-instance serialize-metric
+          :diff-map           diff-metrics}))
 
 
 ;;; ## ---------------------------------------- DEPENDENCIES ----------------------------------------
@@ -58,7 +54,7 @@
 
 (defn metric-dependencies
   "Calculate any dependent objects for a given `Metric`."
-  [this id {:keys [definition] :as instance}]
+  [this id {:keys [definition]}]
   (when definition
     {:Segment (q/extract-segment-ids definition)}))
 

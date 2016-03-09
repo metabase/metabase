@@ -2,11 +2,9 @@
   (:require [korma.core :as k]
             [metabase.db :refer :all]
             (metabase.models [common :as common]
-                             [database :refer [Database]]
                              [field-values :refer [FieldValues]]
                              [foreign-key :refer [ForeignKey]]
-                             [interface :as i])
-            [metabase.util :as u]))
+                             [interface :as i])))
 
 (def ^:const special-types
   "Possible values for `Field.special_type`."
@@ -89,7 +87,7 @@
 
 (defn qualified-name-components
   "Return the pieces that represent a path to FIELD, of the form `[table-name parent-fields-name* field-name]`."
-  [{field-name :name, table-id :table_id, parent-id :parent_id, :as field}]
+  [{field-name :name, table-id :table_id, parent-id :parent_id}]
   (conj (if-let [parent (Field parent-id)]
           (qualified-name-components parent)
           [(sel :one :field ['Table :name], :id table-id)])
@@ -125,6 +123,3 @@
                     :can-write?         i/superuser?
                     :pre-insert         pre-insert
                     :pre-cascade-delete pre-cascade-delete}))
-
-
-(u/require-dox-in-this-namespace)

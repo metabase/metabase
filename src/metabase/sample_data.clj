@@ -4,13 +4,12 @@
             [clojure.tools.logging :as log]
             (metabase [db :as db]
                       [driver :as driver])
-            (metabase.models [setting :refer [defsetting]]
-                             [database :refer [Database]])
+            [metabase.models.database :refer [Database]]
             [metabase.util :as u]))
 
 
-(def ^:const sample-dataset-name "Sample Dataset")
-(def ^:const sample-dataset-filename "sample-dataset.db.mv.db")
+(def ^:private ^:const sample-dataset-name     "Sample Dataset")
+(def ^:private ^:const sample-dataset-filename "sample-dataset.db.mv.db")
 
 (defn add-sample-dataset! []
   (when-not (db/sel :one Database :is_sample true)

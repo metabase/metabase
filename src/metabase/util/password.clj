@@ -9,7 +9,7 @@
     (count-occurrences \"GoodPw!!\")
       -> {:total  8, :lower 4, :upper 2, :letter 6, :digit 0, :special 2}"
   [password]
-  (loop [[^Character c & more] password, {:keys [total, lower, upper, letter, digit, special], :as counts} {:total 0, :lower 0, :upper 0, :letter 0, :digit 0, :special 0}]
+  (loop [[^Character c & more] password, {:keys [lower, upper, letter, digit, special], :as counts} {:total 0, :lower 0, :upper 0, :letter 0, :digit 0, :special 0}]
     (if-not c counts
       (recur more (merge (update counts :total inc)
                          (cond
@@ -62,6 +62,6 @@
   [password salt hashed-password]
   (try
     (creds/bcrypt-verify (str salt password) hashed-password)
-    (catch Exception e
+    (catch Throwable e
       ;; we wrap the friend/bcrypt-verify with this function specifically to avoid unintended exceptions getting out
       false)))

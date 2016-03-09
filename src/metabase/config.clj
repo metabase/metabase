@@ -35,7 +35,7 @@
 
    We resolve properties from these places:
    1.  environment variables (ex: MB_DB_TYPE -> :mb-db-type)
-   2.  jvm opitons (ex: -Dmb.db.type -> :mb-db-type)
+   2.  jvm options (ex: -Dmb.db.type -> :mb-db-type)
    3.  hard coded `app-defaults`"
   [k]
   (let [k (keyword k)]
@@ -43,21 +43,13 @@
 
 
 ;; These are convenience functions for accessing config values that ensures a specific return type
-(defn ^Integer config-int  [k] (some-> k config-str Integer/parseInt))
-(defn ^Boolean config-bool [k] (some-> k config-str Boolean/parseBoolean))
-(defn ^Keyword config-kw   [k] (some-> k config-str keyword))
+(defn ^Integer config-int  "Fetch a configuration key and parse it as an integer." [k] (some-> k config-str Integer/parseInt))
+(defn ^Boolean config-bool "Fetch a configuration key and parse it as a boolean."  [k] (some-> k config-str Boolean/parseBoolean))
+(defn ^Keyword config-kw   "Fetch a configuration key and parse it as a keyword."  [k] (some-> k config-str keyword))
 
-
-(def ^:const config-all
-  "Global application configuration as a dictionary.
-   Combines hard coded defaults with optional user specified overrides from environment variables."
-  (into {} (for [k (keys app-defaults)]
-               [k (config-str k)])))
-
-
-(def ^:const ^Boolean is-dev?  (= :dev  (config-kw :mb-run-mode)))
-(def ^:const ^Boolean is-prod? (= :prod (config-kw :mb-run-mode)))
-(def ^:const ^Boolean is-test? (= :test (config-kw :mb-run-mode)))
+(def ^:const ^Boolean is-dev?  "Are we running in `dev` mode (i.e. in a REPL or via `lein ring server`)?" (= :dev  (config-kw :mb-run-mode)))
+(def ^:const ^Boolean is-prod? "Are we running in `prod` mode (i.e. from a JAR)?"                         (= :prod (config-kw :mb-run-mode)))
+(def ^:const ^Boolean is-test? "Are we running in `test` mode (i.e. via `lein test`)?"                    (= :test (config-kw :mb-run-mode)))
 
 
 ;;; Version stuff
@@ -86,5 +78,5 @@
 
 (def ^:const mb-version-string
   "A formatted version string representing the currently running application."
-  (let [{:keys [tag hash branch date]} mb-version-info]
+  (let [{:keys [tag hash branch]} mb-version-info]
     (format "%s (%s %s)" tag hash branch)))

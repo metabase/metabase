@@ -4,9 +4,10 @@
             (clojure [pprint :refer [pprint]]
                      [string :as s])
             [clojure.tools.logging :as log]
+            [clj-time.core :as t]
             [clj-time.coerce :as coerce]
             [clj-time.format :as time]
-            [colorize.core :as color]
+            colorize.core
             [metabase.config :as config])
   (:import clojure.lang.Keyword
            (java.net Socket
@@ -62,7 +63,32 @@
                                                                                (pprint-to-str (sort (keys time/formatters)))))))))
 
 
+(defprotocol ISO8601
+  "Protocol for converting objects to ISO8601 formatted strings."
+  (->iso-8601-datetime ^String [this timezone-id]
+    "Coerce object to an ISO8601 date-time string such as \"2015-11-18T23:55:03.841Z\" with a given TIMEZONE."))
+
+(def ^:private ISO8601Formatter
+  ;; memoize this because the formatters are static.  they must be distinct per timezone though.
+  (memoize (fn [timezone-id]
+             (if timezone-id (time/with-zone (time/formatters :date-time) (t/time-zone-for-id timezone-id))
+                             (time/formatters :date-time)))))
+
+(extend-protocol ISO8601
+  nil                    (->iso-8601-datetime [_ _] nil)
+  java.util.Date         (->iso-8601-datetime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) (coerce/from-date this)))
+  java.sql.Date          (->iso-8601-datetime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) (coerce/from-sql-date this)))
+  java.sql.Timestamp     (->iso-8601-datetime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) (coerce/from-sql-time this)))
+  org.joda.time.DateTime (->iso-8601-datetime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) this)))
+
+
 ;;; ## Date Stuff
+
+(defn is-temporal?
+  "Is VALUE an instance of a datetime class like `java.util.Date` or `org.joda.time.DateTime`?"
+  [v]
+  (or (instance? java.util.Date v)
+      (instance? org.joda.time.DateTime v)))
 
 (defn new-sql-timestamp
   "`java.sql.Date` doesn't have an empty constructor so this is a convenience that lets you make one with the current date.
@@ -317,6 +343,13 @@
   [m f & args]
   (reduce (fn [r [k v]] (assoc r k (apply f v args))) {} m))
 
+(defn filter-nil-values
+  "Remove any keys from a MAP when the value is `nil`."
+  [m]
+  (into {} (for [[k v] m
+                 :when (not (nil? v))]
+             {k v})))
+
 (defn is-email?
   "Is STRING a valid email address?"
   [string]
@@ -346,7 +379,7 @@
       (with-open [sock (Socket.)]
         (.connect sock sock-addr host-up-timeout)
         true))
-    (catch Exception _ false)))
+    (catch Throwable _ false)))
 
 (defn host-up?
   "Returns true if the host given by hostname is reachable, false otherwise "
@@ -354,7 +387,7 @@
   (try
     (let [host-addr (InetAddress/getByName hostname)]
       (.isReachable host-addr host-up-timeout))
-    (catch Exception _ false)))
+    (catch Throwable _ false)))
 
 (defn rpartial
   "Like `partial`, but applies additional args *before* BOUND-ARGS.
@@ -365,14 +398,6 @@
   [f & bound-args]
   (fn [& args]
     (apply f (concat args bound-args))))
-
-(defn require-dox-in-this-namespace
-  "Throw an exception if any public interned symbol in this namespace is missing a docstring."
-  []
-  (when-not config/is-prod?
-    (doseq [[symb varr] (ns-publics *ns*)
-            :when       (not (:doc (meta varr)))]
-      (throw (Exception. (format "All public symbols in %s are required to have a docstring, but %s is missing one." (.getName *ns*) symb))))))
 
 (defmacro pdoseq
   "(Almost) just like `doseq` but runs in parallel. Doesn't support advanced binding forms like `:let` or `:when` and only supports a single binding </3"
@@ -462,7 +487,7 @@
   [^Throwable e]
   (when e
     (when-let [stacktrace (.getStackTrace e)]
-      (vec (for [frame (.getStackTrace e)
+      (vec (for [frame stacktrace
                  :let  [s (str frame)]
                  :when (re-find #"metabase" s)]
              (s/replace s #"^metabase\." ""))))))
@@ -590,11 +615,8 @@
 
 (defn drop-first-arg
   "Returns a new fn that drops its first arg and applies the rest to the original.
-   Useful for creating `extend` method maps when you don't care about the `this` param.
+   Useful for creating `extend` method maps when you don't care about the `this` param. :flushed:
 
      ((drop-first-arg :value) xyz {:value 100}) -> (apply :value [{:value 100}]) -> 100"
   ^clojure.lang.IFn [^clojure.lang.IFn f]
   (comp (partial apply f) rest list))
-
-
-(require-dox-in-this-namespace)

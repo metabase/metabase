@@ -3,8 +3,7 @@
             [korma.core :as k]
             [metabase.api.common :refer [*current-user*]]
             [metabase.db :refer [cascade-delete sel]]
-            [metabase.models.interface :as i]
-            [metabase.util :as u]))
+            [metabase.models.interface :as i]))
 
 (def ^:const protected-password
   "The string to replace passwords with when serializing Databases."
@@ -45,5 +44,3 @@
                                               (get-in db [:details :password])      (assoc-in db [:details :password] protected-password)
                                               :else                                 db)
                                             json-generator)))
-
-(u/require-dox-in-this-namespace)

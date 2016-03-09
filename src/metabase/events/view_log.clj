@@ -6,7 +6,7 @@
             [metabase.models.view-log :refer [ViewLog]]))
 
 
-(def ^:const view-counts-topics
+(def ^:private ^:const view-counts-topics
   "The `Set` of event topics which we subscribe to for view counting."
   #{:card-create
     :card-read
@@ -46,5 +46,7 @@
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
-(defn- events-init []
+(defn events-init
+  "Automatically called during startup; start the events listener for view events."
+  []
   (events/start-event-listener view-counts-topics view-counts-channel process-view-count-event))

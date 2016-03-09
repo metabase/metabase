@@ -3,7 +3,6 @@
             [korma.core :as k]
             [medley.core :as m]
             [metabase.db :as db]
-            [metabase.api.common :refer [*current-user-id* let-404]]
             (metabase.models [hydrate :refer [hydrate]]
                              [interface :as i]
                              [user :refer [User]])
@@ -18,7 +17,8 @@
 ;;; # IRevisioned Protocl
 
 (defprotocol IRevisioned
-  "Methods an entity may optionally implement to control how revisions of an instance are saved and reverted to."
+  "Methods an entity may optionally implement to control how revisions of an instance are saved and reverted to.
+   All of these methods except for `serialize-instance` have a default implementation in `IRevisionedDefaults`."
   (serialize-instance [this id instance]
     "Prepare an instance for serialization in a `Revision`.")
   (revert-to-revision [this id user-id serialized-instance]
@@ -51,6 +51,12 @@
   [entity o1 o2]
   (when-let [[before after] (data/diff o1 o2)]
     (diff-string (:name entity) before after)))
+
+(def IRevisionedDefaults
+  "Default implementations for `IRevisioned`."
+  {:revert-to-revision default-revert-to-revision
+   :diff-map           default-diff-map
+   :diff-str           default-diff-str})
 
 
 ;;; # Revision Entity
@@ -161,6 +167,3 @@
                             :is_creation  false
                             :is_reversion true)]
         (add-revision-details entity new-revision last-revision)))))
-
-
-(u/require-dox-in-this-namespace)

@@ -7,8 +7,7 @@
                              [field-values :refer [FieldValues]]
                              [interface :as i]
                              [metric :refer [Metric retrieve-metrics]]
-                             [segment :refer [Segment retrieve-segments]])
-            [metabase.util :as u]))
+                             [segment :refer [Segment retrieve-segments]])))
 
 (def ^:const entity-types
   "Valid values for `Table.entity_type` (field may also be `nil`)."
@@ -24,7 +23,7 @@
   (let [defaults {:display_name (common/name->human-readable-name (:name table))}]
     (merge defaults table)))
 
-(defn- pre-cascade-delete [{:keys [id] :as table}]
+(defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete Segment :table_id id)
   (db/cascade-delete Metric :table_id id)
   (db/cascade-delete Field :table_id id))
@@ -81,6 +80,3 @@
   [table-id]
   {:pre [(integer? table-id)]}
   (db/sel :one :field [Table :db_id] :id table-id))
-
-
-(u/require-dox-in-this-namespace)

@@ -15,8 +15,8 @@
   (:is_superuser @@(resolve 'metabase.api.common/*current-user*)))
 
 (defn- creator?
-  "Did the current user create OBJ?"
-  [{:keys [creator_id], :as obj}]
+  "Did the current user create this object?"
+  [{:keys [creator_id]}]
   {:pre [creator_id]}
   (= creator_id @(resolve 'metabase.api.common/*current-user-id*)))
 
@@ -285,6 +285,3 @@
              ~@korma-forms
              (assoc ::entity true)
              ~map->instance)))))
-
-
-(u/require-dox-in-this-namespace)

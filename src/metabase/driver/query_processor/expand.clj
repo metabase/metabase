@@ -336,7 +336,7 @@
   "Specify which 'page' of results to fetch (offset and limit the results).
 
      (page {} {:page 1, :items 20}) ; fetch first 20 rows"
-  [query {:keys [page items], :as page-clause} :- (s/maybe i/Page)]
+  [query page-clause :- (s/maybe i/Page)]
   (if page-clause
     (assoc query :page page-clause)
     query))
@@ -453,6 +453,3 @@
   {:style/indent 0}
   [& body]
   `(run-query* (query ~@body)))
-
-
-(u/require-dox-in-this-namespace)

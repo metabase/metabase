@@ -1,7 +1,6 @@
 (ns metabase.driver
   (:require [clojure.java.classpath :as classpath]
             [clojure.math.numeric-tower :as math]
-            [clojure.string :as s]
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
             [korma.core :as k]
@@ -299,6 +298,11 @@
   (when engine
     (contains? (set (keys (available-drivers))) (keyword engine))))
 
+(defn driver-supports?
+  "Tests if a driver supports a given feature."
+  [driver feature]
+  (contains? (features driver) feature))
+
 (defn class->base-type
   "Return the `Field.base_type` that corresponds to a given class returned by the DB."
   [klass]
@@ -328,10 +332,13 @@
 ;; ## Driver Lookup
 
 (defn engine->driver
-  "Return the driver instance that should be used for given ENGINE.
-   This loads the corresponding driver if needed; it is expected that it resides in a var named
+  "Return the driver instance that should be used for given ENGINE keyword.
+   This loads the corresponding driver if needed; this is done with a call like
 
-     metabase.driver.<engine>/<engine>"
+     (require 'metabase.driver.<engine>)
+
+   The namespace itself should register itself by passing an instance of a class that
+   implements `IDriver` to `metabase.driver/register-driver!`."
   [engine]
   {:pre [engine]}
   (or ((keyword engine) @registered-drivers)
@@ -418,8 +425,7 @@
 
     :executed_by [int]               (user_id of caller)"
   {:arglists '([query options])}
-  [query {:keys [executed_by]
-          :as options}]
+  [query {:keys [executed_by]}]
   {:pre [(integer? executed_by)]}
   (let [query-execution {:uuid              (.toString (java.util.UUID/randomUUID))
                          :executor_id       executed_by
@@ -445,7 +451,7 @@
           (log/error (u/pprint-to-str 'red query-result))
           (throw (Exception. (str (get query-result :error "general error")))))
         (query-complete query-execution query-result))
-      (catch Exception e
+      (catch Throwable e
         (log/error (u/format-color 'red "Query failure: %s" (.getMessage e)))
         (query-fail query-execution (.getMessage e))))))
 
@@ -494,6 +500,3 @@
       query-execution)
     ;; first time saving execution, so insert it
     (m/mapply ins QueryExecution query-execution)))
-
-
-(u/require-dox-in-this-namespace)
