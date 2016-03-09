@@ -1,12 +1,10 @@
 import React, { Component, PropTypes } from "react";
-import _ from "underscore";
 import cx from "classnames";
-
-import VirtualTableSidePanel from "./VirtualTableSidePanel.jsx";
 
 import NameAndDescription from "./NameAndDescription.jsx";
 import Filters from "./Filters.jsx";
-import Visualization from "metabase/visualizations/components/Visualization.jsx";
+import VirtualTablePreview from "./VirtualTablePreview.jsx";
+import VirtualTableSidePanel from "./VirtualTableSidePanel.jsx";
 
 
 export default class VirtualTableEditor extends Component {
@@ -89,7 +87,7 @@ export default class VirtualTableEditor extends Component {
     */
 
     render() {
-        const { metadata, previewData, virtualTable } = this.props;
+        const { metadata, virtualTable } = this.props;
 
         return (
             <div style={{position: "relative", width: "100%"}}>
@@ -117,26 +115,7 @@ export default class VirtualTableEditor extends Component {
                         </div>
 
                         <div style={{position: "absolute", bottom: 0, top: 150, left: 0, right: 0}} className="pl4 pt2">
-                            { previewData ?
-                                <Visualization
-                                    series={[{card: {display: "table", dataset_query: {type: "query", query: {aggregation: ["rows"]}}}, data: previewData.data}]}
-                                    card={{display: "table", dataset_query: {type: "query", query: {aggregation: ["rows"]}}}}
-                                    data={previewData.data}
-                                />
-                            :
-                                /* This just renders a simple empty table as a placeholder until we actually have data to show */
-                                <table style={{borderSpacing: 0}} className="full border-left border-top">
-                                    <tbody>
-                                        { _.range(10).map((j, idx1) => 
-                                            <tr key={"r"+idx1}>
-                                                { _.range(10).map((k, idx2) =>
-                                                    <td key={"c"+idx2} className="p1 border-right border-bottom">&nbsp;</td>
-                                                )}
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            }
+                            <VirtualTablePreview {...this.props} />
                         </div>
                     </div>
                 </div>
