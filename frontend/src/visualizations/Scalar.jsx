@@ -78,7 +78,7 @@ export default class Scalar extends Component {
     }
 
     render() {
-        let { card, data, isDashboard, className, onAddSeries, actionButtons, hovered, onHoverChange, size } = this.props;
+        let { card, data, isDashboard, className, onAddSeries, actionButtons, hovered, onHoverChange, gridSize } = this.props;
 
         if (this.state.isMultiseries) {
             return (
@@ -96,7 +96,7 @@ export default class Scalar extends Component {
             );
         }
 
-        let isSmall = size && size.width < 4;
+        let isSmall = gridSize && gridSize.width < 4;
 
         let scalarValue = data && data.rows && data.rows[0] && data.rows[0][0] || "";
         let stringifiedScalar = String(scalarValue);
