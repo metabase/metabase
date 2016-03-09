@@ -153,7 +153,7 @@
    that are scheduled to run and send them."
   [hour weekday monthday monthweek]
   {:pre [(integer? hour)
-         (and (< 0 hour) (> 23 hour))
+         (and (<= 0 hour) (> 23 hour))
          (pulse-channel/day-of-week? weekday)
          (contains? #{:first :last :mid :other} monthday)
          (contains? #{:first :last :other} monthweek)]}
