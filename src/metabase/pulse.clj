@@ -151,7 +151,7 @@
 (defn- format-cell
   [value col]
   (cond
-    (instance? Date value) (format-timestamp (.getTime ^Date value) col)
+    (datetime-field? col) (format-timestamp (.getTime ^Date (u/->Timestamp value)) col)
     (and (number? value) (not (datetime-field? col))) (format-number value)
     :else (str value)))
 
