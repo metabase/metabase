@@ -7,7 +7,8 @@
                       [core :as t]
                       [format :as f])
             [hiccup.core :refer [html h]]
-            [metabase.util.urls :as urls])
+            [metabase.util.urls :as urls]
+            [metabase.util :as u])
   (:import (java.awt BasicStroke Color Dimension RenderingHints)
            java.awt.image.BufferedImage
            (java.io ByteArrayInputStream ByteArrayOutputStream)
@@ -150,7 +151,7 @@
 (defn- format-cell
   [value col]
   (cond
-    (instance? Date value) (format-timestamp (.getTime ^Date value) col)
+    (datetime-field? col) (format-timestamp (.getTime ^Date (u/->Timestamp value)) col)
     (and (number? value) (not (datetime-field? col))) (format-number value)
     :else (str value)))
 
@@ -314,11 +315,11 @@
     (.toByteArray os)))
 
 (defn- render:sparkline
-  [card {:keys [rows cols]}]
+  [_ {:keys [rows cols]}]
   (let [xs     (for [row  rows
                      :let [x (first row)]]
-                 (if (instance? Date x)
-                   (.getTime ^Date x)
+                 (if (datetime-field? (first cols))
+                   (.getTime ^Date (u/->Timestamp x))
                    x))
         xmin   (apply min xs)
         xmax   (apply max xs)
