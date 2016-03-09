@@ -109,7 +109,7 @@ export default class VirtualTableEditor extends Component {
                         <div className="bordered rounded p2 my2 inline-block">
                             <Filters
                                 filters={virtualTable && virtualTable.filters || []}
-                                tableMetadata={metadata && virtualTable && metadata[virtualTable.table_id] && metadata[virtualTable.table_id].table || null}
+                                tableMetadata={metadata && virtualTable && metadata[virtualTable.table_id] && metadata[virtualTable.table_id] || null}
                                 onChange={(filters) => this.props.setFilters(filters)}
                             />
                         </div>

@@ -6,7 +6,7 @@ import { AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
 
 import { loadTable } from "metabase/lib/table";
 
-const Metabase = new AngularResourceProxy("Metabase", ["db_tables", "dataset"]);
+const Metabase = new AngularResourceProxy("Metabase", ["db_tables", "dataset", "table_query_metadata"]);
 
 
 
@@ -26,7 +26,10 @@ export const uiEditJoin = createAction(UI_EDIT_JOIN);
 export const UI_PICK_JOIN_TABLE = "UI_PICK_JOIN_TABLE";
 export const uiPickJoinTable = createThunkAction(UI_PICK_JOIN_TABLE, (table) => {
     return async (dispatch, getState) => {
-        return await loadTable(table.id);
+        let tableMetadata = await Metabase.table_query_metadata({ tableId: table.id });
+        // table = populateQueryOptions(table);
+        // table = await loadForeignKeyTables(table);
+        return tableMetadata;
     };
 });
 
@@ -34,7 +37,9 @@ export const uiPickJoinTable = createThunkAction(UI_PICK_JOIN_TABLE, (table) => 
 export const PICK_BASE_TABLE = "PICK_BASE_TABLE";
 export const pickBaseTable = createThunkAction(PICK_BASE_TABLE, (table) => {
     return async (dispatch, getState) => {
-        let tableMetadata = await loadTable(table.id);
+        let tableMetadata = await Metabase.table_query_metadata({ tableId: table.id });
+        // table = populateQueryOptions(table);
+        // table = await loadForeignKeyTables(table);
 
         // dispatch a separate action which will update our preview data
         dispatch(updatePreviewData({database_id: table.db_id, table_id: table.id}));
@@ -95,7 +100,7 @@ export const addJoin = createThunkAction(ADD_JOIN, (join) => {
     return (dispatch, getState) => {
         const { metadata } = getState();
         join.hash = Math.random().toString(36).substring(7);
-        let targetTable = metadata[join.target_table_id].table;
+        let targetTable = metadata[join.target_table_id];
         return {
             join,
             targetTable

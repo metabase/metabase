@@ -9,7 +9,7 @@ export default class FieldListByTable extends Component {
     renderJoin(join, fields) {
         const { metadata } = this.props;
 
-        const targetTable = metadata[join.target_table_id].table;
+        const targetTable = metadata[join.target_table_id];
         const targetFieldIds = _.pluck(targetTable.fields, "id");
 
         if (!_.some(fields, (f) => f.source === "join" && _.contains(targetFieldIds, f.field_id))) {
@@ -37,7 +37,7 @@ export default class FieldListByTable extends Component {
                 {/* Always rendering the base table and its fields as the first table. */}
                 {fields && fields.length > 0 && _.some(fields, (f) => f.source === "core") &&
                     <div>
-                        <h5 className="text-uppercase text-grey-4 pb1">{metadata[virtualTable.table_id].table.display_name}</h5>
+                        <h5 className="text-uppercase text-grey-4 pb1">{metadata[virtualTable.table_id].display_name}</h5>
                         <FieldList
                             fields={fields.filter((f) => f.source === "core")}
                             isChecked={(field) => field.included}

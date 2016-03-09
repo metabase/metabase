@@ -1,6 +1,8 @@
 import React, { Component, PropTypes } from "react";
 import cx from "classnames";
 
+import { guessJoinFields } from "metabase/lib/schema_metadata";
+
 
 export default class JoinSetConditionSidePanel extends Component {
 
@@ -24,6 +26,16 @@ export default class JoinSetConditionSidePanel extends Component {
             targetFieldId: props.target_field_id || null,
             joinType: props.join_type || "inner"
         };
+    }
+
+    componentWillMount() {
+        // attempt to pick sensible default join columns
+        if (this.props.sourceTable && this.props.targetTable) {
+            const guessedJoin = guessJoinFields(this.props.sourceTable, this.props.targetTable);
+            if (guessedJoin) {
+                this.setState(guessedJoin);
+            }
+        }
     }
 
     isValid() {

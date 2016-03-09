@@ -40,7 +40,7 @@ export const uiControls = handleActions({
 
     // joins
     [UI_EDIT_JOIN]: { next: (state, { payload }) => ({ ...state, editing: payload })},
-    [UI_PICK_JOIN_TABLE]: { next: (state, { payload }) => ({ ...state, editing: { ...state.editing, target_table_id: payload.table.id } }) },
+    [UI_PICK_JOIN_TABLE]: { next: (state, { payload }) => ({ ...state, editing: { ...state.editing, target_table_id: payload.id } }) },
     [ADD_JOIN]: { next: (state, { payload }) => ({ ...state, editing: null})},
     [UPDATE_JOIN]: { next: (state, { payload }) => ({ ...state, editing: null})},
     [REMOVE_JOIN]: { next: (state, { payload }) => ({ ...state, editing: null})},
@@ -51,9 +51,9 @@ export const virtualTable = handleActions({
     [START_NEW_TABLE]: { next: (state, { payload }) => ({ display_name: "", description: "", fields: [], filters: [], joins: [] })},
     [PICK_BASE_TABLE]: { next: (state, { payload }) => ({ 
         ...state, 
-        database_id: payload.table.db_id, 
-        table_id: payload.table.id,
-        fields: payload.table.fields.map((field) => ({
+        database_id: payload.db_id, 
+        table_id: payload.id,
+        fields: payload.fields.map((field) => ({
             field_id: field.id,
             display_name: field.display_name,
             source: "core",
@@ -106,8 +106,8 @@ export const tables = handleActions({
 }, null);
 
 export const metadata = handleActions({
-    [PICK_BASE_TABLE]: { next: (state, { payload }) => ({ ...state, [payload.table.id]: payload })},
-    [UI_PICK_JOIN_TABLE]: { next: (state, { payload }) => ({ ...state, [payload.table.id]: payload })},
+    [PICK_BASE_TABLE]: { next: (state, { payload }) => ({ ...state, [payload.id]: payload })},
+    [UI_PICK_JOIN_TABLE]: { next: (state, { payload }) => ({ ...state, [payload.id]: payload })},
 }, {});
 
 export const previewData = handleActions({

@@ -59,8 +59,8 @@ export default class VirtualTableEditor extends Component {
                     return (
                         <JoinSetConditionSidePanel
                             {...this.props}
-                            sourceTable={metadata[virtualTable.table_id].table}
-                            targetTable={metadata[editing.target_table_id].table}
+                            sourceTable={metadata[virtualTable.table_id]}
+                            targetTable={metadata[editing.target_table_id]}
                             join_type={editing.join_type}
                             onSave={editing.target_field_id ?
                                 (join) => this.props.updateJoin({ ...editing, ...join})
