@@ -145,8 +145,8 @@
 
 (def ^:private kanye-quotes
   (delay (log/debug "Loading kanye quotes...")
-         (when-let [file (io/file (io/resource "kanye-quotes.edn"))]
-           (edn/read-string (slurp file)))))
+         (when-let [data (slurp (io/reader (io/resource "kanye-quotes.edn")))]
+           (edn/read-string data))))
 
 (defn ^:metabot ^:unlisted kanye
   "Implementation of the `metabot kanye` command."
