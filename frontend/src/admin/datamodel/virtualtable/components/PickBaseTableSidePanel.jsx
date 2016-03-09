@@ -9,14 +9,14 @@ export default class PickBaseTableSidePanel extends Component {
         this.props.startNewTable();
 
         try {
-            await this.props.fetchTables(this.props.databaseId, this.props.schema);
+            await this.props.fetchTables(this.props.database.id, this.props.schema);
         } catch (error) {
             this.setState({ error });
         }
     }
 
     render() {
-        const { tables, virtualTable } = this.props;
+        const { database, tables, virtualTable } = this.props;
 
         // virtualTable is NULL when starting fresh
         if (!virtualTable) {
@@ -29,8 +29,14 @@ export default class PickBaseTableSidePanel extends Component {
         // otherwise we expect virtualTable to exist, but not base table has been chosen (yet!)
         } else if (tables) {
             return (
-                <div style={{height: "100%"}} className="p1 scroll-y scroll-show">
-                   <TableList tables={tables} selectTable={(table) => this.props.pickBaseTable(table)} />
+                <div style={{height: "100%"}} className="flex flex-column">
+                    <div className="AdminList-search p2 border-bottom">
+                        <h3>{database.name}</h3>
+                    </div>
+
+                    <div className="p1 scroll-y scroll-show">
+                        <TableList tables={tables} selectTable={(table) => this.props.pickBaseTable(table)} />
+                    </div>
                 </div>
             );
 

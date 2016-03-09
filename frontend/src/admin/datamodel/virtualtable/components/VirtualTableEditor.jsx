@@ -127,7 +127,7 @@ export default class VirtualTableEditor extends Component {
                         </div>
 
                         <div>
-                            <a className="text-grey-3 no-decoration text-bold" href={"/admin/datamodel/database/"+this.props.databaseId}>Cancel</a>
+                            <a className="text-grey-3 no-decoration text-bold" href={"/admin/datamodel/database/"+this.props.database.id}>Cancel</a>
                             <button className={cx("Button ml3", {"Button--primary": this.isValid()})} type="button" disabled={!this.isValid()} onClick={() => this.onCreateTable()}>Create Table</button>
                         </div>
                     </div>

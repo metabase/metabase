@@ -25,7 +25,7 @@ import {
 } from "./actions";
 
 
-export const databaseId = handleActions({}, null);
+export const database = handleActions({}, null);
 export const schema = handleActions({}, null);
 
 export const uiControls = handleActions({

@@ -15,7 +15,12 @@ angular
 
     $routeProvider.when('/admin/datamodel/database/:databaseId/virtualtable', {
         template:   '<div mb-redux-component class="flex" style="flex-grow:1;" />',
-        controller: 'VirtualTable'
+        controller: 'VirtualTable',
+        resolve: {
+            database: ['$route', 'Metabase', function($route, Metabase) {
+                return Metabase.db_get({dbId: parseInt($route.current.params.databaseId)}).$promise
+            }]
+        }
     });
 
     $routeProvider.when('/admin/datamodel/database', metadataRoute);

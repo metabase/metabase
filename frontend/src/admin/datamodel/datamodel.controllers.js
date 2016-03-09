@@ -204,12 +204,12 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
         loadDatabaseMetadata();
     };
 }])
-.controller('VirtualTable', ['$scope', '$location', '$route', '$routeParams', function($scope, $location, $route, $routeParams) {
+.controller('VirtualTable', ['$scope', '$location', '$route', '$routeParams', 'database', function($scope, $location, $route, $routeParams, database) {
     $scope.Component = VirtualTableApp;
     $scope.props = {
         onChangeLocation: function(url) {
             $scope.$apply(() => $location.url(url));
         }
     };
-    $scope.store = createStore(virtualTableReducer, {databaseId: parseInt($routeParams.databaseId), schema: $routeParams.schema });
+    $scope.store = createStore(virtualTableReducer, {database: database, schema: $routeParams.schema });
 }]);
