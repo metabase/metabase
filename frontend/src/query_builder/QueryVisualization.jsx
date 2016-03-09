@@ -10,7 +10,6 @@ import VisualizationSettings from './VisualizationSettings.jsx';
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 
 import MetabaseSettings from "metabase/lib/settings";
-import Modal from "metabase/components/Modal.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import Query from "metabase/lib/query";
 
@@ -165,21 +164,20 @@ export default class QueryVisualization extends Component {
                     <ModalWithTrigger
                         key="download"
                         ref="downloadModal"
+                        className="Modal Modal--small"
                         triggerElement={<Icon className="mx1" title="Download this data" name='download' width="16px" height="16px" />}
                     >
-                        <Modal className="Modal Modal--small">
-                            <div className="p4 text-centered relative">
-                                <span className="absolute top right p4 text-normal text-grey-3 cursor-pointer" onClick={() => this.refs.downloadModal.toggle()}>
-                                    <Icon name={'close'} width={16} height={16} />
-                                </span>
-                                <div className="p3 text-strong">
-                                    <h2 className="text-bold">Download large data set</h2>
-                                    <div className="pt2">Your answer has a large amount of data so we wanted to let you know it could take a while to download.</div>
-                                    <div className="py4">The maximum download amount is 1 million rows.</div>
-                                    {downloadButton}
-                                </div>
+                        <div style={{width: "480px"}} className="Modal--small p4 text-centered relative">
+                            <span className="absolute top right p4 text-normal text-grey-3 cursor-pointer" onClick={() => this.refs.downloadModal.toggle()}>
+                                <Icon name={'close'} width={16} height={16} />
+                            </span>
+                            <div className="p3 text-strong">
+                                <h2 className="text-bold">Download large data set</h2>
+                                <div className="pt2">Your answer has a large amount of data so we wanted to let you know it could take a while to download.</div>
+                                <div className="py4">The maximum download amount is 1 million rows.</div>
+                                {downloadButton}
                             </div>
-                        </Modal>
+                        </div>
                     </ModalWithTrigger>
                 );
             } else {
