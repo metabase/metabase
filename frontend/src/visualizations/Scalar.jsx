@@ -98,7 +98,7 @@ export default class Scalar extends Component {
 
         let isSmall = gridSize && gridSize.width < 4;
 
-        let scalarValue = data && data.rows && data.rows[0] && data.rows[0][0] || "";
+        let scalarValue = (data && data.rows && data.rows[0] && data.rows[0][0] != null) ? data.rows[0][0] : "";
         let stringifiedScalar = String(scalarValue);
         let formattedScalarValue = formatScalar(scalarValue, { compact: isSmall });
 
