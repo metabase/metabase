@@ -3,10 +3,8 @@ import ReactDOM from "react-dom";
 import styles from "./Legend.css";
 
 import Tooltip from "metabase/components/Tooltip.jsx";
-import Ellipsified from "metabase/components/Ellipsified.jsx";
 
 import LegendItem from "./LegendItem.jsx";
-import LegendDot from "./LegendDot.jsx";
 
 import cx from "classnames";
 
@@ -29,7 +27,7 @@ export default class LegendVertical extends Component {
         } else if (this.state.overflowCount === 0) {
             let overflowCount = 0;
             for (var i = 0; i < this.props.titles.length; i++) {
-                let itemSize = this.refs["item"+i].getBoundingClientRect();
+                let itemSize = ReactDOM.findDOMNode(this.refs["item"+i]).getBoundingClientRect();
                 if (size.top > itemSize.top || size.bottom < itemSize.bottom) {
                     overflowCount++;
                 }
@@ -54,16 +52,31 @@ export default class LegendVertical extends Component {
         return (
             <ol ref="container" className={cx(className, styles.Legend, styles.vertical)}>
                 {items.map((title, index) =>
-                    <li className="flex" ref={"item"+index} key={index}>
-                        <LegendItem title={Array.isArray(title) ? title[0] : title} color={colors[index % colors.length]} />
-                        <span className={cx(styles.LegendItem, "flex-align-right")}>{title[1]}</span>
+                    <li
+                        key={index}
+                        ref={"item"+index}
+                        className="flex flex-no-shrink"
+                        onMouseEnter={(e) => onHoverChange && onHoverChange({
+                            index,
+                            element: ReactDOM.findDOMNode(this.refs["legendItem"+index])
+                        })}
+                        onMouseLeave={(e) => onHoverChange && onHoverChange()}
+                    >
+                        <LegendItem
+                            ref={"legendItem"+index}
+                            title={Array.isArray(title) ? title[0] : title}
+                            color={colors[index % colors.length]}
+                            isMuted={hovered && hovered.index != null && index !== hovered.index}
+                            showTooltip={false}
+                        />
+                        <span className={cx(styles.LegendItem, "flex-align-right", { muted: hovered && hovered.index != null && index !== hovered.index })}>{title[1]}</span>
                     </li>
                 )}
                 {overflowCount > 0 ?
                     <li key="extra">
                         <Tooltip tooltip={<LegendVertical className="p2" titles={extraItems} colors={extraColors} />}>
                             <span className="inline-block">
-                                <LegendItem title={(overflowCount + 1) + " more"} color="gray" />
+                                <LegendItem title={(overflowCount + 1) + " more"} color="gray" showTooltip={false} />
                             </span>
                         </Tooltip>
                     </li>

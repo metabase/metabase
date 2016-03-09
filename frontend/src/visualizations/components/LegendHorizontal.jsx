@@ -12,12 +12,17 @@ export default class LegendHorizontal extends Component {
         return (
             <ol ref="container" className={cx(className, styles.Legend, styles.horizontal)}>
                 {titles.map((title, index) =>
-                    <li ref={"item"+index} key={index}>
+                    <li key={index}>
                         <LegendItem
+                            ref={"legendItem"+index}
                             title={title}
                             color={colors[index % colors.length]}
                             isMuted={hovered && hovered.index != null && index !== hovered.index}
-                            onMouseEnter={() => onHoverChange && onHoverChange({ index })}
+                            showTooltip={false}
+                            onMouseEnter={() => onHoverChange && onHoverChange({
+                                index,
+                                element: ReactDOM.findDOMNode(this.refs["legendItem"+index])
+                            })}
                             onMouseLeave={() => onHoverChange && onHoverChange(null) }
                         />
                     </li>

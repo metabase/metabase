@@ -148,7 +148,7 @@ export default class ChoroplethMap extends Component {
                         }
                     </ShouldUpdate>
                 </div>
-                <ChartTooltip series={series} hovered={hovered} pinToMouse={true} />
+                <ChartTooltip series={series} hovered={hovered} />
             </ChartWithLegend>
         );
     }
