@@ -1,5 +1,5 @@
 (ns metabase.driver.query-processor.expand
-  "Converts a Query Dict as recieved by the API into an *expanded* one that contains extra information that will be needed to
+  "Converts a Query Dict as received by the API into an *expanded* one that contains extra information that will be needed to
    construct the appropriate native Query, and perform various post-processing steps such as Field ordering."
   (:refer-clojure :exclude [< <= > >= = != and or not filter count distinct sum])
   (:require (clojure [core :as core]
