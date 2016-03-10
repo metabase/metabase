@@ -35,7 +35,7 @@
 
    We resolve properties from these places:
    1.  environment variables (ex: MB_DB_TYPE -> :mb-db-type)
-   2.  jvm opitons (ex: -Dmb.db.type -> :mb-db-type)
+   2.  jvm options (ex: -Dmb.db.type -> :mb-db-type)
    3.  hard coded `app-defaults`"
   [k]
   (let [k (keyword k)]
@@ -78,5 +78,5 @@
 
 (def ^:const mb-version-string
   "A formatted version string representing the currently running application."
-  (let [{:keys [tag hash branch date]} mb-version-info]
+  (let [{:keys [tag hash branch]} mb-version-info]
     (format "%s (%s %s)" tag hash branch)))

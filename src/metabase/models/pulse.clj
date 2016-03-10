@@ -1,6 +1,5 @@
 (ns metabase.models.pulse
-  (:require [clojure.tools.logging :as log]
-            (korma [core :as k]
+  (:require (korma [core :as k]
                    [db :as kdb])
             [medley.core :as m]
             [metabase.db :as db]
@@ -10,8 +9,7 @@
                              [hydrate :refer :all]
                              [interface :as i]
                              [pulse-card :refer [PulseCard]]
-                             [pulse-channel :refer [PulseChannel] :as pulse-channel]
-                             [user :refer [User]])))
+                             [pulse-channel :refer [PulseChannel] :as pulse-channel])))
 
 
 (i/defentity Pulse :pulse)

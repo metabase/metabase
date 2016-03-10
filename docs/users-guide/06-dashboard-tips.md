@@ -5,8 +5,9 @@ To make a really helpful dashboard, you need to first decide what you want the d
 Once you’ve decided what kinds of questions your dashboard is going to answer, create and save your individual questions from the question builder and save them. Next you can add your saved questions to your dashboard and arrange them in a way that makes it easy to scan and understand.
 
 Some tips:
-* Place the most important saved question cards near the top of the dashboard, or make them bigger than the other cards. That’ll help draw people’s attention to what matters most.
-* If you have more than 10 cards on a dashboard, think about breaking the dashboard into two separate ones. You don't want to overwhelm people with too much information, and each dashboard should revolve around one theme or topic. Remember — you can make as many dashboards as you want, so you don’t have to cram everything into just one.
+
+*  Place the most important saved question cards near the top of the dashboard, or make them bigger than the other cards. That’ll help draw people’s attention to what matters most.
+*  If you have more than 10 cards on a dashboard, think about breaking the dashboard into two separate ones. You don't want to overwhelm people with too much information, and each dashboard should revolve around one theme or topic. Remember — you can make as many dashboards as you want, so you don’t have to cram everything into just one.
 
 ---
 

@@ -3,7 +3,6 @@
   (:require [clojure.java.jdbc :as jdbc]
             (korma [core :as k]
                    [db :as kdb])
-            [korma.sql.utils :as kutils]
             (metabase [config :as config]
                       [driver :as driver])
             [metabase.driver.generic-sql :as sql]

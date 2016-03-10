@@ -1,5 +1,5 @@
 (ns metabase.driver.query-processor.expand
-  "Converts a Query Dict as recieved by the API into an *expanded* one that contains extra information that will be needed to
+  "Converts a Query Dict as received by the API into an *expanded* one that contains extra information that will be needed to
    construct the appropriate native Query, and perform various post-processing steps such as Field ordering."
   (:refer-clojure :exclude [< <= > >= = != and or not filter count distinct sum])
   (:require (clojure [core :as core]
@@ -336,7 +336,7 @@
   "Specify which 'page' of results to fetch (offset and limit the results).
 
      (page {} {:page 1, :items 20}) ; fetch first 20 rows"
-  [query {:keys [page items], :as page-clause} :- (s/maybe i/Page)]
+  [query page-clause :- (s/maybe i/Page)]
   (if page-clause
     (assoc query :page page-clause)
     query))

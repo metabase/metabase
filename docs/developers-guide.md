@@ -142,7 +142,7 @@ when testing since they are impossible to run locally (such as Redshift and Bigq
 
 Run the linters:
 
-    lein eastwood && lein bikeshed
+    lein eastwood && lein bikeshed && lein docstring-checker && ./bin/reflection-linter
 
 
 #### Developing with Emacs
@@ -158,13 +158,6 @@ You'll probably want to tell Emacs to store customizations in a different file. 
 (ignore-errors                                                ; load customizations from ~/.emacs.d/.custom.el
   (load-file custom-file))
 ```
-
-#### Checking for Out-of-Date Dependencies
-
-    lein ancient                   # list all out-of-date dependencies
-    lein ancient latest lein-ring  # list latest version of artifact lein-ring
-
-Will give you a list of out-of-date dependencies.
 
 ## Documentation
 

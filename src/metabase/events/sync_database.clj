@@ -40,5 +40,7 @@
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
-(defn- events-init []
+(defn events-init
+  "Automatically called during startup; start event listener for database sync events."
+  []
   (events/start-event-listener sync-database-topics sync-database-channel process-sync-database-event))

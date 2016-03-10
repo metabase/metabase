@@ -100,7 +100,7 @@ const SECTIONS = [
                 key: "slack-token",
                 display_name: "Slack API Token",
                 description: "",
-                placeholder: "Enter the token you recieved from Slack",
+                placeholder: "Enter the token you received from Slack",
                 type: "string",
                 required: true,
                 autoFocus: true

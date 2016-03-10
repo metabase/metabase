@@ -135,4 +135,4 @@ export default class ProfileLink extends Component {
             </OnClickOut>
         );
     }
-};
+}

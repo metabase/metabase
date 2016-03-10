@@ -133,14 +133,17 @@ CardControllers.controller('CardDetail', [
             onBeginEditing: function() {
                 isEditing = true;
                 renderAll();
+                MetabaseAnalytics.trackEvent('QueryBuilder', 'Edit Begin');
             },
             onCancelEditing: function() {
                 // reset back to our original card
                 isEditing = false;
                 setCard(originalCard, {resetDirty: true});
+                MetabaseAnalytics.trackEvent('QueryBuilder', 'Edit Cancel');
             },
             onRestoreOriginalQuery: function () {
                 setCard(originalCard, {resetDirty: true});
+                MetabaseAnalytics.trackEvent('QueryBuilder', 'Restore Original');
             },
             cardIsNewFn: cardIsNew,
             cardIsDirtyFn: cardIsDirty
@@ -373,6 +376,7 @@ CardControllers.controller('CardDetail', [
                 isShowingTutorial = false;
                 updateUrl();
                 renderAll();
+                MetabaseAnalytics.trackEvent('QueryBuilder', 'Tutorial Close');
             }
         }
 
@@ -514,7 +518,7 @@ CardControllers.controller('CardDetail', [
             MetabaseAnalytics.trackEvent('QueryBuilder', 'Run Query', dataset_query.type);
 
             // HACK: prevent SQL editor from losing focus
-            try { ace.edit("id_sql").focus() } catch (e) {};
+            try { ace.edit("id_sql").focus() } catch (e) {}
         }
 
         function loadTableInfo(tableId) {
@@ -989,6 +993,7 @@ CardControllers.controller('CardDetail', [
 
                 if (isShowingTutorial) {
                     setSampleDataset();
+                    MetabaseAnalytics.trackEvent('QueryBuilder', 'Tutorial Start');
                 }
             } catch (error) {
                 console.log('error getting database list', error);

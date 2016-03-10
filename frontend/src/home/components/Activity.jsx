@@ -175,7 +175,7 @@ export default class Activity extends Component {
             case "user-joined":
                 description.summary = "joined!";
                 break;
-        };
+        }
 
         return description;
     }
@@ -237,7 +237,7 @@ export default class Activity extends Component {
             case "segment-delete":
                 description.body = item.details.revision_message;
                 break;
-        };
+        }
 
         return description;
     }

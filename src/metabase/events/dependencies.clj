@@ -7,7 +7,7 @@
                              [metric :refer [Metric]])))
 
 
-(def ^:const dependencies-topics
+(def ^:private ^:const dependencies-topics
   "The `Set` of event topics which are subscribed to for use in dependencies tracking."
   #{:card-create
     :card-update
@@ -37,7 +37,7 @@
             id      (events/object->model-id topic object)]
         ;; entity must support dependency tracking to continue
         (when (satisfies? IDependent entity)
-          (let [deps (dependency/dependencies entity id object)]
+          (when-let [deps (dependency/dependencies entity id object)]
             (dependency/update-dependencies entity id deps)))))
     (catch Throwable e
       (log/warn (format "Failed to process dependencies event. %s" (:topic dependency-event)) e))))
@@ -47,5 +47,7 @@
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
-(defn- events-init []
+(defn events-init
+  "Automatically called during startup; start the events listener for dependencies topics."
+  []
   (events/start-event-listener dependencies-topics dependencies-channel process-dependencies-event))

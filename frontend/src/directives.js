@@ -2,7 +2,6 @@ import React from "react";
 import ReactDOM from "react-dom";
 
 import { Provider } from 'react-redux';
-import { DevTools, DebugPanel } from 'redux-devtools/lib/react';
 
 /* Directives */
 var MetabaseDirectives = angular.module('metabase.directives', []);
@@ -30,18 +29,6 @@ MetabaseDirectives.directive('mbReduxComponent', ['$timeout', function ($timeout
     return {
         restrict: 'A',
         link: function (scope, element, attr) {
-            if (scope.monitor) {
-                var win = window.open(null, "redux-devtools", "menubar=no,location=no,resizable=yes,scrollbars=no,status=no");
-                win.location.reload();
-                setTimeout(function() {
-                    ReactDOM.render(
-                        <DebugPanel top right bottom left >
-                            <DevTools store={scope.store} monitor={scope.monitor} />
-                        </DebugPanel>
-                    , win.document.body);
-                }, 10);
-            }
-
             ReactDOM.render(
                 <Provider store={scope.store}>
                     <scope.Component {...scope.props} />

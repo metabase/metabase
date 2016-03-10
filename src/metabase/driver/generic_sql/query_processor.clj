@@ -1,24 +1,20 @@
 (ns metabase.driver.generic-sql.query-processor
   "The Query Processor is responsible for translating the Metabase Query Language into korma SQL forms."
-  (:require [clojure.core.match :refer [match]]
-            [clojure.java.jdbc :as jdbc]
-            (clojure [pprint :as pprint]
-                     [string :as s]
+  (:require [clojure.java.jdbc :as jdbc]
+            (clojure [string :as s]
                      [walk :as walk])
             [clojure.tools.logging :as log]
             (korma [core :as k]
                    [db :as kdb])
-            (korma.sql [fns :as kfns]
-                       [utils :as utils])
+            (korma.sql [engine :as kengine]
+                       [fns :as kfns])
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.query-processor :as qp]
             metabase.driver.query-processor.interface
             [metabase.util :as u]
-            [metabase.util.korma-extensions :as kx]
-            [korma.sql.utils :as kutils]
-            [korma.sql.engine :as kengine])
+            [metabase.util.korma-extensions :as kx])
   (:import java.sql.Timestamp
            java.util.Date
            (metabase.driver.query_processor.interface AgFieldRef
@@ -122,7 +118,9 @@
                                       :when (not (contains? (set fields-fields) field))]
                                   (as (formatted field) field)))))
 
-(defn- apply-fields [_ korma-form {fields :fields}]
+(defn apply-fields
+  "Apply a `fields` clause to KORMA-FORM. Default implementation of `apply-fields` for SQL drivers."
+  [_ korma-form {fields :fields}]
   (apply k/fields korma-form (for [field fields]
                                 (as (formatted field) field))))
 
@@ -150,10 +148,14 @@
     :not (kfns/pred-not (kengine/pred-map (filter-subclause->predicate subclause)))
     nil  (filter-subclause->predicate clause)))
 
-(defn- apply-filter [_ korma-form {clause :filter}]
+(defn apply-filter
+  "Apply a `filter` clause to KORMA-FORM. Default implementation of `apply-filter` for SQL drivers."
+  [_ korma-form {clause :filter}]
   (k/where korma-form (filter-clause->predicate clause)))
 
-(defn- apply-join-tables [_ korma-form {join-tables :join-tables, {source-table-name :name, source-schema :schema} :source-table}]
+(defn apply-join-tables
+  "Apply expanded query `join-tables` clause to KORMA-FORM. Default implementation of `apply-join-tables` for SQL drivers."
+  [_ korma-form {join-tables :join-tables, {source-table-name :name, source-schema :schema} :source-table}]
   (loop [korma-form korma-form, [{:keys [table-name pk-field source-field schema]} & more] join-tables]
     (let [table-name        (if (seq schema)
                               (str schema \. table-name)
@@ -168,10 +170,14 @@
         (recur korma-form more)
         korma-form))))
 
-(defn- apply-limit [_ korma-form {value :limit}]
+(defn apply-limit
+  "Apply `limit` clause to KORMA-FORM. Default implementation of `apply-limit` for SQL drivers."
+  [_ korma-form {value :limit}]
   (k/limit korma-form value))
 
-(defn- apply-order-by [_ korma-form {subclauses :order-by}]
+(defn apply-order-by
+  "Apply `order-by` clause to KORMA-FORM. Default implementation of `apply-order-by` for SQL drivers."
+  [_ korma-form {subclauses :order-by}]
   (loop [korma-form korma-form, [{:keys [field direction]} & more] subclauses]
     (let [korma-form (k/order korma-form (formatted field) (case direction
                                                                :ascending  :ASC
@@ -180,7 +186,9 @@
         (recur korma-form more)
         korma-form))))
 
-(defn- apply-page [_ korma-form {{:keys [items page]} :page}]
+(defn apply-page
+  "Apply `page` clause to KORMA-FORM. Default implementation of `apply-page` for SQL drivers."
+  [_ korma-form {{:keys [items page]} :page}]
   (-> korma-form
       (k/limit items)
       (k/offset (* items (dec page)))))
@@ -251,9 +259,9 @@
         (recur korma-form more)
         korma-form))))
 
-(defn- do-with-timezone [driver f]
+(defn- do-with-timezone [driver timezone f]
   (log/debug (u/format-color 'blue (sql/set-timezone-sql driver)))
-  (try (kdb/transaction (k/exec-raw [(sql/set-timezone-sql driver) [(driver/report-timezone)]])
+  (try (kdb/transaction (k/exec-raw [(sql/set-timezone-sql driver) [timezone]])
                         (f))
        (catch Throwable e
          (log/error (u/format-color 'red "Failed to set timezone:\n%s"
@@ -279,16 +287,15 @@
 
 (defn process-structured
   "Convert QUERY into a korma `select` form, execute it, and annotate the results."
-  [driver {{:keys [source-table]} :query, database :database, :as outer-query}]
-  (let [set-timezone? (and (seq (driver/report-timezone))
-                           (contains? (driver/features driver) :set-timezone))
-        entity        ((resolve 'metabase.driver.generic-sql/korma-entity) database source-table)
+  [driver {{:keys [source-table]} :query, database :database, settings :settings, :as outer-query}]
+  (let [timezone     (:report-timezone settings)
+        entity       ((resolve 'metabase.driver.generic-sql/korma-entity) database source-table)
         korma-form   (build-korma-form driver outer-query entity)
         f             (partial k/exec korma-form)
         f             (fn []
                         (kdb/with-db (:db entity)
-                          (if set-timezone?
-                            (do-with-timezone driver f)
+                          (if (seq timezone)
+                            (do-with-timezone driver timezone f)
                             (f))))]
     (log-korma-form korma-form)
     (do-with-try-catch f)))

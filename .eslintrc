@@ -1,6 +1,6 @@
 {
-    "parser": "babel-eslint",
     "rules": {
+        "strict": [2, "never"],
         "no-undef": 2,
         "no-unused-vars": [1, {"vars": "all", "args": "none", "varsIgnorePattern": "React|PropTypes|Component"}],
         "quotes": 0,
@@ -21,24 +21,30 @@
         "no-multi-spaces": 0,
         "no-mixed-spaces-and-tabs": 0,
         "no-alert": 0,
+        "no-console": 0,
         "dot-notation": 0,
         "space-unary-ops": 0,
         "semi": 0,
-        "no-console": 0,
         "global-strict": 0,
         "new-cap": 0,
-        "strict": [2, "never"]
-    },
-    "plugins": [
-        "react"
-    ],
-    "ecmaFeatures": {
-        "jsx": true
+        "no-fallthrough": 0,
+        "no-case-declarations": 0,
+        "react/prop-types": 0,
+        "react/no-is-mounted": 0,
+        "react/no-did-mount-set-state": 0,
+        "react/no-did-update-set-state": 0,
+        "react/display-name": 0
     },
     "globals": {
         "angular": false
     },
     "env": {
-        "browser": true
-    }
+        "browser": true,
+        "es6": true
+    },
+    "parser": "babel-eslint",
+    "plugins": [
+        "react"
+    ],
+    "extends": ["eslint:recommended", "plugin:react/recommended"]
 }

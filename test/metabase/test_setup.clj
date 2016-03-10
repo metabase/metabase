@@ -1,10 +1,9 @@
 (ns metabase.test-setup
   "Functions that run before + after unit tests (setup DB, start web server, load test data)."
-  (:require (clojure.java [classpath :as classpath]
-                          [io :as io])
+  (:require clojure.data
+            [clojure.java.io :as io]
             [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [clojure.tools.namespace.find :as ns-find]
             [colorize.core :as color]
             [expectations :refer :all]
             (metabase [core :as core]
@@ -77,7 +76,7 @@
   []
   ;; We can shave about a second from unit test launch time by doing the various setup stages in on different threads
   ;; Start Jetty in the BG so if test setup fails we have an easier time debugging it -- it's trickier to debug things on a BG thread
-  (let [start-jetty! (future (core/start-jetty))]
+  (let [start-jetty! (future (core/start-jetty!))]
 
     (try
       (log/info "Setting up test DB and running migrations...")
@@ -96,28 +95,4 @@
   {:expectations-options :after-run}
   []
   (log/info "Shutting down Metabase unit test runner")
-  (core/stop-jetty))
-
-
-
-;; Check that every public var in Metabase has a docstring
-(defn- things-that-need-dox []
-  (sort (for [ns          (ns-find/find-namespaces (classpath/classpath))
-              :let        [nm (try (str (ns-name ns))
-                                   (catch Throwable _))]
-              :when       (and nm
-                               (re-find #"^metabase" nm)
-                               (not (re-find #"test" nm))
-                               (not= nm "metabase.sample-data")
-                               (not= nm "metabase.http-client"))
-              [symb varr] (ns-publics ns)
-              :when       (not (:doc (meta varr)))]
-          (symbol (str (ns-name ns) "/" symb)))))
-
-(defn- throw-if-metabase-doesnt-have-enough-docstrings!
-  {:expectations-options :before-run}
-  []
-  (when-let [things-that-need-dox (seq (things-that-need-dox))]
-    (println (u/format-color 'red "Every public var in Metabase might as well have a docstring! Go write some for the following (or make them ^:private):\n%s"
-               (u/pprint-to-str things-that-need-dox)))
-    (System/exit -1)))
+  (core/stop-jetty!))

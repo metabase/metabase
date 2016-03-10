@@ -1,7 +1,6 @@
 (ns metabase.driver
   (:require [clojure.java.classpath :as classpath]
             [clojure.math.numeric-tower :as math]
-            [clojure.string :as s]
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
             [korma.core :as k]
@@ -45,7 +44,7 @@
 
 (def AnalyzeTable
   "Schema for the expected output of `analyze-table`."
-  {(schema/optional-key :row_count) schema/Int
+  {(schema/optional-key :row_count) (schema/maybe schema/Int)
    (schema/optional-key :fields)    [{:id                                    schema/Int
                                       (schema/optional-key :special-type)    (apply schema/enum field/special-types)
                                       (schema/optional-key :preview-display) schema/Bool
@@ -299,6 +298,11 @@
   (when engine
     (contains? (set (keys (available-drivers))) (keyword engine))))
 
+(defn driver-supports?
+  "Tests if a driver supports a given feature."
+  [driver feature]
+  (contains? (features driver) feature))
+
 (defn class->base-type
   "Return the `Field.base_type` that corresponds to a given class returned by the DB."
   [klass]
@@ -421,8 +425,7 @@
 
     :executed_by [int]               (user_id of caller)"
   {:arglists '([query options])}
-  [query {:keys [executed_by]
-          :as options}]
+  [query {:keys [executed_by]}]
   {:pre [(integer? executed_by)]}
   (let [query-execution {:uuid              (.toString (java.util.UUID/randomUUID))
                          :executor_id       executed_by

@@ -76,7 +76,7 @@
   channel)
 
 (defn subscribe-to-topics
-  "Convenience method for subscribing to series of topics against a single channel."
+  "Convenience method for subscribing to a series of topics against a single channel."
   [topics channel]
   {:pre [(coll? topics)]}
   (loop [[topic & rest] (vec topics)]
@@ -94,8 +94,7 @@
   (async/go-loop []
     ;; try/catch here to get possible exceptions thrown by core.async trying to read from the channel
     (try
-      (let [evt (async/<! channel)]
-        (handler-fn evt))
+      (handler-fn (async/<! channel))
       (catch Throwable e
         (log/error "Unexpected error listening on events" e)))
     (recur)))

@@ -1,14 +1,11 @@
 (ns metabase.models.metric
   (:require [korma.core :as k]
-            [metabase.config :as config]
             [metabase.db :as db]
             [metabase.events :as events]
-            (metabase.models [common :refer [perms-readwrite]]
-                             [dependency :as dependency]
+            (metabase.models [dependency :as dependency]
                              [hydrate :refer :all]
                              [interface :as i]
-                             [revision :as revision]
-                             [user :refer [User]])
+                             [revision :as revision])
             [metabase.query :as q]
             [metabase.util :as u]))
 
@@ -57,7 +54,7 @@
 
 (defn metric-dependencies
   "Calculate any dependent objects for a given `Metric`."
-  [this id {:keys [definition] :as instance}]
+  [this id {:keys [definition]}]
   (when definition
     {:Segment (q/extract-segment-ids definition)}))
 

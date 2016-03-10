@@ -3,7 +3,7 @@
             [metabase.email :as email]))
 
 (def inbox
-  "Map of email addresses -> sequence of messages they've recieved."
+  "Map of email addresses -> sequence of messages they've received."
   (atom {}))
 
 (defn reset-inbox!

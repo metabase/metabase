@@ -110,7 +110,7 @@
 
 (defn ^:hydrate recipients
   "Return the `PulseChannelRecipients` associated with this PULSE-CHANNEL."
-  [{:keys [id creator_id details] :as pulse-channel}]
+  [{:keys [id details]}]
   (into (mapv (partial array-map :email) (:emails details))
         (db/sel :many [User :id :email :first_name :last_name]
                 (k/where {:id [in (k/subselect PulseChannelRecipient (k/fields :user_id) (k/where {:pulse_channel_id id}))]}))))
@@ -130,21 +130,24 @@
 
 ;; ## Persistence Functions
 
+;; TODO - fix docstring !!
 (defn retrieve-scheduled-channels
-  "Fetch all `PulseChannels` that are scheduled to run given the current hour and day.
+  "Fetch all `PulseChannels` that are scheduled to run at a given time described by HOUR, WEEKDAY, MONTHDAY, and MONTHWEEK.
 
-   Example:
-       (retrieve-scheduled-channels 14 \"mon\")
+   Examples:
+       (retrieve-scheduled-channels 14 \"mon\" :first :first)  -  2pm on the first Monday of the month
+       (retrieve-scheduled-channels 8 \"wed\" :other :last)    -  8am on Wednesday of the last week of the month
 
    Based on the given input the appropriate `PulseChannels` are returned:
-     * no input returns any channel scheduled for HOURLY delivery only.
-     * just `hour` input returns any HOURLY scheduled channels + DAILY channels for the chosen hour.
-     * when `hour` and `day` are supplied we return HOURLY channels + DAILY channels + WEEKLY channels."
+     * HOURLY scheduled channels are always included.
+     * DAILY scheduled channels are included if the HOUR matches.
+     * WEEKLY scheduled channels are included if the WEEKDAY & HOUR match.
+     * MONTHLY scheduled channels are included if the MONTHDAY, MONTHWEEK, WEEKDAY, & HOUR all match."
   [hour weekday monthday monthweek]
-  [:pre [(integer? hour)
-         (day-of-week? weekday)
+  {:pre [(or (integer? hour) (nil? hour))
+         (or (day-of-week? weekday) (nil? weekday))
          (contains? #{:first :last :mid :other} monthday)
-         (contains? #{:first :last :other} monthweek)]]
+         (contains? #{:first :last :other} monthweek)]}
   (let [schedule-frame              (cond
                                       (= :mid monthday)    (name :mid)
                                       (= :first monthweek) (name :first)

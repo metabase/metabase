@@ -1,7 +1,6 @@
 import React, { Component, PropTypes } from "react";
-import ReactDOM from "react-dom";
-
 import cx from "classnames";
+import Icon from 'metabase/components/Icon.jsx'
 
 /*
 Creates a bordered container for an <Icon /> component
@@ -14,12 +13,6 @@ usage:
 */
 
 export default class IconBorder extends Component {
-    constructor(props, context) {
-        super(props, context);
-        this.state = {
-            childWidth: 0
-        };
-    }
 
     static propTypes = {
         borderWidth: PropTypes.string,
@@ -27,6 +20,7 @@ export default class IconBorder extends Component {
         borderColor: PropTypes.string,
         borderRadius: PropTypes.string,
         style: PropTypes.object,
+        children: PropTypes.instanceOf(Icon)
     };
 
     static defaultProps = {
@@ -37,30 +31,23 @@ export default class IconBorder extends Component {
         style: {},
     };
 
-    componentDidMount() {
-        this.setState({
-            childWidth: ReactDOM.findDOMNode(this.refs.child).offsetWidth
-        });
-    }
-
     render() {
         const { borderWidth, borderStyle, borderColor, borderRadius, className, style, children } = this.props;
-        const width = this.state.childWidth;
+        const size = parseInt(children.props.width, 10) * 2
         const styles = {
-            width: width * 2,
-            height: width * 2,
+            width: size,
+            height: size,
             borderWidth: borderWidth,
             borderStyle: borderStyle,
             borderColor: borderColor,
             borderRadius: borderRadius,
-            lineHeight: '1px', /* HACK this is dumb but it centers the icon in the border */
             ...style
         }
 
         return (
-            <span className={cx("flex layout-centered", className)} style={styles}>
-                <span ref="child">{children}</span>
-            </span>
+            <div className={cx('flex layout-centered', className)} style={styles}>
+              {children}
+            </div>
         );
     }
 }
