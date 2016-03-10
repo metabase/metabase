@@ -8,7 +8,6 @@ import AreaChart  from "./AreaChart.jsx";
 import USStateMap from "./USStateMap.jsx";
 import WorldMap   from "./WorldMap.jsx";
 import PinMap     from "./PinMap.jsx";
-import XKCDChart  from "./XKCDChart.jsx";
 
 const visualizations = new Map();
 
@@ -32,6 +31,11 @@ registerVisualization(AreaChart);
 registerVisualization(USStateMap);
 registerVisualization(WorldMap);
 registerVisualization(PinMap);
-registerVisualization(XKCDChart);
+
+
+import { enableVisualizationEasterEgg } from "./lib/utils";
+import XKCDChart from "./XKCDChart.jsx";
+import LineAreaBarChart from "./components/LineAreaBarChart.jsx";
+enableVisualizationEasterEgg("xkcd", LineAreaBarChart, XKCDChart);
 
 export default visualizations;
