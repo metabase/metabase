@@ -3,7 +3,7 @@
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.query-processor.expand :as ql]
             [metabase.test.data :as data]
-            (metabase.test.data [datasets :refer [expect-with-engine]]
+            (metabase.test.data [datasets :refer [expect-with-engine], :as datasets]
                                 [interface :refer [def-database-definition]])
             [metabase.util :as u])
   (:import metabase.driver.postgres.PostgresDriver))
@@ -105,3 +105,14 @@
         (data/run-query people
           (ql/fields $name $bird_id->birds.name)))
       :data (dissoc :cols)))
+
+(defn x []
+  (require '(metabase.driver.query-processor interface expand resolve)
+           'metabase.driver.generic-sql
+           'metabase.driver.generic-sql.query-processor
+           'metabase.driver.postgres
+           :reload)
+  (datasets/with-engine :postgres
+    (data/run-query checkins
+      (ql/limit 5)
+      (ql/fields $user_id $venue_id (ql/+ $id $user_id (ql/+ $venue_id $venue_id))))))

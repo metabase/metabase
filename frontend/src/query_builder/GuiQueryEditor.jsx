@@ -3,6 +3,7 @@ import ReactDOM from "react-dom";
 
 import AggregationWidget from './AggregationWidget.jsx';
 import BreakoutWidget from './BreakoutWidget.jsx';
+import CustomFieldWidget from './CustomFieldWidget.jsx';
 import DataSelector from './DataSelector.jsx';
 import FilterList from './filters/FilterList.jsx';
 import FilterPopover from './filters/FilterPopover.jsx';
@@ -33,6 +34,7 @@ export default class GuiQueryEditor extends Component {
             "updateAggregation",
             "setBreakout",
             "addSort", "updateSort", "removeSort",
+            "addCustomField", "updateCustomField", "removeCustomField",
             "updateLimit"
         );
     }
@@ -59,8 +61,8 @@ export default class GuiQueryEditor extends Component {
         }
     };
 
-    setQuery(dataset_query) {
-        this.props.setQueryFn(dataset_query);
+    setQuery(query) {
+        this.props.setQueryFn(query);
     }
 
     setBreakout(index, field) {
@@ -151,6 +153,26 @@ export default class GuiQueryEditor extends Component {
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Sort');
     }
 
+    addCustomField() {
+        if (!this) return; // TODO - ?
+
+        Query.addCustomField(this.props.query.query)
+            this.setQuery(this.props.query);
+        // TODO - Analytics
+    }
+
+    updateCustomField(index, customField) {
+        Query.updateCustomField(this.props.query.query, index, customField)
+            this.setQuery(this.props.query);
+        // TODO - Analytics
+    }
+
+    removeCustomField(index) {
+        Query.removeCustomField(this.props.query.query, index)
+            this.setQuery(this.props.query);
+        // TODO - Analytics
+    }
+
     renderAdd(text, onClick, targetRefName) {
         let className = "text-grey-2 text-bold flex align-center text-grey-4-hover cursor-pointer no-decoration transition-color";
         if (onClick) {
@@ -193,11 +215,11 @@ export default class GuiQueryEditor extends Component {
             let filters = Query.getFilters(this.props.query.query);
             if (filters && filters.length > 0) {
                 filterList = <FilterList
-                    filters={filters}
-                    tableMetadata={this.props.tableMetadata}
-                    removeFilter={this.removeFilter}
-                    updateFilter={this.updateFilter}
-                />
+                                 filters={filters}
+                                 tableMetadata={this.props.tableMetadata}
+                                 removeFilter={this.removeFilter}
+                                 updateFilter={this.updateFilter}
+                             />
             }
 
             // TODO: proper check for isFilterComplete(filter)
@@ -219,18 +241,18 @@ export default class GuiQueryEditor extends Component {
                     {filterList}
                 </div>
                 <div className="mx2">
-                <PopoverWithTrigger ref="filterPopover"
-                                    triggerElement={addFilterButton}
-                                    triggerClasses="flex align-center"
-                                    getTarget={() => this.refs.addFilterTarget}
-                >
-                    <FilterPopover
-                        isNew={true}
-                        tableMetadata={this.props.tableMetadata || {}}
-                        onCommitFilter={this.addFilter}
-                        onClose={() => this.refs.filterPopover.close()}
-                    />
-                </PopoverWithTrigger>
+                    <PopoverWithTrigger ref="filterPopover"
+                                        triggerElement={addFilterButton}
+                                        triggerClasses="flex align-center"
+                                        getTarget={() => this.refs.addFilterTarget}
+                    >
+                        <FilterPopover
+                            isNew={true}
+                            tableMetadata={this.props.tableMetadata || {}}
+                            onCommitFilter={this.addFilter}
+                            onClose={() => this.refs.filterPopover.close()}
+                        />
+                    </PopoverWithTrigger>
                 </div>
             </div>
         );
@@ -265,9 +287,9 @@ export default class GuiQueryEditor extends Component {
             return;
         }
 
-        var enabled = (this.props.tableMetadata && 
-                        this.props.tableMetadata.breakout_options.fields.length > 0 &&
-                        !Query.hasEmptyAggregation(this.props.query.query));
+        var enabled = (this.props.tableMetadata &&
+                       this.props.tableMetadata.breakout_options.fields.length > 0 &&
+                       !Query.hasEmptyAggregation(this.props.query.query));
         var breakoutList = [];
 
         const breakout = this.props.query.query.breakout;
@@ -368,12 +390,42 @@ export default class GuiQueryEditor extends Component {
 
         if (content) {
             return (
-                <div className="py1 border-bottom">
+                <div className="py2 border-bottom">
                     <div className="Query-label mb1">Sort by:</div>
                     {content}
                 </div>
             );
         }
+    }
+
+    renderAddFields() {
+        var content = [];
+
+        let hasCustomFields = typeof this.props.query.query.add_fields !== 'undefined';
+
+        if (hasCustomFields && this.props.tableMetadata) {
+            let fieldOptions = Query.getFieldOptions(this.props.tableMetadata.fields, 'include joins');
+            this.props.query.query.add_fields.map((field, index) => {
+                content.push(
+                    <CustomFieldWidget
+                        tableMetadata={this.props.tableMetadata}
+                        fieldOptions={fieldOptions}
+                        customField={this.props.query.query.add_fields[index]}
+                        updateCustomField={this.updateCustomField.bind(null, index)}
+                        removeCustomField={this.removeCustomField.bind(null, index)}
+                    />
+                );
+            });
+        }
+
+        content.push(this.renderAdd("Add a custom field", this.addCustomField));
+
+        return (
+            <div className="py2 border-bottom">
+                <div className="Query-label mb1">Add Fields:</div>
+                {content}
+            </div>
+        );
     }
 
     renderLimit() {
@@ -388,7 +440,7 @@ export default class GuiQueryEditor extends Component {
                         <li key={count || "None"} className={cx("Button", { "Button--active":  count == this.props.query.query.limit })} onClick={this.updateLimit.bind(null, count)}>
                             {count || "None"}
                         </li>
-                    )}
+                     )}
                 </ul>
             </div>
         );
@@ -399,20 +451,20 @@ export default class GuiQueryEditor extends Component {
             <div className={"GuiBuilder-section GuiBuilder-data flex align-center arrow-right"}>
                 <span className="GuiBuilder-section-label Query-label">Data</span>
                 { this.props.features.data ?
-                    <DataSelector
-                        ref="dataSection"
-                        includeTables={true}
-                        query={this.props.query}
-                        databases={this.props.databases}
-                        tables={this.props.tables}
-                        setDatabaseFn={this.props.setDatabaseFn}
-                        setSourceTableFn={this.props.setSourceTableFn}
-                        isInitiallyOpen={(!this.props.query.database || !this.props.query.query.source_table) && !this.props.isShowingTutorial}
-                    />
-                :
-                    <span className="flex align-center px2 py2 text-bold text-grey">
-                        {this.props.tableMetadata && this.props.tableMetadata.display_name}
-                    </span>
+                  <DataSelector
+                      ref="dataSection"
+                      includeTables={true}
+                      query={this.props.query}
+                      databases={this.props.databases}
+                      tables={this.props.tables}
+                      setDatabaseFn={this.props.setDatabaseFn}
+                      setSourceTableFn={this.props.setSourceTableFn}
+                      isInitiallyOpen={(!this.props.query.database || !this.props.query.query.source_table) && !this.props.isShowingTutorial}
+                  />
+                  :
+                  <span className="flex align-center px2 py2 text-bold text-grey">
+                      {this.props.tableMetadata && this.props.tableMetadata.display_name}
+                  </span>
                 }
             </div>
         );
@@ -446,7 +498,7 @@ export default class GuiQueryEditor extends Component {
         );
     }
 
-    renderSortLimitSection() {
+    renderSortAddFieldsLimitSection() {
         const { features } = this.props;
         if (!features.sort && !features.limit) {
             return;
@@ -460,6 +512,7 @@ export default class GuiQueryEditor extends Component {
                                     triggerClasses="flex align-center">
                     <div className="px3 py1">
                         {this.renderSort()}
+                        {this.renderAddFields()}
                         {this.renderLimit()}
                     </div>
                 </PopoverWithTrigger>
@@ -492,7 +545,7 @@ export default class GuiQueryEditor extends Component {
                     {this.renderViewSection()}
                     <div className="flex-full"></div>
                     {this.props.children}
-                    {this.renderSortLimitSection()}
+                    {this.renderSortAddFieldsLimitSection()}
                 </div>
             </div>
         );
