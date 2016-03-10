@@ -22,13 +22,13 @@ const OPTIONS = [
 
 export default class RefreshWidget extends Component {
     render() {
-        const { period, elapsed, onChangePeriod } = this.props;
+        const { period, elapsed, onChangePeriod, className } = this.props;
         const remaining = period - elapsed;
         return (
             <PopoverWithTrigger
                 ref="popover"
                 triggerElement={elapsed == null ?
-                    <ClockIcon width={18} height={18} className="text-default text-brand-hover"/> :
+                    <ClockIcon width={18} height={18} className={className} /> :
                     <Tooltip tooltip={"Refreshing in " + Math.floor(remaining / 60) + ":" + (remaining % 60 < 10 ? "0" : "") + Math.round(remaining % 60)}>
                         <span>
                             <CountdownIcon width={18} height={18} className="text-green" percent={Math.min(0.95, (period - elapsed) / period)}/>

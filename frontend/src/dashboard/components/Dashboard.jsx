@@ -1,10 +1,14 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import DashboardHeader from "../components/DashboardHeader.jsx";
 import DashboardGrid from "../components/DashboardGrid.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
+import { requestFullscreen, exitFullscreen } from "metabase/lib/fullscreen";
+
 import _ from "underscore";
+import cx from "classnames";
 import querystring from "querystring";
 
 const TICK_PERIOD = 0.25; // seconds
@@ -16,11 +20,15 @@ export default class Dashboard extends Component {
 
         this.state = {
             error: null,
+
+            isFullscreen: false,
+            isNightMode: false,
+
             refreshPeriod: null,
             refreshElapsed: null
         };
 
-        _.bindAll(this, "setRefreshPeriod", "tickRefreshClock");
+        _.bindAll(this, "setRefreshPeriod", "tickRefreshClock", "setFullscreen", "setNightMode");
     }
 
     static propTypes = {
@@ -67,26 +75,41 @@ export default class Dashboard extends Component {
 
     componentDidUpdate() {
         this.updateParams();
+
+        if (this.state.isFullscreen) {
+            document.querySelector(".Nav").classList.add("hide");
+        } else {
+            document.querySelector(".Nav").classList.remove("hide");
+        }
     }
 
     componentWillUnmount() {
         // HACK: remove our bg-color css applied when component mounts
         document.body.classList.remove("MB-lightBG");
+        document.querySelector(".Nav").classList.remove("hide");
         this._clearRefreshInterval();
     }
 
     loadParams() {
         let params = querystring.parse(window.location.hash.substring(1));
-        if (params.refresh) {
-            this.setRefreshPeriod(parseInt(params.refresh));
-        }
+        let refresh = parseInt(params.refresh);
+        this.setRefreshPeriod(Number.isNaN(refresh) || refresh === 0 ? null : refresh);
+        this.setNightMode("night" in params);
+        this.setFullscreen("fullscreen" in params);
     }
 
     updateParams() {
-        let hash = "";
+        let params = {};
         if (this.state.refreshPeriod) {
-            hash += "refresh=" + this.state.refreshPeriod;
+            params.refresh = this.state.refreshPeriod;
         }
+        if (this.state.isFullscreen) {
+            params.fullscreen = true;
+        }
+        if (this.state.isNightMode) {
+            params.night = true;
+        }
+        let hash = querystring.stringify(params).replace(/=true\b/g, "");
         // setting window.location.hash = "" causes the page to reload for some reason
         history.replaceState(null, document.title, window.location.pathname + (hash ? "#" + hash : ""));
     }
@@ -104,6 +127,21 @@ export default class Dashboard extends Component {
             this.setState({ refreshPeriod, refreshElapsed: 0 });
         } else {
             this.setState({ refreshPeriod: null, refreshElapsed: null });
+        }
+    }
+
+    setNightMode(isNightMode) {
+        this.setState({ isNightMode });
+    }
+
+    setFullscreen(isFullscreen) {
+        if (isFullscreen !== this.state.isFullscreen) {
+            if (isFullscreen) {
+                requestFullscreen();
+            } else {
+                exitFullscreen();
+            }
+            this.setState({ isFullscreen });
         }
     }
 
@@ -129,17 +167,22 @@ export default class Dashboard extends Component {
 
     render() {
         let { dashboard } = this.props;
-        let { error } = this.state;
+        let { error, isFullscreen, isNightMode } = this.state;
+        isNightMode = isNightMode && isFullscreen;
         return (
-            <LoadingAndErrorWrapper className="Dashboard full-height" loading={!dashboard} error={error}>
+            <LoadingAndErrorWrapper className={cx("Dashboard", { "Dashboard--fullscreen": isFullscreen, "Dashboard--night": isNightMode})} loading={!dashboard} error={error}>
             {() =>
                 <div className="full" style={{ overflowX: "hidden" }}>
-                    <header className="bg-white border-bottom relative z2">
+                    <header className="DashboardHeader relative z2">
                         <DashboardHeader
                             {...this.props}
+                            isFullscreen={this.state.isFullscreen}
+                            isNightMode={this.state.isNightMode}
                             refreshPeriod={this.state.refreshPeriod}
                             refreshElapsed={this.state.refreshElapsed}
                             setRefreshPeriod={this.setRefreshPeriod}
+                            onFullscreenChange={this.setFullscreen}
+                            onNightModeChange={this.setNightMode}
                         />
                     </header>
                     <div className="Dash-wrapper wrapper">

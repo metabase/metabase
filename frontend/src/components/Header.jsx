@@ -42,23 +42,23 @@ export default class Header extends Component {
             if (this.props.item && this.props.item.id != null) {
                 titleAndDescription = (
                     <div className="Header-title my1 py2">
-                        <h2>{this.props.item.name}</h2>
-                        <h4 className="text-grey-3">{this.props.item.description || "No description yet"}</h4>
+                        <h2 className="Header-title-name">{this.props.item.name}</h2>
+                        <h4 className="Header-title-description text-grey-3">{this.props.item.description || "No description yet"}</h4>
                     </div>
                 );
             } else {
                 titleAndDescription = (
-                    <div className="flex align-center">
-                        <h1 className="Entity-title my1">{"New " + this.props.objectType}</h1>
+                    <div className="Header-title flex align-center">
+                        <h1 className="Header-title-name my1">{"New " + this.props.objectType}</h1>
                     </div>
                 );
             }
         }
 
         var attribution;
-        if (this.props.item && this.props.item.creator && false) {
+        if (this.props.item && this.props.item.creator) {
             attribution = (
-                <div className="Entity-attribution">
+                <div className="Header-attribution">
                     Asked by {this.props.item.creator.common_name}
                 </div>
             );
