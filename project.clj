@@ -20,6 +20,7 @@
                  [org.clojure/tools.logging "0.3.1"]                  ; logging framework
                  [org.clojure/tools.namespace "0.2.10"]
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
+                 [aleph "0.4.1-beta4"]                                ; Async HTTP library; WebSockets
                  [cheshire "5.5.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
                  [clj-http "2.1.0"                                    ; HTTP client
                   :exclusions [commons-codec
@@ -79,10 +80,14 @@
          :destroy metabase.core/destroy}
   :eastwood {:exclude-namespaces [:test-paths
                                   metabase.driver.generic-sql]        ; ISQLDriver causes Eastwood to fail. Skip this ns until issue is fixed: https://github.com/jonase/eastwood/issues/191
-             :add-linters [:unused-private-vars]
-             :exclude-linters [:constant-test                         ; korma macros generate some forms with if statements that are always logically true or false
-                               :suspicious-expression                 ; core.match macros generate some forms like (and expr) which is "suspicious"
-                               :unused-ret-vals]}                     ; gives too many false positives for functions with side-effects like conj!
+             :add-linters [:unused-private-vars
+                           ;; These linters are pretty useful but give a few false positives and can't be selectively disabled. See https://github.com/jonase/eastwood/issues/192
+                           ;; and https://github.com/jonase/eastwood/issues/193
+                           ;; It's still useful to re-enable them and run them every once in a while because they catch a lot of actual errors too. Keep an eye on the issues above
+                           ;; and re-enable them if they ever get resolved
+                           #_:unused-locals
+                           #_:unused-namespaces]
+             :exclude-linters [:constant-test]}                       ; gives us false positives with forms like (when config/is-test? ...)
   :docstring-checker {:include [#"^metabase"]
                       :exclude [#"test"
                                 #"^metabase\.sample-data$"

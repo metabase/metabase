@@ -1,27 +1,24 @@
 (ns metabase.task.send-pulses
   "Tasks related to running `Pulses`."
   (:require [clojure.tools.logging :as log]
-            [cheshire.core :as json]
             (clojurewerkz.quartzite [jobs :as jobs]
                                     [triggers :as triggers])
             [clojurewerkz.quartzite.schedule.cron :as cron]
-            [clj-time.core :as time]
-            [clj-time.predicates :as timepr]
+            (clj-time [core :as time]
+                      [predicates :as timepr])
             [metabase.api.common :refer [let-404]]
-            [metabase.db :as db]
-            [metabase.driver :as driver]
-            [metabase.email :as email]
+            (metabase [driver :as driver]
+                      [email :as email])
             [metabase.email.messages :as messages]
             [metabase.integrations.slack :as slack]
             (metabase.models [card :refer [Card]]
-                             [hydrate :refer :all]
-                             [pulse :refer [Pulse] :as pulse]
+                             [pulse :refer [Pulse], :as pulse]
                              [pulse-channel :as pulse-channel]
                              [setting :as setting])
-            [metabase.task :as task]
-            [metabase.util :as u]
-            [metabase.util.urls :as urls]
-            [metabase.pulse :as p]))
+            (metabase [pulse :as p]
+                      [task :as task]
+                      [util :as u])
+            [metabase.util.urls :as urls]))
 
 
 (declare send-pulses!)
@@ -77,7 +74,7 @@
                                    (triggers/start-now)
                                    (triggers/with-schedule
                                      ;; run at the top of every hour
-                                     (cron/schedule (cron/cron-schedule "0 0 * * * ? *")))))
+                                     (cron/cron-schedule "0 0 * * * ? *"))))
   ;; submit ourselves to the scheduler
   (task/schedule-task! @send-pulses-job @send-pulses-trigger))
 
@@ -155,11 +152,11 @@
    hour of the day and day of the week according to the defined reporting timezone, or UTC.  We then find all `Pulses`
    that are scheduled to run and send them."
   [hour weekday monthday monthweek]
-  [:pre [(integer? hour)
-         (and (< 0 hour) (> 23 hour))
+  {:pre [(integer? hour)
+         (and (<= 0 hour) (> 23 hour))
          (pulse-channel/day-of-week? weekday)
          (contains? #{:first :last :mid :other} monthday)
-         (contains? #{:first :last :other} monthweek)]]
+         (contains? #{:first :last :other} monthweek)]}
   (let [channels-by-pulse (group-by :pulse_id (pulse-channel/retrieve-scheduled-channels hour weekday monthday monthweek))]
     (doseq [pulse-id (keys channels-by-pulse)]
       (try

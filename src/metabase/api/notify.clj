@@ -11,7 +11,7 @@
 (defendpoint POST "/db/:id"
   "Notification about a potential schema change to one of our `Databases`.
   Caller can optionally specify a `:table_id` or `:table_name` in the body to limit updates to a single `Table`."
-  [id :as {{:keys [table_id table_name] :as body} :body}]
+  [id :as {{:keys [table_id table_name]} :body}]
   (let-404 [database (Database id)]
     (cond
       table_id (when-let [table (sel :one Table :db_id id :id (int table_id))]

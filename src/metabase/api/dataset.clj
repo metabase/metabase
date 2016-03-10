@@ -3,12 +3,11 @@
   (:require [clojure.data.csv :as csv]
             [compojure.core :refer [GET POST]]
             [metabase.api.common :refer :all]
-            [metabase.db :as db]
-            [metabase.driver :as driver]
-            [metabase.driver.query-processor :refer [structured-query?]]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.hydrate :refer [hydrate]]
+            (metabase [db :as db]
+                      [driver :as driver])
+            (metabase.models [card :refer [Card]]
+                             [database :refer [Database]]
+                             [hydrate :refer [hydrate]])
             [metabase.util :as u]))
 
 (def ^:const api-max-results-bare-rows

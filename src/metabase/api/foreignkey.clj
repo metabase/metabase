@@ -3,8 +3,7 @@
   (:require [compojure.core :refer [DELETE]]
             [metabase.api.common :refer :all]
             [metabase.db :as db]
-            (metabase.models [foreign-key :refer [ForeignKey]])
-            [metabase.driver :as driver]))
+            (metabase.models [foreign-key :refer [ForeignKey]])))
 
 (defendpoint DELETE "/:id"
   "Delete a `ForeignKey`."

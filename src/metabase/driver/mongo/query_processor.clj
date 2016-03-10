@@ -1,23 +1,15 @@
 (ns metabase.driver.mongo.query-processor
   (:refer-clojure :exclude [find sort])
-  (:require [clojure.core.match :refer [match]]
-            (clojure [set :as set]
+  (:require (clojure [set :as set]
                      [string :as s])
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
-            [colorize.core :as color]
             (monger [collection :as mc]
-                    [core :as mg]
-                    [db :as mdb]
-                    [operators :refer :all]
-                    [query :refer :all])
-            (metabase [config :as config]
-                      [db :refer :all])
+                    [operators :refer :all])
             [metabase.driver.query-processor :as qp]
             (metabase.driver.query-processor [annotate :as annotate]
                                              [interface :refer [qualified-name-components map->DateTimeField map->DateTimeValue]])
             [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
-            [metabase.models.field :as field]
             [metabase.util :as u])
   (:import java.sql.Timestamp
            java.util.Date
@@ -219,7 +211,7 @@
         :year            (extract :year))))
 
   RelativeDateTimeValue
-  (->rvalue [{:keys [amount unit field], :as this}]
+  (->rvalue [{:keys [amount unit field]}]
     (->rvalue (map->DateTimeValue {:value (u/relative-date (or unit :day) amount)
                                        :field field}))))
 
