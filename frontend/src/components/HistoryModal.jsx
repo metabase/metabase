@@ -59,7 +59,6 @@ export default class HistoryModal extends Component {
     }
 
     revisionDescription(revision) {
-        console.log(revision);
         if (revision.is_creation) {
             return "First revision.";
         } else if (revision.is_reversion) {

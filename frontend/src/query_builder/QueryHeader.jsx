@@ -18,11 +18,26 @@ import Query from "metabase/lib/query";
 import { cancelable } from "metabase/lib/promise";
 
 import cx from "classnames";
+import _ from "underscore";
 
+export default class QueryHeader extends Component {
+    constructor(props, context) {
+        super(props, context);
 
-export default React.createClass({
-    displayName: 'QueryHeader',
-    propTypes: {
+        this.state = {
+            recentlySaved: null,
+            modal: null,
+            revisions: null
+        };
+
+        _.bindAll(this, "resetStateOnTimeout",
+            "onCreate", "onSave", "onBeginEditing", "onCancel", "onDelete",
+            "onFollowBreadcrumb", "onToggleDataReference",
+            "onFetchRevisions", "onRevertToRevision", "onRevertedRevision"
+        );
+    }
+
+    static propTypes = {
         card: PropTypes.object.isRequired,
         originalCard: PropTypes.object,
         isEditing: PropTypes.bool.isRequired,
@@ -37,32 +52,24 @@ export default React.createClass({
         toggleDataReferenceFn: PropTypes.func.isRequired,
         cardIsNewFn: PropTypes.func.isRequired,
         cardIsDirtyFn: PropTypes.func.isRequired
-    },
-
-    getInitialState: function() {
-        return {
-            recentlySaved: null,
-            modal: null,
-            revisions: null
-        };
-    },
+    }
 
     componentWillUnmount() {
         clearTimeout(this.timeout);
         if (this.requesetPromise) {
             this.requesetPromise.cancel();
         }
-    },
+    }
 
-    resetStateOnTimeout: function() {
+    resetStateOnTimeout() {
         // clear any previously set timeouts then start a new one
         clearTimeout(this.timeout);
         this.timeout = setTimeout(() =>
             this.setState({ recentlySaved: null })
         , 5000);
-    },
+    }
 
-    onCreate: function(card, addToDash) {
+    onCreate(card, addToDash) {
         // TODO: why are we not cleaning the card here?
         this.requesetPromise = cancelable(this.props.cardApi.create(card).$promise);
         return this.requesetPromise.then(newCard => {
@@ -73,9 +80,9 @@ export default React.createClass({
                 modal: addToDash ? "add-to-dashboard" : "saved"
             }, this.resetStateOnTimeout);
         });
-    },
+    }
 
-    onSave: async function(card, addToDash) {
+    onSave(card, addToDash) {
         if (card.dataset_query.query) {
             Query.cleanQuery(card.dataset_query.query);
         }
@@ -94,57 +101,53 @@ export default React.createClass({
                 modal: addToDash ? "add-to-dashboard" : null
             }, this.resetStateOnTimeout);
         });
-    },
+    }
 
-    onBeginEditing: function() {
+    onBeginEditing() {
         this.props.onBeginEditing();
-    },
+    }
 
-    onCancel: async function() {
+    async onCancel() {
         if (this.props.fromUrl) {
             this.onGoBack();
         } else {
             this.props.onCancelEditing();
         }
-    },
+    }
 
-    onDelete: async function () {
+    async onDelete() {
         await this.props.cardApi.delete({ 'cardId': this.props.card.id }).$promise;
         this.onGoBack();
         MetabaseAnalytics.trackEvent("QueryBuilder", "Delete");
-    },
+    }
 
-    onFollowBreadcrumb: function() {
+    onFollowBreadcrumb() {
         this.props.onRestoreOriginalQuery();
-    },
+    }
 
-    setQueryMode: function(mode) {
-        this.props.setQueryModeFn(mode);
-    },
-
-    toggleDataReference: function() {
+    onToggleDataReference() {
         this.props.toggleDataReferenceFn();
-    },
+    }
 
-    onGoBack: function() {
+    onGoBack() {
         this.props.onChangeLocation(this.props.fromUrl || "/");
-    },
+    }
 
-    onFetchRevisions: async function({ entity, id }) {
+    async onFetchRevisions({ entity, id }) {
         var revisions = await this.props.revisionApi.list({ entity, id }).$promise;
         this.setState({ revisions });
-    },
+    }
 
-    onRevertToRevision: function({ entity, id, revision_id }) {
+    onRevertToRevision({ entity, id, revision_id }) {
         return this.props.revisionApi.revert({ entity, id, revision_id }).$promise;
-    },
+    }
 
-    onRevertedRevision: function() {
+    onRevertedRevision() {
         this.props.reloadCardFn();
         this.refs.cardHistory.toggle();
-    },
+    }
 
-    getHeaderButtons: function() {
+    getHeaderButtons() {
         var buttonSections = [];
 
         // NEW card
@@ -173,7 +176,7 @@ export default React.createClass({
                     <QueryModeToggle
                         key="queryModeToggle"
                         currentQueryMode={this.props.card.dataset_query.type}
-                        setQueryModeFn={this.setQueryMode}
+                        setQueryModeFn={this.props.setQueryModeFn}
                     />
                 ]);
             }
@@ -196,7 +199,7 @@ export default React.createClass({
                 } else {
                     // edit button
                     buttonSections.push([
-                        <a key="edit" className="cursor-pointer text-brand-hover" onClick={() => this.onBeginEditing()}>
+                        <a key="edit" className="cursor-pointer text-brand-hover" onClick={this.onBeginEditing}>
                             <Icon name="pencil" width="16px" height="16px" />
                         </a>
                     ]);
@@ -218,7 +221,7 @@ export default React.createClass({
 
                 // cancel button
                 buttonSections.push([
-                    <a key="cancel" className="cursor-pointer text-brand-hover text-grey-4 text-uppercase" onClick={() => this.onCancel()}>
+                    <a key="cancel" className="cursor-pointer text-brand-hover text-grey-4 text-uppercase" onClick={this.onCancel}>
                         CANCEL
                     </a>
                 ]);
@@ -232,7 +235,7 @@ export default React.createClass({
                     >
                         <DeleteQuestionModal
                             card={this.props.card}
-                            deleteCardFn={() => this.onDelete()}
+                            deleteCardFn={this.onDelete}
                             closeFn={() => this.refs.deleteModal.toggle()}
                         />
                     </ModalWithTrigger>
@@ -299,16 +302,16 @@ export default React.createClass({
         });
         buttonSections.push([
             <a key="dataReference" className={dataReferenceButtonClasses} title="Get help on what data means">
-                <Icon name='reference' width="16px" height="16px" onClick={this.toggleDataReference}></Icon>
+                <Icon name='reference' width="16px" height="16px" onClick={this.onToggleDataReference}></Icon>
             </a>
         ]);
 
         return (
             <ButtonBar buttons={buttonSections} className="Header-buttonSection" />
         );
-    },
+    }
 
-    render: function() {
+    render() {
         return (
             <div>
                 <HeaderBar
@@ -338,4 +341,4 @@ export default React.createClass({
             </div>
         );
     }
-});
+}
