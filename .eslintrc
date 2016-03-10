@@ -30,7 +30,7 @@
         "no-fallthrough": 0,
         "no-case-declarations": 0,
         "react/prop-types": 0,
-        "react/no-is-mounted": 0,
+        "react/no-is-mounted": 2,
         "react/no-did-mount-set-state": 0,
         "react/no-did-update-set-state": 0,
         "react/display-name": 0

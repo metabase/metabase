@@ -15,6 +15,7 @@ import SaveQuestionModal from 'metabase/components/SaveQuestionModal.jsx';
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import Query from "metabase/lib/query";
+import { cancelable } from "metabase/lib/promise";
 
 import cx from "classnames";
 
@@ -46,31 +47,32 @@ export default React.createClass({
         };
     },
 
-    resetStateOnTimeout: function() {
-        // clear any previously set timeouts then start a new one
+    componentWillUnmount() {
         clearTimeout(this.timeout);
-        this.timeout = setTimeout(() => {
-            if (this.isMounted()) {
-                this.setState({
-                    recentlySaved: null
-                });
-            }
-        }, 5000);
-    },
-
-    onCreate: async function(card, addToDash) {
-        // TODO: why are we not cleaning the card here?
-        let newCard = await this.props.cardApi.create(card).$promise;
-        this.props.notifyCardCreatedFn(newCard);
-        if (this.isMounted()) {
-            // update local state to reflect new card state
-            const modal = addToDash ? "add-to-dashboard" : "saved";
-            this.setState({ recentlySaved: "created", modal: modal }, this.resetStateOnTimeout);
+        if (this.requesetPromise) {
+            this.requesetPromise.cancel();
         }
     },
 
-    onBeginEditing: function() {
-        this.props.onBeginEditing();
+    resetStateOnTimeout: function() {
+        // clear any previously set timeouts then start a new one
+        clearTimeout(this.timeout);
+        this.timeout = setTimeout(() =>
+            this.setState({ recentlySaved: null })
+        , 5000);
+    },
+
+    onCreate: function(card, addToDash) {
+        // TODO: why are we not cleaning the card here?
+        this.requesetPromise = cancelable(this.props.cardApi.create(card).$promise);
+        return this.requesetPromise.then(newCard => {
+            this.props.notifyCardCreatedFn(newCard);
+
+            this.setState({
+                recentlySaved: "created",
+                modal: addToDash ? "add-to-dashboard" : "saved"
+            }, this.resetStateOnTimeout);
+        });
     },
 
     onSave: async function(card, addToDash) {
@@ -78,17 +80,24 @@ export default React.createClass({
             Query.cleanQuery(card.dataset_query.query);
         }
 
-        let updatedCard = await this.props.cardApi.update(card).$promise;
-        if (this.props.fromUrl) {
-            this.onGoBack();
-            return;
-        }
-        this.props.notifyCardUpdatedFn(updatedCard);
-        if (this.isMounted()) {
-            // update local state to reflect new card state
-            const modal = addToDash ? "add-to-dashboard" : null;
-            this.setState({ recentlySaved: "updated", modal: modal }, this.resetStateOnTimeout);
-        }
+        this.requesetPromise = cancelable(this.props.cardApi.update(card).$promise);
+        return this.requesetPromise.then(updatedCard => {
+            if (this.props.fromUrl) {
+                this.onGoBack();
+                return;
+            }
+
+            this.props.notifyCardUpdatedFn(updatedCard);
+
+            this.setState({
+                recentlySaved: "updated",
+                modal: addToDash ? "add-to-dashboard" : null
+            }, this.resetStateOnTimeout);
+        });
+    },
+
+    onBeginEditing: function() {
+        this.props.onBeginEditing();
     },
 
     onCancel: async function() {

@@ -27,16 +27,14 @@ export default React.createClass({
         };
     },
 
+    componentWillUnmount: function() {
+        clearTimeout(this.timeout);
+    },
+
     resetStateOnTimeout: function() {
         // clear any previously set timeouts then start a new one
         clearTimeout(this.timeout);
-
-        var component = this;
-        this.timeout = setTimeout(function() {
-            if (component.isMounted()) {
-                component.replaceState(component.getInitialState());
-            }
-        }.bind(this), 5000);
+        this.timeout = setTimeout(() => this.replaceState(this.getInitialState()), 5000);
     },
 
     onClick: function(event) {
