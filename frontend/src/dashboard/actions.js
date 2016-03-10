@@ -29,6 +29,7 @@ export const DELETE_CARD = 'DELETE_CARD';
 
 export const FETCH_DASHBOARD = 'FETCH_DASHBOARD';
 export const SET_DASHBOARD_ATTRIBUTES = 'SET_DASHBOARD_ATTRIBUTES';
+export const SET_DASHCARD_VISUALIZATION_SETTING = 'SET_DASHCARD_VISUALIZATION_SETTING';
 export const SAVE_DASHBOARD = 'SAVE_DASHBOARD';
 export const DELETE_DASHBOARD = 'DELETE_DASHBOARD';
 
@@ -48,12 +49,12 @@ export const FETCH_DATABASE_METADATA = 'FETCH_DATABASE_METADATA';
 // resource wrappers
 const DashboardApi = new AngularResourceProxy("Dashboard", ["get", "update", "delete", "reposition_cards", "addcard", "removecard"]);
 const MetabaseApi = new AngularResourceProxy("Metabase", ["dataset", "db_metadata"]);
-const CardApi = new AngularResourceProxy("Card", ["list", "delete"]);
+const CardApi = new AngularResourceProxy("Card", ["list", "update", "delete"]);
 const RevisionApi = new AngularResourceProxy("Revision", ["list", "revert"]);
 
 // FIXME: REMOVE SCALING ONCE WE ADD A DB MIGRATION TO SCALE DASHCARD SIZES
 const FIXME_DASHCARD_X_SCALE = 2;
-const FIXME_DASHCARD_Y_SCALE = 2;
+const FIXME_DASHCARD_Y_SCALE = 3;
 
 // action creators
 
@@ -150,6 +151,11 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
                 }
             }));
 
+        // update modified cards
+        await Promise.all(dashboard.ordered_cards
+            .filter(dc => dc.card.isDirty)
+            .map(async dc => CardApi.update(dc.card)));
+
         // update the dashboard itself
         if (dashboard.isDirty) {
             let { id, name, description, public_perms } = dashboard;
@@ -210,6 +216,8 @@ export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, 
         return databaseMetadata;
     };
 });
+
+export const setDashCardVisualizationSetting = createAction(SET_DASHCARD_VISUALIZATION_SETTING);
 
 // promise helpers
 

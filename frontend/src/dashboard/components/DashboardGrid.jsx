@@ -2,13 +2,14 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
 import GridLayout from "./grid/GridLayout.jsx";
-
-import MetabaseAnalytics from "metabase/lib/analytics";
-
 import DashCard from "./DashCard.jsx";
+
 import Modal from "metabase/components/Modal.jsx";
 import RemoveFromDashboardModal from "./RemoveFromDashboardModal.jsx";
 import AddSeriesModal from "./AddSeriesModal.jsx";
+
+import visualizations from "metabase/visualizations";
+import MetabaseAnalytics from "metabase/lib/analytics";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -16,6 +17,8 @@ import cx from "classnames";
 const GRID_WIDTH = 12;
 const GRID_ASPECT_RATIO = 4 / 3;
 const GRID_MARGIN = 6;
+
+const DEFAULT_MIN_SIZE = { width: 3, height: 3 };
 
 export default class DashboardGrid extends Component {
     constructor(props, context) {
@@ -60,10 +63,6 @@ export default class DashboardGrid extends Component {
                 id: change.dashcard.id,
                 attributes: { col: change.x, row: change.y, sizeX: change.w, sizeY: change.h }
             });
-            change.dashcard.col = change.x;
-            change.dashcard.row = change.y;
-            change.dashcard.sizeX = change.w;
-            change.dashcard.sizeY = change.h;
         }
 
         if (changes && changes.length > 0) {
@@ -81,14 +80,17 @@ export default class DashboardGrid extends Component {
         });
     }
 
-    getLayoutForDashCard(dc) {
+    getLayoutForDashCard(dashcard) {
+        let Viz = visualizations.get(dashcard.card.display);
+        let minSize = Viz.minSize || DEFAULT_MIN_SIZE;
         return ({
-            i: String(dc.id),
-            x: dc.col || 0,
-            y: dc.row || 0,
-            w: dc.sizeX || 2,
-            h: dc.sizeY || 2,
-            dashcard: dc
+            i: String(dashcard.id),
+            x: dashcard.col || 0,
+            y: dashcard.row || 0,
+            w: dashcard.sizeX || minSize.width,
+            h: dashcard.sizeY || minSize.height,
+            dashcard: dashcard,
+            minSize: minSize
         });
     }
 
@@ -179,6 +181,14 @@ export default class DashboardGrid extends Component {
         this.setState({ addSeriesModalDashCard: dc });
     }
 
+    onUpdateVisualizationSetting(dc, setting, value) {
+        this.props.setDashCardVisualizationSetting({
+            id: dc.id,
+            setting: setting,
+            value: value
+        });
+    }
+
     renderMobile() {
         const { isEditing } = this.props;
         const { width, dashcards } = this.state;
@@ -198,6 +208,7 @@ export default class DashboardGrid extends Component {
                             isFullscreen={this.props.isFullscreen}
                             onRemove={this.onDashCardRemove.bind(this, dc)}
                             onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
+                            onUpdateVisualizationSetting={this.onUpdateVisualizationSetting.bind(this, dc)}
                         />
                     </div>
                 )}
@@ -206,8 +217,8 @@ export default class DashboardGrid extends Component {
     }
 
     renderGrid() {
-        const { isEditing } = this.props;
-        const { width, dashcards } = this.state;
+        const { dashboard, isEditing } = this.props;
+        const { width } = this.state;
         const rowHeight = Math.floor(width / GRID_WIDTH / GRID_ASPECT_RATIO);
         return (
             <GridLayout
@@ -221,7 +232,7 @@ export default class DashboardGrid extends Component {
                 onDragStop={(...args) => this.onDragStop(...args)}
                 isEditing={isEditing}
             >
-                {dashcards && dashcards.map(dc =>
+                {dashboard && dashboard.ordered_cards.map(dc =>
                     <div key={dc.id} className="DashCard" onMouseDownCapture={this.onDashCardMouseDown}>
                         <DashCard
                             dashcard={dc}
@@ -232,6 +243,7 @@ export default class DashboardGrid extends Component {
                             isFullscreen={this.props.isFullscreen}
                             onRemove={this.onDashCardRemove.bind(this, dc)}
                             onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
+                            onUpdateVisualizationSetting={this.onUpdateVisualizationSetting.bind(this, dc)}
                         />
                     </div>
                 )}

@@ -132,11 +132,13 @@ export default class GridLayout extends Component {
         let cellSize = this.getCellSize();
         let originalLayout = this.getLayoutForItem(i);
 
+        let minW = originalLayout.minSize.width;
+        let minH = originalLayout.minSize.height;
         let maxW = this.props.cols - originalLayout.x;
         let maxH = Infinity;
         let targetLayout = {
-            w: Math.min(maxW, Math.max(1, Math.round(size.width / cellSize.width))),
-            h: Math.min(maxH, Math.max(1, Math.round(size.height / cellSize.height))),
+            w: Math.min(maxW, Math.max(minW, Math.round(size.width / cellSize.width))),
+            h: Math.min(maxH, Math.max(minH, Math.round(size.height / cellSize.height))),
             x: originalLayout.x,
             y: originalLayout.y
         };
@@ -161,12 +163,12 @@ export default class GridLayout extends Component {
         };
     }
 
-    getMinSize() {
+    getMinSizeForLayout(l) {
         let { margin } = this.props;
         let cellSize = this.getCellSize();
         return {
-            width: cellSize.width - margin,
-            height: cellSize.height - margin
+            width: cellSize.width * l.minSize.width - margin,
+            height: cellSize.height * l.minSize.height - margin
         }
     }
 
@@ -186,6 +188,8 @@ export default class GridLayout extends Component {
         let style = this.getStyleForLayout(l);
         return (
             <GridItem
+                {...l}
+                {...style}
                 key={l.i}
                 onDragStart={this.onDragStart}
                 onDrag={this.onDrag}
@@ -193,9 +197,7 @@ export default class GridLayout extends Component {
                 onResizeStart={this.onResizeStart}
                 onResize={this.onResize}
                 onResizeStop={this.onResizeStop}
-                minSize={this.getMinSize()}
-                {...l}
-                {...style}
+                minSize={this.getMinSizeForLayout(l)}
             >
                 {child}
             </GridItem>
@@ -229,8 +231,8 @@ export default class GridLayout extends Component {
         if (isEditing) {
             // render grid as a background image:
             backgroundImage  = this.getGridBackground();
-            // add some rows to provide place to drag to:
-            bottom += 8;
+            // add one vertical screen worth of rows to ensure the grid fills the screen
+            bottom += Math.ceil(window.innerHeight / cellSize.height);
         }
 
         let width = cellSize.width * cols;

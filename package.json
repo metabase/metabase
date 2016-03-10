@@ -26,6 +26,7 @@
     "fixed-data-table": "^0.6.0",
     "history": "1.12.0",
     "humanize-plus": "^1.5.0",
+    "icepick": "^1.1.0",
     "inflection": "^1.7.1",
     "moment": "^2.10.6",
     "node-libs-browser": "^0.5.3",

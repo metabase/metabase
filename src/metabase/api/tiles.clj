@@ -1,5 +1,6 @@
 (ns metabase.api.tiles
   (:require [clojure.core.match :refer [match]]
+            [clojure.java.io :as io]
             [compojure.core :refer [GET]]
             [metabase.api.common :refer :all]
             [metabase.driver :as driver])
@@ -12,10 +13,9 @@
 
 (def ^:private ^:const tile-size             256.0)
 (def ^:private ^:const pixel-origin          (float (/ tile-size 2)))
-(def ^:private ^:const pin-size              5)
+(def ^:private ^:const pin-size              6)
 (def ^:private ^:const pixels-per-lon-degree (float (/ tile-size 360)))
 (def ^:private ^:const pixels-per-lon-radian (float (/ tile-size (* 2 Math/PI))))
-
 
 ;;; # ------------------------------------------------------------ UTIL FNS ------------------------------------------------------------
 
@@ -58,8 +58,9 @@
 (defn- ^BufferedImage create-tile [zoom points]
   (let [num-tiles (bit-shift-left 1 zoom)
         tile      (BufferedImage. tile-size tile-size (BufferedImage/TYPE_INT_ARGB))
-        graphics  (.getGraphics tile)]
-    (.setColor graphics Color/red)
+        graphics  (.getGraphics tile)
+        color-blue (new Color 76 157 230)
+        color-white (Color/white)]
     (try
       (doseq [[^double lat, ^double lon] points]
         (let [sin-y      (-> (Math/sin (degrees->radians lat))
@@ -77,7 +78,10 @@
               tile-pixel {:x (mod (map-pixel :x) tile-size)
                           :y (mod (map-pixel :y) tile-size)}]
           ;; now draw a "pin" at the given tile pixel location
-          (.fillOval graphics (tile-pixel :x) (tile-pixel :y) pin-size pin-size)))
+          (.setColor graphics color-white)
+          (.fillRect graphics (tile-pixel :x) (tile-pixel :y) pin-size pin-size)
+          (.setColor graphics color-blue)
+          (.fillRect graphics (+ 1 (tile-pixel :x)) (+ 1 (tile-pixel :y)) (- pin-size 2) (- pin-size 2))))
       (catch Throwable e
         (.printStackTrace e))
       (finally
