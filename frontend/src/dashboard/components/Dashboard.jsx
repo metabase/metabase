@@ -193,7 +193,7 @@ export default class Dashboard extends Component {
                                 <div className="text-normal text-grey-2">Add a question to start making it useful!</div>
                             </div>
                         :
-                            <DashboardGrid {...this.props} />
+                            <DashboardGrid {...this.props} isFullscreen={this.state.isFullscreen} />
                         }
                     </div>
                 </div>
