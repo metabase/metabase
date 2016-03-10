@@ -220,10 +220,6 @@
       margin-right: 346px;
   }
   .HomeLayout-sidebar {
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      right: 0;
       width: 346px;
       background-color: #F9FBFC;
       border-left: 2px solid var(--border-color);

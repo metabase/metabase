@@ -43,7 +43,7 @@ export default class Homepage extends Component {
         const { user } = this.props;
 
         return (
-            <div className="flex full-height flex-column flex-full">
+            <div className="full">
                 { this.state.onboarding ?
                     <Modal>
                         <NewUserOnboardingModal user={user} closeFn={() => (this.completeOnboarding())}></NewUserOnboardingModal>
@@ -62,15 +62,15 @@ export default class Homepage extends Component {
                         </div>
                     </div>
                 </div>
-                <div className="relative full-height flex flex-column flex-full md-pl4">
-                    <div className="HomeLayout">
-                        <div className="HomeLayout-mainColumn">
-                            <div style={{paddingLeft: "0.75rem"}} className="pt4 h2 text-normal">Activity</div>
-                            <Activity {...this.props} />
+                <div className="flex">
+                    <div className="wrapper">
+                        <div className="HomeLayout-mainColumn pl2">
+                          <div className="pt4 h2 text-normal ml2">Activity</div>
+                          <Activity {...this.props} />
                         </div>
                     </div>
-                    <div className="HomeLayout-sidebar">
-                        <RecentViews {...this.props} />
+                    <div className="HomeLayout-sidebar flex-no-shrink">
+                      <RecentViews {...this.props} />
                     </div>
                 </div>
             </div>
