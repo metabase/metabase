@@ -3,10 +3,13 @@ import React, { Component, PropTypes } from "react";
 import ActionButton from "metabase/components/ActionButton.jsx";
 import AddToDashSelectQuestionModal from "./AddToDashSelectQuestionModal.jsx";
 import DeleteDashboardModal from "./DeleteDashboardModal.jsx";
+import RefreshWidget from "./RefreshWidget.jsx";
 import Header from "metabase/components/Header.jsx";
 import HistoryModal from "metabase/components/HistoryModal.jsx";
+import FullscreenIcon from "metabase/components/icons/FullscreenIcon.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
+import NightModeIcon from "metabase/components/icons/NightModeIcon.jsx";
 
 import cx from "classnames";
 
@@ -15,6 +18,11 @@ export default class DashboardHeader extends Component {
         dashboard: PropTypes.object.isRequired,
         revisions: PropTypes.object.isRequired,
         isEditing: PropTypes.bool.isRequired,
+        isFullscreen: PropTypes.bool.isRequired,
+        isNightMode: PropTypes.bool.isRequired,
+
+        refreshPeriod: PropTypes.number,
+        refreshElapsed: PropTypes.number,
 
         addCardToDashboard: PropTypes.func.isRequired,
         deleteDashboard: PropTypes.func.isRequired,
@@ -25,6 +33,10 @@ export default class DashboardHeader extends Component {
         saveDashboard: PropTypes.func.isRequired,
         setDashboardAttributes: PropTypes.func.isRequired,
         setEditingDashboard: PropTypes.func.isRequired,
+        setRefreshPeriod: PropTypes.func.isRequired,
+
+        onNightModeChange: PropTypes.func.isRequired,
+        onFullscreenChange: PropTypes.func.isRequired
     };
 
     onEdit() {
@@ -108,12 +120,14 @@ export default class DashboardHeader extends Component {
     }
 
     getHeaderButtons() {
-        var buttonSections = [[],[]];
+        const { dashboard, isEditing, isFullscreen, isNightMode } = this.props;
+        const isEmpty = !dashboard || dashboard.ordered_cards.length === 0;
+        const canEdit = dashboard && dashboard.can_write;
 
-        var { dashboard } = this.props;
+        const buttons = [];
 
-        if (this.props.isEditing) {
-            buttonSections[0].push(
+        if (isEditing) {
+            buttons.push(
                 <ModalWithTrigger
                     key="history"
                     ref="dashboardHistory"
@@ -132,37 +146,56 @@ export default class DashboardHeader extends Component {
             );
         }
 
-        if (dashboard && dashboard.can_write && !this.props.isEditing) {
-            buttonSections[0].push(
+        if (!isFullscreen && !isEditing && canEdit) {
+            buttons.push(
                 <a data-metabase-event="Dashboard;Edit" key="edit" title="Edit Dashboard Layout" className="text-brand-hover cursor-pointer" onClick={() => this.onEdit()}>
                     <Icon name="pencil" width="16px" height="16px" />
                 </a>
             );
         }
 
-        var isEmpty = dashboard.ordered_cards.length === 0;
-        buttonSections[1].push(
-            <ModalWithTrigger
-                key="add"
-                ref="addQuestionModal"
-                triggerElement={
-                    <span data-metabase-event="Dashboard;Add Card Modal" title="Add a question to this dashboard">
-                        <Icon className={cx("text-brand-hover cursor-pointer", { "Icon--pulse": isEmpty })} name="add" width="16px" height="16px" />
-                    </span>
-                }
-            >
-                <AddToDashSelectQuestionModal
-                    dashboard={dashboard}
-                    cards={this.props.cards}
-                    fetchCards={this.props.fetchCards}
-                    addCardToDashboard={this.props.addCardToDashboard}
-                    setEditingDashboard={this.props.setEditingDashboard}
-                    onClose={() => this.refs.addQuestionModal.toggle()}
-                />
-            </ModalWithTrigger>
-        );
+        if (!isFullscreen && canEdit) {
+            buttons.push(
+                <ModalWithTrigger
+                    key="add"
+                    ref="addQuestionModal"
+                    triggerElement={
+                        <span data-metabase-event="Dashboard;Add Card Modal" title="Add a question to this dashboard">
+                            <Icon className={cx("text-brand-hover cursor-pointer", { "Icon--pulse": isEmpty })} name="add" width="16px" height="16px" />
+                        </span>
+                    }
+                >
+                    <AddToDashSelectQuestionModal
+                        dashboard={dashboard}
+                        cards={this.props.cards}
+                        fetchCards={this.props.fetchCards}
+                        addCardToDashboard={this.props.addCardToDashboard}
+                        setEditingDashboard={this.props.setEditingDashboard}
+                        onClose={() => this.refs.addQuestionModal.toggle()}
+                    />
+                </ModalWithTrigger>
+            );
+        }
 
-        return buttonSections;
+        if (!isEditing) {
+            buttons.push(
+                <RefreshWidget className="text-brand-hover" key="refresh" period={this.props.refreshPeriod} elapsed={this.props.refreshElapsed} onChangePeriod={this.props.setRefreshPeriod} />
+            );
+        }
+
+        if (!isEditing && isFullscreen) {
+            buttons.push(
+                <NightModeIcon className="text-brand-hover" key="night" isNightMode={isNightMode} onClick={() => this.props.onNightModeChange(!isNightMode) } />
+            );
+        }
+
+        if (!isEditing) {
+            buttons.push(
+                <FullscreenIcon className="text-brand-hover" key="fullscreen" isFullscreen={isFullscreen} onClick={() => this.props.onFullscreenChange(!isFullscreen)} />
+            );
+        }
+
+        return [buttons];
     }
 
     render() {

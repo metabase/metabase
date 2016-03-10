@@ -195,6 +195,7 @@ export default class DashboardGrid extends Component {
                             fetchCardData={this.props.fetchCardData}
                             markNewCardSeen={this.props.markNewCardSeen}
                             isEditing={isEditing}
+                            isFullscreen={this.props.isFullscreen}
                             onRemove={this.onDashCardRemove.bind(this, dc)}
                             onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
                         />
@@ -228,6 +229,7 @@ export default class DashboardGrid extends Component {
                             fetchCardData={this.props.fetchCardData}
                             markNewCardSeen={this.props.markNewCardSeen}
                             isEditing={isEditing}
+                            isFullscreen={this.props.isFullscreen}
                             onRemove={this.onDashCardRemove.bind(this, dc)}
                             onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
                         />

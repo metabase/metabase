@@ -21,6 +21,8 @@ export default class DashCard extends Component {
         this.state = {
             error: null
         };
+
+        _.bindAll(this, "updateVisibility");
     }
 
     static propTypes = {
@@ -33,6 +35,9 @@ export default class DashCard extends Component {
 
     async componentDidMount() {
         const { dashcard } = this.props;
+
+        this.visibilityTimer = window.setInterval(this.updateVisibility, 2000);
+        window.addEventListener("scroll", this.updateVisibility, false);
 
         // HACK: way to scroll to a newly added card
         if (dashcard.justAdded) {
@@ -49,6 +54,25 @@ export default class DashCard extends Component {
         } catch (error) {
             console.error("DashCard error", error)
             this.setState({ error });
+        }
+    }
+
+    componentWillUnmount() {
+        window.clearInterval(this.visibilityTimer);
+        window.removeEventListener("scroll", this.updateVisibility, false);
+    }
+
+    updateVisibility() {
+        const { isFullscreen } = this.props;
+        const element = ReactDOM.findDOMNode(this);
+        if (element) {
+            const rect = element.getBoundingClientRect();
+            const isOffscreen = (rect.bottom < 0 || rect.bottom > window.innerHeight || rect.top < 0);
+            if (isFullscreen && isOffscreen) {
+                element.style.opacity = 0.05;
+            } else {
+                element.style.opacity = 1.0;
+            }
         }
     }
 
