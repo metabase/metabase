@@ -24,9 +24,6 @@
 }
 
 /* Fullscreen mode */
-.Dashboard.Dashboard--fullscreen {
-}
-
 .Dashboard.Dashboard--fullscreen .Header-button {
   color: #D2DBE4;
 }
@@ -55,10 +52,11 @@
   border: 1px solid rgb(46, 49, 52) !important;
 }
 
+
 .DashboardGrid {
-    margin-top: 5px;
-    margin-left: -5px;
-    margin-right: -5px;
+  margin-top: 5px;
+  margin-left: -5px;
+  margin-right: -5px;
 }
 
 .DashCard {
@@ -73,6 +71,8 @@
   bottom: 0;
   right: 0;
   overflow: hidden;
+  background-color: white;
+  border: 1px solid rgb(219, 219, 219);
 }
 
 .Card-outer {
@@ -83,7 +83,6 @@
 
 .Dash--editing .DashCard .Card {
     pointer-events: none;
-    border: 1px solid rgba(149, 149, 149, 0.5);
     transition: border .3s, background-color .3s;
 }
 
@@ -96,12 +95,7 @@
     }
 }
 
-.DashCard {
-    background-color: white;
-}
-
 .Dash--editing .DashCard .Card.Card--recent {
-    /*background-color: rgb(255, 250, 243);*/
     animation-duration: 30s;
     animation-name: fade-out-yellow;
 }
@@ -134,15 +128,14 @@
 }
 
 .Dash--editing .DashCard .Card {
-    background: #fff;
     user-select: none;
 }
 
-.Dash--editing .DashCard:hover {
-    box-shadow: 0px 1px 3px rgba(0,0,0,0.1);
+.DashCard .Card {
+    box-shadow: 0px 1px 3px rgba(0,0,0,0.08);
 }
 
-.Dash--editing .DashCard.dragging {
+.Dash--editing .DashCard.dragging .Card {
     box-shadow: 3px 3px 8px rgba(0,0,0,0.1);
 }
 

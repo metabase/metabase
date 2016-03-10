@@ -49,6 +49,10 @@ export default class DashboardGrid extends Component {
         onChangeLocation: PropTypes.func.isRequired
     };
 
+    shouldComponentUpdate(nextProps, nextState) {
+        return !(_.isEqual(this.props, nextProps) && _.isEqual(this.state, nextState));
+    }
+
     componentWillReceiveProps(nextProps) {
         this.setState({
             dashcards: this.getSortedDashcards(nextProps),
