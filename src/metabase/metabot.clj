@@ -37,7 +37,7 @@
                           {(if (true? dispatch-token)
                              (keyword symb)
                              dispatch-token) varr}))]
-    (log/debug (u/format-color 'cyan verb) fn-map)
+    (println (u/format-color 'cyan verb) fn-map)
     (fn dispatch*
       ([]
        (keys-description (format "Here's what I can %s:" verb) fn-map))
@@ -164,7 +164,7 @@
     (when-let [tokens (seq (edn/read-string (str "(" (-> s
                                                          (str/replace "“" "\"") ; replace smart quotes
                                                          (str/replace "”" "\"")) ")")))]
-      (log/debug (u/format-color 'magenta tokens))
+      (println (u/format-color 'magenta tokens))
       (apply apply-metabot-fn tokens))))
 
 
@@ -173,14 +173,14 @@
 (defn- message->command-str [{:keys [text]}]
   (u/prog1 (when (seq text)
              (second (re-matches #"^mea?ta?boa?t\s+(.*)$" text)))
-    (log/debug (u/format-color 'yellow <>))))
+    (println (u/format-color 'yellow <>))))
 
 (defn- respond-to-message! [message response]
   (when response
     (let [response (if (coll? response) (str "```\n" (u/pprint-to-str response) "```")
                        (str response))]
       (when (seq response)
-        (log/debug (u/format-color 'green response))
+        (println (u/format-color 'green response))
         (slack/post-chat-message! (:channel message) response)))))
 
 (defn- handle-slack-message [message]
@@ -199,14 +199,14 @@
 
 (defn- handle-slack-event [socket start-time event]
   (when-not (= socket @websocket)
-    (log/debug "Go home websocket, you're drunk.")
+    (println "Go home websocket, you're drunk.")
     (s/close! socket)
     (throw (Exception.)))
 
   (when-let [event (json/parse-string event keyword)]
     (when (and (human-message? event)
                (> (event-timestamp-ms event) start-time))
-      (log/debug (u/pprint-to-str 'cyan event))
+      (println (u/pprint-to-str 'cyan event))
       (binding [*channel-id* (:channel event)]
         (do-async (handle-slack-message event))))))
 
