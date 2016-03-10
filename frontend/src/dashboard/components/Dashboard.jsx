@@ -4,14 +4,23 @@ import DashboardHeader from "../components/DashboardHeader.jsx";
 import DashboardGrid from "../components/DashboardGrid.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
+import _ from "underscore";
+import querystring from "querystring";
+
+const TICK_PERIOD = 0.25; // seconds
+
 export default class Dashboard extends Component {
 
     constructor(props, context) {
         super(props, context);
 
         this.state = {
-            error: null
+            error: null,
+            refreshPeriod: null,
+            refreshElapsed: null
         };
+
+        _.bindAll(this, "setRefreshPeriod", "tickRefreshClock");
     }
 
     static propTypes = {
@@ -37,6 +46,8 @@ export default class Dashboard extends Component {
         // HACK: apply a css class to the page body so that we can ensure the bg-color is maintained
         document.body.classList.add("MB-lightBG");
 
+        this.loadParams();
+
         try {
             await this.props.fetchDashboard(this.props.selectedDashboard);
             if (this.props.addCardOnLoad) {
@@ -54,9 +65,66 @@ export default class Dashboard extends Component {
         }
     }
 
+    componentDidUpdate() {
+        this.updateParams();
+    }
+
     componentWillUnmount() {
         // HACK: remove our bg-color css applied when component mounts
         document.body.classList.remove("MB-lightBG");
+        this._clearRefreshInterval();
+    }
+
+    loadParams() {
+        let params = querystring.parse(window.location.hash.substring(1));
+        if (params.refresh) {
+            this.setRefreshPeriod(parseInt(params.refresh));
+        }
+    }
+
+    updateParams() {
+        let hash = "";
+        if (this.state.refreshPeriod) {
+            hash += "refresh=" + this.state.refreshPeriod;
+        }
+        // setting window.location.hash = "" causes the page to reload for some reason
+        history.replaceState(null, document.title, window.location.pathname + (hash ? "#" + hash : ""));
+    }
+
+    _clearRefreshInterval() {
+        if (this._interval != null) {
+            clearInterval(this._interval);
+        }
+    }
+
+    setRefreshPeriod(refreshPeriod) {
+        this._clearRefreshInterval();
+        if (refreshPeriod != null) {
+            this._interval = setInterval(this.tickRefreshClock, TICK_PERIOD * 1000);
+            this.setState({ refreshPeriod, refreshElapsed: 0 });
+        } else {
+            this.setState({ refreshPeriod: null, refreshElapsed: null });
+        }
+    }
+
+    async tickRefreshClock() {
+        let refreshElapsed = (this.state.refreshElapsed || 0) + TICK_PERIOD;
+        if (refreshElapsed >= this.state.refreshPeriod) {
+            refreshElapsed = 0;
+
+            await this.props.fetchDashboard(this.props.selectedDashboard);
+            let cards = {};
+            for (let dashcard of this.props.dashboard.ordered_cards) {
+                cards[dashcard.card.id] = dashcard.card;
+                for (let card of dashcard.series) {
+                    cards[card.id] = card;
+                }
+            }
+            for (let card of Object.values(cards)) {
+                this.props.fetchCardData(card);
+            }
+        }
+        this.setState({ refreshElapsed });
     }
 
     render() {
@@ -67,7 +135,12 @@ export default class Dashboard extends Component {
             {() =>
                 <div className="full" style={{ overflowX: "hidden" }}>
                     <header className="bg-white border-bottom relative z2">
-                        <DashboardHeader {...this.props} />
+                        <DashboardHeader
+                            {...this.props}
+                            refreshPeriod={this.state.refreshPeriod}
+                            refreshElapsed={this.state.refreshElapsed}
+                            setRefreshPeriod={this.setRefreshPeriod}
+                        />
                     </header>
                     <div className="Dash-wrapper wrapper">
                         { dashboard.ordered_cards.length === 0 ?

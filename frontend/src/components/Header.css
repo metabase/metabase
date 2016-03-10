@@ -15,6 +15,14 @@
     border-right: none;
 }
 
+.Header-button {
+    margin-right: 1em;
+}
+
+.Header-button:last-child {
+    margin-right: 0;
+}
+
 .EditHeader {
     background-color: #6CAFED;
 }

@@ -3,6 +3,7 @@ import React, { Component, PropTypes } from "react";
 import ActionButton from "metabase/components/ActionButton.jsx";
 import AddToDashSelectQuestionModal from "./AddToDashSelectQuestionModal.jsx";
 import DeleteDashboardModal from "./DeleteDashboardModal.jsx";
+import RefreshWidget from "./RefreshWidget.jsx";
 import Header from "metabase/components/Header.jsx";
 import HistoryModal from "metabase/components/HistoryModal.jsx";
 import Icon from "metabase/components/Icon.jsx";
@@ -15,6 +16,8 @@ export default class DashboardHeader extends Component {
         dashboard: PropTypes.object.isRequired,
         revisions: PropTypes.object.isRequired,
         isEditing: PropTypes.bool.isRequired,
+        refreshPeriod: PropTypes.number,
+        refreshElapsed: PropTypes.number,
 
         addCardToDashboard: PropTypes.func.isRequired,
         deleteDashboard: PropTypes.func.isRequired,
@@ -25,6 +28,7 @@ export default class DashboardHeader extends Component {
         saveDashboard: PropTypes.func.isRequired,
         setDashboardAttributes: PropTypes.func.isRequired,
         setEditingDashboard: PropTypes.func.isRequired,
+        setRefreshPeriod: PropTypes.func.isRequired
     };
 
     onEdit() {
@@ -137,6 +141,10 @@ export default class DashboardHeader extends Component {
                 <a data-metabase-event="Dashboard;Edit" key="edit" title="Edit Dashboard Layout" className="text-brand-hover cursor-pointer" onClick={() => this.onEdit()}>
                     <Icon name="pencil" width="16px" height="16px" />
                 </a>
+            );
+
+            buttonSections[0].push(
+                <RefreshWidget key="refresh" period={this.props.refreshPeriod} elapsed={this.props.refreshElapsed} onChangePeriod={this.props.setRefreshPeriod} />
             );
         }
 
