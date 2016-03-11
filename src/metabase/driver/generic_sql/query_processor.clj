@@ -21,6 +21,7 @@
                                                       DateTimeField
                                                       DateTimeValue
                                                       Field
+                                                      Function
                                                       RelativeDateTimeValue
                                                       Value)))
 
@@ -46,7 +47,19 @@
     "Return an appropriate korma form for an object."))
 
 (extend-protocol IGenericSQLFormattable
-  nil (formatted [_] nil)
+  nil    (formatted [_] nil)
+  Number (formatted [this] this)
+  String (formatted [this] this)
+
+  Function
+  (formatted [{:keys [operator args]}]
+    (apply (case    operator
+             :+     kx/+
+             :-     kx/-
+             :*     kx/*
+             :/     kx//
+             :lower (partial k/sqlfn* :LOWER))
+           (map formatted args)))
 
   Field
   (formatted [{:keys [schema-name table-name special-type field-name]}]

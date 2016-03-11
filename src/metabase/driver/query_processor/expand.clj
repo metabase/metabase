@@ -1,10 +1,12 @@
 (ns metabase.driver.query-processor.expand
   "Converts a Query Dict as received by the API into an *expanded* one that contains extra information that will be needed to
    construct the appropriate native Query, and perform various post-processing steps such as Field ordering."
-  (:refer-clojure :exclude [< <= > >= = != and or not filter count distinct sum])
+  (:refer-clojure :exclude [< <= > >= = != and or not filter count distinct sum + - / * fn])
   (:require (clojure [core :as core]
+                     [edn :as edn]
                      [string :as str])
             [clojure.tools.logging :as log]
+            [korma.core :as k]
             [schema.core :as s]
             [metabase.db :as db]
             [metabase.driver :as driver]
@@ -18,6 +20,7 @@
                                                       CompoundFilter
                                                       EqualityFilter
                                                       FieldPlaceholder
+                                                      Function
                                                       NotFilter
                                                       RelativeDatetime
                                                       StringFilter
@@ -50,7 +53,7 @@
   [id :- i/IntGreaterThanZero]
   (i/map->FieldPlaceholder {:field-id id}))
 
-(s/defn ^:private ^:always-validate field :- i/FieldPlaceholderOrAgRef
+(s/defn ^:private ^:always-validate field :- i/FieldAgRefOrFunction
   "Generic reference to a `Field`. F can be an integer Field ID, or various other forms like `fk->` or `aggregation`."
   [f]
   (if (integer? f)
@@ -160,6 +163,13 @@
 
 (def ^:ql ^{:arglists '([query & fields])} breakout "Specify which fields to breakout by." (partial fields-list-clause :breakout))
 (def ^:ql ^{:arglists '([query & fields])} fields   "Specify which fields to return."      (partial fields-list-clause :fields))
+
+(defn ^:ql add-fields
+  "Top-level clause. Add additional fields to the `fields` clause.
+   `fields` defaults to being added implicitly to include *every* field in a table, so this function
+   can be used to include additional ones without having to manually include all the implicit fields."
+  [query & fields]
+  (update query :fields (comp vec concat) (map field fields)))
 
 ;;; ## filter
 
@@ -350,6 +360,70 @@
   [query, table-id :- s/Int]
   (assoc query :source-table table-id))
 
+
+;;; ## calculated columns
+
+(s/defn ^:private ^:always-validate fn
+  [k :- s/Keyword, & args] :- Function
+  (i/strict-map->Function {:operator k, :args args}))
+
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} + "Arithmetic addition function."       (partial fn :+))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} - "Arithmetic subtraction function."    (partial fn :-))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} * "Arithmetic multiplication function." (partial fn :*))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} / "Arithmetic division function."       (partial fn :/))
+
+(s/defn ^:ql ^:always-validate lower
+  "An example of a non-arithmetic function."
+  [field-or-str] :- Function
+  (fn :lower field-or-str))
+
+;;; EXPRESSION PARSING
+
+(def ^:private ^:dynamic *table-id* #_4299 4300) ; TODO
+
+(defn- resolve-expression-arg [arg]
+  (println (u/format-color 'yellow "    (resolve-expression-arg %s)" arg))
+  (u/prog1 (if (symbol? arg)
+             (core/or [:field-id (db/sel :one :id 'Field, :table_id *table-id*, (k/where {(k/sqlfn* :LOWER :name) (str/lower-case (name arg))}))]
+                      (throw (Exception. (format "Can't find field named '%s' for Table %d\nValid fields: %s"
+                                                 arg *table-id*
+                                                 (vec (db/sel :many :field ['Field :name] :table_id *table-id*))))))
+             arg)
+    (println (u/format-color 'yellow "     -> %s" (u/pprint-to-str <>)))))
+
+(defn- infix->prefix
+  ([arg]
+   (println (u/format-color 'magenta "  (infix->prefix %s)" arg))
+   (u/prog1 (if (sequential? arg)
+              (when (seq arg)
+                (apply infix->prefix arg))
+              (resolve-expression-arg arg))
+     (println (u/format-color 'magenta "   -> %s" (u/pprint-to-str <>)))))
+  ([arg1 operator & more]
+   (println (u/format-color 'cyan "(infix->prefix %s %s %s)" arg1 operator (apply str (interpose " " more))))
+   ;; using cons here so if `more` is an empty seq we won't have `nil` in the result
+   (u/prog1 [(keyword operator) (infix->prefix arg1) (apply infix->prefix more)]
+     (println (u/format-color 'cyan " -> %s" (u/pprint-to-str <>))))))
+
+(defn- parse-expression [s]
+  (apply infix->prefix (edn/read-string (str "(" s ")"))))
+
+(declare walk-expand-ql-sexprs)
+
+(s/defn ^:ql expression [s :- s/Str] :- Function
+  (println (u/format-color 'green "Expression: \"%s\"" s))
+  (walk-expand-ql-sexprs (u/prog1 (parse-expression s)
+                           (println (u/format-color 'blue "Parsed: %s" (u/pprint-to-str <>))))))
+
+(defn- x [] (expression "TOTAL - TAX"))
+(defn- y [] (expression "TOTAL - TAX - ID"))
+(defn- z [] (expression "TOTAL + (TAX - ID)"))
+(defn- a [] (expression "(TOTAL + TAX) + (ID + SUBTOTAL)"))
+(defn- b [] (expression "lower(subtotal)")) ; TODO - how are we supposed to parse this (!?)
+(defn- c [] (expression "subtotal lower"))  ; This works at least, but is counter-intuitive
+
+;; TODO - can we support quoting column names somehow, in case they include spaces?
+;; w/ EDN reader we would probably need to use double quotes, but how would we differentiate those from string literals?
 
 ;;; # ------------------------------------------------------------ Expansion ------------------------------------------------------------
 

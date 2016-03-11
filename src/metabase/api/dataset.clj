@@ -29,7 +29,7 @@
   (read-check Database database)
   ;; add sensible constraints for results limits on our query
   (let [query (assoc body :constraints dataset-query-api-constraints)]
-    (driver/dataset-query query {:executed_by *current-user-id*})))
+      (driver/dataset-query query {:executed_by *current-user-id*})))
 
 
 (defendpoint POST "/csv"

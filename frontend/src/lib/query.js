@@ -230,6 +230,7 @@ var Query = {
     },
 
     getFilters(query) {
+        if (!query) throw 'query is null!';
         // Special handling for accessing query filters because it's been fairly complex to deal with their structure.
         // This method provide a unified and consistent view of the filter definition for the rest of the tool to use.
 
@@ -388,6 +389,28 @@ var Query = {
                 query.order_by.splice(index, 1);
             }
         }
+    },
+
+    addCustomField(query) {
+        let addFields = query.add_fields || [];
+        addFields.push(['expression', 'latitude + longitude']);
+        query.add_fields = addFields;
+
+        console.log('added add_fields. query =', query);
+    },
+
+    updateCustomField(query, index, expression) {
+        if (typeof expression !== 'string') throw 'expression should be a string!';
+
+        console.log('updateCustomField( query =', query, ", index =", index, ', expression =', expression, ')');
+        query.add_fields[index][1] = expression;
+    },
+
+    removeCustomField(query, index) {
+        if (!query.add_fields) return;
+
+        if (query.add_fields.length === 1) delete query.add_fields;
+        else                               query.add_fields.splice(index, 1);
     },
 
     isRegularField(field) {
