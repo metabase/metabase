@@ -14,7 +14,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import _ from "underscore";
 import cx from "classnames";
 
-const GRID_WIDTH = 12;
+const GRID_WIDTH = 18;
 const GRID_ASPECT_RATIO = 4 / 3;
 const GRID_MARGIN = 6;
 

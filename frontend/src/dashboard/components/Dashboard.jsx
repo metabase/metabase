@@ -187,7 +187,7 @@ export default class Dashboard extends Component {
                             onNightModeChange={this.setNightMode}
                         />
                     </header>
-                    <div className="Dash-wrapper wrapper">
+                    <div className="wrapper">
                         { dashboard.ordered_cards.length === 0 ?
                             <div className="absolute z1 top bottom left right flex flex-column layout-centered">
                                 <span className="QuestionCircle">?</span>
