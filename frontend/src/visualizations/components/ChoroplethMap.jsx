@@ -131,7 +131,7 @@ export default class ChoroplethMap extends Component {
                 <div className="absolute top bottom left right flex layout-centered">
                     <ShouldUpdate series={series} shouldUpdate={(props, nextProps) => !isSameSeries(props.series, nextProps.series)}>
                         { () =>
-                            <svg className="flex-full" viewBox={`0 0 ${width} ${height}`}>
+                            <svg className="flex-full m1" viewBox={`0 0 ${width} ${height}`}>
                             {features && features.map((feature, index) =>
                                 <path
                                     d={geo(feature, index)}

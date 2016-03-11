@@ -122,7 +122,7 @@ export default class PieChart extends Component {
                         <div className={styles.Title}>{title}</div>
                     </div>
                     <div className={styles.Chart}>
-                        <svg className={styles.Donut} viewBox="0 0 100 100">
+                        <svg className={styles.Donut+ " m1"} viewBox="0 0 100 100">
                             <g transform={`translate(50,50)`}>
                                 {pie(slices).map((slice, index) =>
                                     <path
