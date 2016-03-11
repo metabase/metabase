@@ -10,6 +10,7 @@ import FilterPopover from './filters/FilterPopover.jsx';
 import Icon from "metabase/components/Icon.jsx";
 import IconBorder from 'metabase/components/IconBorder.jsx';
 import SortWidget from './SortWidget.jsx';
+import TextPicker from './filters/pickers/TextPicker.jsx';
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 
 import MetabaseAnalytics from 'metabase/lib/analytics';
@@ -161,9 +162,12 @@ export default class GuiQueryEditor extends Component {
         // TODO - Analytics
     }
 
-    updateCustomField(index, customField) {
-        Query.updateCustomField(this.props.query.query, index, customField)
-            this.setQuery(this.props.query);
+    updateCustomField(index, ar) {
+        let expression = ar[0];
+
+        console.log('updateCustomField', index, expression);
+        Query.updateCustomField(this.props.query.query, index, expression);
+        this.setQuery(this.props.query);
         // TODO - Analytics
     }
 
@@ -399,22 +403,28 @@ export default class GuiQueryEditor extends Component {
     }
 
     renderAddFields() {
+        console.log('renderAddFields()'); // TODO - maybe call this renderAddExpressions instead
         var content = [];
 
         let hasCustomFields = typeof this.props.query.query.add_fields !== 'undefined';
 
         if (hasCustomFields && this.props.tableMetadata) {
             let fieldOptions = Query.getFieldOptions(this.props.tableMetadata.fields, 'include joins');
-            this.props.query.query.add_fields.map((field, index) => {
+            this.props.query.query.add_fields.map((ar, index) => {
+                // each entry (ar) looks like ['expression', <expression>], TextPicker expects [<expression>]
                 content.push(
-                    <CustomFieldWidget
-                        tableMetadata={this.props.tableMetadata}
-                        fieldOptions={fieldOptions}
-                        customField={this.props.query.query.add_fields[index]}
-                        updateCustomField={this.updateCustomField.bind(null, index)}
-                        removeCustomField={this.removeCustomField.bind(null, index)}
+                    <TextPicker
+                        values={_.rest(ar)}
+                        onValuesChange={this.updateCustomField.bind(null, index)}
                     />
                 );
+                {/* <CustomFieldWidget
+                    tableMetadata={this.props.tableMetadata}
+                    fieldOptions={fieldOptions}
+                    customField={this.props.query.query.add_fields[index]}
+                    updateCustomField={this.updateCustomField.bind(null, index)}
+                    removeCustomField={this.removeCustomField.bind(null, index)}
+                    /> */}
             });
         }
 

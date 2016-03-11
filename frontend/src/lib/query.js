@@ -393,15 +393,17 @@ var Query = {
 
     addCustomField(query) {
         let addFields = query.add_fields || [];
-        addFields.push(['+', ['field-id', null], ['field-id', null]]);
+        addFields.push(['expression', 'latitude + longitude']);
         query.add_fields = addFields;
 
         console.log('added add_fields. query =', query);
     },
 
-    updateCustomField(query, index, customField) {
-        console.log('updateCustomField( query =', query, ", index =", index, ', customField =', customField, ')');
-        query.add_fields[index] = customField;
+    updateCustomField(query, index, expression) {
+        if (typeof expression !== 'string') throw 'expression should be a string!';
+
+        console.log('updateCustomField( query =', query, ", index =", index, ', expression =', expression, ')');
+        query.add_fields[index][1] = expression;
     },
 
     removeCustomField(query, index) {

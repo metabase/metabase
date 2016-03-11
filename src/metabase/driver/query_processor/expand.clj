@@ -379,27 +379,31 @@
 
 ;;; EXPRESSION PARSING
 
-(def ^:private ^:dynamic *table-id* 4299) ; TODO
+(def ^:private ^:dynamic *table-id* #_4299 4300) ; TODO
 
 (defn- resolve-expression-arg [arg]
-  (println "resolve-expression-arg" arg)
-  (if (symbol? arg)
-    (core/or [:field-id (db/sel :one :id 'Field, :table_id *table-id*, (k/where {(k/sqlfn* :LOWER :name) (str/lower-case (name arg))}))]
-             (throw (Exception. (format "Can't find field named '%s' for Table %d\nValid fields: %s"
-                                        arg *table-id*
-                                        (vec (db/sel :many :field ['Field :name] :table_id *table-id*))))))
-    arg))
+  (println (u/format-color 'yellow "    (resolve-expression-arg %s)" arg))
+  (u/prog1 (if (symbol? arg)
+             (core/or [:field-id (db/sel :one :id 'Field, :table_id *table-id*, (k/where {(k/sqlfn* :LOWER :name) (str/lower-case (name arg))}))]
+                      (throw (Exception. (format "Can't find field named '%s' for Table %d\nValid fields: %s"
+                                                 arg *table-id*
+                                                 (vec (db/sel :many :field ['Field :name] :table_id *table-id*))))))
+             arg)
+    (println (u/format-color 'yellow "     -> %s" (u/pprint-to-str <>)))))
 
 (defn- infix->prefix
   ([arg]
-   (println (format "(infix->prefix %s)" arg))
-   (if (sequential? arg)
-     (when (seq arg)
-       (apply infix->prefix arg))
-     (resolve-expression-arg arg)))
+   (println (u/format-color 'magenta "  (infix->prefix %s)" arg))
+   (u/prog1 (if (sequential? arg)
+              (when (seq arg)
+                (apply infix->prefix arg))
+              (resolve-expression-arg arg))
+     (println (u/format-color 'magenta "   -> %s" (u/pprint-to-str <>)))))
   ([arg1 operator & more]
-   (println (format "(infix->prefix %s %s %s)" arg1 operator (apply str (interpose " " more))))
-   (vec (cons (keyword operator) (map infix->prefix (cons arg1 more)))))) ; using cons here so if `more` is an empty seq we won't have `nil` in the result
+   (println (u/format-color 'cyan "(infix->prefix %s %s %s)" arg1 operator (apply str (interpose " " more))))
+   ;; using cons here so if `more` is an empty seq we won't have `nil` in the result
+   (u/prog1 [(keyword operator) (infix->prefix arg1) (apply infix->prefix more)]
+     (println (u/format-color 'cyan " -> %s" (u/pprint-to-str <>))))))
 
 (defn- parse-expression [s]
   (apply infix->prefix (edn/read-string (str "(" s ")"))))
@@ -407,7 +411,9 @@
 (declare walk-expand-ql-sexprs)
 
 (s/defn ^:ql expression [s :- s/Str] :- Function
-  (walk-expand-ql-sexprs (parse-expression s)))
+  (println (u/format-color 'green "Expression: \"%s\"" s))
+  (walk-expand-ql-sexprs (u/prog1 (parse-expression s)
+                           (println (u/format-color 'blue "Parsed: %s" (u/pprint-to-str <>))))))
 
 (defn- x [] (expression "TOTAL - TAX"))
 (defn- y [] (expression "TOTAL - TAX - ID"))
