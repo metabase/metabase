@@ -94,7 +94,7 @@ export default class AggregationPopover extends Component {
         let { tableMetadata } = this.props;
         return (
             <div className="p1">
-                <Tooltip tooltip={<QueryDefinitionTooltip object={metric} tableMetadata={tableMetadata} />}>
+                <Tooltip tooltip={<QueryDefinitionTooltip type="metric" object={metric} tableMetadata={tableMetadata} />}>
                     <span className="QuestionTooltipTarget" />
                 </Tooltip>
             </div>
@@ -150,6 +150,7 @@ export default class AggregationPopover extends Component {
                     itemIsSelected={this.itemIsSelected.bind(this)}
                     renderSectionIcon={(s) => <Icon name={s.icon} width="18" height="18" />}
                     renderItemExtra={this.renderItemExtra.bind(this)}
+                    getItemClasses={(item) => item.metric && !item.metric.is_active ? "text-grey-3" : null }
                 />
             );
 
