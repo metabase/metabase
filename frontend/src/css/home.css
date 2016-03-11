@@ -220,6 +220,7 @@
       margin-right: 346px;
   }
   .HomeLayout-sidebar {
+      min-height: 100vh;
       width: 346px;
       background-color: #F9FBFC;
       border-left: 2px solid var(--border-color);
