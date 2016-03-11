@@ -121,10 +121,14 @@ export default class AggregationPopover extends Component {
             })),
             icon: "table2"
         }];
-        if (tableMetadata.metrics && tableMetadata.metrics.length > 0) {
+
+        // we only want to consider active metrics, with the ONE exception that if the currently selected aggregation is a 
+        // retired metric then we include it in the list to maintain continuity
+        let metrics = tableMetadata.metrics && tableMetadata.metrics.filter((mtrc) => mtrc.is_active === true || (selectedAggregation && selectedAggregation.id === mtrc.id));
+        if (metrics && metrics.length > 0) {
             sections.push({
                 name: "Common Metrics",
-                items: tableMetadata.metrics.filter((mtrc) => mtrc.is_active === true || (selectedAggregation && selectedAggregation.id === mtrc.id)).map(metric => ({
+                items: metrics.map(metric => ({
                     name: metric.name,
                     value: ["METRIC", metric.id],
                     metric: metric
