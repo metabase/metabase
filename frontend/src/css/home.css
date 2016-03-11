@@ -215,21 +215,16 @@
     line-height: 1.4;
 }
 
-@media screen and (--breakpoint-min-md) {
-  .HomeLayout {
-      margin-right: 346px;
-  }
-  .HomeLayout-sidebar {
-      min-height: 100vh;
-      width: 346px;
-      background-color: #F9FBFC;
-      border-left: 2px solid var(--border-color);
-  }
-  .HomeLayout-mainColumn {
-      max-width: 700px;
-      margin-left: auto;
-      margin-right: auto;
-  }
+.Layout-sidebar {
+  min-height: 100vh;
+  width: 346px;
+  background-color: #F9FBFC;
+  border-left: 2px solid var(--border-color);
+}
+.Layout-mainColumn {
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .Sidebar-header {

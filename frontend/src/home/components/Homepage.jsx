@@ -64,12 +64,12 @@ export default class Homepage extends Component {
                 </div>
                 <div className="flex">
                     <div className="wrapper">
-                        <div className="HomeLayout-mainColumn pl2">
+                        <div className="Layout-mainColumn pl2">
                           <div className="pt4 h2 text-normal ml2">Activity</div>
                           <Activity {...this.props} />
                         </div>
                     </div>
-                    <div className="HomeLayout-sidebar flex-no-shrink">
+                    <div className="Layout-sidebar flex-no-shrink">
                       <RecentViews {...this.props} />
                     </div>
                 </div>
