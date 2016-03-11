@@ -31,12 +31,12 @@ export default class ObjectRetireModal extends Component {
         const { valid } = this.state;
         return (
             <ModalContent
-                title={"Retire This \"" + capitalize(objectType) + "\""}
+                title={"Retire This " + capitalize(objectType)}
                 closeFn={this.props.onClose}
             >
                 <form className="flex flex-column flex-full">
                     <div className="Form-inputs pb4">
-                        <p>Saved questions and other things that depend on this {objectType} will continue to work, but this {objectType} will no lgoner by selectable from the query builder.</p>
+                        <p>Saved questions and other things that depend on this {objectType} will continue to work, but this {objectType} will no longer be selectable from the query builder.</p>
                         <p>If you're sure you want to retire this {objectType}, please write a quick explanation of why it's being retired:</p>
                         <textarea
                             ref="revision_message"
