@@ -9,6 +9,16 @@ import Smile from './Smile.jsx';
 import NewUserOnboardingModal from './NewUserOnboardingModal.jsx';
 
 export default class Homepage extends Component {
+
+    static propTypes = {
+        onChangeLocation: PropTypes.func.isRequired,
+        showOnboarding: PropTypes.bool.isRequired,
+        user: PropTypes.object.isRequired,
+        activity: PropTypes.array,
+        fetchActivity: PropTypes.func.isRequired,
+        fetchRecentViews: PropTypes.func.isRequired
+    };
+
     constructor(props, context) {
         super(props, context);
 
@@ -24,19 +34,8 @@ export default class Homepage extends Component {
         };
     }
 
-    static propTypes = {
-        onChangeLocation: PropTypes.func.isRequired,
-        showOnboarding: PropTypes.bool.isRequired,
-        user: PropTypes.object.isRequired,
-        activity: PropTypes.array,
-        fetchActivity: PropTypes.func.isRequired,
-        fetchRecentViews: PropTypes.func.isRequired
-    };
-
     completeOnboarding() {
-        this.setState({
-            onboarding: false
-        });
+        this.setState({ onboarding: false });
     }
 
     render() {
@@ -46,18 +45,19 @@ export default class Homepage extends Component {
             <div className="full">
                 { this.state.onboarding ?
                     <Modal>
-                        <NewUserOnboardingModal user={user} closeFn={() => (this.completeOnboarding())}></NewUserOnboardingModal>
+                        <NewUserOnboardingModal
+                            user={user}
+                            closeFn={() => (this.completeOnboarding())}
+                        />
                     </Modal>
-                : null}
+                : null }
 
                 <div className="CheckBg bg-brand text-white md-pl4">
-                    <div className="HomeLayout">
-                        <div className="HomeLayout-mainColumn">
+                    <div style={{marginRight: 346}}>
+                        <div className="Layout-mainColumn">
                             <header style={this.styles.headerGreeting} className="flex align-center pb4 pt1">
-                                <span className="float-left mr1">
-                                    <Smile />
-                                </span>
-                                <span>{this.state.greeting}</span>
+                                <Smile />
+                                <div className="ml2">{this.state.greeting}</div>
                             </header>
                         </div>
                     </div>
