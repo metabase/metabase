@@ -28,6 +28,7 @@
     "humanize-plus": "^1.5.0",
     "inflection": "^1.7.1",
     "moment": "^2.10.6",
+    "moment-timezone": "^0.5.1",
     "node-libs-browser": "^0.5.3",
     "normalizr": "^2.0.0",
     "password-generator": "^2.0.1",
@@ -68,6 +69,7 @@
     "html-webpack-plugin": "^2.9.0",
     "istanbul-instrumenter-loader": "^0.2.0",
     "jasmine-core": "^2.3.4",
+    "json-loader": "^0.5.4",
     "karma": "^0.13.9",
     "karma-chrome-launcher": "^0.2.0",
     "karma-coverage": "^0.5.3",
@@ -94,7 +96,7 @@
     "build": "./node_modules/.bin/webpack",
     "build-watch": "./node_modules/.bin/webpack --watch",
     "build-hot": "NODE_ENV=hot ./node_modules/.bin/webpack && NODE_ENV=hot node_modules/webpack-dev-server/bin/webpack-dev-server.js --hot --inline --content-base frontend",
-    "shrinkwrap": "npm shrinkwrap --dev && ./bin/clean-shrinkwrap",
+    "shrinkwrap": "npm prune && npm shrinkwrap --dev && ./bin/clean-shrinkwrap",
     "start": "npm run build && lein ring server"
   }
 }
