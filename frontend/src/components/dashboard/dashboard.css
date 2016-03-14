@@ -47,7 +47,9 @@
 }
 
 
-.Dashboard.Dashboard--night .DashCard .Card * {
+.Dashboard.Dashboard--night .DashCard .Card a,
+.Dashboard.Dashboard--night .DashCard .Card div,
+.Dashboard.Dashboard--night .DashCard .Card span {
   color: rgba(255, 255, 255, 0.86) !important;
 }
 
@@ -60,6 +62,10 @@
   border: 1px solid rgb(46, 49, 52) !important;
 }
 
+.Dashboard.Dashboard--night .enable-dots-onhover .dc-tooltip circle.dot:hover,
+.Dashboard.Dashboard--night .enable-dots .dc-tooltip circle.dot {
+  fill: currentColor !important;
+}
 
 .DashboardGrid {
   margin-top: 5px;
