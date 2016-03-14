@@ -6054,6 +6054,9 @@
     "jasmine-core": {
       "version": "2.4.1"
     },
+    "json-loader": {
+      "version": "0.5.4"
+    },
     "karma": {
       "version": "0.13.21",
       "dependencies": {
@@ -8697,6 +8700,9 @@
     },
     "moment": {
       "version": "2.11.2"
+    },
+    "moment-timezone": {
+      "version": "0.5.1"
     },
     "node-libs-browser": {
       "version": "0.5.3",
