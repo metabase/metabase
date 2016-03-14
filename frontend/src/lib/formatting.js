@@ -47,7 +47,10 @@ function formatMajorMinor(major, minor, options = {}) {
 }
 
 export function formatTimeWithUnit(value, unit, options = {}) {
-    let m = moment(value);
+    let m = moment.parseZone(value);
+    if (options.utcOffset != null) {
+        m.utcOffset(options.utcOffset);
+    }
     switch (unit) {
         case "hour": // 12 AM - January 1, 2015
             return formatMajorMinor(m.format("h A"), m.format("MMMM D, YYYY"), options);
