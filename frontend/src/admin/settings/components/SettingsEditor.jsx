@@ -113,7 +113,7 @@ export default class SettingsEditor extends Component {
         });
 
         return (
-            <div className="MetadataEditor-table-list AdminList">
+            <div className="MetadataEditor-table-list AdminList flex-no-shrink">
                 <ul className="AdminList-items pt1">
                     {sections}
                 </ul>
@@ -123,7 +123,7 @@ export default class SettingsEditor extends Component {
 
     render() {
         return (
-            <div className="MetadataEditor flex flex-column flex-full p4">
+            <div className="MetadataEditor full-height flex flex-column flex-full p4">
                 <SettingsHeader ref="header" />
                 <div className="MetadataEditor-main flex flex-row flex-full mt2">
                     {this.renderSettingsSections()}

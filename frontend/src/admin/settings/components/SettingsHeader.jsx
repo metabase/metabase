@@ -5,7 +5,7 @@ import SaveStatus from "metabase/components/SaveStatus.jsx";
 export default class SettingsHeader extends Component {
     render() {
         return (
-            <div className="MetadataEditor-header clearfix relative">
+            <div className="MetadataEditor-header clearfix relative flex-no-shrink">
                 <div className="MetadataEditor-headerSection float-left h2 text-grey-4">
                     Settings
                 </div>

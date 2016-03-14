@@ -99,7 +99,7 @@ export default class MetadataEditor extends Component {
             );
         }
         return (
-            <div className="MetadataEditor flex flex-column flex-full p3">
+            <div className="MetadataEditor full-height p3">
                 <MetadataHeader
                     ref="header"
                     databaseId={this.props.databaseId}
@@ -108,7 +108,7 @@ export default class MetadataEditor extends Component {
                     isShowingSchema={this.state.isShowingSchema}
                     toggleShowSchema={this.toggleShowSchema}
                 />
-                <div className="MetadataEditor-main flex flex-row flex-full mt2">
+              <div className="MetadataEditor-main flex flex-row flex-full mt2 full-height">
                     <MetadataTablePicker
                         tableId={this.props.tableId}
                         tables={(this.props.databaseMetadata) ? this.props.databaseMetadata.tables : []}
