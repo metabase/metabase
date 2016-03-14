@@ -4,7 +4,6 @@ import visualizations from "metabase/visualizations";
 
 import i from "icepick";
 import _ from "underscore";
-import d3 from "d3";
 
 export default class Visualization extends Component {
     constructor(props, context) {
@@ -63,9 +62,6 @@ export default class Visualization extends Component {
     onHoverChange(hovered) {
         const { renderInfo } = this.state;
         if (hovered) {
-            if (!hovered.event) {
-                hovered = i.assoc(hovered, "event", d3.event);
-            }
             // if we have Y axis split info then find the Y axis index (0 = left, 1 = right)
             if (renderInfo && renderInfo.yAxisSplit) {
                 const axisIndex = _.findIndex(renderInfo.yAxisSplit, (indexes) => _.contains(indexes, hovered.index));
