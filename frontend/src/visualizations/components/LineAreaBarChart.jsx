@@ -4,6 +4,8 @@ import CardRenderer from "./CardRenderer.jsx";
 import LegendHeader from "./LegendHeader.jsx";
 import ChartTooltip from "./ChartTooltip.jsx";
 
+import ColorSetting from "./settings/ColorSetting.jsx";
+
 import { isNumeric, isDate, isDimension, isString } from "metabase/lib/schema_metadata";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 import Urls from "metabase/lib/urls";
@@ -13,10 +15,14 @@ import { MinColumnsError, MinRowsError } from "metabase/visualizations/lib/error
 import crossfilter from "crossfilter";
 import _ from "underscore";
 import cx from "classnames";
+import i from "icepick";
 
 export default class LineAreaBarChart extends Component {
     static noHeader = true;
     static supportsSeries = true;
+
+    static minSize = { width: 2, height: 2 };
+    static settings = [ColorSetting()];
 
     static isSensible(cols, rows) {
         return rows.length > 1 && cols.length > 1;
@@ -53,7 +59,7 @@ export default class LineAreaBarChart extends Component {
     static propTypes = {
         series: PropTypes.array.isRequired,
         onAddSeries: PropTypes.func,
-        extraActions: PropTypes.node,
+        actionButtons: PropTypes.node,
         isDashboard: PropTypes.bool
     };
 
@@ -104,8 +110,8 @@ export default class LineAreaBarChart extends Component {
 
     getHoverClasses() {
         const { hovered } = this.props;
-        if (hovered != null && hovered.seriesIndex != null) {
-            let seriesClasses = _.range(0,5).filter(n => n !== hovered.seriesIndex).map(n => "mute-"+n);
+        if (hovered && hovered.index != null) {
+            let seriesClasses = _.range(0,5).filter(n => n !== hovered.index).map(n => "mute-"+n);
             let axisClasses =
                 hovered.axisIndex === 0 ? "mute-yr" :
                 hovered.axisIndex === 1 ? "mute-yl" :
@@ -116,12 +122,62 @@ export default class LineAreaBarChart extends Component {
         }
     }
 
-    render() {
-        let { hovered, isDashboard, onAddSeries, onRemoveSeries, extraActions, allowSplitAxis } = this.props;
-        let { series, isMultiseries } = this.state;
+    getFidelity() {
+        let fidelity = { x: 0, y: 0 };
+        let size = this.props.gridSize ||  { width: Infinity, height: Infinity };
+        if (size.width >= 5) {
+            fidelity.x = 2;
+        } else if (size.width >= 4) {
+            fidelity.x = 1;
+        }
+        if (size.height >= 5) {
+            fidelity.y = 2;
+        } else if (size.height >= 4) {
+            fidelity.y = 1;
+        }
 
-        let card = this.props.series[0].card;
+        return fidelity;
+    }
+
+    getSettings() {
+        let fidelity = this.getFidelity();
+
+        let settings = this.props.series[0].card.visualization_settings;
+
+        console.log("fidelity", fidelity)
+        // no axis in < 1 fidelity
+        if (fidelity.x < 1) {
+            settings = i.assocIn(settings, ["yAxis", "axis_enabled"], false);
+        }
+        if (fidelity.y < 1) {
+            settings = i.assocIn(settings, ["xAxis", "axis_enabled"], false);
+        }
+
+        // no labels in < 2 fidelity
+        if (fidelity.x < 2) {
+            settings = i.assocIn(settings, ["yAxis", "labels_enabled"], false);
+        }
+        if (fidelity.y < 2) {
+            settings = i.assocIn(settings, ["xAxis", "labels_enabled"], false);
+        }
+
+        // smooth interpolation at smallest x/y fidelity
+        if (fidelity.x === 0 && fidelity.y === 0) {
+            settings = i.assocIn(settings, ["line", "interpolate"], "cardinal");
+        }
+        console.log(settings)
+
+        return settings;
+    }
+
+    render() {
+        const { hovered, isDashboard, onAddSeries, onRemoveSeries, actionButtons, allowSplitAxis } = this.props;
+        const { series, isMultiseries } = this.state;
+
+        const card = this.props.series[0].card;
         const chartType = this.constructor.identifier;
+
+        let settings = this.getSettings();
 
         return (
             <div className={cx("flex flex-column p1", this.getHoverClasses(), this.props.className)}>
@@ -134,7 +190,7 @@ export default class LineAreaBarChart extends Component {
                         series={series}
                         onAddSeries={isMultiseries ? undefined : onAddSeries}
                         onRemoveSeries={onRemoveSeries}
-                        extraActions={extraActions}
+                        actionButtons={actionButtons}
                         hovered={hovered}
                         onHoverChange={this.props.onHoverChange}
                     />
@@ -142,7 +198,7 @@ export default class LineAreaBarChart extends Component {
                 <CardRenderer
                     {...this.props}
                     chartType={chartType}
-                    series={series}
+                    series={i.assocIn(series, [0, "card", "visualization_settings"], settings)}
                     className="flex-full"
                     allowSplitAxis={isMultiseries ? false : allowSplitAxis}
                 />

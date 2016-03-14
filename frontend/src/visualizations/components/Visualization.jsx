@@ -2,6 +2,7 @@ import React, { Component, PropTypes } from "react";
 
 import visualizations from "metabase/visualizations";
 
+import i from "icepick";
 import _ from "underscore";
 import d3 from "d3";
 
@@ -22,6 +23,7 @@ export default class Visualization extends Component {
         series: PropTypes.array.isRequired,
 
         isDashboard: PropTypes.bool,
+        isEditing: PropTypes.bool,
 
         // used by TableInteractive
         setSortFn: PropTypes.func,
@@ -30,7 +32,9 @@ export default class Visualization extends Component {
     };
 
     static defaultProps = {
-        isDashboard: false
+        isDashboard: false,
+        isEditing: false,
+        onUpdateVisualizationSetting: (...args) => console.warn("onUpdateVisualizationSetting", args)
     };
 
     componentWillMount() {
@@ -56,20 +60,19 @@ export default class Visualization extends Component {
         }
     }
 
-    onHoverChange(e, d, seriesIndex) {
+    onHoverChange(hovered) {
         const { renderInfo } = this.state;
-        let axisIndex = null;
-        // if we have Y axis split info then find the Y axis index (0 = left, 1 = right)
-        if (renderInfo && renderInfo.yAxisSplit) {
-            axisIndex = _.findIndex(renderInfo.yAxisSplit, (indexes) => _.contains(indexes, seriesIndex));
+        if (hovered) {
+            if (!hovered.event) {
+                hovered = i.assoc(hovered, "event", d3.event);
+            }
+            // if we have Y axis split info then find the Y axis index (0 = left, 1 = right)
+            if (renderInfo && renderInfo.yAxisSplit) {
+                const axisIndex = _.findIndex(renderInfo.yAxisSplit, (indexes) => _.contains(indexes, hovered.index));
+                hovered = i.assoc(hovered, "axisIndex", axisIndex);
+            }
         }
-        this.setState({ hovered: {
-            element: e,
-            data: d && d.data,
-            seriesIndex: seriesIndex,
-            axisIndex: axisIndex,
-            event: d3.event
-        }});
+        this.setState({ hovered });
     }
 
     onRender(renderInfo) {
@@ -103,7 +106,6 @@ export default class Visualization extends Component {
                     card={series[0].card} // convienence for single-series visualizations
                     data={series[0].data} // convienence for single-series visualizations
                     hovered={this.state.hovered}
-                    onUpdateVisualizationSetting={(...args) => console.log("onUpdateVisualizationSetting", args)}
                     onHoverChange={this.onHoverChange}
                     onRenderError={this.onRenderError}
                     onRender={this.onRender}

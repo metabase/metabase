@@ -29,6 +29,7 @@ export const DELETE_CARD = 'DELETE_CARD';
 
 export const FETCH_DASHBOARD = 'FETCH_DASHBOARD';
 export const SET_DASHBOARD_ATTRIBUTES = 'SET_DASHBOARD_ATTRIBUTES';
+export const SET_DASHCARD_VISUALIZATION_SETTING = 'SET_DASHCARD_VISUALIZATION_SETTING';
 export const SAVE_DASHBOARD = 'SAVE_DASHBOARD';
 export const DELETE_DASHBOARD = 'DELETE_DASHBOARD';
 
@@ -48,8 +49,12 @@ export const FETCH_DATABASE_METADATA = 'FETCH_DATABASE_METADATA';
 // resource wrappers
 const DashboardApi = new AngularResourceProxy("Dashboard", ["get", "update", "delete", "reposition_cards", "addcard", "removecard"]);
 const MetabaseApi = new AngularResourceProxy("Metabase", ["dataset", "db_metadata"]);
-const CardApi = new AngularResourceProxy("Card", ["list", "delete"]);
+const CardApi = new AngularResourceProxy("Card", ["list", "update", "delete"]);
 const RevisionApi = new AngularResourceProxy("Revision", ["list", "revert"]);
+
+// FIXME: REMOVE SCALING ONCE WE ADD A DB MIGRATION TO SCALE DASHCARD SIZES
+const FIXME_DASHCARD_X_SCALE = 2;
+const FIXME_DASHCARD_Y_SCALE = 3;
 
 // action creators
 
@@ -105,6 +110,17 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card) {
 export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(id) {
     return async function(dispatch, getState) {
         let result = await DashboardApi.get({ dashId: id });
+        // FIXME: REMOVE SCALING ONCE WE ADD A DB MIGRATION TO SCALE DASHCARD SIZES
+        result = {
+            ...result,
+            ordered_cards: result.ordered_cards.map((dc) => ({
+                ...dc,
+                row: dc.row * FIXME_DASHCARD_Y_SCALE,
+                col: dc.col * FIXME_DASHCARD_X_SCALE,
+                sizeX: dc.sizeX * FIXME_DASHCARD_X_SCALE,
+                sizeY: dc.sizeY * FIXME_DASHCARD_Y_SCALE
+            }))
+        };
         return normalize(result, dashboard);
     };
 });
@@ -135,6 +151,11 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
                 }
             }));
 
+        // update modified cards
+        await Promise.all(dashboard.ordered_cards
+            .filter(dc => dc.card.isDirty)
+            .map(async dc => CardApi.update(dc.card)));
+
         // update the dashboard itself
         if (dashboard.isDirty) {
             let { id, name, description, public_perms } = dashboard;
@@ -143,7 +164,15 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
 
         // reposition the cards
         if (_.some(updatedDashcards, (dc) => dc.isDirty || dc.isAdded)) {
-            let cards = updatedDashcards.map(({ id, row, col, sizeX, sizeY, series }) => ({ id, row, col, sizeX, sizeY, series }));
+            let cards = updatedDashcards.map(({ id, row, col, sizeX, sizeY, series }) => ({
+                id,
+                // FIXME: REMOVE SCALING ONCE WE ADD A DB MIGRATION TO SCALE DASHCARD SIZES
+                row: Math.floor(row / FIXME_DASHCARD_Y_SCALE),
+                col: Math.floor(col / FIXME_DASHCARD_X_SCALE),
+                sizeX: Math.floor(sizeX / FIXME_DASHCARD_X_SCALE),
+                sizeY: Math.floor(sizeY / FIXME_DASHCARD_Y_SCALE),
+                series
+            }));
             var result = await DashboardApi.reposition_cards({ dashId, cards });
             if (result.status !== "ok") {
                 throw new Error(result.status);
@@ -187,6 +216,8 @@ export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, 
         return databaseMetadata;
     };
 });
+
+export const setDashCardVisualizationSetting = createAction(SET_DASHCARD_VISUALIZATION_SETTING);
 
 // promise helpers
 

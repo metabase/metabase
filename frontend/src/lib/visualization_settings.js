@@ -68,7 +68,8 @@ var settings = {
         'tickInterval': null,
         'labels_enabled': true,
         'labels_step': null,
-        'labels_staggerLines': null
+        'labels_staggerLines': null,
+        'axis_enabled': true
     },
     'yAxis': {
         'title_enabled': true,
@@ -84,7 +85,8 @@ var settings = {
         'gridLineWidth_default_READONLY': 1, //copied into gridLineWidth when re-enabling grid lines from disabled state
         'tickInterval': null,
         'labels_enabled': true,
-        'labels_step': null
+        'labels_step': null,
+        'axis_enabled': true
     },
     'line': {
         'lineColor': DEFAULT_COLOR,

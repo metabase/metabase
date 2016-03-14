@@ -5,8 +5,6 @@ import GridItem from "./GridItem.jsx";
 
 import _ from "underscore";
 
-const MARGIN = 10;
-
 export default class GridLayout extends Component {
     constructor(props, context) {
         super(props, context);
@@ -134,11 +132,13 @@ export default class GridLayout extends Component {
         let cellSize = this.getCellSize();
         let originalLayout = this.getLayoutForItem(i);
 
+        let minW = originalLayout.minSize.width;
+        let minH = originalLayout.minSize.height;
         let maxW = this.props.cols - originalLayout.x;
         let maxH = Infinity;
         let targetLayout = {
-            w: Math.min(maxW, Math.max(1, Math.round(size.width / cellSize.width))),
-            h: Math.min(maxH, Math.max(1, Math.round(size.height / cellSize.height))),
+            w: Math.min(maxW, Math.max(minW, Math.round(size.width / cellSize.width))),
+            h: Math.min(maxH, Math.max(minH, Math.round(size.height / cellSize.height))),
             x: originalLayout.x,
             y: originalLayout.y
         };
@@ -158,22 +158,23 @@ export default class GridLayout extends Component {
 
     getCellSize() {
         return {
-            width: this.state.width / this.props.cols,
+            width: Math.floor(this.state.width / this.props.cols),
             height: this.props.rowHeight
         };
     }
 
-    getMinSize() {
+    getMinSizeForLayout(l) {
+        let { margin } = this.props;
         let cellSize = this.getCellSize();
         return {
-            width: cellSize.width - MARGIN,
-            height: cellSize.height - MARGIN
+            width: cellSize.width * l.minSize.width - margin,
+            height: cellSize.height * l.minSize.height - margin
         }
     }
 
     getStyleForLayout(l) {
+        let { margin } = this.props;
         let cellSize = this.getCellSize();
-        let margin = l.i === "placeholder" ? -MARGIN : MARGIN;
         return {
             width: cellSize.width * l.w - margin,
             height: cellSize.height * l.h - margin,
@@ -187,6 +188,8 @@ export default class GridLayout extends Component {
         let style = this.getStyleForLayout(l);
         return (
             <GridItem
+                {...l}
+                {...style}
                 key={l.i}
                 onDragStart={this.onDragStart}
                 onDrag={this.onDrag}
@@ -194,9 +197,7 @@ export default class GridLayout extends Component {
                 onResizeStart={this.onResizeStart}
                 onResize={this.onResize}
                 onResizeStop={this.onResizeStop}
-                minSize={this.getMinSize()}
-                {...l}
-                {...style}
+                minSize={this.getMinSizeForLayout(l)}
             >
                 {child}
             </GridItem>
@@ -214,14 +215,31 @@ export default class GridLayout extends Component {
         }
     }
 
-    render() {
-        const { className, layout, rowHeight } = this.props;
+    getGridBackground() {
+        let { margin } = this.props;
+        let cellSize = this.getCellSize();
+        return `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='${cellSize.width}' height='${cellSize.height}'><rect stroke='rgba(0, 0, 0, 0.117647)' stroke-width='1' fill='none' x='${margin / 2 + 1.5}' y='${margin / 2 + 1.5}' width='${cellSize.width - margin - 3}' height='${cellSize.height - margin - 3}'/></svg>")`;
+    }
 
+    render() {
+        const { className, layout, cols, isEditing } = this.props;
+
+        let cellSize = this.getCellSize();
         let bottom = Math.max(...layout.map(l => l.y + l.h));
-        let totalHeight = (bottom + 3) * rowHeight;
+
+        let backgroundImage;
+        if (isEditing) {
+            // render grid as a background image:
+            backgroundImage  = this.getGridBackground();
+            // add one vertical screen worth of rows to ensure the grid fills the screen
+            bottom += Math.ceil(window.innerHeight / cellSize.height);
+        }
+
+        let width = cellSize.width * cols;
+        let height = cellSize.height * bottom;
 
         return (
-            <div className={className} style={{ position: "relative", height: totalHeight }}>
+            <div className={className} style={{ position: "relative", width, height, backgroundImage }}>
                 {this.props.children.map(child =>
                     this.renderChild(child)
                 )}

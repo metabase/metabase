@@ -28,6 +28,7 @@ export default class Dashboard extends Component {
         saveDashboard: PropTypes.func.isRequired,
         setDashboardAttributes: PropTypes.func.isRequired,
         setEditingDashboard: PropTypes.func.isRequired,
+        setDashCardVisualizationSetting: PropTypes.func.isRequired,
 
         onChangeLocation: PropTypes.func.isRequired,
         onDashboardDeleted: PropTypes.func.isRequired,
@@ -46,6 +47,7 @@ export default class Dashboard extends Component {
                 this.props.addCardToDashboard({ dashId: this.props.selectedDashboard, cardId: this.props.addCardOnLoad });
             }
         } catch (error) {
+            console.error(error)
             if (error.status === 404) {
                 this.props.onChangeLocation("/404");
             } else {
