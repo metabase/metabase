@@ -84,13 +84,17 @@ var config = module.exports = {
             {
                 test: /\.(js|jsx)$/,
                 exclude: /node_modules/,
-                loader: "babel",
+                loader: "babel-loader",
                 query: BABEL_CONFIG
             },
             {
                 test: /\.(js|jsx)$/,
                 exclude: /node_modules|\.spec\.js/,
-                loader: 'eslint'
+                loader: "eslint-loader"
+            },
+            {
+                test: /\.json$/,
+                loader: "json-loader"
             },
             {
                 test: /\.css$/,
@@ -98,7 +102,7 @@ var config = module.exports = {
             }
         ],
         noParse: [
-            /node_modules\/(angular|ace|moment|underscore)/ // doesn't include 'crossfilter', 'dc', and 'tether' due to use of 'require'
+            /node_modules\/(angular|ace|underscore)/ // doesn't include 'crossfilter', 'dc', and 'tether' due to use of 'require'
         ]
     },
 
@@ -123,7 +127,6 @@ var config = module.exports = {
             // react
             'fixed-data-table':     __dirname + '/node_modules/fixed-data-table/dist/fixed-data-table.min.js',
             // misc
-            'moment':               __dirname + '/node_modules/moment/min/moment.min.js',
             'tether':               __dirname + '/node_modules/tether/dist/js/tether.min.js',
             'underscore':           __dirname + '/node_modules/underscore/underscore-min.js',
             'd3':                   __dirname + '/node_modules/d3/d3.min.js',
