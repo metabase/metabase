@@ -172,7 +172,7 @@ export default class Dashboard extends Component {
         let { error, isFullscreen, isNightMode } = this.state;
         isNightMode = isNightMode && isFullscreen;
         return (
-            <LoadingAndErrorWrapper className={cx("Dashboard", { "Dashboard--fullscreen": isFullscreen, "Dashboard--night": isNightMode})} loading={!dashboard} error={error}>
+            <LoadingAndErrorWrapper className={cx("Dashboard viewport-height", { "Dashboard--fullscreen": isFullscreen, "Dashboard--night": isNightMode})} loading={!dashboard} error={error}>
             {() =>
                 <div className="full" style={{ overflowX: "hidden" }}>
                     <header className="DashboardHeader relative z2">

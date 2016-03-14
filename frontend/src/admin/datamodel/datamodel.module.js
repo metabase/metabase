@@ -4,7 +4,7 @@ angular
 ])
 .config(['$routeProvider', function ($routeProvider) {
     var metadataRoute = {
-        template: '<div class="flex flex-column flex-full" mb-react-component="MetadataEditor"></div>',
+        template: '<div class="full-height spread" mb-react-component="MetadataEditor"></div>',
         controller: 'MetadataEditor',
         resolve: {
             databases: ['Metabase', function(Metabase) {

@@ -32,7 +32,7 @@ export default class MetadataSchemaList extends Component {
 
         let filteredSchemas = searchRegex ? schemas.filter((s) => searchRegex.test(s.name)) : schemas;
         return (
-            <div className="MetadataEditor-table-list AdminList">
+            <div className="MetadataEditor-table-list AdminList flex-no-shrink">
                 <div className="AdminList-search">
                     <Icon name="search" width="16" height="16"/>
                     <input
