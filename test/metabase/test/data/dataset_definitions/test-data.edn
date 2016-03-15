@@ -28,7 +28,7 @@
             :base-type  :DateTimeField}
            {:field-name "password"
             :base-type  :CharField
-            :field-type :sensitive}]
+            :visibility-type :sensitive}]
   [["Plato Yeshua" #inst "2014-04-01T08:30" "4be68cda-6fd5-4ba7-944e-2b475600bda5"]
    ["Felipinho Asklepios" #inst "2014-12-05T15:15" "5bb19ad9-f3f8-421f-9750-7d398e38428d"]
    ["Kaneonuskatew Eiran" #inst "2014-11-06T16:15" "a329ccfe-b99c-42eb-9c93-cb9adc3eb1ab"]

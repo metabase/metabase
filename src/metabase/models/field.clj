@@ -48,8 +48,7 @@
   "Possible values for `Field.field_type`."
   #{:metric      ; A number that can be added, graphed, etc.
     :dimension   ; A high or low-cardinality numerical string value that is meant to be used as a grouping
-    :info        ; Non-numerical value that is not meant to be used
-    :sensitive}) ; A Fields that should *never* be shown *anywhere*
+    :info})      ; Non-numerical value that is not meant to be used
 
 (def ^:const visibility-types
   "Possible values for `Field.visibility_type`."

@@ -11,27 +11,35 @@
 
 (expect true
   (field-should-have-field-values? {:special_type :category
-                                    :field_type :info
+                                    :visibility_type :normal
                                     :base_type :TextField}))
 
 (expect false
   (field-should-have-field-values? {:special_type :category
-                                    :field_type :sensitive
+                                    :visibility_type :sensitive
+                                    :base_type :TextField}))
+(expect false
+  (field-should-have-field-values? {:special_type :category
+                                    :visibility_type :hidden
+                                    :base_type :TextField}))
+(expect false
+  (field-should-have-field-values? {:special_type :category
+                                    :visibility_type :details-only
                                     :base_type :TextField}))
 
 (expect false
   (field-should-have-field-values? {:special_type nil
-                                    :field_type :info
+                                    :visibility_type :normal
                                     :base_type :TextField}))
 
 (expect true
   (field-should-have-field-values? {:special_type "country"
-                                    :field_type :info
+                                    :visibility_type :normal
                                     :base_type :TextField}))
 
 (expect true
   (field-should-have-field-values? {:special_type nil
-                                    :field_type :info
+                                    :visibility_type :normal
                                     :base_type "BooleanField"}))
 
 

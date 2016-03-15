@@ -31,7 +31,7 @@
 (defn ^:hydrate fields
   "Return the `FIELDS` belonging to TABLE."
   [{:keys [id]}]
-  (db/sel :many Field :table_id id, :active true, (k/order :position :ASC) (k/order :name :ASC)))
+  (db/sel :many Field :table_id id, :visibility_type [not= "retired"], (k/order :position :ASC) (k/order :name :ASC)))
 
 (defn ^:hydrate metrics
   "Retrieve the metrics for TABLE."
@@ -47,7 +47,8 @@
   "Return the `FieldValues` for all `Fields` belonging to TABLE."
   {:hydrate :field_values, :arglists '([table])}
   [{:keys [id]}]
-  (let [field-ids (db/sel :many :id Field, :table_id id, :active true, :field_type [not= "sensitive"]
+  ;; TODO: any reason to return field-values for other visibility options?
+  (let [field-ids (db/sel :many :id Field, :table_id id, :visibility_type "normal"
                           (k/order :position :asc)
                           (k/order :name :asc))]
     (db/sel :many :field->field [FieldValues :field_id :values] :field_id [in field-ids])))
@@ -56,7 +57,7 @@
   "Return the ID of the primary key `Field` for TABLE."
   {:hydrate :pk_field, :arglists '([table])}
   [{:keys [id]}]
-  (db/sel :one :id Field, :table_id id, :special_type "id"))
+  (db/sel :one :id Field, :table_id id, :special_type "id", :visibility_type [not-in ["sensitive" "retired"]]))
 
 (def ^{:arglists '([table])} database
   "Return the `Database` associated with this `Table`."

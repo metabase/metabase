@@ -172,11 +172,10 @@
       (qp (if-not (should-add-implicit-fields? query)
             query
             (let [fields (for [field (db/sel :many :fields [Field :name :display_name :base_type :special_type :preview_display :display_name :table_id :id :position :description]
-                                          :table_id   source-table-id
-                                          :active     true
-                                          :field_type [not= "sensitive"]
-                                          :parent_id  nil
-                                          (k/order :position :asc) (k/order :id :desc))]
+                                             :table_id   source-table-id
+                                             :visibility_type [not-in ["sensitive" "retired"]]
+                                             :parent_id  nil
+                                             (k/order :position :asc) (k/order :id :desc))]
                            (let [field (-> (resolve/rename-mb-field-keys field)
                                            map->Field
                                            (resolve/resolve-table {source-table-id source-table}))]

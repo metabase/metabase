@@ -273,13 +273,13 @@
                             :updated_at      $
                             :active          true
                             :id              $
-                            :field_type      "sensitive"
+                            :field_type      "info"
                             :position        0
                             :target          nil
                             :preview_display true
                             :created_at      $
                             :base_type       "TextField"
-                            :visibility_type "normal"
+                            :visibility_type "sensitive"
                             :parent_id       nil})]
        :rows            15
        :updated_at      $
