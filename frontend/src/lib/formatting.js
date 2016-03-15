@@ -86,7 +86,7 @@ export function formatValue(value, column, options = {}) {
         return null
     } else if (column && column.unit != null) {
         return formatTimeWithUnit(value, column.unit, options);
-    } else if (moment.isDate(value) || moment(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"]).isValid()) {
+    } else if (moment.isDate(value) || moment.isMoment(value)  || moment(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"]).isValid()) {
         return moment.parseZone(value).format("LLLL");
     } else if (typeof value === "string") {
         return value;
