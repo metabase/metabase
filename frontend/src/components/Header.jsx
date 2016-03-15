@@ -66,7 +66,7 @@ export default class Header extends Component {
 
         var headerButtons = this.props.headerButtons.map((section, sectionIndex) => {
             return section && section.length > 0 && (
-                <span key={sectionIndex} className="Header-buttonSection">
+                <span key={sectionIndex} className="Header-buttonSection flex align-center">
                     {section.map((button, buttonIndex) =>
                         <span key={buttonIndex} className="Header-button">
                             {button}

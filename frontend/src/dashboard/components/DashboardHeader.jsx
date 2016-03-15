@@ -177,7 +177,7 @@ export default class DashboardHeader extends Component {
             );
         }
 
-        if (!isEditing) {
+        if (!isEditing && !isEmpty) {
             buttons.push(
                 <RefreshWidget className="text-brand-hover" key="refresh" period={this.props.refreshPeriod} elapsed={this.props.refreshElapsed} onChangePeriod={this.props.setRefreshPeriod} />
             );
@@ -189,7 +189,7 @@ export default class DashboardHeader extends Component {
             );
         }
 
-        if (!isEditing) {
+        if (!isEditing && !isEmpty) {
             buttons.push(
                 <FullscreenIcon className="text-brand-hover" key="fullscreen" isFullscreen={isFullscreen} onClick={() => this.props.onFullscreenChange(!isFullscreen)} />
             );
