@@ -97,7 +97,7 @@
         ;; We need to mark the Table's Fields as inactive as well
         (k/update Field
                   (k/where {:table_id id})
-                  (k/set-fields {:active false}))))
+                  (k/set-fields {:visibility_type "retired"}))))
 
     ;; a little logging so we are better informed
     (let [new-tables (set/difference active-tables (set (keys existing-table-def->table)))]
@@ -159,7 +159,7 @@
   "Sync the given table, optionally skipping the more time & resource intensive part of the process by specifying `:analyze? false`."
   [driver table & {:keys [analyze?]
                    :or {analyze? true}}]
-  (let [active-field-ids         #(set (sel :many :field [Field :id], :table_id (:id table), :active true, :parent_id nil))
+  (let [active-field-ids         #(set (sel :many :field [Field :id], :table_id (:id table), :visibility_type [not= "retired"], :parent_id nil))
         table-def                (driver/describe-table driver table)
         current-active-field-ids (active-field-ids)]
     (schema/validate driver/DescribeTable table-def)
@@ -381,16 +381,16 @@ infer-field-special-type
   "Create new Fields (and mark old ones as inactive) for TABLE, and update PK fields."
   [table table-def]
 
-  (let [existing-field-name->field (sel :many :field->fields [Field :name :base_type :special_type :display_name :id], :table_id (:id table), :active true, :parent_id nil)]
+  (let [existing-field-name->field (sel :many :field->fields [Field :name :base_type :special_type :display_name :id], :table_id (:id table), :visibility_type [not= "retired"], :parent_id nil)]
     ;; As above, first mark inactive Fields
     (let [active-column-names (set (map :name (:fields table-def)))]
       (doseq [[field-name {field-id :id}] existing-field-name->field]
         (when-not (contains? active-column-names field-name)
-          (upd Field field-id :active false)
+          (upd Field field-id :visibility_type "retired")
           ;; We need to inactivate any nested fields as well
           (k/update Field
                     (k/where {:parent_id field-id})
-                    (k/set-fields {:active false}))
+                    (k/set-fields {:visibility_type "retired"}))
           (log/info (u/format-color 'cyan "Marked field '%s.%s' as inactive." (:name table) field-name)))))
 
     ;; Create new Fields, update existing types if needed
@@ -404,7 +404,7 @@ infer-field-special-type
 
 
 (defn- sync-field-nested-fields! [parent-field nested-field-defs table-id]
-  (let [existing-field-name->field (sel :many :field->fields [Field :name :base_type :special_type :display_name :id], :active true, :parent_id (:id parent-field))]
+  (let [existing-field-name->field (sel :many :field->fields [Field :name :base_type :special_type :display_name :id], :visibility_type [not= "retired"], :parent_id (:id parent-field))]
     ;; NOTE: this is intentionally disabled because we don't want to remove valid nested fields simply because we scanned different data this time :/
     ;; As above, first mark inactive Fields
     ;(let [active-column-names (set (map :name nested-field-defs))]
@@ -429,7 +429,7 @@ infer-field-special-type
           (insert-or-update-active-field! nested-field-def existing-field table-id)
           (when (:nested-fields nested-field-def)
             ;; TODO: we can recur here and sync the next level of nesting if we want
-            (let [new-parent-field (sel :one Field :name (:name nested-field-def) :table_id table-id, :active true, :parent_id (:id parent-field))]
+            (let [new-parent-field (sel :one Field :name (:name nested-field-def) :table_id table-id, :visibility_type [not= "retired"], :parent_id (:id parent-field))]
               (sync-field-nested-fields! new-parent-field (:nested-fields nested-field-def) table-id))))))))
 
 
@@ -437,19 +437,19 @@ infer-field-special-type
 
   (doseq [field-def (:fields table-def)]
     (when (:nested-fields field-def)
-      (let [parent-field (sel :one Field :name (:name field-def) :table_id table-id, :active true, :parent_id nil)]
+      (let [parent-field (sel :one Field :name (:name field-def) :table_id table-id, :visibility_type [not= "retired"], :parent_id nil)]
         (sync-field-nested-fields! parent-field (:nested-fields field-def) table-id))))
 
-  (let [existing-field-name->field (sel :many :field->fields [Field :name :base_type :special_type :display_name :id], :table_id table-id, :active true, :parent_id nil)]
+  (let [existing-field-name->field (sel :many :field->fields [Field :name :base_type :special_type :display_name :id], :table_id table-id, :visibility_type [not= "retired"], :parent_id nil)]
     ;; As above, first mark inactive Fields
     (let [active-column-names (set (map :name (:fields table-def)))]
       (doseq [[field-name {field-id :id}] existing-field-name->field]
         (when-not (contains? active-column-names field-name)
-          (upd Field field-id :active false)
+          (upd Field field-id :visibility_type "retired")
           ;; We need to inactivate any nested fields as well
           (k/update Field
                     (k/where {:parent_id field-id})
-                    (k/set-fields {:active false}))
+                    (k/set-fields {:visibility_type "retired"}))
           (log/info (u/format-color 'cyan "Marked field '%s.%s' as inactive." (:name table) field-name)))))
 
     ;; Create new Fields, update existing types if needed

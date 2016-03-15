@@ -167,7 +167,7 @@
         fields (->> (sel :many [Field :name :base_type :special_type :table_id]                                 ; get all Fields with names that start with PREFIX
                          :table_id [in (keys table-id->name)]                                                   ; whose Table is in this DB
                          :name [like (str prefix "%")]
-                         :active true)
+                         :visibility_type [not-in ["sensitive" "retired"]])
                     (map (fn [{:keys [name base_type special_type table_id]}]                                    ; return them in the format
                            [name (str (table-id->name table_id) " " base_type (when special_type                ; [field_name "table_name base_type special_type"]
                                                                                 (str " " special_type)))])))]
