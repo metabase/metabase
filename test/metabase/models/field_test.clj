@@ -7,15 +7,17 @@
 
 
 ;; valid-metadata?
-(expect false (valid-metadata? nil nil nil))
-(expect false (valid-metadata? :IntegerField nil nil))
-(expect true (valid-metadata? :IntegerField :metric nil))
-(expect false (valid-metadata? :foo :metric nil))
-(expect false (valid-metadata? :IntegerField :foo nil))
-(expect true (valid-metadata? :IntegerField :metric :timestamp_seconds))
-(expect true (valid-metadata? :IntegerField :metric :timestamp_milliseconds))
-(expect false (valid-metadata? :DateTimeField :metric :timestamp_seconds))
-(expect false (valid-metadata? :DateTimeField :metric :timestamp_milliseconds))
+(expect false (valid-metadata? nil nil nil nil))
+(expect false (valid-metadata? :IntegerField nil nil nil))
+(expect false (valid-metadata? :IntegerField :metric nil nil))
+(expect true (valid-metadata? :IntegerField :metric nil :normal))
+(expect false (valid-metadata? :foo :metric nil :normal))
+(expect false (valid-metadata? :IntegerField :foo nil :normal))
+(expect false (valid-metadata? :IntegerField :metric nil :foo))
+(expect true (valid-metadata? :IntegerField :metric :timestamp_seconds :normal))
+(expect true (valid-metadata? :IntegerField :metric :timestamp_milliseconds :normal))
+(expect false (valid-metadata? :DateTimeField :metric :timestamp_seconds :normal))
+(expect false (valid-metadata? :DateTimeField :metric :timestamp_milliseconds :normal))
 
 
 ;; field-should-have-field-values?
