@@ -38,7 +38,7 @@ console.log("webpack env:", NODE_ENV)
 
 // Babel:
 var BABEL_CONFIG = {
-    cacheDirectory: true,
+    cacheDirectory: ".babel_cache",
     plugins: ['transform-decorators-legacy' ],
     presets: ['es2015', 'stage-0', 'react']
 };
