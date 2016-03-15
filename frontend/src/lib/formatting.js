@@ -47,7 +47,10 @@ function formatMajorMinor(major, minor, options = {}) {
 }
 
 export function formatTimeWithUnit(value, unit, options = {}) {
-    let m = moment(value);
+    let m = moment.parseZone(value);
+    if (options.utcOffset != null) {
+        m.utcOffset(options.utcOffset);
+    }
     switch (unit) {
         case "hour": // 12 AM - January 1, 2015
             return formatMajorMinor(m.format("h A"), m.format("MMMM D, YYYY"), options);
@@ -83,8 +86,8 @@ export function formatValue(value, column, options = {}) {
         return null
     } else if (column && column.unit != null) {
         return formatTimeWithUnit(value, column.unit, options);
-    } else if (moment.isDate(value) || moment(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()) {
-        return moment(value).format("LLLL");
+    } else if (moment.isDate(value) || moment.isMoment(value)  || moment(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"]).isValid()) {
+        return moment.parseZone(value).format("LLLL");
     } else if (typeof value === "string") {
         return value;
     } else if (typeof value === "number") {
