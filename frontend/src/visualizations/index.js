@@ -32,4 +32,9 @@ registerVisualization(USStateMap);
 registerVisualization(WorldMap);
 registerVisualization(PinMap);
 
-export default visualizations;
+export default {
+    get(name) {
+        // default to table if the visualization is missing so we don't blow up
+        return visualizations.get(name) || Table;
+    }
+};
