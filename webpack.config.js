@@ -109,7 +109,7 @@ var config = module.exports = {
     },
 
     resolve: {
-        // modulesDirectories: [],
+        extensions: ["", ".webpack.js", ".web.js", ".js", ".jsx", ".css"],
         alias: {
             'metabase':             SRC_PATH + '/src',
 

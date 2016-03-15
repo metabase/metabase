@@ -13,6 +13,8 @@
 }
 
 :local .option {
+  composes: cursor-pointer from "metabase/style/cursor";
+
   color: var(--default-font-color);
   font-weight: bold;
   padding-top: 0.5em;
