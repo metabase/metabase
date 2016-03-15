@@ -9,8 +9,12 @@ databaseChangeLog:
               - column:
                   name: visibility_type
                   type: varchar(32)
-                  value: sensitive
                   constraints:
                     nullable: true
                     deferrable: false
                     initiallyDeferred: false
+        - addNotNullConstraint:
+            columnDataType: varchar(32)
+            columnName: visibility_type
+            defaultNullValue: unset
+            tableName: metabase_field
