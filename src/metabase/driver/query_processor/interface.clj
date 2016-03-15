@@ -272,14 +272,36 @@
             :items IntGreaterThanZero}
            "Valid page clause"))
 
+(declare RValue)
+
+(def ^:private ValidFunctionKeyword (s/named (s/enum :+ :- :* :/ :lower) "Valid function"))
+
+(s/defrecord Function [operator   :- ValidFunctionKeyword
+                       args       :- [(s/recursive #'RValue)]
+                       field-name :- (s/maybe s/Str)]
+  clojure.lang.Named
+  (getName [_] field-name))
+
+(def RValue
+  "Schema for anything that can be an [RValue](https://github.com/metabase/metabase/wiki/Query-Language-'98#rvalues) -
+   a `Field`, `Value`, or `Function`."
+  (s/named (s/cond-pre AnyValue FieldPlaceholder Function)
+           "RValue"))
+
+(def FieldAgRefOrFunction
+  "Schema for a `FieldPlaceholder`, `AgRef`, or `Function`."
+  (s/named (s/cond-pre Function FieldPlaceholderOrAgRef)
+           "Valid field, ag field reference, or calculated field."))
+
 
 (def Query
   "Schema for an MBQL query."
   {(s/optional-key :aggregation) Aggregation
    (s/optional-key :breakout)    [FieldPlaceholder]
-   (s/optional-key :fields)      [FieldPlaceholderOrAgRef]
+   (s/optional-key :fields)      [FieldAgRefOrFunction]
    (s/optional-key :filter)      Filter
    (s/optional-key :limit)       IntGreaterThanZero
    (s/optional-key :order-by)    [OrderBy]
    (s/optional-key :page)        Page
+   (s/optional-key :expressions) [Function] ; TODO - should this be a map of name -> Function instead?
    :source-table                 IntGreaterThanZero})

@@ -1,10 +1,12 @@
 (ns metabase.driver.query-processor.expand
   "Converts a Query Dict as received by the API into an *expanded* one that contains extra information that will be needed to
    construct the appropriate native Query, and perform various post-processing steps such as Field ordering."
-  (:refer-clojure :exclude [< <= > >= = != and or not filter count distinct sum])
+  (:refer-clojure :exclude [< <= > >= = != and or not filter count distinct sum + - / * fn])
   (:require (clojure [core :as core]
+                     [edn :as edn]
                      [string :as str])
             [clojure.tools.logging :as log]
+            [korma.core :as k]
             [schema.core :as s]
             [metabase.db :as db]
             [metabase.driver :as driver]
@@ -18,6 +20,7 @@
                                                       CompoundFilter
                                                       EqualityFilter
                                                       FieldPlaceholder
+                                                      Function
                                                       NotFilter
                                                       RelativeDatetime
                                                       StringFilter
@@ -50,7 +53,7 @@
   [id :- i/IntGreaterThanZero]
   (i/map->FieldPlaceholder {:field-id id}))
 
-(s/defn ^:private ^:always-validate field :- i/FieldPlaceholderOrAgRef
+(s/defn ^:private ^:always-validate field :- i/FieldAgRefOrFunction
   "Generic reference to a `Field`. F can be an integer Field ID, or various other forms like `fk->` or `aggregation`."
   [f]
   (if (integer? f)
@@ -350,6 +353,32 @@
   [query, table-id :- s/Int]
   (assoc query :source-table table-id))
 
+
+
+;;; ## calculated columns
+
+(s/defn ^:ql ^:always-validate expressions
+  "Top-level clause. Add additional calculated fields to a query."
+  [query, m :- (s/pred map?)]
+  (assoc query :expressions (for [[field-name [expression]] m]
+                              (do (println "expression -> " expression)
+                                  (assoc expression :field-name (name field-name))))))
+
+(s/defn ^:private ^:always-validate fn :- Function
+  [k :- s/Keyword, & args]
+  (i/strict-map->Function {:operator k, :args args, :field-name nil}))
+
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} + "Arithmetic addition function."       (partial fn :+))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} - "Arithmetic subtraction function."    (partial fn :-))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} * "Arithmetic multiplication function." (partial fn :*))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} / "Arithmetic division function."       (partial fn :/))
+
+(s/defn ^:ql ^:always-validate lower :- Function
+  "An example of a non-arithmetic function."
+  [field-or-str]
+  (fn :lower field-or-str))
+
+;;; EXPRESSION PARSING
 
 ;;; # ------------------------------------------------------------ Expansion ------------------------------------------------------------
 

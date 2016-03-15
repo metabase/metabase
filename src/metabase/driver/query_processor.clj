@@ -117,6 +117,7 @@
 
 (defn- pre-expand [qp]
   (fn [query]
+    (println "expand:" (u/pprint-to-str 'yellow query))
     (qp (if (structured-query? query)
           (let [macro-expanded-query (macros/expand-macros query)]
             (when (and (not *disable-qp-logging*)
@@ -161,37 +162,56 @@
         (update results :rows (partial format-rows settings))))))
 
 
-(defn- should-add-implicit-fields? [{{:keys [fields breakout], {ag-type :aggregation-type} :aggregation} :query}]
-  (not (or ag-type breakout fields)))
+(defn- should-add-implicit-fields? [{{:keys [fields breakout], {ag-type :aggregation-type} :aggregation} :query, :as query}]
+  (and (structured-query? query)
+       (not (or ag-type
+                (seq breakout)
+                (seq fields)))))
+
+(defn- datetime-field? [{:keys [base-type special-type]}]
+  (or (contains? #{:DateField :DateTimeField} base-type)
+      (contains? #{:timestamp_seconds :timestamp_milliseconds} special-type)))
+
+(defn- fields-for-source-table
+  "Return the all fields for SOURCE-TABLE, for use as an implicit `:fields` clause."
+  [{source-table-id :id, :as source-table}]
+  (for [field (db/sel :many :fields [Field :name :display_name :base_type :special_type :preview_display :display_name :table_id :id :position :description]
+                      :table_id   source-table-id
+                      :active     true
+                      :field_type [not= "sensitive"]
+                      :parent_id  nil
+                      (k/order :position :asc)
+                      (k/order :id :desc))]
+    (let [field (-> (resolve/rename-mb-field-keys field)
+                    map->Field
+                    (resolve/resolve-table {source-table-id source-table}))]
+      (if (datetime-field? field)
+        (map->DateTimeField {:field field, :unit :day})
+        field))))
 
 (defn- pre-add-implicit-fields
   "Add an implicit `fields` clause to queries with `rows` aggregations."
   [qp]
-  (fn [{{:keys [source-table], {source-table-id :id} :source-table} :query, :as query}]
-    (if (structured-query? query)
-      (qp (if-not (should-add-implicit-fields? query)
-            query
-            (let [fields (for [field (db/sel :many :fields [Field :name :display_name :base_type :special_type :preview_display :display_name :table_id :id :position :description]
-                                          :table_id   source-table-id
-                                          :active     true
-                                          :field_type [not= "sensitive"]
-                                          :parent_id  nil
-                                          (k/order :position :asc) (k/order :id :desc))]
-                           (let [field (-> (resolve/rename-mb-field-keys field)
-                                           map->Field
-                                           (resolve/resolve-table {source-table-id source-table}))]
-                             (if (or (contains? #{:DateField :DateTimeField} (:base-type field))
-                                     (contains? #{:timestamp_seconds :timestamp_milliseconds} (:special-type field)))
-                               (map->DateTimeField {:field field, :unit :day})
-                               field)))]
-              (if-not (seq fields)
-                (do (log/warn (format "Table '%s' has no Fields associated with it." (:name source-table)))
-                    query)
-                (-> query
-                    (assoc-in [:query :fields-is-implicit] true)
-                    (assoc-in [:query :fields] fields))))))
-      ;; for non-structured queries we do nothing
-      (qp query))))
+  (fn [{{:keys [source-table]} :query, :as query}]
+    (println "should-add-implicit-fields?" (should-add-implicit-fields? query))
+    (qp (if-not (should-add-implicit-fields? query)
+          query
+          (let [fields (fields-for-source-table source-table)]
+            (when-not (seq fields)
+              (log/warn (format "Table '%s' has no Fields associated with it." (:name source-table))))
+            (-> query
+                (assoc-in [:query :fields-is-implicit] true)
+                (assoc-in [:query :fields] fields)))))))
+
+(defn- pre-add-expressions-to-fields
+  "Add `:expressions` to the `:fields` clause."
+  [qp]
+  (fn [{{:keys [expressions fields]} :query, :as query}]
+    (qp (if-not (structured-query? query)
+          query
+          (-> query
+              (update-in [:query :fields] (u/rpartial concat expressions))
+              (m/dissoc-in [:query :expressions]))))))
 
 
 (defn- pre-add-implicit-breakout-order-by
@@ -359,6 +379,7 @@
             post-add-row-count-and-status
             post-format-rows
             pre-add-implicit-fields
+            pre-add-expressions-to-fields
             pre-add-implicit-breakout-order-by
             cumulative-sum
             limit

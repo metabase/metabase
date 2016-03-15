@@ -138,6 +138,8 @@ var Query = {
             delete query.limit;
         }
 
+        if (query.expressions) delete query.expressions['']; // delete any empty expressions
+
         return query;
     },
 
@@ -230,6 +232,7 @@ var Query = {
     },
 
     getFilters(query) {
+        if (!query) throw 'query is null!';
         // Special handling for accessing query filters because it's been fairly complex to deal with their structure.
         // This method provide a unified and consistent view of the filter definition for the rest of the tool to use.
 
@@ -390,6 +393,40 @@ var Query = {
         }
     },
 
+    addExpression(query) {
+        let expressions = query.expressions || {};
+        expressions[''] = [null, ''];
+        query.expressions = expressions;
+
+        console.log('added expressions. expressions =', query.expressions);
+    },
+
+    updateExpression(query, name, expression) {
+        query.expressions[name] = expression;
+
+        console.log('updated expression. expressions =', query.expressions);
+    },
+
+    renameExpression(query, oldName, newName) {
+        if (oldName === newName) return;
+
+        oldName = oldName || '';
+        query.expressions[newName] = query.expressions[oldName];
+        delete query.expressions[oldName];
+
+        console.log('renamed expression. expressions =', query.expressions);
+    },
+
+    removeExpression(query, name) {
+        if (!query.expressions) return;
+
+        delete query.expressions[name];
+
+        if (_.isEmpty(query.expressions)) delete query.expressions;
+
+        console.log('removed expression. expressions =', query.expressions);
+    },
+
     isRegularField(field) {
         return typeof field === "number";
     },
@@ -465,9 +502,10 @@ var Query = {
                 return {
                     field: joinField,
                     fields: targetFields
-                }
+                };
             }).filter((r) => r.fields.length > 0);
         }
+
         return results;
     },
 

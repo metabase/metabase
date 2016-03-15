@@ -112,6 +112,7 @@
                   missing-keys expected-keys actual-keys)))
     (concat fields (for [k missing-keys]
                      {:base-type          :UnknownField
+                      :preview-display    true
                       :special-type       nil
                       :field-name         k
                       :field-display-name k}))))
@@ -126,14 +127,12 @@
    e.g. if a Field comes from a `:breakout` clause, we should return that column first in the results."
   [{:keys [fields-is-implicit]}]
   (fn [{:keys [source]}]
-    (or (when (= source :breakout)
-          :0-breakout)
-        (when (= source :aggregation)
-          :1-aggregation)
-        (when-not fields-is-implicit
-          (when (= source :fields)
-            :2-fields))
-        :3-other)))
+    (cond
+      (= source :breakout)          :0-breakout
+      (= source :aggregation)       :1-aggregation
+      (and (not fields-is-implicit)
+           (= source :fields))      :2-fields
+      :else                         :3-other)))
 
 (defn- special-type-importance
   "Return a importance for FIELD based on the relative importance of its `:special-type`.

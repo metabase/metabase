@@ -390,7 +390,7 @@
   [database & {:keys [full-sync?]}]
   {:pre [(map? database)]}
   (require 'metabase.driver.sync)
-  (@(resolve 'metabase.driver.sync/sync-database!) (engine->driver (:engine database)) database :full-sync? full-sync?))
+  ((resolve 'metabase.driver.sync/sync-database!) (engine->driver (:engine database)) database :full-sync? full-sync?))
 
 (defn sync-table!
   "Sync a `Table` and its `Fields`.
@@ -399,13 +399,13 @@
   [table & {:keys [full-sync?]}]
   {:pre [(map? table)]}
   (require 'metabase.driver.sync)
-  (@(resolve 'metabase.driver.sync/sync-table!) (database-id->driver (:db_id table)) table :full-sync? full-sync?))
+  ((resolve 'metabase.driver.sync/sync-table!) (database-id->driver (:db_id table)) table :full-sync? full-sync?))
 
 (defn process-query
   "Process a structured or native query, and return the result."
   [query]
   (require 'metabase.driver.query-processor)
-  (@(resolve 'metabase.driver.query-processor/process) (database-id->driver (:database query)) query))
+  ((resolve 'metabase.driver.query-processor/process) (database-id->driver (:database query)) query))
 
 
 ;; ## Query Execution Stuff
