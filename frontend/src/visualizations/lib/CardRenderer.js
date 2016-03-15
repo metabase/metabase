@@ -87,6 +87,10 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues) {
     let dataInterval = computeTimeseriesDataInverval(xValues, unit);
     let tickInterval = dataInterval;
 
+    // compute the domain
+    let xDomain = d3.extent(xValues);
+    let utcOffset = xDomain[0].utcOffset();
+
     if (settings.xAxis.labels_enabled) {
         chart.xAxisLabel(settings.xAxis.title_text || getFriendlyName(dimensionColumn));
     }
@@ -94,7 +98,8 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues) {
         chart.renderVerticalGridLines(settings.xAxis.gridLine_enabled);
 
         if (dimensionColumn && dimensionColumn.unit) {
-            chart.xAxis().tickFormat(d => formatValue(d, dimensionColumn));
+            // need to pass the utcOffset here since d3.time returns Dates not Moments and thus doesn't propagate the offset
+            chart.xAxis().tickFormat(d => formatValue(d, dimensionColumn, { utcOffset: utcOffset }));
         } else {
             chart.xAxis().tickFormat(d3.time.format.multi([
                 [".%L",    (d) => d.getMilliseconds()],
@@ -115,8 +120,6 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues) {
         chart.xAxis().ticks(0);
     }
 
-    // compute the domain
-    let xDomain = d3.extent(xValues);
     // pad the domain slightly to prevent clipping
     xDomain[0] = moment(xDomain[0]).subtract(dataInterval.count * 0.75, dataInterval.interval);
     xDomain[1] = moment(xDomain[1]).add(dataInterval.count * 0.75, dataInterval.interval);
@@ -498,7 +501,8 @@ export let CardRenderer = {
 
         let datas = series.map((s, index) =>
             s.data.rows.map(row => [
-                (isTimeseries) ? new Date(row[0]) : row[0],
+                // use parseZone to retain the report timezone
+                (isTimeseries) ? moment.parseZone(row[0]) : row[0],
                 ...row.slice(1)
             ])
         );

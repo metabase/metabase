@@ -2,6 +2,8 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
 export default ComposedComponent => class extends Component {
+    static displayName = "ExplicitSize["+(ComposedComponent.displayName || ComposedComponent.name)+"]";
+
     constructor(props, context) {
         super(props, context);
         this.state = {

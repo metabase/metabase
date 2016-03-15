@@ -6,6 +6,7 @@ import { normalize, Schema, arrayOf } from "normalizr";
 
 import moment from "moment";
 import { augmentDatabase } from "metabase/lib/table";
+import { timeout } from "metabase/lib/promise";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
@@ -218,18 +219,3 @@ export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, 
 });
 
 export const setDashCardVisualizationSetting = createAction(SET_DASHCARD_VISUALIZATION_SETTING);
-
-// promise helpers
-
-// if a promise doesn't resolve/reject within a given duration it will reject
-function timeout(promise, duration, error) {
-    return new Promise((resolve, reject) => {
-        promise.then(resolve, reject);
-        setTimeout(() => reject(error || new Error("Operation timed out")), duration);
-    });
-}
-
-// returns a promise that resolves after a given duration
-// function delay(duration) {
-//     return new Promise((resolve, reject) => setTimeout(resolve, duration));
-// }

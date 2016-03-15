@@ -1,6 +1,8 @@
 import React, { Component, PropTypes } from "react";
 
 export default ComposedComponent => class extends Component {
+    static displayName = "AbsoluteContainer["+(ComposedComponent.displayName || ComposedComponent.name)+"]";
+
     render() {
         const { className, style, width, height } = this.props;
         return (

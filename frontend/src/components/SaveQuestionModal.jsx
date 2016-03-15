@@ -4,6 +4,7 @@ import FormField from "metabase/components/FormField.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
 
 import Query from "metabase/lib/query";
+import { cancelable } from "metabase/lib/promise";
 
 import cx from "classnames";
 
@@ -13,7 +14,7 @@ export default class SaveQuestionModal extends Component {
     constructor(props, context) {
         super(props, context);
         this.state = {
-            errors: null,
+            error: null,
             valid: false,
             details: {
                 name: props.card.name || Query.generateQueryDescription(props.tableMetadata, props.card.dataset_query.query),
@@ -21,9 +22,6 @@ export default class SaveQuestionModal extends Component {
                 saveType: "create"
             }
         };
-
-        this.props.createFn.bind(this);
-        this.props.saveFn.bind(this);
     }
 
     static propTypes = {
@@ -41,6 +39,12 @@ export default class SaveQuestionModal extends Component {
 
     componentDidUpdate() {
         this.validateForm();
+    }
+
+    componentWillUnmount() {
+        if (this.requestPromise) {
+            this.requestPromise.cancel();
+        }
     }
 
     validateForm() {
@@ -77,7 +81,7 @@ export default class SaveQuestionModal extends Component {
         e.preventDefault();
 
         let { details } = this.state;
-        let card = this.props.card;
+        let { card, addToDashboard, createFn, saveFn } = this.props;
 
         card.name = details.name.trim();
         // since description is optional, it can be null, so check for a description before trimming it
@@ -85,44 +89,35 @@ export default class SaveQuestionModal extends Component {
         card.public_perms = 2; // public read/write
 
         if (details.saveType === "create") {
-            this.props.createFn(card, this.props.addToDashboard).then((success) => {
-                if (this.isMounted()) {
-                    this.props.closeFn();
-                }
-            }, (error) => {
-                if (this.isMounted()) {
-                    this.setState({
-                        errors: error
-                    });
-                }
-            });
+            this.requestPromise = cancelable(createFn(card, addToDashboard));
         } else if (details.saveType === "overwrite") {
             card.id = this.props.originalCard.id;
-            this.props.saveFn(card, this.props.addToDashboard).then((success) => {
-                if (this.isMounted()) {
-                    this.props.closeFn();
-                }
-            }, (error) => {
-                if (this.isMounted()) {
-                    this.setState({
-                        errors: error
-                    });
-                }
-            });
+            this.requestPromise = cancelable(saveFn(card, addToDashboard));
         }
+
+        this.requestPromise.then((success) => {
+            this.props.closeFn();
+        }).catch((error) => {
+            if (!error.isCanceled) {
+                this.setState({ error: error });
+            }
+        });
     }
 
     render() {
+        let { error } = this.state;
         var formError;
-        if (this.state.errors) {
+        if (error) {
             var errorMessage;
-            if (this.state.errors.status === 500) {
+            if (error.status === 500) {
                 errorMessage = "Server error encountered";
             }
 
-            if (this.state.errors.data &&
-                this.state.errors.data.message) {
-                errorMessage = this.state.errors.data.message;
+            if (error.data && error.data.message) {
+                errorMessage = error.data.message;
+            }
+            if (error.data && error.data.errors) {
+                errorMessage = Object.values(error.data.errors);
             }
 
             // TODO: timeout display?
@@ -132,11 +127,6 @@ export default class SaveQuestionModal extends Component {
                 );
             }
         }
-
-        var buttonClasses = cx({
-            "Button": true,
-            "Button--primary": this.state.valid
-        });
 
         var saveOrUpdate = null;
         if (!this.props.card.id && this.props.originalCard) {
@@ -180,10 +170,11 @@ export default class SaveQuestionModal extends Component {
                     </div>
 
                     <div className="Form-actions">
-                        <button className={buttonClasses} disabled={!this.state.valid}>
+                        <button className={cx("Button", { "Button--primary": this.state.valid })} disabled={!this.state.valid}>
                             Save
                         </button>
-                        <span className="px1">or</span><a className="no-decoration text-brand text-bold" onClick={this.props.closeFn}>Cancel</a>
+                        <span className="px1">or</span>
+                        <a className="no-decoration text-brand text-bold" onClick={this.props.closeFn}>Cancel</a>
                         {formError}
                     </div>
                 </form>

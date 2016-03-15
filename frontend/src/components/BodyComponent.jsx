@@ -2,6 +2,8 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
 export default ComposedComponent => class extends Component {
+    static displayName = "BodyComponent["+(ComposedComponent.displayName || ComposedComponent.name)+"]";
+
     componentWillMount() {
         this._element = document.createElement('div');
         document.body.appendChild(this._element);
