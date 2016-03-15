@@ -80,32 +80,45 @@ export default class LineAreaBarChart extends Component {
 
     transformSeries(newProps) {
         let series = newProps.series;
-        let isMultiseries = false;
+        let nextState = {
+            series: series,
+            isMultiseries: false,
+            isStacked: false
+        };
         let s = series && series.length === 1 && series[0];
-        if (s && s.data && s.data.cols.length > 2 && (isDimension(s.data.cols[1]) || isString(s.data.cols[1]))) {
-            let dataset = crossfilter(s.data.rows);
-            let groups = [0,1].map(i => dataset.dimension(d => d[i]).group());
-            let cardinalities = groups.map(group => group.size())
-            // only if the smaller dimension has cardinality < 10
-            if (cardinalities[0] < 10 || cardinalities[1] < 10) {
-                let dimensionIndex = (cardinalities[0] > cardinalities[1]) ? 1 : 0;
-                series = groups[dimensionIndex].reduce(
-                    (p, v) => p.concat([[...v.slice(0, dimensionIndex), ...v.slice(dimensionIndex+1)]]),
-                    (p, v) => null, () => []
-                ).all().map(o => ({
-                    card: { ...s.card, name: o.key, id: null },
+        if (s && s.data && s.data.cols.length > 2) {
+            if (isDimension(s.data.cols[1]) || isString(s.data.cols[1])) {
+                let dataset = crossfilter(s.data.rows);
+                let groups = [0,1].map(i => dataset.dimension(d => d[i]).group());
+                let cardinalities = groups.map(group => group.size())
+                // only if the smaller dimension has cardinality < 10
+                if (cardinalities[0] < 10 || cardinalities[1] < 10) {
+                    let dimensionIndex = (cardinalities[0] > cardinalities[1]) ? 1 : 0;
+                    nextState.series = groups[dimensionIndex].reduce(
+                        (p, v) => p.concat([[...v.slice(0, dimensionIndex), ...v.slice(dimensionIndex+1)]]),
+                        (p, v) => null, () => []
+                    ).all().map(o => ({
+                        card: { ...s.card, name: o.key, id: null },
+                        data: {
+                            rows: o.value,
+                            cols: [...s.data.cols.slice(0,dimensionIndex), ...s.data.cols.slice(dimensionIndex+1)]
+                        }
+                    }));
+                    nextState.isMultiseries = true;
+                }
+            } else {
+                nextState.series = s.data.cols.slice(1).map((col, index) => ({
+                    card: { ...s.card, name: col.display_name || col.name, id: null },
                     data: {
-                        rows: o.value,
-                        cols: [...s.data.cols.slice(0,dimensionIndex), ...s.data.cols.slice(dimensionIndex+1)]
+                        rows: s.data.rows.map(row => [row[0], row[index + 1]]),
+                        cols: [s.data.cols[0], s.data.cols[index + 1]]
                     }
                 }));
-                isMultiseries = true;
+                nextState.isMultiseries = true;
+                nextState.isStacked = true;
             }
         }
-        this.setState({
-            series,
-            isMultiseries
-        })
+        this.setState(nextState)
     }
 
     getHoverClasses() {
@@ -170,7 +183,7 @@ export default class LineAreaBarChart extends Component {
 
     render() {
         const { hovered, isDashboard, onAddSeries, onRemoveSeries, actionButtons, allowSplitAxis } = this.props;
-        const { series, isMultiseries } = this.state;
+        const { series, isMultiseries, isStacked } = this.state;
 
         const card = this.props.series[0].card;
         const chartType = this.constructor.identifier;
@@ -199,6 +212,7 @@ export default class LineAreaBarChart extends Component {
                     series={i.assocIn(series, [0, "card", "visualization_settings"], settings)}
                     className="flex-full"
                     allowSplitAxis={isMultiseries ? false : allowSplitAxis}
+                    isStacked={isStacked}
                 />
                 <ChartTooltip series={series} hovered={hovered} />
             </div>

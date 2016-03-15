@@ -480,14 +480,16 @@ function lineAndBarOnRender(chart, settings) {
 }
 
 export let CardRenderer = {
-    lineAreaBar(element, chartType, { series, onHoverChange, onRender, isScalarSeries, allowSplitAxis }) {
+    lineAreaBar(element, chartType, { series, onHoverChange, onRender, isScalarSeries, isStacked, allowSplitAxis }) {
         const colors = getCardColors(series[0].card);
 
         const settings = series[0].card.visualization_settings;
 
         const isTimeseries = dimensionIsTimeseries(series[0].data);
-        const isStacked = chartType === "area";
         const isLinear = false;
+
+        // no stacking lines
+        isStacked = isStacked && chartType !== "line";
 
         // validation.  we require at least 2 rows for line charting
         if (series[0].data.cols.length < 2) {
@@ -555,20 +557,6 @@ export let CardRenderer = {
 
         let charts = groups.map((group, index) => {
             let chart = dc[getDcjsChartType(chartType)](parent);
-            let chartColors;
-
-            // multiple series
-            if (groups.length > 1) {
-                // multiple stacks
-                if (group.length > 1) {
-                    // compute shades of the assigned color
-                    chartColors = colorShades(colors[index % colors.length], group.length);
-                } else {
-                    chartColors = colors[index % colors.length];
-                }
-            } else {
-                chartColors = colors;
-            }
 
             chart
                 .dimension(dimension)
@@ -576,10 +564,17 @@ export let CardRenderer = {
                 .transitionDuration(0)
                 .useRightYAxis(yAxisSplit.length > 1 && yAxisSplit[1].includes(index))
 
-            if (chartType === "area") {
-                chart.ordinalColors(chartColors)
+            // multiple series
+            if (groups.length > 1) {
+                // multiple stacks
+                if (group.length > 1) {
+                    // compute shades of the assigned color
+                    chart.ordinalColors(colorShades(colors[index % colors.length], group.length))
+                } else {
+                    chart.colors(colors[index % colors.length])
+                }
             } else {
-                chart.colors(chartColors)
+                chart.ordinalColors(colors)
             }
 
             for (var i = 1; i < group.length; i++) {
