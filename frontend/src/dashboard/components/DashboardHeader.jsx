@@ -185,13 +185,13 @@ export default class DashboardHeader extends Component {
 
         if (!isEditing && isFullscreen) {
             buttons.push(
-                <NightModeIcon className="text-brand-hover" key="night" isNightMode={isNightMode} onClick={() => this.props.onNightModeChange(!isNightMode) } />
+                <NightModeIcon className="text-brand-hover cursor-pointer" key="night" isNightMode={isNightMode} onClick={() => this.props.onNightModeChange(!isNightMode) } />
             );
         }
 
         if (!isEditing && !isEmpty) {
             buttons.push(
-                <FullscreenIcon className="text-brand-hover" key="fullscreen" isFullscreen={isFullscreen} onClick={() => this.props.onFullscreenChange(!isFullscreen)} />
+                <FullscreenIcon className="text-brand-hover cursor-pointer" key="fullscreen" isFullscreen={isFullscreen} onClick={() => this.props.onFullscreenChange(!isFullscreen)} />
             );
         }
 
