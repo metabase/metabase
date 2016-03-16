@@ -3,6 +3,8 @@ import inflection from "inflection";
 import moment from "moment";
 import React from "react";
 
+import { isDate } from "metabase/lib/schema_metadata";
+
 const PRECISION_NUMBER_FORMATTER      = d3.format(".2r");
 const FIXED_NUMBER_FORMATTER          = d3.format(",.f");
 const FIXED_NUMBER_FORMATTER_NO_COMMA = d3.format(".f");
@@ -86,7 +88,7 @@ export function formatValue(value, column, options = {}) {
         return null
     } else if (column && column.unit != null) {
         return formatTimeWithUnit(value, column.unit, options);
-    } else if (moment.isDate(value) || moment.isMoment(value)  || moment(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"]).isValid()) {
+    } else if (isDate(column) || moment.isDate(value) || moment.isMoment(value) || moment(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()) {
         return moment.parseZone(value).format("LLLL");
     } else if (typeof value === "string") {
         return value;
