@@ -253,5 +253,3 @@
   (log/info "Stopping MetaBot...  🤖")
   (reset! websocket-monitor-thread-id nil)
   (disconnect-websocket!))
-
-(start-metabot!)
