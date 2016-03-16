@@ -67,6 +67,22 @@
   fill: currentColor !important;
 }
 
+/* Night mode transition */
+.Dashboard,
+.Dashboard .DashCard .Card {
+  transition: background-color 1s linear, border 1s linear;
+}
+
+.Dashboard .DashCard .Card a,
+.Dashboard .DashCard .Card div,
+.Dashboard .DashCard .Card span,
+.Dashboard .Header-button,
+.Dashboard .Header-button svg {
+  transition: color 1s linear;
+}
+
+
+
 .DashboardGrid {
   margin-top: 5px;
   margin-left: -5px;
