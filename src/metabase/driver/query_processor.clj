@@ -171,7 +171,7 @@
     (if (structured-query? query)
       (qp (if-not (should-add-implicit-fields? query)
             query
-            (let [fields (for [field (db/sel :many :fields [Field :name :display_name :base_type :special_type :preview_display :display_name :table_id :id :position :description]
+            (let [fields (for [field (db/sel :many :fields [Field :name :display_name :base_type :special_type :visibility_type :display_name :table_id :id :position :description]
                                              :table_id   source-table-id
                                              :visibility_type [not-in ["sensitive" "retired"]]
                                              :parent_id  nil

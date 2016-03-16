@@ -30,8 +30,8 @@
                           :name            :field-name
                           :display_name    :field-display-name
                           :special_type    :special-type
+                          :visibility_type :visibility-type
                           :base_type       :base-type
-                          :preview_display :preview-display
                           :table_id        :table-id
                           :parent_id       :parent-id}))
 
@@ -181,7 +181,7 @@
         ;; If there are no more Field IDs to resolve we're done.
         expanded-query-dict
         ;; Otherwise fetch + resolve the Fields in question
-        (let [fields (->> (sel :many :id->fields [field/Field :name :display_name :base_type :special_type :preview_display :table_id :parent_id :description]
+        (let [fields (->> (sel :many :id->fields [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description]
                                :id [in field-ids])
                           (m/map-vals rename-mb-field-keys)
                           (m/map-vals #(assoc % :parent (when-let [parent-id (:parent-id %)]

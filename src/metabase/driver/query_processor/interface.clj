@@ -64,6 +64,7 @@
                     field-display-name :- s/Str
                     base-type          :- (apply s/enum field/base-types)
                     special-type       :- (s/maybe (apply s/enum field/special-types))
+                    visibility-type    :- (apply s/enum field/visibility-types)
                     table-id           :- IntGreaterThanZero
                     schema-name        :- (s/maybe s/Str)
                     table-name         :- (s/maybe s/Str) ; TODO - Why is this `maybe` ?
@@ -71,8 +72,7 @@
                     description        :- (s/maybe s/Str)
                     parent-id          :- (s/maybe IntGreaterThanZero)
                     ;; Field once its resolved; FieldPlaceholder before that
-                    parent             :- s/Any
-                    preview-display    :- (s/maybe s/Bool)]
+                    parent             :- s/Any]
   clojure.lang.Named
   (getName [_] field-name) ; (name <field>) returns the *unqualified* name of the field, #obvi
 

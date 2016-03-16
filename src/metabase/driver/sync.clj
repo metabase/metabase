@@ -186,7 +186,8 @@
             ;; set Field metadata we may have detected
             (when (and id (or preview-display special-type))
               (upd-non-nil-keys Field id
-                :preview_display preview-display
+                ;; if a field marked `preview-display` as false then set the visibility type to `:details-only` (see models.field/visibility-types)
+                :visibility_type (when (false? preview-display) :details-only)
                 :special_type    special-type))
             ;; handle field values, setting them if applicable otherwise clearing them
             (if (and id values (< 0 (count (filter identity values))))
@@ -525,7 +526,7 @@ infer-field-special-type
 (defn- test:no-preview-display
   "If FIELD's is textual and its average length is too great, mark it so it isn't displayed in the UI."
   [driver field field-stats]
-  (if-not (and (:preview_display field)
+  (if-not (and (= :normal (:visibility_type field))
                (contains? #{:CharField :TextField} (:base_type field)))
     ;; this field isn't suited for this test
     field-stats
