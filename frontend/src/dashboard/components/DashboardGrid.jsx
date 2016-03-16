@@ -258,7 +258,7 @@ export default class DashboardGrid extends Component {
     render() {
         const { width } = this.state;
         return (
-            <div>
+            <div className="flex layout-centered">
                 { width === 0 ?
                     <div />
                 : width <= 752 ?
