@@ -28,7 +28,7 @@ export default class Dashboard extends Component {
             refreshElapsed: null
         };
 
-        _.bindAll(this, "setRefreshPeriod", "tickRefreshClock", "setFullscreen", "setNightMode");
+        _.bindAll(this, "setRefreshPeriod", "tickRefreshClock", "setFullscreen", "setNightMode", "setEditing");
     }
 
     static propTypes = {
@@ -62,7 +62,7 @@ export default class Dashboard extends Component {
             if (this.props.addCardOnLoad) {
                 // we have to load our cards before we can add one
                 await this.props.fetchCards();
-                this.props.setEditingDashboard(true);
+                this.setEditing(true);
                 this.props.addCardToDashboard({ dashId: this.props.selectedDashboard, cardId: this.props.addCardOnLoad });
             }
         } catch (error) {
@@ -147,6 +147,11 @@ export default class Dashboard extends Component {
         }
     }
 
+    setEditing(isEditing) {
+        this.setRefreshPeriod(null);
+        this.props.setEditingDashboard(isEditing);
+    }
+
     async tickRefreshClock() {
         let refreshElapsed = (this.state.refreshElapsed || 0) + TICK_PERIOD;
         if (refreshElapsed >= this.state.refreshPeriod) {
@@ -185,6 +190,7 @@ export default class Dashboard extends Component {
                             setRefreshPeriod={this.setRefreshPeriod}
                             onFullscreenChange={this.setFullscreen}
                             onNightModeChange={this.setNightMode}
+                            onEditingChange={this.setEditing}
                         />
                     </header>
                     <div className="wrapper">
@@ -195,7 +201,11 @@ export default class Dashboard extends Component {
                                 <div className="text-normal text-grey-2">Add a question to start making it useful!</div>
                             </div>
                         :
-                            <DashboardGrid {...this.props} isFullscreen={this.state.isFullscreen} />
+                            <DashboardGrid
+                                {...this.props}
+                                isFullscreen={this.state.isFullscreen}
+                                onEditingChange={this.setEditing}
+                            />
                         }
                     </div>
                 </div>

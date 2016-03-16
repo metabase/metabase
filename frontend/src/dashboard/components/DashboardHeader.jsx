@@ -32,7 +32,7 @@ export default class DashboardHeader extends Component {
         revertToRevision: PropTypes.func.isRequired,
         saveDashboard: PropTypes.func.isRequired,
         setDashboardAttributes: PropTypes.func.isRequired,
-        setEditingDashboard: PropTypes.func.isRequired,
+        onEditingChange: PropTypes.func.isRequired,
         setRefreshPeriod: PropTypes.func.isRequired,
 
         onNightModeChange: PropTypes.func.isRequired,
@@ -40,11 +40,11 @@ export default class DashboardHeader extends Component {
     };
 
     onEdit() {
-        this.props.setEditingDashboard(true);
+        this.props.onEditingChange(true);
     }
 
     onDoneEditing() {
-        this.props.setEditingDashboard(false);
+        this.props.onEditingChange(false);
     }
 
     onRevert() {
@@ -170,7 +170,7 @@ export default class DashboardHeader extends Component {
                         cards={this.props.cards}
                         fetchCards={this.props.fetchCards}
                         addCardToDashboard={this.props.addCardToDashboard}
-                        setEditingDashboard={this.props.setEditingDashboard}
+                        onEditingChange={this.props.onEditingChange}
                         onClose={() => this.refs.addQuestionModal.toggle()}
                     />
                 </ModalWithTrigger>
