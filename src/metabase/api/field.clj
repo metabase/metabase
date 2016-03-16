@@ -55,7 +55,7 @@
                                                 :field_type      field_type
                                                 :special_type    special_type
                                                 :visibility_type visibility_type}
-                                               (when display_name               {:display_name display_name}))))
+                                               (when display_name {:display_name display_name}))))
       (Field id))))
 
 (defendpoint GET "/:id/summary"

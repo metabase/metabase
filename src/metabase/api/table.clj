@@ -55,7 +55,6 @@
 (defendpoint GET "/:id/fields"
   "Get all `Fields` for `Table` with ID."
   [id]
-  ;; TODO: check that order doesn't change in a problematic way due to sorting by position
   (let-404 [table (Table id)]
     (read-check table)
     (sel :many Field :table_id id, :visibility_type [not-in ["sensitive" "retired"]], (k/order :name :ASC))))

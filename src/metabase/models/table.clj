@@ -47,7 +47,6 @@
   "Return the `FieldValues` for all `Fields` belonging to TABLE."
   {:hydrate :field_values, :arglists '([table])}
   [{:keys [id]}]
-  ;; TODO: any reason to return field-values for other visibility options?
   (let [field-ids (db/sel :many :id Field, :table_id id, :visibility_type "normal"
                           (k/order :position :asc)
                           (k/order :name :asc))]
