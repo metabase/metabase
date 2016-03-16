@@ -2,11 +2,12 @@
   (:require [clojure.set :as set]
             [cheshire.generate :refer [add-encoder encode-map]]
             [korma.core :as k]
+            [medley.core :as m]
             [metabase.db :as db]
             (metabase.models [pulse-channel-recipient :refer [PulseChannelRecipient]]
                              [interface :as i]
                              [user :refer [User]])
-            [medley.core :as m]))
+            [metabase.util :as u]))
 
 
 ;; ## Static Definitions
@@ -118,13 +119,13 @@
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete PulseChannelRecipient :pulse_channel_id id))
 
-(extend (class PulseChannel)
+(u/strict-extend (class PulseChannel)
   i/IEntity (merge i/IEntityDefaults
                    {:hydration-keys     (constantly [:pulse_channel])
                     :types              (constantly {:details :json, :channel_type :keyword, :schedule_type :keyword, :schedule_frame :keyword})
                     :timestamped?       (constantly true)
                     :can-read?          (constantly true)
-                    :can-write          i/superuser?
+                    :can-write?         i/superuser?
                     :pre-cascade-delete pre-cascade-delete}))
 
 

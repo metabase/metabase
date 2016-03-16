@@ -201,9 +201,9 @@
 (defn features
   "Default implementation of `IDriver` `features` for SQL drivers."
   [driver]
-  (set (cond-> [:foreign-keys
-                :standard-deviation-aggregations]
-         (set-timezone-sql driver) (conj :set-timezone))))
+  (cond-> #{:standard-deviation-aggregations
+            :foreign-keys}
+    (set-timezone-sql driver) (conj :set-timezone)))
 
 
 ;;; ## Database introspection methods used by sync process

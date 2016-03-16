@@ -10,7 +10,7 @@
 
 (i/defentity Segment :segment)
 
-(extend (class Segment)
+(u/strict-extend (class Segment)
   i/IEntity
   (merge i/IEntityDefaults
          {:types           (constantly {:definition :json, :description :clob})
@@ -42,7 +42,7 @@
                                                                                 :after  (get-in segment2 [:definition])})))))
 
 
-(extend (class Segment)
+(u/strict-extend (class Segment)
   revision/IRevisioned
   (merge revision/IRevisionedDefaults
          {:serialize-instance serialize-segment

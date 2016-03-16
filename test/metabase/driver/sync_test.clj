@@ -15,8 +15,7 @@
             (metabase.test [data :refer :all]
                            [util :refer [resolve-private-fns] :as tu])
             (metabase.test.data [datasets :as datasets]
-                                [interface :refer [create-database-definition]])
-            [metabase.util :as u]))
+                                [interface :refer [create-database-definition]])))
 
 (def sync-test-tables
   {"movie"  {:name "movie"

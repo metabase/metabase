@@ -192,7 +192,7 @@
 
 ;;; # ------------------------------------------------------------ IDatasetLoader ------------------------------------------------------------
 
-(extend BigQueryDriver
+(u/strict-extend BigQueryDriver
   i/IDatasetLoader
   (merge i/IDatasetLoaderDefaultsMixin
          {:engine                       (constantly :bigquery)

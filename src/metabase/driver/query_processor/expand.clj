@@ -116,7 +116,8 @@
 (def ^:ql ^{:arglists '([f])} cum-sum  "Aggregation clause. Return the cumulative sum of the values of F." (partial ag-with-field :cumulative-sum))
 
 (defn ^:ql stddev
-  "Aggregation clause. Return the standard deviation of values of F."
+  "Aggregation clause. Return the standard deviation of values of F.
+   Requires the feature `:standard-deviation-aggregations`."
   [f]
   (i/assert-driver-supports :standard-deviation-aggregations)
   (ag-with-field :stddev f))

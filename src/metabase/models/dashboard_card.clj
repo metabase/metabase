@@ -24,7 +24,7 @@
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete 'DashboardCardSeries :dashboardcard_id id))
 
-(extend (class DashboardCard)
+(u/strict-extend (class DashboardCard)
   i/IEntity
   (merge i/IEntityDefaults
          {:timestamped?       (constantly true)

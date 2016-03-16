@@ -6,7 +6,8 @@
                    [db :as kdb])
             metabase.driver.h2
             (metabase.test.data [generic-sql :as generic]
-                                [interface :as i]))
+                                [interface :as i])
+            [metabase.util :as u])
   (:import metabase.driver.h2.H2Driver))
 
 (def ^:private ^:const field-base-type->sql-type
@@ -66,7 +67,7 @@
    (format "GRANT ALL ON %s TO GUEST;" (quote-name this table-name))))
 
 
-(extend H2Driver
+(u/strict-extend H2Driver
   generic/IGenericSQLDatasetLoader
   (let [{:keys [execute-sql!], :as mixin} generic/DefaultsMixin]
     (merge mixin
