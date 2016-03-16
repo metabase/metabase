@@ -1,6 +1,8 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 import styles from "./Table.css";
 
+import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
 
 import { formatValue } from "metabase/lib/formatting";
@@ -9,8 +11,7 @@ import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import cx from "classnames";
 import _ from "underscore";
 
-const ROWS_PER_GRID_CELL = 1.2;
-
+@ExplicitSize
 export default class TableSimple extends Component {
     constructor(props, context) {
         super(props, context);
@@ -38,11 +39,20 @@ export default class TableSimple extends Component {
         }
     }
 
+    componentDidUpdate() {
+        let headerHeight = ReactDOM.findDOMNode(this.refs.header).getBoundingClientRect().height;
+        let rowHeight = ReactDOM.findDOMNode(this.refs.firstRow).getBoundingClientRect().height + 1;
+        let pageSize = Math.floor((this.props.height - headerHeight) / rowHeight);
+        if (this.state.pageSize !== pageSize) {
+            this.setState({ pageSize });
+        }
+    }
+
     render() {
-        const { gridSize, series } = this.props;
+        const { series } = this.props;
         const { page, sortColumn, sortDescending } = this.state;
 
-        let pageSize = gridSize ? Math.round((gridSize.height - 1) * ROWS_PER_GRID_CELL) : 10;
+        let pageSize = this.state.pageSize || 1;
         let start = pageSize * page;
         let end = pageSize * (page + 1) - 1;
 
@@ -58,8 +68,8 @@ export default class TableSimple extends Component {
             <div className={cx(this.props.className, "relative flex flex-column")}>
                 <div className="flex-full relative border-bottom">
                     <div className="absolute top bottom left right scroll-x scroll-show scroll-show--horizontal" style={{ overflowY: "hidden" }}>
-                        <table className={cx(styles.Table, styles.TableSimple)} style={{height: "100%"}}>
-                            <thead>
+                        <table className={cx(styles.Table, styles.TableSimple)}>
+                            <thead ref="header">
                                 <tr>
                                     {cols.map((col, colIndex) =>
                                         <th key={colIndex} className={cx("px1 pb1 border-bottom text-brand-hover", { "text-brand": sortColumn === colIndex })} onClick={() => this.setSort(colIndex)}>
@@ -75,7 +85,7 @@ export default class TableSimple extends Component {
                             </thead>
                             <tbody>
                             {rows.slice(start, end + 1).map((row, rowIndex) =>
-                                <tr key={rowIndex}>
+                                <tr key={rowIndex} ref={rowIndex === 0 ? "firstRow" : null}>
                                     {row.map((cell, colIndex) =>
                                         <td key={colIndex} style={{ whiteSpace: "nowrap" }} className="px1 border-bottom">
                                             { cell == null ? "-" : formatValue(cell, cols[colIndex], { jsx: true }) }
