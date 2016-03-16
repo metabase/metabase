@@ -450,6 +450,15 @@ function lineAndBarOnRender(chart, settings) {
         return min;
     }
 
+    function disableClickFiltering() {
+        chart.selectAll("rect.bar")
+            .style({ cursor: "inherit" })
+            .on("click", (d) => {
+                chart.filter(null);
+                chart.filter(d.key);
+            });
+    }
+
     // run these first so the rest of the margin computations take it into account
     hideDisabledLabels();
     hideDisabledAxis();
@@ -477,6 +486,7 @@ function lineAndBarOnRender(chart, settings) {
         hideDisabledLabels();
         hideDisabledAxis();
         hideBadAxis();
+        disableClickFiltering();
     });
 
     chart.render();
