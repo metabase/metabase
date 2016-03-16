@@ -476,7 +476,7 @@ CardControllers.controller('CardDetail', [
                 } else {
                     isObjectDetail = false;
 
-                    // if we are display bare rows, filter out columns with preview_display = false
+                    // if we are display bare rows, filter out columns with visibility_type = details-only
                     if (Query.isStructured(dataset_query) &&
                             Query.isBareRowsAggregation(dataset_query.query)) {
                         queryResult.data = DataGrid.filterOnPreviewDisplay(queryResult.data);
