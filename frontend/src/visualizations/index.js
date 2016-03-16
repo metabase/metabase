@@ -9,7 +9,21 @@ import USStateMap from "./USStateMap.jsx";
 import WorldMap   from "./WorldMap.jsx";
 import PinMap     from "./PinMap.jsx";
 
-const visualizations = new Map();
+class MapDefault extends Map {
+    constructor(_default, ...args) {
+        super(...args);
+        this._default = _default;
+    }
+    get(key) {
+        if (this.has(key)) {
+            return super.get(key);
+        } else {
+            return this._default;
+        }
+    }
+}
+
+const visualizations = new MapDefault(Table);
 
 export function registerVisualization(visualization) {
     let identifier = visualization.identifier;
@@ -32,9 +46,4 @@ registerVisualization(USStateMap);
 registerVisualization(WorldMap);
 registerVisualization(PinMap);
 
-export default {
-    get(name) {
-        // default to table if the visualization is missing so we don't blow up
-        return visualizations.get(name) || Table;
-    }
-};
+export default visualizations;
