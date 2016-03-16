@@ -7,7 +7,8 @@
                              sqlserver)
             (metabase.test.data [datasets :as datasets]
                                 [generic-sql :as generic]
-                                [interface :as i]))
+                                [interface :as i])
+            [metabase.util :as u])
   (:import metabase.driver.sqlserver.SQLServerDriver))
 
 (def ^:private ^:const field-base-type->sql-type
@@ -81,7 +82,7 @@
    [(+suffix db-name) "dbo" table-name field-name]))
 
 
-(extend SQLServerDriver
+(u/strict-extend SQLServerDriver
   generic/IGenericSQLDatasetLoader
   (merge generic/DefaultsMixin
          {:drop-db-if-exists-sql     drop-db-if-exists-sql
@@ -97,8 +98,7 @@
                                             (create-db! this dbdef))
             :database->connection-details database->connection-details
             :default-schema               (constantly "dbo")
-            :engine                       (constantly :sqlserver)
-            :sum-field-type               (constantly :IntegerField)})))
+            :engine                       (constantly :sqlserver)})))
 
 
 (defn- cleanup-leftover-dbs

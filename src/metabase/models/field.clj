@@ -4,7 +4,8 @@
             (metabase.models [common :as common]
                              [field-values :refer [FieldValues]]
                              [foreign-key :refer [ForeignKey]]
-                             [interface :as i])))
+                             [interface :as i])
+            [metabase.util :as u]))
 
 (def ^:const special-types
   "Possible values for `Field.special_type`."
@@ -114,7 +115,7 @@
     (let [dest-id (sel :one :field [ForeignKey :destination_id] :origin_id id)]
       (Field dest-id))))
 
-(extend (class Field)
+(u/strict-extend (class Field)
   i/IEntity (merge i/IEntityDefaults
                    {:hydration-keys     (constantly [:destination :field :origin])
                     :types              (constantly {:base_type :keyword, :field_type :keyword, :special_type :keyword, :description :clob})

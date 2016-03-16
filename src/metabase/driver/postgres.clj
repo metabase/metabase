@@ -186,7 +186,7 @@
           :string-length-fn          (constantly :CHAR_LENGTH)
           :unix-timestamp->timestamp unix-timestamp->timestamp}))
 
-(extend PostgresDriver
+(u/strict-extend PostgresDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
          {:date-interval                     date-interval

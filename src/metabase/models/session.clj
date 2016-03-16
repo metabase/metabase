@@ -11,7 +11,7 @@
 (defn- pre-insert [session]
   (assoc session :created_at (u/new-sql-timestamp)))
 
-(extend (class Session)
+(u/strict-extend (class Session)
   i/IEntity
   (merge i/IEntityDefaults
          {:pre-insert pre-insert}))

@@ -56,8 +56,8 @@
    :resolve-field       (fn [this _] this)
    :resolve-table       (fn [this _] this)})
 
-(extend Object IResolve IResolveDefaults)
-(extend nil    IResolve IResolveDefaults)
+(u/strict-extend Object IResolve IResolveDefaults)
+(u/strict-extend nil    IResolve IResolveDefaults)
 
 
 ;;; ## ------------------------------------------------------------ FIELD ------------------------------------------------------------
@@ -84,7 +84,7 @@
            :table-name  (:name table)
            :schema-name (:schema table))))
 
-(extend Field
+(u/strict-extend Field
   IResolve (merge IResolveDefaults
                   {:unresolved-field-id field-unresolved-field-id
                    :resolve-field       field-resolve-field
@@ -107,7 +107,7 @@
     ;; If that fails just return ourselves as-is
     this))
 
-(extend FieldPlaceholder
+(u/strict-extend FieldPlaceholder
   IResolve (merge IResolveDefaults
                   {:unresolved-field-id :field-id
                    :fk-field-id         :fk-field-id
@@ -147,7 +147,7 @@
       (throw (Exception. (format "Unable to resolve field: %s" field-placeholder))))
     (parse-value resolved-field value)))
 
-(extend ValuePlaceholder
+(u/strict-extend ValuePlaceholder
   IResolve (merge IResolveDefaults
                   {:resolve-field value-ph-resolve-field}))
 
