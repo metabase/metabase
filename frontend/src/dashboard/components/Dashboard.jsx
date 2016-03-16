@@ -5,7 +5,7 @@ import DashboardHeader from "../components/DashboardHeader.jsx";
 import DashboardGrid from "../components/DashboardGrid.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
-import { requestFullscreen, exitFullscreen } from "metabase/lib/fullscreen";
+import screenfull from "screenfull";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -28,7 +28,7 @@ export default class Dashboard extends Component {
             refreshElapsed: null
         };
 
-        _.bindAll(this, "setRefreshPeriod", "tickRefreshClock", "setFullscreen", "setNightMode", "setEditing");
+        _.bindAll(this, "setRefreshPeriod", "tickRefreshClock", "setFullscreen", "setNightMode", "setEditing", "fullScreenChanged");
     }
 
     static propTypes = {
@@ -85,11 +85,16 @@ export default class Dashboard extends Component {
         }
     }
 
+    componentWillMount() {
+        document.addEventListener(screenfull.raw.fullscreenchange, this.fullScreenChanged);
+    }
+
     componentWillUnmount() {
         // HACK: remove our bg-color css applied when component mounts
         document.body.classList.remove("MB-lightBG");
         document.querySelector(".Nav").classList.remove("hide");
         this._clearRefreshInterval();
+        document.removeEventListener(screenfull.raw.fullscreenchange, this.fullScreenChanged);
     }
 
     loadParams() {
@@ -136,15 +141,21 @@ export default class Dashboard extends Component {
         this.setState({ isNightMode });
     }
 
-    setFullscreen(isFullscreen) {
+    setFullscreen(isFullscreen, browserFullscreen = true) {
         if (isFullscreen !== this.state.isFullscreen) {
-            if (isFullscreen) {
-                requestFullscreen();
-            } else {
-                exitFullscreen();
+            if (screenfull.enabled && browserFullscreen) {
+                if (isFullscreen) {
+                    screenfull.request();
+                } else {
+                    screenfull.exit();
+                }
             }
             this.setState({ isFullscreen });
         }
+    }
+
+    fullScreenChanged() {
+        this.setState({ isFullscreen: screenfull.isFullscreen });
     }
 
     setEditing(isEditing) {

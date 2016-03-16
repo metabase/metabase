@@ -10249,6 +10249,9 @@
     "reselect": {
       "version": "2.0.3"
     },
+    "screenfull": {
+      "version": "3.0.0"
+    },
     "style-loader": {
       "version": "0.13.0"
     },

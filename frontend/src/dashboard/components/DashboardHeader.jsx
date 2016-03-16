@@ -190,8 +190,9 @@ export default class DashboardHeader extends Component {
         }
 
         if (!isEditing && !isEmpty) {
+            // option click to enter fullscreen without making the browser go fullscreen
             buttons.push(
-                <FullscreenIcon className="text-brand-hover cursor-pointer" key="fullscreen" isFullscreen={isFullscreen} onClick={() => this.props.onFullscreenChange(!isFullscreen)} />
+                <FullscreenIcon className="text-brand-hover cursor-pointer" key="fullscreen" isFullscreen={isFullscreen} onClick={(e) => this.props.onFullscreenChange(!isFullscreen, !e.altKey)} />
             );
         }
 

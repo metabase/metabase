@@ -48,6 +48,7 @@
     "redux-router": "^1.0.0-beta4",
     "redux-thunk": "^1.0.0",
     "reselect": "^2.0.1",
+    "screenfull": "^3.0.0",
     "tether": "^1.2.0",
     "underscore": "^1.8.3",
     "z-index": "0.0.1"
