@@ -1,4 +1,4 @@
-import { formatNumber, formatScalar } from 'metabase/lib/formatting';
+import { formatNumber } from 'metabase/lib/formatting';
 
 describe('formatting', () => {
     describe('formatNumber', () => {
@@ -19,15 +19,6 @@ describe('formatting', () => {
             expect(formatNumber(1/3)).toEqual("0.33");
             expect(formatNumber(-1/3)).toEqual("-0.33");
             expect(formatNumber(0.0001/3)).toEqual("0.000033");
-        });
-    });
-
-    describe('formatScalar', () => {
-        it('should format numbers correctly', () => {
-            expect(formatScalar(0)).toEqual("0");
-        });
-        it('should format strings correctly', () => {
-            expect(formatScalar("asdf")).toEqual("asdf");
         });
     });
 });

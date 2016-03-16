@@ -88,7 +88,7 @@ export default class TableSimple extends Component {
                                 <tr key={rowIndex} ref={rowIndex === 0 ? "firstRow" : null}>
                                     {row.map((cell, colIndex) =>
                                         <td key={colIndex} style={{ whiteSpace: "nowrap" }} className="px1 border-bottom">
-                                            { cell == null ? "-" : formatValue(cell, cols[colIndex], { jsx: true }) }
+                                            { cell == null ? "-" : formatValue(cell, { column: cols[colIndex], jsx: true }) }
                                         </td>
                                     )}
                                 </tr>

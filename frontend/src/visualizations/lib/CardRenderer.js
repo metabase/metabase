@@ -99,7 +99,7 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues) {
 
         if (dimensionColumn && dimensionColumn.unit) {
             // need to pass the utcOffset here since d3.time returns Dates not Moments and thus doesn't propagate the offset
-            chart.xAxis().tickFormat(d => formatValue(d, dimensionColumn, { utcOffset: utcOffset }));
+            chart.xAxis().tickFormat(d => formatValue(d, { column: dimensionColumn, utcOffset: utcOffset }));
         } else {
             chart.xAxis().tickFormat(d3.time.format.multi([
                 [".%L",    (d) => d.getMilliseconds()],
@@ -153,7 +153,7 @@ function applyChartOrdinalXAxis(chart, settings, series, xValues) {
             let visibleKeys = xValues.filter((v, i) => i % keyInterval === 0);
             chart.xAxis().tickValues(visibleKeys);
         }
-        chart.xAxis().tickFormat(d => formatValue(d, dimensionColumn));
+        chart.xAxis().tickFormat(d => formatValue(d, { column: dimensionColumn }));
     } else {
         chart.xAxis().ticks(0);
         chart.xAxis().tickFormat('');

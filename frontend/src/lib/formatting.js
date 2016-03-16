@@ -28,16 +28,12 @@ export function formatNumber(number, options = {}) {
     }
 }
 
-export function formatScalar(scalar, options = {}) {
-    if (typeof scalar === "number") {
-        return formatNumber(scalar, { comma: true, ...options });
-    } else {
-        return String(scalar);
-    }
-}
-
 function formatMajorMinor(major, minor, options = {}) {
-    options = { jsx: false, majorWidth: 3, ...options };
+    options = {
+        jsx: false,
+        majorWidth: 3,
+        ...options
+    };
     if (options.jsx) {
         return (
             <span>
@@ -51,7 +47,7 @@ function formatMajorMinor(major, minor, options = {}) {
     }
 }
 
-export function formatTimeWithUnit(value, unit, options = {}) {
+function formatTimeWithUnit(value, unit, options = {}) {
     let m = moment.parseZone(value);
     if (options.utcOffset != null) {
         m.utcOffset(options.utcOffset);
@@ -85,10 +81,15 @@ export function formatTimeWithUnit(value, unit, options = {}) {
     return String(value);
 }
 
-export function formatValue(value, column, options = {}) {
-    options = { jsx: false, ...options };
+export function formatValue(value, options = {}) {
+    let column = options.column;
+    options = {
+        jsx: false,
+        comma: column && column.special_type === "number",
+        ...options
+    };
     if (value == undefined) {
-        return null
+        return null;
     } else if (column && column.unit != null) {
         return formatTimeWithUnit(value, column.unit, options);
     } else if (isDate(column) || moment.isDate(value) || moment.isMoment(value) || moment(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()) {
@@ -99,9 +100,7 @@ export function formatValue(value, column, options = {}) {
         if (column && (column.special_type === "latitude" || column.special_type === "longitude")) {
             return DECIMAL_DEGREES_FORMATTER(value)
         } else {
-            // don't show comma unless it's a number special_type (and eventually currency, etc)
-            let comma = column && column.special_type === "number";
-            return formatNumber(value, { comma, ...options });
+            return formatNumber(value, options);
         }
     } else if (typeof value === "object") {
         // no extra whitespace for table cells

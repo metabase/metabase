@@ -43,7 +43,7 @@ export default class ChartTooltip extends Component {
                             [["key", 0], ["value", 1]].map(([propName, colIndex]) =>
                                 <tr key={propName} className="">
                                     <th className="text-light text-right">{getFriendlyName(s.data.cols[colIndex])}:</th>
-                                    <th className="pl1 text-bold text-left">{formatValue(hovered.data[propName], s.data.cols[colIndex], { jsx: true, majorWidth: 0 })}</th>
+                                    <th className="pl1 text-bold text-left">{formatValue(hovered.data[propName], { column: s.data.cols[colIndex], jsx: true, majorWidth: 0 })}</th>
                                 </tr>
                             )
                         }

@@ -5,10 +5,11 @@ import Ellipsified from "metabase/components/Ellipsified.jsx";
 import BarChart from "./BarChart.jsx";
 
 import Urls from "metabase/lib/urls";
-import { formatScalar } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 import cx from "classnames";
+import i from "icepick";
 
 export default class Scalar extends Component {
     static displayName = "Number";
@@ -98,9 +99,10 @@ export default class Scalar extends Component {
 
         let isSmall = gridSize && gridSize.width < 4;
 
-        let scalarValue = (data && data.rows && data.rows[0] && data.rows[0][0] != null) ? data.rows[0][0] : "";
+        let scalarValue = i.getIn(data, ["rows", 0, 0]);
         let stringifiedScalar = String(scalarValue);
-        let formattedScalarValue = formatScalar(scalarValue, { compact: isSmall });
+        let formattedScalarValue = scalarValue == undefined ? "" :
+            formatValue(scalarValue, { column: i.getIn(data, ["cols", 0]), compact: isSmall });
 
         return (
             <div className={cx(className, styles.Scalar, styles[isSmall ? "small" : "large"])}>

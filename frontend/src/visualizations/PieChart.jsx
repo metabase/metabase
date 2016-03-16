@@ -40,8 +40,8 @@ export default class PieChart extends Component {
         const { series, hovered, onHoverChange, className, gridSize } = this.props;
         const { data } = series[0];
 
-        const formatDimension = (dimension, jsx = true) => formatValue(dimension, data.cols[0], { jsx, majorWidth: 0 })
-        const formatMetric    =    (metric, jsx = true) => formatValue(metric, data.cols[1], { jsx, majorWidth: 0 })
+        const formatDimension = (dimension, jsx = true) => formatValue(dimension, { column: data.cols[0], jsx, majorWidth: 0 })
+        const formatMetric    =    (metric, jsx = true) => formatValue(metric, { column: data.cols[1], jsx, majorWidth: 0 })
         const formatPercent   =               (percent) => (100 * percent).toFixed(2) + "%"
 
         let total = data.rows.reduce((sum, row) => sum + row[1], 0);
