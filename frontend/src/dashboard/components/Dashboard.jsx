@@ -117,8 +117,11 @@ export default class Dashboard extends Component {
             params.night = true;
         }
         let hash = querystring.stringify(params).replace(/=true\b/g, "");
+        hash = (hash ? "#" + hash : "");
         // setting window.location.hash = "" causes the page to reload for some reason
-        history.replaceState(null, document.title, window.location.pathname + (hash ? "#" + hash : ""));
+        if (hash !== window.location.hash) {
+            history.replaceState(null, document.title, window.location.pathname + hash);
+        }
     }
 
     _clearRefreshInterval() {
