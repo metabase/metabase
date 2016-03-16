@@ -491,8 +491,8 @@ export let CardRenderer = {
         const isTimeseries = dimensionIsTimeseries(series[0].data);
         const isLinear = false;
 
-        // no stacking lines
-        isStacked = isStacked && chartType !== "line";
+        // no stacking lines, always stack area
+        isStacked = (isStacked && chartType !== "line") || (chartType === "area");
 
         // validation.  we require at least 2 rows for line charting
         if (series[0].data.cols.length < 2) {
