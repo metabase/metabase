@@ -1,7 +1,7 @@
 (ns metabase.driver.query-processor.expand
   "Converts a Query Dict as received by the API into an *expanded* one that contains extra information that will be needed to
    construct the appropriate native Query, and perform various post-processing steps such as Field ordering."
-  (:refer-clojure :exclude [< <= > >= = != and or not filter count distinct sum])
+  (:refer-clojure :exclude [< <= > >= = != and or not filter count distinct sum min max])
   (:require (clojure [core :as core]
                      [string :as str])
             [clojure.tools.logging :as log]
@@ -114,6 +114,8 @@
 (def ^:ql ^{:arglists '([f])} distinct "Aggregation clause. Return the number of distinct values of F."    (partial ag-with-field :distinct))
 (def ^:ql ^{:arglists '([f])} sum      "Aggregation clause. Return the sum of the values of F."            (partial ag-with-field :sum))
 (def ^:ql ^{:arglists '([f])} cum-sum  "Aggregation clause. Return the cumulative sum of the values of F." (partial ag-with-field :cumulative-sum))
+(def ^:ql ^{:arglists '([f])} min      "Aggregation clause. Return the minimum value of F."                (partial ag-with-field :min))
+(def ^:ql ^{:arglists '([f])} max      "Aggregation clause. Return the maximum value of F."                (partial ag-with-field :max))
 
 (defn ^:ql stddev
   "Aggregation clause. Return the standard deviation of values of F.

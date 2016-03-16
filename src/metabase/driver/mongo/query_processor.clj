@@ -96,6 +96,13 @@
           :in   `(let [~field ~(keyword (str "$$" (name field)))]
                    ~@body)}})
 
+;; As mentioned elsewhere for some arcane reason distinct aggregations come back named "count" and every thing else as the aggregation type
+(defn- ag-type->field-name [ag-type]
+  (when ag-type
+    (if (= ag-type :distinct)
+      "count"
+      (name ag-type))))
+
 (extend-protocol IField
   Field
   (->lvalue [this]
@@ -107,11 +114,7 @@
   AgFieldRef
   (->lvalue [_]
     (let [{:keys [aggregation-type]} (:aggregation (:query *query*))]
-      (case aggregation-type
-        :avg      "avg"
-        :count    "count"
-        :distinct "count"
-        :sum      "sum")))
+      (ag-type->field-name aggregation-type)))
 
   DateTimeField
   (->lvalue [{unit :unit, ^Field field :field}]
@@ -262,12 +265,6 @@
 
 ;;; ### aggregation
 
-(def ^:private ^:const ag-type->field-name
-  {:avg      "avg"
-   :count    "count"
-   :distinct "count"
-   :sum      "sum"})
-
 (defn- aggregation->rvalue [{:keys [aggregation-type field]}]
   (if-not field
     (case aggregation-type
@@ -278,7 +275,9 @@
                               :then 1
                               :else 0}}}
       :distinct {$addToSet (->rvalue field)}
-      :sum      {$sum (->rvalue field)})))
+      :sum      {$sum (->rvalue field)}
+      :min      {$min (->rvalue field)}
+      :max      {$max (->rvalue field)})))
 
 (defn- handle-breakout+aggregation [{breakout-fields :breakout, {ag-type :aggregation-type, ag-field :field, :as aggregation} :aggregation} pipeline]
   (let [aggregation? ag-type

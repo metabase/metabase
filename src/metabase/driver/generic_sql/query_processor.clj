@@ -104,7 +104,9 @@
        :count    (k/aggregate korma-form (count field)                            :count)
        :distinct (k/aggregate korma-form (count (k/sqlfn :DISTINCT field))        :count)   ; why not call it :distinct? This complicates things
        :stddev   (k/fields    korma-form [(k/sqlfn* (sql/stddev-fn driver) field) :stddev])
-       :sum      (k/aggregate korma-form (sum field)                              :sum)))))
+       :sum      (k/aggregate korma-form (sum field)                              :sum)
+       :min      (k/aggregate korma-form (min field)                              :min)
+       :max      (k/aggregate korma-form (max field)                              :max)))))
 
 (defn apply-breakout
   "Apply a `breakout` clause to KORMA-FORM. Default implementation of `apply-breakout` for SQL drivers."
