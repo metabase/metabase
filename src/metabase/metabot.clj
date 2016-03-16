@@ -63,49 +63,36 @@
                       (slack/post-chat-message! *channel-id* (format-exception e#)))))
        nil))
 
-(defn- format-objects
-  "Format a sequence of objects as a nice multiline list for use in responses."
-  [get-url-fn objects]
-  (apply str (interpose "\n" (for [{id :id, obj-name :name, :as obj} objects]
-                               (format "%d.  <%s|\"%s\">" id (get-url-fn obj) obj-name)))))
-
-(def ^:private format-cards      (partial format-objects (comp urls/card-url :id)))
-(def ^:private format-dashboards (partial format-objects (comp urls/dashboard-url :id)))
+(defn- format-cards
+  "Format a sequence of Cards as a nice multiline list for use in responses."
+  [cards]
+  (apply str (interpose "\n" (for [{id :id, card-name :name} cards]
+                               (format "%d.  <%s|\"%s\">" id (urls/card-url id) card-name)))))
 
 
-(defn list:cards
+(defn ^:metabot list
   "Implementation of the `metabot list cards` command."
-  {:list :cards}
   [& _]
   (let [cards (sel :many :fields ['Card :id :name] (k/order :id :DESC) (k/limit 20))]
     (str "Here's your " (count cards) " most recent cards:\n" (format-cards cards))))
 
-(defn list:dashboards
-  "Implementation of the `metabot list dashboards` command."
-  {:list :dashboards}
-  [& _]
-  (let [dashboards (sel :many :fields ['Dashboard :id :name] (k/order :id :DESC) (k/limit 10))]
-    (str "Here's your " (count dashboards) " most recent dashboards:\n" (format-dashboards dashboards))))
-
-(def ^:metabot list
-  "Implementation of the `metabot list` command."
-  (dispatch-fn "list" :list))
+(defn- card-with-name [card-name]
+  (first (u/prog1 (sel :many :fields ['Card :id :name], (k/where {(k/sqlfn :LOWER :name) [like (str \% (str/lower-case card-name) \%)]}))
+           (when (> (count <>) 1)
+             (throw (Exception. (str "Could you be a little more specific? I found these cards with names that matched:\n"
+                                     (format-cards <>))))))))
 
 (defn- id-or-name->card [card-id-or-name]
   (cond
     (integer? card-id-or-name)     (sel :one :fields ['Card :id :name], :id card-id-or-name)
     (or (string? card-id-or-name)
-        (symbol? card-id-or-name)) (first (u/prog1 (sel :many :fields ['Card :id :name], :name [like (str \% card-id-or-name \%)])
-                                            (when (> (count <>) 1)
-                                              (throw (Exception. (str "Could you be a little more specific? I found these cards with names that matched:\n"
-                                                                      (format-cards <>)))))))
+        (symbol? card-id-or-name)) (card-with-name card-id-or-name)
     :else                          (throw (Exception. (format "I don't know what Card `%s` is. Give me a Card ID or name.")))))
 
-(defn show:card
+(defn ^:metabot show
   "Implementation of the `metabot show card <name-or-id>` command."
-  {:show :card}
   ([]
-   "Show which card? Give me a part of a card name or its ID and I can show it to you. If you don't know which card you want, try `metabot list cards`.")
+   "Show which card? Give me a part of a card name or its ID and I can show it to you. If you don't know which card you want, try `metabot list`.")
   ([card-id-or-name & _]
    (let-404 [{card-id :id, card-name :name} (id-or-name->card card-id-or-name)]
      (do-async (pulses/send-pulse! {:name     card-name
@@ -119,16 +106,12 @@
                                                 :schedule_frame "first"}]})))
    "Ok, just a second..."))
 
-(def ^:metabot show
-  "Dispatch function for the `metabot show` family of commands."
-  (dispatch-fn "show" :show))
-
 
 (defn meme:up-and-to-the-right
   "Implementation of the `metabot meme up-and-to-the-right <title>` command."
   {:meme :up-and-to-the-right}
-  [title]
-  "WOW")
+  [& _]
+  ":chart_with_upwards_trend:")
 
 (def ^:metabot ^:unlisted meme
   "Dispatch function for the `metabot meme` family of commands."
@@ -270,3 +253,5 @@
   (log/info "Stopping MetaBot...  🤖")
   (reset! websocket-monitor-thread-id nil)
   (disconnect-websocket!))
+
+(start-metabot!)
