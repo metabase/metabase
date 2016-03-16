@@ -85,7 +85,7 @@ export default class Header extends Component {
                         {attribution}
                     </div>
 
-                    <div className="flex align-center flex-align-right">
+                    <div className="flex align-center flex-align-right pr2">
                         {headerButtons}
                     </div>
                 </div>
