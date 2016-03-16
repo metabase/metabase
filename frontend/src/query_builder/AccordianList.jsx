@@ -27,12 +27,14 @@ export default class AccordianList extends Component {
         }
 
         this.state = {
-            openSection
+            openSection,
+            searchText: ""
         };
     }
 
     static propTypes = {
         sections: PropTypes.array.isRequired,
+        searchable: PropTypes.bool,
         initiallyOpenSection: PropTypes.number,
         openSection: PropTypes.number,
         onChange: PropTypes.func,
@@ -41,6 +43,10 @@ export default class AccordianList extends Component {
         renderItem: PropTypes.func,
         renderSectionIcon: PropTypes.func,
         getItemClasses: PropTypes.func
+    };
+
+    static defaultProps = {
+        searchable: false
     };
 
     toggleSection(sectionIndex) {
@@ -130,7 +136,9 @@ export default class AccordianList extends Component {
     }
 
     render() {
-        let { sections, showItemArrows, alwaysTogglable } = this.props;
+        let { searchable, sections, showItemArrows, alwaysTogglable } = this.props;
+        const { searchText } = this.state;
+
         let openSection = this.getOpenSection();
 
         return (
@@ -157,9 +165,28 @@ export default class AccordianList extends Component {
                                 }
                             </div>
                         : null }
+
+                        { searchable &&
+                            /* NOTE: much of this structure is here just to match strange stuff in 'List-item' below so things align properly */
+                            <div className="px1 pt1">
+                                <div style={{border: "2px solid transparent", borderRadius: "6px"}}>
+                                    <div className="bordered rounded text-grey-2 flex flex-full align-center">
+                                        <span className="px1"><Icon name="search" width="16" height="16"/></span>
+                                        <input
+                                            className="AdminInput h5 borderless flex-full"
+                                            type="text"
+                                            placeholder="Find a table"
+                                            value={this.state.searchText}
+                                            onChange={(e) => this.setState({searchText: e.target.value})}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
                         { openSection === sectionIndex && section.items.length > 0 &&
                             <ul style={{maxHeight: 400}} className="p1 border-bottom scroll-y scroll-show">
-                                { section.items.map((item, itemIndex) =>
+                                { section.items.filter((i) => searchText ? (i.name.toLowerCase().includes(searchText.toLowerCase())) : true ).map((item, itemIndex) =>
                                     <li key={itemIndex} className={cx("List-item flex", { 'List-item--selected': this.itemIsSelected(item, itemIndex) }, this.getItemClasses(item, itemIndex))}>
                                         <a
                                             className="flex-full flex align-center px1 cursor-pointer"
