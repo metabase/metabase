@@ -120,7 +120,8 @@
                                        "-Dmb.api.key=test-api-key"
                                        "-Xverify:none"]}              ; disable bytecode verification when running tests so they start slightly faster
              :uberjar {:aot :all
-                       :jvm-opts ["-Dclojure.compiler.elide-meta=[:doc :added :file :line]"]}
+                       :jvm-opts ["-Dclojure.compiler.elide-meta=[:doc :added :file :line]" ; strip out metadata for faster load / smaller uberjar size
+                                  "-Dmanifold.disable-jvm8-primitives=true"]} ; disable Manifold Java 8 primitives (see https://github.com/ztellman/manifold#java-8-extensions)
              :generate-sample-dataset {:dependencies [[faker "0.2.2"]                   ; Fake data generator -- port of Perl/Ruby
                                                       [incanter/incanter-core "1.9.0"]] ; Satistical functions like normal distibutions}})
                                        :source-paths ["sample_dataset"]
