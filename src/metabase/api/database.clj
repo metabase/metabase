@@ -127,7 +127,8 @@
                                        :engine engine
                                        :details details
                                        :is_full_sync is_full_sync))
-          (Database id))
+          (->> (Database id)
+               (events/publish-event :database-update)))
         ;; failed to connect, return error
         {:status 400
          :body   conn-error}))))
