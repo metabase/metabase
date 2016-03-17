@@ -6,6 +6,7 @@
             [metabase.events.activity-feed :refer [activity-feed-topics]]
             (metabase.models [activity :refer [Activity]]
                              [card :refer [Card]]
+                             [dashboard-card :refer [DashboardCard]]
                              [database :refer [Database]]
                              [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]]
@@ -45,7 +46,9 @@
 (defn run-all
   "Run all data migrations defined by `defmigration`."
   []
-  (dorun (map run-migration-if-needed @data-migrations)))
+  (log/info "Running all necessary data migrations, this may take a minute.")
+  (dorun (map run-migration-if-needed @data-migrations))
+  (log/info "Finished running data migrations."))
 
 
 ;;; # Migration Definitions
@@ -107,3 +110,15 @@
         (log/debug "Removing duplicate FK entries for" k)
         (doseq [duplicate-fk (drop-last fks)]
           (db/del ForeignKey :id (:id duplicate-fk)))))))
+
+
+;; Migrate dashboards to the new grid
+;; NOTE: this scales the dashboards by 4x in the Y-scale and 3x in the X-scale
+(defmigration update-dashboards-to-new-grid
+  (doseq [{:keys [id row col sizeX sizeY]} (db/sel :many DashboardCard)]
+    (k/update DashboardCard
+      (k/set-fields {:row   (when row (* row 4))
+                     :col   (when col (* col 3))
+                     :sizeX (when sizeX (* sizeX 3))
+                     :sizeY (when sizeY (* sizeY 4))})
+      (k/where {:id id}))))
