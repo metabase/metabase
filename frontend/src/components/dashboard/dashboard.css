@@ -68,16 +68,16 @@
 }
 
 /* Night mode transition */
-.Dashboard,
-.Dashboard .DashCard .Card {
+.Dashboard.Dashboard--fullscreen,
+.Dashboard.Dashboard--fullscreen .DashCard .Card {
   transition: background-color 1s linear, border 1s linear;
 }
 
-.Dashboard .DashCard .Card a,
-.Dashboard .DashCard .Card div,
-.Dashboard .DashCard .Card span,
-.Dashboard .Header-button,
-.Dashboard .Header-button svg {
+.Dashboard.Dashboard--fullscreen .DashCard .Card a,
+.Dashboard.Dashboard--fullscreen .DashCard .Card div,
+.Dashboard.Dashboard--fullscreen .DashCard .Card span,
+.Dashboard.Dashboard--fullscreen .Header-button,
+.Dashboard.Dashboard--fullscreen .Header-button svg {
   transition: color 1s linear;
 }
 
