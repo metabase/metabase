@@ -4,6 +4,7 @@ import styles from "./Table.css";
 
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
+import Icon from "metabase/components/Icon.jsx";
 
 import { formatValue } from "metabase/lib/formatting";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
@@ -18,6 +19,7 @@ export default class TableSimple extends Component {
 
         this.state = {
             page: 0,
+            pageSize: 1,
             sortColumn: null,
             sortDescending: false
         }
@@ -42,7 +44,7 @@ export default class TableSimple extends Component {
     componentDidUpdate() {
         let headerHeight = ReactDOM.findDOMNode(this.refs.header).getBoundingClientRect().height;
         let rowHeight = ReactDOM.findDOMNode(this.refs.firstRow).getBoundingClientRect().height + 1;
-        let pageSize = Math.floor((this.props.height - headerHeight) / rowHeight);
+        let pageSize = Math.floor((this.props.height - headerHeight) / rowHeight) || 1;
         if (this.state.pageSize !== pageSize) {
             this.setState({ pageSize });
         }
@@ -50,13 +52,13 @@ export default class TableSimple extends Component {
 
     render() {
         const { series } = this.props;
-        const { page, sortColumn, sortDescending } = this.state;
-
-        let pageSize = this.state.pageSize || 1;
-        let start = pageSize * page;
-        let end = pageSize * (page + 1) - 1;
+        const { page, pageSize, sortColumn, sortDescending } = this.state;
 
         let { rows, cols } = series[0].data;
+
+        let start = pageSize * page;
+        let end = Math.min(rows.length - 1, pageSize * (page + 1) - 1);
+
         if (sortColumn != null) {
             rows = _.sortBy(rows, (row) => row[sortColumn]);
             if (sortDescending) {
@@ -67,16 +69,18 @@ export default class TableSimple extends Component {
         return (
             <div className={cx(this.props.className, "relative flex flex-column")}>
                 <div className="flex-full relative border-bottom">
-                    <div className="absolute top bottom left right scroll-x scroll-show scroll-show--horizontal" style={{ overflowY: "hidden" }}>
+                    <div className="absolute top bottom left right scroll-x scroll-show scroll-show--horizontal scroll-show--hover" style={{ overflowY: "hidden" }}>
                         <table className={cx(styles.Table, styles.TableSimple)}>
                             <thead ref="header">
                                 <tr>
                                     {cols.map((col, colIndex) =>
-                                        <th key={colIndex} className={cx("px1 pb1 border-bottom text-brand-hover", { "text-brand": sortColumn === colIndex })} onClick={() => this.setSort(colIndex)}>
+                                        <th key={colIndex} className={cx("MB-DataTable-header cellData text-brand-hover", { "MB-DataTable-header--sorted": sortColumn === colIndex })} onClick={() => this.setSort(colIndex)}>
                                             <div className="relative">
-                                                { sortColumn === colIndex &&
-                                                    <span style={{ position: "absolute", right: "100%", marginRight: 3 }}>{sortDescending ? "▾" : "▴"}</span>
-                                                }
+                                                <Icon
+                                                    name={sortDescending ? "chevrondown" : "chevronup"}
+                                                    width={8} height={8}
+                                                    style={{ position: "absolute", right: "100%", marginRight: 3 }}
+                                                />
                                                 <Ellipsified>{getFriendlyName(col)}</Ellipsified>
                                             </div>
                                         </th>
@@ -100,8 +104,12 @@ export default class TableSimple extends Component {
                 { pageSize < rows.length ?
                     <div className="p1 flex flex-no-shrink flex-align-right">
                         <span className="text-bold">Rows {start + 1}-{end + 1} of {rows.length}</span>
-                        <span className={cx("text-brand-hover px1", { disabled: page === 0 })} onClick={() => this.setState({ page: page - 1 })}>◀</span>
-                        <span className={cx("text-brand-hover pr1", { disabled: page >= rows.length / pageSize })} onClick={() => this.setState({ page: page + 1 })}>▶</span>
+                        <span className={cx("text-brand-hover px1 cursor-pointer", { disabled: start === 0 })} onClick={() => this.setState({ page: page - 1 })}>
+                            <Icon name="left" height={10} />
+                        </span>
+                        <span className={cx("text-brand-hover pr1 cursor-pointer", { disabled: end + 1 >= rows.length })} onClick={() => this.setState({ page: page + 1 })}>
+                            <Icon name="right" height={10} />
+                        </span>
                     </div>
                 : null }
             </div>
