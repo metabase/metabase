@@ -65,9 +65,6 @@
 
      Return `nil` to prevent FIELD from being aliased.")
 
-  (get-connection-for-sync ^java.sql.Connection [this details]
-    "*OPTIONAL*. Get a connection used for a Sync step. By default, this returns a pooled connection.")
-
   (prepare-value [this, ^Value value]
     "*OPTIONAL*. Prepare a value (e.g. a `String` or `Integer`) that will be used in a korma form. By default, this returns VALUE's `:value` as-is, which
      is eventually passed as a parameter in a prepared statement. Drivers such as BigQuery that don't support prepared statements can skip this
@@ -89,38 +86,49 @@
      SECONDS-OR-MILLISECONDS refers to the resolution of the int in question and with be either `:seconds` or `:milliseconds`."))
 
 
-(def ^{:arglists '([connection-spec])}
-  connection-spec->pooled-connection-spec
+;; use an atom with {:db <conn-pool>}
+;; when something changes about the database we shutdown the pool and let it be replaced
+
+(def ^:dynamic ^:private connection-pools
+  "A map of our currently open connection pools, keyed by DATABASE `:id`."
+  (atom {}))
+
+(defn- create-connection-pool
+  "Create a new C3P0 `ComboPooledDataSource` for connecting to the given DATABASE."
+  [{:keys [id engine details]}]
+  (log/debug (u/format-color 'magenta "Creating new connection pool for database %d ..." id))
+  (let [spec (connection-details->spec (driver/engine->driver engine) details)]
+    (kdb/connection-pool (assoc spec :minimum-pool-size           1
+                                     ;; prevent broken connections closed by dbs by testing them every 3 mins
+                                     :idle-connection-test-period (* 3 60)
+                                     ;; prevent overly large pools by condensing them when connections are idle for 15m+
+                                     :excess-timeout              (* 15 60)))))
+
+(defn db->pooled-connection-spec
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`.
-   Theses connection pools are cached so we don't create multiple ones to the same DB.
-   Pools are destroyed after they aren't used for more than 3 hours."
-  (memoize/ttl
-   (fn [spec]
-     (log/debug (u/format-color 'magenta "Creating new connection pool..."))
-     (kdb/connection-pool (assoc spec :minimum-pool-size           1
-                                      ;; prevent broken connections closed by dbs by testing them every 3 mins
-                                      :idle-connection-test-period (* 3 60)
-                                      ;; prevent overly large pools by condensing them when connections are idle for 15m+
-                                      :excess-timeout              (* 15 60))))
-   :ttl/threshold (* 6 60 60 1000)))
+   Theses connection pools are cached so we don't create multiple ones to the same DB."
+  [{:keys [id], :as database}]
+  (if (contains? @connection-pools id)
+    ;; we have an existing pool for this database, so use it
+    (get @connection-pools id)
+    ;; need to create a new pool
+    (let [new-pool (create-connection-pool database)]
+      ;; add the newly created pool to the cache so we maintain a reference to it
+      (reset! connection-pools (assoc @connection-pools id new-pool))
+      ;; just return the newly created pool
+      new-pool)))
 
 (defn db->jdbc-connection-spec
   "Return a JDBC connection spec for DATABASE. Normally this will have a C3P0 pool as its datasource, unless the database is `short-lived`."
-  {:arglists '([database] [driver details])}
   ;; TODO - I don't think short-lived? key is really needed anymore. It's only used by unit tests, and its original purpose was for creating temporary DBs;
   ;; since we don't destroy databases at the end of each test anymore, it's probably time to remove this
-  ([{:keys [engine details]}]
-   (db->jdbc-connection-spec (driver/engine->driver engine) details))
-  ([driver {:keys [short-lived?], :as details}]
-   (let [connection-spec (connection-details->spec driver details)]
-     (if short-lived?
-       connection-spec
-       (connection-spec->pooled-connection-spec connection-spec)))))
-
-(def ^{:arglists '([database] [driver details])}
-  db->connection
-  "Return a [possibly pooled] connection to DATABASE. Make sure to close this when you're done! (e.g. by using `with-open`)"
-  (comp jdbc/get-connection db->jdbc-connection-spec))
+  [{:keys [engine details], :as database}]
+  (let [driver (driver/engine->driver engine)]
+    (if (:short-lived? details)
+      ;; short-lived connections are not pooled, so just return an ephemeral connection
+      (connection-details->spec driver details)
+      ;; default behavior is to use a pooled connection
+      (db->pooled-connection-spec database))))
 
 
 (defn escape-field-name
@@ -210,8 +218,8 @@
 
 (defmacro with-metadata
   "Execute BODY with `java.sql.DatabaseMetaData` for DATABASE."
-  [[binding driver database] & body]
-  `(with-open [^java.sql.Connection conn# (get-connection-for-sync ~driver (:details ~database))]
+  [[binding _ database] & body]
+  `(with-open [^java.sql.Connection conn# (jdbc/get-connection (db->jdbc-connection-spec ~database))]
      (let [~binding (.getMetaData conn#)]
        ~@body)))
 
@@ -309,7 +317,6 @@
    :current-datetime-fn     (constantly (k/sqlfn* :NOW))
    :excluded-schemas        (constantly nil)
    :field->alias            (u/drop-first-arg name)
-   :get-connection-for-sync db->connection
    :prepare-value           (u/drop-first-arg :value)
    :set-timezone-sql        (constantly nil)
    :stddev-fn               (constantly :STDDEV)})
@@ -338,14 +345,11 @@
 
 (defn- db->korma-db
   "Return a Korma DB spec for Metabase DATABASE."
-  ([database]
-   (db->korma-db (driver/engine->driver (:engine database)) (:details database)))
-  ([driver details]
-   (assoc (kx/create-db (connection-details->spec driver details))
-          :pool (db->jdbc-connection-spec driver details))))
-
-(defn- table+db->entity [{schema :schema, table-name :name} db]
-  (k/database (kx/create-entity [schema table-name]) db))
+  [database]
+  (let [driver  (driver/engine->driver (:engine database))
+        details (:details database)]
+    (assoc (kx/create-db (connection-details->spec driver details))
+      :pool (db->jdbc-connection-spec database))))
 
 (defn korma-entity
   "Return a Korma entity for [DB and] TABLE.
@@ -353,8 +357,8 @@
     (-> (sel :one Table :id 100)
         korma-entity
         (select (aggregate (count :*) :count)))"
-  ([table]
-   (korma-entity (table/database table) table))
-
-  ([db table]             (table+db->entity table (db->korma-db db)))
-  ([driver details table] (table+db->entity table (db->korma-db driver details))))
+  ([table]    (korma-entity (table/database table) table))
+  ([db table] (let [{schema :schema, table-name :name} table]
+                (k/database
+                  (kx/create-entity [schema table-name])
+                  (db->korma-db db)))))
