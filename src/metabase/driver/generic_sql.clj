@@ -104,6 +104,17 @@
                                      ;; prevent overly large pools by condensing them when connections are idle for 15m+
                                      :excess-timeout              (* 15 60)))))
 
+(defn- notify-database-updated
+  "We are being informed that a DATABASE has been updated, so lets shut down the connection pool (if it exists) under
+   the assumption that the connection details have changed."
+  [_ {:keys [id]}]
+  (log/debug (u/format-color 'red "Closing connection pool for database %d ..." id))
+  (when-let [pool (get @connection-pools id)]
+    ;; remove the cached reference to the pool so we don't try to use it anymore
+    (reset! connection-pools (dissoc @connection-pools id))
+    ;; now actively shut down the pool so that any open connections are closed
+    (.close (:datasource pool))))
+
 (defn db->pooled-connection-spec
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`.
    Theses connection pools are cached so we don't create multiple ones to the same DB."
@@ -328,16 +339,17 @@
   (require 'metabase.driver.generic-sql.native
            'metabase.driver.generic-sql.query-processor)
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table         analyze-table
-          :can-connect?          can-connect?
-          :describe-database     describe-database
-          :describe-table        describe-table
-          :describe-table-fks    describe-table-fks
-          :features              features
-          :field-values-lazy-seq field-values-lazy-seq
-          :process-native        (resolve 'metabase.driver.generic-sql.native/process-and-run)
-          :process-structured    (resolve 'metabase.driver.generic-sql.query-processor/process-structured)
-          :table-rows-seq        table-rows-seq}))
+         {:analyze-table           analyze-table
+          :can-connect?            can-connect?
+          :describe-database       describe-database
+          :describe-table          describe-table
+          :describe-table-fks      describe-table-fks
+          :features                features
+          :field-values-lazy-seq   field-values-lazy-seq
+          :notify-database-updated notify-database-updated
+          :process-native          (resolve 'metabase.driver.generic-sql.native/process-and-run)
+          :process-structured      (resolve 'metabase.driver.generic-sql.query-processor/process-structured)
+          :table-rows-seq          table-rows-seq}))
 
 
 
