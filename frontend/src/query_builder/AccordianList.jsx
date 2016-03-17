@@ -1,9 +1,10 @@
 import React, { Component, PropTypes } from "react";
-
-import Icon from "metabase/components/Icon.jsx";
-
 import cx from "classnames";
 import _ from "underscore";
+
+import Icon from "metabase/components/Icon.jsx";
+import ListSearchField from "metabase/components/search/ListSearchField.jsx";
+
 
 export default class AccordianList extends Component {
     constructor(props, context) {
@@ -170,16 +171,10 @@ export default class AccordianList extends Component {
                             /* NOTE: much of this structure is here just to match strange stuff in 'List-item' below so things align properly */
                             <div className="px1 pt1">
                                 <div style={{border: "2px solid transparent", borderRadius: "6px"}}>
-                                    <div className="bordered rounded text-grey-2 flex flex-full align-center">
-                                        <span className="px1"><Icon name="search" width="16" height="16"/></span>
-                                        <input
-                                            className="AdminInput h5 borderless flex-full"
-                                            type="text"
-                                            placeholder="Find a table"
-                                            value={this.state.searchText}
-                                            onChange={(e) => this.setState({searchText: e.target.value})}
-                                        />
-                                    </div>
+                                    <ListSearchField
+                                        onChange={(val) => this.setState({searchText: val})}
+                                        searchText={this.state.searchText}
+                                    />
                                 </div>
                             </div>
                         }
