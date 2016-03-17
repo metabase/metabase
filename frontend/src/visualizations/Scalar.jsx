@@ -100,15 +100,16 @@ export default class Scalar extends Component {
         let isSmall = gridSize && gridSize.width < 4;
 
         let scalarValue = i.getIn(data, ["rows", 0, 0]);
-        let stringifiedScalar = String(scalarValue);
-        let formattedScalarValue = scalarValue == undefined ? "" :
+        let compactScalarValue = scalarValue == undefined ? "" :
             formatValue(scalarValue, { column: i.getIn(data, ["cols", 0]), compact: isSmall });
+        let fullScalarValue = scalarValue == undefined ? "" :
+            formatValue(scalarValue, { column: i.getIn(data, ["cols", 0]), compact: false });
 
         return (
             <div className={cx(className, styles.Scalar, styles[isSmall ? "small" : "large"])}>
                 <div className="Card-title absolute top right p1 px2">{actionButtons}</div>
-                <Ellipsified className={styles.Value} tooltip={stringifiedScalar} alwaysShowTooltip={true}>
-                    {formattedScalarValue}
+                <Ellipsified className={styles.Value} tooltip={fullScalarValue} alwaysShowTooltip={fullScalarValue !== compactScalarValue}>
+                    {compactScalarValue}
                 </Ellipsified>
                 <Ellipsified className={styles.Title} tooltip={card.name}>
                     <a className="no-decoration" href={Urls.card(card.id)}>{card.name}</a>
