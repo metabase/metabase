@@ -1,7 +1,6 @@
-(ns metabase.driver.event-query-processor-test
+(ns metabase.driver.timeseries-query-processor-test
   "Query processor tests for DBs that are event-based, like Druid.
    There architecture is different enough that we can't test them along with our 'normal' DBs in `query-procesor-test`."
-  ;; TODO - renamed this `timeseries-query-processor-test` since Druid is a "timeseries database" according to Wikipedia
   (:require [expectations :refer :all]
             [metabase.driver.query-processor.expand :as ql]
             [metabase.driver.query-processor-test :refer [format-rows-by rows first-row]]
@@ -28,14 +27,16 @@
     (datasets/with-engine-when-testing engine
       (data/do-with-temp-db (flattened-db-def) (fn [& _])))))
 
+(defmacro ^:private with-flattened-dbdef [& body]
+  `(data/with-temp-db [~'_ (flattened-db-def)]
+     ~@body))
+
 (defmacro ^:private expect-with-timeseries-dbs
   {:style/indent 0}
   [expected actual]
   `(datasets/expect-with-engines event-based-dbs
-     (data/with-temp-db [~'_ (flattened-db-def)]
-       ~expected)
-     (data/with-temp-db [~'_ (flattened-db-def)]
-       ~actual)))
+     (with-flattened-dbdef ~expected)
+     (with-flattened-dbdef ~actual)))
 
 (defn- data [results]
   (when-let [data (or (:data results)
@@ -668,3 +669,25 @@
 (expect-with-timeseries-dbs [1000] (first-row (data/run-query checkins
                                                 (ql/aggregation (ql/count)) ; test data is all in the past so nothing happened today <3
                                                 (ql/filter (ql/not (ql/time-interval $timestamp :current :day))))))
+
+
+
+;;; MIN & MAX
+
+(expect-with-timeseries-dbs [1.0] (first-row (data/run-query checkins
+                                             (ql/aggregation (ql/min $venue_price)))))
+
+(expect-with-timeseries-dbs [4.0] (first-row (data/run-query checkins
+                                             (ql/aggregation (ql/max $venue_price)))))
+
+(expect-with-timeseries-dbs
+  [["1" 34.0071] ["2" 33.7701] ["3" 10.0646] ["4" 33.983]] ; some sort of weird quirk w/ druid where all columns in breakout get converted to strings
+  (rows (data/run-query checkins
+          (ql/aggregation (ql/min $venue_latitude))
+          (ql/breakout $venue_price))))
+
+(expect-with-timeseries-dbs
+  [["1" 37.8078] ["2" 40.7794] ["3" 40.7262] ["4" 40.7677]]
+  (rows (data/run-query checkins
+          (ql/aggregation (ql/max $venue_latitude))
+          (ql/breakout $venue_price))))
