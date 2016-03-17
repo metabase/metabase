@@ -52,9 +52,6 @@ export default class Dashboard extends Component {
     };
 
     async componentDidMount() {
-        // HACK: apply a css class to the page body so that we can ensure the bg-color is maintained
-        document.body.classList.add("MB-lightBG");
-
         this.loadParams();
 
         try {
@@ -90,8 +87,6 @@ export default class Dashboard extends Component {
     }
 
     componentWillUnmount() {
-        // HACK: remove our bg-color css applied when component mounts
-        document.body.classList.remove("MB-lightBG");
         document.querySelector(".Nav").classList.remove("hide");
         this._clearRefreshInterval();
         document.removeEventListener(screenfull.raw.fullscreenchange, this.fullScreenChanged);
@@ -191,7 +186,7 @@ export default class Dashboard extends Component {
         let { error, isFullscreen, isNightMode } = this.state;
         isNightMode = isNightMode && isFullscreen;
         return (
-            <LoadingAndErrorWrapper className={cx("Dashboard full-height", { "Dashboard--fullscreen": isFullscreen, "Dashboard--night": isNightMode})} loading={!dashboard} error={error}>
+            <LoadingAndErrorWrapper style={{ minHeight: "100vh" }} className={cx("Dashboard", { "Dashboard--fullscreen": isFullscreen, "Dashboard--night": isNightMode})} loading={!dashboard} error={error}>
             {() =>
                 <div className="full" style={{ overflowX: "hidden" }}>
                     <header className="DashboardHeader relative z2 px1">
