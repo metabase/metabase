@@ -9,6 +9,8 @@ import * as charting from "metabase/visualizations/lib/CardRenderer";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 import { getSettingsForVisualization } from "metabase/lib/visualization_settings";
 
+import dc from "dc";
+
 @ExplicitSize
 @AbsoluteContainer
 export default class CardRenderer extends Component {
@@ -33,13 +35,30 @@ export default class CardRenderer extends Component {
         this.renderChart();
     }
 
+    componentWillUnmount() {
+        this._deregisterChart();
+    }
+
+    _deregisterChart() {
+        if (this._chart) {
+            dc.chartRegistry.deregister(this._chart);
+            this._chart = null;
+        }
+    }
+
     renderChart() {
         let { series } = this.props;
         let parent = ReactDOM.findDOMNode(this);
+
+        // deregister previous chart:
+        this._deregisterChart();
+
+        // reset the DOM:
         let element = parent.firstChild;
         parent.removeChild(element);
         element = document.createElement("div");
         parent.appendChild(element);
+
         try {
             if (series[0] && series[0].data) {
                 // augment with visualization settings
@@ -51,7 +70,7 @@ export default class CardRenderer extends Component {
                     }
                 }));
 
-                charting.CardRenderer[this.props.chartType](element, { ...this.props, series, card: series[0].card, data: series[0].data });
+                this._chart = charting.CardRenderer[this.props.chartType](element, { ...this.props, series, card: series[0].card, data: series[0].data });
             }
         } catch (err) {
             console.error(err);

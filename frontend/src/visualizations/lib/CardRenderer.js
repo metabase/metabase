@@ -672,6 +672,8 @@ export let CardRenderer = {
         lineAndBarOnRender(chart, settings);
 
         onRender && onRender({ yAxisSplit });
+
+        return chart;
     },
 
     bar(element, props) {
