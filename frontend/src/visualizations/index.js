@@ -9,21 +9,10 @@ import USStateMap from "./USStateMap.jsx";
 import WorldMap   from "./WorldMap.jsx";
 import PinMap     from "./PinMap.jsx";
 
-class MapDefault extends Map {
-    constructor(_default, ...args) {
-        super(...args);
-        this._default = _default;
-    }
-    get(key) {
-        if (this.has(key)) {
-            return super.get(key);
-        } else {
-            return this._default;
-        }
-    }
+const visualizations = new Map();
+visualizations.get = function(key) {
+    return Map.prototype.get.call(this, key) || Table;
 }
-
-const visualizations = new MapDefault(Table);
 
 export function registerVisualization(visualization) {
     let identifier = visualization.identifier;
