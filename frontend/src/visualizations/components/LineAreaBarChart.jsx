@@ -21,7 +21,7 @@ export default class LineAreaBarChart extends Component {
     static noHeader = true;
     static supportsSeries = true;
 
-    static minSize = { width: 2, height: 2 };
+    static minSize = { width: 4, height: 3 };
     static settings = [ColorSetting()];
 
     static isSensible(cols, rows) {

@@ -11,14 +11,15 @@ import AddSeriesModal from "./AddSeriesModal.jsx";
 import visualizations from "metabase/visualizations";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
+import {
+    GRID_WIDTH,
+    GRID_ASPECT_RATIO,
+    GRID_MARGIN,
+    DEFAULT_CARD_SIZE
+} from "metabase/lib/dashboard_grid";
+
 import _ from "underscore";
 import cx from "classnames";
-
-const GRID_WIDTH = 18;
-const GRID_ASPECT_RATIO = 4 / 3;
-const GRID_MARGIN = 6;
-
-const DEFAULT_MIN_SIZE = { width: 3, height: 3 };
 
 export default class DashboardGrid extends Component {
     constructor(props, context) {
@@ -86,13 +87,14 @@ export default class DashboardGrid extends Component {
 
     getLayoutForDashCard(dashcard) {
         let Viz = visualizations.get(dashcard.card.display);
-        let minSize = Viz.minSize || DEFAULT_MIN_SIZE;
+        let initialSize = DEFAULT_CARD_SIZE;
+        let minSize = Viz.minSize || DEFAULT_CARD_SIZE;
         return ({
             i: String(dashcard.id),
             x: dashcard.col || 0,
             y: dashcard.row || 0,
-            w: dashcard.sizeX || minSize.width,
-            h: dashcard.sizeY || minSize.height,
+            w: dashcard.sizeX || initialSize.width,
+            h: dashcard.sizeY || initialSize.height,
             dashcard: dashcard,
             minSize: minSize
         });
