@@ -15,7 +15,7 @@
   (:import java.sql.DatabaseMetaData
            java.util.Map
            clojure.lang.Keyword
-           (metabase.driver.query_processor.interface Field Value)))
+           com.mchange.v2.c3p0.ComboPooledDataSource))
 
 (declare korma-entity)
 
@@ -113,7 +113,7 @@
     ;; remove the cached reference to the pool so we don't try to use it anymore
     (reset! connection-pools (dissoc @connection-pools id))
     ;; now actively shut down the pool so that any open connections are closed
-    (.close (:datasource pool))))
+    (.close ^ComboPooledDataSource (:datasource pool))))
 
 (defn db->pooled-connection-spec
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`.
