@@ -109,7 +109,7 @@
   (when-let [pool (get @connection-pools id)]
     (log/debug (u/format-color 'red "Closing connection pool for database %d ..." id))
     ;; remove the cached reference to the pool so we don't try to use it anymore
-    (reset! connection-pools (dissoc @connection-pools id))
+    (swap! connection-pools dissoc id)
     ;; now actively shut down the pool so that any open connections are closed
     (.close ^ComboPooledDataSource (:datasource pool))))
 
@@ -120,12 +120,9 @@
   (if (contains? @connection-pools id)
     ;; we have an existing pool for this database, so use it
     (get @connection-pools id)
-    ;; need to create a new pool
-    (let [new-pool (create-connection-pool database)]
-      ;; add the newly created pool to the cache so we maintain a reference to it
-      (reset! connection-pools (assoc @connection-pools id new-pool))
-      ;; just return the newly created pool
-      new-pool)))
+    ;; create a new pool and add it to our cache, then return it
+    (u/prog1 (create-connection-pool database)
+      (swap! connection-pools assoc id <>))))
 
 (defn db->jdbc-connection-spec
   "Return a JDBC connection spec for DATABASE. Normally this will have a C3P0 pool as its datasource, unless the database is `short-lived`."
