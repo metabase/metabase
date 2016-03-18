@@ -15,7 +15,8 @@
   (:import java.sql.DatabaseMetaData
            java.util.Map
            clojure.lang.Keyword
-           com.mchange.v2.c3p0.ComboPooledDataSource))
+           com.mchange.v2.c3p0.ComboPooledDataSource
+           (metabase.driver.query_processor.interface Field Value)))
 
 (declare korma-entity)
 
@@ -86,9 +87,6 @@
      SECONDS-OR-MILLISECONDS refers to the resolution of the int in question and with be either `:seconds` or `:milliseconds`."))
 
 
-;; use an atom with {:db <conn-pool>}
-;; when something changes about the database we shutdown the pool and let it be replaced
-
 (def ^:dynamic ^:private connection-pools
   "A map of our currently open connection pools, keyed by DATABASE `:id`."
   (atom {}))
@@ -108,8 +106,8 @@
   "We are being informed that a DATABASE has been updated, so lets shut down the connection pool (if it exists) under
    the assumption that the connection details have changed."
   [_ {:keys [id]}]
-  (log/debug (u/format-color 'red "Closing connection pool for database %d ..." id))
   (when-let [pool (get @connection-pools id)]
+    (log/debug (u/format-color 'red "Closing connection pool for database %d ..." id))
     ;; remove the cached reference to the pool so we don't try to use it anymore
     (reset! connection-pools (dissoc @connection-pools id))
     ;; now actively shut down the pool so that any open connections are closed
@@ -134,12 +132,11 @@
   ;; TODO - I don't think short-lived? key is really needed anymore. It's only used by unit tests, and its original purpose was for creating temporary DBs;
   ;; since we don't destroy databases at the end of each test anymore, it's probably time to remove this
   [{:keys [engine details], :as database}]
-  (let [driver (driver/engine->driver engine)]
-    (if (:short-lived? details)
-      ;; short-lived connections are not pooled, so just return an ephemeral connection
-      (connection-details->spec driver details)
-      ;; default behavior is to use a pooled connection
-      (db->pooled-connection-spec database))))
+  (if (:short-lived? details)
+    ;; short-lived connections are not pooled, so just return a non-pooled spec
+    (connection-details->spec (driver/engine->driver engine) details)
+    ;; default behavior is to use a pooled connection
+    (db->pooled-connection-spec database)))
 
 
 (defn escape-field-name
@@ -357,10 +354,9 @@
 
 (defn- db->korma-db
   "Return a Korma DB spec for Metabase DATABASE."
-  [database]
-  (let [driver  (driver/engine->driver (:engine database))
-        details (:details database)]
-    (assoc (kx/create-db (connection-details->spec driver details))
+  [{:keys [details engine], :as database}]
+  (let [spec (connection-details->spec (driver/engine->driver engine) details)]
+    (assoc (kx/create-db spec)
       :pool (db->jdbc-connection-spec database))))
 
 (defn korma-entity
