@@ -20,7 +20,6 @@ export default class ColumnsList extends Component {
                     <div style={{minWidth: 420}} className="float-left px1">Column</div>
                     <div className="flex clearfix">
                         <div className="flex-half px1">Visibility</div>
-                        <div className="flex-half px1">Type</div>
                         <div className="flex-half px1">Details</div>
                     </div>
                 </div>
