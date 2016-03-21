@@ -13,10 +13,12 @@
             [metabase.api.common :refer [let-404]]
             [metabase.db :refer [sel]]
             [metabase.integrations.slack :as slack]
+            [metabase.models.setting :as setting]
             [metabase.task.send-pulses :as pulses]
             [metabase.util :as u]
             [metabase.util.urls :as urls]))
 
+(setting/defsetting metabot-enabled "Enable Metabot, which lets you search for and view your saved questions directly via Slack" "true")
 
 ;;; # ------------------------------------------------------------ Metabot Command Handlers ------------------------------------------------------------
 
@@ -37,7 +39,6 @@
                           {(if (true? dispatch-token)
                              (keyword symb)
                              dispatch-token) varr}))]
-    (println (u/format-color 'cyan verb) fn-map)
     (fn dispatch*
       ([]
        (keys-description (format "Here's what I can %s:" verb) fn-map))
@@ -147,23 +148,20 @@
     (when-let [tokens (seq (edn/read-string (str "(" (-> s
                                                          (str/replace "“" "\"") ; replace smart quotes
                                                          (str/replace "”" "\"")) ")")))]
-      (println (u/format-color 'magenta tokens))
       (apply apply-metabot-fn tokens))))
 
 
 ;;; # ------------------------------------------------------------ Metabot Input Handling ------------------------------------------------------------
 
 (defn- message->command-str [{:keys [text]}]
-  (u/prog1 (when (seq text)
-             (second (re-matches #"^mea?ta?boa?t\s+(.*)$" text)))
-    (println (u/format-color 'yellow <>))))
+  (when (seq text)
+    (second (re-matches #"^mea?ta?boa?t\s+(.*)$" text))))
 
 (defn- respond-to-message! [message response]
   (when response
     (let [response (if (coll? response) (str "```\n" (u/pprint-to-str response) "```")
                        (str response))]
       (when (seq response)
-        (println (u/format-color 'green response))
         (slack/post-chat-message! (:channel message) response)))))
 
 (defn- handle-slack-message [message]
@@ -181,14 +179,13 @@
 
 (defn- handle-slack-event [socket start-time event]
   (when-not (= socket @websocket)
-    (println "Go home websocket, you're drunk.")
+    (log/debug "Go home websocket, you're drunk.")
     (s/close! socket)
     (throw (Exception.)))
 
   (when-let [event (json/parse-string event keyword)]
     (when (and (human-message? event)
                (> (event-timestamp-ms event) start-time))
-      (println (u/pprint-to-str 'cyan event))
       (binding [*channel-id* (:channel event)]
         (do-async (handle-slack-message event))))))
 
@@ -197,10 +194,8 @@
 
 (defn- connect-websocket! []
   (when-let [websocket-url (slack/websocket-url)]
-    (log/info "Launching MetaBot... 🤖")
     (let [socket @(aleph/websocket-client websocket-url)]
       (reset! websocket socket)
-      (log/info "Connected to WebSocket.")
       (d/catch (s/consume (partial handle-slack-event socket (System/currentTimeMillis))
                           socket)
           (fn [error]
@@ -221,7 +216,6 @@
 (defn- start-websocket-monitor! []
   (future
     (reset! websocket-monitor-thread-id (.getId (Thread/currentThread)))
-    (log/debug "Monitor thread ID ->" (.getId (Thread/currentThread)))
     ;; Every 2 seconds check to see if websocket connection is [still] open, [re-]open it if not
     (loop []
       (Thread/sleep 500)
@@ -229,7 +223,7 @@
         (try
           (when (or (not  @websocket)
                     (s/closed? @websocket))
-            (log/info "MetaBot WebSocket is closed. < Thread" (.getId (Thread/currentThread)) ">")
+            (log/debug "MetaBot WebSocket is closed.  Reconnecting now.")
             (connect-websocket!))
           (catch Throwable e
             (log/error "Error connecting websocket:" (.getMessage e))))
@@ -240,7 +234,8 @@
 
    This will spin up a background thread that opens and maintains a Slack WebSocket connection."
   []
-  (when (slack/slack-token)
+  (when (and (setting/get :slack-token)
+             (= "true" (setting/get :metabot-enabled)))
     (log/info "Starting MetaBot WebSocket monitor thread...")
     (start-websocket-monitor!)))
 
