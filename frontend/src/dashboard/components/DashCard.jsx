@@ -111,7 +111,7 @@ export default class DashCard extends Component {
                     series={series}
                     isDashboard={true}
                     isEditing={isEditing}
-                    gridSize={{ width: dashcard.sizeX, height: dashcard.sizeY }}
+                    gridSize={this.props.isMobile ? undefined : { width: dashcard.sizeX, height: dashcard.sizeY }}
                     actionButtons={isEditing ? <DashCardActionButtons series={series} visualization={CardVisualization} onRemove={onRemove} onAddSeries={onAddSeries} /> : undefined}
                     onUpdateVisualizationSetting={this.props.onUpdateVisualizationSetting}
                 />

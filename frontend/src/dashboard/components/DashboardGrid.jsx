@@ -214,6 +214,7 @@ export default class DashboardGrid extends Component {
                             markNewCardSeen={this.props.markNewCardSeen}
                             isEditing={isEditing}
                             isFullscreen={this.props.isFullscreen}
+                            isMobile={true}
                             onRemove={this.onDashCardRemove.bind(this, dc)}
                             onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
                             onUpdateVisualizationSetting={this.onUpdateVisualizationSetting.bind(this, dc)}
