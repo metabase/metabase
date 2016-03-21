@@ -189,7 +189,7 @@ export default class Dashboard extends Component {
             <LoadingAndErrorWrapper style={{ minHeight: "100%" }} className={cx("Dashboard absolute top left right", { "Dashboard--fullscreen": isFullscreen, "Dashboard--night": isNightMode})} loading={!dashboard} error={error}>
             {() =>
                 <div className="full" style={{ overflowX: "hidden" }}>
-                    <header className="DashboardHeader relative z2 px1">
+                    <header className="DashboardHeader relative z2">
                         <DashboardHeader
                             {...this.props}
                             isFullscreen={this.state.isFullscreen}

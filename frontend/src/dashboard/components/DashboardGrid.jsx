@@ -21,6 +21,8 @@ import {
 import _ from "underscore";
 import cx from "classnames";
 
+const MOBILE_ASPECT_RATIO = 3 / 2;
+
 export default class DashboardGrid extends Component {
     constructor(props, context) {
         super(props, context);
@@ -204,7 +206,7 @@ export default class DashboardGrid extends Component {
                 style={{ margin: 0 }}
             >
                 {dashcards && dashcards.map(dc =>
-                    <div key={dc.id} className="DashCard" style={{ left: 10, width: width - 20, marginTop: 10, marginBottom: 10, height: width / (6 / 4)}}>
+                    <div key={dc.id} className="DashCard" style={{ width: width, marginTop: 10, marginBottom: 10, height: width / MOBILE_ASPECT_RATIO}}>
                         <DashCard
                             dashcard={dc}
                             cardData={this.props.cardData}

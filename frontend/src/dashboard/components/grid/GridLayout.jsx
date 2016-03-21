@@ -157,8 +157,10 @@ export default class GridLayout extends Component {
     }
 
     getCellSize() {
+        let { margin } = this.props;
+        // add 1 margin to make it fill the full width
         return {
-            width: Math.floor(this.state.width / this.props.cols),
+            width: (this.state.width + margin) / this.props.cols,
             height: this.props.rowHeight
         };
     }
@@ -216,13 +218,18 @@ export default class GridLayout extends Component {
     }
 
     getGridBackground() {
-        let { margin } = this.props;
+        let { margin, cols } = this.props;
         let cellSize = this.getCellSize();
-        return `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='${cellSize.width}' height='${cellSize.height}'><rect stroke='rgba(0, 0, 0, 0.117647)' stroke-width='1' fill='none' x='${margin / 2 + 1.5}' y='${margin / 2 + 1.5}' width='${cellSize.width - margin - 3}' height='${cellSize.height - margin - 3}'/></svg>")`;
+        return (
+            `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='${cellSize.width * cols}' height='${cellSize.height}'>`+
+                _(cols).times((i) =>
+                    `<rect stroke='rgba(0, 0, 0, 0.117647)' stroke-width='1' fill='none' x='${Math.round(margin / 2 + i * cellSize.width) + 1.5}' y='${margin / 2 + 1.5}' width='${Math.round(cellSize.width - margin - 3)}' height='${cellSize.height - margin - 3}'/>`).join("") +
+            `</svg>")`
+        );
     }
 
     render() {
-        const { className, layout, cols, isEditing } = this.props;
+        const { className, layout, cols, margin, isEditing } = this.props;
 
         let cellSize = this.getCellSize();
         let bottom = Math.max(...layout.map(l => l.y + l.h));
@@ -238,8 +245,9 @@ export default class GridLayout extends Component {
         let width = cellSize.width * cols;
         let height = cellSize.height * bottom;
 
+        // subtract half of a margin to ensure it lines up with the edges
         return (
-            <div className={className} style={{ position: "relative", width, height, backgroundImage }}>
+            <div className={className} style={{ position: "relative", width, height, backgroundImage, marginLeft: -margin / 2, marginRight: -margin / 2 }}>
                 {this.props.children.map(child =>
                     this.renderChild(child)
                 )}
