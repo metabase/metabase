@@ -43,8 +43,9 @@ export default class TableSimple extends Component {
 
     componentDidUpdate() {
         let headerHeight = ReactDOM.findDOMNode(this.refs.header).getBoundingClientRect().height;
+        let footerHeight = this.refs.footer ? ReactDOM.findDOMNode(this.refs.footer).getBoundingClientRect().height : 0;
         let rowHeight = ReactDOM.findDOMNode(this.refs.firstRow).getBoundingClientRect().height + 1;
-        let pageSize = Math.floor((this.props.height - headerHeight) / rowHeight) || 1;
+        let pageSize = Math.floor((this.props.height - headerHeight - footerHeight) / rowHeight) || 1;
         if (this.state.pageSize !== pageSize) {
             this.setState({ pageSize });
         }
@@ -102,7 +103,7 @@ export default class TableSimple extends Component {
                     </div>
                 </div>
                 { pageSize < rows.length ?
-                    <div className="p1 flex flex-no-shrink flex-align-right">
+                    <div ref="footer" className="p1 flex flex-no-shrink flex-align-right">
                         <span className="text-bold">Rows {start + 1}-{end + 1} of {rows.length}</span>
                         <span className={cx("text-brand-hover px1 cursor-pointer", { disabled: start === 0 })} onClick={() => this.setState({ page: page - 1 })}>
                             <Icon name="left" height={10} />
