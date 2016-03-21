@@ -105,7 +105,15 @@ const SECTIONS = [
                 type: "string",
                 required: true,
                 autoFocus: true
-            }
+            },
+            {
+                key: "metabot-enabled",
+                display_name: "Metabot",
+                type: "boolean",
+                defaultValue: "true",
+                required: true,
+                autoFocus: false
+            },
         ]
     }
 ];

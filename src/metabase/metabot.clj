@@ -18,7 +18,7 @@
             [metabase.util :as u]
             [metabase.util.urls :as urls]))
 
-(setting/defsetting metabot-enabled "Enable Metabot, which lets you search for and view your saved questions directly via Slack" "true")
+(setting/defsetting metabot-enabled "Enable Metabot, which lets you search for and view your saved questions directly via Slack." "true")
 
 ;;; # ------------------------------------------------------------ Metabot Command Handlers ------------------------------------------------------------
 
