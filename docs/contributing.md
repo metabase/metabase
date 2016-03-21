@@ -54,6 +54,10 @@ If you want to help, try out Metabase. Use it at your company, and report back t
 
 Spend time on discourse.metabase.com and on new issues and try to reproduce the bugs reported. For people having trouble with their databases where you have significant knowledge, help them out. Who knows, maybe they'll end up helping you with something in the future.
 
+### Tell your friends
+
+Let your friends know about Metabase. Start a user group in your area. [Tweet about us] [http://twitter.com/metabase]. Blog about how you're using Metabase, and share what you've learned.
+
 ### Fix bugs
 
 By our definition, "Bugs" are situations where the program doesn't do what it was expected to according to the design or specification. These are typically scoped to issues where there is a clearly defined correct behaviour. It's usually safe to grab one of these, fix it, and submit a PR (with tests!). These will be merged without too much drama unless the PR touches a lot of code. Don't be offended if we ask you to make small modifications or add more tests. We're a bit OCD on code coverage and coding style.
