@@ -16,7 +16,6 @@ export default class Column extends Component {
         this.onNameChange = this.onNameChange.bind(this);
         this.onSpecialTypeChange = this.onSpecialTypeChange.bind(this);
         this.onTargetChange = this.onTargetChange.bind(this);
-        this.onTypeChange = this.onTypeChange.bind(this);
         this.onVisibilityChange = this.onVisibilityChange.bind(this);
     }
 
@@ -48,10 +47,6 @@ export default class Column extends Component {
 
     onVisibilityChange(type) {
         this.updateProperty("visibility_type", type.id);
-    }
-
-    onTypeChange(type) {
-        this.updateProperty("field_type", type.id);
     }
 
     onSpecialTypeChange(special_type) {
@@ -99,15 +94,6 @@ export default class Column extends Component {
                                     value={_.find(MetabaseCore.field_visibility_types, (type) => type.id === this.props.field.visibility_type)}
                                     options={MetabaseCore.field_visibility_types}
                                     onChange={this.onVisibilityChange}
-                                />
-                            </div>
-                            <div className="flex-full px1">
-                                <Select
-                                    className="TableEditor-field-type block"
-                                    placeholder="Select a field type"
-                                    value={_.find(MetabaseCore.field_field_types, (type) => type.id === this.props.field.field_type)}
-                                    options={MetabaseCore.field_field_types}
-                                    onChange={this.onTypeChange}
                                 />
                             </div>
                             <div className="flex-full px1">

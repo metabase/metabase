@@ -21,7 +21,6 @@ export default class ColumnsList extends Component {
                     <div className="flex clearfix">
                         <div className="flex-half px1">Visibility</div>
                         <div className="flex-half px1">Type</div>
-                        <div className="flex-half px1">Details</div>
                     </div>
                 </div>
                 <ol className="border-top border-bottom">

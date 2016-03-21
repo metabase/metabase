@@ -1,9 +1,11 @@
 :local .LegendHeader {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
   height: 24px;
 }
 
 :local .LegendItem {
-  font-size: 14px;
+  font-size: 1.2em;
   font-weight: bold;
   transition: opacity 0.25s linear;
   opacity: 1;
