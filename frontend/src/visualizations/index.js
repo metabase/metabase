@@ -36,6 +36,6 @@ registerVisualization(PinMap);
 import { enableVisualizationEasterEgg } from "./lib/utils";
 import XKCDChart from "./XKCDChart.jsx";
 import LineAreaBarChart from "./components/LineAreaBarChart.jsx";
-enableVisualizationEasterEgg("xkcd", LineAreaBarChart, XKCDChart);
+enableVisualizationEasterEgg("XKCD", LineAreaBarChart, XKCDChart);
 
 export default visualizations;
