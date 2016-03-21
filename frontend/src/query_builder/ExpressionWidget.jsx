@@ -71,8 +71,6 @@ export default class ExpressionWidget extends Component {
         if (!this.state.suggestions.length) return;
 
         if (event.keyCode === KEYCODE_ENTER) {
-            console.log('expression was -> ', this.state.expressionString);
-
             let suggestedField = this.state.suggestions[this.state.highlightedSuggestion];
 
             // strip off the last partial token
@@ -81,19 +79,19 @@ export default class ExpressionWidget extends Component {
             // tack on the new token
             expression = expression.length ? (expression + ' ' + suggestedField.name) : suggestedField.name;
 
-            console.log('expression becomes -> ', expression);
-
             this.updateExpression(expression + ' '); // add a blank space after end of token
 
         } else if (event.keyCode === KEYCODE_UP) {
             this.setState({
                 highlightedSuggestion: this.state.highlightedSuggestion === 0 ? (this.state.suggestions.length - 1) : (this.state.highlightedSuggestion - 1)
             });
+            event.preventDefault(); // don't move to beginning of text field
         } else if (event.keyCode === KEYCODE_DOWN) {
             this.setState({
                 highlightedSuggestion: this.state.highlightedSuggestion === (this.state.suggestions.length - 1) ? 0 : (this.state.highlightedSuggestion + 1)
             });
-        }
+            event.preventDefault(); // don't move to end of text field
+        } else return;
     }
 
     onExpressionInputBlur() {
@@ -110,7 +108,8 @@ export default class ExpressionWidget extends Component {
     /// update suggestions with ones for fieldName
     updateSuggestions(fieldName) {
         let suggestions = _.filter(this.props.tableMetadata.fields, function(field) {
-            return field.name.indexOf(fieldName) > -1 && field.name !== fieldName; // don't return exact matches
+            // case-insensitive, but don't suggest exact matches (e.g. if field name is already valid don't keep autocomplete box open)
+            return field.name.toLowerCase().indexOf(fieldName.toLowerCase()) > -1 && field.name !== fieldName;
         });
         suggestions = _.sortBy(suggestions, 'name');
 
@@ -257,9 +256,9 @@ export default class ExpressionWidget extends Component {
                          targetOffset: '-20 45'
                      }}
             >
-                <h6 className="text-grey-1">
+                <h5 className="text-grey-1">
                     {this.state.suggestionsTitle}
-                </h6>
+                </h5>
                 <ul className="my1">
                     {this.state.suggestions.map((suggestion, i) => (
                          <li className={i == this.state.highlightedSuggestion ? 'text-bold text-brand' : null}>
