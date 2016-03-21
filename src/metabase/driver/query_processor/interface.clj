@@ -209,7 +209,8 @@
 
 (s/defrecord AggregationWithoutField [aggregation-type :- (s/eq :count)])
 
-(s/defrecord AggregationWithField [aggregation-type :- (s/named (s/enum :avg :count :cumulative-sum :distinct :stddev :sum) "Valid aggregation type")
+(s/defrecord AggregationWithField [aggregation-type :- (s/named (s/enum :avg :count :cumulative-sum :distinct :max :min :stddev :sum)
+                                                                "Valid aggregation type")
                                    field            :- FieldPlaceholder])
 
 (def Aggregation

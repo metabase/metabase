@@ -3,7 +3,8 @@
   (:require [environ.core :refer [env]]
             metabase.driver.postgres
             (metabase.test.data [generic-sql :as generic]
-                                [interface :as i]))
+                                [interface :as i])
+            [metabase.util :as u])
   (:import metabase.driver.postgres.PostgresDriver))
 
 (def ^:private ^:const field-base-type->sql-type
@@ -29,7 +30,7 @@
          (when (= context :db)
            {:db database-name})))
 
-(extend PostgresDriver
+(u/strict-extend PostgresDriver
   generic/IGenericSQLDatasetLoader
   (merge generic/DefaultsMixin
          {:drop-table-if-exists-sql  generic/drop-table-if-exists-cascade-sql

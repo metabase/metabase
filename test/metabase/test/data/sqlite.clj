@@ -33,7 +33,7 @@
                           [k (u/cond-as-> v v
                                (instance? java.util.Date v) (k/raw (format "DATETIME('%s')" (u/date->iso-8601 v))))]))))))
 
-(extend SQLiteDriver
+(u/strict-extend SQLiteDriver
   generic/IGenericSQLDatasetLoader
   (merge generic/DefaultsMixin
          {:add-fk-sql                (constantly nil) ; TODO - fix me

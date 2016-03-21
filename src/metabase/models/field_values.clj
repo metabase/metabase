@@ -8,7 +8,7 @@
 
 (i/defentity FieldValues :metabase_fieldvalues)
 
-(extend (class FieldValues)
+(u/strict-extend (class FieldValues)
   i/IEntity
   (merge i/IEntityDefaults
          {:timestamped? (constantly true)

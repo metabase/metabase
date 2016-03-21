@@ -5,8 +5,9 @@
                    [db :as kdb])
             (metabase [config :as config]
                       [driver :as driver])
-            [metabase.driver.generic-sql :as sql]
-            [metabase.driver.postgres :as postgres]
+            (metabase.driver [generic-sql :as sql]
+                             [postgres :as postgres])
+            [metabase.util :as u]
             [metabase.util.korma-extensions :as kx]))
 
 (defn- connection-details->spec [_ details]
@@ -55,7 +56,7 @@
   clojure.lang.Named
   (getName [_] "Amazon Redshift"))
 
-(extend RedshiftDriver
+(u/strict-extend RedshiftDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
          {:date-interval       date-interval

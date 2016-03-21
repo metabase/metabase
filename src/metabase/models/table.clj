@@ -7,7 +7,8 @@
                              [field-values :refer [FieldValues]]
                              [interface :as i]
                              [metric :refer [Metric retrieve-metrics]]
-                             [segment :refer [Segment retrieve-segments]])))
+                             [segment :refer [Segment retrieve-segments]])
+            [metabase.util :as u]))
 
 (def ^:const entity-types
   "Valid values for `Table.entity_type` (field may also be `nil`)."
@@ -62,7 +63,7 @@
   "Return the `Database` associated with this `Table`."
   (comp Database :db_id))
 
-(extend (class Table)
+(u/strict-extend (class Table)
   i/IEntity (merge i/IEntityDefaults
                    {:hydration-keys     (constantly [:table])
                     :types              (constantly {:entity_type :keyword, :visibility_type :keyword, :description :clob})
