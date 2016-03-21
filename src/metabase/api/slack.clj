@@ -3,18 +3,20 @@
   (:require [compojure.core :refer [PUT]]
             [metabase.api.common :refer :all]
             [metabase.config :as config]
-            [metabase.integrations.slack :as slack]))
+            [metabase.integrations.slack :as slack]
+            [metabase.models.setting :as setting]))
 
 (defendpoint PUT "/settings"
-  "Update the `slack-token`. You must be a superuser to do this."
-  [:as {{slack-token :slack-token} :body}]
-  {slack-token [Required NonEmptyString]}
+  "Update Slack related settings. You must be a superuser to do this."
+  [:as {{slack-token :slack-token, metabot-enabled :metabot-enabled, :as slack-settings} :body}]
+  {slack-token     [Required NonEmptyString]
+   metabot-enabled [Required]}
   (check-superuser)
   (try
-    ;; just check that channels.list doesn't throw an exception (that the connection works)
+    ;; just check that channels.list doesn't throw an exception (a.k.a. that the token works)
     (when-not config/is-test?
       (slack/GET :channels.list, :exclude_archived 1, :token slack-token))
-    (slack/slack-token slack-token)
+    (setting/set-all slack-settings)
     {:ok true}
     (catch clojure.lang.ExceptionInfo info
       {:status 400, :body (ex-data info)})))
