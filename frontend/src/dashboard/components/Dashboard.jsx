@@ -83,13 +83,17 @@ export default class Dashboard extends Component {
     }
 
     componentWillMount() {
-        document.addEventListener(screenfull.raw.fullscreenchange, this.fullScreenChanged);
+        if (screenfull.enabled) {
+            document.addEventListener(screenfull.raw.fullscreenchange, this.fullScreenChanged);
+        }
     }
 
     componentWillUnmount() {
         document.querySelector(".Nav").classList.remove("hide");
         this._clearRefreshInterval();
-        document.removeEventListener(screenfull.raw.fullscreenchange, this.fullScreenChanged);
+        if (screenfull.enabled) {
+            document.removeEventListener(screenfull.raw.fullscreenchange, this.fullScreenChanged);
+        }
     }
 
     loadParams() {
