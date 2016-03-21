@@ -10,6 +10,7 @@ import FullscreenIcon from "metabase/components/icons/FullscreenIcon.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import NightModeIcon from "metabase/components/icons/NightModeIcon.jsx";
+import Tooltip from "metabase/components/Tooltip.jsx";
 
 import cx from "classnames";
 
@@ -131,7 +132,13 @@ export default class DashboardHeader extends Component {
                 <ModalWithTrigger
                     key="history"
                     ref="dashboardHistory"
-                    triggerElement={<Icon className="text-brand-hover" name="history" width="16px" height="16px" />}
+                    triggerElement={
+                        <Tooltip tooltip="Revision History">
+                            <span>
+                                <Icon className="text-brand-hover" name="history" width="16px" height="16px" />
+                            </span>
+                        </Tooltip>
+                    }
                 >
                     <HistoryModal
                         entityType="dashboard"
@@ -148,9 +155,11 @@ export default class DashboardHeader extends Component {
 
         if (!isFullscreen && !isEditing && canEdit) {
             buttons.push(
-                <a data-metabase-event="Dashboard;Edit" key="edit" title="Edit Dashboard Layout" className="text-brand-hover cursor-pointer" onClick={() => this.onEdit()}>
-                    <Icon name="pencil" width="16px" height="16px" />
-                </a>
+                <Tooltip tooltip="Edit Dashboard">
+                    <a data-metabase-event="Dashboard;Edit" key="edit" title="Edit Dashboard Layout" className="text-brand-hover cursor-pointer" onClick={() => this.onEdit()}>
+                        <Icon name="pencil" width="16px" height="16px" />
+                    </a>
+                </Tooltip>
             );
         }
 
@@ -160,9 +169,11 @@ export default class DashboardHeader extends Component {
                     key="add"
                     ref="addQuestionModal"
                     triggerElement={
-                        <span data-metabase-event="Dashboard;Add Card Modal" title="Add a question to this dashboard">
-                            <Icon className={cx("text-brand-hover cursor-pointer", { "Icon--pulse": isEmpty })} name="add" width="16px" height="16px" />
-                        </span>
+                        <Tooltip tooltip="Add Card">
+                            <span data-metabase-event="Dashboard;Add Card Modal" title="Add a question to this dashboard">
+                                <Icon className={cx("text-brand-hover cursor-pointer", { "Icon--pulse": isEmpty })} name="add" width="16px" height="16px" />
+                            </span>
+                        </Tooltip>
                     }
                 >
                     <AddToDashSelectQuestionModal
@@ -185,14 +196,22 @@ export default class DashboardHeader extends Component {
 
         if (!isEditing && isFullscreen) {
             buttons.push(
-                <NightModeIcon className="text-brand-hover cursor-pointer" key="night" isNightMode={isNightMode} onClick={() => this.props.onNightModeChange(!isNightMode) } />
+                <Tooltip tooltip={isNightMode ? "Daytime mode" : "Nighttime mode"}>
+                    <span>
+                        <NightModeIcon className="text-brand-hover cursor-pointer" key="night" isNightMode={isNightMode} onClick={() => this.props.onNightModeChange(!isNightMode) } />
+                    </span>
+                </Tooltip>
             );
         }
 
         if (!isEditing && !isEmpty) {
             // option click to enter fullscreen without making the browser go fullscreen
             buttons.push(
-                <FullscreenIcon className="text-brand-hover cursor-pointer" key="fullscreen" isFullscreen={isFullscreen} onClick={(e) => this.props.onFullscreenChange(!isFullscreen, !e.altKey)} />
+                <Tooltip tooltip={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}>
+                    <span>
+                        <FullscreenIcon className="text-brand-hover cursor-pointer" key="fullscreen" isFullscreen={isFullscreen} onClick={(e) => this.props.onFullscreenChange(!isFullscreen, !e.altKey)} />
+                    </span>
+                </Tooltip>
             );
         }
 

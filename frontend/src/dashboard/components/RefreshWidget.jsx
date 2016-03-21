@@ -27,7 +27,12 @@ export default class RefreshWidget extends Component {
             <PopoverWithTrigger
                 ref="popover"
                 triggerElement={elapsed == null ?
-                    <ClockIcon width={18} height={18} className={className} /> :
+                    <Tooltip tooltip="Auto-refresh">
+                        <span>
+                            <ClockIcon width={18} height={18} className={className} />
+                        </span>
+                    </Tooltip>
+                :
                     <Tooltip tooltip={"Refreshing in " + Math.floor(remaining / 60) + ":" + (remaining % 60 < 10 ? "0" : "") + Math.round(remaining % 60)}>
                         <span>
                             <CountdownIcon width={18} height={18} className="text-green" percent={Math.min(0.95, (period - elapsed) / period)}/>
