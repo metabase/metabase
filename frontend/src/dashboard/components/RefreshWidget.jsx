@@ -11,7 +11,6 @@ import cx from "classnames";
 
 const OPTIONS = [
     { name: "Off",        period:    null },
-    { name: "15 seconds", period:      15 },
     { name: "1 minute",   period:  1 * 60 },
     { name: "5 minutes",  period:  5 * 60 },
     { name: "10 minutes", period: 10 * 60 },
