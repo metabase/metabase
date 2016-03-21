@@ -380,6 +380,18 @@ var Aggregators = [{
     "validFieldsFilters": [summableFields],
     "requiresField": true,
     "requiredDriverFeature": "standard-deviation-aggregations"
+}, {
+    name: "Minimum of ...",
+    short: "min",
+    description: "Minimum value of a column",
+    validFieldsFilters: [summableFields],
+    requiresField: true,
+}, {
+    name: "Maximum of ...",
+    short: "max",
+    description: "Maximum value of a column",
+    validFieldsFilters: [summableFields],
+    requiresField: true,
 }];
 
 var BreakoutAggregator = {

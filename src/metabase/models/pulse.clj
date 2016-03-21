@@ -9,7 +9,8 @@
                              [hydrate :refer :all]
                              [interface :as i]
                              [pulse-card :refer [PulseCard]]
-                             [pulse-channel :refer [PulseChannel] :as pulse-channel])))
+                             [pulse-channel :refer [PulseChannel] :as pulse-channel])
+            [metabase.util :as u]))
 
 
 (i/defentity Pulse :pulse)
@@ -36,7 +37,7 @@
             (k/where {:pulse_card.pulse_id id})
             (k/order :pulse_card.position :asc)))
 
-(extend (class Pulse)
+(u/strict-extend (class Pulse)
   i/IEntity
   (merge i/IEntityDefaults
          {:hydration-keys     (constantly [:pulse])

@@ -140,7 +140,7 @@
   clojure.lang.Named
   (getName [_] "MySQL"))
 
-(extend MySQLDriver
+(u/strict-extend MySQLDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
          {:date-interval                     date-interval
