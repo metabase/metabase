@@ -165,7 +165,7 @@
   clojure.lang.Named
   (getName [_] "Druid"))
 
-(extend DruidDriver
+(u/strict-extend DruidDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
          {:can-connect?          can-connect?

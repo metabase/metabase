@@ -75,7 +75,7 @@
   {:extra_info      {}
    :target          nil
    :description     nil
-   :preview_display true
+   :visibility_type :normal
    :schema_name     (default-schema)})
 
 (defn- categories-col
@@ -231,14 +231,8 @@
     :description  nil
     :extra_info   {}
     :target       nil
-    :name         (case ag-col-kw
-                    :avg    "avg"
-                    :stddev "stddev"
-                    :sum    "sum")
-    :display_name (case ag-col-kw
-                    :avg    "avg"
-                    :stddev "stddev"
-                    :sum    "sum")}))
+    :name         (name ag-col-kw)
+    :display_name (name ag-col-kw)}))
 
 (defn format-rows-by
   "Format the values in result ROWS with the fns at the corresponding indecies in FORMAT-FNS.
@@ -247,6 +241,7 @@
      (format-rows-by [int str double] [[1 1 1]]) -> [[1 \"1\" 1.0]]
 
    By default, does't call fns on `nil` values; pass a truthy value as optional param FORMAT-NIL-VALUES? to override this behavior."
+  {:style/indent 1}
   ([format-fns rows]
    (format-rows-by format-fns (not :format-nil-values?) rows))
   ([format-fns format-nil-values? rows]
@@ -803,7 +798,7 @@
          (ql/order-by (ql/desc (ql/aggregate-field 0))))
        :data (format-rows-by [int (comp int math/round)])))
 
-;;; ### make sure that rows where preview_display = false are included and properly marked up
+;;; ### make sure that rows where visibility_type = details-only are included and properly marked up
 (expect-with-non-timeseries-dbs
   [(set (venues-cols))
    #{(venues-col :category_id)
@@ -812,16 +807,16 @@
      (venues-col :id)
      (venues-col :longitude)
      (-> (venues-col :price)
-         (assoc :preview_display false))}
+         (assoc :visibility_type :details-only))}
    (set (venues-cols))]
   (let [get-col-names (fn [] (-> (run-query venues
                                    (ql/order-by (ql/asc $id))
                                    (ql/limit 1))
                                  :data :cols set))]
     [(get-col-names)
-     (do (upd Field (id :venues :price) :preview_display false)
+     (do (upd Field (id :venues :price) :visibility_type :details-only)
          (get-col-names))
-     (do (upd Field (id :venues :price) :preview_display true)
+     (do (upd Field (id :venues :price) :visibility_type :normal)
          (get-col-names))]))
 
 
@@ -1668,3 +1663,26 @@
                                                  (ql/aggregation (ql/count))
                                                  (ql/filter (ql/and (ql/not (ql/> $id 32))
                                                                     (ql/contains $name "BBQ"))))))
+
+
+;;; MIN & MAX
+
+(expect-with-non-timeseries-dbs [1] (first-row (run-query venues
+                                                 (ql/aggregation (ql/min $price)))))
+
+(expect-with-non-timeseries-dbs [4] (first-row (run-query venues
+                                                 (ql/aggregation (ql/max $price)))))
+
+(expect-with-non-timeseries-dbs
+  [[1 34.0071] [2 33.7701] [3 10.0646] [4 33.983]]
+  (format-rows-by [int (partial u/round-to-decimals 4)]
+    (rows (run-query venues
+            (ql/aggregation (ql/min $latitude))
+            (ql/breakout $price)))))
+
+(expect-with-non-timeseries-dbs
+  [[1 37.8078] [2 40.7794] [3 40.7262] [4 40.7677]]
+  (format-rows-by [int (partial u/round-to-decimals 4)]
+    (rows (run-query venues
+            (ql/aggregation (ql/max $latitude))
+            (ql/breakout $price)))))

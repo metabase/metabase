@@ -66,7 +66,7 @@
 
 (i/defentity Revision :revision)
 
-(extend (class Revision)
+(u/strict-extend (class Revision)
   i/IEntity
   (merge i/IEntityDefaults
          {:types        (constantly {:object :json})

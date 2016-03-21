@@ -8,6 +8,7 @@ import FilterList from './filters/FilterList.jsx';
 import FilterPopover from './filters/FilterPopover.jsx';
 import Icon from "metabase/components/Icon.jsx";
 import IconBorder from 'metabase/components/IconBorder.jsx';
+import LimitWidget from "./LimitWidget.jsx";
 import SortWidget from './SortWidget.jsx';
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 
@@ -17,7 +18,6 @@ import Query from "metabase/lib/query";
 import cx from "classnames";
 import _ from "underscore";
 
-const LIMIT_OPTIONS = [undefined, 1, 10, 25, 100, 1000];
 
 export default class GuiQueryEditor extends Component {
     constructor(props, context) {
@@ -376,24 +376,6 @@ export default class GuiQueryEditor extends Component {
         }
     }
 
-    renderLimit() {
-        if (!this.props.features.limit) {
-            return;
-        }
-        return (
-            <div className="py1">
-                <div className="Query-label mb1">Limit:</div>
-                <ul className="Button-group Button-group--blue">
-                    {LIMIT_OPTIONS.map(count =>
-                        <li key={count || "None"} className={cx("Button", { "Button--active":  count == this.props.query.query.limit })} onClick={this.updateLimit.bind(null, count)}>
-                            {count || "None"}
-                        </li>
-                    )}
-                </ul>
-            </div>
-        );
-    }
-
     renderDataSection() {
         return (
             <div className={"GuiBuilder-section GuiBuilder-data flex align-center arrow-right"}>
@@ -460,7 +442,12 @@ export default class GuiQueryEditor extends Component {
                                     triggerClasses="flex align-center">
                     <div className="px3 py1">
                         {this.renderSort()}
-                        {this.renderLimit()}
+                        { this.props.features.limit &&
+                            <div className="py1">
+                                <div className="Query-label mb1">Limit:</div>
+                                <LimitWidget limit={this.props.query.query.limit} onChange={(count) => this.updateLimit(count)} />
+                            </div>
+                        }
                     </div>
                 </PopoverWithTrigger>
             </div>

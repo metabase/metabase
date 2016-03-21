@@ -1,5 +1,6 @@
 (ns metabase.models.foreign-key
-  (:require [metabase.models.interface :as i]))
+  (:require [metabase.models.interface :as i]
+            [metabase.util :as u]))
 
 (def ^:const relationships
   "Valid values for `ForeginKey.relationship`."
@@ -7,7 +8,7 @@
 
 (i/defentity ForeignKey :metabase_foreignkey)
 
-(extend (class ForeignKey)
+(u/strict-extend (class ForeignKey)
   i/IEntity
   (merge i/IEntityDefaults
          {:types        (constantly {:relationship :keyword})

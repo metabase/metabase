@@ -97,6 +97,30 @@
                 :fnAggregate "function(current, x) { return current + (parseFloat(x) || 0); }"
                 :fnCombine   "function(x, y) { return x + y; }"}))
 
+(defn- ag:doubleMin [field]
+  (case (dimension-or-metric? field)
+    :metric    {:type      :doubleMin
+                :name      :min
+                :fieldName (->rvalue field)}
+    :dimension {:type        :javascript
+                :name        :min
+                :fieldNames  [(->rvalue field)]
+                :fnReset     "function() { return Number.MAX_VALUE ; }"
+                :fnAggregate "function(current, x) { return Math.min(current, (parseFloat(x) || Number.MAX_VALUE)); }"
+                :fnCombine   "function(x, y) { return Math.min(x, y); }"}))
+
+(defn- ag:doubleMax [field]
+  (case (dimension-or-metric? field)
+    :metric    {:type      :doubleMin
+                :name      :min
+                :fieldName (->rvalue field)}
+    :dimension {:type        :javascript
+                :name        :min
+                :fieldNames  [(->rvalue field)]
+                :fnReset     "function() { return Number.MIN_VALUE ; }"
+                :fnAggregate "function(current, x) { return Math.max(current, (parseFloat(x) || Number.MIN_VALUE)); }"
+                :fnCombine   "function(x, y) { return Math.max(x, y); }"}))
+
 (defn- ag:filtered  [filtr aggregator] {:type :filtered, :filter filtr, :aggregator aggregator})
 
 (defn- ag:count
@@ -127,7 +151,9 @@
                [:distinct _] {:aggregations [{:type       :cardinality
                                               :name       :count
                                               :fieldNames [(->rvalue ag-field)]}]}
-               [:sum      _] {:aggregations [(ag:doubleSum ag-field :sum)]})))))
+               [:sum      _] {:aggregations [(ag:doubleSum ag-field :sum)]}
+               [:min      _] {:aggregations [(ag:doubleMin ag-field)]}
+               [:max      _] {:aggregations [(ag:doubleMax ag-field)]})))))
 
 
 ;;; ### handle-breakout
@@ -347,7 +373,7 @@
 (defmulti ^:private handle-order-by query-type-dispatch-fn)
 
 (defmethod handle-order-by ::query [_ _ _]
-  (log/warn (u/format-color 'red "Sorting with Druid is only allowed queries that have one or more breakout columns. Ignoring :order_by clause.")))
+  (log/warn (u/format-color 'red "Sorting with Druid is only allowed in queries that have one or more breakout columns. Ignoring :order_by clause.")))
 
 (defmethod handle-order-by ::topN [_ {{ag-type :aggregation-type} :aggregation, [breakout-field] :breakout, [{field :field, direction :direction}] :order-by} druid-query]
   (let [field             (->rvalue field)

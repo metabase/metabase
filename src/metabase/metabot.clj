@@ -171,8 +171,7 @@
 
 (defn- human-message? [{event-type :type, subtype :subtype}]
   (and (= event-type "message")
-       (not= subtype "bot_message")
-       (not= subtype "message_deleted")))
+       (not (contains? #{"bot_message" "message_changed" "message_deleted"} subtype))))
 
 (defn- event-timestamp-ms [{:keys [ts], :or {ts "0"}}]
   (* (Double/parseDouble ts) 1000))

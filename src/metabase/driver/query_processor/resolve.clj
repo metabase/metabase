@@ -30,8 +30,8 @@
                           :name            :field-name
                           :display_name    :field-display-name
                           :special_type    :special-type
+                          :visibility_type :visibility-type
                           :base_type       :base-type
-                          :preview_display :preview-display
                           :table_id        :table-id
                           :parent_id       :parent-id}))
 
@@ -56,8 +56,8 @@
    :resolve-field       (fn [this _] this)
    :resolve-table       (fn [this _] this)})
 
-(extend Object IResolve IResolveDefaults)
-(extend nil    IResolve IResolveDefaults)
+(u/strict-extend Object IResolve IResolveDefaults)
+(u/strict-extend nil    IResolve IResolveDefaults)
 
 
 ;;; ## ------------------------------------------------------------ FIELD ------------------------------------------------------------
@@ -84,7 +84,7 @@
            :table-name  (:name table)
            :schema-name (:schema table))))
 
-(extend Field
+(u/strict-extend Field
   IResolve (merge IResolveDefaults
                   {:unresolved-field-id field-unresolved-field-id
                    :resolve-field       field-resolve-field
@@ -107,7 +107,7 @@
     ;; If that fails just return ourselves as-is
     this))
 
-(extend FieldPlaceholder
+(u/strict-extend FieldPlaceholder
   IResolve (merge IResolveDefaults
                   {:unresolved-field-id :field-id
                    :fk-field-id         :fk-field-id
@@ -147,7 +147,7 @@
       (throw (Exception. (format "Unable to resolve field: %s" field-placeholder))))
     (parse-value resolved-field value)))
 
-(extend ValuePlaceholder
+(u/strict-extend ValuePlaceholder
   IResolve (merge IResolveDefaults
                   {:resolve-field value-ph-resolve-field}))
 
@@ -181,7 +181,7 @@
         ;; If there are no more Field IDs to resolve we're done.
         expanded-query-dict
         ;; Otherwise fetch + resolve the Fields in question
-        (let [fields (->> (sel :many :id->fields [field/Field :name :display_name :base_type :special_type :preview_display :table_id :parent_id :description]
+        (let [fields (->> (sel :many :id->fields [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description]
                                :id [in field-ids])
                           (m/map-vals rename-mb-field-keys)
                           (m/map-vals #(assoc % :parent (when-let [parent-id (:parent-id %)]

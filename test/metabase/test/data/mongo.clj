@@ -3,7 +3,8 @@
                     [core :as mg])
             metabase.driver.mongo
             [metabase.driver.mongo.util :refer [with-mongo-connection]]
-            [metabase.test.data.interface :as i])
+            [metabase.test.data.interface :as i]
+            [metabase.util :as u])
   (:import metabase.driver.mongo.MongoDriver))
 
 (defn- database->connection-details
@@ -40,7 +41,7 @@
               (catch com.mongodb.MongoException _))))))))
 
 
-(extend MongoDriver
+(u/strict-extend MongoDriver
   i/IDatasetLoader
   (merge i/IDatasetLoaderDefaultsMixin
          {:create-db!                   create-db!

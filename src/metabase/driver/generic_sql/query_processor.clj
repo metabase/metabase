@@ -64,12 +64,11 @@
   AgFieldRef
   (formatted [_]
     (let [{:keys [aggregation-type]} (:aggregation (:query *query*))]
-      (case aggregation-type
-        :avg      :avg
-        :count    :count
-        :distinct :count
-        :stddev   :stddev
-        :sum      :sum)))
+      ;; For some arcane reason we name the results of a distinct aggregation "count",
+      ;; everything else is named the same as the aggregation
+      (if (= aggregation-type :distinct)
+        :count
+        aggregation-type)))
 
   Value
   (formatted [value] (sql/prepare-value (driver) value))
@@ -105,7 +104,9 @@
        :count    (k/aggregate korma-form (count field)                            :count)
        :distinct (k/aggregate korma-form (count (k/sqlfn :DISTINCT field))        :count)   ; why not call it :distinct? This complicates things
        :stddev   (k/fields    korma-form [(k/sqlfn* (sql/stddev-fn driver) field) :stddev])
-       :sum      (k/aggregate korma-form (sum field)                              :sum)))))
+       :sum      (k/aggregate korma-form (sum field)                              :sum)
+       :min      (k/aggregate korma-form (min field)                              :min)
+       :max      (k/aggregate korma-form (max field)                              :max)))))
 
 (defn apply-breakout
   "Apply a `breakout` clause to KORMA-FORM. Default implementation of `apply-breakout` for SQL drivers."

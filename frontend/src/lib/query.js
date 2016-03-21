@@ -163,7 +163,7 @@ var Query = {
     },
 
     canSortByAggregateField(query) {
-        var SORTABLE_AGGREGATION_TYPES = new Set(["avg", "count", "distinct", "stddev", "sum"]);
+        var SORTABLE_AGGREGATION_TYPES = new Set(["avg", "count", "distinct", "stddev", "sum", "min", "max"]);
 
         return Query.hasValidBreakout(query) && SORTABLE_AGGREGATION_TYPES.has(query.aggregation[0]);
     },
@@ -509,6 +509,8 @@ var Query = {
                 case "stddev":   return ["Standard deviation of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
                 case "sum":      return                ["Sum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
                 case "cum_sum":  return     ["Cumulative sum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "max":      return            ["Maximum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "min":      return            ["Minimum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
             }
         }
         return "";
