@@ -244,56 +244,6 @@ function applyChartLineBarSettings(chart, settings, chartType, isLinear, isTimes
 
 function lineAndBarOnRender(chart, settings) {
     // once chart has rendered and we can access the SVG, do customizations to axis labels / etc that you can't do through dc.js
-    let svg = chart.svg();
-    let x = settings.xAxis;
-    let y = settings.yAxis;
-
-    /// return a function to set attrName to attrValue for element(s) if attrValue is not null
-    /// optional ATTRVALUETRANSFORMFN can be used to modify ATTRVALUE before it is set
-    let customizer = function(element) {
-        return function(attrName, attrValue, attrValueTransformFn) {
-            if (attrValue) {
-                if (attrValueTransformFn != null) {
-                    attrValue = attrValueTransformFn(attrValue);
-                }
-                if (element.length != null) {
-                    let len = element.length;
-                    for (let i = 0; i < len; i++) {
-                        element[i].setAttribute(attrName, attrValue);
-                    }
-                } else {
-                    element.setAttribute(attrName, attrValue);
-                }
-            }
-        };
-    };
-    // x-axis label customizations
-    try {
-        let customizeX = customizer(svg.select('.x-axis-label').node());
-        customizeX('fill', x.title_color);
-        customizeX('font-size', x.title_font_size);
-    } catch (e) {}
-
-    // y-axis label customizations
-    try {
-        let customizeY = customizer(svg.select('.y-axis-label').node());
-        customizeY('fill', y.title_color);
-        customizeY('font-size', y.title_font_size);
-    } catch (e) {}
-
-    // grid lines - .grid-line .horizontal, .vertical
-    try {
-        let customizeVertGL = customizer(svg.select('.grid-line.vertical').node().children);
-        customizeVertGL('stroke-width', x.gridLineWidth);
-        customizeVertGL('style', x.gridLineColor, (colorStr) => 'stroke:' + colorStr + ';');
-    } catch (e) {}
-
-    try {
-        let customizeHorzGL = customizer(svg.select('.grid-line.horizontal').node().children);
-        customizeHorzGL('stroke-width', y.gridLineWidth);
-        customizeHorzGL('style', y.gridLineColor, (colorStr) => 'stroke:' + '#ddd' + ';');
-    } catch (e) {}
-
 
     function removeClipPath() {
         for (let elem of chart.selectAll(".sub, .chart-body")[0]) {
@@ -406,22 +356,20 @@ function lineAndBarOnRender(chart, settings) {
     }
 
     function hideDisabledLabels() {
-       if (!x.labels_enabled) {
-        //    chart.selectAll(".x-axis-label").remove();
+       if (!settings.xAxis.labels_enabled) {
+           chart.selectAll(".x-axis-label").remove();
        }
-       if (!y.labels_enabled) {
-        //    chart.selectAll(".y-axis-label").remove();
+       if (!settings.yAxis.labels_enabled) {
+           chart.selectAll(".y-axis-label").remove();
        }
     }
 
     function hideDisabledAxis() {
-       if (!x.axis_enabled) {
+       if (!settings.xAxis.axis_enabled) {
            chart.selectAll(".axis.x").remove();
-        //    chart.selectAll(".x-axis-label").remove();
        }
-       if (!y.axis_enabled) {
+       if (!settings.yAxis.axis_enabled) {
            chart.selectAll(".axis.y, .axis.yr").remove();
-        //    chart.selectAll(".y-axis-label").remove();
        }
     }
 
@@ -468,9 +416,9 @@ function lineAndBarOnRender(chart, settings) {
     let mins = computeMinHorizontalMargins()
 
     // adjust the margins to fit the X and Y axis tick and label sizes, if enabled
-    adjustMargin("bottom", "height", ".axis.x",  ".x-axis-label", x.labels_enabled);
-    adjustMargin("left",   "width",  ".axis.y",  ".y-axis-label.y-label", y.labels_enabled);
-    adjustMargin("right",  "width",  ".axis.yr", ".y-axis-label.yr-label", y.labels_enabled);
+    adjustMargin("bottom", "height", ".axis.x",  ".x-axis-label", settings.xAxis.labels_enabled);
+    adjustMargin("left",   "width",  ".axis.y",  ".y-axis-label.y-label", settings.yAxis.labels_enabled);
+    adjustMargin("right",  "width",  ".axis.yr", ".y-axis-label.yr-label", settings.yAxis.labels_enabled);
 
     // set margins to the max of the various mins
     chart.margins().left = Math.max(5, mins.left, chart.margins().left);
