@@ -12,7 +12,7 @@
 
 (i/defentity Metric :metric)
 
-(extend (class Metric)
+(u/strict-extend (class Metric)
   i/IEntity
   (merge i/IEntityDefaults
          {:types         (constantly {:definition :json, :description :clob})
@@ -42,7 +42,7 @@
                   (get-in base-diff [:before :definition])) (assoc :definition {:before (get-in metric1 [:definition])
                                                                                 :after  (get-in metric2 [:definition])})))))
 
-(extend (class Metric)
+(u/strict-extend (class Metric)
   revision/IRevisioned
   (merge revision/IRevisionedDefaults
          {:serialize-instance serialize-metric
@@ -58,7 +58,7 @@
   (when definition
     {:Segment (q/extract-segment-ids definition)}))
 
-(extend (class Metric)
+(u/strict-extend (class Metric)
   dependency/IDependent
   {:dependencies metric-dependencies})
 

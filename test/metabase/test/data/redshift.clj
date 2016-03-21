@@ -58,7 +58,7 @@
   ([_ _ table-name field-name]
    [session-schema-name table-name field-name]))
 
-(extend RedshiftDriver
+(u/strict-extend RedshiftDriver
   generic/IGenericSQLDatasetLoader
   (merge generic/DefaultsMixin
          {:create-db-sql             (constantly nil)
