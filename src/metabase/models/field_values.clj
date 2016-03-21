@@ -28,11 +28,11 @@
 (defn field-should-have-field-values?
   "Should this `Field` be backed by a corresponding `FieldValues` object?"
   {:arglists '([field])}
-  [{:keys [base_type special_type field_type] :as field}]
-  {:pre [field_type
+  [{:keys [base_type special_type visibility_type] :as field}]
+  {:pre [visibility_type
          (contains? field :base_type)
          (contains? field :special_type)]}
-  (and (not= (keyword field_type) :sensitive)
+  (and (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility_type)))
        (not (contains? #{:DateField :DateTimeField :TimeField} (keyword base_type)))
        (or (contains? #{:category :city :state :country :name} (keyword special_type))
            (= (keyword base_type) :BooleanField))))

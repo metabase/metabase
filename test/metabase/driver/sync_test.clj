@@ -93,7 +93,8 @@
               :position 0,
               :preview_display true,
               :display_name "Id",
-              :base_type :IntegerField}
+              :base_type :IntegerField,
+              :visibility_type :normal}
              {:description nil,
               :special_type nil,
               :name "studio",
@@ -103,7 +104,8 @@
               :position 0,
               :preview_display true,
               :display_name "Studio",
-              :base_type :TextField}
+              :base_type :TextField,
+              :visibility_type :normal}
              {:description nil,
               :special_type nil,
               :name "title",
@@ -113,7 +115,8 @@
               :position 0,
               :preview_display true,
               :display_name "Title",
-              :base_type :TextField}]}
+              :base_type :TextField,
+              :visibility_type :normal}]}
    {:schema nil
     :name   "studio"
     :display_name "Studio"
@@ -132,7 +135,8 @@
               :position 0,
               :preview_display true,
               :display_name "Name",
-              :base_type :TextField}
+              :base_type :TextField,
+              :visibility_type :normal}
              {:description nil,
               :special_type :id,
               :name "studio",
@@ -142,7 +146,8 @@
               :position 0,
               :preview_display true,
               :display_name "Studio",
-              :base_type :TextField}]}]
+              :base_type :TextField,
+              :visibility_type :normal}]}]
   (tu/with-temp Database [fake-db {:name    "sync-test"
                                    :engine  :sync-test
                                    :details {}}]
@@ -175,7 +180,8 @@
              :position 0,
              :preview_display true,
              :display_name "Id",
-             :base_type :IntegerField}
+             :base_type :IntegerField,
+             :visibility_type :normal}
             {:description nil,
              :special_type nil,
              :name "studio",
@@ -185,7 +191,8 @@
              :position 0,
              :preview_display true,
              :display_name "Studio",
-             :base_type :TextField}
+             :base_type :TextField,
+             :visibility_type :normal}
             {:description nil,
              :special_type nil,
              :name "title",
@@ -195,7 +202,8 @@
              :position 0,
              :preview_display true,
              :display_name "Title",
-             :base_type :TextField}]}
+             :base_type :TextField,
+             :visibility_type :normal}]}
   (tu/with-temp Database [fake-db {:name    "sync-test"
                                    :engine  :sync-test
                                    :details {}}]

@@ -75,7 +75,7 @@
   {:extra_info      {}
    :target          nil
    :description     nil
-   :preview_display true
+   :visibility_type :normal
    :schema_name     (default-schema)})
 
 (defn- categories-col
@@ -798,7 +798,7 @@
          (ql/order-by (ql/desc (ql/aggregate-field 0))))
        :data (format-rows-by [int (comp int math/round)])))
 
-;;; ### make sure that rows where preview_display = false are included and properly marked up
+;;; ### make sure that rows where visibility_type = details-only are included and properly marked up
 (expect-with-non-timeseries-dbs
   [(set (venues-cols))
    #{(venues-col :category_id)
@@ -807,16 +807,16 @@
      (venues-col :id)
      (venues-col :longitude)
      (-> (venues-col :price)
-         (assoc :preview_display false))}
+         (assoc :visibility_type :details-only))}
    (set (venues-cols))]
   (let [get-col-names (fn [] (-> (run-query venues
                                    (ql/order-by (ql/asc $id))
                                    (ql/limit 1))
                                  :data :cols set))]
     [(get-col-names)
-     (do (upd Field (id :venues :price) :preview_display false)
+     (do (upd Field (id :venues :price) :visibility_type :details-only)
          (get-col-names))
-     (do (upd Field (id :venues :price) :preview_display true)
+     (do (upd Field (id :venues :price) :visibility_type :normal)
          (get-col-names))]))
 
 

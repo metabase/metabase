@@ -49,14 +49,22 @@
   "Possible values for `Field.field_type`."
   #{:metric      ; A number that can be added, graphed, etc.
     :dimension   ; A high or low-cardinality numerical string value that is meant to be used as a grouping
-    :info        ; Non-numerical value that is not meant to be used
-    :sensitive}) ; A Fields that should *never* be shown *anywhere*
+    :info})      ; Non-numerical value that is not meant to be used
+
+(def ^:const visibility-types
+  "Possible values for `Field.visibility_type`."
+  #{:normal         ; Default setting.  field has no visibility restrictions.
+    :details-only   ; For long blob like columns such as JSON.  field is not shown in some places on the frontend.
+    :hidden         ; Lightweight hiding which removes field as a choice in most of the UI.  should still be returned in queries.
+    :sensitive      ; Strict removal of field from all places except data model listing.  queries should error if someone attempts to access.
+    :retired})      ; For fields that no longer exist in the physical db.  automatically set by Metabase.  QP should error if encountered in a query.
 
 (defn valid-metadata?
   "Predicate function that checks if the set of metadata types for a field are sensible."
-  [base-type field-type special-type]
+  [base-type field-type special-type visibility-type]
   (and (contains? base-types base-type)
        (contains? field-types field-type)
+       (contains? visibility-types visibility-type)
        (or (nil? special-type)
            (contains? special-types special-type))
        ;; this verifies that we have a numeric base-type when trying to use the unix timestamp transform (#824)
@@ -71,6 +79,7 @@
   (let [defaults {:active          true
                   :preview_display true
                   :field_type      :info
+                  :visibility_type :normal
                   :position        0
                   :display_name    (common/name->human-readable-name (:name field))}]
     (merge defaults field)))
@@ -118,7 +127,11 @@
 (u/strict-extend (class Field)
   i/IEntity (merge i/IEntityDefaults
                    {:hydration-keys     (constantly [:destination :field :origin])
-                    :types              (constantly {:base_type :keyword, :field_type :keyword, :special_type :keyword, :description :clob})
+                    :types              (constantly {:base_type       :keyword
+                                                     :field_type      :keyword
+                                                     :special_type    :keyword
+                                                     :visibility_type :keyword
+                                                     :description     :clob})
                     :timestamped?       (constantly true)
                     :can-read?          (constantly true)
                     :can-write?         i/superuser?
