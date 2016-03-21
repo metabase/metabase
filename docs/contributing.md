@@ -6,7 +6,7 @@ In this guide, we'll discuss how Metabase is built. This should give you a good 
 
 ## What we're trying to build
 
-Metabase is all about letting non-technical users get access to the their organizations data. We're trying to maximize the amount of power that can be comfortably used by someone who understands their business, is quantitatively bent, but probably only comfortable with Excel. 
+Metabase is all about letting non-technical users get access to the their organization's data. We're trying to maximize the amount of power that can be comfortably used by someone who understands their business, is quantitatively bent, but probably only comfortable with Excel. 
 
 It's important to keep in mind these goals of the Metabase project. Many times
 proposals will be marked "Out of Scope" or otherwise deprioritized. This doesn't mean the proposal isn't useful, or that we wouldn't be interested in seeing it done as a side project or as an experimental branch. However, it does mean that we won't point the core team or contributors to it in the near term. Issues that are slightly out of scope will be kept open in case there is community support (and ideally contributions).
@@ -19,9 +19,9 @@ The core team runs a pretty well defined product process. It is actively being t
 
 ### A) Identify product needs from the community
 
-We actively look for new feature ideas from our community, user base and our own use of Metabase internally. We concentrate on the underlying *problem* or *need*  as opposed to requests for specific features. While sometimes suggested features are built as request, often we find that they involve changes to existing features, and perhaps an entirely different solution to the underlying problem. 
+We actively look for new feature ideas from our community, user base and our own use of Metabase internally. We concentrate on the underlying *problem* or *need*  as opposed to requests for specific features. While sometimes suggested features are built as requested, often we find that they involve changes to existing features, and perhaps an entirely different solution to the underlying problem. 
 
-### B) Synthesis these needs into a concrete feature
+### B) Synthesize these needs into a concrete feature
 
 We typically will collect a group of issues or suggestions into a new topline feature concept. Typically we'll create a working document that collects all "Open Questions" regarding to what the feature is meant to do, and more importantly not do. We'll chat with our users, maybe do in depth interviews and generally try to tightly define the feature.
 
@@ -42,11 +42,11 @@ If all goes well, the feature gets coded up, verified and then the pull request 
 
 ## Ways to help:
 
-The starting point would be to get familiar with Metabase the product, and know your way around. If you're using it at work, that's a great! If not, download the mac application or the jar and play around with it. Read the docs and generally get a feel for the flow of the product.
+The starting point would be to get familiar with Metabase the product, and know your way around. If you're using it at work, that's great! If not, download the mac application or the jar and play around with it. Read the docs and generally get a feel for the flow of the product.
 
 If you want to help out, there are lots of ways. In order of increasing coordination + interaction with us:
 
-### Help with Identifying Needs and Problems Metabase can solve
+### Help with identifying needs and problems Metabase can solve
 
 If you want to help, try out Metabase. Use it at your company, and report back the things you like, dislike and any problems you run into. Help us understand your data model, required metrics and common usage patterns as much as you can. This information directly affects the quality of the product. The more you tell us about the kinds of problems you're facing, the better we'll be able to address them.
 
@@ -76,4 +76,4 @@ In situations where a design has already been done, we can always use some help.
 
 ### #YOLO JUST SUBMIT A PR
 
-If tyou come up with something really cool, and want to share it with us, just submit a PR. If it hasn't gone through the above process, we probably won't merge it as is, but if it's compelling, we're more than willing to help you via code review, design review and generally OCD nitpicking so that it fits into the rest of our codebase. 
+If you come up with something really cool, and want to share it with us, just submit a PR. If it hasn't gone through the above process, we probably won't merge it as is, but if it's compelling, we're more than willing to help you via code review, design review and generally OCD nitpicking so that it fits into the rest of our codebase. 
