@@ -517,7 +517,14 @@ export let CardRenderer = {
             ])
         );
 
-        let dimension, groups, xValues, yAxisSplit;
+        let xValues = _.chain(datas)
+            .map((data) => _.pluck(data, 0))
+            .flatten(true)
+            .uniq()
+            .value();
+
+        let dimension, groups, yAxisSplit;
+
         if (isStacked && datas.length > 1) {
             let dataset = crossfilter();
             datas.map((data, i) =>
@@ -534,7 +541,6 @@ export let CardRenderer = {
                 )
             ];
 
-            xValues = dimension.group().all().map(d => d.key);
             yAxisSplit = [series.map((s,i) => i)];
         } else {
             let dataset = crossfilter();
@@ -548,7 +554,6 @@ export let CardRenderer = {
                 )
             });
 
-            xValues = dimension.group().all().map(d => d.key);
             let yExtents = groups.map(group => d3.extent(group[0].all(), d => d.value));
 
             if (allowSplitAxis) {
