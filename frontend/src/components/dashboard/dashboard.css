@@ -408,3 +408,18 @@
 /*.voronoi path {
   fill: rgba(255,0,0,0.05);
 }*/
+
+/*
+
+  fullscreen text size modifications
+
+*/
+
+/*
+  increase the base font size in fullscreen mode to bump things up to
+  accomodate for viewing distance on TVs etc
+*/
+.Dashboard.Dashboard--fullscreen { font-size: 1.2em; }
+
+/* keep the dashboard header title from being overwhelmingly large */
+.Dashboard.Dashboard--fullscreen .Header-title-name { font-size: 1em; }

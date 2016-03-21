@@ -14,18 +14,18 @@
 }
 
 :local .Scalar.small .Value {
-  font-size: 32px;
+  font-size: 2em;
 }
 :local .Scalar.small .Title {
-  font-size: 14px;
+  font-size: 1em;
 }
 
 :local .Scalar.large {
   align-items: center;
 }
 :local .Scalar.large .Value {
-  font-size: 42px;
+  font-size: 2.5em;
 }
 :local .Scalar.large .Title {
-  font-size: 18px;
+  font-size: 1.2em;
 }
