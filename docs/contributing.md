@@ -25,13 +25,13 @@ We actively look for new feature ideas from our community, user base and our own
 
 We typically will collect a group of issues or suggestions into a new topline feature concept. Typically we'll create a working document that collects all "Open Questions" regarding to what the feature is meant to do, and more importantly not do. We'll chat with our users, maybe do in depth interviews and generally try to tightly define the feature.
 
-### C) Sic a product designer on a feature
+### C) Design the feature
 
 Once a feature has been defined, typically it will be taken on by a product designer. Here, they will produce low fi mocks, get feedback from our users and community, and iterate.
 
 Once the main UX flows have been dialed in, there will be a hi-fidelity visual design.
 
-### D) Hand off the hi-fi visual design to an engineer
+### D) Hand off the design to an engineer
 
 This design is then handed off to one or more engineers.
 Together with the designer who owns the feature, they will work on the feature via a Pull Request.
