@@ -52,6 +52,7 @@ const TYPES = {
         special: ["category"],
         include: [LOCATION]
     },
+    // NOTE: this is defunct right now.  see definition of isDimension below.
     [DIMENSION]: {
         field: ["dimension"],
         include: [DATE_TIME, CATEGORY, ENTITY]
@@ -104,7 +105,7 @@ export const isBoolean = isFieldType.bind(null, BOOLEAN);
 export const isString = isFieldType.bind(null, STRING);
 export const isSummable = isFieldType.bind(null, SUMMABLE);
 export const isCategory = isFieldType.bind(null, CATEGORY);
-export const isDimension = isFieldType.bind(null, DIMENSION);
+export const isDimension = () => true;
 
 
 // operator argument constructors:
@@ -383,6 +384,18 @@ var Aggregators = [{
     "validFieldsFilters": [summableFields],
     "requiresField": true,
     "requiredDriverFeature": "standard-deviation-aggregations"
+}, {
+    name: "Minimum of ...",
+    short: "min",
+    description: "Minimum value of a column",
+    validFieldsFilters: [summableFields],
+    requiresField: true,
+}, {
+    name: "Maximum of ...",
+    short: "max",
+    description: "Maximum value of a column",
+    validFieldsFilters: [summableFields],
+    requiresField: true,
 }];
 
 var BreakoutAggregator = {

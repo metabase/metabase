@@ -5,7 +5,8 @@
             (metabase.models [dependency :as dependency]
                              [interface :as i]
                              [revision :as revision])
-            [metabase.query :as q]))
+            (metabase [query :as q]
+                      [util :as u])))
 
 (def ^:const display-types
   "Valid values of `Card.display_type`."
@@ -73,7 +74,7 @@
      :Segment (q/extract-segment-ids (:query dataset_query))}))
 
 
-(extend (class Card)
+(u/strict-extend (class Card)
   i/IEntity
   (merge i/IEntityDefaults
          {:hydration-keys     (constantly [:card])

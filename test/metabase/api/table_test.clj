@@ -107,6 +107,7 @@
             :preview_display     true
             :created_at          $
             :base_type           "BigIntegerField"
+            :visibility_type     "normal"
             :parent_id           nil})
          (match-$ (Field (id :categories :name))
            {:description         nil
@@ -122,6 +123,7 @@
             :preview_display     true
             :created_at          $
             :base_type           "TextField"
+            :visibility_type     "normal"
             :parent_id           nil})]
   ((user->client :rasta) :get 200 (format "table/%d/fields" (id :categories))))
 
@@ -150,6 +152,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "BigIntegerField"
+                            :visibility_type "normal"
                             :parent_id       nil})
                          (match-$ (Field (id :categories :name))
                            {:description     nil
@@ -166,6 +169,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "TextField"
+                            :visibility_type "normal"
                             :parent_id       nil})]
        :field_values    {}
        :rows            75
@@ -224,6 +228,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "BigIntegerField"
+                            :visibility_type "normal"
                             :parent_id       nil})
                          (match-$ (sel :one Field :id (id :users :last_login))
                            {:description     nil
@@ -240,6 +245,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "DateTimeField"
+                            :visibility_type "normal"
                             :parent_id       nil})
                          (match-$ (sel :one Field :id (id :users :name))
                            {:description     nil
@@ -256,6 +262,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "TextField"
+                            :visibility_type "normal"
                             :parent_id       nil})
                          (match-$ (sel :one Field :table_id (id :users) :name "PASSWORD")
                            {:description     nil
@@ -266,12 +273,13 @@
                             :updated_at      $
                             :active          true
                             :id              $
-                            :field_type      "sensitive"
+                            :field_type      "info"
                             :position        0
                             :target          nil
                             :preview_display true
                             :created_at      $
                             :base_type       "TextField"
+                            :visibility_type "sensitive"
                             :parent_id       nil})]
        :rows            15
        :updated_at      $
@@ -326,6 +334,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "BigIntegerField"
+                            :visibility_type "normal"
                             :parent_id       nil})
                          (match-$ (Field (id :users :last_login))
                            {:description     nil
@@ -342,6 +351,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "DateTimeField"
+                            :visibility_type "normal"
                             :parent_id       nil})
                          (match-$ (Field (id :users :name))
                            {:description     nil
@@ -358,6 +368,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "TextField"
+                            :visibility_type "normal"
                             :parent_id       nil})]
        :rows            15
        :updated_at      $
@@ -445,6 +456,7 @@
                          :display_name    "User Id"
                          :description     nil
                          :base_type       "IntegerField"
+                         :visibility_type "normal"
                          :preview_display $
                          :position        $
                          :field_type      "info"
@@ -475,6 +487,7 @@
                          :display_name    "Id"
                          :description     nil
                          :base_type       "BigIntegerField"
+                         :visibility_type "normal"
                          :preview_display $
                          :position        $
                          :field_type      "info"

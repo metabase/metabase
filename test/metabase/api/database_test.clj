@@ -245,6 +245,7 @@
                                         :preview_display true
                                         :created_at      $
                                         :base_type       "BigIntegerField"
+                                        :visibility_type "normal"
                                         :parent_id       nil
                                         :values          []})
                                      (match-$ (Field (id :categories :name))
@@ -262,6 +263,7 @@
                                         :preview_display true
                                         :created_at      $
                                         :base_type       "TextField"
+                                        :visibility_type "normal"
                                         :parent_id       nil
                                         :values          []})]
                    :segments        []

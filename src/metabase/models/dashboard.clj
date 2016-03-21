@@ -23,7 +23,7 @@
 
 (i/defentity Dashboard :report_dashboard)
 
-(extend (class Dashboard)
+(u/strict-extend (class Dashboard)
   i/IEntity
   (merge i/IEntityDefaults
          {:timestamped?       (constantly true)
@@ -111,7 +111,7 @@
                build-sentence)))))
 
 
-(extend (class Dashboard)
+(u/strict-extend (class Dashboard)
   revision/IRevisioned
   (merge revision/IRevisionedDefaults
          {:serialize-instance (fn [_ _ dashboard] (serialize-dashboard dashboard))

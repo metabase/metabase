@@ -159,7 +159,7 @@
   clojure.lang.Named
   (getName [_] "MongoDB"))
 
-(extend MongoDriver
+(u/strict-extend MongoDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
          {:analyze-table                     analyze-table

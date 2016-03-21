@@ -8,6 +8,7 @@
                              [card :refer [Card]]
                              [dashboard-card :refer [DashboardCard]]
                              [database :refer [Database]]
+                             [field :refer [Field]]
                              [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]]
                              [setting :as setting])
@@ -122,3 +123,30 @@
                      :sizeX (when sizeX (* sizeX 3))
                      :sizeY (when sizeY (* sizeY 4))})
       (k/where {:id id}))))
+
+
+;; migrate data to new visibility_type column on field
+(defmigration migrate-field-visibility-type
+  (when (< 0 (:cnt (first (k/select Field (k/aggregate (count :*) :cnt) (k/where (= :visibility_type "unset"))))))
+    ;; start by marking all inactive fields as :retired
+    (k/update Field
+      (k/set-fields {:visibility_type "retired"})
+      (k/where      {:visibility_type "unset"
+                     :active          false}))
+    ;; anything that is active with field_type = :sensitive gets visibility_type :sensitive
+    (k/update Field
+      (k/set-fields {:visibility_type "sensitive"})
+      (k/where      {:visibility_type "unset"
+                     :active          true
+                     :field_type      "sensitive"}))
+    ;; if field is active but preview_display = false then it becomes :details-only
+    (k/update Field
+      (k/set-fields {:visibility_type "details-only"})
+      (k/where      {:visibility_type "unset"
+                     :active          true
+                     :preview_display false}))
+    ;; everything else should end up as a :normal field
+    (k/update Field
+      (k/set-fields {:visibility_type "normal"})
+      (k/where      {:visibility_type "unset"
+                     :active          true}))))
