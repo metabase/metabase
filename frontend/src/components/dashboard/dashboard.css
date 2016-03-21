@@ -313,7 +313,7 @@
 }
 
 .enable-dots .dc-tooltip circle.dot {
-  r: 3 !important;
+  r: 3px !important;
   fill: white;
   stroke: currentColor;
   stroke-width: 2;
@@ -328,7 +328,7 @@
 
 .enable-dots-onhover .dc-tooltip circle.dot:hover,
 .enable-dots-onhover .dc-tooltip circle.dot.hover {
-  r: 3 !important;
+  r: 3px !important;
   fill: white;
   stroke: currentColor;
   stroke-width: 2;
