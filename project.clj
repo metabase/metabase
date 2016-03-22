@@ -138,4 +138,4 @@
                               ;; Exclude everything except for reset-password specific code in the created jar
                               :jar-exclusions [#"^(?!metabase/reset_password).*$"]
                               :target-path "reset-password-artifacts/%s"} ; different than ./target because otherwise lein uberjar will delete our artifacts and vice versa
-             :h2-shell {:main ^:skip-aot org.h2.tools.Shell}})
+             :h2-shell {:main org.h2.tools.Shell}})
