@@ -1,5 +1,7 @@
 import { handleActions, combineReducers } from "metabase/lib/redux";
 
+import i from "icepick";
+
 import {
     FETCH_CARDS,
     SELECT_DASHBOARD,
@@ -8,6 +10,7 @@ import {
     FETCH_CARD_DATA,
     SET_DASHBOARD_ATTRIBUTES,
     SET_DASHCARD_ATTRIBUTES,
+    SET_DASHCARD_VISUALIZATION_SETTING,
     ADD_CARD_TO_DASH,
     REMOVE_CARD_FROM_DASH,
     DELETE_CARD,
@@ -53,6 +56,13 @@ export const dashcards = handleActions({
             ...state,
             [id]: { ...state[id], ...attributes, isDirty: true }
         })
+    },
+    [SET_DASHCARD_VISUALIZATION_SETTING]: {
+        next: (state, { payload: { id, setting, value } }) =>
+            i.chain(state)
+                .assocIn([id, "card", "visualization_settings"].concat(setting), value)
+                .assocIn([id, "card", "isDirty"], true)
+                .value()
     },
     [ADD_CARD_TO_DASH]: (state, { payload: dashcard }) => ({
         ...state,

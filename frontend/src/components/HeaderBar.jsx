@@ -27,13 +27,13 @@ export default class Header extends Component {
                 titleAndDescription = (
                     <div className="Header-title my1 py2">
                         <h2>{name}</h2>
-                        <h4 className="text-grey-3">{description || "No description yet"}</h4>
+                        <h4 className="Header-title-name text-grey-3">{description || "No description yet"}</h4>
                     </div>
                 );
             } else {
                 titleAndDescription = (
                     <div className="flex align-baseline">
-                        <h1 className="Entity-title my1">{name}</h1> {breadcrumb}
+                        <h1 className="Header-title-name my1">{name}</h1> {breadcrumb}
                     </div>
                 );
             }

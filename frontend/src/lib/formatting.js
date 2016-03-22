@@ -1,16 +1,21 @@
 import d3 from "d3";
 import inflection from "inflection";
 import moment from "moment";
+import Humanize from "humanize";
 import React from "react";
+
+import { isDate } from "metabase/lib/schema_metadata";
 
 const PRECISION_NUMBER_FORMATTER      = d3.format(".2r");
 const FIXED_NUMBER_FORMATTER          = d3.format(",.f");
 const FIXED_NUMBER_FORMATTER_NO_COMMA = d3.format(".f");
 const DECIMAL_DEGREES_FORMATTER       = d3.format(".08f");
 
-export function formatNumber(number, options) {
+export function formatNumber(number, options = {}) {
     options = { comma: true, ...options}
-    if (number > -1 && number < 1) {
+    if (options.compact) {
+        return Humanize.compactInteger(number, 1);
+    } else if (number > -1 && number < 1) {
         // numbers between 1 and -1 round to 2 significant digits with extra 0s stripped off
         return PRECISION_NUMBER_FORMATTER(number).replace(/\.?0+$/, "");
     } else {
@@ -23,16 +28,12 @@ export function formatNumber(number, options) {
     }
 }
 
-export function formatScalar(scalar) {
-    if (typeof scalar === "number") {
-        return formatNumber(scalar, { comma: true });
-    } else {
-        return String(scalar);
-    }
-}
-
 function formatMajorMinor(major, minor, options = {}) {
-    options = { jsx: false, majorWidth: 3, ...options };
+    options = {
+        jsx: false,
+        majorWidth: 3,
+        ...options
+    };
     if (options.jsx) {
         return (
             <span>
@@ -46,8 +47,11 @@ function formatMajorMinor(major, minor, options = {}) {
     }
 }
 
-export function formatTimeWithUnit(value, unit, options = {}) {
-    let m = moment(value);
+function formatTimeWithUnit(value, unit, options = {}) {
+    let m = moment.parseZone(value);
+    if (options.utcOffset != null) {
+        m.utcOffset(options.utcOffset);
+    }
     switch (unit) {
         case "hour": // 12 AM - January 1, 2015
             return formatMajorMinor(m.format("h A"), m.format("MMMM D, YYYY"), options);
@@ -77,23 +81,26 @@ export function formatTimeWithUnit(value, unit, options = {}) {
     return String(value);
 }
 
-export function formatValue(value, column, options = {}) {
-    options = { jsx: false, ...options };
+export function formatValue(value, options = {}) {
+    let column = options.column;
+    options = {
+        jsx: false,
+        comma: column && column.special_type === "number",
+        ...options
+    };
     if (value == undefined) {
-        return null
+        return null;
     } else if (column && column.unit != null) {
         return formatTimeWithUnit(value, column.unit, options);
-    } else if (moment.isDate(value) || moment(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()) {
-        return moment(value).format("LLLL");
+    } else if (isDate(column) || moment.isDate(value) || moment.isMoment(value) || moment(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()) {
+        return moment.parseZone(value).format("LLLL");
     } else if (typeof value === "string") {
         return value;
     } else if (typeof value === "number") {
         if (column && (column.special_type === "latitude" || column.special_type === "longitude")) {
             return DECIMAL_DEGREES_FORMATTER(value)
         } else {
-            // don't show comma unless it's a number special_type (and eventually currency, etc)
-            let comma = column && column.special_type === "number";
-            return formatNumber(value, { comma, ...options });
+            return formatNumber(value, options);
         }
     } else if (typeof value === "object") {
         // no extra whitespace for table cells

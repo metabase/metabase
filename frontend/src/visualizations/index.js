@@ -10,6 +10,9 @@ import WorldMap   from "./WorldMap.jsx";
 import PinMap     from "./PinMap.jsx";
 
 const visualizations = new Map();
+visualizations.get = function(key) {
+    return Map.prototype.get.call(this, key) || Table;
+}
 
 export function registerVisualization(visualization) {
     let identifier = visualization.identifier;

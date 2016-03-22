@@ -98,22 +98,18 @@ export const field_field_types = [{
     'id': 'dimension',
     'name': 'Dimension',
     'description': 'A high or low-cardinality numerical string value that is meant to be used as a grouping.'
-}, {
-    'id': 'sensitive',
-    'name': 'Sensitive Information',
-    'description': 'A field that should never be shown anywhere.'
 }];
 
 export const field_visibility_types = [{
-    'id': 'everywhere',
+    'id': 'normal',
     'name': 'Everywhere',
     'description': 'The default setting.  This field will be displayed normally in tables and charts.'
 }, {
-    'id': 'detail_views',
+    'id': 'details-only',
     'name': 'Only in Detail Views',
     'description': "This field will only be displayed when viewing the details of a single record. Use this for information that's lengthy or that isn't useful in a table or chart."
 }, {
-    'id': 'do_not_include',
+    'id': 'sensitive',
     'name': 'Do Not Include',
     'description': 'Metabase will never retrieve this field. Use this for sensitive or irrelevant information.'
 }];

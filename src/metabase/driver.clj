@@ -166,6 +166,10 @@
     "*OPTIONAL*. Return a humanized (user-facing) version of an connection error message string.
      Generic error messages are provided in the constant `connection-error-messages`; return one of these whenever possible.")
 
+  (notify-database-updated [this, ^DatabaseInstance database]
+    "*OPTIONAL*. Notify the driver that the attributes of the DATABASE have changed.  This is specifically relevant in
+     the event that the driver was doing some caching or connection pooling.")
+
   (process-native [this, {^Integer database-id :database, {^String native-query :query} :native, :as ^Map query}]
     "Process a native QUERY. This function is called by `metabase.driver/process-query`.
 
@@ -253,6 +257,7 @@
    :describe-table-fks                (constantly nil)
    :features                          (constantly nil)
    :humanize-connection-error-message (u/drop-first-arg identity)
+   :notify-database-updated           (constantly nil)
    :process-query-in-context          (u/drop-first-arg identity)
    :sync-in-context                   (fn [_ _ f] (f))
    :table-rows-seq                    (constantly nil)})

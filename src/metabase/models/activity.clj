@@ -29,7 +29,7 @@
     "segment"   (db/exists? Segment,   :id model_id, :is_active true)
                  nil))
 
-(extend (class Activity)
+(u/strict-extend (class Activity)
   i/IEntity
   (merge i/IEntityDefaults
          {:types       (constantly {:details :json, :topic :keyword})

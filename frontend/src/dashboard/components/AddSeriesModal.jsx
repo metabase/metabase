@@ -205,19 +205,19 @@ export default class AddSeriesModal extends Component {
         })).filter(s => !!s.data);
 
         return (
-            <div className="absolute top left bottom right flex">
+            <div className="spread flex">
                 <div className="flex flex-column flex-full">
                     <div className="flex-no-shrink h3 pl4 pt4 pb1 text-bold">Edit data</div>
                     <div className="flex-full mx1 relative">
                         <Visualization
-                            className="absolute top left bottom right"
+                            className="spread"
                             series={series}
                             isDashboard={true}
                             isMultiseries={true}
                             onRemoveSeries={this.onRemoveSeries}
                         />
                         { this.state.state &&
-                            <div className="absolute top left bottom right flex layout-centered" style={{ backgroundColor: "rgba(255,255,255,0.80)" }}>
+                            <div className="spred flex layout-centered" style={{ backgroundColor: "rgba(255,255,255,0.80)" }}>
                                 { this.state.state === "loading" ?
                                     <div className="h3 rounded bordered p3 bg-white shadowed">Applying Question</div>
                                 : this.state.state === "incompatible" ?

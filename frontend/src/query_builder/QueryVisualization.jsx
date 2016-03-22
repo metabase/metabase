@@ -34,7 +34,8 @@ export default class QueryVisualization extends Component {
         tableForeignKeys: PropTypes.array,
         tableForeignKeyReferences: PropTypes.object,
         setDisplayFn: PropTypes.func.isRequired,
-        setChartColorFn: PropTypes.func.isRequired,
+        onUpdateVisualizationSetting: PropTypes.func.isRequired,
+        onUpdateVisualizationSettings: PropTypes.func.isRequired,
         setSortFn: PropTypes.func.isRequired,
         cellIsClickableFn: PropTypes.func,
         cellClickedFn: PropTypes.func,
@@ -216,7 +217,7 @@ export default class QueryVisualization extends Component {
 
         if(this.props.isRunning) {
             loading = (
-                <div className="Loading absolute top left bottom right flex flex-column layout-centered text-brand z2">
+                <div className="Loading spread flex flex-column layout-centered text-brand z2">
                     <LoadingSpinner />
                     <h2 className="Loading-message text-brand text-uppercase mt3">Doing science...</h2>
                 </div>
@@ -333,10 +334,13 @@ export default class QueryVisualization extends Component {
                         <Visualization
                             className="full"
                             series={[{ card: card, data: this.props.result.data }]}
+                            isEditing={true}
                             // Table:
                             setSortFn={this.props.setSortFn}
                             cellIsClickableFn={this.props.cellIsClickableFn}
                             cellClickedFn={this.props.cellClickedFn}
+                            onUpdateVisualizationSetting={this.props.onUpdateVisualizationSetting}
+                            onUpdateVisualizationSettings={this.props.onUpdateVisualizationSettings}
                         />
                     );
                 }

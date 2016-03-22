@@ -12,12 +12,10 @@ import _  from "underscore";
 export default class Column extends Component {
     constructor(props, context) {
         super(props, context);
-        this.isVisibilityType = this.isVisibilityType.bind(this);
         this.onDescriptionChange = this.onDescriptionChange.bind(this);
         this.onNameChange = this.onNameChange.bind(this);
         this.onSpecialTypeChange = this.onSpecialTypeChange.bind(this);
         this.onTargetChange = this.onTargetChange.bind(this);
-        this.onTypeChange = this.onTypeChange.bind(this);
         this.onVisibilityChange = this.onVisibilityChange.bind(this);
     }
 
@@ -28,16 +26,6 @@ export default class Column extends Component {
         updateFieldSpecialType: PropTypes.func.isRequired,
         updateFieldTarget: PropTypes.func.isRequired
     };
-
-    isVisibilityType(visibility) {
-        switch(visibility.id) {
-            case "do_not_include": return (this.props.field.field_type === "sensitive");
-            case "everywhere": return (this.props.field.field_type !== "sensitive" && this.props.field.preview_display === true);
-            case "detail_views": return (this.props.field.field_type !== "sensitive" && this.props.field.preview_display === false);
-        }
-
-        return false;
-    }
 
     updateProperty(name, value) {
         this.props.field[name] = value;
@@ -57,28 +45,8 @@ export default class Column extends Component {
         this.updateProperty("description", event.target.value);
     }
 
-    onVisibilityChange(visibility) {
-        switch(visibility.id) {
-            case "do_not_include":
-                this.updateProperty("field_type", "sensitive");
-                return;
-            case "everywhere":
-                if (this.props.field.field_type === "sensitive") {
-                    this.props.field.field_type = "info";
-                }
-                this.updateProperty("preview_display", true);
-                return;
-            case "detail_views":
-                if (this.props.field.field_type === "sensitive") {
-                    this.props.field.field_type = "info";
-                }
-                this.updateProperty("preview_display", false);
-                return;
-        }
-    }
-
-    onTypeChange(type) {
-        this.updateProperty("field_type", type.id);
+    onVisibilityChange(type) {
+        this.updateProperty("visibility_type", type.id);
     }
 
     onSpecialTypeChange(special_type) {
@@ -123,18 +91,9 @@ export default class Column extends Component {
                                 <Select
                                     className="TableEditor-field-visibility block"
                                     placeholder="Select a field visibility"
-                                    value={_.find(MetabaseCore.field_visibility_types, this.isVisibilityType)}
+                                    value={_.find(MetabaseCore.field_visibility_types, (type) => type.id === this.props.field.visibility_type)}
                                     options={MetabaseCore.field_visibility_types}
                                     onChange={this.onVisibilityChange}
-                                />
-                            </div>
-                            <div className="flex-full px1">
-                                <Select
-                                    className="TableEditor-field-type block"
-                                    placeholder="Select a field type"
-                                    value={_.find(MetabaseCore.field_field_types, (type) => type.id === this.props.field.field_type)}
-                                    options={MetabaseCore.field_field_types}
-                                    onChange={this.onTypeChange}
                                 />
                             </div>
                             <div className="flex-full px1">

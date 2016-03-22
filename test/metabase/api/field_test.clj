@@ -52,6 +52,7 @@
        :active          true
        :id              (id :users :name)
        :field_type      "info"
+       :visibility_type "normal"
        :position        0
        :preview_display true
        :created_at      $
@@ -84,6 +85,7 @@
               :active          true
               :id              $
               :field_type      "info"
+              :visibility_type "normal"
               :position        0
               :preview_display true
               :created_at      $

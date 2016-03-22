@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: 30
+      author: agilliland
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: visibility_type
+                  type: varchar(32)
+                  constraints:
+                    nullable: true
+                    deferrable: false
+                    initiallyDeferred: false
+        - addNotNullConstraint:
+            columnDataType: varchar(32)
+            columnName: visibility_type
+            defaultNullValue: unset
+            tableName: metabase_field

@@ -1,0 +1,28 @@
+
+:local(.Table) {
+  /* standard table reset */
+  border-collapse: collapse;
+  border-spacing: 0;
+
+  width: 100%;
+
+  font-family: "Helvetica Neue", "Helvetica", sans-serif;
+  font-size: 12px;
+  line-height: 12px;
+  text-align: left;
+}
+
+:local(.Table) tr {
+  border-bottom: 1px solid var(--table-border-color);
+}
+
+:local(.Table) th,
+:local(.Table) td {
+  padding: 1em;
+  border-bottom: 1px solid var(--table-border-color);
+}
+
+:local(.TableSimple) th:first-child,
+:local(.TableSimple) td:first-child {
+  padding-left: 2em;
+}

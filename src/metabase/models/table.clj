@@ -7,7 +7,8 @@
                              [field-values :refer [FieldValues]]
                              [interface :as i]
                              [metric :refer [Metric retrieve-metrics]]
-                             [segment :refer [Segment retrieve-segments]])))
+                             [segment :refer [Segment retrieve-segments]])
+            [metabase.util :as u]))
 
 (def ^:const entity-types
   "Valid values for `Table.entity_type` (field may also be `nil`)."
@@ -31,7 +32,7 @@
 (defn ^:hydrate fields
   "Return the `FIELDS` belonging to TABLE."
   [{:keys [id]}]
-  (db/sel :many Field :table_id id, :active true, (k/order :position :ASC) (k/order :name :ASC)))
+  (db/sel :many Field :table_id id, :visibility_type [not= "retired"], (k/order :position :ASC) (k/order :name :ASC)))
 
 (defn ^:hydrate metrics
   "Retrieve the metrics for TABLE."
@@ -47,7 +48,7 @@
   "Return the `FieldValues` for all `Fields` belonging to TABLE."
   {:hydrate :field_values, :arglists '([table])}
   [{:keys [id]}]
-  (let [field-ids (db/sel :many :id Field, :table_id id, :active true, :field_type [not= "sensitive"]
+  (let [field-ids (db/sel :many :id Field, :table_id id, :visibility_type "normal"
                           (k/order :position :asc)
                           (k/order :name :asc))]
     (db/sel :many :field->field [FieldValues :field_id :values] :field_id [in field-ids])))
@@ -56,13 +57,13 @@
   "Return the ID of the primary key `Field` for TABLE."
   {:hydrate :pk_field, :arglists '([table])}
   [{:keys [id]}]
-  (db/sel :one :id Field, :table_id id, :special_type "id"))
+  (db/sel :one :id Field, :table_id id, :special_type "id", :visibility_type [not-in ["sensitive" "retired"]]))
 
 (def ^{:arglists '([table])} database
   "Return the `Database` associated with this `Table`."
   (comp Database :db_id))
 
-(extend (class Table)
+(u/strict-extend (class Table)
   i/IEntity (merge i/IEntityDefaults
                    {:hydration-keys     (constantly [:table])
                     :types              (constantly {:entity_type :keyword, :visibility_type :keyword, :description :clob})

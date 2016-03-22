@@ -250,7 +250,7 @@
    The record type automatically extends `IEntity` with `IEntityDefaults`, but you may call `extend` again if you need to
    override default behaviors:
 
-     (extend (class User)             ; it's somewhat more readable to write `(class User)` instead `UserInstance`
+     (u/strict-extend (class User)             ; it's somewhat more readable to write `(class User)` instead `UserInstance`
        IEntity (merge IEntityDefaults
                       {...}))
 
@@ -271,7 +271,7 @@
          (~'invoke [this#]     (invoke-entity-or-instance this#))
          (~'invoke [this# id#] (invoke-entity-or-instance this# id#)))
 
-       (extend ~instance
+       (u/strict-extend ~instance
          IEntity        IEntityDefaults
          ICreateFromMap {:map-> (u/drop-first-arg ~map->instance)})
 

@@ -13,10 +13,12 @@
             [metabase.api.common :refer [let-404]]
             [metabase.db :refer [sel]]
             [metabase.integrations.slack :as slack]
+            [metabase.models.setting :as setting]
             [metabase.task.send-pulses :as pulses]
             [metabase.util :as u]
             [metabase.util.urls :as urls]))
 
+(setting/defsetting metabot-enabled "Enable Metabot, which lets you search for and view your saved questions directly via Slack." "true")
 
 ;;; # ------------------------------------------------------------ Metabot Command Handlers ------------------------------------------------------------
 
@@ -37,7 +39,6 @@
                           {(if (true? dispatch-token)
                              (keyword symb)
                              dispatch-token) varr}))]
-    (println (u/format-color 'cyan verb) fn-map)
     (fn dispatch*
       ([]
        (keys-description (format "Here's what I can %s:" verb) fn-map))
@@ -63,49 +64,36 @@
                       (slack/post-chat-message! *channel-id* (format-exception e#)))))
        nil))
 
-(defn- format-objects
-  "Format a sequence of objects as a nice multiline list for use in responses."
-  [get-url-fn objects]
-  (apply str (interpose "\n" (for [{id :id, obj-name :name, :as obj} objects]
-                               (format "%d.  <%s|\"%s\">" id (get-url-fn obj) obj-name)))))
-
-(def ^:private format-cards      (partial format-objects (comp urls/card-url :id)))
-(def ^:private format-dashboards (partial format-objects (comp urls/dashboard-url :id)))
+(defn- format-cards
+  "Format a sequence of Cards as a nice multiline list for use in responses."
+  [cards]
+  (apply str (interpose "\n" (for [{id :id, card-name :name} cards]
+                               (format "%d.  <%s|\"%s\">" id (urls/card-url id) card-name)))))
 
 
-(defn list:cards
+(defn ^:metabot list
   "Implementation of the `metabot list cards` command."
-  {:list :cards}
   [& _]
   (let [cards (sel :many :fields ['Card :id :name] (k/order :id :DESC) (k/limit 20))]
     (str "Here's your " (count cards) " most recent cards:\n" (format-cards cards))))
 
-(defn list:dashboards
-  "Implementation of the `metabot list dashboards` command."
-  {:list :dashboards}
-  [& _]
-  (let [dashboards (sel :many :fields ['Dashboard :id :name] (k/order :id :DESC) (k/limit 10))]
-    (str "Here's your " (count dashboards) " most recent dashboards:\n" (format-dashboards dashboards))))
-
-(def ^:metabot list
-  "Implementation of the `metabot list` command."
-  (dispatch-fn "list" :list))
+(defn- card-with-name [card-name]
+  (first (u/prog1 (sel :many :fields ['Card :id :name], (k/where {(k/sqlfn :LOWER :name) [like (str \% (str/lower-case card-name) \%)]}))
+           (when (> (count <>) 1)
+             (throw (Exception. (str "Could you be a little more specific? I found these cards with names that matched:\n"
+                                     (format-cards <>))))))))
 
 (defn- id-or-name->card [card-id-or-name]
   (cond
     (integer? card-id-or-name)     (sel :one :fields ['Card :id :name], :id card-id-or-name)
     (or (string? card-id-or-name)
-        (symbol? card-id-or-name)) (first (u/prog1 (sel :many :fields ['Card :id :name], :name [like (str \% card-id-or-name \%)])
-                                            (when (> (count <>) 1)
-                                              (throw (Exception. (str "Could you be a little more specific? I found these cards with names that matched:\n"
-                                                                      (format-cards <>)))))))
+        (symbol? card-id-or-name)) (card-with-name card-id-or-name)
     :else                          (throw (Exception. (format "I don't know what Card `%s` is. Give me a Card ID or name.")))))
 
-(defn show:card
+(defn ^:metabot show
   "Implementation of the `metabot show card <name-or-id>` command."
-  {:show :card}
   ([]
-   "Show which card? Give me a part of a card name or its ID and I can show it to you. If you don't know which card you want, try `metabot list cards`.")
+   "Show which card? Give me a part of a card name or its ID and I can show it to you. If you don't know which card you want, try `metabot list`.")
   ([card-id-or-name & _]
    (let-404 [{card-id :id, card-name :name} (id-or-name->card card-id-or-name)]
      (do-async (pulses/send-pulse! {:name     card-name
@@ -119,16 +107,12 @@
                                                 :schedule_frame "first"}]})))
    "Ok, just a second..."))
 
-(def ^:metabot show
-  "Dispatch function for the `metabot show` family of commands."
-  (dispatch-fn "show" :show))
-
 
 (defn meme:up-and-to-the-right
   "Implementation of the `metabot meme up-and-to-the-right <title>` command."
   {:meme :up-and-to-the-right}
-  [title]
-  "WOW")
+  [& _]
+  ":chart_with_upwards_trend:")
 
 (def ^:metabot ^:unlisted meme
   "Dispatch function for the `metabot meme` family of commands."
@@ -164,23 +148,20 @@
     (when-let [tokens (seq (edn/read-string (str "(" (-> s
                                                          (str/replace "“" "\"") ; replace smart quotes
                                                          (str/replace "”" "\"")) ")")))]
-      (println (u/format-color 'magenta tokens))
       (apply apply-metabot-fn tokens))))
 
 
 ;;; # ------------------------------------------------------------ Metabot Input Handling ------------------------------------------------------------
 
 (defn- message->command-str [{:keys [text]}]
-  (u/prog1 (when (seq text)
-             (second (re-matches #"^mea?ta?boa?t\s+(.*)$" text)))
-    (println (u/format-color 'yellow <>))))
+  (when (seq text)
+    (second (re-matches #"^mea?ta?boa?t\s+(.*)$" text))))
 
 (defn- respond-to-message! [message response]
   (when response
     (let [response (if (coll? response) (str "```\n" (u/pprint-to-str response) "```")
                        (str response))]
       (when (seq response)
-        (println (u/format-color 'green response))
         (slack/post-chat-message! (:channel message) response)))))
 
 (defn- handle-slack-message [message]
@@ -188,8 +169,7 @@
 
 (defn- human-message? [{event-type :type, subtype :subtype}]
   (and (= event-type "message")
-       (not= subtype "bot_message")
-       (not= subtype "message_deleted")))
+       (not (contains? #{"bot_message" "message_changed" "message_deleted"} subtype))))
 
 (defn- event-timestamp-ms [{:keys [ts], :or {ts "0"}}]
   (* (Double/parseDouble ts) 1000))
@@ -199,14 +179,13 @@
 
 (defn- handle-slack-event [socket start-time event]
   (when-not (= socket @websocket)
-    (println "Go home websocket, you're drunk.")
+    (log/debug "Go home websocket, you're drunk.")
     (s/close! socket)
     (throw (Exception.)))
 
   (when-let [event (json/parse-string event keyword)]
     (when (and (human-message? event)
                (> (event-timestamp-ms event) start-time))
-      (println (u/pprint-to-str 'cyan event))
       (binding [*channel-id* (:channel event)]
         (do-async (handle-slack-message event))))))
 
@@ -215,10 +194,8 @@
 
 (defn- connect-websocket! []
   (when-let [websocket-url (slack/websocket-url)]
-    (log/info "Launching MetaBot... 🤖")
     (let [socket @(aleph/websocket-client websocket-url)]
       (reset! websocket socket)
-      (log/info "Connected to WebSocket.")
       (d/catch (s/consume (partial handle-slack-event socket (System/currentTimeMillis))
                           socket)
           (fn [error]
@@ -239,7 +216,6 @@
 (defn- start-websocket-monitor! []
   (future
     (reset! websocket-monitor-thread-id (.getId (Thread/currentThread)))
-    (log/debug "Monitor thread ID ->" (.getId (Thread/currentThread)))
     ;; Every 2 seconds check to see if websocket connection is [still] open, [re-]open it if not
     (loop []
       (Thread/sleep 500)
@@ -247,7 +223,7 @@
         (try
           (when (or (not  @websocket)
                     (s/closed? @websocket))
-            (log/info "MetaBot WebSocket is closed. < Thread" (.getId (Thread/currentThread)) ">")
+            (log/debug "MetaBot WebSocket is closed.  Reconnecting now.")
             (connect-websocket!))
           (catch Throwable e
             (log/error "Error connecting websocket:" (.getMessage e))))
@@ -258,7 +234,8 @@
 
    This will spin up a background thread that opens and maintains a Slack WebSocket connection."
   []
-  (when (slack/slack-token)
+  (when (and (setting/get :slack-token)
+             (= "true" (setting/get :metabot-enabled)))
     (log/info "Starting MetaBot WebSocket monitor thread...")
     (start-websocket-monitor!)))
 

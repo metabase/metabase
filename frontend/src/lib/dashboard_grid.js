@@ -1,6 +1,13 @@
+
+export const GRID_WIDTH = 18;
+export const GRID_ASPECT_RATIO = 4 / 3;
+export const GRID_MARGIN = 6;
+
+export const DEFAULT_CARD_SIZE = { width: 4, height: 4 };
+
 // returns the first available position from left to right, top to bottom,
 // based on the existing cards,  item size, and grid width
-export function getPositionForNewDashCard(cards, sizeX = 2, sizeY = 2, width = 6) {
+export function getPositionForNewDashCard(cards, sizeX = DEFAULT_CARD_SIZE.width, sizeY = DEFAULT_CARD_SIZE.height, width = GRID_WIDTH) {
     let row = 0;
     let col = 0;
     while (row < 1000) {

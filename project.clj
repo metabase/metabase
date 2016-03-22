@@ -36,11 +36,11 @@
                                ring/ring-core]]
                  [com.draines/postal "1.11.4"]                        ; SMTP library
                  [com.google.apis/google-api-services-bigquery        ; Google BigQuery Java Client Library
-                  "v2-rev271-1.21.0"]
+                  "v2-rev275-1.21.0"]
                  [com.h2database/h2 "1.4.191"]                        ; embedded SQL database
                  [com.mattbertolini/liquibase-slf4j "2.0.0"]          ; Java Migrations lib
                  [com.novemberain/monger "3.0.2"]                     ; MongoDB Driver
-                 [compojure "1.4.0"]                                  ; HTTP Routing library built on Ring
+                 [compojure "1.5.0"]                                  ; HTTP Routing library built on Ring
                  [environ "1.0.2"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
                  [korma "0.4.2"]                                      ; SQL lib
@@ -49,15 +49,15 @@
                                javax.jms/jms
                                com.sun.jdmk/jmxtools
                                com.sun.jmx/jmxri]]
-                 [medley "0.7.2"]                                     ; lightweight lib of useful functions
+                 [medley "0.7.3"]                                     ; lightweight lib of useful functions
                  [metabase/throttle "1.0.1"]                          ; Tools for throttling access to API endpoints and other code pathways
                  [mysql/mysql-connector-java "5.1.38"]                ; MySQL JDBC driver
-                 [net.sf.cssbox/cssbox "4.10"
+                 [net.sf.cssbox/cssbox "4.11"
                   :exclusions [org.slf4j/slf4j-api]]
                  [net.sourceforge.jtds/jtds "1.3.1"]                  ; Open Source SQL Server driver
                  [org.xhtmlrenderer/flying-saucer-core "9.0.8"]
                  [org.liquibase/liquibase-core "3.4.2"]               ; migration management (Java lib)
-                 [org.slf4j/slf4j-log4j12 "1.7.18"]
+                 [org.slf4j/slf4j-log4j12 "1.7.19"]
                  [org.yaml/snakeyaml "1.17"]                          ; YAML parser (required by liquibase)
                  [org.xerial/sqlite-jdbc "3.8.11.2"]                  ; SQLite driver
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
@@ -120,7 +120,8 @@
                                        "-Dmb.api.key=test-api-key"
                                        "-Xverify:none"]}              ; disable bytecode verification when running tests so they start slightly faster
              :uberjar {:aot :all
-                       :jvm-opts ["-Dclojure.compiler.elide-meta=[:doc :added :file :line]"]}
+                       :jvm-opts ["-Dclojure.compiler.elide-meta=[:doc :added :file :line]" ; strip out metadata for faster load / smaller uberjar size
+                                  "-Dmanifold.disable-jvm8-primitives=true"]} ; disable Manifold Java 8 primitives (see https://github.com/ztellman/manifold#java-8-extensions)
              :generate-sample-dataset {:dependencies [[faker "0.2.2"]                   ; Fake data generator -- port of Perl/Ruby
                                                       [incanter/incanter-core "1.9.0"]] ; Satistical functions like normal distibutions}})
                                        :source-paths ["sample_dataset"]

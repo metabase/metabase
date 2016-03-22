@@ -2,6 +2,11 @@
     background-color: #f9fbfc;
 }
 
+.DashboardHeader {
+  background-color: white;
+  border-bottom: var(--border-size) var(--border-style) var(--border-color);
+}
+
 .Dash-wrapper {
     width: 100%;
 }
@@ -18,10 +23,68 @@
    .Dash-wrapper { max-width: var(--lg-width); }
 }
 
+/* Fullscreen mode */
+.Dashboard.Dashboard--fullscreen .Header-button {
+  color: #D2DBE4;
+}
+
+.Dashboard.Dashboard--fullscreen .DashboardHeader {
+  background-color: transparent;
+  border: none;
+}
+.Dashboard.Dashboard--fullscreen .Header-title-description {
+  display: none;
+}
+
+/* Night mode */
+.Dashboard.Dashboard--night .Header-button,
+.Dashboard.Dashboard--night .Header-button svg {
+    color: rgba(151, 151, 151, 0.3) !important;
+}
+
+.Dashboard.Dashboard--night {
+  background-color: rgb(34, 37, 39);
+}
+
+
+.Dashboard.Dashboard--night .DashCard .Card a,
+.Dashboard.Dashboard--night .DashCard .Card div,
+.Dashboard.Dashboard--night .DashCard .Card span {
+  color: rgba(255, 255, 255, 0.86) !important;
+}
+
+.Dashboard.Dashboard--night .DashCard .Card svg text {
+  fill: rgba(255, 255, 255, 0.86) !important;
+}
+
+.Dashboard.Dashboard--night .DashCard .Card {
+  background-color: rgb(54, 58, 61);
+  border: 1px solid rgb(46, 49, 52) !important;
+}
+
+.Dashboard.Dashboard--night .enable-dots-onhover .dc-tooltip circle.dot:hover,
+.Dashboard.Dashboard--night .enable-dots .dc-tooltip circle.dot {
+  fill: currentColor !important;
+}
+
+/* Night mode transition */
+.Dashboard.Dashboard--fullscreen,
+.Dashboard.Dashboard--fullscreen .DashCard .Card {
+  transition: background-color 1s linear, border 1s linear;
+}
+
+.Dashboard.Dashboard--fullscreen .DashCard .Card a,
+.Dashboard.Dashboard--fullscreen .DashCard .Card div,
+.Dashboard.Dashboard--fullscreen .DashCard .Card span,
+.Dashboard.Dashboard--fullscreen .Header-button,
+.Dashboard.Dashboard--fullscreen .Header-button svg {
+  transition: color 1s linear;
+}
+
+
+
 .DashboardGrid {
-    margin-top: 5px;
-    margin-left: -5px;
-    margin-right: -5px;
+  margin-top: 5px;
 }
 
 .DashCard {
@@ -36,6 +99,8 @@
   bottom: 0;
   right: 0;
   overflow: hidden;
+  background-color: white;
+  border: 1px solid rgb(219, 219, 219);
 }
 
 .Card-outer {
@@ -46,7 +111,6 @@
 
 .Dash--editing .DashCard .Card {
     pointer-events: none;
-    border: 1px dashed rgba(149, 149, 149, 0.5);
     transition: border .3s, background-color .3s;
 }
 
@@ -55,16 +119,11 @@
         background-color: rgba(255, 250, 243, 1.0);
     }
     to {
-        background-color: rgba(255, 250, 243, 0.0);
+        background-color: rgba(255, 255, 255, 1.0);
     }
 }
 
-.DashCard .Card {
-    background-color: white;
-}
-
 .Dash--editing .DashCard .Card.Card--recent {
-    /*background-color: rgb(255, 250, 243);*/
     animation-duration: 30s;
     animation-name: fade-out-yellow;
 }
@@ -73,22 +132,47 @@
   z-index: 2;
 }
 
+/* Google Maps widgets */
+.DashCard .gm-style-mtc,
+.DashCard .gm-bundled-control,
+.DashCard .PinMapUpdateButton {
+  opacity: 0.01;
+  transition: opacity 0.3s linear;
+}
+.DashCard:hover .gm-style-mtc,
+.DashCard:hover .gm-bundled-control,
+.DashCard:hover .PinMapUpdateButton {
+  opacity: 1;
+}
+
+.Dash--editing .PinMap {
+  /* allow map to pan. need to stopPropagation in PinMap to prevent weird dragging interaction */
+  pointer-events: all;
+}
+
+.PinMapUpdateButton--disabled {
+  pointer-events: none;
+  color: color(var(--base-grey) shade(10%));
+}
 
 .Dash--editing .DashCard .Card {
-    background: #fff;
     user-select: none;
 }
 
-.Dash--dragging .DashCard.dragging .Card {
+.DashCard .Card {
+    box-shadow: 0px 1px 3px rgba(0,0,0,0.08);
+}
+
+.Dash--editing .DashCard.dragging .Card {
     box-shadow: 3px 3px 8px rgba(0,0,0,0.1);
 }
 
-.Dash--dragging .DashCard.dragging,
+.Dash--editing .DashCard.dragging,
 .Dash--editing .DashCard.resizing {
     z-index: 2;
 }
 
-.Dash--dragging .DashCard.dragging .Card,
+.Dash--editing .DashCard.dragging .Card,
 .Dash--editing .DashCard.resizing .Card {
     background-color: #E5F1FB !important;
     border: 1px solid var(--brand-color);
@@ -106,7 +190,7 @@
   pointer-events: all;
 }
 
-.Dash--dragging .DashCard.dragging .DashCard-actions,
+.Dash--editing .DashCard.dragging .DashCard-actions,
 .Dash--editing .DashCard.resizing .DashCard-actions {
     opacity: 0;
     transition: opacity .3s linear;
@@ -116,7 +200,7 @@
     transition: transform .3s;
 }
 
-.Dash--dragging .DashCard.dragging,
+.Dash--editing .DashCard.dragging,
 .Dash--editing .DashCard.resizing {
     transition: transform 0s;
 }
@@ -134,6 +218,33 @@
     cursor: nwse-resize;
 }
 
+.Dash--editing .DashCard .react-resizable-handle:after {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  bottom: 10px;
+  right: 10px;
+  border-bottom: 2px solid color(var(--base-grey) shade(20%));
+  border-right: 2px solid color(var(--base-grey) shade(20%));
+  border-bottom-right-radius: 2px;
+  transition: opacity .2s;
+  opacity: 0.01;
+}
+
+.Dash--editing .DashCard .react-resizable-handle:hover:after {
+  border-color: color(var(--base-grey) shade(40%));
+}
+
+.Dash--editing .DashCard:hover .react-resizable-handle:after {
+  opacity: 1;
+}
+
+.Dash--editing .DashCard.dragging .react-resizable-handle:after,
+.Dash--editing .DashCard.resizing .react-resizable-handle:after {
+  opacity: 0.01;
+}
+
 .Dash--editing .react-grid-placeholder {
     z-index: 0;
     background-color: #F2F2F2;
@@ -145,7 +256,7 @@
 }
 
 /* ensure action buttons do not respond to events when dragging */
-.Dash--dragging .DashCard-actions {
+.Dash--editing.Dash--dragging .DashCard-actions {
     pointer-events: none !important;
 }
 
@@ -188,6 +299,10 @@
   fill: #A2A2A2;
 }
 
+.dc-chart .tick line {
+  display: none;
+}
+
 /* gridline at 0 overlaps with X axis */
 .dc-chart .grid-line.horizontal line:first-child {
   display: none;
@@ -198,7 +313,7 @@
 }
 
 .enable-dots .dc-tooltip circle.dot {
-  r: 3 !important;
+  r: 3px !important;
   fill: white;
   stroke: currentColor;
   stroke-width: 2;
@@ -213,7 +328,7 @@
 
 .enable-dots-onhover .dc-tooltip circle.dot:hover,
 .enable-dots-onhover .dc-tooltip circle.dot.hover {
-  r: 3 !important;
+  r: 3px !important;
   fill: white;
   stroke: currentColor;
   stroke-width: 2;
@@ -293,3 +408,28 @@
 /*.voronoi path {
   fill: rgba(255,0,0,0.05);
 }*/
+
+/*
+
+  fullscreen text size modifications
+
+*/
+
+/*
+  increase the base font size in fullscreen mode to bump things up to
+  accomodate for viewing distance on TVs etc
+*/
+@media screen and (min-width: 1280px) {
+  .Dashboard.Dashboard--fullscreen { font-size: 1.2em; }
+  /* keep the dashboard header title from being overwhelmingly large */
+  .Dashboard.Dashboard--fullscreen .Header-title-name { font-size: 1em; }
+
+  .Dashboard.Dashboard--fullscreen .fullscreen-text-small .LegendItem {
+    font-size: 1em;
+  }
+}
+
+@media screen and (min-width: 1540px) {
+  .Dashboard.Dashboard--fullscreen { font-size: 1.6em; }
+
+}

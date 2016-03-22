@@ -1,6 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
 import DataReferenceQueryButton from './DataReferenceQueryButton.jsx';
+import { createQuery } from "metabase/lib/query";
 import { foreignKeyCountsByOriginTable } from 'metabase/lib/schema_metadata';
 import inflection from 'inflection';
 import cx from "classnames";
@@ -46,12 +47,7 @@ export default class DataReferenceTable extends Component {
     }
 
     setQueryAllRows() {
-        var query;
-        query = this.props.setDatabaseFn(this.state.table.db_id);
-        query = this.props.setSourceTableFn(this.state.table.id);
-        query.query.aggregation = ["rows"];
-        query.query.breakout = [];
-        query.query.filter = [];
+        var query = createQuery("query", this.state.table.db_id, this.state.table.id);
         this.props.setQueryFn(query);
         this.props.runQueryFn();
     }

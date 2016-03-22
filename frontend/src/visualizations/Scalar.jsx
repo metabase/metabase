@@ -1,13 +1,15 @@
 import React, { Component, PropTypes } from "react";
+import styles from "./Scalar.css";
 
-import { formatScalar } from "metabase/lib/formatting";
-import { isSameSeries } from "metabase/visualizations/lib/utils";
-
+import Ellipsified from "metabase/components/Ellipsified.jsx";
 import BarChart from "./BarChart.jsx";
 
-import LegendHeader from "./components/LegendHeader.jsx";
+import Urls from "metabase/lib/urls";
+import { formatValue } from "metabase/lib/formatting";
+import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 import cx from "classnames";
+import i from "icepick";
 
 export default class Scalar extends Component {
     static displayName = "Number";
@@ -16,6 +18,8 @@ export default class Scalar extends Component {
 
     static noHeader = true;
     static supportsSeries = true;
+
+    static minSize = { width: 3, height: 3 };
 
     static isSensible(cols, rows) {
         return rows.length === 1 && cols.length === 1;
@@ -75,7 +79,7 @@ export default class Scalar extends Component {
     }
 
     render() {
-        let { data, isDashboard, className, onAddSeries, extraActions, hovered } = this.props;
+        let { card, data, isDashboard, className, onAddSeries, actionButtons, hovered, onHoverChange, gridSize } = this.props;
 
         if (this.state.isMultiseries) {
             return (
@@ -83,40 +87,34 @@ export default class Scalar extends Component {
                     className={className}
                     isDashboard={isDashboard}
                     onAddSeries={onAddSeries}
-                    extraActions={extraActions}
+                    actionButtons={actionButtons}
                     series={this.state.series}
                     isScalarSeries={true}
-                    hovered={this.props.hovered}
-                    onHoverChange={this.props.onHoverChange}
+                    hovered={hovered}
+                    onHoverChange={onHoverChange}
                     allowSplitAxis={false}
                 />
             );
         }
 
-        let formattedScalarValue = (data && data.rows && data.rows[0] && data.rows[0].length > 0) ? formatScalar(data.rows[0][0]) : "";
-        if (isDashboard) {
-            return (
-                <div className={cx("flex flex-column p1", this.props.className)}>
-                    { isDashboard &&
-                        <LegendHeader
-                            series={this.props.series}
-                            onAddSeries={onAddSeries}
-                            extraActions={extraActions}
-                            hovered={hovered}
-                            onHoverChange={this.props.onHoverChange}
-                        />
-                    }
-                    <div className={"Card--scalar " + className}>
-                        <h1 className="Card-scalarValue text-normal">{formattedScalarValue}</h1>
-                    </div>
-                </div>
-            );
-        } else {
-            return (
-                <div className={"Visualization--scalar flex layout-centered " + className}>
-                    <span>{formattedScalarValue}</span>
-                </div>
-            );
-        }
+        let isSmall = gridSize && gridSize.width < 4;
+
+        let scalarValue = i.getIn(data, ["rows", 0, 0]);
+        let compactScalarValue = scalarValue == undefined ? "" :
+            formatValue(scalarValue, { column: i.getIn(data, ["cols", 0]), compact: isSmall });
+        let fullScalarValue = scalarValue == undefined ? "" :
+            formatValue(scalarValue, { column: i.getIn(data, ["cols", 0]), compact: false });
+
+        return (
+            <div className={cx(className, styles.Scalar, styles[isSmall ? "small" : "large"])}>
+                <div className="Card-title absolute top right p1 px2">{actionButtons}</div>
+                <Ellipsified className={cx(styles.Value, 'ScalarValue')} tooltip={fullScalarValue} alwaysShowTooltip={fullScalarValue !== compactScalarValue}>
+                    {compactScalarValue}
+                </Ellipsified>
+                <Ellipsified className={styles.Title} tooltip={card.name}>
+                    <a className="no-decoration" href={Urls.card(card.id)}>{card.name}</a>
+                </Ellipsified>
+            </div>
+        );
     }
 }

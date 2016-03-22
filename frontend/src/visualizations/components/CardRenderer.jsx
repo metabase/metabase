@@ -2,15 +2,17 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
+import AbsoluteContainer from "metabase/components/AbsoluteContainer.jsx";
 
 import * as charting from "metabase/visualizations/lib/CardRenderer";
 
-import { setLatitudeAndLongitude } from "metabase/lib/visualization_settings";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
-
 import { getSettingsForVisualization } from "metabase/lib/visualization_settings";
 
+import dc from "dc";
+
 @ExplicitSize
+@AbsoluteContainer
 export default class CardRenderer extends Component {
     static propTypes = {
         chartType: PropTypes.string.isRequired,
@@ -33,13 +35,30 @@ export default class CardRenderer extends Component {
         this.renderChart();
     }
 
+    componentWillUnmount() {
+        this._deregisterChart();
+    }
+
+    _deregisterChart() {
+        if (this._chart) {
+            dc.chartRegistry.deregister(this._chart);
+            this._chart = null;
+        }
+    }
+
     renderChart() {
         let { series } = this.props;
         let parent = ReactDOM.findDOMNode(this);
+
+        // deregister previous chart:
+        this._deregisterChart();
+
+        // reset the DOM:
         let element = parent.firstChild;
         parent.removeChild(element);
         element = document.createElement("div");
         parent.appendChild(element);
+
         try {
             if (series[0] && series[0].data) {
                 // augment with visualization settings
@@ -51,29 +70,7 @@ export default class CardRenderer extends Component {
                     }
                 }));
 
-                if (this.props.chartType === "pin_map") {
-                    // call signature is (elementId, card, updateMapCenter (callback), updateMapZoom (callback))
-
-                    // identify the lat/lon columns from our data and make them part of the viz settings so we can render maps
-                    let card = {
-                        ...series[0].card,
-                        visualization_settings: setLatitudeAndLongitude(series[0].card.visualization_settings, series[0].data.cols)
-                    }
-
-                    // these are example callback functions that could be passed into the renderer
-                    var updateMapCenter = (lat, lon) => {
-                        this.props.onUpdateVisualizationSetting(["map", "center_latitude"], lat);
-                        this.props.onUpdateVisualizationSetting(["map", "center_longitude"], lat);
-                    };
-
-                    var updateMapZoom = (zoom) => {
-                        this.props.onUpdateVisualizationSetting(["map", "zoom"], zoom);
-                    };
-
-                    charting.CardRenderer[this.props.chartType](element, { ...this.props, card, updateMapCenter, updateMapZoom });
-                } else {
-                    charting.CardRenderer[this.props.chartType](element, { ...this.props, series, card: series[0].card, data: series[0].data });
-                }
+                this._chart = charting.CardRenderer[this.props.chartType](element, { ...this.props, series, card: series[0].card, data: series[0].data });
             }
         } catch (err) {
             console.error(err);
@@ -83,7 +80,7 @@ export default class CardRenderer extends Component {
 
     render() {
         return (
-            <div className="Card-outer px1">
+            <div className="Card-outer">
                 <div ref="chart"></div>
             </div>
         );
