@@ -8,7 +8,8 @@
   :aliases {"bikeshed" ["bikeshed" "--max-line-length" "240"]
             "check-reflection-warnings" ["with-profile" "+reflection-warnings" "check"]
             "test" ["with-profile" "+expectations" "expectations"]
-            "generate-sample-dataset" ["with-profile" "+generate-sample-dataset" "run"]}
+            "generate-sample-dataset" ["with-profile" "+generate-sample-dataset" "run"]
+            "h2" ["with-profile" "+h2-shell" "run"]}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/core.async "0.2.374"]
                  [org.clojure/core.match "0.3.0-alpha4"]              ; optimized pattern matching library for Clojure
@@ -136,4 +137,5 @@
                               :jar-name "reset-password.jar"
                               ;; Exclude everything except for reset-password specific code in the created jar
                               :jar-exclusions [#"^(?!metabase/reset_password).*$"]
-                              :target-path "reset-password-artifacts/%s"}}) ; different than ./target because otherwise lein uberjar will delete our artifacts and vice versa
+                              :target-path "reset-password-artifacts/%s"} ; different than ./target because otherwise lein uberjar will delete our artifacts and vice versa
+             :h2-shell {:main ^:skip-aot org.h2.tools.Shell}})
