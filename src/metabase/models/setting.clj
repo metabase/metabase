@@ -5,6 +5,7 @@
             [korma.core :as k]
             [metabase.config :as config]
             [metabase.db :refer [exists? sel del]]
+            [metabase.events :as events]
             [metabase.models [common :as common]
                              [interface :as i]]
             [metabase.setup :as setup]
@@ -128,7 +129,7 @@
     (if-let [v (clojure.core/get settings k)]
       (set k v)
       (delete k)))
-  settings)
+  (events/publish-event :settings-update settings))
 
 (defn set*
   "Set the value of a `Setting`, deleting it if VALUE is `nil` or an empty string."

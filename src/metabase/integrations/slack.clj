@@ -7,13 +7,7 @@
 
 
 ;; Define a setting which captures our Slack api token
-(defsetting slack-token "Slack API bearer token obtained from https://api.slack.com/web#authentication" nil
-  :setter (fn [new-value]
-            (setting/set* :slack-token new-value)
-            (require 'metabase.metabot)
-            ((ns-resolve 'metabase.metabot (if (seq new-value)
-                                              'start-metabot!
-                                              'stop-metabot!)))))
+(defsetting slack-token "Slack API bearer token obtained from https://api.slack.com/web#authentication" nil)
 
 (def ^:private ^:const ^String slack-api-base-url "https://slack.com/api")
 (def ^:private ^:const ^String files-channel-name "metabase_files")
