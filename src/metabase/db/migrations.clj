@@ -124,6 +124,7 @@
                      :sizeY (when sizeY (* sizeY 4))})
       (k/where {:id id}))))
 
+
 ;; migrate data to new visibility_type column on field
 (defmigration migrate-field-visibility-type
   (when (< 0 (:cnt (first (k/select Field (k/aggregate (count :*) :cnt) (k/where (= :visibility_type "unset"))))))
@@ -149,3 +150,23 @@
       (k/set-fields {:visibility_type "normal"})
       (k/where      {:visibility_type "unset"
                      :active          true}))))
+
+
+;; deal with dashboard cards which have NULL `:row` or `:col` values
+(defmigration fix-dashboard-cards-without-positions
+  (let [bad-dashboards (k/select DashboardCard (k/fields [:dashboard_id]) (k/modifier "DISTINCT") (k/where (or (= :row nil) (= :col nil))))]
+    (when (not-empty bad-dashboards)
+      (log/info "Looks like we need to fix unpositioned cards in these dashboards:" (mapv :dashboard_id bad-dashboards))
+      ;; we are going to take the easy way out, which is to put bad-cards at the bottom of the dashboard
+      (doseq [{dash-to-fix :dashboard_id} bad-dashboards]
+        (let [max-row   (or (:row (first (k/select DashboardCard (k/aggregate (max :row) :row) (k/where {:dashboard_id dash-to-fix})))) 0)
+              max-size  (or (:size (first (k/select DashboardCard (k/aggregate (max :sizeY) :size) (k/where {:dashboard_id dash-to-fix, :row max-row})))) 0)
+              max-y     (+ max-row max-size)
+              bad-cards (k/select DashboardCard (k/fields :id :sizeY) (k/where {:dashboard_id dash-to-fix}) (k/where (or (= :row nil) (= :col nil))))]
+          (loop [[bad-card & rest] bad-cards
+                 row-target        max-y]
+            (k/update DashboardCard
+              (k/set-fields {:row row-target
+                             :col 0})
+              (k/where      {:id  (:id bad-card)}))
+            (when rest (recur rest (+ row-target (:sizeY bad-card))))))))))
