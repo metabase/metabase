@@ -1,6 +1,5 @@
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
-import styles from "./Legend.css";
 
 import Tooltip from "metabase/components/Tooltip.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
@@ -27,7 +26,7 @@ export default class LegendItem extends Component {
         return (
             <a
                 href={href}
-                className={cx(styles.LegendItem, className, "no-decoration flex align-center", { mr1: showTitle, muted: isMuted })}
+                className={cx(className, "LegendItem", "no-decoration flex align-center", { mr1: showTitle, muted: isMuted })}
                 style={{ overflowX: "hidden", flex: "0 1 auto" }}
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}

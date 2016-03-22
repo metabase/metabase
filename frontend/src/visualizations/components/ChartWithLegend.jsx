@@ -58,7 +58,7 @@ export default class ChartWithLegend extends Component {
         }
 
         return (
-            <div className={cx(className, styles.ChartWithLegend, styles[type], flexChart && styles.flexChart)} style={{ paddingBottom: PADDING, paddingLeft: PADDING, paddingRight: PADDING }}>
+            <div className={cx(className, 'fullscreen-text-small', styles.ChartWithLegend, styles[type], flexChart && styles.flexChart)} style={{ paddingBottom: PADDING, paddingLeft: PADDING, paddingRight: PADDING }}>
                 { LegendComponent ?
                     <LegendComponent
                         className={styles.Legend}

@@ -69,7 +69,7 @@ export default class LegendVertical extends Component {
                             isMuted={hovered && hovered.index != null && index !== hovered.index}
                             showTooltip={false}
                         />
-                        <span className={cx(styles.LegendItem, "flex-align-right pl1", { muted: hovered && hovered.index != null && index !== hovered.index })}>{title[1]}</span>
+                      <span className={cx("LegendItem","flex-align-right pl1", { muted: hovered && hovered.index != null && index !== hovered.index })}>{title[1]}</span>
                     </li>
                 )}
                 {overflowCount > 0 ?
