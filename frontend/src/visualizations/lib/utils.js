@@ -1,4 +1,5 @@
 
+import React from "react";
 import _ from "underscore";
 import d3 from "d3";
 
@@ -126,4 +127,42 @@ export function colorShade(hex, shade = 0) {
     return "#" + components.map(c =>
         Math.round(min + (max - min) * shade * (c / 255)).toString(16)
     ).join("");
+}
+
+export function enableVisualizationEasterEgg(code, OriginalVisualization, EasterEggVisualization) {
+    if (!code) {
+        code = [38, 38, 40, 40, 37, 39, 37, 39, 66, 65];
+    } else if (typeof code === "string") {
+        code = code.split("").map(c => c.charCodeAt(0));
+    }
+    wrapMethod(OriginalVisualization.prototype, "componentWillMount", function easterEgg() {
+        let keypresses = [];
+        let enabled = false;
+        let render_original = this.render;
+        let render_egg = function() {
+            return <EasterEggVisualization {...this.props} />;
+        };
+        this._keyListener = (e) => {
+            keypresses = keypresses.concat(e.keyCode).slice(-code.length);
+            if (code.reduce((ok, value, index) => ok && value === keypresses[index], true)) {
+                enabled = !enabled;
+                this.render = enabled ? render_egg : render_original;
+                this.forceUpdate();
+            }
+        }
+        window.addEventListener("keyup", this._keyListener, false);
+    });
+    wrapMethod(OriginalVisualization.prototype, "componentWillUnmount", function cleanupEasterEgg() {
+        window.removeEventListener("keyup", this._keyListener, false);
+    });
+}
+
+function wrapMethod(object, name, method) {
+    let method_original = object[name];
+    object[name] = function() {
+        method.apply(this, arguments);
+        if (typeof method_original === "function") {
+            return method_original.apply(this, arguments);
+        }
+    }
 }

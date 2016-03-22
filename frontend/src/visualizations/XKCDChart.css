@@ -1,0 +1,27 @@
+
+:local(.XKCDChart) {
+    font-family: "Humor Sans", sans-serif;
+    font-size: 16px;
+    color: #333;
+    text-align: center;
+}
+
+:local(.XKCDChart) text.title {
+    font-size: 20px;
+}
+
+:local(.XKCDChart) path {
+    fill: none;
+    stroke-width: 2.5px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+:local(.XKCDChart) path.axis {
+    stroke: black;
+}
+
+:local(.XKCDChart) path.bgline {
+    stroke: white;
+    stroke-width: 6px;
+}
