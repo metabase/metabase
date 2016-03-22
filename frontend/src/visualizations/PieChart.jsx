@@ -57,16 +57,6 @@ export default class PieChart extends Component {
 
         let total = data.rows.reduce((sum, row) => sum + row[1], 0);
 
-        let value, title;
-        if (hovered && hovered.index != null) {
-            const row = series[0].data.rows[hovered.index];
-            title = formatDimension(row[0]);
-            value = formatMetric(row[1]);
-        } else {
-            title = "Total";
-            value = formatMetric(total);
-        }
-
         let sliceColors = Object.values(colors.normal);
 
         let [slices, others] = _.chain(data.rows)
@@ -124,6 +114,15 @@ export default class PieChart extends Component {
                 { key: "Percentage", value: formatPercent(slices[index].percentage) }
             ]
         });
+
+        let value, title;
+        if (hovered && hovered.index != null && slices[hovered.index] !== otherSlice) {
+            title = slices[hovered.index].key;
+            value = slices[hovered.index].value;
+        } else {
+            title = "Total";
+            value = formatMetric(total);
+        }
 
         return (
             <ChartWithLegend
