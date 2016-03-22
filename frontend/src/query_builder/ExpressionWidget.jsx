@@ -23,11 +23,110 @@ const KEYCODE_UP    = 38;
 const KEYCODE_DOWN  = 40;
 
 
+function tokenizeExpression(expression, i = 0, level = 0) {
+    var tokens = [],
+        currentToken = null,
+        start = i;
+
+    for (; i < expression.length; i++) {
+        let c = expression.charAt(i);
+
+        if (c === ' ' || c === '\n') {
+            if (currentToken) {
+                tokens.push({
+                    value: currentToken,
+                    start: start,
+                    end: i
+                });
+                currentToken = null;
+                start = i + 1;
+            }
+        }
+        else if (c === '(') {
+            // TODO - this is probably actually ok, we should accept it as a token separate from the parens
+            if (currentToken) throw 'invalid token: ' + currentToken + '(';
+
+            var token;
+            [token, i] = tokenizeExpression(expression, i + 1, level + 1); // parse recursively starting at point immediately after opening paren
+            tokens.push({
+                value: token,
+                start: start,
+                end: i,
+                isParent: true
+            });
+        }
+        else if (c === ')') {
+            if (level === 0) throw 'expression is missing an opening paren';
+            if (currentToken) tokens.push({
+                value: currentToken,
+                start: start,
+                end: i - 1
+            });
+            return [tokens, i + 1];
+        }
+        else {
+            if (!currentToken) {
+                currentToken = '';
+                start = i;
+            }
+            currentToken += c;
+        }
+    }
+
+    if (level !== 0) throw 'expression is missing a closing paren';
+
+    if (currentToken) tokens.push({
+        value: currentToken,
+        start: start,
+        end: i
+    });
+
+    return tokens;
+}
+
+// return the token underneath a cursor position
+function tokenAtPosition(tokens, position) {
+    if (!tokens || !tokens.length) return null;
+
+    console.log('tokenAtPosition(', tokens, position, ')');
+    for (var i = 0; i < tokens.length; i++) {
+        let token = tokens[i];
+
+        if (token.start <= position && token.end >= position) {
+            return token.isParent ? tokenAtPosition(token.value, position) : token;
+        }
+    }
+}
+
+// return the first token with a non-empty error message
+function getErrorToken(tokens) {
+    for (var i = 0; i < tokens.length; i++) {
+        let token = tokens[i];
+        if (token.error && token.error.length) return token;
+        if (!token.isParent) continue;
+        let childError = getErrorToken(token.value);
+        if (childError) return childError;
+    }
+}
+
+function getParsedExpression(tokens) {
+    if (!tokens || tokens.constructor !== Array || tokens.length !== 3) return null;
+
+    try {
+        let [lhs, operator, rhs] = tokens;
+
+        return [operator.parsedValue, lhs.parsedValue, rhs.parsedValue];
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+
 export default class ExpressionWidget extends Component {
     constructor(props, context) {
         super(props, context);
-        _.bindAll(this, 'parseToken', 'parseExpression', 'tokenizeExpressionString', 'updateName', 'updateExpression', 'removeExpression', 'updateSuggestions', 'onExpressionInputKeyDown',
-                        'onExpressionInputBlur', 'onExpressionInputFocus');
+        _.bindAll(this, 'parseToken', 'parseExpression', 'updateName', 'onExpressionInputChange', 'removeExpression', 'getSuggestions', 'onExpressionInputKeyDown',
+                  'onExpressionInputBlur');
     }
 
     static propTypes = {
@@ -45,17 +144,21 @@ export default class ExpressionWidget extends Component {
 
     componentWillReceiveProps(newProps) {
         let parsedExpression = newProps.expression[0],
-            expressionString = newProps.expression[1];
+            expression       = newProps.expression[1],
+            tokens           = this.parseExpression(tokenizeExpression(expression))
         this.setState({
             name:                   newProps.name,
             parsedExpression:       parsedExpression,
-            expressionString:       expressionString,
-            nameErrorMessage:       newProps.name.length    ? null : ERROR_MESSAGE_EMPTY_NAME,
-            expressionErrorMessage: expressionString.length ? null : ERROR_MESSAGE_EMPTY_EXPRESSION,
+            expressionString:       expression,
+            tokens:                 tokens,
+            nameErrorMessage:       newProps.name.length ? null : ERROR_MESSAGE_EMPTY_NAME,
+            expressionErrorMessage: expression.length    ? null : ERROR_MESSAGE_EMPTY_EXPRESSION,
             suggestions:            [],
             highlightedSuggestion:  0,
             suggestionsTitle:       'FIELDS'
         });
+
+        console.log('component recieved props, state is now: ', this.state);
     }
 
     componentWillUnmount() {
@@ -71,27 +174,31 @@ export default class ExpressionWidget extends Component {
         if (!this.state.suggestions.length) return;
 
         if (event.keyCode === KEYCODE_ENTER) {
-            let suggestedField = this.state.suggestions[this.state.highlightedSuggestion];
+            let suggestion = this.state.suggestions[this.state.highlightedSuggestion].name;
+            let tokenAtPoint = tokenAtPosition(this.state.tokens, event.target.selectionStart);
 
-            // strip off the last partial token
-            let expression = this.state.expressionString.replace(new RegExp('\\s*[^\\s]+$'), '');
+            console.log('replacing:', tokenAtPoint, 'with:', suggestion);
 
-            // tack on the new token
-            expression = expression.length ? (expression + ' ' + suggestedField.name) : suggestedField.name;
+            let expression = this.state.expressionString.substring(0, tokenAtPoint.start) + suggestion + this.state.expressionString.substring(tokenAtPoint.end, this.state.expressionString.length);
 
-            this.updateExpression(expression + ' '); // add a blank space after end of token
+            event.target.value = expression + ' ';
+            this.onExpressionInputChange(event); // add a blank space after end of token
+
+            this.setState({
+                highlightedSuggestion: 0
+            });
 
         } else if (event.keyCode === KEYCODE_UP) {
             this.setState({
                 highlightedSuggestion: this.state.highlightedSuggestion === 0 ? (this.state.suggestions.length - 1) : (this.state.highlightedSuggestion - 1)
             });
-            event.preventDefault(); // don't move to beginning of text field
         } else if (event.keyCode === KEYCODE_DOWN) {
             this.setState({
                 highlightedSuggestion: this.state.highlightedSuggestion === (this.state.suggestions.length - 1) ? 0 : (this.state.highlightedSuggestion + 1)
             });
-            event.preventDefault(); // don't move to end of text field
         } else return;
+
+        event.preventDefault();
     }
 
     onExpressionInputBlur() {
@@ -101,116 +208,88 @@ export default class ExpressionWidget extends Component {
         });
     }
 
-    onExpressionInputFocus() {
-        this.updateExpression(this.state.expressionString); // trigger update of state related to expression so autocomplete will pop up, etc.
-    }
-
     /// update suggestions with ones for fieldName
-    updateSuggestions(fieldName) {
+    getSuggestions(fieldName) {
+        if (!fieldName) fieldName = '';
+
         let suggestions = _.filter(this.props.tableMetadata.fields, function(field) {
-            // case-insensitive, but don't suggest exact matches (e.g. if field name is already valid don't keep autocomplete box open)
-            return field.name.toLowerCase().indexOf(fieldName.toLowerCase()) > -1 && field.name !== fieldName;
+            // return field.name.indexOf(fieldName) > 1;
+            return field.name.toLowerCase().indexOf(fieldName.toLowerCase()) > -1;
         });
-        suggestions = _.sortBy(suggestions, 'name');
 
-        var highlightedSuggestion = this.state.highlightedSuggestion;
-        if (highlightedSuggestion >= suggestions.length) highlightedSuggestion = suggestions.length - 1;
-        if (highlightedSuggestion < 0)                   highlightedSuggestion = 0;
+        // don't suggest anything if the only suggestion is for the token we already have
+        if (suggestions.length === 1 && suggestions[0].name === fieldName) suggestions = [];
 
-        this.setState({
-            suggestions:           suggestions,
-            highlightedSuggestion: highlightedSuggestion,
-            suggestionsTitle:      'FIELDS'
+        return _.sortBy(suggestions, function(field) {
+            return field.name.toLowerCase();
         });
     }
 
     parseToken(token) {
+        if (typeof token !== 'object') console.error('not an object: ', token);
+
         // check if token is a nested expression
-        if (token.constructor === Array) return this.parseExpression(token);
+        if (token.isParent) return this.parseExpression(token);
 
         // check if the token is a number
-        let numericValue = parseFloat(token);
-        if (!isNaN(numericValue)) return numericValue;
+        let numericValue = parseFloat(token.value);
+        if (!isNaN(numericValue)) {
+            token.parsedValue = numericValue;
+            return token;
+        }
 
         // if not, it is a field name
-        this.updateSuggestions(token);
+        token.suggestions = this.getSuggestions(token.value);
 
         let fields = this.props.tableMetadata.fields;
-        let field = _.findWhere(fields, {name: token});
-        if (!field) throw 'no field named "' + token + '"';
-        return ["field-id", field.id];
+        let field = _.findWhere(fields, {name: token.value});
+        if (!field) token.error = 'no field named "' + token.value + '"';
+
+        if (field) token.parsedValue = ['field-id', field.id];
+
+        return token;
     }
 
     parseExpression(tokens) {
+        console.log('parseExpression(', tokens, ')');
         // unnest excess parens
-        if (tokens.length === 1 && tokens[0].constructor === Array) return this.parseExpression(tokens[0]);
+        if (tokens.length === 1 && tokens[0].isParent) return this.parseExpression(tokens[0].value);
 
         let [lhs, operator, rhs] = tokens;
 
-        if (!lhs) {
-            this.updateSuggestions(''); // show suggestions for all fields
-            throw 'expression is empty';
+        lhs = lhs ? this.parseToken(lhs) : {
+            token: '',
+            start: 0,
+            end: 0,
+            error: 'expression is empty',
+            suggestions: this.getSuggestions('')
+        };
+
+        if (operator) {
+            if (!VALID_OPERATORS.has(operator.value)) operator.error       = 'invalid operator: ' + operator.value;
+            else                                      operator.parsedValue = operator.value;
+        } else {
+            operator = {
+                token: '',
+                start: lhs.end + 1,
+                end: lhs.end + 1,
+                error: 'missing operator',
+                suggestions: OPERATOR_SUGGESTIONS
+            };
         }
 
-        lhs = this.parseToken(lhs);
+        rhs = tokens.length > 3 ? this.parseExpression(tokens.slice(2)) :
+              rhs               ? this.parseToken(rhs)                  : {
+                  token: '',
+                  start: operator.end + 1,
+                  end: operator.end + 1,
+                  error: 'add something to the right of ' + operator.value,
+                  suggestions: this.getSuggestions('')
+              };
 
-        if (!operator) {
-            this.setState({
-                suggestions:           OPERATOR_SUGGESTIONS,
-                highlightedSuggestion: 0,
-                suggestionsTitle:      'OPERATORS'
-            });
-            throw 'missing operator';
-        }
-
-        if (!VALID_OPERATORS.has(operator)) throw 'invalid operator: ' + operator;
-
-        if (!rhs) {
-            this.updateSuggestions(''); // show suggestions for all fields
-            throw 'add something to the right of ' + operator;
-        }
-        // if we have more than one remaining arg recur to parse a nested expression
-        rhs = tokens.length > 3 ? this.parseExpression(tokens.slice(2)) : this.parseToken(rhs);
-
-        return [operator, lhs, rhs];
+        return [lhs, operator, rhs];
     }
 
-    // e.g. '  field + field2 + (field3  -  field4)' -> ['field', '+', 'field2', ['field3', '-', 'field4']]
-    tokenizeExpressionString(expressionString, i = 0, level = 0) {
-        var tokens = [],
-            currentToken = null;
-
-        for (; i < expressionString.length; i++) {
-            let c = expressionString.charAt(i);
-
-            if (c === ' ' || c === '\n') {
-                if (currentToken) {
-                    tokens.push(currentToken);
-                    currentToken = null;
-                }
-            }
-            else if (c === '(') {
-                if (currentToken) throw 'invalid token: ' + currentToken + '(';
-                var token;
-                [token, i] = this.tokenizeExpressionString(expressionString, i + 1, level + 1); // parse recursively starting at point immediately after opening paren
-                tokens.push(token);
-            }
-            else if (c === ')') {
-                if (level === 0) throw 'expression is missing an opening paren';
-                if (currentToken) tokens.push(currentToken);
-                return [tokens, i + 1];
-            }
-            else {
-                if (!currentToken) currentToken = '';
-                currentToken += c;
-            }
-        }
-
-        if (level !== 0) throw 'expression is missing a closing paren';
-
-        if (currentToken) tokens.push(currentToken);
-        return tokens;
-    }
 
     updateName(newName) {
         this.setState({
@@ -219,21 +298,47 @@ export default class ExpressionWidget extends Component {
         });
     }
 
-    updateExpression(expressionString) {
+    onExpressionInputChange(event) {
+        let expression = event.target.value;
+
         var errorMessage = null,
-            parsedExpression = null;
+            tokens = [],
+            suggestions = [],
+            highlightedSuggestion = this.state.highlightedSuggestion;
 
         try {
-            let tokens = this.tokenizeExpressionString(expressionString);
-            parsedExpression = this.parseExpression(tokens);
+            tokens = tokenizeExpression(expression);
+            console.log('tokens (before parse)', tokens);
+
+            tokens = this.parseExpression(tokens);
+            console.log('tokens (after parse):', tokens);
+
+            let errorToken = getErrorToken(tokens);
+            if (errorToken) errorMessage = errorToken.error;
+
+            console.log('errorMessage: ', errorMessage);
+
+            let cursorPosition = event.target.selectionStart;
+            let tokenAtPoint = tokenAtPosition(tokens, cursorPosition);
+            console.log('tokenAtPoint:', tokenAtPoint);
+
+            if (tokenAtPoint && tokenAtPoint.suggestions) suggestions = tokenAtPoint.suggestions;
+
+            if (highlightedSuggestion >= suggestions.length) highlightedSuggestion = suggestions.length - 1;
+            if (highlightedSuggestion < 0)                   highlightedSuggestion = 0;
+
         } catch (e) {
             errorMessage = e;
         }
 
+
         this.setState({
             expressionErrorMessage: errorMessage,
-            expressionString: expressionString,
-            parsedExpression: parsedExpression
+            expressionString: expression,
+            parsedExpression: getParsedExpression(tokens),
+            suggestions: suggestions,
+            highlightedSuggestion: highlightedSuggestion,
+            tokens: tokens
         });
     }
 
@@ -251,10 +356,10 @@ export default class ExpressionWidget extends Component {
         let autocomplete = this.state.suggestions.length ? (
             <Popover className="p1"
                      tetherOptions={{
-                         attachment: 'top center',
-                         targetAttachment: 'bottom center',
-                         targetOffset: '-20 45'
-                     }}
+                             attachment: 'top center',
+                             targetAttachment: 'bottom center',
+                             targetOffset: '-20 45'
+                         }}
             >
                 <h5 className="text-grey-1">
                     {this.state.suggestionsTitle}
@@ -277,12 +382,12 @@ export default class ExpressionWidget extends Component {
                        placeholder="field name"
                 />
                 <input className="mx2" type="text"
-                       onChange={(event) => this.updateExpression(event.target.value)}
+                       onChange={this.onExpressionInputChange}
                        value={this.state.expressionString}
                        placeholder="expression"
                        onKeyDown={this.onExpressionInputKeyDown}
                        onBlur={this.onExpressionInputBlur}
-                       onFocus={this.onExpressionInputFocus}
+                       onFocus={this.onExpressionInputChange}
                 />
                 <a onClick={() => this.removeExpression()}>
                     <Icon name='close' width="12px" height="12px" />
