@@ -28,7 +28,7 @@ export default class ChartWithLegend extends Component {
         let chartWidth, chartHeight, flexChart = false;
         let type, LegendComponent;
         let isHorizontal = gridSize && gridSize.width > gridSize.height / GRID_ASPECT_RATIO;
-        if (!gridSize || (isHorizontal && gridSize.width > 3 && gridSize.height > 2)) {
+        if (!gridSize || (isHorizontal && (gridSize.width > 4 || gridSize.height > 4))) {
             type = "horizontal";
             LegendComponent = LegendVertical;
             if (gridSize && gridSize.width < 6) {
