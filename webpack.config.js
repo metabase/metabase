@@ -60,6 +60,12 @@ var CSSNEXT_CONFIG = {
     compress: false
 };
 
+var CSS_CONFIG = {
+    localIdentName: NODE_ENV !== "production" ? "[local]---[hash:base64:5]" : undefined,
+    restructuring: false,
+    compatibility: true
+}
+
 var config = module.exports = {
     // output a bundle for the app JS and a bundle for styles
     // eventually we should have multiple (single file) entry points for various pieces of the app to enable code splitting
@@ -94,7 +100,7 @@ var config = module.exports = {
             },
             {
                 test: /\.css$/,
-                loader: ExtractTextPlugin.extract("style-loader", "css-loader?-restructuring&compatibility!postcss-loader")
+                loader: ExtractTextPlugin.extract("style-loader", "css-loader?" + JSON.stringify(CSS_CONFIG) + "!postcss-loader")
             }
         ],
         noParse: [
@@ -103,7 +109,7 @@ var config = module.exports = {
     },
 
     resolve: {
-        // modulesDirectories: [],
+        extensions: ["", ".webpack.js", ".web.js", ".js", ".jsx", ".css"],
         alias: {
             'metabase':             SRC_PATH + '/src',
 
@@ -183,7 +189,7 @@ if (NODE_ENV === "hot") {
     });
 
     // disable ExtractTextPlugin
-    config.module.loaders[config.module.loaders.length - 1].loader = "style-loader!css-loader?-restructuring&compatibility!postcss-loader"
+    config.module.loaders[config.module.loaders.length - 1].loader = "style-loader!css-loader?" + JSON.stringify(CSS_CONFIG) + "!postcss-loader"
 
     config.plugins.unshift(
         new webpack.NoErrorsPlugin()

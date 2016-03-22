@@ -21,7 +21,7 @@ export default class AddToDashSelectQuestionModal extends Component {
 
         fetchCards: PropTypes.func.isRequired,
         addCardToDashboard: PropTypes.func.isRequired,
-        setEditingDashboard: PropTypes.func.isRequired,
+        onEditingChange: PropTypes.func.isRequired,
 
         onClose: PropTypes.func.isRequired
     };
@@ -37,7 +37,7 @@ export default class AddToDashSelectQuestionModal extends Component {
 
     onAdd(card) {
         this.props.addCardToDashboard({ dashId: this.props.dashboard.id, cardId: card.id });
-        this.props.setEditingDashboard(true);
+        this.props.onEditingChange(true);
         this.props.onClose();
         MetabaseAnalytics.trackEvent("Dashboard", "Add Card");
     }

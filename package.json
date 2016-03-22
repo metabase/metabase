@@ -26,6 +26,7 @@
     "fixed-data-table": "^0.6.0",
     "history": "1.12.0",
     "humanize-plus": "^1.5.0",
+    "icepick": "^1.1.0",
     "inflection": "^1.7.1",
     "moment": "^2.12.0",
     "node-libs-browser": "^0.5.3",
@@ -47,6 +48,7 @@
     "redux-router": "^1.0.0-beta4",
     "redux-thunk": "^1.0.0",
     "reselect": "^2.0.1",
+    "screenfull": "^3.0.0",
     "tether": "^1.2.0",
     "underscore": "^1.8.3",
     "z-index": "0.0.1"

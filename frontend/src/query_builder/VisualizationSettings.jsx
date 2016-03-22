@@ -4,14 +4,12 @@ import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 
 import visualizations from "metabase/visualizations";
-import { getDefaultColor, getDefaultColorHarmony } from "metabase/lib/visualization_settings";
 
 import cx from "classnames";
 
 export default class VisualizationSettings extends React.Component {
     constructor(props, context) {
         super(props, context);
-        this.setChartColor = this.setChartColor.bind(this);
         this.setDisplay = this.setDisplay.bind(this);
     }
 
@@ -19,19 +17,14 @@ export default class VisualizationSettings extends React.Component {
         card: PropTypes.object.isRequired,
         result: PropTypes.object,
         setDisplayFn: PropTypes.func.isRequired,
-        setChartColorFn: PropTypes.func.isRequired
+        onUpdateVisualizationSetting: PropTypes.func.isRequired,
+        onUpdateVisualizationSettings: PropTypes.func.isRequired
     };
 
     setDisplay(type) {
         // notify our parent about our change
         this.props.setDisplayFn(type);
         this.refs.displayPopover.toggle();
-    }
-
-    setChartColor(color) {
-        // tell parent about our new color
-        this.props.setChartColorFn(color);
-        this.refs.colorPopover.toggle();
     }
 
     renderChartTypePicker() {
@@ -75,54 +68,19 @@ export default class VisualizationSettings extends React.Component {
         );
     }
 
-    renderChartColorPicker() {
-        if (this.props.card.display === "line" || this.props.card.display === "area" || this.props.card.display === "bar") {
-            var colors = getDefaultColorHarmony();
-            var colorItems = [];
-            for (var i=0; i < colors.length; i++) {
-                var color = colors[i];
-                var localStyles = {
-                    "backgroundColor": color
-                };
-
-                colorItems.push((
-                    <li key={i} className="CardSettings-colorBlock" style={localStyles} onClick={this.setChartColor.bind(null, color)}></li>
-                ));
-            }
-
-            // TODO: currently we set all chart type colors to the same value so bar color always works
-            var currentColor = this.props.card.visualization_settings.bar && this.props.card.visualization_settings.bar.color || getDefaultColor();
-            var triggerElement = (
-                <span className="px2 py1 text-bold cursor-pointer text-default flex align-center">
-                    <div className="ColorWell rounded bordered" style={{backgroundColor:currentColor}}></div>
-                    Color
-                    <Icon className="ml1" name="chevrondown" width="8px" height="8px"/>
-                </span>
+    renderVisualizationSettings() {
+        let { card } = this.props;
+        let visualization = visualizations.get(card.display);
+        return (
+            visualization.settings && visualization.settings.map((VisualizationSetting, index) =>
+                <VisualizationSetting
+                    key={index}
+                    settings={card.visualization_settings}
+                    onUpdateVisualizationSetting={this.props.onUpdateVisualizationSetting}
+                    onUpdateVisualizationSettings={this.props.onUpdateVisualizationSettings}
+                />
             )
-
-            return (
-                <div className="relative">
-                    <span className="GuiBuilder-section-label Query-label">Color</span>
-                    <PopoverWithTrigger ref="colorPopover"
-                                        hasArrow={false}
-                                        tetherOptions={{
-                                            attachment: 'middle left',
-                                            targetAttachment: 'middle right',
-                                            targetOffset: '0 0',
-                                            constraints: [{ to: 'window', attachment: 'together', pin: ['left', 'right']}]
-                                        }}
-                                        triggerElement={triggerElement}
-                                        triggerClasses="flex align-center">
-                        <ol className="p1">
-                            {colorItems}
-                        </ol>
-                    </PopoverWithTrigger>
-                </div>
-            );
-
-        } else {
-            return false;
-        }
+        );
     }
 
     render() {
@@ -130,7 +88,7 @@ export default class VisualizationSettings extends React.Component {
             return (
                 <div className="VisualizationSettings flex align-center">
                     {this.renderChartTypePicker()}
-                    {this.renderChartColorPicker()}
+                    {this.renderVisualizationSettings()}
                 </div>
             );
         } else {

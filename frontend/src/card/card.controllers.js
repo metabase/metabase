@@ -15,6 +15,7 @@ import SavedQuestionsApp from './containers/SavedQuestionsApp.jsx';
 
 import { createStore, combineReducers } from "metabase/lib/redux";
 import _ from "underscore";
+import i from "icepick";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import DataGrid from "metabase/lib/data_grid";
@@ -22,7 +23,6 @@ import Query from "metabase/lib/query";
 import { createQuery } from "metabase/lib/query";
 import { createCard, serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
 import { loadTable } from "metabase/lib/table";
-import { getDefaultColor } from "metabase/lib/visualization_settings";
 
 import NotFound from "metabase/components/NotFound.jsx";
 
@@ -181,32 +181,11 @@ CardControllers.controller('CardDetail', [
             setDisplayFn: function(display) {
                 onVisualizationSettingsChanged(display, card.visualization_settings);
             },
-            setChartColorFn: function(color) {
-                let vizSettings = angular.copy(card.visualization_settings);
-
-                // if someone picks the default color then clear any color settings
-                if (color === getDefaultColor()) {
-                    // NOTE: this only works if setting color is the only option we allow
-                    vizSettings = {};
-
-                } else {
-                    // this really needs to be better
-                    let lineSettings = (vizSettings.line) ? vizSettings.line : {};
-                    let areaSettings = (vizSettings.area) ? vizSettings.area : {};
-                    let barSettings = (vizSettings.bar) ? vizSettings.bar : {};
-
-                    lineSettings.lineColor = color;
-                    lineSettings.marker_fillColor = color;
-                    lineSettings.marker_lineColor = color;
-                    areaSettings.fillColor = color;
-                    barSettings.color = color;
-
-                    vizSettings.line = lineSettings;
-                    vizSettings.area = areaSettings;
-                    vizSettings.bar = barSettings;
-                }
-
-                onVisualizationSettingsChanged(card.display, vizSettings);
+            onUpdateVisualizationSetting: function(path, value) {
+                onVisualizationSettingsChanged(card.display, i.assocIn(card.visualization_settings, path, value));
+            },
+            onUpdateVisualizationSettings: function(settings) {
+                onVisualizationSettingsChanged(card.display, settings);
             },
             setSortFn: function(fieldId) {
                 // NOTE: we only allow this for structured type queries & we only allow sorting by a single column
@@ -650,6 +629,8 @@ CardControllers.controller('CardDetail', [
 
             card.display = display;
             card.visualization_settings = cardVizSettings;
+
+            updateUrl();
 
             renderAll();
         }

@@ -60,6 +60,10 @@ const TYPES = {
 };
 
 export function isFieldType(type, field) {
+    if (!field) {
+        return false;
+    }
+
     let def = TYPES[type];
     // check to see if it belongs to any of the field types:
     for (let prop of ["field", "base", "special"]) {
