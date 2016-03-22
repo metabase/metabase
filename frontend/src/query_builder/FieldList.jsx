@@ -85,11 +85,7 @@ export default class FieldList extends Component {
     }
 
     renderItemExtra(item) {
-        let { field, tableMetadata, enableTimeGrouping } = this.props;
-
-        if (tableMetadata.db.engine === "mongo") {
-            enableTimeGrouping = false
-        }
+        let { field, enableTimeGrouping } = this.props;
 
         return (
             <div className="flex align-center">
@@ -142,7 +138,7 @@ export default class FieldList extends Component {
         let { tableMetadata } = this.props;
         return (
             <div className="p1">
-                <Tooltip tooltipElement={<QueryDefinitionTooltip object={segment} tableMetadata={tableMetadata} />}>
+                <Tooltip tooltip={<QueryDefinitionTooltip object={segment} tableMetadata={tableMetadata} />}>
                     <span className="QuestionTooltipTarget" />
                 </Tooltip>
             </div>

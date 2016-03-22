@@ -5,6 +5,7 @@ import ModalContent from "metabase/components/ModalContent.jsx";
 export default class DeleteDashboardModal extends Component {
     constructor(props, context) {
         super(props, context);
+
         this.state = {
             error: null
         };
@@ -12,6 +13,7 @@ export default class DeleteDashboardModal extends Component {
 
     static propTypes = {
         dashboard: PropTypes.object.isRequired,
+
         onClose: PropTypes.func,
         onDelete: PropTypes.func
     };

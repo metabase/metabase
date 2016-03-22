@@ -5,7 +5,9 @@
             [colorize.core :as color]
             [environ.core :refer [env]]
             [expectations :refer [expect]]
-            [metabase.driver :as driver]))
+            (metabase [config :as config]
+                      [driver :as driver])
+            [metabase.test.data.interface :as i]))
 
 (driver/find-and-load-drivers!)
 (def ^:const all-valid-engines (set (keys (driver/available-drivers))))
@@ -26,21 +28,17 @@
   "Return a set of dataset names to test against from the env var `ENGINES`."
   []
   (when-let [env-engines (some-> (env :engines) s/lower-case)]
-    (some->> (s/split env-engines #",")
-             (map keyword)
-             ;; Double check that the specified datasets are all valid
-             (map (fn [engine]
-                    (assert (contains? all-valid-engines engine)
-                      (format "Invalid dataset specified in ENGINES: %s" (name engine)))
-                    engine))
-             set)))
+    (set (for [engine (s/split env-engines #",")
+               :when engine]
+           (keyword engine)))))
 
 (def ^:const test-engines
   "Set of names of drivers we should run tests against.
    By default, this only contains `:h2` but can be overriden by setting env var `ENGINES`."
   (let [engines (or (get-engines-from-env)
                     #{:h2})]
-    (log/info (color/green "Running QP tests against these engines: " engines))
+    (when config/is-test?
+      (log/info (color/cyan "Running QP tests against these engines: " engines)))
     engines))
 
 
@@ -54,6 +52,14 @@
   "Keyword name of the engine that we're currently testing against. Defaults to `:h2`."
   default-engine)
 
+(defn- engine->driver
+  "Like `driver/engine->driver`, but reloads the relevant test data namespace as well if needed."
+  [engine]
+  (try (i/engine (driver/engine->driver engine))
+       (catch IllegalArgumentException _
+         (require (symbol (str "metabase.test.data." (name engine))) :reload)))
+  (driver/engine->driver engine))
+
 (def ^:dynamic *data-loader*
   "The dataset we're currently testing against, bound by `with-engine`.
    This is just a regular driver, e.g. `MySQLDriver`, with an extra promise keyed by `:dbpromise`
@@ -62,7 +68,7 @@
 
 (defn do-with-engine [engine f]
   (binding [*engine*      engine
-            *data-loader* (driver/engine->driver engine)]
+            *data-loader* (engine->driver engine)]
     (f)))
 
 (defmacro with-engine
@@ -103,8 +109,8 @@
   [engines expected actual]
   ;; Make functions to get expected/actual so the code is only compiled one time instead of for every single driver
   ;; speeds up loading of metabase.driver.query-processor-test significantly
-  (let [e (gensym "expected-")
-        a (gensym "actual-")]
+  (let [e (symbol (str "expected-" (hash expected)))
+        a (symbol (str "actual-"   (hash actual)))]
     `(let [~e (fn [] ~expected)
            ~a (fn [] ~actual)]
        ~@(for [engine (eval engines)]

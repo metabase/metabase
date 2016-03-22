@@ -2,7 +2,6 @@
   (:require [korma.core :as k]
             [metabase.db :refer :all]
             (metabase.models [common :as common]
-                             [database :refer [Database]]
                              [field-values :refer [FieldValues]]
                              [foreign-key :refer [ForeignKey]]
                              [interface :as i])
@@ -50,8 +49,29 @@
   "Possible values for `Field.field_type`."
   #{:metric      ; A number that can be added, graphed, etc.
     :dimension   ; A high or low-cardinality numerical string value that is meant to be used as a grouping
-    :info        ; Non-numerical value that is not meant to be used
-    :sensitive}) ; A Fields that should *never* be shown *anywhere*
+    :info})      ; Non-numerical value that is not meant to be used
+
+(def ^:const visibility-types
+  "Possible values for `Field.visibility_type`."
+  #{:normal         ; Default setting.  field has no visibility restrictions.
+    :details-only   ; For long blob like columns such as JSON.  field is not shown in some places on the frontend.
+    :hidden         ; Lightweight hiding which removes field as a choice in most of the UI.  should still be returned in queries.
+    :sensitive      ; Strict removal of field from all places except data model listing.  queries should error if someone attempts to access.
+    :retired})      ; For fields that no longer exist in the physical db.  automatically set by Metabase.  QP should error if encountered in a query.
+
+(defn valid-metadata?
+  "Predicate function that checks if the set of metadata types for a field are sensible."
+  [base-type field-type special-type visibility-type]
+  (and (contains? base-types base-type)
+       (contains? field-types field-type)
+       (contains? visibility-types visibility-type)
+       (or (nil? special-type)
+           (contains? special-types special-type))
+       ;; this verifies that we have a numeric base-type when trying to use the unix timestamp transform (#824)
+       (or (nil? special-type)
+           (not (contains? #{:timestamp_milliseconds :timestamp_seconds} special-type))
+           (contains? #{:BigIntegerField :DecimalField :FloatField :IntegerField} base-type))))
+
 
 (i/defentity Field :metabase_field)
 
@@ -59,6 +79,7 @@
   (let [defaults {:active          true
                   :preview_display true
                   :field_type      :info
+                  :visibility_type :normal
                   :position        0
                   :display_name    (common/name->human-readable-name (:name field))}]
     (merge defaults field)))
@@ -76,7 +97,7 @@
 
 (defn qualified-name-components
   "Return the pieces that represent a path to FIELD, of the form `[table-name parent-fields-name* field-name]`."
-  [{field-name :name, table-id :table_id, parent-id :parent_id, :as field}]
+  [{field-name :name, table-id :table_id, parent-id :parent_id}]
   (conj (if-let [parent (Field parent-id)]
           (qualified-name-components parent)
           [(sel :one :field ['Table :name], :id table-id)])
@@ -103,15 +124,16 @@
     (let [dest-id (sel :one :field [ForeignKey :destination_id] :origin_id id)]
       (Field dest-id))))
 
-(extend (class Field)
+(u/strict-extend (class Field)
   i/IEntity (merge i/IEntityDefaults
                    {:hydration-keys     (constantly [:destination :field :origin])
-                    :types              (constantly {:base_type :keyword, :field_type :keyword, :special_type :keyword})
+                    :types              (constantly {:base_type       :keyword
+                                                     :field_type      :keyword
+                                                     :special_type    :keyword
+                                                     :visibility_type :keyword
+                                                     :description     :clob})
                     :timestamped?       (constantly true)
                     :can-read?          (constantly true)
                     :can-write?         i/superuser?
                     :pre-insert         pre-insert
                     :pre-cascade-delete pre-cascade-delete}))
-
-
-(u/require-dox-in-this-namespace)

@@ -1,5 +1,6 @@
 [![Circle CI](https://circleci.com/gh/metabase/metabase.svg?style=svg&circle-token=3ccf0aa841028af027f2ac9e8df17ce603e90ef9)](https://circleci.com/gh/metabase/metabase)
-[![Dependencies Status](https://jarkeeper.com/metabase/metabase-init/status.svg)](https://jarkeeper.com/metabase/metabase)
+[![Leiningen Dependencies Status](https://jarkeeper.com/metabase/metabase/status.png)](https://jarkeeper.com/metabase/metabase)
+[![NPM Dependencies Status](https://david-dm.org/metabase/metabase.svg)](https://david-dm.org/metabase/metabase)
 
 # Overview
 
@@ -53,7 +54,9 @@ For a more detailed walkthrough, check out our [Getting Started](docs/getting-st
 
 # Contributing
 
-To get started with a development installation of the Query Server and learn more about contributing, please follow the instructions at our [Developers Guide](docs/developers-guide.md).
+To get started with a development installation of the Metabase, follow the instructions at our [Developers Guide](docs/developers-guide.md).
+
+The take a look at our [Contribution Guide](docs/contributing.md) for information about our process and where you can fit in!
 
 # Extending and Deep Integrations
 

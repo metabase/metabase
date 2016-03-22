@@ -76,18 +76,20 @@
   [operator & args]
   (apply infix operator (for [arg args]
                           (cond-> arg
-                            (integer? arg) k/raw))))
+                            (number? arg) k/raw))))
 
-(def ^{:arglists '([& exprs])}  +  (partial math-infix "+"))
-(def ^{:arglists '([& exprs])}  -  (partial math-infix "-"))
-(def ^{:arglists '([& exprs])}  /  (partial math-infix "/"))
-(def ^{:arglists '([& exprs])}  *  (partial math-infix "*"))
-(def ^{:arglists '([& exprs])} mod (partial math-infix "%"))
+(def ^{:arglists '([& exprs])}  +  "Math operator. Interpose `+` between EXPRS and wrap in parentheses." (partial math-infix "+"))
+(def ^{:arglists '([& exprs])}  -  "Math operator. Interpose `-` between EXPRS and wrap in parentheses." (partial math-infix "-"))
+(def ^{:arglists '([& exprs])}  /  "Math operator. Interpose `/` between EXPRS and wrap in parentheses." (partial math-infix "/"))
+(def ^{:arglists '([& exprs])}  *  "Math operator. Interpose `*` between EXPRS and wrap in parentheses." (partial math-infix "*"))
+(def ^{:arglists '([& exprs])} mod "Math operator. Interpose `%` between EXPRS and wrap in parentheses." (partial math-infix "%"))
 
-(defn inc [x] (+ x 1))
-(defn dec [x] (- x 1))
+(defn inc "Add 1 to X."        [x] (+ x 1))
+(defn dec "Subtract 1 from X." [x] (- x 1))
 
-(defn literal [s]
+(defn literal
+  "Wrap keyword or string S in single quotes and a korma `raw` form."
+  [s]
   (k/raw (str \' (name s) \')))
 
 (defn cast
@@ -96,21 +98,23 @@
   (kutils/func (clojure.core/format "CAST(%%s AS %s)" (name c))
                [x]))
 
-(defn format [format-str expr]
+(defn format
+  "SQL `FORMAT` function."
+  [format-str expr]
   (k/sqlfn :FORMAT expr (literal format-str)))
 
-(defn ->date                     [x] (cast :DATE x))
-(defn ->datetime                 [x] (cast :DATETIME x))
-(defn ->timestamp                [x] (cast :TIMESTAMP x))
-(defn ->timestamp-with-time-zone [x] (cast "TIMESTAMP WITH TIME ZONE" x))
-(defn ->integer                  [x] (cast :INTEGER x))
+(defn ->date                     "CAST X to a `DATE`."                     [x] (cast :DATE x))
+(defn ->datetime                 "CAST X to a `DATETIME`."                 [x] (cast :DATETIME x))
+(defn ->timestamp                "CAST X to a `TIMESTAMP`."                [x] (cast :TIMESTAMP x))
+(defn ->timestamp-with-time-zone "CAST X to a `TIMESTAMP WITH TIME ZONE`." [x] (cast "TIMESTAMP WITH TIME ZONE" x))
+(defn ->integer                  "CAST X to a `INTEGER`."                  [x] (cast :INTEGER x))
 
 ;;; Random SQL fns. Not all DBs support all these!
-(def ^{:arglists '([& exprs])} floor   (partial k/sqlfn* :FLOOR))
-(def ^{:arglists '([& exprs])} hour    (partial k/sqlfn* :HOUR))
-(def ^{:arglists '([& exprs])} minute  (partial k/sqlfn* :MINUTE))
-(def ^{:arglists '([& exprs])} week    (partial k/sqlfn* :WEEK))
-(def ^{:arglists '([& exprs])} month   (partial k/sqlfn* :MONTH))
-(def ^{:arglists '([& exprs])} quarter (partial k/sqlfn* :QUARTER))
-(def ^{:arglists '([& exprs])} year    (partial k/sqlfn* :YEAR))
-(def ^{:arglists '([& exprs])} concat  (partial k/sqlfn* :CONCAT))
+(def ^{:arglists '([& exprs])} floor   "SQL `FLOOR` function."  (partial k/sqlfn* :FLOOR))
+(def ^{:arglists '([& exprs])} hour    "SQL `HOUR` function."   (partial k/sqlfn* :HOUR))
+(def ^{:arglists '([& exprs])} minute  "SQL `MINUTE` function." (partial k/sqlfn* :MINUTE))
+(def ^{:arglists '([& exprs])} week    "SQL `WEEK` function."   (partial k/sqlfn* :WEEK))
+(def ^{:arglists '([& exprs])} month   "SQL `MONTH` function."  (partial k/sqlfn* :MONTH))
+(def ^{:arglists '([& exprs])} quarter "SQL `QUARTER` function."(partial k/sqlfn* :QUARTER))
+(def ^{:arglists '([& exprs])} year    "SQL `YEAR` function."   (partial k/sqlfn* :YEAR))
+(def ^{:arglists '([& exprs])} concat  "SQL `CONCAT` function." (partial k/sqlfn* :CONCAT))

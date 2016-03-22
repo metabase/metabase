@@ -2,12 +2,10 @@
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
             [metabase.db :as db]
-            [metabase.config :as config]
             [metabase.events :as events]
             (metabase.models [activity :refer [Activity], :as activity]
                              [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
-                             [database :refer [Database]]
                              [interface :as models]
                              [session :refer [Session first-session-for-user]]
                              [table :as table])))
@@ -58,7 +56,7 @@
                                   ;; we expect that the object has just a dashboard :id at the top level
                                   ;; plus a `:dashcards` attribute which is a vector of the cards added/removed
                                   (-> (db/sel :one [Dashboard :description :name :public_perms], :id (events/object->model-id topic obj))
-                                      (assoc :dashcards (for [{:keys [id card_id], :as dashcard} dashcards]
+                                      (assoc :dashcards (for [{:keys [id card_id]} dashcards]
                                                           (-> (db/sel :one [Card :name :description :public_perms], :id card_id)
                                                               (assoc :id id)
                                                               (assoc :card_id card_id))))))]
@@ -70,24 +68,6 @@
                     :dashboard-delete       create-delete-details
                     :dashboard-add-cards    add-remove-card-details
                     :dashboard-remove-cards add-remove-card-details))))
-
-;; disabled for now as it's overly verbose in the feed
-;(defn- process-database-activity [topic object]
-;  (let [database            (db/sel :one Database :id (events/object->model-id topic object))
-;        object              (merge object (select-keys database [:name :description :engine]))
-;        database-details-fn (fn [obj] (-> obj
-;                                          (assoc :status "started")
-;                                          (dissoc :database_id :custom_id)))
-;        database-table-fn   (fn [obj] {:database-id (events/object->model-id topic obj)})]
-;    ;; NOTE: we are skipping any handling of activity for sample databases
-;    (when (= false (:is_sample database))
-;      (case topic
-;        :database-sync-begin (record-activity :database-sync object database-details-fn database-table-fn)
-;        :database-sync-end   (let [{activity-id :id} (db/sel :one Activity :custom_id (:custom_id object))]
-;                               (db/upd Activity activity-id
-;                                 :details (-> object
-;                                              (assoc :status "completed")
-;                                              (dissoc :database_id :custom_id))))))))
 
 (defn- process-metric-activity [topic object]
   (let [details-fn  #(select-keys % [:name :description :revision_message])
@@ -150,7 +130,7 @@
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
-(defn events-init []
-  (when-not (config/is-test?)
-    (log/info "Starting activity-feed events listener")
-    (events/start-event-listener activity-feed-topics activity-feed-channel process-activity-event)))
+(defn events-init
+  "Automatically called during startup; start the events listener for the activity feed."
+  []
+  (events/start-event-listener activity-feed-topics activity-feed-channel process-activity-event))

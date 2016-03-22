@@ -21,7 +21,7 @@
 
 (defendpoint POST "/"
   "Create a new `User`."
-  [:as {{:keys [first_name last_name email password]} :body :as request}]
+  [:as {{:keys [first_name last_name email password]} :body}]
   {first_name [Required NonEmptyString]
    last_name  [Required NonEmptyString]
    email      [Required Email]}
@@ -57,7 +57,7 @@
 
 (defendpoint PUT "/:id"
   "Update a `User`."
-  [id :as {{:keys [email first_name last_name is_superuser] :as body} :body}]
+  [id :as {{:keys [email first_name last_name is_superuser]} :body}]
   {email      [Required Email]
    first_name NonEmptyString
    last_name  NonEmptyString}
@@ -65,12 +65,12 @@
   (check-404 (exists? User :id id :is_active true))           ; only allow updates if the specified account is active
   (check-400 (not (exists? User :email email :id [not= id]))) ; can't change email if it's already taken BY ANOTHER ACCOUNT
   (check-500 (upd-non-nil-keys User id
-                               :email email
-                               :first_name first_name
-                               :last_name last_name
-                               :is_superuser (if (:is_superuser @*current-user*)
-                                               is_superuser
-                                               nil)))
+              :email        email
+              :first_name   first_name
+              :last_name    last_name
+              :is_superuser (if (:is_superuser @*current-user*)
+                              is_superuser
+                              nil)))
   (User id))
 
 
@@ -84,6 +84,14 @@
       (checkp (creds/bcrypt-verify (str (:password_salt user) old_password) (:password user)) "old_password" "Invalid password")))
   (set-user-password id password)
   (User id))
+
+
+(defendpoint PUT "/:id/qbnewb"
+  "Indicate that a user has been informed about the vast intricacies of 'the' QueryBuilder."
+  [id]
+  (check-self-or-superuser id)
+  (check-500 (upd User id :is_qbnewb false))
+  {:success true})
 
 
 (defendpoint POST "/:id/send_invite"

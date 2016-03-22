@@ -28,7 +28,7 @@
             :base-type  :DateTimeField}
            {:field-name "password"
             :base-type  :CharField
-            :field-type :sensitive}]
+            :visibility-type :sensitive}]
   [["Plato Yeshua" #inst "2014-04-01T08:30" "4be68cda-6fd5-4ba7-944e-2b475600bda5"]
    ["Felipinho Asklepios" #inst "2014-12-05T15:15" "5bb19ad9-f3f8-421f-9750-7d398e38428d"]
    ["Kaneonuskatew Eiran" #inst "2014-11-06T16:15" "a329ccfe-b99c-42eb-9c93-cb9adc3eb1ab"]
@@ -135,106 +135,106 @@
             {:field-name   "category_id"
              :base-type    :IntegerField
              :fk           :categories}]
-  [["Red Medicine" 10.0646 -165.374 3 4]
-   ["Stout Burgers & Beers" 34.0996 -118.329 2 11]
-   ["The Apple Pan" 34.0406 -118.428 2 11]
-   ["Wurstküche" 33.9997 -118.465 2 29]
-   ["Brite Spot Family Restaurant" 34.0778 -118.261 2 20]
-   ["The 101 Coffee Shop" 34.1054 -118.324 2 20]
-   ["Don Day Korean Restaurant" 34.0689 -118.305 2 44]
-   ["25°" 34.1015 -118.342 2 11]
-   ["Krua Siri" 34.1018 -118.301 1 71]
-   ["Fred 62" 34.1046 -118.292 2 20]
-   ["The Gorbals" 34.0474 -118.25 2 2]
-   ["The Misfit Restaurant + Bar" 34.0154 -118.497 2 2]
-   ["Pellicola Pizzeria" 34.0451 -118.257 1 58]
-   ["Jones Hollywood" 34.0908 -118.346 3 7]
-   ["BCD Tofu House" 34.0619 -118.303 2 44]
-   ["Pacific Dining Car - Santa Monica" 34.0367 -118.476 4 67]
-   ["Ruen Pair Thai Restaurant" 34.1021 -118.306 2 71]
-   ["The Original Pantry" 34.0464 -118.263 2 20]
-   ["800 Degrees Neapolitan Pizzeria" 34.0597 -118.444 2 58]
-   ["Greenblatt's Delicatessen & Fine Wine Shop" 34.0981 -118.365 2 3]
-   ["PizzaHacker" 37.7441 -122.421 2 58]
-   ["Gordo Taqueria" 37.7822 -122.484 1 50]
-   ["Taqueria Los Coyotes" 37.765 -122.42 2 50]
-   ["La Tortilla" 37.7612 -122.435 1 50]
-   ["Garaje" 37.7818 -122.396 2 50]
-   ["Taqueria San Francisco" 37.753 -122.408 1 50]
-   ["Tout Sweet Patisserie" 37.7873 -122.407 2 13]
-   ["Liguria Bakery" 37.8014 -122.409 1 6]
-   ["20th Century Cafe" 37.775 -122.423 2 12]
-   ["Noe Valley Bakery" 37.7513 -122.434 2 6]
-   ["Bludso's BBQ" 33.8894 -118.207 2 5]
-   ["Boneyard Bistro" 34.1477 -118.428 3 5]
-   ["My Brother's Bar-B-Q" 34.167 -118.595 2 5]
-   ["Beachwood BBQ & Brewing" 33.7701 -118.191 2 10]
-   ["Smoke City Market" 34.1661 -118.448 1 5]
-   ["Handy Market" 34.1716 -118.335 2 3]
-   ["bigmista's barbecue" 34.118 -118.26 2 5]
-   ["Zeke's Smokehouse" 34.2053 -118.226 2 5]
-   ["Baby Blues BBQ" 34.0003 -118.465 2 5]
-   ["Dear Mom" 37.7655 -122.413 2 46]
-   ["Cheese Steak Shop" 37.7855 -122.44 1 18]
-   ["Little Star Pizza" 37.7665 -122.422 2 58]
-   ["Marnee Thai" 37.7634 -122.482 2 71]
-   ["In-N-Out Burger" 37.8078 -122.418 1 11]
-   ["Tu Lan Restaurant" 37.7821 -122.41 1 4]
-   ["Shanghai Dumpling King" 37.7317 -122.451 2 19]
-   ["Marlowe" 37.7767 -122.396 3 2]
-   ["The Residence" 37.7677 -122.429 2 7]
-   ["Hotel Biron" 37.7735 -122.422 3 74]
-   ["Two Sisters Bar & Books" 37.7765 -122.426 2 48]
-   ["Empress of China" 37.7949 -122.406 3 15]
-   ["Cole's" 34.0448 -118.25 2 7]
-   ["Tam O'Shanter" 34.1254 -118.264 3 18]
-   ["Yamashiro Hollywood" 34.1057 -118.342 3 2]
-   ["Dal Rae Restaurant" 33.983 -118.096 4 67]
-   ["Philippe the Original" 34.0597 -118.237 1 18]
-   ["Musso & Frank Grill" 34.1018 -118.335 3 2]
-   ["Taylor's Prime Steak House" 34.0579 -118.302 3 67]
-   ["Pacific Dining Car" 34.0555 -118.266 3 2]
-   ["Polo Lounge" 34.0815 -118.414 3 48]
-   ["Lawry's The Prime Rib" 34.0677 -118.376 4 67]
-   ["Hot Sauce and Panko" 37.7825 -122.476 1 64]
-   ["Giordano Bros." 37.765 -122.422 1 18]
-   ["Festa" 37.7852 -122.432 2 43]
-   ["Slate" 37.765 -122.418 2 48]
-   ["Playground" 37.7858 -122.43 2 43]
-   ["Mint Karaoke Lounge" 37.7702 -122.426 2 43]
-   ["Dimples" 37.7856 -122.43 1 43]
-   ["The Virgil" 34.091 -118.287 2 48]
-   ["The Drawing Room" 34.1037 -118.287 1 7]
-   ["Frolic Room" 34.1016 -118.326 1 7]
-   ["The Daily Pint" 34.0211 -118.466 2 7]
-   ["Pineapple Hill Saloon & Grill" 34.1525 -118.448 2 7]
-   ["Chez Jay" 34.0104 -118.493 2 2]
-   ["Geido" 40.6778 -73.9729 2 40]
-   ["Beyond Sushi" 40.7328 -73.9861 2 40]
-   ["Sushi Nakazawa" 40.7318 -74.0045 4 40]
-   ["Soto" 40.7321 -74.0006 2 40]
-   ["Sushi Yasuda" 40.7514 -73.9736 4 40]
-   ["Blue Ribbon Sushi" 40.7262 -74.0026 3 40]
-   ["Tanoshi Sushi & Sake Bar" 40.7677 -73.9533 4 40]
-   ["Bozu" 40.7129 -73.9576 2 40]
-   ["Sushi Yasaka" 40.7794 -73.9835 2 40]
-   ["Spitz Eagle Rock" 34.1411 -118.221 2 49]
-   ["Cha Cha Chicken" 34.0071 -118.49 1 14]
-   ["Yuca's Taqueria" 34.1092 -118.287 1 50]
-   ["The Gumbo Pot" 34.072 -118.361 2 64]
-   ["Kinaree Thai Bistro" 34.094 -118.344 1 71]
-   ["Tacos Villa Corona" 34.1177 -118.261 1 50]
-   ["Señor Fish" 34.0489 -118.238 2 50]
-   ["Manuel's Original El Tepeyac Cafe" 34.0478 -118.198 2 50]
-   ["Tito's Tacos" 34.0082 -118.415 1 50]
-   ["33 Taps" 34.1018 -118.326 2 7]
-   ["Ye Rustic Inn" 34.1044 -118.288 1 7]
-   ["Rush Street" 34.023 -118.395 2 2]
-   ["Busby's West" 34.0372 -118.469 2 48]
-   ["Barney's Beanery" 34.0908 -118.375 2 46]
-   ["Lucky Baldwin's Pub" 34.1454 -118.149 2 7]
-   ["Golden Road Brewing" 34.1505 -118.274 2 10]
-   ["Mohawk Bend" 34.0777 -118.265 2 46]]]
+  [["Red Medicine" 10.0646 -165.374 3 4]                               ;   1
+   ["Stout Burgers & Beers" 34.0996 -118.329 2 11]                     ;   2
+   ["The Apple Pan" 34.0406 -118.428 2 11]                             ;   3
+   ["Wurstküche" 33.9997 -118.465 2 29]                                ;   4
+   ["Brite Spot Family Restaurant" 34.0778 -118.261 2 20]              ;   5
+   ["The 101 Coffee Shop" 34.1054 -118.324 2 20]                       ;   6
+   ["Don Day Korean Restaurant" 34.0689 -118.305 2 44]                 ;   7
+   ["25°" 34.1015 -118.342 2 11]                                       ;   8
+   ["Krua Siri" 34.1018 -118.301 1 71]                                 ;   9
+   ["Fred 62" 34.1046 -118.292 2 20]                                   ;  10
+   ["The Gorbals" 34.0474 -118.25 2 2]                                 ;  11
+   ["The Misfit Restaurant + Bar" 34.0154 -118.497 2 2]                ;  12
+   ["Pellicola Pizzeria" 34.0451 -118.257 1 58]                        ;  13
+   ["Jones Hollywood" 34.0908 -118.346 3 7]                            ;  14
+   ["BCD Tofu House" 34.0619 -118.303 2 44]                            ;  15
+   ["Pacific Dining Car - Santa Monica" 34.0367 -118.476 4 67]         ;  16
+   ["Ruen Pair Thai Restaurant" 34.1021 -118.306 2 71]                 ;  17
+   ["The Original Pantry" 34.0464 -118.263 2 20]                       ;  18
+   ["800 Degrees Neapolitan Pizzeria" 34.0597 -118.444 2 58]           ;  19
+   ["Greenblatt's Delicatessen & Fine Wine Shop" 34.0981 -118.365 2 3] ;  20
+   ["PizzaHacker" 37.7441 -122.421 2 58]                               ;  21
+   ["Gordo Taqueria" 37.7822 -122.484 1 50]                            ;  22
+   ["Taqueria Los Coyotes" 37.765 -122.42 2 50]                        ;  23
+   ["La Tortilla" 37.7612 -122.435 1 50]                               ;  24
+   ["Garaje" 37.7818 -122.396 2 50]                                    ;  25
+   ["Taqueria San Francisco" 37.753 -122.408 1 50]                     ;  26
+   ["Tout Sweet Patisserie" 37.7873 -122.407 2 13]                     ;  27
+   ["Liguria Bakery" 37.8014 -122.409 1 6]                             ;  28
+   ["20th Century Cafe" 37.775 -122.423 2 12]                          ;  29
+   ["Noe Valley Bakery" 37.7513 -122.434 2 6]                          ;  30
+   ["Bludso's BBQ" 33.8894 -118.207 2 5]                               ;  31
+   ["Boneyard Bistro" 34.1477 -118.428 3 5]                            ;  32
+   ["My Brother's Bar-B-Q" 34.167 -118.595 2 5]                        ;  33
+   ["Beachwood BBQ & Brewing" 33.7701 -118.191 2 10]                   ;  34
+   ["Smoke City Market" 34.1661 -118.448 1 5]                          ;  35
+   ["Handy Market" 34.1716 -118.335 2 3]                               ;  36
+   ["bigmista's barbecue" 34.118 -118.26 2 5]                          ;  37
+   ["Zeke's Smokehouse" 34.2053 -118.226 2 5]                          ;  38
+   ["Baby Blues BBQ" 34.0003 -118.465 2 5]                             ;  39
+   ["Dear Mom" 37.7655 -122.413 2 46]                                  ;  40
+   ["Cheese Steak Shop" 37.7855 -122.44 1 18]                          ;  41
+   ["Little Star Pizza" 37.7665 -122.422 2 58]                         ;  42
+   ["Marnee Thai" 37.7634 -122.482 2 71]                               ;  43
+   ["In-N-Out Burger" 37.8078 -122.418 1 11]                           ;  44
+   ["Tu Lan Restaurant" 37.7821 -122.41 1 4]                           ;  45
+   ["Shanghai Dumpling King" 37.7317 -122.451 2 19]                    ;  46
+   ["Marlowe" 37.7767 -122.396 3 2]                                    ;  47
+   ["The Residence" 37.7677 -122.429 2 7]                              ;  48
+   ["Hotel Biron" 37.7735 -122.422 3 74]                               ;  49
+   ["Two Sisters Bar & Books" 37.7765 -122.426 2 48]                   ;  50
+   ["Empress of China" 37.7949 -122.406 3 15]                          ;  51
+   ["Cole's" 34.0448 -118.25 2 7]                                      ;  52
+   ["Tam O'Shanter" 34.1254 -118.264 3 18]                             ;  53
+   ["Yamashiro Hollywood" 34.1057 -118.342 3 2]                        ;  54
+   ["Dal Rae Restaurant" 33.983 -118.096 4 67]                         ;  55
+   ["Philippe the Original" 34.0597 -118.237 1 18]                     ;  56
+   ["Musso & Frank Grill" 34.1018 -118.335 3 2]                        ;  57
+   ["Taylor's Prime Steak House" 34.0579 -118.302 3 67]                ;  58
+   ["Pacific Dining Car" 34.0555 -118.266 3 2]                         ;  59
+   ["Polo Lounge" 34.0815 -118.414 3 48]                               ;  60
+   ["Lawry's The Prime Rib" 34.0677 -118.376 4 67]                     ;  61
+   ["Hot Sauce and Panko" 37.7825 -122.476 1 64]                       ;  62
+   ["Giordano Bros." 37.765 -122.422 1 18]                             ;  63
+   ["Festa" 37.7852 -122.432 2 43]                                     ;  64
+   ["Slate" 37.765 -122.418 2 48]                                      ;  65
+   ["Playground" 37.7858 -122.43 2 43]                                 ;  66
+   ["Mint Karaoke Lounge" 37.7702 -122.426 2 43]                       ;  67
+   ["Dimples" 37.7856 -122.43 1 43]                                    ;  68
+   ["The Virgil" 34.091 -118.287 2 48]                                 ;  69
+   ["The Drawing Room" 34.1037 -118.287 1 7]                           ;  70
+   ["Frolic Room" 34.1016 -118.326 1 7]                                ;  71
+   ["The Daily Pint" 34.0211 -118.466 2 7]                             ;  72
+   ["Pineapple Hill Saloon & Grill" 34.1525 -118.448 2 7]              ;  73
+   ["Chez Jay" 34.0104 -118.493 2 2]                                   ;  74
+   ["Geido" 40.6778 -73.9729 2 40]                                     ;  75
+   ["Beyond Sushi" 40.7328 -73.9861 2 40]                              ;  76
+   ["Sushi Nakazawa" 40.7318 -74.0045 4 40]                            ;  77
+   ["Soto" 40.7321 -74.0006 2 40]                                      ;  78
+   ["Sushi Yasuda" 40.7514 -73.9736 4 40]                              ;  79
+   ["Blue Ribbon Sushi" 40.7262 -74.0026 3 40]                         ;  80
+   ["Tanoshi Sushi & Sake Bar" 40.7677 -73.9533 4 40]                  ;  81
+   ["Bozu" 40.7129 -73.9576 2 40]                                      ;  82
+   ["Sushi Yasaka" 40.7794 -73.9835 2 40]                              ;  83
+   ["Spitz Eagle Rock" 34.1411 -118.221 2 49]                          ;  84
+   ["Cha Cha Chicken" 34.0071 -118.49 1 14]                            ;  85
+   ["Yuca's Taqueria" 34.1092 -118.287 1 50]                           ;  86
+   ["The Gumbo Pot" 34.072 -118.361 2 64]                              ;  87
+   ["Kinaree Thai Bistro" 34.094 -118.344 1 71]                        ;  88
+   ["Tacos Villa Corona" 34.1177 -118.261 1 50]                        ;  89
+   ["Señor Fish" 34.0489 -118.238 2 50]                                ;  90
+   ["Manuel's Original El Tepeyac Cafe" 34.0478 -118.198 2 50]         ;  91
+   ["Tito's Tacos" 34.0082 -118.415 1 50]                              ;  92
+   ["33 Taps" 34.1018 -118.326 2 7]                                    ;  93
+   ["Ye Rustic Inn" 34.1044 -118.288 1 7]                              ;  94
+   ["Rush Street" 34.023 -118.395 2 2]                                 ;  95
+   ["Busby's West" 34.0372 -118.469 2 48]                              ;  96
+   ["Barney's Beanery" 34.0908 -118.375 2 46]                          ;  97
+   ["Lucky Baldwin's Pub" 34.1454 -118.149 2 7]                        ;  98
+   ["Golden Road Brewing" 34.1505 -118.274 2 10]                       ;  99
+   ["Mohawk Bend" 34.0777 -118.265 2 46]]]                             ; 100
  ["checkins" [{:field-name "user_id"
                :base-type  :IntegerField
                :fk         :users}

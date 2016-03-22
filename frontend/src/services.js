@@ -2,7 +2,7 @@ import _ from "underscore";
 
 import MetabaseAnalytics from 'metabase/lib/analytics';
 import MetabaseCookies from 'metabase/lib/cookies';
-import MetabaseCore from 'metabase/lib/core';
+import * as MetabaseCore from 'metabase/lib/core';
 import MetabaseSettings from 'metabase/lib/settings';
 
 
@@ -332,7 +332,7 @@ CoreServices.factory('Card', ['$resource', '$cookies', function($resource, $cook
 CoreServices.factory('Dashboard', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/dashboard/:dashId', {}, {
         list: {
-            url:'/api/dashboard?org=:orgId&f=:filterMode',
+            url:'/api/dashboard?f=:filterMode',
             method:'GET',
             isArray:true
         },
@@ -363,8 +363,8 @@ CoreServices.factory('Dashboard', ['$resource', '$cookies', function($resource, 
             params:{dashId:'@dashId'}
         },
         reposition_cards: {
-            url:'/api/dashboard/:dashId/reposition',
-            method:'POST',
+            url:'/api/dashboard/:dashId/cards',
+            method:'PUT',
             params:{dashId:'@dashId'}
         }
     });
@@ -409,8 +409,16 @@ CoreServices.factory('ForeignKey', ['$resource', '$cookies', function($resource,
 CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', function($resource, $cookies, MetabaseCore) {
     return $resource('/api/meta', {}, {
         db_list: {
-            url: '/api/database/?org=:orgId',
+            url: '/api/database/',
             method: 'GET',
+            isArray: true
+        },
+        db_list_with_tables: {
+            method: 'GET',
+            url: '/api/database/',
+            params: {
+                include_tables: 'true'
+            },
             isArray: true
         },
         db_create: {
@@ -818,6 +826,13 @@ CoreServices.factory('User', ['$resource', '$cookies', function($resource, $cook
         },
         update_password: {
             url: '/api/user/:userId/password',
+            method: 'PUT',
+            params: {
+                'userId': '@id'
+            }
+        },
+        update_qbnewb: {
+            url: '/api/user/:userId/qbnewb',
             method: 'PUT',
             params: {
                 'userId': '@id'

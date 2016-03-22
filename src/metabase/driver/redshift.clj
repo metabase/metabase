@@ -3,11 +3,11 @@
   (:require [clojure.java.jdbc :as jdbc]
             (korma [core :as k]
                    [db :as kdb])
-            [korma.sql.utils :as kutils]
             (metabase [config :as config]
                       [driver :as driver])
-            [metabase.driver.generic-sql :as sql]
-            [metabase.driver.postgres :as postgres]
+            (metabase.driver [generic-sql :as sql]
+                             [postgres :as postgres])
+            [metabase.util :as u]
             [metabase.util.korma-extensions :as kx]))
 
 (defn- connection-details->spec [_ details]
@@ -56,7 +56,7 @@
   clojure.lang.Named
   (getName [_] "Amazon Redshift"))
 
-(extend RedshiftDriver
+(u/strict-extend RedshiftDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
          {:date-interval       date-interval
@@ -91,7 +91,7 @@
           :unix-timestamp->timestamp unix-timestamp->timestamp}
          ;; HACK ! When we test against Redshift we use a session-unique schema so we can run simultaneous tests against a single remote host;
          ;; when running tests tell the sync process to ignore all the other schemas
-         (when (config/is-test?)
+         (when config/is-test?
            {:excluded-schemas (memoize
                                (fn [_]
                                  (require 'metabase.test.data.redshift)

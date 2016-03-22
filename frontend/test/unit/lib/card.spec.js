@@ -1,4 +1,5 @@
 import {
+    createCard,
     utf8_to_b64,
     b64_to_utf8,
     utf8_to_b64url,
@@ -6,6 +7,28 @@ import {
 } from 'metabase/lib/card';
 
 describe('card', () => {
+
+    describe("createCard", () => {
+        it("should return a new card", () => {
+            expect(createCard()).toEqual({
+                name: null,
+                public_perms: 0,
+                display: "table",
+                visualization_settings: {},
+                dataset_query: {},
+            });
+        });
+
+        it("should set the name if supplied", () => {
+            expect(createCard("something")).toEqual({
+                name: "something",
+                public_perms: 0,
+                display: "table",
+                visualization_settings: {},
+                dataset_query: {},
+            });
+        });
+    });
 
     describe('utf8_to_b64', () => {
         it('should encode with non-URL-safe characters', () => {

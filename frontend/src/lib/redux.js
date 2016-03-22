@@ -10,6 +10,7 @@ import { reduxReactRouter } from 'redux-router';
 
 // convienence
 export { combineReducers } from "redux";
+export { handleActions } from "redux-actions";
 
 // common createStore with middleware applied
 export const createStore = compose(

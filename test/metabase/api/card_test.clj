@@ -158,6 +158,7 @@
          :creator (match-$ (fetch-user :rasta)
                     {:common_name "Rasta Toucan",
                      :is_superuser false,
+                     :is_qbnewb true,
                      :last_login $,
                      :last_name "Toucan",
                      :first_name "Rasta",
@@ -198,6 +199,9 @@
     ((user->client :rasta) :delete 204 (format "card/%d" id))
     (Card id)))
 
+;; deleting a card that doesn't exist should return a 404 (#1957)
+(expect "Not found."
+  ((user->client :crowberto) :delete 404 "card/12345"))
 
 ;; # CARD FAVORITE STUFF
 

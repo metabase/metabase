@@ -1,13 +1,15 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [clojure.data :as data]
+            [clojure.java.jdbc :as jdbc]
             (clojure [pprint :refer [pprint]]
                      [string :as s])
             [clojure.tools.logging :as log]
+            [clj-time.core :as t]
             [clj-time.coerce :as coerce]
             [clj-time.format :as time]
-            [colorize.core :as color]
-            [medley.core :as m])
+            colorize.core
+            [metabase.config :as config])
   (:import clojure.lang.Keyword
            (java.net Socket
                      InetSocketAddress
@@ -16,6 +18,9 @@
            (java.util Calendar TimeZone)
            javax.xml.bind.DatatypeConverter
            org.joda.time.format.DateTimeFormatter))
+
+;; Set the default width for pprinting to 240 instead of 72. The default width is too narrow and wastes a lot of space for pprinting huge things like expanded queries
+(intern 'clojure.pprint '*print-right-margin* 240)
 
 (declare pprint-to-str)
 
@@ -59,7 +64,32 @@
                                                                                (pprint-to-str (sort (keys time/formatters)))))))))
 
 
+(defprotocol ISO8601
+  "Protocol for converting objects to ISO8601 formatted strings."
+  (->iso-8601-datetime ^String [this timezone-id]
+    "Coerce object to an ISO8601 date-time string such as \"2015-11-18T23:55:03.841Z\" with a given TIMEZONE."))
+
+(def ^:private ISO8601Formatter
+  ;; memoize this because the formatters are static.  they must be distinct per timezone though.
+  (memoize (fn [timezone-id]
+             (if timezone-id (time/with-zone (time/formatters :date-time) (t/time-zone-for-id timezone-id))
+                             (time/formatters :date-time)))))
+
+(extend-protocol ISO8601
+  nil                    (->iso-8601-datetime [_ _] nil)
+  java.util.Date         (->iso-8601-datetime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) (coerce/from-date this)))
+  java.sql.Date          (->iso-8601-datetime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) (coerce/from-sql-date this)))
+  java.sql.Timestamp     (->iso-8601-datetime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) (coerce/from-sql-time this)))
+  org.joda.time.DateTime (->iso-8601-datetime [this timezone-id] (time/unparse (ISO8601Formatter timezone-id) this)))
+
+
 ;;; ## Date Stuff
+
+(defn is-temporal?
+  "Is VALUE an instance of a datetime class like `java.util.Date` or `org.joda.time.DateTime`?"
+  [v]
+  (or (instance? java.util.Date v)
+      (instance? org.joda.time.DateTime v)))
 
 (defn new-sql-timestamp
   "`java.sql.Date` doesn't have an empty constructor so this is a convenience that lets you make one with the current date.
@@ -314,6 +344,13 @@
   [m f & args]
   (reduce (fn [r [k v]] (assoc r k (apply f v args))) {} m))
 
+(defn filter-nil-values
+  "Remove any keys from a MAP when the value is `nil`."
+  [m]
+  (into {} (for [[k v] m
+                 :when (not (nil? v))]
+             {k v})))
+
 (defn is-email?
   "Is STRING a valid email address?"
   [string]
@@ -343,7 +380,7 @@
       (with-open [sock (Socket.)]
         (.connect sock sock-addr host-up-timeout)
         true))
-    (catch Exception _ false)))
+    (catch Throwable _ false)))
 
 (defn host-up?
   "Returns true if the host given by hostname is reachable, false otherwise "
@@ -351,7 +388,7 @@
   (try
     (let [host-addr (InetAddress/getByName hostname)]
       (.isReachable host-addr host-up-timeout))
-    (catch Exception _ false)))
+    (catch Throwable _ false)))
 
 (defn rpartial
   "Like `partial`, but applies additional args *before* BOUND-ARGS.
@@ -363,33 +400,10 @@
   (fn [& args]
     (apply f (concat args bound-args))))
 
-(defmacro deref->
-  "Threads OBJ through FORMS, calling `deref` after each.
-   Now you can write:
-
-    (deref-> (sel :one Field :id 12) :table :db :organization)
-
-   Instead of:
-
-    @(:organization @(:db @(:table (sel :one Field :id 12))))"
-  {:arglists '([obj & forms])}
-  [obj & forms]
-  `(-> ~obj
-       ~@(interpose 'deref forms)
-       deref))
-
-(defn require-dox-in-this-namespace
-  "Throw an exception if any public interned symbol in this namespace is missing a docstring."
-  []
-  (->> (ns-publics *ns*)
-       (map (fn [[symb varr]]
-              (when-not (:doc (meta varr))
-                (throw (Exception. (format "All public symbols in %s are required to have a docstring, but %s is missing one." (.getName *ns*) symb))))))
-       dorun))
-
 (defmacro pdoseq
-  "Just like `doseq` but runs in parallel."
+  "(Almost) just like `doseq` but runs in parallel. Doesn't support advanced binding forms like `:let` or `:when` and only supports a single binding </3"
   [[binding collection] & body]
+  {:style/indent 1}
   `(dorun (pmap (fn [~binding]
                   ~@body)
                 ~collection)))
@@ -432,16 +446,23 @@
      ~@body
      ~'<>))
 
-(defn format-color
+(def ^String ^{:style/indent 2} format-color
   "Like `format`, but uses a function in `colorize.core` to colorize the output.
    COLOR-SYMB should be a quoted symbol like `green`, `red`, `yellow`, `blue`,
    `cyan`, `magenta`, etc. See the entire list of avaliable colors
    [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj).
 
      (format-color 'red \"Fatal error: %s\" error-message)"
-  [color-symb format-string & args]
-  {:pre [(symbol? color-symb)]}
-  ((ns-resolve 'colorize.core color-symb) (apply format format-string args)))
+  (if (config/config-bool :mb-colorize-logs)
+    (fn
+      ([color-symb x]
+       {:pre [(symbol? color-symb)]}
+       ((ns-resolve 'colorize.core color-symb) x))
+      ([color-symb format-string & args]
+       (format-color color-symb (apply format format-string args))))
+    (fn
+      ([_ x] x)
+      ([_ format-string & args] (apply format format-string args)))))
 
 (defn pprint-to-str
   "Returns the output of pretty-printing X as a string.
@@ -467,8 +488,10 @@
   [^Throwable e]
   (when e
     (when-let [stacktrace (.getStackTrace e)]
-      (filterv (partial re-find #"metabase")
-               (map str (.getStackTrace e))))))
+      (vec (for [frame stacktrace
+                 :let  [s (str frame)]
+                 :when (re-find #"metabase" s)]
+             (s/replace s #"^metabase\." ""))))))
 
 (defn wrap-try-catch
   "Returns a new function that wraps F in a `try-catch`. When an exception is caught, it is logged
@@ -483,12 +506,15 @@
        (try
          (apply f args)
          (catch java.sql.SQLException e
-           (log/error (color/red exception-message "\n"
-                                 (with-out-str (jdbc/print-sql-exception-chain e)) "\n"
-                                 (pprint-to-str (filtered-stacktrace e)))))
+           (log/error (format-color 'red "%s\n%s\n%s"
+                                    exception-message
+                                    (with-out-str (jdbc/print-sql-exception-chain e))
+                                    (pprint-to-str (filtered-stacktrace e)))))
          (catch Throwable e
-           (log/error (color/red exception-message (or (.getMessage e) e) "\n"
-                                 (pprint-to-str (filtered-stacktrace e))))))))))
+           (log/error (format-color 'red "%s %s\n%s"
+                                    exception-message
+                                    (or (.getMessage e) e)
+                                    (pprint-to-str (filtered-stacktrace e))))))))))
 
 (defn try-apply
   "Like `apply`, but wraps F inside a `try-catch` block and logs exceptions caught.
@@ -505,6 +531,12 @@
   (apply (wrap-try-catch f) (concat (butlast args) (if (sequential? (last args))
                                                      (last args)
                                                      [(last args)]))))
+
+(defmacro try-ignore-exceptions
+  "Simple macro which wraps the given expression in a try/catch block and ignores the exception if caught."
+  [& body]
+  `(try ~@body (catch Throwable ~'_)))
+
 
 (defn wrap-try-catch!
   "Re-intern FN-SYMB as a new fn that wraps the original with a `try-catch`. Intended for debugging.
@@ -584,11 +616,31 @@
 
 (defn drop-first-arg
   "Returns a new fn that drops its first arg and applies the rest to the original.
-   Useful for creating `extend` method maps when you don't care about the `this` param.
+   Useful for creating `extend` method maps when you don't care about the `this` param. :flushed:
 
      ((drop-first-arg :value) xyz {:value 100}) -> (apply :value [{:value 100}]) -> 100"
   ^clojure.lang.IFn [^clojure.lang.IFn f]
   (comp (partial apply f) rest list))
 
 
-(require-dox-in-this-namespace)
+(defn- check-protocol-impl-method-map
+  "Check that the methods expected for PROTOCOL are all implemented by METHOD-MAP, and that no extra methods are provided.
+   Used internally by `strict-extend`."
+  [protocol method-map]
+  (let [[missing-methods extra-methods] (data/diff (set (keys (:method-map protocol))) (set (keys method-map)))]
+    (when missing-methods
+      (throw (Exception. (format "Missing implementations for methods in %s: %s" (:var protocol) missing-methods))))
+    (when extra-methods
+      (throw (Exception. (format "Methods implemented that are not in %s: %s " (:var protocol) extra-methods))))))
+
+(defn strict-extend
+  "A strict version of `extend` that throws an exception if any methods declared in the protocol are missing or any methods not
+   declared in the protocol are provided.
+   Since this has better compile-time error-checking, prefer `strict-extend` to regular `extend` in all situations, and to
+   `extend-protocol`/ `extend-type` going forward." ; TODO - maybe implement strict-extend-protocol and strict-extend-type ?
+  {:style/indent 1}
+  [atype protocol method-map & more]
+  (check-protocol-impl-method-map protocol method-map)
+  (extend atype protocol method-map)
+  (when (seq more)
+    (apply strict-extend atype more)))

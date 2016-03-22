@@ -47,6 +47,7 @@
      :last_name $
      :last_login $
      :is_superuser $
+     :is_qbnewb $
      :common_name $}))
 
 (defn pulse-card-details [card]
@@ -134,6 +135,7 @@
                    :schedule_type "daily"
                    :schedule_hour 12
                    :schedule_day  nil
+                   :schedule_frame nil
                    :recipients    []}]}
   (-> (pulse-response ((user->client :rasta) :post 200 "pulse" {:name     "A Pulse"
                                                                 :cards    [{:id (:id card1)} {:id (:id card2)}]
@@ -193,6 +195,7 @@
                    :schedule_type "hourly"
                    :schedule_hour nil
                    :schedule_day  nil
+                   :schedule_frame nil
                    :details       {:channels "#general"}
                    :recipients    []}]}
   (-> (pulse-response ((user->client :rasta) :put 200 (format "pulse/%d" (:id pulse)) {:name     "Updated Pulse"

@@ -15,8 +15,8 @@
   (:is_superuser @@(resolve 'metabase.api.common/*current-user*)))
 
 (defn- creator?
-  "Did the current user create OBJ?"
-  [{:keys [creator_id], :as obj}]
+  "Did the current user create this object?"
+  [{:keys [creator_id]}]
   {:pre [creator_id]}
   (= creator_id @(resolve 'metabase.api.common/*current-user-id*)))
 
@@ -211,7 +211,7 @@
      (when (and id
                 (config/config-bool :mb-db-logging)
                 (not @(resolve 'metabase.db/*sel-disable-logging*)))
-       (log/debug "DB CALL: " (:name entity) id))
+       (log/debug "DB CALL:" (:name entity) id))
      (when-let [[obj] (seq (k/select (assoc entity :fields (default-fields entity))
                                      (k/where {:id id})
                                      (k/limit 1)))]
@@ -250,7 +250,7 @@
    The record type automatically extends `IEntity` with `IEntityDefaults`, but you may call `extend` again if you need to
    override default behaviors:
 
-     (extend (class User)             ; it's somewhat more readable to write `(class User)` instead `UserInstance`
+     (u/strict-extend (class User)             ; it's somewhat more readable to write `(class User)` instead `UserInstance`
        IEntity (merge IEntityDefaults
                       {...}))
 
@@ -271,7 +271,7 @@
          (~'invoke [this#]     (invoke-entity-or-instance this#))
          (~'invoke [this# id#] (invoke-entity-or-instance this# id#)))
 
-       (extend ~instance
+       (u/strict-extend ~instance
          IEntity        IEntityDefaults
          ICreateFromMap {:map-> (u/drop-first-arg ~map->instance)})
 
@@ -285,6 +285,3 @@
              ~@korma-forms
              (assoc ::entity true)
              ~map->instance)))))
-
-
-(u/require-dox-in-this-namespace)

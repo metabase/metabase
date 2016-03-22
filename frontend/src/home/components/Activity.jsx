@@ -5,8 +5,6 @@ import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper.j
 import ActivityItem from './ActivityItem.jsx';
 import ActivityStory from './ActivityStory.jsx';
 
-import { fetchActivity } from '../actions';
-
 import Urls from 'metabase/lib/urls';
 
 export default class Activity extends Component {
@@ -19,14 +17,14 @@ export default class Activity extends Component {
     }
 
     static propTypes = {
-        dispatch: PropTypes.func.isRequired,
         user: PropTypes.object.isRequired,
-        activity: PropTypes.array.isRequired
+        activity: PropTypes.array,
+        fetchActivity: PropTypes.func.isRequired
     }
 
     async componentDidMount() {
         try {
-            await this.props.dispatch(fetchActivity());
+            await this.props.fetchActivity();
         } catch (error) {
             this.setState({ error });
         }
@@ -177,7 +175,7 @@ export default class Activity extends Component {
             case "user-joined":
                 description.summary = "joined!";
                 break;
-        };
+        }
 
         return description;
     }
@@ -208,12 +206,11 @@ export default class Activity extends Component {
                 description.body = item.details.name;
                 break;
             case "dashboard-add-cards":
-                description.body = item.details.dashcards[0].name;
-                description.bodyLink = Urls.card(item.details.dashcards[0].card_id);
-                break;
             case "dashboard-remove-cards":
                 description.body = item.details.dashcards[0].name;
-                description.bodyLink = Urls.card(item.details.dashcards[0].card_id);
+                if (item.details.dashcards[0].exists) {
+                    description.bodyLink = Urls.card(item.details.dashcards[0].card_id);
+                }
                 break;
             case "metric-create":
                 description.body = item.details.description;
@@ -240,7 +237,7 @@ export default class Activity extends Component {
             case "segment-delete":
                 description.body = item.details.revision_message;
                 break;
-        };
+        }
 
         return description;
     }

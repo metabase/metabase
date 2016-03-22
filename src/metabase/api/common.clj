@@ -1,13 +1,14 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
   (:require [clojure.tools.logging :as log]
+            (clojure [string :as s]
+                     [walk :as walk])
             [cheshire.core :as json]
             [compojure.core :refer [defroutes]]
             [korma.core :as k]
             [medley.core :as m]
             [metabase.api.common.internal :refer :all]
             [metabase.db :refer :all]
-            [metabase.db.internal :refer [entity->korma]]
             [metabase.models.interface :as models]
             [metabase.util :as u]
             [metabase.util.password :as password]))
@@ -176,33 +177,33 @@
 
 ;; #### GENERIC 400 RESPONSE HELPERS
 (def ^:private ^:const generic-400 [400 "Invalid Request."])
-(defn     check-400 [tst]     (check tst generic-400))
-(defmacro let-400   [& args] `(api-let   ~generic-400 ~@args))
-(defmacro ->400     [& args] `(api->     ~generic-400 ~@args))
-(defmacro ->>400    [& args] `(api->>    ~generic-400 ~@args))
+(defn     check-400 "Throw a `400` if ARG is `false` or `nil`, otherwise return as-is."                     [arg]    (check arg generic-400))
+(defmacro let-400   "Bind a form as with `let`; throw a 400 if it is `nil` or `false`."                     [& body] `(api-let   ~generic-400 ~@body))
+(defmacro ->400     "If form is `nil` or `false`, throw a 400; otherwise thread it through BODY via `->`."  [& body] `(api->     ~generic-400 ~@body))
+(defmacro ->>400    "If form is `nil` or `false`, throw a 400; otherwise thread it through BODY via `->>`." [& body] `(api->>    ~generic-400 ~@body))
 
 ;; #### GENERIC 404 RESPONSE HELPERS
 (def ^:private ^:const generic-404 [404 "Not found."])
-(defn     check-404 [tst]     (check tst generic-404))
-(defmacro let-404   [& args] `(api-let   ~generic-404 ~@args))
-(defmacro ->404     [& args] `(api->     ~generic-404 ~@args))
-(defmacro ->>404    [& args] `(api->>    ~generic-404 ~@args))
+(defn     check-404 "Throw a `404` if ARG is `false` or `nil`, otherwise return as-is."                     [arg]    (check arg generic-404))
+(defmacro let-404   "Bind a form as with `let`; throw a 404 if it is `nil` or `false`."                     [& body] `(api-let   ~generic-404 ~@body))
+(defmacro ->404     "If form is `nil` or `false`, throw a 404; otherwise thread it through BODY via `->`."  [& body] `(api->     ~generic-404 ~@body))
+(defmacro ->>404    "If form is `nil` or `false`, throw a 404; otherwise thread it through BODY via `->>`." [& body] `(api->>    ~generic-404 ~@body))
 
 ;; #### GENERIC 403 RESPONSE HELPERS
 ;; If you can't be bothered to write a custom error message
 (def ^:private ^:const generic-403 [403 "You don't have permissions to do that."])
-(defn     check-403 [tst]     (check tst generic-403))
-(defmacro let-403   [& args] `(api-let   ~generic-403 ~@args))
-(defmacro ->403     [& args] `(api->     ~generic-403 ~@args))
-(defmacro ->>403    [& args] `(api->>    ~generic-403 ~@args))
+(defn     check-403 "Throw a `403` if ARG is `false` or `nil`, otherwise return as-is."                     [arg]     (check arg generic-403))
+(defmacro let-403   "Bind a form as with `let`; throw a 403 if it is `nil` or `false`."                     [& body] `(api-let   ~generic-403 ~@body))
+(defmacro ->403     "If form is `nil` or `false`, throw a 403; otherwise thread it through BODY via `->`."  [& body] `(api->     ~generic-403 ~@body))
+(defmacro ->>403    "If form is `nil` or `false`, throw a 403; otherwise thread it through BODY via `->>`." [& body] `(api->>    ~generic-403 ~@body))
 
 ;; #### GENERIC 500 RESPONSE HELPERS
 ;; For when you don't feel like writing something useful
 (def ^:private ^:const generic-500 [500 "Internal server error."])
-(defn     check-500 [tst]     (check tst generic-500))
-(defmacro let-500   [& args] `(api-let   ~generic-500 ~@args))
-(defmacro ->500     [& args] `(api->     ~generic-500 ~@args))
-(defmacro ->>500    [& args] `(api->>    ~generic-500 ~@args))
+(defn     check-500 "Throw a `500` if ARG is `false` or `nil`, otherwise return as-is."                     [arg]    (check arg generic-500))
+(defmacro let-500   "Bind a form as with `let`; throw a 500 if it is `nil` or `false`."                     [& body] `(api-let   ~generic-500 ~@body))
+(defmacro ->500     "If form is `nil` or `false`, throw a 500; otherwise thread it through BODY via `->`."  [& body] `(api->     ~generic-500 ~@body))
+(defmacro ->>500    "If form is `nil` or `false`, throw a 500; otherwise thread it through BODY via `->>`." [& body] `(api->>    ~generic-500 ~@body))
 
 
 ;;; ## DEFENDPOINT AND RELATED FUNCTIONS
@@ -210,15 +211,14 @@
 
 ;;; ### Arg annotation fns
 
-(defmulti -arg-annotation-fn
-  "*Internal* - don't use this directly.
+(defmulti ^{:doc "*Internal* - don't use this directly.
 
-   Multimethod used internally to dispatch arg annotation functions.
-   Dispatches on the arg annotation as a keyword.
+                  Multimethod used internally to dispatch arg annotation functions.
+                  Dispatches on the arg annotation as a keyword.
 
-    {id Required}
-    -> ((-arg-annotation-fn :Required) 'id id)
-    -> (annotation:Required 'id id)"
+                   {id Required}
+                   -> ((-arg-annotation-fn :Required) 'id id)
+                   -> (annotation:Required 'id id)"} -arg-annotation-fn ; for some reason supplying a docstr the normal way doesn't assoc it with the metadata like we'd expect
   (fn [annotation-kw]
     {:pre [(keyword? annotation-kw)]}
     annotation-kw))
@@ -312,7 +312,7 @@
 (defannotation String->Dict
   "Param is converted from a JSON string to a dictionary."
   [symb value :nillable]
-  (try (clojure.walk/keywordize-keys (json/parse-string value))
+  (try (walk/keywordize-keys (json/parse-string value))
        (catch java.lang.Exception _
          (format "Invalid value '%s' for '%s': cannot parse as json." value symb))))
 
@@ -402,7 +402,7 @@
         route                  (typify-route route)
         [docstr [args & more]] (u/optional string? more)
         _                      (when-not docstr
-                                 (log/warn (format "Warning: endpoint %s/%s does not have a docstring." (.getName *ns*) fn-name)))
+                                 (log/warn (format "Warning: endpoint %s/%s does not have a docstring." (ns-name *ns*) fn-name)))
         [arg-annotations body] (u/optional #(and (map? %) (every? symbol? (keys %))) more)]
     `(def ~(vary-meta fn-name assoc
                       :doc (route-dox method route docstr args arg-annotations)
@@ -418,10 +418,15 @@
   "Create a `(defroutes routes ...)` form that automatically includes all functions created with
    `defendpoint` in the current namespace."
   [& additional-routes]
-  (let [api-routes (->> (ns-publics *ns*)
-                        (m/filter-vals #(:is-endpoint? (meta %)))
-                        (map first))]
-    `(defroutes ~'routes ~@api-routes ~@additional-routes)))
+  (let [api-routes (for [[symb varr] (ns-publics *ns*)
+                         :when       (:is-endpoint? (meta varr))]
+                     symb)]
+    `(defroutes ~(vary-meta 'routes assoc :doc (format "Ring routes for %s:\n%s"
+                                                       (-> (ns-name *ns*)
+                                                           (s/replace #"^metabase\." "")
+                                                           (s/replace #"\." "/"))
+                                                       (u/pprint-to-str (concat api-routes additional-routes))))
+       ~@api-routes ~@additional-routes)))
 
 (defn read-check
   "Check whether we can read an existing OBJ, or ENTITY with ID."

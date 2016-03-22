@@ -1,21 +1,41 @@
 import React, { Component, PropTypes } from "react";
+import cx from "classnames";
+import _ from "underscore";
 
 import Icon from "metabase/components/Icon.jsx";
+import ListSearchField from "metabase/components/search/ListSearchField.jsx";
 
-import cx from "classnames";
-
-import _ from "underscore";
 
 export default class AccordianList extends Component {
     constructor(props, context) {
         super(props, context);
+
+        let openSection;
+        // use initiallyOpenSection prop if present
+        if (props.initiallyOpenSection !== undefined) {
+            openSection = props.initiallyOpenSection;
+        }
+        // otherwise try to find the selected section, if any
+        if (openSection === undefined) {
+            openSection = _.findIndex(props.sections, (section, index) => this.sectionIsSelected(section, index));
+            if (openSection === -1) {
+                openSection = undefined;
+            }
+        }
+        // default to the first section
+        if (openSection === undefined) {
+            openSection = 0;
+        }
+
         this.state = {
-            openSection: props.initiallyOpenSection
+            openSection,
+            searchText: ""
         };
     }
 
     static propTypes = {
         sections: PropTypes.array.isRequired,
+        searchable: PropTypes.bool,
         initiallyOpenSection: PropTypes.number,
         openSection: PropTypes.number,
         onChange: PropTypes.func,
@@ -27,7 +47,7 @@ export default class AccordianList extends Component {
     };
 
     static defaultProps = {
-        initiallyOpenSection: 0
+        searchable: false
     };
 
     toggleSection(sectionIndex) {
@@ -117,7 +137,9 @@ export default class AccordianList extends Component {
     }
 
     render() {
-        let { sections, showItemArrows, alwaysTogglable } = this.props;
+        let { searchable, sections, showItemArrows, alwaysTogglable } = this.props;
+        const { searchText } = this.state;
+
         let openSection = this.getOpenSection();
 
         return (
@@ -144,9 +166,22 @@ export default class AccordianList extends Component {
                                 }
                             </div>
                         : null }
+
+                        { searchable &&
+                            /* NOTE: much of this structure is here just to match strange stuff in 'List-item' below so things align properly */
+                            <div className="px1 pt1">
+                                <div style={{border: "2px solid transparent", borderRadius: "6px"}}>
+                                    <ListSearchField
+                                        onChange={(val) => this.setState({searchText: val})}
+                                        searchText={this.state.searchText}
+                                    />
+                                </div>
+                            </div>
+                        }
+
                         { openSection === sectionIndex && section.items.length > 0 &&
                             <ul style={{maxHeight: 400}} className="p1 border-bottom scroll-y scroll-show">
-                                { section.items.map((item, itemIndex) =>
+                                { section.items.filter((i) => searchText ? (i.name.toLowerCase().includes(searchText.toLowerCase())) : true ).map((item, itemIndex) =>
                                     <li key={itemIndex} className={cx("List-item flex", { 'List-item--selected': this.itemIsSelected(item, itemIndex) }, this.getItemClasses(item, itemIndex))}>
                                         <a
                                             className="flex-full flex align-center px1 cursor-pointer"

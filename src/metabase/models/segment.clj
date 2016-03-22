@@ -2,17 +2,15 @@
   (:require [korma.core :as k]
             [metabase.db :as db]
             [metabase.events :as events]
-            (metabase.models [common :refer [perms-readwrite]]
-                             [hydrate :refer :all]
+            (metabase.models [hydrate :refer [hydrate]]
                              [interface :as i]
-                             [revision :as revision]
-                             [user :refer [User]])
+                             [revision :as revision])
             [metabase.util :as u]))
 
 
 (i/defentity Segment :segment)
 
-(extend (class Segment)
+(u/strict-extend (class Segment)
   i/IEntity
   (merge i/IEntityDefaults
          {:types           (constantly {:definition :json, :description :clob})
@@ -25,10 +23,10 @@
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
 
 
-(defn serialize-segment [_ _ instance]
+(defn- serialize-segment [_ _ instance]
   (dissoc instance :created_at :updated_at))
 
-(defn diff-segments [this segment1 segment2]
+(defn- diff-segments [this segment1 segment2]
   (if-not segment1
     ;; this is the first version of the segment
     (u/update-values (select-keys segment2 [:name :description :definition]) (fn [v] {:after v}))
@@ -44,12 +42,11 @@
                                                                                 :after  (get-in segment2 [:definition])})))))
 
 
-(extend (class Segment)
+(u/strict-extend (class Segment)
   revision/IRevisioned
-  {:serialize-instance serialize-segment
-   :revert-to-revision revision/default-revert-to-revision
-   :diff-map           diff-segments
-   :diff-str           revision/default-diff-str})
+  (merge revision/IRevisionedDefaults
+         {:serialize-instance serialize-segment
+          :diff-map           diff-segments}))
 
 
 ;; ## Persistence Functions

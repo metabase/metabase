@@ -4,12 +4,14 @@ import { createSelector } from 'reselect';
 
 const selectedDashboardSelector = state => state.selectedDashboard
 const isEditingSelector         = state => state.isEditing;
-const cardsSelector             = state => state.cards
-const dashboardsSelector        = state => state.dashboards
-const dashcardsSelector         = state => state.dashcards
-const dashcardDatasetsSelector  = state => state.dashcardDatasets
-const cardIdListSelector        = state => state.cardList
-const revisionsSelector        = state => state.revisions
+const cardsSelector             = state => state.cards;
+const dashboardsSelector        = state => state.dashboards;
+const dashcardsSelector         = state => state.dashcards;
+const cardDataSelector          = state => state.cardData;
+const cardIdListSelector        = state => state.cardList;
+const revisionsSelector         = state => state.revisions;
+
+const databasesSelector         = state => state.metadata.databases;
 
 const dashboardSelector = createSelector(
     [selectedDashboardSelector, dashboardsSelector],
@@ -17,20 +19,12 @@ const dashboardSelector = createSelector(
 );
 
 const dashboardCompleteSelector = createSelector(
-    [dashboardSelector, dashcardsSelector, dashcardDatasetsSelector],
-    (dashboard, dashcards, dashcardDatasets) => {
-        if (dashboard) {
-            dashboard = {
-                ...dashboard,
-                ordered_cards: dashboard.ordered_cards.map(id => ({
-                    ...dashcards[id],
-                    dataset: dashcardDatasets[id]
-                })).filter(dc => !dc.isRemoved)
-            };
-        }
-        return dashboard;
-    }
-)
+    [dashboardSelector, dashcardsSelector],
+    (dashboard, dashcards) => (dashboard && {
+        ...dashboard,
+        ordered_cards: dashboard.ordered_cards.map(id => dashcards[id]).filter(dc => !dc.isRemoved)
+    })
+);
 
 const isDirtySelector = createSelector(
     [dashboardSelector, dashcardsSelector],
@@ -51,6 +45,6 @@ const cardListSelector = createSelector(
 );
 
 export const dashboardSelectors = createSelector(
-    [isEditingSelector, isDirtySelector, selectedDashboardSelector, dashboardCompleteSelector, cardListSelector, revisionsSelector],
-    (isEditing, isDirty, selectedDashboard, dashboard, cards, revisions) => ({ isEditing, isDirty, selectedDashboard, dashboard, cards, revisions })
+    [isEditingSelector, isDirtySelector, selectedDashboardSelector, dashboardCompleteSelector, cardListSelector, revisionsSelector, cardDataSelector, databasesSelector],
+    (isEditing, isDirty, selectedDashboard, dashboard, cards, revisions, cardData, databases) => ({ isEditing, isDirty, selectedDashboard, dashboard, cards, revisions, cardData, databases })
 );

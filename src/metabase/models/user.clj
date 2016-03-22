@@ -52,10 +52,10 @@
   (db/cascade-delete 'Segment :creator_id id)
   (db/cascade-delete 'Metric :creator_id id))
 
-(extend (class User)
+(u/strict-extend (class User)
   i/IEntity
   (merge i/IEntityDefaults
-         {:default-fields     (constantly [:id :email :date_joined :first_name :last_name :last_login :is_superuser])
+         {:default-fields     (constantly [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb])
           :hydration-keys     (constantly [:author :creator :user])
           :pre-insert         pre-insert
           :pre-update         pre-update
@@ -118,6 +118,3 @@
   [reset-token]
   {:pre [(string? reset-token)]}
   (str (setting/get :-site-url) "/auth/reset_password/" reset-token))
-
-
-(u/require-dox-in-this-namespace)

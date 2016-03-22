@@ -1,6 +1,6 @@
 (ns metabase.models.field-values
   (:require [clojure.tools.logging :as log]
-            [metabase.db :refer [ins sel upd]]
+            [metabase.db :refer [ins sel upd cascade-delete]]
             [metabase.models.interface :as i]
             [metabase.util :as u]))
 
@@ -8,7 +8,7 @@
 
 (i/defentity FieldValues :metabase_fieldvalues)
 
-(extend (class FieldValues)
+(u/strict-extend (class FieldValues)
   i/IEntity
   (merge i/IEntityDefaults
          {:timestamped? (constantly true)
@@ -28,11 +28,11 @@
 (defn field-should-have-field-values?
   "Should this `Field` be backed by a corresponding `FieldValues` object?"
   {:arglists '([field])}
-  [{:keys [base_type special_type field_type] :as field}]
-  {:pre [field_type
+  [{:keys [base_type special_type visibility_type] :as field}]
+  {:pre [visibility_type
          (contains? field :base_type)
          (contains? field :special_type)]}
-  (and (not= (keyword field_type) :sensitive)
+  (and (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility_type)))
        (not (contains? #{:DateField :DateTimeField :TimeField} (keyword base_type)))
        (or (contains? #{:category :city :state :country :name} (keyword special_type))
            (= (keyword base_type) :BooleanField))))
@@ -78,5 +78,8 @@
     (upd FieldValues (:id field-values) :values values)
     (ins FieldValues :field_id field-id, :values values)))
 
-
-(u/require-dox-in-this-namespace)
+(defn clear-field-values
+  "Remove the `FieldValues` for FIELD-ID."
+  [field-id]
+  {:pre [(integer? field-id)]}
+  (cascade-delete FieldValues :field_id field-id))

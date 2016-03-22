@@ -132,6 +132,9 @@ export default class DatabaseDetailsForm extends Component {
     }
 
     renderField(field, fieldIndex) {
+        let { engine } = this.props;
+        window.ENGINE = engine;
+
         if (field.name === "is_full_sync") {
             let on = (this.state.details.is_full_sync == undefined) ? true : this.state.details.is_full_sync;
             return (
@@ -144,10 +147,57 @@ export default class DatabaseDetailsForm extends Component {
                             <h3>Enable in-depth database analysis</h3>
                             <div style={{maxWidth: "40rem"}} className="pt1">
                                 This allows us to present you with better metadata for your tables and is required for some features of Metabase.
-                                 We recommend leaving this on unless your database is large and you're concerned about performance.
+                                We recommend leaving this on unless your database is large and you're concerned about performance.
                             </div>
                         </div>
                     </div>
+                </FormField>
+            );
+        } else if (engine === 'bigquery' && field.name === 'client-id') {
+            const CREDENTIALS_URL_PREFIX = 'https://console.developers.google.com/apis/credentials/oauthclient?project=';
+
+            let { details } = this.state;
+            let projectID = details && details['project-id'];
+            var credentialsURLLink;
+            if (projectID) {
+                let credentialsURL = CREDENTIALS_URL_PREFIX + projectID;
+                credentialsURLLink = (
+                    <div className="flex align-center Form-offset">
+                        <div className="Grid-cell--top">
+                            <a href={credentialsURL} target='_blank'>Click here</a> to generate a Client ID and Client Secret for your project.
+                            Choose "Other" as the application type. Name it whatever you'd like.
+                        </div>
+                    </div>);
+            }
+
+            return (
+                <FormField key='client-id' field-name='client-id'>
+                    <FormLabel title={field['display-name']} field-name='client-id'></FormLabel>
+                    {credentialsURLLink}
+                    {this.renderFieldInput(field, fieldIndex)}
+                </FormField>
+            );
+        } else if (engine === 'bigquery' && field.name === 'auth-code') {
+            const AUTH_URL_PREFIX = 'https://accounts.google.com/o/oauth2/auth?redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/bigquery&client_id=';
+
+            let { details } = this.state;
+            let clientID = details && details['client-id'];
+            var authURLLink;
+            if (clientID) {
+                let authURL = AUTH_URL_PREFIX + clientID;
+                authURLLink = (
+                    <div className="flex align-center Form-offset">
+                        <div className="Grid-cell--top">
+                            <a href={authURL} target='_blank'>Click here to get an auth code 😋</a>
+                        </div>
+                    </div>);
+            }
+
+            return (
+                <FormField key='auth-code' field-name='auth-code'>
+                    <FormLabel title={field['display-name']} field-name='auth-code'></FormLabel>
+                    {authURLLink}
+                    {this.renderFieldInput(field, fieldIndex)}
                 </FormField>
             );
         } else {

@@ -15,8 +15,7 @@
             (metabase.test [data :refer :all]
                            [util :refer [resolve-private-fns] :as tu])
             (metabase.test.data [datasets :as datasets]
-                                [interface :refer [create-database-definition]])
-            [metabase.util :as u]))
+                                [interface :refer [create-database-definition]])))
 
 (def sync-test-tables
   {"movie"  {:name "movie"
@@ -44,7 +43,8 @@
   (merge driver/IDriverDefaultsMixin
          {:analyze-table       (constantly nil)
           :describe-database   (fn [_ _]
-                                 {:tables (set (vals sync-test-tables))})
+                                 {:tables (set (->> (vals sync-test-tables)
+                                                    (map #(dissoc % :fields))))})
           :describe-table      (fn [_ table]
                                  (get sync-test-tables (:name table)))
           :descrite-table-fks  (fn [_ _]
@@ -93,7 +93,8 @@
               :position 0,
               :preview_display true,
               :display_name "Id",
-              :base_type :IntegerField}
+              :base_type :IntegerField,
+              :visibility_type :normal}
              {:description nil,
               :special_type nil,
               :name "studio",
@@ -103,7 +104,8 @@
               :position 0,
               :preview_display true,
               :display_name "Studio",
-              :base_type :TextField}
+              :base_type :TextField,
+              :visibility_type :normal}
              {:description nil,
               :special_type nil,
               :name "title",
@@ -113,7 +115,8 @@
               :position 0,
               :preview_display true,
               :display_name "Title",
-              :base_type :TextField}]}
+              :base_type :TextField,
+              :visibility_type :normal}]}
    {:schema nil
     :name   "studio"
     :display_name "Studio"
@@ -132,7 +135,8 @@
               :position 0,
               :preview_display true,
               :display_name "Name",
-              :base_type :TextField}
+              :base_type :TextField,
+              :visibility_type :normal}
              {:description nil,
               :special_type :id,
               :name "studio",
@@ -142,10 +146,14 @@
               :position 0,
               :preview_display true,
               :display_name "Studio",
-              :base_type :TextField}]}]
+              :base_type :TextField,
+              :visibility_type :normal}]}]
   (tu/with-temp Database [fake-db {:name    "sync-test"
                                    :engine  :sync-test
                                    :details {}}]
+    (sync/sync-database! (SyncTestDriver.) fake-db)
+    ;; we are purposely running the sync twice to test for possible logic issues which only manifest
+    ;; on resync of a database, such as adding tables that already exist or duplicating fields
     (sync/sync-database! (SyncTestDriver.) fake-db)
     (->> (sel :many Table :db_id (:id fake-db) (k/order :name))
          (mapv table-details))))
@@ -172,7 +180,8 @@
              :position 0,
              :preview_display true,
              :display_name "Id",
-             :base_type :IntegerField}
+             :base_type :IntegerField,
+             :visibility_type :normal}
             {:description nil,
              :special_type nil,
              :name "studio",
@@ -182,7 +191,8 @@
              :position 0,
              :preview_display true,
              :display_name "Studio",
-             :base_type :TextField}
+             :base_type :TextField,
+             :visibility_type :normal}
             {:description nil,
              :special_type nil,
              :name "title",
@@ -192,7 +202,8 @@
              :position 0,
              :preview_display true,
              :display_name "Title",
-             :base_type :TextField}]}
+             :base_type :TextField,
+             :visibility_type :normal}]}
   (tu/with-temp Database [fake-db {:name    "sync-test"
                                    :engine  :sync-test
                                    :details {}}]
@@ -202,6 +213,28 @@
                                      :active true}]
       (sync/sync-table! (SyncTestDriver.) fake-table)
       (table-details (sel :one Table :id (:id fake-table))))))
+
+
+;; ## Test that we will remove field-values when they aren't appropriate
+
+(expect
+  [[1,2,3]
+   [1,2,3]]
+  (tu/with-temp Database [fake-db {:name    "sync-test"
+                                   :engine  :sync-test
+                                   :details {}}]
+    (tu/with-temp Table [fake-table {:name "movie"
+                                     :schema "default"
+                                     :db_id (:id fake-db)
+                                     :active true}]
+      (sync/sync-table! (SyncTestDriver.) fake-table)
+      (let [{:keys [id]} (sel :one Field :table_id (:id fake-table) :name "title")]
+        (tu/with-temp FieldValues [_ {:field_id id
+                                      :values   "[1,2,3]"}]
+          (let [starting (sel :one :field [FieldValues :values] :field_id id)]
+            (sync/sync-table! (SyncTestDriver.) fake-table)
+            [starting
+             (sel :one :field [FieldValues :values] :field_id id)]))))))
 
 
 ;; ## Individual Helper Fns
@@ -278,18 +311,6 @@
      (let [table (Table (id :checkins))]
        (driver/sync-table! table)
        (get-special-type-and-fk-exists?))]))
-
-;;; ## Tests for DETERMINE-FK-TYPE
-;;; Since COUNT(category_id) > COUNT(DISTINCT(category_id)) the FK relationship should be Mt1
-;(def determine-fk-type @(resolve 'metabase.driver.sync/determine-fk-type))
-;
-;(expect :Mt1
-;  (determine-fk-type (Field (id :venues :category_id))))
-;
-;;; Since COUNT(id) == COUNT(DISTINCT(id)) the FK relationship should be 1t1
-;;; (yes, ID isn't really a FK field, but determine-fk-type doesn't need to know that)
-;(expect :1t1
-;  (determine-fk-type (Field (id :venues :id))))
 
 
 ;;; ## FieldValues Syncing

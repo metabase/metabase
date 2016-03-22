@@ -1,5 +1,6 @@
 (ns metabase.driver.query-processor-test
-  "Query processing tests that can be ran between any of the available drivers, and should give the same results."
+  "Query processing tests that can be ran between any of the available non-event-based DB drivers, and should give the same results.
+   Event-based DBs such as Druid are tested in `metabase.driver.event-query-processor-test`."
   (:require [clojure.math.numeric-tower :as math]
             (clojure [set :as set]
                      [string :as s])
@@ -23,21 +24,32 @@
 
 ;; ### Helper Fns + Macros
 
+;; Event-Based DBs aren't tested here, but in `event-query-processor-test` instead.
+(def ^:private ^:const timeseries-engines #{:druid})
+(def ^:private ^:const non-timeseries-engines (set/difference datasets/all-valid-engines timeseries-engines))
+
 (defn- engines-that-support [feature]
   (set (filter (fn [engine]
                  (contains? (driver/features (driver/engine->driver engine)) feature))
-               datasets/all-valid-engines)))
+               non-timeseries-engines)))
 
 (defn- engines-that-dont-support [feature]
-  (set/difference datasets/all-valid-engines (engines-that-support feature)))
+  (set/difference non-timeseries-engines (engines-that-support feature)))
+
+(defmacro ^:private expect-with-non-timeseries-dbs
+  {:style/indent 0}
+  [expected actual]
+  `(datasets/expect-with-engines non-timeseries-engines
+     ~expected
+     ~actual))
 
 (defmacro ^:private qp-expect-with-all-engines [data q-form & post-process-fns]
-  `(datasets/expect-with-all-engines
-    {:status    :completed
-     :row_count ~(count (:rows data))
-     :data      ~data}
-    (-> ~q-form
-        ~@post-process-fns)))
+  `(expect-with-non-timeseries-dbs
+     {:status    :completed
+      :row_count ~(count (:rows data))
+      :data      ~data}
+     (-> ~q-form
+         ~@post-process-fns)))
 
 (defmacro ^:private qp-expect-with-engines [datasets data q-form]
   `(datasets/expect-with-engines ~datasets
@@ -63,7 +75,7 @@
   {:extra_info      {}
    :target          nil
    :description     nil
-   :preview_display true
+   :visibility_type :normal
    :schema_name     (default-schema)})
 
 (defn- categories-col
@@ -219,26 +231,23 @@
     :description  nil
     :extra_info   {}
     :target       nil
-    :name         (case ag-col-kw
-                    :avg    "avg"
-                    :stddev "stddev"
-                    :sum    "sum")
-    :display_name (case ag-col-kw
-                    :avg    "avg"
-                    :stddev "stddev"
-                    :sum    "sum")}))
+    :name         (name ag-col-kw)
+    :display_name (name ag-col-kw)}))
 
-(defn- format-rows-by
+(defn format-rows-by
   "Format the values in result ROWS with the fns at the corresponding indecies in FORMAT-FNS.
    ROWS can be a sequence or any of the common map formats we expect in QP tests.
 
      (format-rows-by [int str double] [[1 1 1]]) -> [[1 \"1\" 1.0]]
 
    By default, does't call fns on `nil` values; pass a truthy value as optional param FORMAT-NIL-VALUES? to override this behavior."
+  {:style/indent 1}
   ([format-fns rows]
    (format-rows-by format-fns (not :format-nil-values?) rows))
   ([format-fns format-nil-values? rows]
    (cond
+     (= (:status rows) :failed) (throw (ex-info (:error rows) rows))
+
      (:data rows) (update-in rows [:data :rows] (partial format-rows-by format-fns))
      (:rows rows) (update    rows :rows         (partial format-rows-by format-fns))
      :else        (vec (for [row rows]
@@ -249,11 +258,16 @@
 (def ^:private formatted-venues-rows (partial format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]))
 
 
-(defn- rows [results]
+(defn rows
+  "Return the result rows from query results, or throw an Exception if they're missing."
+  [results]
   (vec (or (-> results :data :rows)
-           (throw (ex-info "Error!" results)))))
+           (println (u/pprint-to-str 'red results))
+           (throw (Exception. "Error!")))))
 
-(defn- first-row [results]
+(defn first-row
+  "Return the first row in the results of a query, or throw an Exception if they're missing."
+  [results]
   (first (rows results)))
 
 
@@ -336,7 +350,7 @@
 ;; Test that we can get "pages" of results.
 
 ;; ### PAGE - Get the first page
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   [[1 "African"]
    [2 "American"]
    [3 "Artisan"]
@@ -348,7 +362,7 @@
        rows (format-rows-by [int str])))
 
 ;; ### PAGE - Get the second page
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   [[ 6 "Bakery"]
    [ 7 "Bar"]
    [ 8 "Beer Garden"]
@@ -362,7 +376,7 @@
 
 ;; ## "ORDER_BY" CLAUSE
 ;; Test that we can tell the Query Processor to return results ordered by multiple fields
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   [[1 12 375]
    [1  9 139]
    [1  1  72]
@@ -385,7 +399,7 @@
 ;; ## "FILTER" CLAUSE
 
 ;; ### FILTER -- "AND", ">", ">="
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   [[55 "Dal Rae Restaurant"       67 33.983  -118.096 4]
    [61 "Lawry's The Prime Rib"    67 34.0677 -118.376 4]
    [77 "Sushi Nakazawa"           40 40.7318 -74.0045 4]
@@ -398,7 +412,7 @@
       rows formatted-venues-rows))
 
 ;; ### FILTER -- "AND", "<", ">", "!="
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   [[21 "PizzaHacker"          58 37.7441 -122.421 2]
    [23 "Taqueria Los Coyotes" 50 37.765  -122.42  2]]
   (-> (run-query venues
@@ -411,7 +425,7 @@
 ;; ### FILTER WITH A FALSE VALUE
 ;; Check that we're checking for non-nil values, not just logically true ones.
 ;; There's only one place (out of 3) that I don't like
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   [[1]]
   (->> (dataset places-cam-likes
          (run-query places
@@ -427,7 +441,7 @@
     x))
 
 ;;; filter = true
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   [[1 "Tempest" true]
    [2 "Bullit"  true]]
   (->> (dataset places-cam-likes
@@ -437,7 +451,7 @@
        rows (format-rows-by [int str ->bool] :format-nil-values)))
 
 ;;; filter != false
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   [[1 "Tempest" true]
    [2 "Bullit"  true]]
   (->> (dataset places-cam-likes
@@ -447,7 +461,7 @@
        rows (format-rows-by [int str ->bool] :format-nil-values)))
 
 ;;; filter != true
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   [[3 "The Dentist" false]]
   (->> (dataset places-cam-likes
          (run-query places
@@ -457,7 +471,7 @@
 
 
 ;; ### FILTER -- "BETWEEN", single subclause (neither "AND" nor "OR")
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   [[21 "PizzaHacker"    58 37.7441 -122.421 2]
    [22 "Gordo Taqueria" 50 37.7822 -122.484 1]]
   (-> (run-query venues
@@ -475,7 +489,7 @@
                           (ql/filter (ql/between $date "2015-04-01" "2015-05-01")))))
 
 ;; ### FILTER -- "OR", "<=", "="
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   [[1 "Red Medicine"                  4 10.0646 -165.374 3]
    [2 "Stout Burgers & Beers"        11 34.0996 -118.329 2]
    [3 "The Apple Pan"                11 34.0406 -118.428 2]
@@ -487,11 +501,27 @@
       rows formatted-venues-rows))
 
 ;; ### FILTER -- "INSIDE"
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   [[1 "Red Medicine" 4 10.0646 -165.374 3]]
   (-> (run-query venues
         (ql/filter (ql/inside $latitude $longitude 10.0649 -165.379 10.0641 -165.371)))
       rows formatted-venues-rows))
+
+;;; ## FILTER - `is-null` & `not-null` on datetime columns
+(expect-with-non-timeseries-dbs
+  [1000]
+  (first-row (run-query checkins
+               (ql/aggregation (ql/count))
+               (ql/filter (ql/not-null $date)))))
+
+(expect-with-non-timeseries-dbs
+  ;; Some DBs like Mongo don't return any results at all in this case, and there's no easy workaround
+  true
+  (let [result (first-row (run-query checkins
+                            (ql/aggregation (ql/count))
+                            (ql/filter (ql/is-null $date))))]
+    (or (= result [0])
+        (nil? result))))
 
 
 ;; ## "FIELDS" CLAUSE
@@ -735,7 +765,7 @@
 
 
 ;;; ### order_by aggregate ["avg" field-id]
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   {:columns [(format-name "price")
              "avg"]
    :rows    [[3 22]
@@ -768,26 +798,26 @@
          (ql/order-by (ql/desc (ql/aggregate-field 0))))
        :data (format-rows-by [int (comp int math/round)])))
 
-;;; ### make sure that rows where preview_display = false are included and properly marked up
-(datasets/expect-with-all-engines
- [(set (venues-cols))
-  #{(venues-col :category_id)
-    (venues-col :name)
-    (venues-col :latitude)
-    (venues-col :id)
-    (venues-col :longitude)
-    (-> (venues-col :price)
-        (assoc :preview_display false))}
-  (set (venues-cols))]
- (let [get-col-names (fn [] (-> (run-query venues
-                                  (ql/order-by (ql/asc $id))
-                                  (ql/limit 1))
-                                :data :cols set))]
-   [(get-col-names)
-    (do (upd Field (id :venues :price) :preview_display false)
-        (get-col-names))
-    (do (upd Field (id :venues :price) :preview_display true)
-        (get-col-names))]))
+;;; ### make sure that rows where visibility_type = details-only are included and properly marked up
+(expect-with-non-timeseries-dbs
+  [(set (venues-cols))
+   #{(venues-col :category_id)
+     (venues-col :name)
+     (venues-col :latitude)
+     (venues-col :id)
+     (venues-col :longitude)
+     (-> (venues-col :price)
+         (assoc :visibility_type :details-only))}
+   (set (venues-cols))]
+  (let [get-col-names (fn [] (-> (run-query venues
+                                   (ql/order-by (ql/asc $id))
+                                   (ql/limit 1))
+                                 :data :cols set))]
+    [(get-col-names)
+     (do (upd Field (id :venues :price) :visibility_type :details-only)
+         (get-col-names))
+     (do (upd Field (id :venues :price) :visibility_type :normal)
+         (get-col-names))]))
 
 
 ;;; ## :sensitive fields
@@ -824,7 +854,7 @@
 ;; +------------------------------------------------------------------------------------------------------------------------+
 
 ;; There were 9 "sad toucan incidents" on 2015-06-02
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   (if (i/has-questionable-timezone-support? *data-loader*)
     10
     9)
@@ -834,7 +864,7 @@
                                       (ql/< $timestamp "2015-06-03")))
                    (ql/order-by (ql/asc $timestamp)))))))
 
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   (cond
     (= *engine* :sqlite)
     [["2015-06-01"  6]
@@ -850,35 +880,35 @@
 
     ;; SQL Server, Mongo, and Redshift don't have a concept of timezone so results are all grouped by UTC
     (i/has-questionable-timezone-support? *data-loader*)
-    [[#inst "2015-06-01T07"  6]
-     [#inst "2015-06-02T07" 10]
-     [#inst "2015-06-03T07"  4]
-     [#inst "2015-06-04T07"  9]
-     [#inst "2015-06-05T07"  9]
-     [#inst "2015-06-06T07"  8]
-     [#inst "2015-06-07T07"  8]
-     [#inst "2015-06-08T07"  9]
-     [#inst "2015-06-09T07"  7]
-     [#inst "2015-06-10T07"  9]]
+    [["2015-06-01T07:00:00.000Z"  6]
+     ["2015-06-02T07:00:00.000Z" 10]
+     ["2015-06-03T07:00:00.000Z"  4]
+     ["2015-06-04T07:00:00.000Z"  9]
+     ["2015-06-05T07:00:00.000Z"  9]
+     ["2015-06-06T07:00:00.000Z"  8]
+     ["2015-06-07T07:00:00.000Z"  8]
+     ["2015-06-08T07:00:00.000Z"  9]
+     ["2015-06-09T07:00:00.000Z"  7]
+     ["2015-06-10T07:00:00.000Z"  9]]
 
     ;; Postgres, MySQL, and H2 -- grouped by DB timezone, US/Pacific in this case
     :else
-    [[#inst "2015-06-01T07"  8]
-     [#inst "2015-06-02T07"  9]
-     [#inst "2015-06-03T07"  9]
-     [#inst "2015-06-04T07"  4]
-     [#inst "2015-06-05T07" 11]
-     [#inst "2015-06-06T07"  8]
-     [#inst "2015-06-07T07"  6]
-     [#inst "2015-06-08T07" 10]
-     [#inst "2015-06-09T07"  6]
-     [#inst "2015-06-10T07" 10]])
+    [["2015-06-01T07:00:00.000Z"  8]
+     ["2015-06-02T07:00:00.000Z"  9]
+     ["2015-06-03T07:00:00.000Z"  9]
+     ["2015-06-04T07:00:00.000Z"  4]
+     ["2015-06-05T07:00:00.000Z" 11]
+     ["2015-06-06T07:00:00.000Z"  8]
+     ["2015-06-07T07:00:00.000Z"  6]
+     ["2015-06-08T07:00:00.000Z" 10]
+     ["2015-06-09T07:00:00.000Z"  6]
+     ["2015-06-10T07:00:00.000Z" 10]])
   (->> (dataset sad-toucan-incidents
          (run-query incidents
            (ql/aggregation (ql/count))
            (ql/breakout $timestamp)
            (ql/limit 10)))
-        rows (format-rows-by [identity int])))
+       rows (format-rows-by [identity int])))
 
 
 ;; +------------------------------------------------------------------------------------------------------------------------+
@@ -1119,29 +1149,29 @@
 ;;; # New Filter Types - CONTAINS, STARTS_WITH, ENDS_WITH
 
 ;;; ## STARTS_WITH
-(datasets/expect-with-all-engines
- [[41 "Cheese Steak Shop" 18 37.7855 -122.44  1]
-  [74 "Chez Jay"           2 34.0104 -118.493 2]]
- (-> (run-query venues
-       (ql/filter (ql/starts-with $name "Che"))
-       (ql/order-by (ql/asc $id)))
-     rows formatted-venues-rows))
+(expect-with-non-timeseries-dbs
+  [[41 "Cheese Steak Shop" 18 37.7855 -122.44  1]
+   [74 "Chez Jay"           2 34.0104 -118.493 2]]
+  (-> (run-query venues
+        (ql/filter (ql/starts-with $name "Che"))
+        (ql/order-by (ql/asc $id)))
+      rows formatted-venues-rows))
 
 
 ;;; ## ENDS_WITH
-(datasets/expect-with-all-engines
- [[ 5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]
-  [ 7 "Don Day Korean Restaurant"    44 34.0689 -118.305 2]
-  [17 "Ruen Pair Thai Restaurant"    71 34.1021 -118.306 2]
-  [45 "Tu Lan Restaurant"             4 37.7821 -122.41  1]
-  [55 "Dal Rae Restaurant"           67 33.983  -118.096 4]]
- (-> (run-query venues
-       (ql/filter (ql/ends-with $name "Restaurant"))
-       (ql/order-by (ql/asc $id)))
-     rows formatted-venues-rows))
+(expect-with-non-timeseries-dbs
+  [[ 5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]
+   [ 7 "Don Day Korean Restaurant"    44 34.0689 -118.305 2]
+   [17 "Ruen Pair Thai Restaurant"    71 34.1021 -118.306 2]
+   [45 "Tu Lan Restaurant"             4 37.7821 -122.41  1]
+   [55 "Dal Rae Restaurant"           67 33.983  -118.096 4]]
+  (-> (run-query venues
+        (ql/filter (ql/ends-with $name "Restaurant"))
+        (ql/order-by (ql/asc $id)))
+      rows formatted-venues-rows))
 
 ;;; ## CONTAINS
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   [[31 "Bludso's BBQ"             5 33.8894 -118.207 2]
    [34 "Beachwood BBQ & Brewing" 10 33.7701 -118.191 2]
    [39 "Baby Blues BBQ"           5 34.0003 -118.465 2]]
@@ -1152,7 +1182,7 @@
 
 ;;; ## Nested AND / OR
 
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   [[81]]
   (->> (run-query venues
          (ql/aggregation (ql/count))
@@ -1164,19 +1194,19 @@
 
 ;;; ## = / != with multiple values
 
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   [[81]]
   (->> (run-query venues
          (ql/aggregation (ql/count))
          (ql/filter (ql/= $price 1 2)))
        rows (format-rows-by [int])))
 
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   [[19]]
   (->> (run-query venues
          (ql/aggregation (ql/count))
          (ql/filter (ql/!= $price 1 2)))
-     rows (format-rows-by [int])))
+       rows (format-rows-by [int])))
 
 
 ;; +-------------------------------------------------------------------------------------------------------------+
@@ -1195,19 +1225,19 @@
        rows (format-rows-by [(fn [x] (if (number? x) (int x) x))
                              int])))
 
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   (cond
-    (contains? #{:redshift :sqlserver} *engine*)
-    [[#inst "2015-06-01T17:31" 1]
-     [#inst "2015-06-01T23:06" 1]
-     [#inst "2015-06-02T00:23" 1]
-     [#inst "2015-06-02T01:55" 1]
-     [#inst "2015-06-02T04:04" 1]
-     [#inst "2015-06-02T04:19" 1]
-     [#inst "2015-06-02T09:13" 1]
-     [#inst "2015-06-02T12:37" 1]
-     [#inst "2015-06-02T15:20" 1]
-     [#inst "2015-06-02T18:11" 1]]
+    (contains? #{:redshift :sqlserver :bigquery} *engine*)
+    [["2015-06-01T17:31:00.000Z" 1]
+     ["2015-06-01T23:06:00.000Z" 1]
+     ["2015-06-02T00:23:00.000Z" 1]
+     ["2015-06-02T01:55:00.000Z" 1]
+     ["2015-06-02T04:04:00.000Z" 1]
+     ["2015-06-02T04:19:00.000Z" 1]
+     ["2015-06-02T09:13:00.000Z" 1]
+     ["2015-06-02T12:37:00.000Z" 1]
+     ["2015-06-02T15:20:00.000Z" 1]
+     ["2015-06-02T18:11:00.000Z" 1]]
 
     (= *engine* :sqlite)
     [["2015-06-01 10:31:00" 1]
@@ -1222,19 +1252,19 @@
      ["2015-06-02 11:11:00" 1]]
 
     :else
-    [[#inst "2015-06-01T10:31" 1]
-     [#inst "2015-06-01T16:06" 1]
-     [#inst "2015-06-01T17:23" 1]
-     [#inst "2015-06-01T18:55" 1]
-     [#inst "2015-06-01T21:04" 1]
-     [#inst "2015-06-01T21:19" 1]
-     [#inst "2015-06-02T02:13" 1]
-     [#inst "2015-06-02T05:37" 1]
-     [#inst "2015-06-02T08:20" 1]
-     [#inst "2015-06-02T11:11" 1]])
+    [["2015-06-01T10:31:00.000Z" 1]
+     ["2015-06-01T16:06:00.000Z" 1]
+     ["2015-06-01T17:23:00.000Z" 1]
+     ["2015-06-01T18:55:00.000Z" 1]
+     ["2015-06-01T21:04:00.000Z" 1]
+     ["2015-06-01T21:19:00.000Z" 1]
+     ["2015-06-02T02:13:00.000Z" 1]
+     ["2015-06-02T05:37:00.000Z" 1]
+     ["2015-06-02T08:20:00.000Z" 1]
+     ["2015-06-02T11:11:00.000Z" 1]])
   (sad-toucan-incidents-with-bucketing :default))
 
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   (cond
     (= *engine* :sqlite)
     [["2015-06-01 10:31:00" 1]
@@ -1249,31 +1279,31 @@
      ["2015-06-02 11:11:00" 1]]
 
     (i/has-questionable-timezone-support? *data-loader*)
-    [[#inst "2015-06-01T17:31" 1]
-     [#inst "2015-06-01T23:06" 1]
-     [#inst "2015-06-02T00:23" 1]
-     [#inst "2015-06-02T01:55" 1]
-     [#inst "2015-06-02T04:04" 1]
-     [#inst "2015-06-02T04:19" 1]
-     [#inst "2015-06-02T09:13" 1]
-     [#inst "2015-06-02T12:37" 1]
-     [#inst "2015-06-02T15:20" 1]
-     [#inst "2015-06-02T18:11" 1]]
+    [["2015-06-01T17:31:00.000Z" 1]
+     ["2015-06-01T23:06:00.000Z" 1]
+     ["2015-06-02T00:23:00.000Z" 1]
+     ["2015-06-02T01:55:00.000Z" 1]
+     ["2015-06-02T04:04:00.000Z" 1]
+     ["2015-06-02T04:19:00.000Z" 1]
+     ["2015-06-02T09:13:00.000Z" 1]
+     ["2015-06-02T12:37:00.000Z" 1]
+     ["2015-06-02T15:20:00.000Z" 1]
+     ["2015-06-02T18:11:00.000Z" 1]]
 
     :else
-    [[#inst "2015-06-01T10:31" 1]
-     [#inst "2015-06-01T16:06" 1]
-     [#inst "2015-06-01T17:23" 1]
-     [#inst "2015-06-01T18:55" 1]
-     [#inst "2015-06-01T21:04" 1]
-     [#inst "2015-06-01T21:19" 1]
-     [#inst "2015-06-02T02:13" 1]
-     [#inst "2015-06-02T05:37" 1]
-     [#inst "2015-06-02T08:20" 1]
-     [#inst "2015-06-02T11:11" 1]])
+    [["2015-06-01T10:31:00.000Z" 1]
+     ["2015-06-01T16:06:00.000Z" 1]
+     ["2015-06-01T17:23:00.000Z" 1]
+     ["2015-06-01T18:55:00.000Z" 1]
+     ["2015-06-01T21:04:00.000Z" 1]
+     ["2015-06-01T21:19:00.000Z" 1]
+     ["2015-06-02T02:13:00.000Z" 1]
+     ["2015-06-02T05:37:00.000Z" 1]
+     ["2015-06-02T08:20:00.000Z" 1]
+     ["2015-06-02T11:11:00.000Z" 1]])
   (sad-toucan-incidents-with-bucketing :minute))
 
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   [[0 5]
    [1 4]
    [2 2]
@@ -1286,7 +1316,7 @@
    [9 1]]
   (sad-toucan-incidents-with-bucketing :minute-of-hour))
 
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   (cond
     (= *engine* :sqlite)
     [["2015-06-01 10:00:00" 1]
@@ -1301,37 +1331,37 @@
      ["2015-06-02 13:00:00" 1]]
 
     (i/has-questionable-timezone-support? *data-loader*)
-    [[#inst "2015-06-01T17" 1]
-     [#inst "2015-06-01T23" 1]
-     [#inst "2015-06-02T00" 1]
-     [#inst "2015-06-02T01" 1]
-     [#inst "2015-06-02T04" 2]
-     [#inst "2015-06-02T09" 1]
-     [#inst "2015-06-02T12" 1]
-     [#inst "2015-06-02T15" 1]
-     [#inst "2015-06-02T18" 1]
-     [#inst "2015-06-02T20" 1]]
+    [["2015-06-01T17:00:00.000Z" 1]
+     ["2015-06-01T23:00:00.000Z" 1]
+     ["2015-06-02T00:00:00.000Z" 1]
+     ["2015-06-02T01:00:00.000Z" 1]
+     ["2015-06-02T04:00:00.000Z" 2]
+     ["2015-06-02T09:00:00.000Z" 1]
+     ["2015-06-02T12:00:00.000Z" 1]
+     ["2015-06-02T15:00:00.000Z" 1]
+     ["2015-06-02T18:00:00.000Z" 1]
+     ["2015-06-02T20:00:00.000Z" 1]]
 
     :else
-    [[#inst "2015-06-01T10" 1]
-     [#inst "2015-06-01T16" 1]
-     [#inst "2015-06-01T17" 1]
-     [#inst "2015-06-01T18" 1]
-     [#inst "2015-06-01T21" 2]
-     [#inst "2015-06-02T02" 1]
-     [#inst "2015-06-02T05" 1]
-     [#inst "2015-06-02T08" 1]
-     [#inst "2015-06-02T11" 1]
-     [#inst "2015-06-02T13" 1]])
+    [["2015-06-01T10:00:00.000Z" 1]
+     ["2015-06-01T16:00:00.000Z" 1]
+     ["2015-06-01T17:00:00.000Z" 1]
+     ["2015-06-01T18:00:00.000Z" 1]
+     ["2015-06-01T21:00:00.000Z" 2]
+     ["2015-06-02T02:00:00.000Z" 1]
+     ["2015-06-02T05:00:00.000Z" 1]
+     ["2015-06-02T08:00:00.000Z" 1]
+     ["2015-06-02T11:00:00.000Z" 1]
+     ["2015-06-02T13:00:00.000Z" 1]])
   (sad-toucan-incidents-with-bucketing :hour))
 
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   (if (i/has-questionable-timezone-support? *data-loader*)
-   [[0 13] [1 8] [2 4] [3  7] [4  5] [5 13] [6 10] [7 8] [8 9] [9 7]]
-   [[0  8] [1 9] [2 7] [3 10] [4 10] [5  9] [6  6] [7 5] [8 7] [9 7]])
+    [[0 13] [1 8] [2 4] [3  7] [4  5] [5 13] [6 10] [7 8] [8 9] [9 7]]
+    [[0  8] [1 9] [2 7] [3 10] [4 10] [5  9] [6  6] [7 5] [8 7] [9 7]])
   (sad-toucan-incidents-with-bucketing :hour-of-day))
 
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   (cond
     (= *engine* :sqlite)
     [["2015-06-01"  6]
@@ -1346,49 +1376,49 @@
      ["2015-06-10"  9]]
 
     (i/has-questionable-timezone-support? *data-loader*)
-    [[#inst "2015-06-01T07"  6]
-     [#inst "2015-06-02T07" 10]
-     [#inst "2015-06-03T07"  4]
-     [#inst "2015-06-04T07"  9]
-     [#inst "2015-06-05T07"  9]
-     [#inst "2015-06-06T07"  8]
-     [#inst "2015-06-07T07"  8]
-     [#inst "2015-06-08T07"  9]
-     [#inst "2015-06-09T07"  7]
-     [#inst "2015-06-10T07"  9]]
+    [["2015-06-01T07:00:00.000Z"  6]
+     ["2015-06-02T07:00:00.000Z" 10]
+     ["2015-06-03T07:00:00.000Z"  4]
+     ["2015-06-04T07:00:00.000Z"  9]
+     ["2015-06-05T07:00:00.000Z"  9]
+     ["2015-06-06T07:00:00.000Z"  8]
+     ["2015-06-07T07:00:00.000Z"  8]
+     ["2015-06-08T07:00:00.000Z"  9]
+     ["2015-06-09T07:00:00.000Z"  7]
+     ["2015-06-10T07:00:00.000Z"  9]]
 
     :else
-    [[#inst "2015-06-01T07"  8]
-     [#inst "2015-06-02T07"  9]
-     [#inst "2015-06-03T07"  9]
-     [#inst "2015-06-04T07"  4]
-     [#inst "2015-06-05T07" 11]
-     [#inst "2015-06-06T07"  8]
-     [#inst "2015-06-07T07"  6]
-     [#inst "2015-06-08T07" 10]
-     [#inst "2015-06-09T07"  6]
-     [#inst "2015-06-10T07" 10]])
+    [["2015-06-01T07:00:00.000Z"  8]
+     ["2015-06-02T07:00:00.000Z"  9]
+     ["2015-06-03T07:00:00.000Z"  9]
+     ["2015-06-04T07:00:00.000Z"  4]
+     ["2015-06-05T07:00:00.000Z" 11]
+     ["2015-06-06T07:00:00.000Z"  8]
+     ["2015-06-07T07:00:00.000Z"  6]
+     ["2015-06-08T07:00:00.000Z" 10]
+     ["2015-06-09T07:00:00.000Z"  6]
+     ["2015-06-10T07:00:00.000Z" 10]])
   (sad-toucan-incidents-with-bucketing :day))
 
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   (if (i/has-questionable-timezone-support? *data-loader*)
-   [[1 28] [2 38] [3 29] [4 27] [5 24] [6 30] [7 24]]
-   [[1 29] [2 36] [3 33] [4 29] [5 13] [6 38] [7 22]])
+    [[1 28] [2 38] [3 29] [4 27] [5 24] [6 30] [7 24]]
+    [[1 29] [2 36] [3 33] [4 29] [5 13] [6 38] [7 22]])
   (sad-toucan-incidents-with-bucketing :day-of-week))
 
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   (if (i/has-questionable-timezone-support? *data-loader*)
-   [[1  6] [2 10] [3  4] [4  9] [5  9] [6  8] [7  8] [8  9] [9  7] [10  9]]
-   [[1  8] [2  9] [3  9] [4  4] [5 11] [6  8] [7  6] [8 10] [9  6] [10 10]])
+    [[1  6] [2 10] [3  4] [4  9] [5  9] [6  8] [7  8] [8  9] [9  7] [10  9]]
+    [[1  8] [2  9] [3  9] [4  4] [5 11] [6  8] [7  6] [8 10] [9  6] [10 10]])
   (sad-toucan-incidents-with-bucketing :day-of-month))
 
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   (if (i/has-questionable-timezone-support? *data-loader*)
-   [[152  6] [153 10] [154  4] [155  9] [156  9] [157  8] [158  8] [159  9] [160  7] [161  9]]
-   [[152  8] [153  9] [154  9] [155  4] [156 11] [157  8] [158  6] [159 10] [160  6] [161 10]])
+    [[152  6] [153 10] [154  4] [155  9] [156  9] [157  8] [158  8] [159  9] [160  7] [161  9]]
+    [[152  8] [153  9] [154  9] [155  4] [156 11] [157  8] [158  6] [159 10] [160  6] [161 10]])
   (sad-toucan-incidents-with-bucketing :day-of-year))
 
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   (cond
     (= *engine* :sqlite)
     [["2015-05-31" 46]
@@ -1398,49 +1428,50 @@
      ["2015-06-28" 7]]
 
     (i/has-questionable-timezone-support? *data-loader*)
-    [[#inst "2015-05-31T07" 46]
-     [#inst "2015-06-07T07" 47]
-     [#inst "2015-06-14T07" 40]
-     [#inst "2015-06-21T07" 60]
-     [#inst "2015-06-28T07" 7]]
+    [["2015-05-31T07:00:00.000Z" 46]
+     ["2015-06-07T07:00:00.000Z" 47]
+     ["2015-06-14T07:00:00.000Z" 40]
+     ["2015-06-21T07:00:00.000Z" 60]
+     ["2015-06-28T07:00:00.000Z" 7]]
 
     :else
-    [[#inst "2015-05-31T07" 49]
-     [#inst "2015-06-07T07" 47]
-     [#inst "2015-06-14T07" 39]
-     [#inst "2015-06-21T07" 58]
-     [#inst "2015-06-28T07" 7]])
+    [["2015-05-31T07:00:00.000Z" 49]
+     ["2015-06-07T07:00:00.000Z" 47]
+     ["2015-06-14T07:00:00.000Z" 39]
+     ["2015-06-21T07:00:00.000Z" 58]
+     ["2015-06-28T07:00:00.000Z" 7]])
   (sad-toucan-incidents-with-bucketing :week))
 
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
+  ;; Not really sure why different drivers have different opinions on these </3
   (cond
     (contains? #{:sqlserver :sqlite} *engine*)
     [[23 54] [24 46] [25 39] [26 61]]
 
-    (contains? #{:mongo :redshift} *engine*)
+    (contains? #{:mongo :redshift :bigquery} *engine*)
     [[23 46] [24 47] [25 40] [26 60] [27 7]]
 
     :else
     [[23 49] [24 47] [25 39] [26 58] [27 7]])
   (sad-toucan-incidents-with-bucketing :week-of-year))
 
-(datasets/expect-with-all-engines
-  [[(if (= *engine* :sqlite) "2015-06-01", #inst "2015-06-01T07") 200]]
+(expect-with-non-timeseries-dbs
+  [[(if (= *engine* :sqlite) "2015-06-01", "2015-06-01T07:00:00.000Z") 200]]
   (sad-toucan-incidents-with-bucketing :month))
 
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   [[6 200]]
   (sad-toucan-incidents-with-bucketing :month-of-year))
 
-(datasets/expect-with-all-engines
-  [[(if (= *engine* :sqlite) "2015-04-01", #inst "2015-04-01T07") 200]]
+(expect-with-non-timeseries-dbs
+  [[(if (= *engine* :sqlite) "2015-04-01", "2015-04-01T07:00:00.000Z") 200]]
   (sad-toucan-incidents-with-bucketing :quarter))
 
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   [[2 200]]
   (sad-toucan-incidents-with-bucketing :quarter-of-year))
 
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   [[2015 200]]
   (sad-toucan-incidents-with-bucketing :year))
 
@@ -1453,7 +1484,8 @@
      (vec (for [i (range -15 15)]
             ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of generating `java.sql.Timestamps` here so
             ;; they'll be in the DB's native timezone. Some DBs refuse to use the same timezone we're running the tests from *cough* SQL Server *cough*
-            [(driver/date-interval *data-loader* :second (* i interval-seconds))]))]))
+            [(u/prog1 (driver/date-interval *data-loader* :second (* i interval-seconds))
+               (assert <>))]))]))
 
 (def ^:private checkins:4-per-minute (partial database-def-with-timestamps 15))
 (def ^:private checkins:4-per-hour   (partial database-def-with-timestamps (* 60 15)))
@@ -1467,22 +1499,22 @@
                            (apply ql/relative-datetime relative-datetime-args)))))
       first-row first int))
 
-(datasets/expect-with-all-engines 4 (count-of-grouping (checkins:4-per-minute) :minute "current"))
-(datasets/expect-with-all-engines 4 (count-of-grouping (checkins:4-per-minute) :minute -1 "minute"))
-(datasets/expect-with-all-engines 4 (count-of-grouping (checkins:4-per-minute) :minute  1 "minute"))
+(expect-with-non-timeseries-dbs 4 (count-of-grouping (checkins:4-per-minute) :minute "current"))
+(expect-with-non-timeseries-dbs 4 (count-of-grouping (checkins:4-per-minute) :minute -1 "minute"))
+(expect-with-non-timeseries-dbs 4 (count-of-grouping (checkins:4-per-minute) :minute  1 "minute"))
 
-(datasets/expect-with-all-engines 4 (count-of-grouping (checkins:4-per-hour) :hour "current"))
-(datasets/expect-with-all-engines 4 (count-of-grouping (checkins:4-per-hour) :hour -1 "hour"))
-(datasets/expect-with-all-engines 4 (count-of-grouping (checkins:4-per-hour) :hour  1 "hour"))
+(expect-with-non-timeseries-dbs 4 (count-of-grouping (checkins:4-per-hour) :hour "current"))
+(expect-with-non-timeseries-dbs 4 (count-of-grouping (checkins:4-per-hour) :hour -1 "hour"))
+(expect-with-non-timeseries-dbs 4 (count-of-grouping (checkins:4-per-hour) :hour  1 "hour"))
 
-(datasets/expect-with-all-engines 1 (count-of-grouping (checkins:1-per-day) :day "current"))
-(datasets/expect-with-all-engines 1 (count-of-grouping (checkins:1-per-day) :day -1 "day"))
-(datasets/expect-with-all-engines 1 (count-of-grouping (checkins:1-per-day) :day  1 "day"))
+(expect-with-non-timeseries-dbs 1 (count-of-grouping (checkins:1-per-day) :day "current"))
+(expect-with-non-timeseries-dbs 1 (count-of-grouping (checkins:1-per-day) :day -1 "day"))
+(expect-with-non-timeseries-dbs 1 (count-of-grouping (checkins:1-per-day) :day  1 "day"))
 
-(datasets/expect-with-all-engines 7 (count-of-grouping (checkins:1-per-day) :week "current"))
+(expect-with-non-timeseries-dbs 7 (count-of-grouping (checkins:1-per-day) :week "current"))
 
 ;; SYNTACTIC SUGAR
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   1
   (-> (with-temp-db [_ (checkins:1-per-day)]
         (run-query checkins
@@ -1490,7 +1522,7 @@
           (ql/filter (ql/time-interval $timestamp :current :day))))
       first-row first int))
 
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   7
   (-> (with-temp-db [_ (checkins:1-per-day)]
         (run-query checkins
@@ -1508,25 +1540,149 @@
                     (ql/aggregation (ql/count))
                     (ql/breakout (ql/datetime-field $timestamp breakout-by))
                     (ql/filter (ql/time-interval $timestamp :current filter-by))))]
-    {:rows (-> results :row_count)
+    {:rows (or (-> results :row_count)
+               (throw (ex-info "Query failed!" results)))
      :unit (-> results :data :cols first :unit)}))
 
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   {:rows 1, :unit :day}
   (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day"))
 
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   {:rows 7, :unit :day}
   (date-bucketing-unit-when-you :breakout-by "day", :filter-by "week"))
 
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   {:rows 1, :unit :week}
   (date-bucketing-unit-when-you :breakout-by "week", :filter-by "day"))
 
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   {:rows 1, :unit :quarter}
   (date-bucketing-unit-when-you :breakout-by "quarter", :filter-by "day"))
 
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   {:rows 1, :unit :hour}
   (date-bucketing-unit-when-you :breakout-by "hour", :filter-by "day"))
+
+
+;;; `not` filter -- Test that we can negate the various other filter clauses
+;; The majority of these tests aren't necessary since `not` automatically translates them to simpler, logically equivalent expressions
+;; but I already wrote them so in this case it doesn't hurt to have a little more test coverage than we need
+;; TODO - maybe it makes sense to have a separate namespace to test the Query eXpander so we don't need to run all these extra queries?
+
+;;; =
+(expect-with-non-timeseries-dbs [99] (first-row (run-query venues
+                                                  (ql/aggregation (ql/count))
+                                                  (ql/filter (ql/not (ql/= $id 1))))))
+
+;;; !=
+(expect-with-non-timeseries-dbs [1] (first-row (run-query venues
+                                                 (ql/aggregation (ql/count))
+                                                 (ql/filter (ql/not (ql/!= $id 1))))))
+;;; <
+(expect-with-non-timeseries-dbs [61] (first-row (run-query venues
+                                                  (ql/aggregation (ql/count))
+                                                  (ql/filter (ql/not (ql/< $id 40))))))
+
+;;; >
+(expect-with-non-timeseries-dbs [40] (first-row (run-query venues
+                                                  (ql/aggregation (ql/count))
+                                                  (ql/filter (ql/not (ql/> $id 40))))))
+
+;;; <=
+(expect-with-non-timeseries-dbs [60] (first-row (run-query venues
+                                                  (ql/aggregation (ql/count))
+                                                  (ql/filter (ql/not (ql/<= $id 40))))))
+
+;;; >=
+(expect-with-non-timeseries-dbs [39] (first-row (run-query venues
+                                                  (ql/aggregation (ql/count))
+                                                  (ql/filter (ql/not (ql/>= $id 40))))))
+
+;;; is-null
+(expect-with-non-timeseries-dbs [100] (first-row (run-query venues
+                                                   (ql/aggregation (ql/count))
+                                                   (ql/filter (ql/not (ql/is-null $id))))))
+
+;;; between
+(expect-with-non-timeseries-dbs [89] (first-row (run-query venues
+                                                  (ql/aggregation (ql/count))
+                                                  (ql/filter (ql/not (ql/between $id 30 40))))))
+
+;;; inside
+(expect-with-non-timeseries-dbs [39] (first-row (run-query venues
+                                                  (ql/aggregation (ql/count))
+                                                  (ql/filter (ql/not (ql/inside $latitude $longitude 40 -120 30 -110))))))
+
+;;; starts-with
+(expect-with-non-timeseries-dbs [80] (first-row (run-query venues
+                                                  (ql/aggregation (ql/count))
+                                                  (ql/filter (ql/not (ql/starts-with $name "T"))))))
+
+;;; contains
+(expect-with-non-timeseries-dbs [97] (first-row (run-query venues
+                                                  (ql/aggregation (ql/count))
+                                                  (ql/filter (ql/not (ql/contains $name "BBQ"))))))
+
+;;; does-not-contain
+;; This should literally be the exact same query as the one above by the time it leaves the Query eXpander, so this is more of a QX test than anything else
+(expect-with-non-timeseries-dbs [97] (first-row (run-query venues
+                                                  (ql/aggregation (ql/count))
+                                                  (ql/filter (ql/does-not-contain $name "BBQ")))))
+
+;;; ends-with
+(expect-with-non-timeseries-dbs [87] (first-row (run-query venues
+                                                  (ql/aggregation (ql/count))
+                                                  (ql/filter (ql/not (ql/ends-with $name "a"))))))
+
+;;; and
+(expect-with-non-timeseries-dbs [98] (first-row (run-query venues
+                                                  (ql/aggregation (ql/count))
+                                                  (ql/filter (ql/not (ql/and (ql/> $id 32)
+                                                                             (ql/contains $name "BBQ")))))))
+;;; or
+(expect-with-non-timeseries-dbs [31] (first-row (run-query venues
+                                                  (ql/aggregation (ql/count))
+                                                  (ql/filter (ql/not (ql/or (ql/> $id 32)
+                                                                            (ql/contains $name "BBQ")))))))
+
+;;; nested and/or
+(expect-with-non-timeseries-dbs [96] (first-row (run-query venues
+                                                  (ql/aggregation (ql/count))
+                                                  (ql/filter (ql/not (ql/or (ql/and (ql/> $id 32)
+                                                                                    (ql/< $id 35))
+                                                                            (ql/contains $name "BBQ")))))))
+
+;;; nested not
+(expect-with-non-timeseries-dbs [3] (first-row (run-query venues
+                                                 (ql/aggregation (ql/count))
+                                                 (ql/filter (ql/not (ql/not (ql/contains $name "BBQ")))))))
+
+;;; not nested inside and/or
+(expect-with-non-timeseries-dbs [1] (first-row (run-query venues
+                                                 (ql/aggregation (ql/count))
+                                                 (ql/filter (ql/and (ql/not (ql/> $id 32))
+                                                                    (ql/contains $name "BBQ"))))))
+
+
+;;; MIN & MAX
+
+(expect-with-non-timeseries-dbs [1] (first-row (run-query venues
+                                                 (ql/aggregation (ql/min $price)))))
+
+(expect-with-non-timeseries-dbs [4] (first-row (run-query venues
+                                                 (ql/aggregation (ql/max $price)))))
+
+(expect-with-non-timeseries-dbs
+  [[1 34.0071] [2 33.7701] [3 10.0646] [4 33.983]]
+  (format-rows-by [int (partial u/round-to-decimals 4)]
+    (rows (run-query venues
+            (ql/aggregation (ql/min $latitude))
+            (ql/breakout $price)))))
+
+(expect-with-non-timeseries-dbs
+  [[1 37.8078] [2 40.7794] [3 40.7262] [4 40.7677]]
+  (format-rows-by [int (partial u/round-to-decimals 4)]
+    (rows (run-query venues
+            (ql/aggregation (ql/max $latitude))
+            (ql/breakout $price)))))

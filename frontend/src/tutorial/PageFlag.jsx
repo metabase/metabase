@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from "react";
 
-import TimeoutTransitionGroup from "react-components/timeout-transition-group";
+import ReactCSSTransitionGroup from "react-addons-css-transition-group";
 
 import BodyComponent from "metabase/components/BodyComponent.jsx";
 
@@ -23,9 +23,9 @@ export default class PageFlag extends Component {
 
     render() {
         return (
-            <TimeoutTransitionGroup transitionName="PageFlag" enterTimeout={250} leaveTimeout={250}>
+            <ReactCSSTransitionGroup transitionName="PageFlag" transitionEnterTimeout={250} transitionLeaveTimeout={250}>
                 { this.props.target ? [this.renderPageFlag()] : [] }
-            </TimeoutTransitionGroup>
+            </ReactCSSTransitionGroup>
         );
     }
 }

@@ -1,5 +1,6 @@
-import React, { Component, PropTypes, findDOMNode } from 'react';
+import React, { Component, PropTypes } from "react";
 import cx from "classnames";
+import Icon from 'metabase/components/Icon.jsx'
 
 /*
 Creates a bordered container for an <Icon /> component
@@ -12,10 +13,6 @@ usage:
 */
 
 export default class IconBorder extends Component {
-    constructor(props, context) {
-        super(props, context);
-        this.state = {};
-    }
 
     static propTypes = {
         borderWidth: PropTypes.string,
@@ -23,6 +20,7 @@ export default class IconBorder extends Component {
         borderColor: PropTypes.string,
         borderRadius: PropTypes.string,
         style: PropTypes.object,
+        children: PropTypes.instanceOf(Icon)
     };
 
     static defaultProps = {
@@ -33,39 +31,23 @@ export default class IconBorder extends Component {
         style: {},
     };
 
-    componentDidMount() {
-        this.setState({
-            childWidth: findDOMNode(this.refs.child).offsetWidth
-        });
-    }
-    computeSize () {
-        let width = parseInt(this.state.childWidth, 10);
-        return width * 2;
-    }
-
     render() {
         const { borderWidth, borderStyle, borderColor, borderRadius, className, style, children } = this.props;
-
-        const classes = {
-            'flex': true,
-            'layout-centered': true
-        };
-        classes[className] = true;
-
+        const size = parseInt(children.props.width, 10) * 2
         const styles = {
-            width: this.computeSize(),
-            height: this.computeSize(),
+            width: size,
+            height: size,
             borderWidth: borderWidth,
             borderStyle: borderStyle,
             borderColor: borderColor,
             borderRadius: borderRadius,
-            lineHeight: '1px', /* HACK this is dumb but it centers the icon in the border */
+            ...style
         }
 
         return (
-            <span className={cx(classes)} style={Object.assign(styles, style)}>
-                <span ref="child">{children}</span>
-            </span>
+            <div className={cx('flex layout-centered', className)} style={styles}>
+              {children}
+            </div>
         );
     }
 }

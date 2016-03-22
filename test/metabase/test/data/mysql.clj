@@ -4,7 +4,8 @@
             [environ.core :refer [env]]
             metabase.driver.mysql
             (metabase.test.data [generic-sql :as generic]
-                                [interface :as i]))
+                                [interface :as i])
+            [metabase.util :as u])
   (:import metabase.driver.mysql.MySQLDriver))
 
 (def ^:private ^:const field-base-type->sql-type
@@ -32,7 +33,7 @@
 (defn- quote-name [_ nm]
   (str \` nm \`))
 
-(extend MySQLDriver
+(u/strict-extend MySQLDriver
   generic/IGenericSQLDatasetLoader
   (merge generic/DefaultsMixin
          {:execute-sql!              generic/sequentially-execute-sql!

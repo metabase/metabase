@@ -5,7 +5,6 @@
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             (metabase.models [hydrate :refer :all]
-                             [database :refer [Database]]
                              [field :refer [Field]]
                              [foreign-key :refer [ForeignKey]]
                              [table :refer [Table] :as table])
@@ -56,8 +55,9 @@
 (defendpoint GET "/:id/fields"
   "Get all `Fields` for `Table` with ID."
   [id]
-  (read-check Table id)
-  (sel :many Field :table_id id, :active true, :field_type [not= "sensitive"], (k/order :name :ASC)))
+  (let-404 [table (Table id)]
+    (read-check table)
+    (sel :many Field :table_id id, :visibility_type [not-in ["sensitive" "retired"]], (k/order :name :ASC))))
 
 (defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
@@ -74,14 +74,14 @@
                                 ;; If someone passes include_sensitive_fields return hydrated :fields as-is
                                 identity
                                 ;; Otherwise filter out all :sensitive fields
-                                (partial filter (fn [{:keys [field_type]}]
-                                                  (not= (keyword field_type) :sensitive)))))))
+                                (partial filter (fn [{:keys [visibility_type]}]
+                                                  (not= (keyword visibility_type) :sensitive)))))))
 
 (defendpoint GET "/:id/fks"
   "Get all `ForeignKeys` whose destination is a `Field` that belongs to this `Table`."
   [id]
   (read-check Table id)
-  (let-404 [field-ids (sel :many :id Field :table_id id :active true)]
+  (let-404 [field-ids (sel :many :id Field :table_id id :visibility_type [not= "retired"])]
     (-> (sel :many ForeignKey :destination_id [in field-ids])
         ;; TODO - it's a little silly to hydrate both of these table objects
         (hydrate [:origin [:table :db]] [:destination :table]))))

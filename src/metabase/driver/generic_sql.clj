@@ -6,18 +6,19 @@
             (korma [core :as k]
                    [db :as kdb])
             [metabase.driver :as driver]
+            [metabase.driver.sync :as sync]
             metabase.driver.query-processor.interface
             (metabase.models [field :as field]
                              [table :as table])
             [metabase.util :as u]
-            [metabase.util.korma-extensions :as kx]
-            [metabase.driver.sync :as sync])
+            [metabase.util.korma-extensions :as kx])
   (:import java.sql.DatabaseMetaData
            java.util.Map
-           clojure.lang.Keyword))
+           clojure.lang.Keyword
+           com.mchange.v2.c3p0.ComboPooledDataSource
+           (metabase.driver.query_processor.interface Field Value)))
 
-(declare db->korma-db
-         korma-entity)
+(declare korma-entity)
 
 (defprotocol ISQLDriver
   "Methods SQL-based drivers should implement in order to use `IDriverSQLDefaultsMixin`.
@@ -59,8 +60,16 @@
   (excluded-schemas ^java.util.Set [this]
     "*OPTIONAL*. Set of string names of schemas to skip syncing tables from.")
 
-  (get-connection-for-sync ^java.sql.Connection [this details]
-    "*OPTIONAL*. Get a connection used for a Sync step. By default, this returns a pooled connection.")
+  (field->alias ^String [this, ^Field field]
+    "*OPTIONAL*. Return the alias that should be used to for FIELD, i.e. in an `AS` clause. The default implementation calls `name`, which
+     returns the *unqualified* name of `Field`.
+
+     Return `nil` to prevent FIELD from being aliased.")
+
+  (prepare-value [this, ^Value value]
+    "*OPTIONAL*. Prepare a value (e.g. a `String` or `Integer`) that will be used in a korma form. By default, this returns VALUE's `:value` as-is, which
+     is eventually passed as a parameter in a prepared statement. Drivers such as BigQuery that don't support prepared statements can skip this
+     behavior by returning a korma `raw` form instead, or other drivers can perform custom type conversion as appropriate.")
 
   (set-timezone-sql ^String [this]
     "*OPTIONAL*. This should be a prepared JDBC SQL statement string to be used to set the timezone for the current transaction.
@@ -68,44 +77,63 @@
        \"SET @@session.timezone = ?;\"")
 
   (stddev-fn ^clojure.lang.Keyword [this]
-    "*OPTIONAL*. Keyword name of the SQL function that should be used to get the length of a string. Defaults to `:STDDEV`.")
+    "*OPTIONAL*. Keyword name of the SQL function that should be used to do a standard deviation aggregation. Defaults to `:STDDEV`.")
 
   (string-length-fn ^clojure.lang.Keyword [this]
     "Keyword name of the SQL function that should be used to get the length of a string, e.g. `:LENGTH`.")
 
-  (unix-timestamp->timestamp [this, ^Keyword seconds-or-milliseconds, field-or-value]
+  (unix-timestamp->timestamp [this, field-or-value, ^Keyword seconds-or-milliseconds]
     "Return a korma form appropriate for converting a Unix timestamp integer field or value to an proper SQL `Timestamp`.
      SECONDS-OR-MILLISECONDS refers to the resolution of the int in question and with be either `:seconds` or `:milliseconds`."))
 
 
-(def ^{:arglists '([connection-spec])}
-  connection-spec->pooled-connection-spec
+(def ^:dynamic ^:private connection-pools
+  "A map of our currently open connection pools, keyed by DATABASE `:id`."
+  (atom {}))
+
+(defn- create-connection-pool
+  "Create a new C3P0 `ComboPooledDataSource` for connecting to the given DATABASE."
+  [{:keys [id engine details]}]
+  (log/debug (u/format-color 'magenta "Creating new connection pool for database %d ..." id))
+  (let [spec (connection-details->spec (driver/engine->driver engine) details)]
+    (kdb/connection-pool (assoc spec :minimum-pool-size           1
+                                     ;; prevent broken connections closed by dbs by testing them every 3 mins
+                                     :idle-connection-test-period (* 3 60)
+                                     ;; prevent overly large pools by condensing them when connections are idle for 15m+
+                                     :excess-timeout              (* 15 60)))))
+
+(defn- notify-database-updated
+  "We are being informed that a DATABASE has been updated, so lets shut down the connection pool (if it exists) under
+   the assumption that the connection details have changed."
+  [_ {:keys [id]}]
+  (when-let [pool (get @connection-pools id)]
+    (log/debug (u/format-color 'red "Closing connection pool for database %d ..." id))
+    ;; remove the cached reference to the pool so we don't try to use it anymore
+    (swap! connection-pools dissoc id)
+    ;; now actively shut down the pool so that any open connections are closed
+    (.close ^ComboPooledDataSource (:datasource pool))))
+
+(defn db->pooled-connection-spec
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`.
-   Theses connection pools are cached so we don't create multiple ones to the same DB.
-   Pools are destroyed after they aren't used for more than 3 hours."
-  (memoize/ttl
-   (fn [spec]
-     (log/debug (u/format-color 'magenta "Creating new connection pool..."))
-     (kdb/connection-pool (assoc spec :minimum-pool-size 1)))
-   :ttl/threshold (* 3 60 60 1000)))
+   Theses connection pools are cached so we don't create multiple ones to the same DB."
+  [{:keys [id], :as database}]
+  (if (contains? @connection-pools id)
+    ;; we have an existing pool for this database, so use it
+    (get @connection-pools id)
+    ;; create a new pool and add it to our cache, then return it
+    (u/prog1 (create-connection-pool database)
+      (swap! connection-pools assoc id <>))))
 
 (defn db->jdbc-connection-spec
   "Return a JDBC connection spec for DATABASE. Normally this will have a C3P0 pool as its datasource, unless the database is `short-lived`."
-  {:arglists '([database] [driver details])}
   ;; TODO - I don't think short-lived? key is really needed anymore. It's only used by unit tests, and its original purpose was for creating temporary DBs;
   ;; since we don't destroy databases at the end of each test anymore, it's probably time to remove this
-  ([{:keys [engine details]}]
-   (db->jdbc-connection-spec (driver/engine->driver engine) details))
-  ([driver {:keys [short-lived?], :as details}]
-   (let [connection-spec (connection-details->spec driver details)]
-     (if short-lived?
-       connection-spec
-       (connection-spec->pooled-connection-spec connection-spec)))))
-
-(def ^{:arglists '([database] [driver details])}
-  db->connection
-  "Return a [possibly pooled] connection to DATABASE. Make sure to close this when you're done! (e.g. by using `with-open`)"
-  (comp jdbc/get-connection db->jdbc-connection-spec))
+  [{:keys [engine details], :as database}]
+  (if (:short-lived? details)
+    ;; short-lived connections are not pooled, so just return a non-pooled spec
+    (connection-details->spec (driver/engine->driver engine) details)
+    ;; default behavior is to use a pooled connection
+    (db->pooled-connection-spec database)))
 
 
 (defn escape-field-name
@@ -131,14 +159,6 @@
           (re-find pattern column-type) base-type
           (seq more)                    (recur more))))))
 
-(def ^:private ^:const field-values-lazy-seq-chunk-size
-  "How many Field values should we fetch at a time for `field-values-lazy-seq`?"
-  ;; Hopefully this is a good balance between
-  ;; 1. Not doing too many DB calls
-  ;; 2. Not running out of mem
-  ;; 3. Not fetching too many results for things like mark-json-field! which will fail after the first result that isn't valid JSON
-  500)
-
 (defn- field-values-lazy-seq [driver field]
   (let [table           (field/table field)
         name-components (field/qualified-name-components field)
@@ -150,7 +170,7 @@
         select*         (-> (k/select* (korma-entity table))
                             (k/fields (escape-field-name field-k)))
         fetch-one-page  (fn [page-num]
-                          (for [row (k/exec (apply-page driver select* {:page {:items field-values-lazy-seq-chunk-size, :page page-num}}))]
+                          (for [row (k/exec (apply-page driver select* {:page {:items driver/field-values-lazy-seq-chunk-size, :page page-num}}))]
                             (transform-fn (row field-k))))
 
         ;; This function returns a chunked lazy seq that will fetch some range of results, e.g. 0 - 500, then concat that chunk of results
@@ -158,15 +178,15 @@
         fetch-page      (fn -fetch-page [page-num]
                           (lazy-seq
                            (let [results             (fetch-one-page page-num)
-                                 total-items-fetched (* (inc page-num) field-values-lazy-seq-chunk-size)]
+                                 total-items-fetched (* (inc page-num) driver/field-values-lazy-seq-chunk-size)]
                              (concat results (when (and (seq results)
                                                         (< total-items-fetched driver/max-sync-lazy-seq-results)
-                                                        (= (count results) field-values-lazy-seq-chunk-size))
+                                                        (= (count results) driver/field-values-lazy-seq-chunk-size))
                                                (-fetch-page (inc page-num)))))))]
     (fetch-page 0)))
 
-(defn- table-rows-seq [_ database table-name]
-  (k/select (korma-entity database {:table-name table-name})))
+(defn- table-rows-seq [_ database table]
+  (k/select (korma-entity database table)))
 
 (defn- field-avg-length [driver field]
   (or (some-> (korma-entity (field/table field))
@@ -191,18 +211,20 @@
               (float (/ url-count total-non-null-count))))))
       0.0))
 
-(defn features [driver]
-  (set (cond-> [:foreign-keys
-                :standard-deviation-aggregations]
-         (set-timezone-sql driver) (conj :set-timezone))))
+(defn features
+  "Default implementation of `IDriver` `features` for SQL drivers."
+  [driver]
+  (cond-> #{:standard-deviation-aggregations
+            :foreign-keys}
+    (set-timezone-sql driver) (conj :set-timezone)))
 
 
 ;;; ## Database introspection methods used by sync process
 
 (defmacro with-metadata
   "Execute BODY with `java.sql.DatabaseMetaData` for DATABASE."
-  [[binding driver database] & body]
-  `(with-open [^java.sql.Connection conn# (get-connection-for-sync ~driver (:details ~database))]
+  [[binding _ database] & body]
+  `(with-open [^java.sql.Connection conn# (jdbc/get-connection (db->jdbc-connection-spec ~database))]
      (let [~binding (.getMetaData conn#)]
        ~@body)))
 
@@ -233,7 +255,7 @@
   (set (for [{:keys [column_name type_name]} (jdbc/result-set-seq (.getColumns metadata nil schema name nil))
              :let [calculated-special-type (column->special-type driver column_name (keyword type_name))]]
          (merge {:name        column_name
-                 :column-type type_name
+                 :custom      {:column-type type_name}
                  :base-type   (or (column->base-type driver (keyword type_name))
                                   (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :UnknownField." type_name))
                                       :UnknownField))}
@@ -251,22 +273,19 @@
                                    (if-not (contains? pks (:name field)) field
                                                                          (assoc field :pk? true))))))))
 
-(defn describe-database
-  [driver database]
+(defn- describe-database [driver database]
   (with-metadata [metadata driver database]
     {:tables (active-tables driver, ^DatabaseMetaData metadata)}))
 
-(defn describe-table
-  [driver table]
+(defn- describe-table [driver table]
   (with-metadata [metadata driver (table/database table)]
     (->> (assoc (select-keys table [:name :schema]) :fields (describe-table-fields metadata driver table))
          ;; find PKs and mark them
          (add-table-pks metadata))))
 
-(defn describe-table-fks
-  [driver table]
+(defn- describe-table-fks [driver table]
   (with-metadata [metadata driver (table/database table)]
-    (set (->> (.getImportedKeys metadata nil nil (:name table))
+    (set (->> (.getImportedKeys metadata nil (:schema table) (:name table))
               jdbc/result-set-seq
               (mapv (fn [result]
                       {:fk-column-name   (:fkcolumn_name result)
@@ -276,13 +295,14 @@
 
 
 (defn analyze-table
+  "Default implementation of `analyze-table` for SQL drivers."
   [driver table new-table-ids]
-  ((sync/generic-analyze-table driver
-                               :field-avg-length-fn (partial field-avg-length driver)
-                               :field-percent-urls-fn (partial field-percent-urls driver))
-    driver
-    table
-    new-table-ids))
+  ((sync/make-analyze-table driver
+                            :field-avg-length-fn   (partial field-avg-length driver)
+                            :field-percent-urls-fn (partial field-percent-urls driver))
+   driver
+   table
+   new-table-ids))
 
 
 (defn ISQLDriverDefaultsMixin
@@ -301,7 +321,8 @@
    :column->special-type    (constantly nil)
    :current-datetime-fn     (constantly (k/sqlfn* :NOW))
    :excluded-schemas        (constantly nil)
-   :get-connection-for-sync db->connection
+   :field->alias            (u/drop-first-arg name)
+   :prepare-value           (u/drop-first-arg :value)
    :set-timezone-sql        (constantly nil)
    :stddev-fn               (constantly :STDDEV)})
 
@@ -312,16 +333,17 @@
   (require 'metabase.driver.generic-sql.native
            'metabase.driver.generic-sql.query-processor)
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table             analyze-table
-          :can-connect?              can-connect?
-          :describe-database         describe-database
-          :describe-table            describe-table
-          :describe-table-fks        describe-table-fks
-          :features                  features
-          :field-values-lazy-seq     field-values-lazy-seq
-          :process-native            (resolve 'metabase.driver.generic-sql.native/process-and-run)
-          :process-structured        (resolve 'metabase.driver.generic-sql.query-processor/process-structured)
-          :table-rows-seq            table-rows-seq}))
+         {:analyze-table           analyze-table
+          :can-connect?            can-connect?
+          :describe-database       describe-database
+          :describe-table          describe-table
+          :describe-table-fks      describe-table-fks
+          :features                features
+          :field-values-lazy-seq   field-values-lazy-seq
+          :notify-database-updated notify-database-updated
+          :process-native          (resolve 'metabase.driver.generic-sql.native/process-and-run)
+          :process-structured      (resolve 'metabase.driver.generic-sql.query-processor/process-structured)
+          :table-rows-seq          table-rows-seq}))
 
 
 
@@ -329,14 +351,10 @@
 
 (defn- db->korma-db
   "Return a Korma DB spec for Metabase DATABASE."
-  ([database]
-   (db->korma-db (driver/engine->driver (:engine database)) (:details database)))
-  ([driver details]
-   (assoc (kx/create-db (connection-details->spec driver details))
-          :pool (db->jdbc-connection-spec driver details))))
-
-(defn- table+db->entity [{schema :schema, table-name :name} db]
-  (k/database (kx/create-entity [schema table-name]) db))
+  [{:keys [details engine], :as database}]
+  (let [spec (connection-details->spec (driver/engine->driver engine) details)]
+    (assoc (kx/create-db spec)
+      :pool (db->jdbc-connection-spec database))))
 
 (defn korma-entity
   "Return a Korma entity for [DB and] TABLE.
@@ -344,8 +362,8 @@
     (-> (sel :one Table :id 100)
         korma-entity
         (select (aggregate (count :*) :count)))"
-  ([table]
-   (korma-entity (table/database table) table))
-
-  ([db table]             (table+db->entity table (db->korma-db db)))
-  ([driver details table] (table+db->entity table (db->korma-db driver details))))
+  ([table]    (korma-entity (table/database table) table))
+  ([db table] (let [{schema :schema, table-name :name} table]
+                (k/database
+                  (kx/create-entity [schema table-name])
+                  (db->korma-db db)))))

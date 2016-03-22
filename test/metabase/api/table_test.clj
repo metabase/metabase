@@ -24,6 +24,22 @@
 (expect (get middleware/response-unauthentic :body) (http/client :get 401 (format "table/%d" (id :users))))
 
 
+;; Helper Fns
+
+(defn- db-details []
+  (match-$ (db)
+    {:created_at      $
+     :engine          "h2"
+     :id              $
+     :updated_at      $
+     :name            "test-data"
+     :is_sample       false
+     :is_full_sync    true
+     :organization_id nil
+     :description     nil
+     :features        (mapv name (metabase.driver/features (metabase.driver/engine->driver :h2)))}))
+
+
 ;; ## GET /api/table?org
 ;; These should come back in alphabetical order and include relevant metadata
 (expect
@@ -62,16 +78,7 @@
       {:description     nil
        :entity_type     nil
        :visibility_type nil
-       :db              (match-$ (db)
-                          {:created_at      $
-                           :engine          "h2"
-                           :id              $
-                           :updated_at      $
-                           :name            "test-data"
-                           :is_sample       false
-                           :is_full_sync    true
-                           :organization_id nil
-                           :description     nil})
+       :db              (db-details)
        :schema          "PUBLIC"
        :name            "VENUES"
        :display_name    "Venues"
@@ -100,6 +107,7 @@
             :preview_display     true
             :created_at          $
             :base_type           "BigIntegerField"
+            :visibility_type     "normal"
             :parent_id           nil})
          (match-$ (Field (id :categories :name))
            {:description         nil
@@ -115,6 +123,7 @@
             :preview_display     true
             :created_at          $
             :base_type           "TextField"
+            :visibility_type     "normal"
             :parent_id           nil})]
   ((user->client :rasta) :get 200 (format "table/%d/fields" (id :categories))))
 
@@ -124,16 +133,7 @@
       {:description     nil
        :entity_type     nil
        :visibility_type nil
-       :db              (match-$ (db)
-                          {:created_at      $
-                           :engine          "h2"
-                           :id              $
-                           :updated_at      $
-                           :name            "test-data"
-                           :is_sample       false
-                           :is_full_sync    true
-                           :organization_id nil
-                           :description     nil})
+       :db              (db-details)
        :schema          "PUBLIC"
        :name            "CATEGORIES"
        :display_name    "Categories"
@@ -152,6 +152,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "BigIntegerField"
+                            :visibility_type "normal"
                             :parent_id       nil})
                          (match-$ (Field (id :categories :name))
                            {:description     nil
@@ -168,6 +169,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "TextField"
+                            :visibility_type "normal"
                             :parent_id       nil})]
        :field_values    {}
        :rows            75
@@ -207,16 +209,7 @@
       {:description     nil
        :entity_type     nil
        :visibility_type nil
-       :db              (match-$ (db)
-                          {:created_at      $
-                           :engine          "h2"
-                           :id              $
-                           :updated_at      $
-                           :name            "test-data"
-                           :is_sample       false
-                           :is_full_sync    true
-                           :organization_id nil
-                           :description     nil})
+       :db              (db-details)
        :schema          "PUBLIC"
        :name            "USERS"
        :display_name    "Users"
@@ -235,6 +228,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "BigIntegerField"
+                            :visibility_type "normal"
                             :parent_id       nil})
                          (match-$ (sel :one Field :id (id :users :last_login))
                            {:description     nil
@@ -251,6 +245,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "DateTimeField"
+                            :visibility_type "normal"
                             :parent_id       nil})
                          (match-$ (sel :one Field :id (id :users :name))
                            {:description     nil
@@ -267,6 +262,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "TextField"
+                            :visibility_type "normal"
                             :parent_id       nil})
                          (match-$ (sel :one Field :table_id (id :users) :name "PASSWORD")
                            {:description     nil
@@ -277,12 +273,13 @@
                             :updated_at      $
                             :active          true
                             :id              $
-                            :field_type      "sensitive"
+                            :field_type      "info"
                             :position        0
                             :target          nil
                             :preview_display true
                             :created_at      $
                             :base_type       "TextField"
+                            :visibility_type "sensitive"
                             :parent_id       nil})]
        :rows            15
        :updated_at      $
@@ -318,16 +315,7 @@
       {:description     nil
        :entity_type     nil
        :visibility_type nil
-       :db              (match-$ (db)
-                          {:created_at      $
-                           :engine          "h2"
-                           :id              $
-                           :updated_at      $
-                           :name            "test-data"
-                           :is_sample       false
-                           :is_full_sync    true
-                           :organization_id nil
-                           :description     nil})
+       :db              (db-details)
        :schema          "PUBLIC"
        :name            "USERS"
        :display_name    "Users"
@@ -346,6 +334,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "BigIntegerField"
+                            :visibility_type "normal"
                             :parent_id       nil})
                          (match-$ (Field (id :users :last_login))
                            {:description     nil
@@ -362,6 +351,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "DateTimeField"
+                            :visibility_type "normal"
                             :parent_id       nil})
                          (match-$ (Field (id :users :name))
                            {:description     nil
@@ -378,6 +368,7 @@
                             :preview_display true
                             :created_at      $
                             :base_type       "TextField"
+                            :visibility_type "normal"
                             :parent_id       nil})]
        :rows            15
        :updated_at      $
@@ -426,7 +417,8 @@
                            :details         $
                            :id              $
                            :engine          "h2"
-                           :created_at      $})
+                           :created_at      $
+                           :features        (mapv name (metabase.driver/features (metabase.driver/engine->driver :h2)))})
        :schema          "PUBLIC"
        :name            "USERS"
        :rows            15
@@ -464,6 +456,7 @@
                          :display_name    "User Id"
                          :description     nil
                          :base_type       "IntegerField"
+                         :visibility_type "normal"
                          :preview_display $
                          :position        $
                          :field_type      "info"
@@ -485,16 +478,7 @@
                                              :id              $
                                              :db_id           $
                                              :created_at      $
-                                             :db              (match-$ (db)
-                                                                {:description     nil,
-                                                                 :organization_id nil,
-                                                                 :name            "test-data",
-                                                                 :is_sample       false,
-                                                                 :is_full_sync    true,
-                                                                 :updated_at      $,
-                                                                 :id              $,
-                                                                 :engine          "h2",
-                                                                 :created_at      $})})})
+                                             :db              (db-details)})})
       :destination    (match-$ users-id-field
                         {:id              $
                          :table_id        $
@@ -503,6 +487,7 @@
                          :display_name    "Id"
                          :description     nil
                          :base_type       "BigIntegerField"
+                         :visibility_type "normal"
                          :preview_display $
                          :position        $
                          :field_type      "info"

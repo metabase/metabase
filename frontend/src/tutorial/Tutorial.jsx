@@ -7,6 +7,8 @@ import Portal from "./Portal.jsx";
 import PageFlag from "./PageFlag.jsx";
 import TutorialModal from "./TutorialModal.jsx";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 import _ from "underscore";
 
 export function qs(selector) {
@@ -20,6 +22,8 @@ export function qsWithContent(selector, content) {
         }
     }
 }
+
+const STEP_WARNING_TIMEOUT = 10 * 1000; // 10 seconds
 
 export default class Tutorial extends Component {
     constructor(props, context) {
@@ -64,11 +68,16 @@ export default class Tutorial extends Component {
             }
         }
 
-        if (step.shouldAllowEvent && step.shouldAllowEvent(e)) {
-            if (e.type === "click") {
-                setTimeout(this.next, 100);
+        if (step.shouldAllowEvent) {
+            try {
+                if (step.shouldAllowEvent(e)) {
+                    if (e.type === "click") {
+                        setTimeout(this.next, 100);
+                    }
+                    return;
+                }
+            } catch (e) {
             }
-            return;
         }
 
         if (e.type === "click" && this.refs.pageflag) {
@@ -83,20 +92,21 @@ export default class Tutorial extends Component {
     next() {
         if (this.state.step + 1 === this.props.steps.length) {
             this.close();
+            MetabaseAnalytics.trackEvent('QueryBuilder', 'Tutorial Finish');
         } else {
-            this.setState({ step: this.state.step + 1 })
+            this.setStep(this.state.step + 1);
         }
     }
 
     back() {
-        this.setState({ step: Math.max(0, this.state.step - 1) })
+        this.setStep(Math.max(0, this.state.step - 1));
     }
 
     nextModal() {
         let step = this.state.step;
         while (++step < this.props.steps.length) {
             if (this.props.steps[step].getModal) {
-                this.setState({ step: step });
+                this.setStep(step);
                 return;
             }
         }
@@ -107,11 +117,22 @@ export default class Tutorial extends Component {
         let step = this.state.step;
         while (--step >= 0) {
             if (this.props.steps[step].getModal) {
-                this.setState({ step: step });
+                this.setStep(step);
                 return;
             }
         }
-        this.setState({ step: 0 });
+        this.setStep(0);
+    }
+
+    setStep(step) {
+        if (this.state.stepTimeout != null) {
+            clearTimeout(this.state.stepTimeout);
+        }
+        this.setState({
+            step,
+            stepTimeout: setTimeout(() => this.setState({ stepTimeout: null }), STEP_WARNING_TIMEOUT)
+        });
+        MetabaseAnalytics.trackEvent('QueryBuilder', 'Tutorial Step', step);
     }
 
     close() {
@@ -123,6 +144,49 @@ export default class Tutorial extends Component {
 
         if (!step) {
             return <span />;
+        }
+
+        let missingTarget = false;
+
+        let pageFlagTarget;
+        if (step.getPageFlagTarget) {
+            try { pageFlagTarget = step.getPageFlagTarget(); } catch (e) {}
+            if (pageFlagTarget == undefined) {
+                missingTarget = missingTarget || true;
+            }
+        }
+
+        let portalTarget;
+        if (step.getPortalTarget) {
+            try { portalTarget = step.getPortalTarget(); } catch (e) {}
+            if (portalTarget == undefined) {
+                missingTarget = missingTarget || true;
+            }
+        }
+
+        let modalTarget;
+        if (step.getModalTarget) {
+            try { modalTarget = step.getModalTarget(); } catch (e) {}
+            if (modalTarget == undefined) {
+                missingTarget = missingTarget || true;
+            }
+        }
+
+        if (missingTarget && this.state.stepTimeout === null) {
+            return (
+                <Modal className="Modal TutorialModal">
+                    <TutorialModal
+                        onBack={this.backModal}
+                        onClose={this.close}
+                    >
+                        <div className="text-centered">
+                            <h2>​Whoops!</h2>
+                            <p className="my2">Sorry, it looks like something went wrong. Please try restarting the tutorial in a minute.</p>
+                            <button className="Button Button--primary" onClick={this.close}>Okay</button>
+                        </div>
+                    </TutorialModal>
+                </Modal>
+            );
         }
 
         let modal;
@@ -144,19 +208,12 @@ export default class Tutorial extends Component {
             )
         }
 
-        let pageFlagTarget, pageFlagText;
-        if (step.getPageFlagTarget) {
-            pageFlagTarget = step.getPageFlagTarget();
-        }
+        let pageFlagText;
         if (step.getPageFlagText) {
             pageFlagText = step.getPageFlagText();
         }
 
-        let portalTarget;
-        if (step.getPortalTarget) {
-            portalTarget = step.getPortalTarget();
-        }
-
+        // only pass onClose to modal/popover if we're on the last step
         let onClose;
         if (this.state.step === this.props.steps.length - 1) {
             onClose = this.close;
@@ -169,7 +226,7 @@ export default class Tutorial extends Component {
                     <Portal className="z2" target={portalTarget} />
                 }
                 <Modal isOpen={!!(modal && !step.getModalTarget)} style={{ backgroundColor: "transparent" }} className="Modal TutorialModal" onClose={onClose}>{modal}</Modal>
-                <Popover isOpen={!!(modal && step.getModalTarget)} getTriggerTarget={step.getModalTarget} targetOffsetY={25} onClose={onClose} className="TutorialModal">{modal}</Popover>
+                <Popover isOpen={!!(modal && step.getModalTarget && modalTarget)} getTarget={step.getModalTarget} targetOffsetY={25} onClose={onClose} className="TutorialModal">{modal}</Popover>
             </div>
         );
     }

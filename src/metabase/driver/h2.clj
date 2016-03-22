@@ -7,6 +7,7 @@
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.models.database :refer [Database]]
+            [metabase.util :as u]
             [metabase.util.korma-extensions :as kx]))
 
 (defn- column->base-type [_ column-type]
@@ -196,7 +197,7 @@
   clojure.lang.Named
   (getName [_] "H2"))
 
-(extend H2Driver
+(u/strict-extend H2Driver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
          {:date-interval                     date-interval
@@ -213,7 +214,6 @@
           :column->base-type         column->base-type
           :connection-details->spec  connection-details->spec
           :date                      date
-          :date-interval             date-interval
           :string-length-fn          (constantly :LENGTH)
           :unix-timestamp->timestamp unix-timestamp->timestamp}))
 

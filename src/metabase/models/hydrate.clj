@@ -328,6 +328,3 @@
                      f
                      (counts-unflatten k counts))]
     (map merge coll new-vals)))
-
-
-(u/require-dox-in-this-namespace)

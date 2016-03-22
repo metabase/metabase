@@ -4,7 +4,7 @@ var Home = angular.module('metabase.home', [
 
 Home.config(['$routeProvider', function($routeProvider) {
     $routeProvider.when('/', {
-        template:   '<div mb-redux-component class="flex flex-column flex-full" />',
+        template:   '<div mb-redux-component class="full-height" />',
         controller: 'Homepage',
         resolve: {
             appState: ["AppState", function(AppState) {

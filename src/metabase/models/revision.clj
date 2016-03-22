@@ -3,7 +3,6 @@
             [korma.core :as k]
             [medley.core :as m]
             [metabase.db :as db]
-            [metabase.api.common :refer [*current-user-id* let-404]]
             (metabase.models [hydrate :refer [hydrate]]
                              [interface :as i]
                              [user :refer [User]])
@@ -18,10 +17,11 @@
 ;;; # IRevisioned Protocl
 
 (defprotocol IRevisioned
-  "Methods an entity may optionally implement to control how revisions of an instance are saved and reverted to."
+  "Methods an entity may optionally implement to control how revisions of an instance are saved and reverted to.
+   All of these methods except for `serialize-instance` have a default implementation in `IRevisionedDefaults`."
   (serialize-instance [this id instance]
     "Prepare an instance for serialization in a `Revision`.")
-  (revert-to-revision [this id serialized-instance]
+  (revert-to-revision [this id user-id serialized-instance]
     "Return an object to the state recorded by SERIALIZED-INSTANCE.")
   (diff-map [this object1 object2]
     "Return a map describing the difference between OBJECT1 and OBJECT2.")
@@ -35,7 +35,7 @@
 
 (defn default-revert-to-revision
   "Default implementation of `revert-to-revision` which simply does an update using the values from `serialized-instance`."
-  [entity id serialized-instance]
+  [entity id user-id serialized-instance]
   (m/mapply db/upd entity id serialized-instance))
 
 (defn default-diff-map
@@ -52,6 +52,12 @@
   (when-let [[before after] (data/diff o1 o2)]
     (diff-string (:name entity) before after)))
 
+(def IRevisionedDefaults
+  "Default implementations for `IRevisioned`."
+  {:revert-to-revision default-revert-to-revision
+   :diff-map           default-diff-map
+   :diff-str           default-diff-str})
+
 
 ;;; # Revision Entity
 
@@ -60,7 +66,7 @@
 
 (i/defentity Revision :revision)
 
-(extend (class Revision)
+(u/strict-extend (class Revision)
   i/IEntity
   (merge i/IEntityDefaults
          {:types        (constantly {:object :json})
@@ -150,7 +156,7 @@
   (let [serialized-instance (db/sel :one :field [Revision :object] :model (:name entity), :model_id id, :id revision-id)]
     (kdb/transaction
       ;; Do the reversion of the object
-      (revert-to-revision entity id serialized-instance)
+      (revert-to-revision entity id user-id serialized-instance)
       ;; Push a new revision to record this change
       (let [last-revision (db/sel :one Revision :model (:name entity), :model_id id (k/order :id :DESC))
             new-revision  (db/ins Revision
@@ -161,6 +167,3 @@
                             :is_creation  false
                             :is_reversion true)]
         (add-revision-details entity new-revision last-revision)))))
-
-
-(u/require-dox-in-this-namespace)

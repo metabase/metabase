@@ -15,7 +15,8 @@
    :classname   "org.postgresql.Driver"
    :subprotocol "postgresql"
    :subname     "//localhost:5432/bird_sightings"
-   :make-pool?  true}
+   :make-pool?  true
+   :sslmode     "disable"}
   (sql/connection-details->spec (PostgresDriver.) {:ssl    false
                                                    :host   "localhost"
                                                    :port   5432
@@ -83,4 +84,24 @@
              [3 "ouija_board"]]}
   (-> (data/dataset metabase.driver.postgres-test/dots-in-names
         (data/run-query objects.stuff))
+      :data (dissoc :cols)))
+
+
+;;; # Make sure that duplicate column names (e.g. caused by using a FK) still return both columns
+(def-database-definition duplicate-names
+  ["birds"
+   [{:field-name "name", :base-type :TextField}]
+   [["Rasta"]
+    ["Lucky"]]]
+  ["people"
+   [{:field-name "name", :base-type :TextField}
+    {:field-name "bird_id", :base-type :IntegerField, :fk :birds}]
+   [["Cam" 1]]])
+
+(expect-with-engine :postgres
+  {:columns ["name" "name_2"]
+   :rows    [["Cam" "Rasta"]]}
+  (-> (data/dataset metabase.driver.postgres-test/duplicate-names
+        (data/run-query people
+          (ql/fields $name $bird_id->birds.name)))
       :data (dissoc :cols)))

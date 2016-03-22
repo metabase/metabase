@@ -30,5 +30,5 @@ Right now, the only role a user can have is either User or Admin. The only diffe
 To change a user’s role, just click on it to open a dropdown and make your selection.
 
 ---
-## Next: configuring Metabase
-There are a few other settings you configure in Metabase. [Learn how](06-configuration-settings.md).
+## Next: custom segments and metrics
+Learn how to define custom segments and commonly referenced metrics in the [next section](05-segments-and-metrics.md).

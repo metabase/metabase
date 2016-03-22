@@ -1,23 +1,15 @@
 (ns metabase.driver.mongo.query-processor
   (:refer-clojure :exclude [find sort])
-  (:require [clojure.core.match :refer [match]]
-            (clojure [set :as set]
+  (:require (clojure [set :as set]
                      [string :as s])
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
-            [colorize.core :as color]
             (monger [collection :as mc]
-                    [core :as mg]
-                    [db :as mdb]
-                    [operators :refer :all]
-                    [query :refer :all])
-            (metabase [config :as config]
-                      [db :refer :all])
+                    [operators :refer :all])
             [metabase.driver.query-processor :as qp]
             (metabase.driver.query-processor [annotate :as annotate]
                                              [interface :refer [qualified-name-components map->DateTimeField map->DateTimeValue]])
             [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
-            [metabase.models.field :as field]
             [metabase.util :as u])
   (:import java.sql.Timestamp
            java.util.Date
@@ -40,7 +32,7 @@
 
 (defn- log-monger-form [form]
   (when-not qp/*disable-qp-logging*
-    (log/debug (u/format-color 'blue "\nMONGO AGGREGATION PIPELINE:\n%s\n"
+    (log/debug (u/format-color 'green "\nMONGO AGGREGATION PIPELINE:\n%s\n"
                  (->> form
                       (walk/postwalk #(if (symbol? %) (symbol (name %)) %)) ; strip namespace qualifiers from Monger form
                       u/pprint-to-str) "\n"))))
@@ -81,14 +73,14 @@
 ;; Escaped:
 ;;   {"$group" {"source___username" {"$first" {"$source.username"}, "_id" "$source.username"}}, ...}
 
-(defprotocol IRValue
-  (->rvalue [this]
+(defprotocol ^:private IRValue
+  (^:private ->rvalue [this]
     "Format this `Field` or `Value` for use as the right hand value of an expression, e.g. by adding `$` to a `Field`'s name"))
 
-(defprotocol IField
-  (->lvalue ^String [this]
+(defprotocol ^:private IField
+  (^:private ->lvalue ^String [this]
     "Return an escaped name that can be used as the name of a given Field.")
-  (->initial-rvalue [this]
+  (^:private ->initial-rvalue [this]
     "Return the rvalue that should be used in the *initial* projection for this `Field`."))
 
 
@@ -97,10 +89,19 @@
   ^String [^Field field, ^String separator]
   (apply str (interpose separator (rest (qualified-name-components field)))))
 
-(defmacro ^:private mongo-let [[field value] & body]
+(defmacro ^:private mongo-let
+  {:style/indent 1}
+  [[field value] & body]
   {:$let {:vars {(keyword field) value}
           :in   `(let [~field ~(keyword (str "$$" (name field)))]
                    ~@body)}})
+
+;; As mentioned elsewhere for some arcane reason distinct aggregations come back named "count" and every thing else as the aggregation type
+(defn- ag-type->field-name [ag-type]
+  (when ag-type
+    (if (= ag-type :distinct)
+      "count"
+      (name ag-type))))
 
 (extend-protocol IField
   Field
@@ -113,11 +114,7 @@
   AgFieldRef
   (->lvalue [_]
     (let [{:keys [aggregation-type]} (:aggregation (:query *query*))]
-      (case aggregation-type
-        :avg      "avg"
-        :count    "count"
-        :distinct "count"
-        :sum      "sum")))
+      (ag-type->field-name aggregation-type)))
 
   DateTimeField
   (->lvalue [{unit :unit, ^Field field :field}]
@@ -173,6 +170,8 @@
           :year            {$year field})))))
 
 (extend-protocol IRValue
+  nil (->rvalue [_] nil)
+
   Field
   (->rvalue [this]
     (str \$ (->lvalue this)))
@@ -215,7 +214,7 @@
         :year            (extract :year))))
 
   RelativeDateTimeValue
-  (->rvalue [{:keys [amount unit field], :as this}]
+  (->rvalue [{:keys [amount unit field]}]
     (->rvalue (map->DateTimeValue {:value (u/relative-date (or unit :day) amount)
                                        :field field}))))
 
@@ -233,29 +232,31 @@
 
 ;;; ### filter
 
-(defn- parse-filter-subclause [{:keys [filter-type field value] :as filter}]
+(defn- parse-filter-subclause [{:keys [filter-type field value] :as filter} & [negate?]]
   (let [field (when field (->lvalue field))
-        value (when value (->rvalue value))]
-    (case filter-type
-      :between     {field {$gte (->rvalue (:min-val filter))
-                           $lte (->rvalue (:max-val filter))}}
-      :is-null     {field {$exists false}}
-      :not-null    {field {$exists true}}
-      :contains    {field (re-pattern value)}
-      :starts-with {field (re-pattern (str \^ value))}
-      :ends-with   {field (re-pattern (str value \$))}
-      :=           {field value}
-      :!=          {field {$ne  value}}
-      :<           {field {$lt  value}}
-      :>           {field {$gt  value}}
-      :<=          {field {$lte value}}
-      :>=          {field {$gte value}})))
+        value (when value (->rvalue value))
+        v     (case filter-type
+                :between     {$gte (->rvalue (:min-val filter))
+                              $lte (->rvalue (:max-val filter))}
+                :contains    (re-pattern value)
+                :starts-with (re-pattern (str \^ value))
+                :ends-with   (re-pattern (str value \$))
+                :=           {"$eq" value}
+                :!=          {$ne  value}
+                :<           {$lt  value}
+                :>           {$gt  value}
+                :<=          {$lte value}
+                :>=          {$gte value})]
+    {field (if negate?
+             {$not v}
+             v)}))
 
-(defn- parse-filter-clause [{:keys [compound-type subclauses], :as clause}]
-  (cond
-    (= compound-type :and) {$and (mapv parse-filter-clause subclauses)}
-    (= compound-type :or)  {$or  (mapv parse-filter-clause subclauses)}
-    :else                  (parse-filter-subclause clause)))
+(defn- parse-filter-clause [{:keys [compound-type subclause subclauses], :as clause}]
+  (case compound-type
+    :and {$and (mapv parse-filter-clause subclauses)}
+    :or  {$or  (mapv parse-filter-clause subclauses)}
+    :not (parse-filter-subclause subclause :negate)
+    nil  (parse-filter-subclause clause)))
 
 (defn- handle-filter [{filter-clause :filter} pipeline]
   (when filter-clause
@@ -263,12 +264,6 @@
 
 
 ;;; ### aggregation
-
-(def ^:private ^:const ag-type->field-name
-  {:avg      "avg"
-   :count    "count"
-   :distinct "count"
-   :sum      "sum"})
 
 (defn- aggregation->rvalue [{:keys [aggregation-type field]}]
   (if-not field
@@ -280,7 +275,9 @@
                               :then 1
                               :else 0}}}
       :distinct {$addToSet (->rvalue field)}
-      :sum      {$sum (->rvalue field)})))
+      :sum      {$sum (->rvalue field)}
+      :min      {$min (->rvalue field)}
+      :max      {$max (->rvalue field)})))
 
 (defn- handle-breakout+aggregation [{breakout-fields :breakout, {ag-type :aggregation-type, ag-field :field, :as aggregation} :aggregation} pipeline]
   (let [aggregation? ag-type

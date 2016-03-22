@@ -7,8 +7,9 @@
             [clojure.tools.logging :as log]
             [korma.core :as k]
             [medley.core :as m]
-            [metabase.db.metadata-queries :as queries]
+            [schema.core :as schema]
             [metabase.db :refer :all]
+            [metabase.db.metadata-queries :as queries]
             [metabase.driver :as driver]
             [metabase.driver.query-processor :as qp]
             [metabase.driver :as driver]
@@ -30,17 +31,17 @@
 ;;; ## ---------------------------------------- PUBLIC API ----------------------------------------
 
 
-(def ^:const percent-valid-url-threshold
+(def ^:private ^:const percent-valid-url-threshold
   "Fields that have at least this percent of values that are valid URLs should be marked as `special_type = :url`."
   0.95)
 
 
-(def ^:const low-cardinality-threshold
+(def ^:private ^:const low-cardinality-threshold
   "Fields with less than this many distinct values should automatically be marked with `special_type = :category`."
   40)
 
 
-(def ^:const average-length-no-preview-threshold
+(def ^:private ^:const average-length-no-preview-threshold
   "Fields whose values' average length is greater than this amount should be marked as `preview_display = false`."
   50)
 
@@ -96,7 +97,7 @@
         ;; We need to mark the Table's Fields as inactive as well
         (k/update Field
                   (k/where {:table_id id})
-                  (k/set-fields {:active false}))))
+                  (k/set-fields {:visibility_type "retired"}))))
 
     ;; a little logging so we are better informed
     (let [new-tables (set/difference active-tables (set (keys existing-table-def->table)))]
@@ -119,7 +120,7 @@
             :active       true)
           ;; Otherwise update the Table if needed
           (when (nil? (:display_name existing-table))
-            (upd Field (:id existing-table)
+            (upd Table (:id existing-table)
               :display_name display-name)))))))
 
 
@@ -158,14 +159,10 @@
   "Sync the given table, optionally skipping the more time & resource intensive part of the process by specifying `:analyze? false`."
   [driver table & {:keys [analyze?]
                    :or {analyze? true}}]
-  (let [active-field-ids         #(set (sel :many :field [Field :id], :table_id (:id table), :active true, :parent_id nil))
+  (let [active-field-ids         #(set (sel :many :field [Field :id], :table_id (:id table), :visibility_type [not= "retired"], :parent_id nil))
         table-def                (driver/describe-table driver table)
         current-active-field-ids (active-field-ids)]
-
-    ;; validate that the table description returned is sensibly formatted
-    (assert (every? map? (:fields table-def)) "table-def should describe each field using a map.")
-    (assert (every? string? (map :name (:fields table-def))) "The :name of each field in table-def should be a string.")
-    (assert (every? (partial contains? field/base-types) (map :base-type (:fields table-def))) "The :base-type of each field in table-def should be a valid Field base type.")
+    (schema/validate driver/DescribeTable table-def)
 
     ;; Run basic schema syncing to create all the Fields / PKs
     (u/try-apply sync-table-active-fields-and-pks! table table-def)
@@ -178,6 +175,7 @@
     (when analyze?
       (let [new-field-ids (set/difference (active-field-ids) current-active-field-ids)]
         (when-let [table-stats (driver/analyze-table driver table new-field-ids)]
+          (schema/validate driver/AnalyzeTable table-stats)
 
           ;; update table row count
           (when (:row_count table-stats)
@@ -188,11 +186,13 @@
             ;; set Field metadata we may have detected
             (when (and id (or preview-display special-type))
               (upd-non-nil-keys Field id
-                :preview_display preview-display
+                ;; if a field marked `preview-display` as false then set the visibility type to `:details-only` (see models.field/visibility-types)
+                :visibility_type (when (false? preview-display) :details-only)
                 :special_type    special-type))
-            ;; looks like we found some field values
-            (when (and id values (< 0 (count (filter identity values))))
-              (field-values/save-field-values id values))))))))
+            ;; handle field values, setting them if applicable otherwise clearing them
+            (if (and id values (< 0 (count (filter identity values))))
+              (field-values/save-field-values id values)
+              (field-values/clear-field-values id))))))))
 
 
 (defn- sync-database-active-tables!
@@ -231,7 +231,7 @@
 
    This functionality is currently only used by the Sample Dataset. In order to use this functionality, drivers must implement optional fn `:table-rows-seq`."
   [driver database _metabase_metadata]
-  (doseq [{:keys [keypath value]} (driver/table-rows-seq driver database (:name _metabase_metadata))]
+  (doseq [{:keys [keypath value]} (driver/table-rows-seq driver database _metabase_metadata)]
     (let [[_ table-name field-name k] (re-matches #"^([^.]+)\.(?:([^.]+)\.)?([^.]+)$" keypath)]
       (try (when (not= 1 (if field-name
                            (k/update Field
@@ -248,17 +248,13 @@
 
 
 (defn- sync-database-with-tracking! [driver database full-sync?]
-  (let [start-time (System/currentTimeMillis)
+  (let [start-time (System/nanoTime)
         tracking-hash (str (java.util.UUID/randomUUID))]
     (log/info (u/format-color 'magenta "Syncing %s database '%s'..." (name driver) (:name database)))
     (events/publish-event :database-sync-begin {:database_id (:id database) :custom_id tracking-hash})
 
     (let [database-schema (driver/describe-database driver database)]
-      ;; do some quick validations that our tables list is sensible
-      (when-not (and (set? (:tables database-schema))
-                     (every? map? (:tables database-schema))
-                     (every? :name (:tables database-schema)))
-        (throw (Exception. "Invalid results returned by describe-database. `:tables` should be a set of maps like {:name \"table_name\", :schema \"schema_name_or_nil\"}.")))
+      (schema/validate driver/DescribeDatabase database-schema)
 
       ;; now persist the list of tables, creating new ones as needed and inactivating old ones
       (save-database-tables-list! database (:tables database-schema))
@@ -273,9 +269,10 @@
       (when-let [_metabase_metadata (first (filter #(= (s/lower-case (:name %)) "_metabase_metadata") (:tables database-schema)))]
         (sync-metabase-metadata-table! driver database _metabase_metadata)))
 
-    (events/publish-event :database-sync-end {:database_id (:id database) :custom_id tracking-hash :running_time (- (System/currentTimeMillis) start-time)})
-    (log/info (u/format-color 'magenta "Finished syncing %s database '%s'. (%d ms)" (name driver) (:name database)
-                              (- (System/currentTimeMillis) start-time)))))
+    (events/publish-event :database-sync-end {:database_id (:id database) :custom_id tracking-hash :running_time (int (/ (- (System/nanoTime) start-time)
+                                                                                                                         1000000.0))}) ; convert to ms
+    (log/info (u/format-color 'magenta "Finished syncing %s database '%s'. (%s)" (name driver) (:name database)
+                              (u/format-nanoseconds (- (System/nanoTime) start-time))))))
 
 
 ;; ## Describe Table
@@ -385,16 +382,16 @@ infer-field-special-type
   "Create new Fields (and mark old ones as inactive) for TABLE, and update PK fields."
   [table table-def]
 
-  (let [existing-field-name->field (sel :many :field->fields [Field :name :base_type :special_type :display_name :id], :table_id (:id table), :active true, :parent_id nil)]
+  (let [existing-field-name->field (sel :many :field->fields [Field :name :base_type :special_type :display_name :id], :table_id (:id table), :visibility_type [not= "retired"], :parent_id nil)]
     ;; As above, first mark inactive Fields
     (let [active-column-names (set (map :name (:fields table-def)))]
       (doseq [[field-name {field-id :id}] existing-field-name->field]
         (when-not (contains? active-column-names field-name)
-          (upd Field field-id :active false)
+          (upd Field field-id :visibility_type "retired")
           ;; We need to inactivate any nested fields as well
           (k/update Field
                     (k/where {:parent_id field-id})
-                    (k/set-fields {:active false}))
+                    (k/set-fields {:visibility_type "retired"}))
           (log/info (u/format-color 'cyan "Marked field '%s.%s' as inactive." (:name table) field-name)))))
 
     ;; Create new Fields, update existing types if needed
@@ -408,7 +405,7 @@ infer-field-special-type
 
 
 (defn- sync-field-nested-fields! [parent-field nested-field-defs table-id]
-  (let [existing-field-name->field (sel :many :field->fields [Field :name :base_type :special_type :display_name :id], :active true, :parent_id (:id parent-field))]
+  (let [existing-field-name->field (sel :many :field->fields [Field :name :base_type :special_type :display_name :id], :visibility_type [not= "retired"], :parent_id (:id parent-field))]
     ;; NOTE: this is intentionally disabled because we don't want to remove valid nested fields simply because we scanned different data this time :/
     ;; As above, first mark inactive Fields
     ;(let [active-column-names (set (map :name nested-field-defs))]
@@ -433,7 +430,7 @@ infer-field-special-type
           (insert-or-update-active-field! nested-field-def existing-field table-id)
           (when (:nested-fields nested-field-def)
             ;; TODO: we can recur here and sync the next level of nesting if we want
-            (let [new-parent-field (sel :one Field :name (:name nested-field-def) :table_id table-id, :active true, :parent_id (:id parent-field))]
+            (let [new-parent-field (sel :one Field :name (:name nested-field-def) :table_id table-id, :visibility_type [not= "retired"], :parent_id (:id parent-field))]
               (sync-field-nested-fields! new-parent-field (:nested-fields nested-field-def) table-id))))))))
 
 
@@ -441,19 +438,19 @@ infer-field-special-type
 
   (doseq [field-def (:fields table-def)]
     (when (:nested-fields field-def)
-      (let [parent-field (sel :one Field :name (:name field-def) :table_id table-id, :active true, :parent_id nil)]
+      (let [parent-field (sel :one Field :name (:name field-def) :table_id table-id, :visibility_type [not= "retired"], :parent_id nil)]
         (sync-field-nested-fields! parent-field (:nested-fields field-def) table-id))))
 
-  (let [existing-field-name->field (sel :many :field->fields [Field :name :base_type :special_type :display_name :id], :table_id table-id, :active true, :parent_id nil)]
+  (let [existing-field-name->field (sel :many :field->fields [Field :name :base_type :special_type :display_name :id], :table_id table-id, :visibility_type [not= "retired"], :parent_id nil)]
     ;; As above, first mark inactive Fields
     (let [active-column-names (set (map :name (:fields table-def)))]
       (doseq [[field-name {field-id :id}] existing-field-name->field]
         (when-not (contains? active-column-names field-name)
-          (upd Field field-id :active false)
+          (upd Field field-id :visibility_type "retired")
           ;; We need to inactivate any nested fields as well
           (k/update Field
                     (k/where {:parent_id field-id})
-                    (k/set-fields {:active false}))
+                    (k/set-fields {:visibility_type "retired"}))
           (log/info (u/format-color 'cyan "Marked field '%s.%s' as inactive." (:name table) field-name)))))
 
     ;; Create new Fields, update existing types if needed
@@ -469,25 +466,21 @@ infer-field-special-type
 (defn- sync-table-fks! [driver table]
   (when (contains? (driver/features driver) :foreign-keys)
     (let [fks (driver/describe-table-fks driver table)]
-      (assert (and (set? fks)
-                   (every? map? fks)
-                   (every? :fk-column-name fks)
-                   (every? :dest-table fks)
-                   (every? :dest-column-name fks))
-              "table-fks should return a set of maps with keys :fk-column-name, :dest-table, and :dest-column-name.")
+      (schema/validate driver/DescribeTableFKs fks)
       (when (seq fks)
-        (let [fk-name->id    (sel :many :field->id [Field :name], :table_id (:id table), :name [in (map :fk-column-name fks)], :parent_id nil)]
+        (let [fk-name->id (sel :many :field->id [Field :name], :table_id (:id table), :name [in (map :fk-column-name fks)], :parent_id nil)]
           (doseq [{:keys [fk-column-name dest-column-name dest-table]} fks]
             (when-let [fk-column-id (fk-name->id fk-column-name)]
               (when-let [dest-table-id (sel :one :field [Table :id], :db_id (:db_id table) :name (:name dest-table) :schema (:schema dest-table))]
                 (when-let [dest-column-id (sel :one :id Field, :table_id dest-table-id, :name dest-column-name, :parent_id nil)]
                   (log/debug (u/format-color 'green "Marking foreign key '%s.%s' -> '%s.%s'." (:name table) fk-column-name (:name dest-table) dest-column-name))
-                  (ins ForeignKey
-                    :origin_id      fk-column-id
-                    :destination_id dest-column-id
-                    ;; TODO: do we even care about this?
-                    ;:relationship   (determine-fk-type {:id fk-column-id, :table (delay table)}) ; fake a Field instance
-                    :relationship   :Mt1)
+                  (when-not (exists? ForeignKey :origin_id fk-column-id, :destination_id dest-column-id)
+                    (ins ForeignKey
+                      :origin_id      fk-column-id
+                      :destination_id dest-column-id
+                      ;; TODO: do we even care about this?
+                      ;:relationship  (determine-fk-type {:id fk-column-id, :table (delay table)}) ; fake a Field instance
+                      :relationship   :Mt1))
                   (upd Field fk-column-id :special_type :fk))))))))))
 
 
@@ -503,7 +496,7 @@ infer-field-special-type
       (log/error (u/format-color 'red "Unable to determine row_count for '%s': %s" (:name table) (.getMessage e))))))
 
 (defn test-for-cardinality?
-  "Predicate function which returns `true` if FIELD should be tested for cardinality, `false` otherwise."
+  "Should FIELD should be tested for cardinality?"
   [field is-new?]
   (let [not-field-values-elligible #{:ArrayField
                                      :DateField
@@ -516,45 +509,44 @@ infer-field-special-type
              is-new?
              (not (contains? not-field-values-elligible (:base_type field)))))))
 
-(defn test-cardinality-and-extract-field-values
+(defn test:cardinality-and-extract-field-values
   "Extract field-values for FIELD.  If number of values exceeds `low-cardinality-threshold` then we return an empty set of values."
   [field field-stats]
   ;; TODO: we need some way of marking a field as not allowing field-values so that we can skip this work if it's not appropriate
   ;;       for example, :category fields with more than MAX values don't need to be rescanned all the time
-  (let [distinct-values (let [values         (queries/field-distinct-values field (inc low-cardinality-threshold))
-                              non-nil-values (filter identity values)]
-                          ;; only return the list if we didn't exceed our MAX values
-                          (when-not (< low-cardinality-threshold (count non-nil-values))
-                            non-nil-values))]
+  (let [non-nil-values  (filter identity (queries/field-distinct-values field (inc low-cardinality-threshold)))
+        ;; only return the list if we didn't exceed our MAX values
+        distinct-values (when-not (< low-cardinality-threshold (count non-nil-values))
+                          non-nil-values)]
     ;; TODO: eventually we can check for :nullable? based on the original values above
     (cond-> (assoc field-stats :values distinct-values)
-            (and (nil? (:special_type field))
-                 (< 0 (count distinct-values))) (assoc :special-type :category))))
+      (and (nil? (:special_type field))
+           (< 0 (count distinct-values))) (assoc :special-type :category))))
 
-(defn test-no-preview-display
+(defn- test:no-preview-display
   "If FIELD's is textual and its average length is too great, mark it so it isn't displayed in the UI."
-  [field field-avg-length-fn field-stats]
-  (if-not (and (:preview_display field)
+  [driver field field-stats]
+  (if-not (and (= :normal (:visibility_type field))
                (contains? #{:CharField :TextField} (:base_type field)))
     ;; this field isn't suited for this test
     field-stats
     ;; test for avg length
-    (let [avg-len (u/try-apply field-avg-length-fn field)]
+    (let [avg-len (u/try-apply (:field-avg-length driver) field)]
       (if-not (and avg-len (> avg-len average-length-no-preview-threshold))
         field-stats
         (do
           (log/debug (u/format-color 'green "Field '%s' has an average length of %d. Not displaying it in previews." (field/qualified-name field) avg-len))
           (assoc field-stats :preview-display false))))))
 
-(defn test-url-special-type
+(defn- test:url-special-type
   "If FIELD is texual, doesn't have a `special_type`, and its non-nil values are primarily URLs, mark it as `special_type` `url`."
-  [field percent-urls-fn field-stats]
+  [driver field field-stats]
   (if-not (and (not (:special_type field))
                (contains? #{:CharField :TextField} (:base_type field)))
     ;; this field isn't suited for this test
     field-stats
     ;; test for url values
-    (let [percent-urls (u/try-apply percent-urls-fn field)]
+    (let [percent-urls (u/try-apply (:field-percent-urls driver) field)]
       (if-not (and (float? percent-urls)
                    (>= percent-urls 0.0)
                    (<= percent-urls 100.0)
@@ -583,7 +575,7 @@ infer-field-special-type
     (catch Throwable _
       false)))
 
-(defn test-json-special-type
+(defn- test:json-special-type
   "Mark FIELD as `:json` if it's textual, doesn't already have a special type, the majority of it's values are non-nil, and all of its non-nil values
    are valid serialized JSON dictionaries or arrays."
   [driver field field-stats]
@@ -599,19 +591,30 @@ infer-field-special-type
         (log/debug (u/format-color 'green "Field '%s' looks like it contains valid JSON objects. Setting special_type to :json." (field/qualified-name field)))
         (assoc field-stats :special-type :json, :preview-display false)))))
 
-(defn generic-analyze-table [driver & {:keys [field-avg-length-fn field-percent-urls-fn]
-                                       :or   {field-avg-length-fn   (partial driver/default-field-avg-length driver)
-                                              field-percent-urls-fn (partial driver/default-field-percent-urls driver)}}]
-  (fn [_ table new-field-ids]
-    ;; NOTE: we only run most of the field analysis work when the field is NEW in order to favor performance of the sync process
-    (let [test-field       (fn [field field-stats]
-                             (->> field-stats
-                                  (test-no-preview-display field field-avg-length-fn)
-                                  (test-url-special-type field field-percent-urls-fn)
-                                  (test-json-special-type driver field)))
-          field-stats (for [{:keys [id] :as field} (table/fields table)]
-                        (cond->> {:id id}
-                                 (test-for-cardinality? field (contains? new-field-ids (:id field))) (test-cardinality-and-extract-field-values field)
-                                 (contains? new-field-ids id)                                        (test-field field)))]
+(defn- test:new-field
+  "Do the various tests that should only be done for a new `Field`.
+   We only run most of the field analysis work when the field is NEW in order to favor performance of the sync process."
+  [driver field field-stats]
+  (->> field-stats
+       (test:no-preview-display driver field)
+       (test:url-special-type   driver field)
+       (test:json-special-type  driver field)))
+
+(defn make-analyze-table
+  "Make a generic implementation of `analyze-table`."
+  [driver & {:keys [field-avg-length-fn field-percent-urls-fn]
+             :or   {field-avg-length-fn   (partial driver/default-field-avg-length driver)
+                    field-percent-urls-fn (partial driver/default-field-percent-urls driver)}}]
+  (fn [driver table new-field-ids]
+    (let [driver (assoc driver :field-avg-length field-avg-length-fn, :field-percent-urls field-percent-urls-fn)]
       {:row_count (u/try-apply table-row-count table)
-       :fields    field-stats})))
+       :fields    (for [{:keys [id] :as field} (table/fields table)]
+                    (let [new-field? (contains? new-field-ids id)]
+                      (cond->> {:id id}
+                        (test-for-cardinality? field new-field?) (test:cardinality-and-extract-field-values field)
+                        new-field?                               (test:new-field driver field))))})))
+
+(defn generic-analyze-table
+  "An implementation of `analyze-table` using the defaults (`default-field-avg-length` and `field-percent-urls`)."
+  [driver table new-field-ids]
+  ((make-analyze-table driver) driver table new-field-ids))

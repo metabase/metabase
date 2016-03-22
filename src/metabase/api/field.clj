@@ -7,13 +7,17 @@
             (metabase.models [hydrate :refer [hydrate]]
                              [field :refer [Field] :as field]
                              [field-values :refer [FieldValues create-field-values-if-needed field-should-have-field-values?]]
-                             [foreign-key :refer [ForeignKey] :as fk])
-            [metabase.util :as u]))
+                             [foreign-key :refer [ForeignKey] :as fk])))
 
 (defannotation FieldSpecialType
   "Param must be a valid `Field` special type."
   [symb value :nillable]
   (checkp-contains? field/special-types symb (keyword value)))
+
+(defannotation FieldVisibilityType
+  "Param must be a valid `Field` visibility type."
+  [symb value :nillable]
+  (checkp-contains? field/visibility-types symb (keyword value)))
 
 (defannotation FieldType
   "Param must be a valid `Field` base type."
@@ -35,18 +39,21 @@
 
 (defendpoint PUT "/:id"
   "Update `Field` with ID."
-  [id :as {{:keys [field_type special_type preview_display description display_name]} :body}]
-  {field_type   FieldType
-   special_type FieldSpecialType
-   display_name NonEmptyString}
-  (write-check Field id)
-  ;; update the Field.  start with keys that may be set to NULL then conditionally add other keys if they have values
-  (check-500 (m/mapply upd Field id (merge {:description  description
-                                            :special_type special_type}
-                                           (when display_name               {:display_name display_name})
-                                           (when field_type                 {:field_type field_type})
-                                           (when-not (nil? preview_display) {:preview_display preview_display}))))
-  (Field id))
+  [id :as {{:keys [special_type visibility_type description display_name]} :body}]
+  {special_type    FieldSpecialType
+   visibility_type FieldVisibilityType
+   display_name    NonEmptyString}
+  (let-404 [field (Field id)]
+    (write-check field)
+    (let [special_type    (or special_type (:special_type field))
+          visibility_type (or visibility_type (:visibility_type field))]
+      (check-400 (field/valid-metadata? (:base_type field) (:field_type field) special_type visibility_type))
+      ;; update the Field.  start with keys that may be set to NULL then conditionally add other keys if they have values
+      (check-500 (m/mapply upd Field id (merge {:description     description
+                                                :special_type    special_type
+                                                :visibility_type visibility_type}
+                                               (when display_name {:display_name display_name}))))
+      (Field id))))
 
 (defendpoint GET "/:id/summary"
   "Get the count and distinct count of `Field` with ID."
@@ -92,7 +99,7 @@
 (defendpoint POST "/:id/value_map_update"
   "Update the human-readable values for a `Field` whose special type is `category`/`city`/`state`/`country`
    or whose base type is `BooleanField`."
-  [id :as {{:keys [fieldId values_map]} :body}] ; WTF is the reasoning behind client passing fieldId in POST params?
+  [id :as {{:keys [values_map]} :body}]
   {values_map [Required Dict]}
   (let-404 [field (Field id)]
     (write-check field)

@@ -1,21 +1,18 @@
 (ns metabase.models.metric
   (:require [korma.core :as k]
-            [metabase.config :as config]
             [metabase.db :as db]
             [metabase.events :as events]
-            (metabase.models [common :refer [perms-readwrite]]
-                             [dependency :as dependency]
+            (metabase.models [dependency :as dependency]
                              [hydrate :refer :all]
                              [interface :as i]
-                             [revision :as revision]
-                             [user :refer [User]])
+                             [revision :as revision])
             [metabase.query :as q]
             [metabase.util :as u]))
 
 
 (i/defentity Metric :metric)
 
-(extend (class Metric)
+(u/strict-extend (class Metric)
   i/IEntity
   (merge i/IEntityDefaults
          {:types         (constantly {:definition :json, :description :clob})
@@ -27,10 +24,10 @@
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
 
 
-(defn serialize-metric [_ _ instance]
+(defn- serialize-metric [_ _ instance]
   (dissoc instance :created_at :updated_at))
 
-(defn diff-metrics [this metric1 metric2]
+(defn- diff-metrics [this metric1 metric2]
   (if-not metric1
     ;; this is the first version of the metric
     (u/update-values (select-keys metric2 [:name :description :definition]) (fn [v] {:after v}))
@@ -45,12 +42,11 @@
                   (get-in base-diff [:before :definition])) (assoc :definition {:before (get-in metric1 [:definition])
                                                                                 :after  (get-in metric2 [:definition])})))))
 
-(extend (class Metric)
+(u/strict-extend (class Metric)
   revision/IRevisioned
-  {:serialize-instance serialize-metric
-   :revert-to-revision revision/default-revert-to-revision
-   :diff-map           diff-metrics
-   :diff-str           revision/default-diff-str})
+  (merge revision/IRevisionedDefaults
+         {:serialize-instance serialize-metric
+          :diff-map           diff-metrics}))
 
 
 ;;; ## ---------------------------------------- DEPENDENCIES ----------------------------------------
@@ -58,11 +54,11 @@
 
 (defn metric-dependencies
   "Calculate any dependent objects for a given `Metric`."
-  [this id {:keys [definition] :as instance}]
+  [this id {:keys [definition]}]
   (when definition
     {:Segment (q/extract-segment-ids definition)}))
 
-(extend (class Metric)
+(u/strict-extend (class Metric)
   dependency/IDependent
   {:dependencies metric-dependencies})
 
@@ -93,13 +89,13 @@
    Returns true if `Metric` exists and is active, false otherwise."
   [id]
   {:pre [(integer? id)]}
-  (db/exists? Metric :id id :is_active true))
+  (db/exists? Metric :id id, :is_active true))
 
 (defn retrieve-metric
   "Fetch a single `Metric` by its ID value."
   [id]
   {:pre [(integer? id)]}
-  (-> (db/sel :one Metric :id id)
+  (-> (Metric id)
       (hydrate :creator)))
 
 (defn retrieve-metrics
@@ -111,8 +107,8 @@
    {:pre [(integer? table-id)
           (keyword? state)]}
    (-> (if (= :all state)
-         (db/sel :many Metric :table_id table-id (k/order :name :ASC))
-         (db/sel :many Metric :table_id table-id :is_active (if (= :active state) true false) (k/order :name :ASC)))
+         (db/sel :many Metric :table_id table-id, (k/order :name :ASC))
+         (db/sel :many Metric :table_id table-id, :is_active (if (= :active state) true false), (k/order :name :ASC)))
        (hydrate :creator))))
 
 (defn update-metric
@@ -130,11 +126,8 @@
     :name        name
     :description description
     :definition  definition)
-  (let [metric (retrieve-metric id)]
-    ;; fire off an event
-    (events/publish-event :metric-update (assoc metric :actor_id user-id :revision_message revision_message))
-    ;; return the updated metric
-    metric))
+  (u/prog1 (retrieve-metric id)
+    (events/publish-event :metric-update (assoc <> :actor_id user-id, :revision_message revision_message))))
 
 (defn delete-metric
   "Delete a `Metric`.
@@ -150,8 +143,5 @@
   ;; make Metric not active
   (db/upd Metric id :is_active false)
   ;; retrieve the updated metric (now retired)
-  (let [metric (retrieve-metric id)]
-    ;; fire off an event
-    (events/publish-event :metric-delete (assoc metric :actor_id user-id :revision_message revision-message))
-    ;; return the updated metric
-    metric))
+  (u/prog1 (retrieve-metric id)
+    (events/publish-event :metric-delete (assoc <> :actor_id user-id, :revision_message revision-message))))

@@ -78,8 +78,8 @@ export default class SpecificDatePicker extends Component {
                         selected={start}
                         selectedEnd={end}
                         onChange={this.onChange}
-                        onBeforeClick={singleDay && this.toggleOperator.bind(this, "<")}
-                        onAfterClick={singleDay && this.toggleOperator.bind(this, ">")}
+                        onBeforeClick={singleDay ? this.toggleOperator.bind(this, "<") : undefined}
+                        onAfterClick={singleDay ? this.toggleOperator.bind(this, ">") : undefined}
                     />
                     <div className="py2 text-centered">
                         <Input

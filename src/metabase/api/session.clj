@@ -3,10 +3,9 @@
   (:require [clojure.tools.logging :as log]
             [cemerick.friend.credentials :as creds]
             [compojure.core :refer [defroutes GET POST DELETE]]
-            [hiccup.core :refer [html]]
             [korma.core :as k]
+            [throttle.core :as throttle]
             [metabase.api.common :refer :all]
-            [metabase.api.common.throttle :as throttle]
             [metabase.db :refer :all]
             [metabase.email.messages :as email]
             [metabase.events :as events]
@@ -34,7 +33,7 @@
 
 (defendpoint POST "/"
   "Login."
-  [:as {{:keys [email password] :as body} :body, remote-address :remote-addr}]
+  [:as {{:keys [email password]} :body, remote-address :remote-addr}]
   {email    [Required Email]
    password [Required NonEmptyString]}
   (throttle/check (login-throttlers :ip-address) remote-address)

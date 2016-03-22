@@ -2,12 +2,8 @@
     --selection-color: #ccdff6;
 }
 
-#react_qb_editor {
-    z-index: 2;
-}
-
 #react_qb_viz {
-    z-index: 1;
+    flex-grow: 1;
 }
 
 /* @layout */
@@ -85,6 +81,7 @@
 
 .Query-filter {
     display: flex;
+    flex-shrink: 0;
     font-size: 0.75em;
     border: 2px solid transparent;
     border-radius: var(--default-border-radius);
@@ -97,6 +94,7 @@
 .Filter-section {
     display: flex;
     align-items: center;
+    flex-shrink: 0;
 }
 
 .Query-filter .input {
@@ -225,8 +223,9 @@
     font-weight: 200;
 }
 
-.Visualization .Card-outer {
+.Card-outer {
     width: 100%;
+    height: 100%;
     display: flex;
     align-items: center;
     justify-content: flex-start;
@@ -315,6 +314,23 @@
   left: 50%;
   margin-left: -41px; /* ugh */
 }
+
+.QueryError2 {
+    padding-top: 4rem;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.QueryError2-details {
+    max-width: 500px;
+}
+
+.QueryError2-detailBody {
+    background-color: #f8f8f8;
+    max-height: 15rem;
+    overflow: auto;
+}
+
 
 /* GUI BUILDER */
 
@@ -612,11 +628,6 @@
     border-right: 1px solid var(--border-color);
 }
 
-.QueryBuilder .Entity-title,
-.QueryBuilder .Entity-attribution {
-    margin-left: 0.5rem;
-}
-
 .PopoverBody.AddToDashboard {
     min-width: 25em;
 }
@@ -655,6 +666,11 @@
 
 .List-section--open .List-section-header .List-section-title {
     color: var(--default-font-color);
+}
+
+.List-section-title {
+  word-wrap: break-word;
+  max-width: 230px;
 }
 
 .List-item {
@@ -723,4 +739,27 @@
   content: "?";
   font-size: 13px;
   font-weight: bold;
+}
+
+
+.FilterRemove-field {
+  border-radius: 99px;
+  opacity: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--purple-color);
+  border: 1px solid var(--purple-color);
+  transition: opacity .3s ease-out;
+}
+
+.FilterInput:hover .FilterRemove-field {
+  opacity: 1;
+}
+
+/* need to do this ugliness to override the locally scoped font size from Scalar.css */
+#react_qb_viz .ScalarValue {
+  font-size: 5em;
 }

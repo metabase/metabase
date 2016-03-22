@@ -52,9 +52,9 @@ export default class PasswordReveal extends Component {
                 }
 
                 { visible ?
-                    <a href="#" className="link text-bold" onClick={this.onToggleVisibility.bind(this)}>Hide</a>
+                    <a className="link text-bold" onClick={this.onToggleVisibility.bind(this)}>Hide</a>
                 :
-                    <a href="#" className="link text-bold" onClick={this.onToggleVisibility.bind(this)}>Show</a>
+                    <a className="link text-bold" onClick={this.onToggleVisibility.bind(this)}>Show</a>
                 }
             </div>
         );

@@ -1,14 +1,12 @@
 (ns metabase.models.card
-  (:require [clojure.core.match :refer [match]]
-            [korma.core :as k]
+  (:require [korma.core :as k]
             [medley.core :as m]
             [metabase.db :as db]
             (metabase.models [dependency :as dependency]
                              [interface :as i]
-                             [revision :as revision]
-                             [user :refer [User]])
-            [metabase.query :as q]
-            [metabase.util :as u]))
+                             [revision :as revision])
+            (metabase [query :as q]
+                      [util :as u])))
 
 (def ^:const display-types
   "Valid values of `Card.display_type`."
@@ -49,6 +47,7 @@
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete 'PulseCard :card_id id)
   (db/cascade-delete 'Revision :model "Card" :model_id id)
+  (db/cascade-delete 'DashboardCardSeries :card_id id)
   (db/cascade-delete 'DashboardCard :card_id id)
   (db/cascade-delete 'CardFavorite :card_id id))
 
@@ -68,14 +67,14 @@
 
 (defn card-dependencies
   "Calculate any dependent objects for a given `Card`."
-  [this id {:keys [dataset_query] :as instance}]
+  [this id {:keys [dataset_query]}]
   (when (and dataset_query
              (= :query (keyword (:type dataset_query))))
     {:Metric  (q/extract-metric-ids (:query dataset_query))
      :Segment (q/extract-segment-ids (:query dataset_query))}))
 
 
-(extend (class Card)
+(u/strict-extend (class Card)
   i/IEntity
   (merge i/IEntityDefaults
          {:hydration-keys     (constantly [:card])
@@ -88,13 +87,8 @@
           :pre-cascade-delete pre-cascade-delete})
 
   revision/IRevisioned
-  {:serialize-instance serialize-instance
-   :revert-to-revision revision/default-revert-to-revision
-   :diff-map           revision/default-diff-map
-   :diff-str           revision/default-diff-str}
+  (assoc revision/IRevisionedDefaults
+         :serialize-instance serialize-instance)
 
   dependency/IDependent
   {:dependencies card-dependencies})
-
-
-(u/require-dox-in-this-namespace)

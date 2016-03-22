@@ -2,44 +2,49 @@ import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
 
+import { cancelable } from "metabase/lib/promise";
+
 import cx from "classnames";
+import _ from "underscore";
 
-export default React.createClass({
-    displayName: 'ActionButton',
-    propTypes: {
-        actionFn: PropTypes.func.isRequired
-    },
+export default class ActionButton extends Component {
+    constructor(props, context) {
+        super(props, context);
 
-    getDefaultProps: function() {
-        return {
-            normalText: "Save",
-            activeText: "Saving...",
-            failedText: "Save failed",
-            successText: "Saved",
-            className: 'Button'
-        };
-    },
-
-    getInitialState: function () {
-        return {
+        this.state = {
             active: false,
             result: null
         };
-    },
 
-    resetStateOnTimeout: function() {
+        _.bindAll(this, "onClick", "resetStateOnTimeout")
+    }
+
+    static propTypes = {
+        actionFn: PropTypes.func.isRequired
+    };
+
+    static defaultProps = {
+        className: "Button",
+        normalText: "Save",
+        activeText: "Saving...",
+        failedText: "Save failed",
+        successText: "Saved"
+    };
+
+    componentWillUnmount() {
+        clearTimeout(this.timeout);
+        if (this.actionPromise) {
+            this.actionPromise.cancel();
+        }
+    }
+
+    resetStateOnTimeout() {
         // clear any previously set timeouts then start a new one
         clearTimeout(this.timeout);
+        this.timeout = setTimeout(() => this.replaceState(this.getInitialState()), 5000);
+    }
 
-        var component = this;
-        this.timeout = setTimeout(function() {
-            if (component.isMounted()) {
-                component.replaceState(component.getInitialState());
-            }
-        }.bind(this), 5000);
-    },
-
-    onClick: function(event) {
+    onClick(event) {
         event.preventDefault();
 
         // set state to active
@@ -49,51 +54,45 @@ export default React.createClass({
         });
 
         // run the function we want bound to this button
-        var component = this;
-        this.props.actionFn().then(function(success) {
-            component.setState({
+        this.actionPromise = cancelable(this.props.actionFn());
+        this.actionPromise.then((success) => {
+            this.setState({
                 active: false,
                 result: "success"
-            }, component.resetStateOnTimeout);
-        }, function(error) {
-            component.setState({
-                active: false,
-                result: "failed"
-            }, component.resetStateOnTimeout);
+            }, this.resetStateOnTimeout);
+        }, (error) => {
+            if (!error.isCanceled) {
+                this.setState({
+                    active: false,
+                    result: "failed"
+                }, this.resetStateOnTimeout);
+            }
         });
+    }
 
-        // TODO: timeout on success/failed state to reset back to normal state
-    },
-
-    buttonContent: function() {
-        if (this.state.active) {
-            // TODO: loading spinner
-            return this.props.activeText;
-        } else if (this.state.result === "success") {
-            return (
-                <span>
-                    <Icon name='check' width="12px" height="12px" />
-                    <span className="ml1">{this.props.successText}</span>
-                </span>
-            );
-        } else if (this.state.result === "failed") {
-            return this.props.failedText;
-        } else {
-            return this.props.normalText;
-        }
-    },
-
-    render: function() {
-        var buttonStateClasses = cx({
+    render() {
+        var buttonStateClasses = cx(this.props.className, {
             'Button--waiting': this.state.active,
             'Button--success': this.state.result === 'success',
             'Button--danger': this.state.result === 'failed'
         });
 
         return (
-            <button className={this.props.className + ' ' + buttonStateClasses} onClick={this.onClick}>
-                {this.buttonContent()}
+            <button className={buttonStateClasses} onClick={this.onClick}>
+                { this.state.active ?
+                    // TODO: loading spinner
+                    this.props.activeText
+                : this.state.result === "success" ?
+                    <span>
+                        <Icon name='check' width="12px" height="12px" />
+                        <span className="ml1">{this.props.successText}</span>
+                    </span>
+                : this.state.result === "failed" ?
+                    this.props.failedText
+                :
+                    this.props.normalText
+                }
             </button>
         );
     }
-});
+}

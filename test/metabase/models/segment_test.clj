@@ -200,6 +200,8 @@
 
 ;; ## Segment Revisions
 
+(tu/resolve-private-fns metabase.models.segment serialize-segment diff-segments)
+
 ;; serialize-segment
 (expect
   {:id          true

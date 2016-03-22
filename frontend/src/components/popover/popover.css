@@ -4,11 +4,13 @@
 
 /* afaik popover needs a positioning context to be able to calculate the transform */
 .PopoverContainer {
+	pointer-events: none;
 	position: absolute;
 	z-index: 10000000000000; /* above all the things */
 }
 
 .PopoverBody {
+	pointer-events: auto;
 	position: relative;
 	min-width: 1em; /* ewwwwwwww */
 	border: 1px solid #ddd;
@@ -158,4 +160,11 @@
 .tether-element-attached-left .PopoverBody--withArrow:before,
 .tether-element-attached-left .PopoverBody--withArrow:after {
 	left: 12px;
+}
+
+#popover-event-target {
+	position: fixed;
+	width: 6px;
+	height: 6px;
+	pointer-events: none;
 }

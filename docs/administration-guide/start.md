@@ -8,6 +8,7 @@ Are you in charge of managing Metabase for your organization? Then you're in the
 * [Enable features that send email (SMTP)](02-setting-up-email.md)
 * [Edit your database metadata](03-metadata-editing.md)
 * [Manage user accounts](04-managing-users.md)
+* [Creating segments and metrics](05-segments-and-metrics.md)
 * [Configure settings](06-configuration-settings.md)
 * [Setting up Slack Integration](07-setting-up-slack.md)
 

@@ -3,19 +3,16 @@
                       [events :as events])
             (metabase.models [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
-                             [database :refer [Database]]
                              [interface :as i]
                              [metric :refer [Metric]]
                              [pulse :refer [Pulse]]
-                             [segment :refer [Segment]]
-                             [table :refer [Table]]
-                             [user :refer [User]])
+                             [segment :refer [Segment]])
             [metabase.util :as u]))
 
 
 (i/defentity Activity :activity)
 
-(defn- pre-insert [{:keys [details] :as activity}]
+(defn- pre-insert [activity]
   (let [defaults {:timestamp (u/new-sql-timestamp)
                   :details {}}]
     (merge defaults activity)))
@@ -27,12 +24,12 @@
   (case model
     "card"      (db/exists? Card,      :id model_id)
     "dashboard" (db/exists? Dashboard, :id model_id)
-    "metric"    (db/exists? Metric,    :id model_id)
+    "metric"    (db/exists? Metric,    :id model_id, :is_active true)
     "pulse"     (db/exists? Pulse,     :id model_id)
     "segment"   (db/exists? Segment,   :id model_id, :is_active true)
                  nil))
 
-(extend (class Activity)
+(u/strict-extend (class Activity)
   i/IEntity
   (merge i/IEntityDefaults
          {:types       (constantly {:details :json, :topic :keyword})
@@ -76,6 +73,3 @@
       :details     (if (fn? details-fn)
                      (details-fn object)
                      object))))
-
-
-(u/require-dox-in-this-namespace)

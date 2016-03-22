@@ -1,7 +1,6 @@
 (ns metabase.api.card
   (:require [compojure.core :refer [GET POST DELETE PUT]]
             [korma.core :as k]
-            [medley.core :refer [mapply]]
             [metabase.events :as events]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
@@ -10,8 +9,7 @@
                              [card-favorite :refer [CardFavorite]]
                              [common :as common]
                              [database :refer [Database]]
-                             [table :refer [Table]]
-                             [user :refer [User]])))
+                             [table :refer [Table]])))
 
 (defannotation CardFilterOption
   "Option must be one of `all`, `mine`, or `fav`."
@@ -103,10 +101,11 @@
   "Delete a `Card`."
   [id]
   (write-check Card id)
-  (let [card (sel :one Card :id id)
-        result (cascade-delete Card :id id)]
-    (events/publish-event :card-delete (assoc card :actor_id *current-user-id*))
-    result))
+  (let-404 [card (sel :one Card :id id)]
+    (write-check card)
+    (let [result (cascade-delete Card :id id)]
+      (events/publish-event :card-delete (assoc card :actor_id *current-user-id*))
+      result)))
 
 (defendpoint GET "/:id/favorite"
   "Has current user favorited this `Card`?"
@@ -122,7 +121,7 @@
 (defendpoint DELETE "/:card-id/favorite"
   "Unfavorite a Card."
   [card-id]
-  (let-404 [{:keys [id] :as card-favorite} (sel :one CardFavorite :card_id card-id :owner_id *current-user-id*)]
+  (let-404 [id (sel :one :id CardFavorite :card_id card-id, :owner_id *current-user-id*)]
     (del CardFavorite :id id)))
 
 (define-routes)

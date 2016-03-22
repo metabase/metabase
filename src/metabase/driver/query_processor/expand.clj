@@ -1,7 +1,7 @@
 (ns metabase.driver.query-processor.expand
-  "Converts a Query Dict as recieved by the API into an *expanded* one that contains extra information that will be needed to
+  "Converts a Query Dict as received by the API into an *expanded* one that contains extra information that will be needed to
    construct the appropriate native Query, and perform various post-processing steps such as Field ordering."
-  (:refer-clojure :exclude [< <= > >= = != and or filter count distinct sum])
+  (:refer-clojure :exclude [< <= > >= = != and or not filter count distinct sum min max])
   (:require (clojure [core :as core]
                      [string :as str])
             [clojure.tools.logging :as log]
@@ -18,6 +18,7 @@
                                                       CompoundFilter
                                                       EqualityFilter
                                                       FieldPlaceholder
+                                                      NotFilter
                                                       RelativeDatetime
                                                       StringFilter
                                                       ValuePlaceholder)))
@@ -99,29 +100,33 @@
      (relative-datetime -31 :day)"
   ([n]                (s/validate (s/eq :current) (normalize-token n))
                       (relative-datetime 0 nil))
-  ([n :- s/Int, unit] (i/map->RelativeDatetime {:amount n, :unit (when-not (zero? n)
+  ([n :- s/Int, unit] (i/map->RelativeDatetime {:amount n, :unit (if (zero? n)
+                                                                   :day                        ; give :unit a default value so we can simplify the schema a bit and require a :unit
                                                                    (normalize-token unit))})))
 
 
 ;;; ## aggregation
 
 (s/defn ^:private ^:always-validate ag-with-field :- i/Aggregation [ag-type f]
-  {:aggregation-type ag-type, :field (field f)})
+  (i/strict-map->AggregationWithField {:aggregation-type ag-type, :field (field f)}))
 
 (def ^:ql ^{:arglists '([f])} avg      "Aggregation clause. Return the average value of F."                (partial ag-with-field :avg))
 (def ^:ql ^{:arglists '([f])} distinct "Aggregation clause. Return the number of distinct values of F."    (partial ag-with-field :distinct))
 (def ^:ql ^{:arglists '([f])} sum      "Aggregation clause. Return the sum of the values of F."            (partial ag-with-field :sum))
 (def ^:ql ^{:arglists '([f])} cum-sum  "Aggregation clause. Return the cumulative sum of the values of F." (partial ag-with-field :cumulative-sum))
+(def ^:ql ^{:arglists '([f])} min      "Aggregation clause. Return the minimum value of F."                (partial ag-with-field :min))
+(def ^:ql ^{:arglists '([f])} max      "Aggregation clause. Return the maximum value of F."                (partial ag-with-field :max))
 
 (defn ^:ql stddev
-  "Aggregation clause. Return the standard deviation of values of F."
+  "Aggregation clause. Return the standard deviation of values of F.
+   Requires the feature `:standard-deviation-aggregations`."
   [f]
   (i/assert-driver-supports :standard-deviation-aggregations)
   (ag-with-field :stddev f))
 
 (s/defn ^:ql ^:always-validate count :- i/Aggregation
   "Aggregation clause. Return total row count (e.g., `COUNT(*)`). If F is specified, only count rows where F is non-null (e.g. `COUNT(f)`)."
-  ([]  {:aggregation-type :count})
+  ([]  (i/strict-map->AggregationWithoutField {:aggregation-type :count}))
   ([f] (ag-with-field :count f)))
 
 (defn ^:ql ^:deprecated rows
@@ -141,11 +146,13 @@
 
   ;; Handle :aggregation top-level clauses
   ([query ag :- (s/maybe (s/pred map?))]
-   (if ag
-     (let [ag (update ag :aggregation-type normalize-token)]
+   (if-not ag
+     query
+     (let [ag ((if (:field ag)
+                  i/map->AggregationWithField
+                  i/map->AggregationWithoutField) (update ag :aggregation-type normalize-token))]
        (s/validate i/Aggregation ag)
-       (assoc query :aggregation ag))
-     ag)))
+       (assoc query :aggregation ag)))))
 
 
 ;;; ## breakout & fields
@@ -165,7 +172,7 @@
    subclause)
 
   ([compound-type, subclause :- i/Filter, & more :- [i/Filter]]
-   (i/map->CompoundFilter {:compound-type compound-type, :subclauses (cons subclause more)})))
+   (i/map->CompoundFilter {:compound-type compound-type, :subclauses (vec (cons subclause more))})))
 
 (def ^:ql ^{:arglists '([& subclauses])} and "Filter subclause. Return results that satisfy *all* SUBCLAUSES." (partial compound-filter :and))
 (def ^:ql ^{:arglists '([& subclauses])} or  "Filter subclause. Return results that satisfy *any* of the SUBCLAUSES." (partial compound-filter :or))
@@ -191,6 +198,9 @@
      (!= f v1 v2) ; same as (and (!= f v1) (!= f v2))"
   (partial equality-filter :!= and))
 
+(defn ^:ql is-null  "Filter subclause. Return results where F is `nil`."     [f] (=  f nil)) ; TODO - Should we deprecate these? They're syntactic sugar, and not particualarly useful.
+(defn ^:ql not-null "Filter subclause. Return results where F is not `nil`." [f] (!= f nil)) ; not-null is doubly unnecessary since you could just use `not` instead.
+
 (s/defn ^:private ^:always-validate comparison-filter :- ComparisonFilter [filter-type f v]
   (i/map->ComparisonFilter {:filter-type filter-type, :field (field f), :value (value f v)}))
 
@@ -214,14 +224,44 @@
 (s/defn ^:private ^:always-validate string-filter :- StringFilter [filter-type f s]
   (i/map->StringFilter {:filter-type filter-type, :field (field f), :value (value f s)}))
 
-(def ^:ql ^{:arglists '([f s])} starts-with "Filter subclause. Return results where F starts with the string V."    (partial string-filter :starts-with))
-(def ^:ql ^{:arglists '([f s])} contains    "Filter subclause. Return results where F contains the string V."       (partial string-filter :contains))
-(def ^:ql ^{:arglists '([f s])} ends-with   "Filter subclause. Return results where F ends with with the string V." (partial string-filter :ends-with))
+(def ^:ql ^{:arglists '([f s])} starts-with "Filter subclause. Return results where F starts with the string S."    (partial string-filter :starts-with))
+(def ^:ql ^{:arglists '([f s])} contains    "Filter subclause. Return results where F contains the string S."       (partial string-filter :contains))
+(def ^:ql ^{:arglists '([f s])} ends-with   "Filter subclause. Return results where F ends with with the string S." (partial string-filter :ends-with))
+
+(s/defn ^:ql ^:always-validate not :- i/Filter
+  "Filter subclause. Return results that do *not* satisfy SUBCLAUSE.
+
+   For the sake of simplifying driver implementation, `not` automatically translates its argument to a simpler, logically equivalent form whenever possible:
+
+     (not (and x y)) -> (or (not x) (not y))
+     (not (not x))   -> x
+     (not (= x y)    -> (!= x y)"
+  {:added "0.15.0"}
+  [{:keys [compound-type subclause subclauses], :as clause} :- i/Filter]
+  (case compound-type
+    :and (apply or  (mapv not subclauses))
+    :or  (apply and (mapv not subclauses))
+    :not subclause
+    nil  (let [{:keys [field value filter-type]} clause]
+           (case filter-type
+             :=       (!= field value)
+             :!=      (=  field value)
+             :<       (>= field value)
+             :>       (<= field value)
+             :<=      (>  field value)
+             :>=      (<  field value)
+             :between (let [{:keys [min-val max-val]} clause]
+                        (or (< field min-val)
+                            (> field max-val)))
+             (i/strict-map->NotFilter {:compound-type :not, :subclause clause})))))
+
+(def ^:ql ^{:arglists '([f s]), :added "0.15.0"} does-not-contain "Filter subclause. Return results where F does not start with the string S." (comp not contains))
 
 (s/defn ^:ql ^:always-validate time-interval :- i/Filter
   "Filter subclause. Syntactic sugar for specifying a specific time interval.
 
-    (filter {} (time-interval 100 :current :day)) ; return rows where datetime Field 100's value is in the current day"
+    ;; return rows where datetime Field 100's value is in the current day
+    (filter {} (time-interval (field-id 100) :current :day)) "
   [f n unit]
   (if-not (integer? n)
     (let [n (normalize-token n)]
@@ -237,7 +277,7 @@
         (core/< n -1) (between f (value f (relative-datetime (dec n) unit))
                                  (value f (relative-datetime      -1 unit)))
         (core/> n  1) (between f (value f (relative-datetime       1 unit))
-                                 (value f (relative-datetime (inc n) unit)))))))
+                               (value f (relative-datetime (inc n) unit)))))))
 
 (s/defn ^:ql ^:always-validate filter
   "Filter the results returned by the query.
@@ -299,7 +339,7 @@
   "Specify which 'page' of results to fetch (offset and limit the results).
 
      (page {} {:page 1, :items 20}) ; fetch first 20 rows"
-  [query {:keys [page items], :as page-clause} :- (s/maybe i/Page)]
+  [query page-clause :- (s/maybe i/Page)]
   (if page-clause
     (assoc query :page page-clause)
     query))
@@ -333,7 +373,7 @@
     (core/or (token->ql-fn token)
              (throw (Exception. (str "Illegal clause (no matching fn found): " token))))))
 
-(s/defn ^:always-validate expand-ql-sexpr
+(s/defn ^:always-validate ^:private expand-ql-sexpr
   "Expand a QL bracketed S-expression by dispatching to the appropriate `^:ql` function. If SEXPR is not a QL
    S-expression (the first item isn't a token), it is returned as-is.
 

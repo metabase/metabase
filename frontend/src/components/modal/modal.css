@@ -1,8 +1,4 @@
 
-.modal { /* used by angular-ui-bootstrap */
-    outline: none;
-}
-
 .Modal {
   position: fixed;
 
@@ -33,9 +29,8 @@
   width: 480px;
 }
 
-.modal-backdrop, /* used by angular-ui-bootstrap */
 .Modal-backdrop {
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     right: 0;
@@ -43,35 +38,17 @@
     background-color: rgba(255, 255, 255, 0.6);
 }
 
-.Modal-body {
-    min-height: 200px;
-    display: flex;
-    flex-direction: column;
-}
-
-.Modal-content.Modal-content--small .Modal-body {
-    min-height: inherit; /* using inherit here to get around overly restrictive min-height settings */
-}
-
-.Modal-body .Form-inputs {
-    flex: 1;
-}
-
-.Modal-form {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-}
-
 /* TRANSITIONS */
 
 /* backdrop */
 
+.Modal-backdrop.Modal-appear,
 .Modal-backdrop.Modal-enter {
   transition: background-color 200ms ease-in-out;
   background-color: rgba(255, 255, 255, 0.01);
 }
 
+.Modal-backdrop.Modal-appear-active,
 .Modal-backdrop.Modal-enter-active {
   background-color: rgba(255, 255, 255, 0.6);
 }
@@ -87,12 +64,14 @@
 
 /* modal */
 
+.Modal-backdrop.Modal-appear .Modal,
 .Modal-backdrop.Modal-enter .Modal {
   transition: opacity 200ms linear, transform 200ms ease-in-out;
   opacity: 0.01;
   transform: translate(-50%, -55%);
 }
 
+.Modal-backdrop.Modal-appear-active .Modal,
 .Modal-backdrop.Modal-enter-active .Modal {
   opacity: 1;
   transform: translate(-50%, -50%);

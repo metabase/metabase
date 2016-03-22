@@ -1,7 +1,6 @@
 (ns metabase.events.revision
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [metabase.config :as config]
             [metabase.events :as events]
             (metabase.models [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
@@ -78,7 +77,7 @@
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
-(defn events-init []
-  (when-not (config/is-test?)
-    (log/info "Starting revision events listener")
-    (events/start-event-listener revisions-topics revisions-channel process-revision-event)))
+(defn events-init
+  "Automatically called during startup; start event listener for revision events."
+  []
+  (events/start-event-listener revisions-topics revisions-channel process-revision-event))

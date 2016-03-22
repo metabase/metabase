@@ -1,6 +1,5 @@
 (ns metabase.models.pulse
-  (:require [clojure.tools.logging :as log]
-            (korma [core :as k]
+  (:require (korma [core :as k]
                    [db :as kdb])
             [medley.core :as m]
             [metabase.db :as db]
@@ -10,8 +9,7 @@
                              [hydrate :refer :all]
                              [interface :as i]
                              [pulse-card :refer [PulseCard]]
-                             [pulse-channel :refer [PulseChannel] :as pulse-channel]
-                             [user :refer [User]])
+                             [pulse-channel :refer [PulseChannel] :as pulse-channel])
             [metabase.util :as u]))
 
 
@@ -39,7 +37,7 @@
             (k/where {:pulse_card.pulse_id id})
             (k/order :pulse_card.position :asc)))
 
-(extend (class Pulse)
+(u/strict-extend (class Pulse)
   i/IEntity
   (merge i/IEntityDefaults
          {:hydration-keys     (constantly [:pulse])
@@ -77,10 +75,11 @@
   ;; NOTE that we force the :id of the channel being updated to the :id we *know* from our
   ;;      existing list of `PulseChannels` pulled from the db to ensure we affect the right record
   (let [channel (when new-channel (assoc new-channel
-                                    :pulse_id      pulse-id
-                                    :id            (:id existing-channel)
-                                    :channel_type  (keyword (:channel_type new-channel))
-                                    :schedule_type (keyword (:schedule_type new-channel))))]
+                                    :pulse_id       pulse-id
+                                    :id             (:id existing-channel)
+                                    :channel_type   (keyword (:channel_type new-channel))
+                                    :schedule_type  (keyword (:schedule_type new-channel))
+                                    :schedule_frame (keyword (:schedule_frame new-channel))))]
     (cond
       ;; 1. in channels, NOT in db-channels = CREATE
       (and channel (not existing-channel))  (pulse-channel/create-pulse-channel channel)
@@ -154,25 +153,21 @@
   `PulseCards`, `PulseChannels`, and `PulseChannelRecipients`.
 
    Returns the newly created `Pulse` or throws an Exception."
-  [pulse-name creator-id cards channels]
+  [pulse-name creator-id card-ids channels]
   {:pre [(string? pulse-name)
          (integer? creator-id)
-         (sequential? cards)
-         (> (count cards) 0)
-         (every? integer? cards)
+         (sequential? card-ids)
+         (> (count card-ids) 0)
+         (every? integer? card-ids)
          (coll? channels)
          (every? map? channels)]}
   (kdb/transaction
     (let [{:keys [id] :as pulse} (db/ins Pulse
                                    :creator_id creator-id
                                    :name pulse-name)]
-      ;; add cards to the Pulse
-      (update-pulse-cards pulse cards)
+      ;; add card-ids to the Pulse
+      (update-pulse-cards pulse card-ids)
       ;; add channels to the Pulse
       (update-pulse-channels pulse channels)
       ;; return the full Pulse (and record our create event)
-      (->> (retrieve-pulse id)
-           (events/publish-event :pulse-create)))))
-
-
-(u/require-dox-in-this-namespace)
+      (events/publish-event :pulse-create (retrieve-pulse id)))))

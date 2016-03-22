@@ -120,22 +120,22 @@
 
 ;; Test that Fields got synced correctly, and types are correct
 (expect-when-testing-mongo
-    [[{:special_type :id,        :base_type :IntegerField, :name "_id"}
-      {:special_type :name,      :base_type :TextField,    :name "name"}]
-     [{:special_type :id,        :base_type :IntegerField, :name "_id"}
-      {:special_type nil,        :base_type :DateField,    :name "date"}
-      {:special_type :category,  :base_type :IntegerField, :name "user_id"}
-      {:special_type nil,        :base_type :IntegerField, :name "venue_id"}]
-     [{:special_type :id,        :base_type :IntegerField, :name "_id"}
-      {:special_type nil,        :base_type :DateField,    :name "last_login"}
-      {:special_type :name,      :base_type :TextField,    :name "name"}
-      {:special_type :category,  :base_type :TextField,    :name "password"}]
-     [{:special_type :id,        :base_type :IntegerField, :name "_id"}
-      {:special_type :category,  :base_type :IntegerField, :name "category_id"}
-      {:special_type :latitude,  :base_type :FloatField,   :name "latitude"}
-      {:special_type :longitude, :base_type :FloatField,   :name "longitude"}
-      {:special_type :name,      :base_type :TextField,    :name "name"}
-      {:special_type :category,  :base_type :IntegerField, :name "price"}]]
+    [[{:special_type :id,        :base_type :IntegerField,  :name "_id"}
+      {:special_type :name,      :base_type :TextField,     :name "name"}]
+     [{:special_type :id,        :base_type :IntegerField,  :name "_id"}
+      {:special_type nil,        :base_type :DateTimeField, :name "date"}
+      {:special_type :category,  :base_type :IntegerField,  :name "user_id"}
+      {:special_type nil,        :base_type :IntegerField,  :name "venue_id"}]
+     [{:special_type :id,        :base_type :IntegerField,  :name "_id"}
+      {:special_type nil,        :base_type :DateTimeField, :name "last_login"}
+      {:special_type :name,      :base_type :TextField,     :name "name"}
+      {:special_type :category,  :base_type :TextField,     :name "password"}]
+     [{:special_type :id,        :base_type :IntegerField,  :name "_id"}
+      {:special_type :category,  :base_type :IntegerField,  :name "category_id"}
+      {:special_type :latitude,  :base_type :FloatField,    :name "latitude"}
+      {:special_type :longitude, :base_type :FloatField,    :name "longitude"}
+      {:special_type :name,      :base_type :TextField,     :name "name"}
+      {:special_type :category,  :base_type :IntegerField,  :name "price"}]]
     (for [nm table-names]
       (sel :many :fields [Field :name :base_type :special_type], :active true, :table_id (:id (table-name->table nm))
            (k/order :name))))

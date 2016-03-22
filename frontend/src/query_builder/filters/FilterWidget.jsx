@@ -143,7 +143,7 @@ export default class FilterWidget extends Component {
                     {this.renderPopover()}
                 </div>
                 { this.props.removeFilter &&
-                    <a className="text-grey-2 no-decoration px1 flex align-center" href="#" onClick={this.removeFilter}>
+                    <a className="text-grey-2 no-decoration px1 flex align-center" onClick={this.removeFilter}>
                         <Icon name='close' width="14px" height="14px" />
                     </a>
                 }

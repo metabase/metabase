@@ -1,22 +1,19 @@
 (ns metabase.driver.query-processor
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific implementations."
-  (:require [clojure.core.match :refer [match]]
-            [clojure.string :as s]
+  (:require [clojure.walk :as walk]
             [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
             [korma.core :as k]
             [medley.core :as m]
             schema.utils
             [swiss.arrows :refer [<<-]]
-            [metabase.db :refer :all]
+            [metabase.db :as db]
             [metabase.driver :as driver]
             (metabase.driver.query-processor [annotate :as annotate]
                                              [expand :as expand]
                                              [interface :refer :all]
                                              [macros :as macros]
                                              [resolve :as resolve])
-            (metabase.models [field :refer [Field], :as field]
-                             [foreign-key :refer [ForeignKey]])
+            [metabase.models.field :refer [Field], :as field]
             [metabase.util :as u])
   (:import (schema.utils NamedError ValidationError)))
 
@@ -107,6 +104,17 @@
            (fail query e)))))
 
 
+(defn- pre-add-settings [qp]
+  (fn [{:keys [driver] :as query}]
+    (let [settings {:report-timezone (when (driver/driver-supports? driver :set-timezone)
+                                       (let [report-tz (driver/report-timezone)]
+                                         (when-not (empty? report-tz)
+                                           report-tz)))}]
+      (->> (u/filter-nil-values settings)
+           (assoc query :settings)
+           qp))))
+
+
 (defn- pre-expand [qp]
   (fn [query]
     (qp (if (structured-query? query)
@@ -136,6 +144,23 @@
         ;; Add :rows_truncated if we've hit the limit so the UI can let the user know
         (= num-results results-limit) (assoc-in [:data :rows_truncated] results-limit)))))
 
+(defn- format-rows [{:keys [report-timezone]} rows]
+  (for [row rows]
+    (for [v row]
+      (if (u/is-temporal? v)
+        (u/->iso-8601-datetime v report-timezone)
+        v))))
+
+(defn- post-format-rows
+  "Format individual query result values as needed.  Ex: format temporal values as iso8601 strings w/ timezone."
+  [qp]
+  (fn [{:keys [settings] :as query}]
+    (let [results (qp query)]
+      (if-not (:rows results)
+        results
+        (update results :rows (partial format-rows settings))))))
+
+
 (defn- should-add-implicit-fields? [{{:keys [fields breakout], {ag-type :aggregation-type} :aggregation} :query}]
   (not (or ag-type breakout fields)))
 
@@ -146,12 +171,11 @@
     (if (structured-query? query)
       (qp (if-not (should-add-implicit-fields? query)
             query
-            (let [fields (for [field (sel :many :fields [Field :name :display_name :base_type :special_type :preview_display :display_name :table_id :id :position :description]
-                                          :table_id   source-table-id
-                                          :active     true
-                                          :field_type [not= "sensitive"]
-                                          :parent_id  nil
-                                          (k/order :position :asc) (k/order :id :desc))]
+            (let [fields (for [field (db/sel :many :fields [Field :name :display_name :base_type :special_type :visibility_type :display_name :table_id :id :position :description]
+                                             :table_id        source-table-id
+                                             :visibility_type [not-in ["sensitive" "retired"]]
+                                             :parent_id       nil
+                                             (k/order :position :asc) (k/order :id :desc))]
                            (let [field (-> (resolve/rename-mb-field-keys field)
                                            map->Field
                                            (resolve/resolve-table {source-table-id source-table}))]
@@ -263,17 +287,17 @@
   (fn [query]
     (when (and (structured-query? query)
                (not *disable-qp-logging*))
-      (log/debug (u/format-color 'magenta "\n\nPREPROCESSED/EXPANDED: 😻\n%s"
-                                 (u/pprint-to-str
-                                  ;; Remove empty kv pairs because otherwise expanded query is HUGE
-                                  (walk/prewalk
-                                   (fn [f]
-                                     (if-not (map? f) f
-                                             (m/filter-vals identity (into {} f))))
-                                   ;; obscure DB details when logging. Just log the name of driver because we don't care about its properties
-                                   (-> query
-                                       (assoc-in [:database :details] "😋 ") ; :yum:
-                                       (update :driver name)))))))
+      (log/debug (u/format-color 'magenta "\nPREPROCESSED/EXPANDED: 😻\n%s"
+                   (u/pprint-to-str
+                    ;; Remove empty kv pairs because otherwise expanded query is HUGE
+                    (walk/prewalk
+                     (fn [f]
+                       (if-not (map? f) f
+                               (m/filter-vals identity (into {} f))))
+                     ;; obscure DB details when logging. Just log the name of driver because we don't care about its properties
+                     (-> query
+                         (assoc-in [:database :details] "😋 ") ; :yum:
+                         (update :driver name)))))))
     (qp query)))
 
 
@@ -322,15 +346,17 @@
   "Process a QUERY and return the results."
   [driver query]
   (when-not *disable-qp-logging*
-    (log/debug (u/format-color 'blue "\nQUERY: 😎\n%s" (u/pprint-to-str query))))
+    (log/debug (u/format-color 'blue "\nQUERY: 😎\n%s"  (u/pprint-to-str query))))
   (binding [*driver* driver]
     (let [driver-process-query (partial (if (structured-query? query)
                                           driver/process-structured
                                           driver/process-native) driver)]
       ((<<- wrap-catch-exceptions
+            pre-add-settings
             pre-expand
             (driver/process-query-in-context driver)
             post-add-row-count-and-status
+            post-format-rows
             pre-add-implicit-fields
             pre-add-implicit-breakout-order-by
             cumulative-sum

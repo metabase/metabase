@@ -1,5 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
+import MetabaseSettings from "metabase/lib/settings";
+
 export default class NewUserOnboardingModal extends Component {
     constructor(props, context) {
         super(props, context);
@@ -12,12 +14,25 @@ export default class NewUserOnboardingModal extends Component {
         user: PropTypes.object.isRequired
     }
 
-    step(step) {
-        this.setState({ step });
+    getStepCount() {
+        return MetabaseSettings.get("has_sample_dataset") ? 3 : 2
+    }
+
+    nextStep() {
+        let nextStep = this.state.step + 1;
+        if (nextStep <= this.getStepCount()) {
+            this.setState({ step: this.state.step + 1 });
+        } else {
+            this.closeModal();
+        }
     }
 
     closeModal() {
         this.props.closeFn();
+    }
+
+    renderStep() {
+        return <span>STEP {this.state.step} of {this.getStepCount()}</span>;
     }
 
     render() {
@@ -37,8 +52,8 @@ export default class NewUserOnboardingModal extends Component {
                             <p>It’s easy to use, because it’s designed so you don’t need any analytics knowledge to get started.</p>
                         </div>
                         <div className="px4 py2 text-grey-2 flex align-center">
-                            STEP 1 of 3
-                            <button className="Button Button--primary flex-align-right" onClick={() => (this.step(2))}>Continue</button>
+                            {this.renderStep()}
+                            <button className="Button Button--primary flex-align-right" onClick={() => (this.nextStep())}>Continue</button>
                         </div>
                     </div>
                 : step === 2 ?
@@ -53,8 +68,8 @@ export default class NewUserOnboardingModal extends Component {
                             <p className="clearfix"><img className="float-left mr2" width="40" height="40" src="/app/home/partials/onboarding_illustration_dashboards.png" />You (and anyone on your team) can save answers in Dashboards, so you can check them often. It's a great way to quickly see a snapshot of your business.</p>
                         </div>
                         <div className="px4 py2 text-grey-2 flex align-center">
-                            STEP 2 of 3
-                            <button className="Button Button--primary flex-align-right" onClick={() => (this.step(3))}>Continue</button>
+                            {this.renderStep()}
+                            <button className="Button Button--primary flex-align-right" onClick={() => (this.nextStep())}>Continue</button>
                         </div>
                     </div>
                 :
@@ -65,7 +80,7 @@ export default class NewUserOnboardingModal extends Component {
                             <p>We'll take a quick look at the Query Builder, the main tool you'll use in Metabase to ask questions.</p>
                         </div>
                         <div className="px4 py2 text-grey-2 flex align-center">
-                            STEP 3 of 3
+                            {this.renderStep()}
                             <span className="flex-align-right">
                                 <a className="text-underline-hover cursor-pointer mr3" onClick={() => (this.closeModal())}>skip for now</a>
                                 <a className="Button Button--primary" href="/q?tutorial">Let's do it!</a>

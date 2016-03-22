@@ -1,6 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
 import DataReferenceQueryButton from './DataReferenceQueryButton.jsx';
+import { createQuery } from "metabase/lib/query";
 import { foreignKeyCountsByOriginTable } from 'metabase/lib/schema_metadata';
 import inflection from 'inflection';
 import cx from "classnames";
@@ -46,12 +47,7 @@ export default class DataReferenceTable extends Component {
     }
 
     setQueryAllRows() {
-        var query;
-        query = this.props.setDatabaseFn(this.state.table.db_id);
-        query = this.props.setSourceTableFn(this.state.table.id);
-        query.query.aggregation = ["rows"];
-        query.query.breakout = [];
-        query.query.filter = [];
+        var query = createQuery("query", this.state.table.db_id, this.state.table.id);
         this.props.setQueryFn(query);
         this.props.runQueryFn();
     }
@@ -61,7 +57,7 @@ export default class DataReferenceTable extends Component {
         if (table) {
             var queryButton;
             if (table.rows != null) {
-                var text = "Show all " + table.rows.toLocaleString() + " rows in " + table.display_name
+                var text = `See the raw data for ${table.display_name}`
                 queryButton = (<DataReferenceQueryButton className="border-bottom border-top mb3" icon="illustration-icon-table" text={text} onClick={this.setQueryAllRows} />);
             }
             var panes = {
@@ -77,7 +73,7 @@ export default class DataReferenceTable extends Component {
                     'Button--active': name === this.state.pane
                 });
                 return (
-                    <a key={name} className={classes} href="#" onClick={this.showPane.bind(null, name)}>
+                    <a key={name} className={classes} onClick={this.showPane.bind(null, name)}>
                         <span className="DataReference-paneCount">{count}</span><span>{inflection.inflect(name, count)}</span>
                     </a>
                 );
@@ -88,7 +84,7 @@ export default class DataReferenceTable extends Component {
                 var fields = table.fields.map((field, index) => {
                     return (
                         <li key={field.id} className="p1 border-row-divider">
-                            <a className="text-brand text-brand-darken-hover no-decoration" href="#" onClick={this.props.showField.bind(null, field)}>{field.display_name}</a>
+                            <a className="text-brand text-brand-darken-hover no-decoration" onClick={this.props.showField.bind(null, field)}>{field.display_name}</a>
                         </li>
                     );
                 });
@@ -103,7 +99,7 @@ export default class DataReferenceTable extends Component {
 
                     return (
                         <li key={fk.id} className="p1 border-row-divider">
-                            <a className="text-brand text-brand-darken-hover no-decoration" href="#" onClick={this.props.showField.bind(null, fk.origin)}>{fk.origin.table.display_name}{via}</a>
+                            <a className="text-brand text-brand-darken-hover no-decoration" onClick={this.props.showField.bind(null, fk.origin)}>{fk.origin.table.display_name}{via}</a>
                         </li>
                     );
                 });

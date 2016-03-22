@@ -24,6 +24,7 @@
      :last_name $
      :last_login $
      :is_superuser $
+     :is_qbnewb $
      :common_name $}))
 
 (defn segment-response [{:keys [created_at updated_at] :as segment}]
@@ -238,14 +239,14 @@
     :is_creation  false
     :message      "updated"
     :user         (-> (user-details (fetch-user :crowberto))
-                      (dissoc :email :date_joined :last_login :is_superuser))
+                      (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
     :diff         {:name {:before "b" :after "c"}}
     :description  "renamed this Segment from \"b\" to \"c\"."}
    {:is_reversion false
     :is_creation  true
     :message      nil
     :user         (-> (user-details (fetch-user :rasta))
-                      (dissoc :email :date_joined :last_login :is_superuser))
+                      (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
     :diff         {:name       {:after "b"}
                    :definition {:after {:filter ["AND" [">" 1 25]]}}}
     :description  nil}]
@@ -301,7 +302,7 @@
     :is_creation  false
     :message      nil
     :user         (-> (user-details (fetch-user :crowberto))
-                      (dissoc :email :date_joined :last_login :is_superuser))
+                      (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
     :diff         {:name {:before "Changed Segment Name"
                           :after  "One Segment to rule them all, one segment to define them"}}
     :description  "renamed this Segment from \"Changed Segment Name\" to \"One Segment to rule them all, one segment to define them\"."}
@@ -310,7 +311,7 @@
      :is_creation  false
      :message      nil
      :user         (-> (user-details (fetch-user :crowberto))
-                       (dissoc :email :date_joined :last_login :is_superuser))
+                       (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
      :diff         {:name {:before "Changed Segment Name"
                            :after  "One Segment to rule them all, one segment to define them"}}
      :description  "renamed this Segment from \"Changed Segment Name\" to \"One Segment to rule them all, one segment to define them\"."}
@@ -318,7 +319,7 @@
      :is_creation  false
      :message      "updated"
      :user         (-> (user-details (fetch-user :crowberto))
-                       (dissoc :email :date_joined :last_login :is_superuser))
+                       (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
      :diff         {:name {:after  "Changed Segment Name"
                            :before "One Segment to rule them all, one segment to define them"}}
      :description  "renamed this Segment from \"One Segment to rule them all, one segment to define them\" to \"Changed Segment Name\"."}
@@ -326,7 +327,7 @@
      :is_creation  true
      :message      nil
      :user         (-> (user-details (fetch-user :rasta))
-                       (dissoc :email :date_joined :last_login :is_superuser))
+                       (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
      :diff         {:name        {:after "One Segment to rule them all, one segment to define them"}
                     :description {:after "One segment to bring them all, and in the DataModel bind them"}
                     :definition  {:after {:database 123

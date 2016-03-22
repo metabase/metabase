@@ -115,60 +115,12 @@
       :is_reversion true)
     (get-revisions :card id)))
 
-;; dashboard with single revision
-(expect-let [{:keys [id] :as dash} (create-test-dashboard)]
-  [{:is_reversion false
-    :is_creation  true
-    :message      nil
-    :user         @rasta-revision-info
-    :diff         nil
-    :description  nil}]
-  (do
-    (create-dashboard-revision dash true)
-    (get-revisions :dashboard id)))
+
+;;; # POST /revision/revert
 
 (defn- strip-ids
   [objects]
   (mapv #(dissoc % :id) objects))
-
-;; dashboard with card add then delete
-(expect-let [{:keys [id] :as dash}   (create-test-dashboard)
-             {card-id :id, :as card} (create-test-card)]
-  [{:is_reversion false
-    :is_creation  false
-    :message      nil
-    :user         @rasta-revision-info
-    :diff         {:before {:cards [{:sizeX 2, :sizeY 2, :row nil, :col nil, :card_id card-id}]},
-                   :after  {:cards nil}}
-    :description  "removed a card."}
-   {:is_reversion false
-    :is_creation  false
-    :message      nil
-    :user         @rasta-revision-info
-    :diff         {:before {:cards nil},
-                   :after  {:cards [{:sizeX 2, :sizeY 2, :row nil, :col nil, :card_id card-id}]}}
-    :description  "added a card."}
-   {:is_reversion false
-    :is_creation  true
-    :message      nil
-    :user         @rasta-revision-info
-    :diff         nil
-    :description  nil}]
-  (do
-    (create-dashboard-revision dash true)
-    (let [dashcard (db/ins DashboardCard :dashboard_id id :card_id (:id card))]
-      (create-dashboard-revision dash false)
-      (db/del DashboardCard :id (:id dashcard)))
-    (create-dashboard-revision dash false)
-    (->> (get-revisions :dashboard id)
-         (mapv (fn [rev]
-                 (if-not (:diff rev) rev
-                                     (if (get-in rev [:diff :before :cards])
-                                       (update-in rev [:diff :before :cards] strip-ids)
-                                       (update-in rev [:diff :after :cards] strip-ids))))))))
-
-
-;;; # POST /revision/revert
 
 (expect-let [{:keys [id] :as dash}   (create-test-dashboard)
              {card-id :id, :as card} (create-test-card)]
@@ -177,13 +129,13 @@
     :message      nil
     :user         @rasta-revision-info
     :diff         {:before {:cards nil}
-                   :after  {:cards [{:sizeX 2, :sizeY 2, :row nil, :col nil, :card_id card-id}]}}
+                   :after  {:cards [{:sizeX 2, :sizeY 2, :row nil, :col nil, :card_id card-id, :series []}]}}
     :description  "added a card."}
    {:is_reversion false
     :is_creation  false
     :message      nil
     :user         @rasta-revision-info
-    :diff         {:before {:cards [{:sizeX 2, :sizeY 2, :row nil, :col nil, :card_id card-id}]}
+    :diff         {:before {:cards [{:sizeX 2, :sizeY 2, :row nil, :col nil, :card_id card-id, :series []}]}
                    :after  {:cards nil}}
     :description "removed a card."}
    {:is_reversion false
@@ -191,7 +143,7 @@
     :message      nil
     :user         @rasta-revision-info
     :diff         {:before {:cards nil}
-                   :after  {:cards [{:sizeX 2, :sizeY 2, :row nil, :col nil, :card_id card-id}]}}
+                   :after  {:cards [{:sizeX 2, :sizeY 2, :row nil, :col nil, :card_id card-id, :series []}]}}
     :description "added a card."}
    {:is_reversion false
     :is_creation  true

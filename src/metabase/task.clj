@@ -7,29 +7,26 @@
    `task-init` function which accepts zero arguments.  This function is dynamically resolved and called
    exactly once when the application goes through normal startup procedures.  Inside this function you
    can do any work needed and add your task to the scheduler as usual via `schedule-task!`."
-  (:require clojure.java.classpath
+  (:require [clojure.java.classpath :as classpath]
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
-            [clojurewerkz.quartzite.scheduler :as qs]))
+            [clojurewerkz.quartzite.scheduler :as qs]
+            [metabase.util :as u]))
 
 
 (defonce ^:private quartz-scheduler
   (atom nil))
 
-(defn- find-and-load-tasks
+(defn- find-and-load-tasks!
   "Search Classpath for namespaces that start with `metabase.tasks.`, then `require` them so initialization can happen."
   []
-  (->> (ns-find/find-namespaces (clojure.java.classpath/classpath))
-       (filter (fn [ns-symb]
-                 (re-find #"^metabase\.task\." (name ns-symb))))
-       set
-       (map (fn [events-ns]
-              (log/info "\tloading tasks namespace: " events-ns)
-              (require events-ns)
-              ;; look for `task-init` function in the namespace and call it if it exists
-              (when-let [init-fn (ns-resolve events-ns 'task-init)]
-                (init-fn))))
-       dorun))
+  (doseq [ns-symb (ns-find/find-namespaces (classpath/classpath))
+          :when   (re-find #"^metabase\.task\." (name ns-symb))]
+    (log/info "Loading tasks namespace:" (u/format-color 'blue ns-symb) "📆")
+    (require ns-symb)
+    ;; look for `task-init` function in the namespace and call it if it exists
+    (when-let [init-fn (ns-resolve ns-symb 'task-init)]
+      (init-fn))))
 
 (defn start-scheduler!
   "Start our Quartzite scheduler which allows jobs to be submitted and triggers to begin executing."
@@ -39,7 +36,7 @@
     ;; keep a reference to our scheduler
     (reset! quartz-scheduler (-> (qs/initialize) qs/start))
     ;; look for job/trigger definitions
-    (find-and-load-tasks)))
+    (find-and-load-tasks!)))
 
 (defn stop-scheduler!
   "Stop our Quartzite scheduler and shutdown any running executions."

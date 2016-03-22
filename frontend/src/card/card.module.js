@@ -5,9 +5,7 @@ var Card = angular.module('metabase.card', [
     'metabase.filters',
     'metabase.directives',
     'metabase.services',
-    'metabase.card.services',
-    'metabase.card.controllers',
-    'metabase.card.directives'
+    'metabase.card.controllers'
 ]);
 
 Card.config(['$routeProvider', function($routeProvider) {
@@ -15,17 +13,21 @@ Card.config(['$routeProvider', function($routeProvider) {
         templateUrl: '/app/card/partials/card_detail.html',
         controller: 'CardDetail'
     });
-    $routeProvider.when('/q/:serializedCard', {
-        templateUrl: '/app/card/partials/card_detail.html',
-        controller: 'CardDetail'
-    });
     $routeProvider.when('/card/:cardId', {
         templateUrl: '/app/card/partials/card_detail.html',
         controller: 'CardDetail'
     });
+
+    // redirect old urls to new ones with hashes
+    $routeProvider.when('/q/:serializedCard', {
+        redirectTo: function (routeParams, path, search) {
+            return "/q#"+routeParams.serializedCard;
+        }
+    });
     $routeProvider.when('/card/:cardId/:serializedCard', {
-        templateUrl: '/app/card/partials/card_detail.html',
-        controller: 'CardDetail'
+        redirectTo: function (routeParams, path, search) {
+            return "/card/"+routeParams.cardId+"#"+routeParams.serializedCard;
+        }
     });
 
     $routeProvider.when('/card/', {

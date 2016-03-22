@@ -45,7 +45,7 @@ export default class Setup extends Component {
 
         if (activeStep === WELCOME_STEP_NUMBER) {
             return (
-                <div className="relative flex flex-full layout-centered">
+                <div className="relative full-height flex flex-full layout-centered">
                     <div className="wrapper wrapper--trim text-centered">
                         <LogoIcon className="text-brand mb4" width={89} height={118}></LogoIcon>
                         <div className="relative z2 text-centered ml-auto mr-auto" style={{maxWidth: 550}}>

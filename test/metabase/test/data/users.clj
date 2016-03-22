@@ -136,4 +136,5 @@
         :last_name    last
         :password     password
         :is_superuser superuser
+        :is_qbnewb    true
         :is_active    active)))

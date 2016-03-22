@@ -74,7 +74,7 @@ export default class PartialQueryBuilder extends Component {
                 >
                     <div className="flex align-center mx2 my2">
                         <span className="text-bold px3">{previewSummary}</span>
-                        <a data-metabase-event={"Data Model;Preview Click"} target="_blank" className={cx("Button Button--primary")} href={previewUrl}>Preview</a>
+                        <a data-metabase-event={"Data Model;Preview Click"} target={window.OSX ? null : "_blank"} className={cx("Button Button--primary")} href={previewUrl}>Preview</a>
                     </div>
                 </GuiQueryEditor>
             </div>

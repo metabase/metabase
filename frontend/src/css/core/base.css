@@ -44,6 +44,7 @@ button {
 
 a {
     color: inherit;
+    cursor: pointer;
 }
 
 input,
@@ -54,4 +55,8 @@ textarea {
 .disabled {
   pointer-events: none;
   opacity: 0.4;
+}
+
+.MB-lightBG {
+  background-color: #f9fbfc;
 }

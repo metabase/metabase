@@ -27,7 +27,8 @@ var CSS_SRC = glob.sync(SRC_PATH + '/src/**/*.css');
 
 // Need to scan the CSS files for variable and custom media used across files
 // NOTE: this requires "webpack -w" (watch mode) to be restarted when variables change :(
-if (hasArg("-w") || hasArg("--watch")) {
+var isWatching = hasArg("-w") || hasArg("--watch");
+if (isWatching) {
     console.warn("Warning: in webpack watch mode you must restart webpack if you change any CSS variables or custom media queries");
 }
 
@@ -35,13 +36,35 @@ if (hasArg("-w") || hasArg("--watch")) {
 var NODE_ENV = process.env["NODE_ENV"] || (hasArg("-d") || (hasArg("--debug")) ? "development": "production");
 console.log("webpack env:", NODE_ENV)
 
-var BABEL_FEATURES = ['es7.asyncFunctions', 'es7.decorators', 'es7.classProperties'];
+// Babel:
+var BABEL_CONFIG = {
+    cacheDirectory: ".babel_cache",
+    plugins: ['transform-decorators-legacy' ],
+    presets: ['es2015', 'stage-0', 'react']
+};
 
-var cssMaps = { vars: {}, media: {}, selector: {} };
+// CSS Next:
+var CSS_MAPS = { vars: {}, media: {}, selector: {} };
 CSS_SRC.map(webpackPostcssTools.makeVarMap).forEach(function(map) {
-    for (var name in cssMaps) _.extend(cssMaps[name], map[name]);
+    for (var name in CSS_MAPS) _.extend(CSS_MAPS[name], map[name]);
 });
+var CSSNEXT_CONFIG = {
+    features: {
+        // pass in the variables and custom media we scanned for before
+        customProperties: { variables: CSS_MAPS.vars },
+        customMedia: { extensions: CSS_MAPS.media }
+    },
+    import: {
+        path: ['resources/frontend_client/app/css']
+    },
+    compress: false
+};
 
+var CSS_CONFIG = {
+    localIdentName: NODE_ENV !== "production" ? "[local]---[hash:base64:5]" : undefined,
+    restructuring: false,
+    compatibility: true
+}
 
 var config = module.exports = {
     // output a bundle for the app JS and a bundle for styles
@@ -64,20 +87,29 @@ var config = module.exports = {
 
     module: {
         loaders: [
-            // JavaScript
-            { test: /\.(js|jsx)$/, exclude: /node_modules/, loader: 'babel', query: { cacheDirectory: '.babel_cache', optional: BABEL_FEATURES }},
-            { test: /\.(js|jsx)$/, exclude: /node_modules|\.spec\.js/, loader: 'eslint' },
-            // CSS
-            { test: /\.css$/, loader: ExtractTextPlugin.extract('style', 'css?-restructuring&compatibility!cssnext') }
-            // { test: /\.css$/, loader: 'style!css!cssnext' }
+            {
+                test: /\.(js|jsx)$/,
+                exclude: /node_modules/,
+                loader: "babel",
+                query: BABEL_CONFIG
+            },
+            {
+                test: /\.(js|jsx)$/,
+                exclude: /node_modules|\.spec\.js/,
+                loader: 'eslint'
+            },
+            {
+                test: /\.css$/,
+                loader: ExtractTextPlugin.extract("style-loader", "css-loader?" + JSON.stringify(CSS_CONFIG) + "!postcss-loader")
+            }
         ],
         noParse: [
-            /node_modules\/(angular|ng-|ace|moment|underscore|d3)/ // doesn't include 'crossfilter', 'dc', and 'tether' due to use of 'require'
+            /node_modules\/(angular|ace|moment|underscore)/ // doesn't include 'crossfilter', 'dc', and 'tether' due to use of 'require'
         ]
     },
 
     resolve: {
-        // modulesDirectories: [],
+        extensions: ["", ".webpack.js", ".web.js", ".js", ".jsx", ".css"],
         alias: {
             'metabase':             SRC_PATH + '/src',
 
@@ -87,10 +119,8 @@ var config = module.exports = {
             'angular-resource':     __dirname + '/node_modules/angular-resource/angular-resource.min.js',
             'angular-route':        __dirname + '/node_modules/angular-route/angular-route.min.js',
             // angular 3rd-party
-            'angular-ui-bootstrap': __dirname + '/node_modules/angular-ui-bootstrap/ui-bootstrap-tpls.min.js',
             'angular-cookie':       __dirname + '/node_modules/angular-cookie/angular-cookie.min.js',
             'angular-http-auth':    __dirname + '/node_modules/angular-http-auth/src/http-auth-interceptor.js',
-            'angular-ui-ace':       __dirname + '/node_modules/angular-ui-ace/src/ui-ace.js',
             // ace
             'ace/ace':              __dirname + '/node_modules/ace-builds/src-min-noconflict/ace.js',
             'ace/ext-language_tools':__dirname+ '/node_modules/ace-builds/src-min-noconflict/ext-language_tools.js',
@@ -105,15 +135,11 @@ var config = module.exports = {
             'd3':                   __dirname + '/node_modules/d3/d3.min.js',
             'crossfilter':          __dirname + '/node_modules/crossfilter/index.js',
             'dc':                   __dirname + '/node_modules/dc/dc.min.js',
-            'd3-tip':               __dirname + '/node_modules/d3-tip/index.js',
             'humanize':             __dirname + '/node_modules/humanize-plus/public/src/humanize.js'
         }
     },
 
     plugins: [
-        // Automatically annotates angular functions (from "function($foo) {}" to "['$foo', function($foo) {}]")
-        // so minification doesn't break dependency injections
-        // new NgAnnotatePlugin({ add: true }),
         // Separates out modules common to multiple entry points into a single common file that should be loaded first.
         // Not currently useful but necessary for code-splitting
         new CommonsChunkPlugin({
@@ -129,23 +155,19 @@ var config = module.exports = {
             inject: 'head'
         }),
         new webpack.DefinePlugin({
-            'process.env': { NODE_ENV: JSON.stringify(NODE_ENV) }
+            'process.env': {
+                NODE_ENV: JSON.stringify(NODE_ENV)
+            }
         })
     ],
 
-    // CSSNext configuration
-    cssnext: {
-        features: {
-            // pass in the variables and custom media we scanned for before
-            customProperties: { variables: cssMaps.vars },
-            customMedia: { extensions: cssMaps.media }
-        },
-        import: {
-            path: ['resources/frontend_client/app/css']
-        },
-        compress: false
-    },
-
+    postcss: function (webpack) {
+        return [
+            require("postcss-import")({ addDependencyTo: webpack }),
+            require("postcss-url")(),
+            require("postcss-cssnext")(CSSNEXT_CONFIG)
+        ]
+    }
 };
 
 if (NODE_ENV === "hot") {
@@ -154,13 +176,20 @@ if (NODE_ENV === "hot") {
         'webpack/hot/only-dev-server'
     );
 
+    // suffixing with ".hot" allows us to run both `npm run build-hot` and `npm run test` or `npm run test-watch` simultaneously
+    config.output.filename = "[name].hot.bundle.js?[hash]";
+
+    // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
     config.output.publicPath = "http://localhost:8080" + config.output.publicPath;
 
-    config.module.loaders.unshift(
-        { test: /\.jsx$/, exclude: /node_modules/, loaders: ['react-hot', 'babel?'+BABEL_FEATURES.map(function(f) { return 'optional[]='+f; }).join('&')] }
-    );
+    config.module.loaders.unshift({
+        test: /\.jsx$/,
+        exclude: /node_modules/,
+        loaders: ['react-hot', 'babel?'+JSON.stringify(BABEL_CONFIG)]
+    });
 
-    config.module.loaders[config.module.loaders.length - 1].loader = 'style!css?-restructuring&compatibility!cssnext';
+    // disable ExtractTextPlugin
+    config.module.loaders[config.module.loaders.length - 1].loader = "style-loader!css-loader?" + JSON.stringify(CSS_CONFIG) + "!postcss-loader"
 
     config.plugins.unshift(
         new webpack.NoErrorsPlugin()
@@ -172,15 +201,18 @@ if (NODE_ENV === "development" || NODE_ENV === "hot") {
     // replace minified files with un-minified versions
     for (var name in config.resolve.alias) {
         var minified = config.resolve.alias[name];
-        var unminified = minified.replace(/[.-]min/, '');
+        var unminified = minified.replace(/[.-\/]min\b/g, '');
         if (minified !== unminified && fs.existsSync(unminified)) {
             config.resolve.alias[name] = unminified;
         }
     }
+}
 
-    // SourceMaps
-    // Normal source map works better but takes longer to build
-    // config.devtool = 'source-map';
-    // Eval source map doesn't work with CSS but is faster to build
-    // config.devtool = 'eval-source-map';
+if (NODE_ENV === "hot" || isWatching) {
+    // enable "cheap" source maps in hot or watch mode since re-build speed overhead is < 1 second
+    config.devtool = "eval-cheap-module-source-map";
+}
+
+if (NODE_ENV === "production") {
+    config.devtool = "source-map";
 }

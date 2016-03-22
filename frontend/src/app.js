@@ -1,11 +1,19 @@
 
+import Routes from "./Routes.jsx";
+
+import { createStore, combineReducers } from "metabase/lib/redux";
+
+import { routerStateReducer as router } from 'redux-router';
+import { reducer as form } from "redux-form";
+
+import * as datamodel from 'metabase/admin/datamodel/reducers';
+
 import { registerAnalyticsClickListener } from "metabase/lib/analytics";
 
 // Declare app level module which depends on filters, and services
 var Metabase = angular.module('metabase', [
     'ngRoute',
     'ngCookies',
-    'ui.bootstrap', // bootstrap LIKE widgets via angular directives
     'metabase.auth',
     'metabase.filters',
     'metabase.directives',
@@ -17,7 +25,6 @@ var Metabase = angular.module('metabase', [
     'metabase.pulse',
     'metabase.setup',
     'metabase.user',
-    'metabase.admin',
     'metabase.admin.databases',
     'metabase.admin.people',
     'metabase.admin.settings',
@@ -28,6 +35,58 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
         enabled: true,
         requireBase: false
     });
+
+    const route = {
+        template: '<div mb-redux-component class="flex flex-column flex-full" />',
+        controller: ['$scope', '$location', '$route', '$routeParams', 'AppState',
+            function($scope, $location, $route, $routeParams, AppState) {
+                $scope.Component = Routes;
+                $scope.props = {};
+                $scope.store = createStore(combineReducers({
+                    // admin: {
+                    //     datamodel
+                    // },
+                    datamodel: combineReducers(datamodel),
+                    form,
+                    router,
+                    user: (state = null) => state
+                }), { user: AppState.model.currentUser });
+
+                // HACK: prevent reloading controllers as the URL changes
+                var route = $route.current;
+                $scope.$on('$locationChangeSuccess', function (event) {
+                    var newParams = $route.current.params;
+                    var oldParams = route.params;
+
+                    if ($route.current.$$route.controller === route.controller) {
+                        $route.current = route;
+
+                        angular.forEach(oldParams, function(value, key) {
+                            delete $route.current.params[key];
+                            delete $routeParams[key];
+                        });
+                        angular.forEach(newParams, function(value, key) {
+                            $route.current.params[key] = value;
+                            $routeParams[key] = value;
+                        });
+                    }
+                });
+            }
+        ],
+        resolve: {
+            appState: ["AppState", function(AppState) {
+                return AppState.init();
+            }]
+        }
+    };
+
+    $routeProvider.when('/admin/datamodel/metric', route);
+    $routeProvider.when('/admin/datamodel/metric/:segmentId', route);
+
+    $routeProvider.when('/admin/datamodel/segment', route);
+    $routeProvider.when('/admin/datamodel/segment/:segmentId', route);
+
+    $routeProvider.when('/admin/datamodel/:objectType/:objectId/revisions', route);
 
     $routeProvider.when('/unauthorized/', {
         templateUrl: '/app/unauthorized.html',

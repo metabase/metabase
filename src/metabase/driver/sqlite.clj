@@ -1,9 +1,7 @@
 (ns metabase.driver.sqlite
-  (:require (clojure [set :as set]
-                     [string :as s])
+  (:require [clojure.set :as set]
             (korma [core :as k]
                    [db :as kdb])
-            [korma.sql.utils :as kutils]
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
@@ -105,7 +103,7 @@
   clojure.lang.Named
   (getName [_] "SQLite"))
 
-(extend SQLiteDriver
+(u/strict-extend SQLiteDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
          {:date-interval  date-interval
@@ -119,7 +117,7 @@
                                             #{:standard-deviation-aggregations}
                                             ;; HACK SQLite doesn't support ALTER TABLE ADD CONSTRAINT FOREIGN KEY and I don't have all day to work around this
                                             ;; so for now we'll just skip the foreign key stuff in the tests.
-                                            (when (config/is-test?)
+                                            (when config/is-test?
                                               #{:foreign-keys})))})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)

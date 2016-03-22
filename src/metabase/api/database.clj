@@ -3,16 +3,17 @@
   (:require [compojure.core :refer [GET POST PUT DELETE]]
             [korma.core :as k]
             [metabase.api.common :refer :all]
-            [metabase.db :refer :all]
-            [metabase.driver :as driver]
-            [metabase.events :as events]
+            (metabase [config :as config]
+                      [db :refer :all]
+                      [driver :as driver]
+                      [events :as events]
+                      [sample-data :as sample-data]
+                      [util :as u])
             (metabase.models common
                              [hydrate :refer [hydrate]]
                              [database :refer [Database protected-password]]
                              [field :refer [Field]]
-                             [table :refer [Table]])
-            [metabase.sample-data :as sample-data]
-            [metabase.util :as u]))
+                             [table :refer [Table]])))
 
 (defannotation DBEngine
   "Param must be a valid database engine type, e.g. `h2` or `postgres`."
@@ -22,7 +23,7 @@
 (defn test-database-connection
   "Try out the connection details for a database and useful error message if connection fails, returns `nil` if connection succeeds."
   [engine {:keys [host port] :as details}]
-  (when (not (metabase.config/is-test?))
+  (when-not config/is-test?
     (let [engine           (keyword engine)
           details          (assoc details :engine engine)
           response-invalid (fn [field m] {:valid false
@@ -51,12 +52,17 @@
 
 (defendpoint GET "/"
   "Fetch all `Databases`."
-  []
-  (sel :many Database (k/order :name)))
+  [include_tables]
+  (let [dbs (sel :many Database (k/order :name))]
+    (if-not include_tables
+      dbs
+      (let [db-id->tables (group-by :db_id (sel :many Table, :active true))]
+        (for [db dbs]
+          (assoc db :tables (sort-by :name (get db-id->tables (:id db) []))))))))
 
 (defendpoint POST "/"
   "Add a new `Database`."
-  [:as {{:keys [name engine details is_full_sync] :as body} :body}]
+  [:as {{:keys [name engine details is_full_sync]} :body}]
   {name         [Required NonEmptyString]
    engine       [Required DBEngine]
    details      [Required Dict]}
@@ -121,7 +127,7 @@
                                        :engine engine
                                        :details details
                                        :is_full_sync is_full_sync))
-          (Database id))
+          (events/publish-event :database-update (Database id)))
         ;; failed to connect, return error
         {:status 400
          :body   conn-error}))))
@@ -148,7 +154,7 @@
   [id prefix] ; TODO - should prefix be Required/NonEmptyString ?
   (read-check Database id)
   (let [prefix-len (count prefix)
-        table-id->name (->> (sel :many [Table :id :name] :db_id id)                                             ; fetch all name + ID of all Tables for this DB
+        table-id->name (->> (sel :many [Table :id :name] :db_id id :active true)                                             ; fetch all name + ID of all Tables for this DB
                             (map (fn [{:keys [id name]}]                                                         ; make a map of Table ID -> Table Name
                                    {id name}))
                             (into {}))
@@ -160,7 +166,8 @@
                                     [table-name "Table"])))
         fields (->> (sel :many [Field :name :base_type :special_type :table_id]                                 ; get all Fields with names that start with PREFIX
                          :table_id [in (keys table-id->name)]                                                   ; whose Table is in this DB
-                         :name [like (str prefix "%")])
+                         :name [like (str prefix "%")]
+                         :visibility_type [not-in ["sensitive" "retired"]])
                     (map (fn [{:keys [name base_type special_type table_id]}]                                    ; return them in the format
                            [name (str (table-id->name table_id) " " base_type (when special_type                ; [field_name "table_name base_type special_type"]
                                                                                 (str " " special_type)))])))]

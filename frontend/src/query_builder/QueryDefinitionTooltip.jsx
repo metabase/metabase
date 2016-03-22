@@ -6,18 +6,22 @@ import FieldSet from "../admin/datamodel/components/FieldSet.jsx";
 
 import Query from "metabase/lib/query";
 
+
 export default class QueryDefinitionTooltip extends Component {
+
     static propTypes = {
+        type: PropTypes.string,
         object: PropTypes.object.isRequired,
         tableMetadata: PropTypes.object.isRequired
     };
 
     render() {
-        const { object, tableMetadata } = this.props;
+        const { type, object, tableMetadata } = this.props;
+
         return (
             <div className="p2" style={{width: 250}}>
                 <div className="mb2">
-                    {object.description}
+                    { type && type === "metric" && !object.is_active ? "This metric has been retired.  It's no longer available for use." : object.description }
                 </div>
                 <FieldSet legend="Definition" border="border-light">
                     <div className="TooltipFilterList">

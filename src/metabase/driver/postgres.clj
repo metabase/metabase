@@ -1,16 +1,12 @@
 (ns metabase.driver.postgres
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.tools.logging :as log]
-            (clojure [set :refer [rename-keys]]
+  (:require (clojure [set :refer [rename-keys]]
                      [string :as s])
             (korma [core :as k]
                    [db :as kdb])
             [korma.sql.utils :as kutils]
-            [swiss.arrows :refer :all]
-            [metabase.db :refer [upd]]
-            [metabase.models.field :refer [Field]]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
+            [metabase.util :as u]
             [metabase.util.korma-extensions :as kx])
   ;; This is necessary for when NonValidatingFactory is passed in the sslfactory connection string argument,
   ;; e.x. when connecting to a Heroku Postgres database from outside of Heroku.
@@ -91,17 +87,21 @@
    :sslmode    "require"
    :sslfactory "org.postgresql.ssl.NonValidatingFactory"})  ; HACK Why enable SSL if we disable certificate validation?
 
+(def ^:const disable-ssl-params
+  "Params to include in the JDBC connection spec to disable SSL."
+  {:sslmode "disable"})
+
 (defn- connection-details->spec [_ {:keys [ssl] :as details-map}]
   (-> details-map
       (update :port (fn [port]
                       (if (string? port) (Integer/parseInt port)
                           port)))
       (dissoc :ssl)               ; remove :ssl in case it's false; DB will still try (& fail) to connect if the key is there
-      (merge (when ssl            ; merging ssl-params will add :ssl back in if desirable
-               ssl-params))
+      (merge (if ssl
+               ssl-params
+               disable-ssl-params))
       (rename-keys {:dbname :db})
       kdb/postgres))
-
 
 (defn- unix-timestamp->timestamp [_ expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
@@ -165,6 +165,11 @@
     #".*" ; default
     message))
 
+(defn- prepare-value [{value :value, {:keys [base-type]} :field}]
+  (if (= base-type :UUIDField)
+    (java.util.UUID/fromString value)
+    value))
+
 (defrecord PostgresDriver []
   clojure.lang.Named
   (getName [_] "PostgreSQL"))
@@ -176,11 +181,12 @@
           :column->special-type      column->special-type
           :connection-details->spec  connection-details->spec
           :date                      date
+          :prepare-value             (u/drop-first-arg prepare-value)
           :set-timezone-sql          (constantly "UPDATE pg_settings SET setting = ? WHERE name ILIKE 'timezone';")
           :string-length-fn          (constantly :CHAR_LENGTH)
           :unix-timestamp->timestamp unix-timestamp->timestamp}))
 
-(extend PostgresDriver
+(u/strict-extend PostgresDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
          {:date-interval                     date-interval

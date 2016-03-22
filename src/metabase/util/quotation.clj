@@ -1,7 +1,7 @@
 (ns metabase.util.quotation)
 
 
-(def ^:const quotations
+(def ^:const ^:private quotations
   [{:quote "The world is one big data problem."
     :author "Andrew McAfee"}
    {:quote "Data really powers everything that we do."

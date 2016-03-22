@@ -35,17 +35,6 @@ export default class DatePicker extends Component {
     }
 
     render() {
-        // MongoDB does not currently support relative date filters
-        if (this.props.tableMetadata.db.engine === "mongo") {
-            return (
-                <SpecificDatePicker
-                    filter={this.props.filter}
-                    onFilterChange={this.props.onFilterChange}
-                    onOperatorChange={this.props.onOperatorChange}
-                />
-            );
-        }
-
         var operators = [
             { name: "relative", verboseName: "Relative date" },
             { name: "specific", verboseName: "Specific date" },

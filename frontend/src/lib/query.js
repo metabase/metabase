@@ -3,14 +3,49 @@ import React from "react";
 import inflection from "inflection";
 import _ from "underscore";
 
+
+export const NEW_QUERY_TEMPLATES = {
+    query: {
+        database: null,
+        type: "query",
+        query: {
+            source_table: null,
+            aggregation: ["rows"],
+            breakout: [],
+            filter: []
+        }
+    },
+    native: {
+        database: null,
+        type: "native",
+        native: {
+            query: ""
+        }
+    }
+};
+
+export function createQuery(type = "query", databaseId, tableId) {
+    let dataset_query = angular.copy(NEW_QUERY_TEMPLATES[type]);
+
+    if (databaseId) {
+        dataset_query.database = databaseId;
+    }
+
+    if (type === "query" && databaseId && tableId) {
+        dataset_query.query.source_table = tableId;
+    }
+
+    return dataset_query;
+}
+
 var Query = {
 
-    isStructured(query) {
-        return query && query.type && query.type === "query";
+    isStructured(dataset_query) {
+        return dataset_query && dataset_query.type === "query";
     },
 
-    isNative(query) {
-        return query && query.type && query.type === "native";
+    isNative(dataset_query) {
+        return dataset_query && dataset_query.type === "native";
     },
 
     canRun(query) {
@@ -106,10 +141,6 @@ var Query = {
         return query;
     },
 
-    isAggregateField(field) {
-        return Array.isArray(field) && field[0] === "aggregation";
-    },
-
     canAddDimensions(query) {
         var MAX_DIMENSIONS = 2;
         return query && query.breakout && (query.breakout.length < MAX_DIMENSIONS);
@@ -132,7 +163,7 @@ var Query = {
     },
 
     canSortByAggregateField(query) {
-        var SORTABLE_AGGREGATION_TYPES = new Set(["avg", "count", "distinct", "stddev", "sum"]);
+        var SORTABLE_AGGREGATION_TYPES = new Set(["avg", "count", "distinct", "stddev", "sum", "min", "max"]);
 
         return Query.hasValidBreakout(query) && SORTABLE_AGGREGATION_TYPES.has(query.aggregation[0]);
     },
@@ -141,12 +172,15 @@ var Query = {
         query.breakout.push(null);
     },
 
-    updateDimension(query, dimension, index) {
-        query.breakout[index] = dimension;
+    updateDimension(query, value, index) {
+        query.breakout = BreakoutClause.setBreakout(query.breakout, index, value);
     },
 
     removeDimension(query, index) {
-        let field = query.breakout.splice(index, 1)[0];
+        let field = query.breakout[index];
+
+        // remove the field from the breakout clause
+        query.breakout = BreakoutClause.removeBreakout(query.breakout, index);
 
         // remove sorts that referenced the dimension that was removed
         if (query.order_by) {
@@ -178,9 +212,7 @@ var Query = {
     },
 
     isBareRowsAggregation(query) {
-        return (query.aggregation &&
-                    query.aggregation.length > 0 &&
-                    query.aggregation[0] === "rows");
+        return (query.aggregation && query.aggregation[0] === "rows");
     },
 
     updateAggregation(query, aggregationClause) {
@@ -243,7 +275,7 @@ var Query = {
         if (queryFilters.length === 0) {
             queryFilters = ["AND", [null, null, null]];
         } else {
-            queryFilters.push([null, null, null]);
+            queryFilters = queryFilters.concat([[null, null, null]]);
         }
 
         query.filter = queryFilters;
@@ -349,12 +381,12 @@ var Query = {
     },
 
     removeSort(query, index) {
-        var queryOrderBy = query.order_by;
-
-        if (queryOrderBy.length === 1) {
-            delete query.order_by;
-        } else {
-            queryOrderBy.splice(index, 1);
+        if (query.order_by) {
+            if (query.order_by.length === 1) {
+                delete query.order_by;
+            } else {
+                query.order_by.splice(index, 1);
+            }
         }
     },
 
@@ -477,6 +509,8 @@ var Query = {
                 case "stddev":   return ["Standard deviation of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
                 case "sum":      return                ["Sum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
                 case "cum_sum":  return     ["Cumulative sum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "max":      return            ["Maximum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "min":      return            ["Minimum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
             }
         }
         return "";
@@ -550,6 +584,134 @@ var Query = {
             return <span>{description}</span>;
         } else {
             return description.join("");
+        }
+    },
+
+    getDatetimeFieldUnit(field) {
+        return field && field[3];
+    },
+
+    getAggregationType(query) {
+        return query && query.aggregation && query.aggregation[0];
+    },
+
+    getAggregationField(query) {
+        return query && query.aggregation && query.aggregation[1];
+    },
+
+    getBreakouts(query) {
+        return (query && query.breakout) || [];
+    },
+
+    getQueryColumn(tableMetadata, field) {
+        let target = Query.getFieldTarget(field, tableMetadata);
+        let column = { ...target.field };
+        if (Query.isDatetimeField(field)) {
+            column.unit = Query.getDatetimeFieldUnit(field);
+        }
+        return column;
+    },
+
+    getQueryColumns(tableMetadata, query) {
+        let columns = Query.getBreakouts(query).map(b => Query.getQueryColumn(tableMetadata, b))
+        if (Query.getAggregationType(query) === "rows") {
+            if (columns.length === 0) {
+                return null;
+            }
+        } else {
+            // NOTE: incomplete (missing name etc), count/distinct are actually IntegerField, but close enough for now
+            columns.push({ base_type: "FloatField", special_type: "number" });
+        }
+        return columns;
+    }
+}
+
+export const AggregationClause = {
+
+    // predicate function to test if a given aggregation clause is fully formed
+    isValid(aggregation) {
+        if (aggregation && _.isArray(aggregation) &&
+                ((aggregation.length === 1 && aggregation[0] !== null) ||
+                 (aggregation.length === 2 && aggregation[0] !== null && aggregation[1] !== null))) {
+            return true;
+        }
+        return false;
+    },
+
+    // predicate function to test if the given aggregation clause represents a Bare Rows aggregation
+    isBareRows(aggregation) {
+        return AggregationClause.isValid(aggregation) && aggregation[0] === "rows";
+    },
+
+    // predicate function to test if a given aggregation clause represents a standard aggregation
+    isStandard(aggregation) {
+        return AggregationClause.isValid(aggregation) && aggregation[0] !== "METRIC";
+    },
+
+    // predicate function to test if a given aggregation clause represents a metric
+    isMetric(aggregation) {
+        return AggregationClause.isValid(aggregation) && aggregation[0] === "METRIC";
+    },
+
+    // get the metricId from a metric aggregation clause
+    getMetric(aggregation) {
+        if (aggregation && AggregationClause.isMetric(aggregation)) {
+            return aggregation[1];
+        } else {
+            return null;
+        }
+    },
+
+    // get the operator from a standard aggregation clause
+    getOperator(aggregation) {
+        if (aggregation && aggregation.length > 0 && aggregation[0] !== "METRIC") {
+            return aggregation[0];
+        } else {
+            return null;
+        }
+    },
+
+    // get the fieldId from a standard aggregation clause
+    getField(aggregation) {
+        if (aggregation && aggregation.length > 1 && aggregation[0] !== "METRIC") {
+            return aggregation[1];
+        } else {
+            return null;
+        }
+    },
+
+    // set the fieldId on a standard aggregation clause
+    setField(aggregation, fieldId) {
+        if (aggregation && aggregation.length > 0 && aggregation[0] && aggregation[0] !== "METRIC") {
+            return [aggregation[0], fieldId];
+        } else {
+            // TODO: is there a better failure response than just returning the aggregation unmodified??
+            return aggregation;
+        }
+    }
+}
+
+export const BreakoutClause = {
+
+    setBreakout(breakout, index, value) {
+        if (!breakout) return breakout;
+
+        if (breakout.length >= index+1) {
+            breakout[index] = value;
+            return breakout;
+
+        } else {
+            breakout.push(value);
+            return breakout;
+        }
+    },
+
+    removeBreakout(breakout, index) {
+        if (breakout && breakout.length >= index+1) {
+            breakout.splice(index, 1);
+            return breakout;
+        } else {
+            return breakout;
         }
     }
 }

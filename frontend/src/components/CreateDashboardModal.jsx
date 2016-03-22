@@ -96,7 +96,7 @@ export default class CreateDashboardModal extends Component {
                             fieldName="name"
                             errors={this.state.errors}>
                             <input className="Form-input
-                            full" name="name" placeholder="What is the name of your dashboard?" value={this.state.name} onChange={this.setName} autofocus />
+                            full" name="name" placeholder="What is the name of your dashboard?" value={this.state.name} onChange={this.setName} autoFocus />
                         </FormField>
 
                         <FormField
@@ -109,7 +109,7 @@ export default class CreateDashboardModal extends Component {
 
                     <div className="Form-actions">
                         {createButton}
-                        <span className="px1">or</span><a href="#" className="no-decoration text-brand text-bold" onClick={this.props.closeFn}>Cancel</a>
+                        <span className="px1">or</span><a className="no-decoration text-brand text-bold" onClick={this.props.closeFn}>Cancel</a>
                         {formError}
                     </div>
                 </form>

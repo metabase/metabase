@@ -2,9 +2,9 @@
   (:require [clojure.string :as s]
             (korma [core :as k]
                    [db :as kdb])
-            [korma.sql.utils :as kutils]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
+            [metabase.util :as u]
             [metabase.util.korma-extensions :as kx])
   (:import net.sourceforge.jtds.jdbc.Driver)) ; need to import this in order to load JDBC driver
 
@@ -130,7 +130,7 @@
   clojure.lang.Named
   (getName [_] "SQL Server"))
 
-(extend SQLServerDriver
+(u/strict-extend SQLServerDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
          {:date-interval  date-interval

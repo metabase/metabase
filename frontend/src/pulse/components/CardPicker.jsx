@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import Popover from "metabase/components/Popover.jsx";
 
@@ -49,7 +50,7 @@ export default class CardPicker extends Component {
             if (card.dataset_query.query.aggregation[0] === "rows") {
                 error = "Raw data cannot be included in pulses";
             }
-        } catch (e) {};
+        } catch (e) {}
         if (card.display === "pin_map" || card.display === "state" || card.display === "country") {
             error = "Maps cannot be included in pulses";
         }
@@ -72,7 +73,7 @@ export default class CardPicker extends Component {
 
     // keep the modal width in sync with the input width :-/
     componentDidUpdate() {
-        let { scrollWidth } = React.findDOMNode(this.refs.input);
+        let { scrollWidth } = ReactDOM.findDOMNode(this.refs.input);
         if (this.state.inputWidth !== scrollWidth) {
             this.setState({ inputWidth: scrollWidth });
         }

@@ -1,14 +1,9 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
-  (:require [clojure.core.reducers :as r]
-            [clojure.set :as set]
-            [clojure.tools.logging :as log]
-            [colorize.core :as color]
-            [medley.core :as m]
+  (:require [clojure.set :as set]
             (monger [collection :as mc]
                     [command :as cmd]
                     [conversion :as conv]
-                    [core :as mg]
                     [db :as mdb]
                     [query :as mq])
             [metabase.driver :as driver]
@@ -21,8 +16,7 @@
             [metabase.driver.sync :as sync])
   (:import com.mongodb.DB))
 
-(declare driver field-values-lazy-seq)
-
+(declare field-values-lazy-seq)
 
 ;;; ## MongoDriver
 
@@ -116,14 +110,12 @@
           (:nested-fields field-info) (assoc :nested-fields (set (for [field (keys (:nested-fields field-info))]
                                                                   (describe-table-field field (field (:nested-fields field-info))))))))
 
-(defn describe-database
-  [_ database]
+(defn- describe-database [database]
   (with-mongo-connection [^com.mongodb.DB conn database]
     {:tables (set (for [collection (set/difference (mdb/get-collection-names conn) #{"system.indexes"})]
                     {:name collection}))}))
 
-(defn describe-table
-  [_ table]
+(defn- describe-table [table]
   (with-mongo-connection [^com.mongodb.DB conn (table/database table)]
     ;; TODO: ideally this would take the LAST set of rows added to the table so we could ensure this data changes on reruns
     (let [parsed-rows (->> (mc/find-maps conn (:name table))
@@ -140,13 +132,12 @@
        :fields (set (for [field (keys parsed-rows)]
                       (describe-table-field field (field parsed-rows))))})))
 
-(defn analyze-table
-  [_ table new-field-ids]
+(defn- analyze-table [_ table new-field-ids]
   ;; We only care about 1) table counts and 2) field values
   {:row_count (sync/table-row-count table)
    :fields    (for [{:keys [id] :as field} (table/fields table)
                     :when (sync/test-for-cardinality? field (contains? new-field-ids (:id field)))]
-                (sync/test-cardinality-and-extract-field-values field {:id id}))})
+                (sync/test:cardinality-and-extract-field-values field {:id id}))})
 
 (defn- field-values-lazy-seq [_ {:keys [qualified-name-components table], :as field}]
   (assert (and (map? field)
@@ -168,13 +159,13 @@
   clojure.lang.Named
   (getName [_] "MongoDB"))
 
-(extend MongoDriver
+(u/strict-extend MongoDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
          {:analyze-table                     analyze-table
           :can-connect?                      can-connect?
-          :describe-database                 describe-database
-          :describe-table                    describe-table
+          :describe-database                 (u/drop-first-arg describe-database)
+          :describe-table                    (u/drop-first-arg describe-table)
           :details-fields                    (constantly [{:name         "host"
                                                            :display-name "Host"
                                                            :default      "localhost"}

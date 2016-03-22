@@ -10,25 +10,25 @@
 
 (defendpoint POST "/"
   "Create a new `Segment`."
-  [:as {{:keys [name description table_id definition] :as body} :body}]
+  [:as {{:keys [name description table_id definition]} :body}]
   {name       [Required NonEmptyString]
    table_id   [Required Integer]
    definition [Required Dict]}
   (check-superuser)
   (checkp #(db/exists? Table :id table_id) "table_id" "Table does not exist.")
-  (->500 (segment/create-segment table_id name description *current-user-id* definition)))
+  (check-500 (segment/create-segment table_id name description *current-user-id* definition)))
 
 
 (defendpoint GET "/:id"
   "Fetch `Segment` with ID."
   [id]
   (check-superuser)
-  (->404 (segment/retrieve-segment id)))
+  (check-404 (segment/retrieve-segment id)))
 
 
 (defendpoint PUT "/:id"
   "Update a `Segment` with ID."
-  [id :as {{:keys [name description definition revision_message] :as body} :body}]
+  [id :as {{:keys [name description definition revision_message]} :body}]
   {name             [Required NonEmptyString]
    revision_message [Required NonEmptyString]
    definition       [Required Dict]}

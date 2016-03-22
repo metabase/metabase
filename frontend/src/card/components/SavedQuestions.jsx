@@ -11,18 +11,18 @@ export default class SavedQuestions extends Component {
 
     render() {
         return (
-            <div className="flex flex-column flex-full">
-                <div className="relative felx flex-column flex-full md-pl4">
-                    <div className="HomeLayout">
-                        <div className="HomeLayout-mainColumn">
-                            <div style={{paddingLeft: "0.75rem"}} className="pt4 h2 text-normal">Saved Questions</div>
+            <div className="full">
+                  <div className="flex">
+                      <div className="wrapper">
+                          <div className="Layout-mainColumn">
+                            <div className="pt4 h2 text-normal">Saved Questions</div>
                             <Cards {...this.props} />
-                        </div>
-                    </div>
-                    <div className="HomeLayout-sidebar">
-                        <CardFilters {...this.props} />
-                    </div>
-                </div>
+                          </div>
+                      </div>
+                      <div className="Layout-sidebar flex-no-shrink">
+                          <CardFilters {...this.props} />
+                      </div>
+                  </div>
             </div>
         );
     }

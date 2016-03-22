@@ -4,16 +4,21 @@
   (:require (clojure [set :as set]
                      [walk :as walk])
             [medley.core :as m]
+            [schema.core :as s]
             [metabase.db :refer [sel]]
-            (metabase.driver.query-processor [interface :refer :all]
-                                             [parse :as parse])
+            [metabase.driver.query-processor.interface :refer :all]
             (metabase.models [database :refer [Database]]
                              [field :as field]
                              [foreign-key :refer [ForeignKey]]
-                             [table :refer [Table]]))
+                             [table :refer [Table]])
+            [metabase.util :as u])
   (:import (metabase.driver.query_processor.interface DateTimeField
+                                                      DateTimeValue
                                                       Field
                                                       FieldPlaceholder
+                                                      RelativeDatetime
+                                                      RelativeDateTimeValue
+                                                      Value
                                                       ValuePlaceholder)))
 
 ;; # ---------------------------------------------------------------------- UTIL FNS ------------------------------------------------------------
@@ -25,8 +30,8 @@
                           :name            :field-name
                           :display_name    :field-display-name
                           :special_type    :special-type
+                          :visibility_type :visibility-type
                           :base_type       :base-type
-                          :preview_display :preview-display
                           :table_id        :table-id
                           :parent_id       :parent-id}))
 
@@ -51,8 +56,8 @@
    :resolve-field       (fn [this _] this)
    :resolve-table       (fn [this _] this)})
 
-(extend Object IResolve IResolveDefaults)
-(extend nil    IResolve IResolveDefaults)
+(u/strict-extend Object IResolve IResolveDefaults)
+(u/strict-extend nil    IResolve IResolveDefaults)
 
 
 ;;; ## ------------------------------------------------------------ FIELD ------------------------------------------------------------
@@ -79,7 +84,7 @@
            :table-name  (:name table)
            :schema-name (:schema table))))
 
-(extend Field
+(u/strict-extend Field
   IResolve (merge IResolveDefaults
                   {:unresolved-field-id field-unresolved-field-id
                    :resolve-field       field-resolve-field
@@ -102,7 +107,7 @@
     ;; If that fails just return ourselves as-is
     this))
 
-(extend FieldPlaceholder
+(u/strict-extend FieldPlaceholder
   IResolve (merge IResolveDefaults
                   {:unresolved-field-id :field-id
                    :fk-field-id         :fk-field-id
@@ -111,13 +116,38 @@
 
 ;;; ## ------------------------------------------------------------ VALUE PLACEHOLDER ------------------------------------------------------------
 
+(defprotocol ^:private IParseValueForField
+  (^:private parse-value [this value]
+    "Parse a value for a given type of `Field`."))
+
+(extend-protocol IParseValueForField
+  Field
+  (parse-value [this value]
+    (s/validate Value (map->Value {:field this, :value value})))
+
+  DateTimeField
+  (parse-value [this value]
+    (cond
+      (u/date-string? value)
+      (s/validate DateTimeValue (map->DateTimeValue {:field this, :value (u/->Timestamp value)}))
+
+      (instance? RelativeDatetime value)
+      (do (s/validate RelativeDatetime value)
+          (s/validate RelativeDateTimeValue (map->RelativeDateTimeValue {:field this, :amount (:amount value), :unit (:unit value)})))
+
+      (nil? value)
+      nil
+
+      :else
+      (throw (Exception. (format "Invalid value '%s': expected a DateTime." value))))))
+
 (defn- value-ph-resolve-field [{:keys [field-placeholder value]} field-id->fields]
   (let [resolved-field (resolve-field field-placeholder field-id->fields)]
     (when-not resolved-field
       (throw (Exception. (format "Unable to resolve field: %s" field-placeholder))))
-    (parse/parse-value resolved-field value)))
+    (parse-value resolved-field value)))
 
-(extend ValuePlaceholder
+(u/strict-extend ValuePlaceholder
   IResolve (merge IResolveDefaults
                   {:resolve-field value-ph-resolve-field}))
 
@@ -151,7 +181,7 @@
         ;; If there are no more Field IDs to resolve we're done.
         expanded-query-dict
         ;; Otherwise fetch + resolve the Fields in question
-        (let [fields (->> (sel :many :id->fields [field/Field :name :display_name :base_type :special_type :preview_display :table_id :parent_id :description]
+        (let [fields (->> (sel :many :id->fields [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description]
                                :id [in field-ids])
                           (m/map-vals rename-mb-field-keys)
                           (m/map-vals #(assoc % :parent (when-let [parent-id (:parent-id %)]
@@ -201,7 +231,7 @@
 
 (defn- resolve-tables
   "Resolve the `Tables` in an EXPANDED-QUERY-DICT."
-  [{{source-table-id :source-table} :query, database-id :database, :keys [table-ids fk-field-ids], :as expanded-query-dict}]
+  [{{source-table-id :source-table} :query, :keys [table-ids fk-field-ids], :as expanded-query-dict}]
   {:pre [(integer? source-table-id)]}
   (let [table-ids       (conj table-ids source-table-id)
         table-id->table (sel :many :id->fields [Table :schema :name :id], :id [in table-ids])
@@ -215,7 +245,9 @@
 
 ;;; # ------------------------------------------------------------ PUBLIC INTERFACE ------------------------------------------------------------
 
-(defn resolve [expanded-query-dict]
+(defn resolve
+  "Resolve placeholders by fetching `Fields`, `Databases`, and `Tables` that are referred to in EXPANDED-QUERY-DICT."
+  [expanded-query-dict]
   (some-> expanded-query-dict
           record-fk-field-ids
           resolve-fields

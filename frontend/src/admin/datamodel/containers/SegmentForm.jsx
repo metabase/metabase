@@ -7,7 +7,7 @@ import FieldSet from "../components/FieldSet.jsx";
 import PartialQueryBuilder from "../components/PartialQueryBuilder.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
-import { formatScalar } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting";
 
 import { segmentFormSelectors } from "../selectors";
 import { reduxForm } from "redux-form";
@@ -82,7 +82,7 @@ export default class SegmentForm extends Component {
                                     ...tableMetadata,
                                     segments: null
                                 }}
-                                previewSummary={previewSummary == null ? "" : formatScalar(previewSummary) + " rows"}
+                                previewSummary={previewSummary == null ? "" : formatValue(previewSummary) + " rows"}
                                 updatePreviewSummary={this.updatePreviewSummary.bind(this)}
                                 {...definition}
                             />

@@ -65,11 +65,11 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
 
     async function loadDatabaseMetadata() {
         $scope.databaseMetadata = await Metabase.db_metadata({ 'dbId': $scope.databaseId }).$promise;
-        $scope.databaseMetadata.tables = await * $scope.databaseMetadata.tables.map(async (table) => {
+        $scope.databaseMetadata.tables = await Promise.all($scope.databaseMetadata.tables.map(async (table) => {
             table = await augmentTable(table);
             table.metadataStrength = computeMetadataStrength(table);
             return table;
-        });
+        }));
     }
 
     async function loadIdFields() {
@@ -94,10 +94,10 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
 
     $scope.updateTable = function(table) {
         // make sure we don't send all the computed metadata
-        table = { ...table };
-        delete table.fields, table.fields_lookup, table.aggregation_options, table.breakout_options, table.metrics, table.segments;
+        let slimTable = { ...table };
+        slimTable = _.omit(slimTable, "fields", "fields_lookup", "aggregation_options", "breakout_options", "metrics", "segments");
 
-        return Metabase.table_update(table).$promise.then(function(result) {
+        return Metabase.table_update(slimTable).$promise.then(function(result) {
             _.each(result, (value, key) => { if (key.charAt(0) !== "$") { table[key] = value } });
             table.metadataStrength = computeMetadataStrength(table);
             $timeout(() => $scope.$digest());
@@ -106,10 +106,10 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
 
     $scope.updateField = function(field) {
         // make sure we don't send all the computed metadata
-        field = { ...field };
-        delete field.operators_lookup, field.valid_operators, field.values;
+        let slimField = { ...field };
+        slimField = _.omit(slimField, "operators_lookup", "valid_operators", "values");
 
-        return Metabase.field_update(field).$promise.then(function(result) {
+        return Metabase.field_update(slimField).$promise.then(function(result) {
             _.each(result, (value, key) => { if (key.charAt(0) !== "$") { field[key] = value } });
             let table = _.findWhere($scope.databaseMetadata.tables, {id: field.table_id});
             table.metadataStrength = computeMetadataStrength(table);
@@ -128,13 +128,15 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
         }
 
         score(table.description);
-        table.fields.forEach(function(field) {
-            score(field.description);
-            score(field.special_type);
-            if (field.special_type === "fk") {
-                score(field.target);
-            }
-        });
+        if (table.fields) {
+            table.fields.forEach(function(field) {
+                score(field.description);
+                score(field.special_type);
+                if (field.special_type === "fk") {
+                    score(field.target);
+                }
+            });
+        }
 
         return (completed / total);
     }
@@ -178,9 +180,9 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
 
     async function deleteAllFieldForeignKeys(field) {
         var fks = await Metabase.field_foreignkeys({ 'fieldId': field.id }).$promise;
-        return await* fks.map(function(fk) {
+        return await Promise.all(fks.map(function(fk) {
             return ForeignKey.delete({ 'fkID': fk.id }).$promise;
-        });
+        }));
     }
 
     $scope.onRetireSegment = async function(segment) {
