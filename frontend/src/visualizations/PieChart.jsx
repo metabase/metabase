@@ -37,6 +37,16 @@ export default class PieChart extends Component {
         if (cols.length < 2) { throw new MinColumnsError(2, cols.length); }
     }
 
+    componentDidUpdate() {
+        let groupElement = ReactDOM.findDOMNode(this.refs.group);
+        let detailElement = ReactDOM.findDOMNode(this.refs.detail);
+        if (groupElement.getBoundingClientRect().width < 100) {
+            detailElement.classList.add("hide");
+        } else {
+            detailElement.classList.remove("hide");
+        }
+    }
+
     render() {
         const { series, hovered, onHoverChange, className, gridSize } = this.props;
         const { data } = series[0];
@@ -123,13 +133,13 @@ export default class PieChart extends Component {
                 hovered={hovered} onHoverChange={(d) => onHoverChange && onHoverChange(d && { ...d, ...hoverForIndex(d.index) })}
             >
                 <div className={styles.ChartAndDetail}>
-                    <div className={styles.Detail}>
+                    <div ref="detail" className={styles.Detail}>
                         <div className={styles.Value}>{value}</div>
                         <div className={styles.Title}>{title}</div>
                     </div>
                     <div className={styles.Chart}>
                         <svg className={styles.Donut+ " m1"} viewBox="0 0 100 100">
-                            <g transform={`translate(50,50)`}>
+                            <g ref="group" transform={`translate(50,50)`}>
                                 {pie(slices).map((slice, index) =>
                                     <path
                                         key={index}

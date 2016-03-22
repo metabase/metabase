@@ -47,7 +47,7 @@
   justify-content: space-around;
 }
 :local .ChartWithLegend.horizontal .Legend {
-  flex-grow: 1;
+  flex-grow: 0;
   flex-shrink: 1;
   overflow: hidden;
 }
