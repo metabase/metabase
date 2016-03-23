@@ -16,7 +16,7 @@
    :port (Integer/parseInt (or (env :mb-druid-port)
                                (throw (Exception. "In order to test Druid, you must specify `MB_DRUID_PORT`."))))})
 
-(extend DruidDriver
+(u/strict-extend DruidDriver
   i/IDatasetLoader
   (merge i/IDatasetLoaderDefaultsMixin
          {:engine                       (constantly :druid)

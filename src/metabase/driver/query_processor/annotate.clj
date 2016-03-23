@@ -180,7 +180,7 @@
                            :field-display-name :display_name
                            :schema-name        :schema_name
                            :special-type       :special_type
-                           :preview-display    :preview_display
+                           :visibility-type    :visibility_type
                            :table-id           :table_id})
         (dissoc :position :clause-position :source :parent :parent-id :table-name))))
 
@@ -200,7 +200,7 @@
   ;; Fetch the destination Fields referenced by the ForeignKeys
   ([fields fk-ids id->dest-id]
    (when (seq id->dest-id)
-     (fk-field->dest-fn fields fk-ids id->dest-id (sel :many :id->fields [Field :id :name :display_name :table_id :description :base_type :special_type :preview_display]
+     (fk-field->dest-fn fields fk-ids id->dest-id (sel :many :id->fields [Field :id :name :display_name :table_id :description :base_type :special_type :visibility_type]
                                                        :id [in (vals id->dest-id)]))))
   ;; Return a function that will return the corresponding destination Field for a given Field
   ([fields fk-ids id->dest-id dest-id->field]

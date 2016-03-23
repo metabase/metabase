@@ -26,8 +26,9 @@
     "fixed-data-table": "^0.6.0",
     "history": "1.12.0",
     "humanize-plus": "^1.5.0",
+    "icepick": "^1.1.0",
     "inflection": "^1.7.1",
-    "moment": "^2.10.6",
+    "moment": "^2.12.0",
     "node-libs-browser": "^0.5.3",
     "normalizr": "^2.0.0",
     "password-generator": "^2.0.1",
@@ -47,6 +48,7 @@
     "redux-router": "^1.0.0-beta4",
     "redux-thunk": "^1.0.0",
     "reselect": "^2.0.1",
+    "screenfull": "^3.0.0",
     "tether": "^1.2.0",
     "underscore": "^1.8.3",
     "z-index": "0.0.1"
@@ -94,7 +96,7 @@
     "build": "./node_modules/.bin/webpack",
     "build-watch": "./node_modules/.bin/webpack --watch",
     "build-hot": "NODE_ENV=hot ./node_modules/.bin/webpack && NODE_ENV=hot node_modules/webpack-dev-server/bin/webpack-dev-server.js --hot --inline --content-base frontend",
-    "shrinkwrap": "npm shrinkwrap --dev && ./bin/clean-shrinkwrap",
+    "shrinkwrap": "npm prune && npm shrinkwrap --dev && ./bin/clean-shrinkwrap",
     "start": "npm run build && lein ring server"
   }
 }

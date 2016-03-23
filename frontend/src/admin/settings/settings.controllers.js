@@ -33,7 +33,8 @@ const SECTIONS = [
                     { name: "Database Default", value: "" },
                     ...MetabaseSettings.get('timezones')
                 ],
-                placeholder: "Select a timezone"
+                placeholder: "Select a timezone",
+                note: "Not all databases support timezones, in which case this setting won't take effect."
             },
             {
                 key: "anon-tracking-enabled",
@@ -104,7 +105,15 @@ const SECTIONS = [
                 type: "string",
                 required: true,
                 autoFocus: true
-            }
+            },
+            {
+                key: "metabot-enabled",
+                display_name: "Metabot",
+                type: "boolean",
+                defaultValue: "true",
+                required: true,
+                autoFocus: false
+            },
         ]
     }
 ];

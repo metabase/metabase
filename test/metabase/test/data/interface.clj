@@ -15,6 +15,7 @@
                             ^Keyword base-type
                             ^Keyword field-type
                             ^Keyword special-type
+                            ^Keyword visibility-type
                             ^Keyword fk])
 
 (defrecord TableDefinition [^String table-name
@@ -117,7 +118,7 @@
 
 (defn create-field-definition
   "Create a new `FieldDefinition`; verify its values."
-  ^FieldDefinition [{:keys [field-name base-type field-type special-type fk], :as field-definition-map}]
+  ^FieldDefinition [{:keys [field-name base-type field-type special-type visibility-type fk], :as field-definition-map}]
   (assert (or (contains? field/base-types base-type)
               (and (map? base-type)
                    (string? (:native base-type))))
@@ -125,6 +126,8 @@
          "Field base-type should be either a valid base type like :TextField or be some native type wrapped in a map, like {:native \"JSON\"}."))
   (when field-type
     (assert (contains? field/field-types field-type)))
+  (when visibility-type
+    (assert (contains? field/visibility-types visibility-type)))
   (when special-type
     (assert (contains? field/special-types special-type)))
   (map->FieldDefinition field-definition-map))

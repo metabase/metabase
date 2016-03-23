@@ -81,7 +81,10 @@ export default class SettingsSetting extends Component {
         return (
             <li className="m2 mb4">
                 <div className="text-grey-4 text-bold text-uppercase">{setting.display_name}</div>
-                <div className="text-grey-4 my1">{setting.description}</div>
+                <div className="text-grey-4 my1">
+                    {setting.description}
+                    {setting.note && <div>{setting.note}</div>}
+                </div>
                 <div className="flex">{control}</div>
             </li>
         );

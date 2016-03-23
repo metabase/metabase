@@ -11,6 +11,8 @@ export default class Bar extends Component {
     static identifier = "table";
     static iconName = "table";
 
+    static minSize = { width: 4, height: 4 };
+
     static isSensible(cols, rows) {
         return true;
     }

@@ -9,7 +9,7 @@
   (let [defaults {:timestamp (u/new-sql-timestamp)}]
     (merge defaults log-entry)))
 
-(extend (class ViewLog)
+(u/strict-extend (class ViewLog)
   i/IEntity (merge i/IEntityDefaults
                    {:can-read?  i/publicly-readable?
                     :can-write? i/publicly-writeable?

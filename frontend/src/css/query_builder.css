@@ -628,11 +628,6 @@
     border-right: 1px solid var(--border-color);
 }
 
-.QueryBuilder .Entity-title,
-.QueryBuilder .Entity-attribution {
-    margin-left: 0.5rem;
-}
-
 .PopoverBody.AddToDashboard {
     min-width: 25em;
 }
@@ -762,4 +757,9 @@
 
 .FilterInput:hover .FilterRemove-field {
   opacity: 1;
+}
+
+/* need to do this ugliness to override the locally scoped font size from Scalar.css */
+#react_qb_viz .ScalarValue {
+  font-size: 5em;
 }

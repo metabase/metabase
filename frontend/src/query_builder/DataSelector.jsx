@@ -214,6 +214,7 @@ export default class DataSelector extends Component {
                     key="tablePicker"
                     className="text-brand"
                     sections={sections}
+                    searchable={true}
                     onChange={this.onChangeTable}
                     itemIsSelected={(item) => item.table ? item.table.id === this.getTableId() : false}
                     itemIsClickable={(item) => item.table}

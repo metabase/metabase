@@ -103,7 +103,7 @@
   clojure.lang.Named
   (getName [_] "SQLite"))
 
-(extend SQLiteDriver
+(u/strict-extend SQLiteDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
          {:date-interval  date-interval

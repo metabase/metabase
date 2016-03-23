@@ -7,7 +7,7 @@ import FieldSet from "../components/FieldSet.jsx";
 import PartialQueryBuilder from "../components/PartialQueryBuilder.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
-import { formatScalar } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting";
 
 import { metricFormSelectors } from "../selectors";
 import { reduxForm } from "redux-form";
@@ -83,7 +83,7 @@ export default class MetricForm extends Component {
                                 aggregation_options: tableMetadata.aggregation_options.filter(a => a.short !== "rows"),
                                 metrics: null
                             }}
-                            previewSummary={previewSummary == null ? "" : "Result: " + formatScalar(previewSummary)}
+                            previewSummary={previewSummary == null ? "" : "Result: " + formatValue(previewSummary)}
                             updatePreviewSummary={this.updatePreviewSummary.bind(this)}
                             {...definition}
                         />

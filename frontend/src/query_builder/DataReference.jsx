@@ -83,7 +83,7 @@ export default class DataReference extends Component {
         );
 
         return (
-            <div className="DataReference-container p3 scroll-y">
+            <div className="DataReference-container p3 full-height scroll-y">
                 <div className="DataReference-header flex mb1">
                     {backButton}
                     {closeButton}

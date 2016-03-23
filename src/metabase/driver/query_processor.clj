@@ -175,11 +175,10 @@
 (defn- fields-for-source-table
   "Return the all fields for SOURCE-TABLE, for use as an implicit `:fields` clause."
   [{source-table-id :id, :as source-table}]
-  (for [field (db/sel :many :fields [Field :name :display_name :base_type :special_type :preview_display :display_name :table_id :id :position :description]
-                      :table_id   source-table-id
-                      :active     true
-                      :field_type [not= "sensitive"]
-                      :parent_id  nil
+  (for [field (db/sel :many :fields [Field :name :display_name :base_type :special_type :visibility_type :display_name :table_id :id :position :description]
+                      :table_id        source-table-id
+                      :visibility_type [not-in ["sensitive" "retired"]]
+                      :parent_id       nil
                       (k/order :position :asc)
                       (k/order :id :desc))]
     (let [field (-> (resolve/rename-mb-field-keys field)

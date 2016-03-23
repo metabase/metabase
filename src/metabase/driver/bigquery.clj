@@ -370,11 +370,13 @@
 
 (def ^:private driver (BigQueryDriver.))
 
-(extend BigQueryDriver
+(u/strict-extend BigQueryDriver
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
          {:apply-breakout            (u/drop-first-arg apply-breakout)
           :apply-order-by            (u/drop-first-arg apply-order-by)
+          :column->base-type         (constantly nil)                           ; these two are actually not applicable
+          :connection-details->spec  (constantly nil)                           ; since we don't use JDBC
           :current-datetime-fn       (constantly (k/sqlfn* :CURRENT_TIMESTAMP))
           :date                      (u/drop-first-arg date)
           :field->alias              (u/drop-first-arg field->alias)

@@ -4,6 +4,13 @@
     height: 18px;
 }
 
+.scroll-show--hover::-webkit-scrollbar {
+    display: none;
+}
+.scroll-show--hover:hover::-webkit-scrollbar {
+    display: inherit;
+}
+
 .scroll-show--horizontal::-webkit-scrollbar {
     height: 6px;
 }

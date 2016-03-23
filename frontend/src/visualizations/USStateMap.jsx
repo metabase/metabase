@@ -1,32 +1,20 @@
 import React, { Component, PropTypes } from "react";
 
-import CardRenderer from "./components/CardRenderer.jsx";
-import ChartTooltip from "./components/ChartTooltip.jsx";
+import ChoroplethMap from "./components/ChoroplethMap.jsx";
 
-import { isString } from "metabase/lib/schema_metadata";
+import d3 from "d3";
 
-import { MinColumnsError } from "metabase/visualizations/lib/errors";
-
-export default class USStateMap extends Component {
+export default class USStateMap extends ChoroplethMap {
     static displayName = "US State Map";
     static identifier = "state";
     static iconName = "statemap";
 
-    static isSensible(cols, rows) {
-        return cols.length > 1 && isString(cols[0]);
-    }
-
-    static checkRenderable(cols, rows) {
-        if (cols.length < 2) { throw new MinColumnsError(2, cols.length); }
-    }
-
-    render() {
-        const { series, hovered, className } = this.props;
-        return (
-            <div className={"flex " + className}>
-                <CardRenderer {...this.props} className="flex-full" chartType="state" />
-                <ChartTooltip series={series} hovered={hovered} pinToMouse={true} />
-            </div>
-        );
-    }
+    static defaultProps = {
+        geoJsonPath: "/app/charts/us-states.json",
+        projection: d3.geo.albersUsa(),
+        getRowKey: (row) => row[0].toLowerCase(),
+        getRowValue: (row) => row[1] || 0,
+        getFeatureKey: (feature) => feature.properties.name.toLowerCase(),
+        getFeatureName: (feature) => feature.properties.name
+    };
 }
