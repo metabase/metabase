@@ -242,7 +242,7 @@ export default class DashboardGrid extends Component {
                 isEditing={isEditing}
             >
                 {dashboard && dashboard.ordered_cards.map(dc =>
-                    <div key={dc.id} className="DashCard" onMouseDownCapture={this.onDashCardMouseDown}>
+                    <div key={dc.id} className="DashCard" onMouseDownCapture={this.onDashCardMouseDown} onTouchStartCapture={this.onDashCardMouseDown}>
                         <DashCard
                             dashcard={dc}
                             cardData={this.props.cardData}
