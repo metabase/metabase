@@ -34,13 +34,16 @@ Once you add a question to your dashboard, it’ll look something like this:
 ### Arranging cards
 Each question on a dashboard is in its own card that you can move around or resize as you see fit; just click the edit icon that looks like a pencil in the top-right of the dashboard screen.  
 
-The lines around the card will change from solid to dotted, showing you that you’re in edit mode.  
+Once you're in edit mode you'll see a grid appear. You move and resize the cards in the dashboard to your liking and they'll snap to the grid.
+
+- To move cards just click and drag.
+- To resize a card just click and drag the handle at the bottom right corner of the card.
+- To remove a card, click the X icon in the top right corner.
+
+Questions in your dashboard will automatically update their display based on the size you choose to make sure your data looks great at any size.
 
 ![editmode](images/Editmode.png)
 
-* To resize a card, hover your pointer over the lower right corner of it and click and drag.
-* To reorder your cards, click on the card and drag it to where you want it to be. The other cards will rearrange themselves as you move the card around.  
-* To remove a card, click the trashcan icon on it.
 
 ## Deleting a dashboard
 Deleting a dashboard does not delete the individual saved questions on it — it just deletes the dashboard. Remember — dashboards are shared by everyone on your team, so think twice before you delete something that someone else might be using!
