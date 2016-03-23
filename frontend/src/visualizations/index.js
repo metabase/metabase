@@ -35,4 +35,10 @@ registerVisualization(USStateMap);
 registerVisualization(WorldMap);
 registerVisualization(PinMap);
 
+
+import { enableVisualizationEasterEgg } from "./lib/utils";
+import XKCDChart from "./XKCDChart.jsx";
+import LineAreaBarChart from "./components/LineAreaBarChart.jsx";
+enableVisualizationEasterEgg("XKCD", LineAreaBarChart, XKCDChart);
+
 export default visualizations;

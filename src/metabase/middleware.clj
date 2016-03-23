@@ -151,8 +151,11 @@
                                                       :style-src   ["'unsafe-inline'"
                                                                     "'self'"
                                                                     "fonts.googleapis.com"]
-                                                      :font-src    ["fonts.gstatic.com"
-                                                                    "themes.googleusercontent.com"]
+                                                      :font-src    ["'self'"
+                                                                    "fonts.gstatic.com"
+                                                                    "themes.googleusercontent.com"
+                                                                    (when config/is-dev?
+                                                                      "localhost:8080")]
                                                       :img-src     ["*"
                                                                     "self data:"]
                                                       :connect-src ["'self'"
