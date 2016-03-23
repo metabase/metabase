@@ -71,13 +71,13 @@ By our definition, "Bugs" are situations where the program doesn't do what it wa
 
 There are a lot of docs. We often have difficulties keeping them up to date. If you are reading them and you notice inconsistencies, errors or outdated information, please help up keep them current!
 
-### Working on features that don't need visual design
+### Working on features 
 
 Some features, eg Database drivers, don't have any user facing pixels. These are a great place to start off contributing as they don't require as much communication, discussions about tradeoffs and process in general. 
 
-### Working on features that already have a visual design
-
 In situations where a design has already been done, we can always use some help. Chime in on a pull request or an issue and offer to help. 
+
+Generally speaking, any issue in Any issue in [Feature/Designed](https://github.com/metabase/metabase/labels/Feature%2FDesigned) is fair game.
 
 ### #YOLO JUST SUBMIT A PR
 
