@@ -1,28 +1,20 @@
-FROM ubuntu:trusty
+FROM java:openjdk-7-jre-alpine
 
-# Make sure we are using UTF-8
-RUN locale-gen en_US.UTF-8
-ENV LANG en_US.UTF-8
-ENV LANGUAGE en_US:en
-ENV LC_ALL en_US.UTF-8
-
-ENV DEBIAN_FRONTEND noninteractive
-ENV DEBCONF_NONINTERACTIVE_SEEN true
-
-# install core build tools
-RUN apt-get update && \
-    apt-get install -y openjdk-7-jdk && \
-    apt-get install -y nodejs && \
-    apt-get install -y npm && \
-    apt-get install -y git && \
-    apt-get install -y wget
-ADD https://raw.github.com/technomancy/leiningen/stable/bin/lein /usr/local/bin/lein
-RUN chmod 744 /usr/local/bin/lein
-
-# little bit of cleanup so that our build process will work
+ENV JAVA_HOME=/usr/lib/jvm/default-jvm
 ENV PATH /usr/local/bin:$PATH
 ENV LEIN_ROOT 1
-RUN ln -s /usr/bin/nodejs /usr/bin/node
+
+# install core build tools
+RUN apk add --update nodejs git wget bash python make g++ java-cacerts && \
+    ln -sf "${JAVA_HOME}/bin/"* "/usr/bin/"
+
+# fix broken cacerts
+RUN rm -f /usr/lib/jvm/default-jvm/jre/lib/security/cacerts && \
+    ln -s /etc/ssl/certs/java/cacerts /usr/lib/jvm/default-jvm/jre/lib/security/cacerts
+
+# install lein
+ADD https://raw.github.com/technomancy/leiningen/stable/bin/lein /usr/local/bin/lein
+RUN chmod 744 /usr/local/bin/lein
 
 # add the application source to the image
 ADD . /app/source
@@ -30,6 +22,10 @@ ADD . /app/source
 # build the app
 WORKDIR /app/source
 RUN bin/build
+
+# remove unnecessary packages & tidy up
+RUN apk del nodejs git wget python make g++
+RUN rm -rf /root/.lein /root/.m2 /root/.node-gyp /root/.npm /tmp/* /var/cache/apk/* /app/source/node_modules
 
 # expose our default runtime port
 EXPOSE 3000
