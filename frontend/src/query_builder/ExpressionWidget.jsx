@@ -177,7 +177,7 @@ export default class ExpressionWidget extends Component {
     componentWillReceiveProps(newProps) {
         let parsedExpression = newProps.expression[0],
             expression       = newProps.expression[1],
-            tokens           = getParsedExpression(this.parseExpression(tokenizeExpression(expression)))
+            tokens           = expression && expression.length ? getParsedExpression(this.parseExpression(tokenizeExpression(expression))) : []
         this.setState({
             name:                   newProps.name,
             parsedExpression:       parsedExpression,
