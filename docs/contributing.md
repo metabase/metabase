@@ -77,7 +77,7 @@ Some features, eg Database drivers, don't have any user facing pixels. These are
 
 In situations where a design has already been done, we can always use some help. Chime in on a pull request or an issue and offer to help. 
 
-Generally speaking, any issue in Any issue in [Feature/Designed](https://github.com/metabase/metabase/labels/Feature%2FDesigned) is fair game.
+Generally speaking, any issue in [Feature/Designed](https://github.com/metabase/metabase/labels/Feature%2FDesigned) is fair game.
 
 ### #YOLO JUST SUBMIT A PR
 

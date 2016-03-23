@@ -55,7 +55,7 @@ For a more detailed walkthrough, check out our [Getting Started](docs/getting-st
 
 To get started with a development installation of the Metabase, follow the instructions at our [Developers Guide](docs/developers-guide.md).
 
-The take a look at our [Contribution Guide](docs/contributing.md) for information about our process and where you can fit in!
+Then take a look at our [Contribution Guide](docs/contributing.md) for information about our process and where you can fit in!
 
 # Extending and Deep Integrations
 
