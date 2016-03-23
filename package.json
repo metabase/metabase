@@ -69,7 +69,7 @@
     "extract-text-webpack-plugin": "^1.0.1",
     "file-loader": "^0.8.5",
     "glob": "^5.0.15",
-    "html-webpack-plugin": "^2.9.0",
+    "html-webpack-plugin": "^2.14.0",
     "istanbul-instrumenter-loader": "^0.2.0",
     "jasmine-core": "^2.3.4",
     "karma": "^0.13.9",
