@@ -1,9 +1,11 @@
 import React, { Component, PropTypes } from "react";
 
+import LegendHeader from "metabase/visualizations/components/LegendHeader.jsx";
 import visualizations from "metabase/visualizations";
 
 import i from "icepick";
 import _ from "underscore";
+import cx from "classnames";
 
 export default class Visualization extends Component {
     constructor(props, context) {
@@ -80,33 +82,43 @@ export default class Visualization extends Component {
     }
 
     render() {
+        let { series, actionButtons, className, isDashboard } = this.props;
+        let CardVisualization = visualizations.get(series[0].card.display);
         let error = this.props.error || this.state.error;
-        if (error) {
-            return (
-                <div className="QueryError flex full align-center text-error">
-                    <div className="QueryError-iconWrapper">
-                        <svg className="QueryError-icon" viewBox="0 0 32 32" width="64" height="64" fill="currentcolor">
-                            <path d="M4 8 L8 4 L16 12 L24 4 L28 8 L20 16 L28 24 L24 28 L16 20 L8 28 L4 24 L12 16 z "></path>
-                        </svg>
+        return (
+            <div className={cx(className, "flex flex-column")}>
+                { isDashboard && (error || !CardVisualization.noHeader) ?
+                    <div className="p1 flex-no-shrink">
+                        <LegendHeader
+                            series={series}
+                            actionButtons={actionButtons}
+                        />
                     </div>
-                    <span className="QueryError-message">{error}</span>
-                </div>
-            );
-        } else {
-            let { series } = this.props;
-            let CardVisualization = visualizations.get(series[0].card.display);
-            return (
-                <CardVisualization
-                    {...this.props}
-                    series={series}
-                    card={series[0].card} // convienence for single-series visualizations
-                    data={series[0].data} // convienence for single-series visualizations
-                    hovered={this.state.hovered}
-                    onHoverChange={this.onHoverChange}
-                    onRenderError={this.onRenderError}
-                    onRender={this.onRender}
-                />
-            );
-        }
+                : null
+                }
+                { error ?
+                    <div className="QueryError flex flex-full align-center text-error">
+                        <div className="QueryError-iconWrapper hide">
+                            <svg className="QueryError-icon" viewBox="0 0 32 32" width="64" height="64" fill="currentcolor">
+                                <path d="M4 8 L8 4 L16 12 L24 4 L28 8 L20 16 L28 24 L24 28 L16 20 L8 28 L4 24 L12 16 z "></path>
+                            </svg>
+                        </div>
+                        <span className="QueryError-message">{error}</span>
+                    </div>
+                :
+                    <CardVisualization
+                        {...this.props}
+                        className="flex-full"
+                        series={series}
+                        card={series[0].card} // convienence for single-series visualizations
+                        data={series[0].data} // convienence for single-series visualizations
+                        hovered={this.state.hovered}
+                        onHoverChange={this.onHoverChange}
+                        onRenderError={this.onRenderError}
+                        onRender={this.onRender}
+                    />
+                }
+            </div>
+        );
     }
 }

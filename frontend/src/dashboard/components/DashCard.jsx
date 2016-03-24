@@ -4,7 +4,6 @@ import ReactDOM from "react-dom";
 import visualizations from "metabase/visualizations";
 
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
-import LegendHeader from "metabase/visualizations/components/LegendHeader.jsx";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 
 import Icon from "metabase/components/Icon.jsx";
@@ -127,19 +126,11 @@ export default class DashCard extends Component {
     }
 
     render() {
-        const { dashcard, onAddSeries, onRemove, isEditing } = this.props;
+        const { dashcard } = this.props;
         const series = [dashcard.card].concat(dashcard.series || []).map(card => ({ card }));
         const Viz = visualizations.get(series[0].card.display);
         return (
             <div className={"Card bordered rounded flex flex-column " + cx({ "Card--recent": dashcard.isAdded })}>
-                { !Viz.noHeader &&
-                    <div className="p1">
-                        <LegendHeader
-                            series={series}
-                            actionButtons={isEditing ? <DashCardActionButtons visualization={Viz} series={series} onRemove={onRemove} onAddSeries={onAddSeries} /> : undefined}
-                        />
-                    </div>
-                }
                 {this.renderCard(Viz)}
             </div>
         );
