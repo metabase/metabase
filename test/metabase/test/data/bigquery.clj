@@ -115,9 +115,9 @@
                                          (.set data (name k) v))
                                        (doto (TableDataInsertAllRequest$Rows.)
                                          (.setJson data))))))))
-  ;; Wait up to 15 seconds for all the rows to be loaded and become available by BigQuery
+  ;; Wait up to 30 seconds for all the rows to be loaded and become available by BigQuery
   (let [expected-row-count (count row-maps)]
-    (loop [seconds-to-wait-for-load 15]
+    (loop [seconds-to-wait-for-load 30]
       (let [actual-row-count (table-row-count dataset-id table-id)]
         (cond
           (= expected-row-count actual-row-count) :ok
@@ -182,12 +182,9 @@
     (try (destroy-dataset! database-name)
          (catch Throwable _))
     (create-dataset! database-name)
-    (u/pdoseq [tabledef table-definitions]
+    (doseq [tabledef table-definitions]
       (load-tabledef! database-name tabledef)))
   (println (u/format-color 'green "[OK]")))
-
-(defn- destroy-db! [{:keys [database-name]}]
-  #_(destroy-dataset! (normalize-name database-name)))
 
 
 ;;; # ------------------------------------------------------------ IDatasetLoader ------------------------------------------------------------
@@ -198,4 +195,4 @@
          {:engine                       (constantly :bigquery)
           :database->connection-details (u/drop-first-arg database->connection-details)
           :create-db!                   (u/drop-first-arg create-db!)
-          :destroy-db!                  (u/drop-first-arg destroy-db!)}))
+          :destroy-db!                  (constantly nil)}))
