@@ -583,21 +583,6 @@ CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', funct
                 fieldId: '@id'
             }
         },
-        field_foreignkeys: {
-            url: '/api/field/:fieldId/foreignkeys',
-            method: 'GET',
-            params: {
-                fieldId: '@fieldId'
-            },
-            isArray: true
-        },
-        field_addfk: {
-            url: '/api/field/:fieldId/foreignkeys',
-            method: 'POST',
-            params: {
-                fieldId: '@fieldId'
-            }
-        },
         dataset: {
             url: '/api/dataset',
             method: 'POST'
