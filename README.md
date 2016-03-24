@@ -1,7 +1,8 @@
+[![Latest Release](https://img.shields.io/github/release/metabase/metabase.svg?label=latest%20release)](https://github.com/metabase/metabase/releases)
+[![GitHub license](https://img.shields.io/badge/license-AGPL-05B8CC.svg)](https://raw.githubusercontent.com/metabase/metabase/master/LICENSE.txt)
 [![Circle CI](https://circleci.com/gh/metabase/metabase.svg?style=svg&circle-token=3ccf0aa841028af027f2ac9e8df17ce603e90ef9)](https://circleci.com/gh/metabase/metabase)
 [![Leiningen Dependencies Status](https://jarkeeper.com/metabase/metabase/status.png)](https://jarkeeper.com/metabase/metabase)
 [![NPM Dependencies Status](https://david-dm.org/metabase/metabase.svg)](https://david-dm.org/metabase/metabase)
-[![GitHub license](https://img.shields.io/badge/license-AGPL-blue.svg)](https://raw.githubusercontent.com/metabase/metabase/master/LICENSE.txt)
 
 # Overview
 
@@ -9,7 +10,7 @@ Metabase is an easy way to generate charts and dashboards, ask simple ad hoc que
 
 With a bit of tagging and annotation of what the tables and fields in your database mean, it can be used to provide a rich, humanized version analytics server and administration interface.
 
-For more information check out [www.metabase.com](http://www.metabase.com)
+For more information check out [www.metabase.com](http://www.metabase.com).
 
 
 # Security Disclosure
