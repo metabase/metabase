@@ -9,7 +9,6 @@
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [field-values :refer [FieldValues]]
-                             [foreign-key :refer [ForeignKey]]
                              [hydrate :refer :all]
                              [table :refer [Table]])
             (metabase.test [data :refer :all]
@@ -94,7 +93,8 @@
               :preview_display true,
               :display_name "Id",
               :base_type :IntegerField,
-              :visibility_type :normal}
+              :visibility_type :normal
+              :fk_target_field_id nil}
              {:description nil,
               :special_type nil,
               :name "studio",
@@ -105,7 +105,8 @@
               :preview_display true,
               :display_name "Studio",
               :base_type :TextField,
-              :visibility_type :normal}
+              :visibility_type :normal
+              :fk_target_field_id nil}
              {:description nil,
               :special_type nil,
               :name "title",
@@ -116,7 +117,8 @@
               :preview_display true,
               :display_name "Title",
               :base_type :TextField,
-              :visibility_type :normal}]}
+              :visibility_type :normal
+              :fk_target_field_id nil}]}
    {:schema nil
     :name   "studio"
     :display_name "Studio"
@@ -136,7 +138,8 @@
               :preview_display true,
               :display_name "Name",
               :base_type :TextField,
-              :visibility_type :normal}
+              :visibility_type :normal
+              :fk_target_field_id nil}
              {:description nil,
               :special_type :id,
               :name "studio",
@@ -147,7 +150,8 @@
               :preview_display true,
               :display_name "Studio",
               :base_type :TextField,
-              :visibility_type :normal}]}]
+              :visibility_type :normal
+              :fk_target_field_id nil}]}]
   (tu/with-temp Database [fake-db {:name    "sync-test"
                                    :engine  :sync-test
                                    :details {}}]
@@ -181,7 +185,8 @@
              :preview_display true,
              :display_name "Id",
              :base_type :IntegerField,
-             :visibility_type :normal}
+             :visibility_type :normal
+             :fk_target_field_id nil}
             {:description nil,
              :special_type nil,
              :name "studio",
@@ -192,7 +197,8 @@
              :preview_display true,
              :display_name "Studio",
              :base_type :TextField,
-             :visibility_type :normal}
+             :visibility_type :normal
+             :fk_target_field_id nil}
             {:description nil,
              :special_type nil,
              :name "title",
@@ -203,7 +209,8 @@
              :preview_display true,
              :display_name "Title",
              :base_type :TextField,
-             :visibility_type :normal}]}
+             :visibility_type :normal
+             :fk_target_field_id nil}]}
   (tu/with-temp Database [fake-db {:name    "sync-test"
                                    :engine  :sync-test
                                    :details {}}]
@@ -285,27 +292,26 @@
 ;; Check that Foreign Key relationships were created on sync as we expect
 
 (expect (id :venues :id)
-  (sel :one :field [ForeignKey :destination_id] :origin_id (id :checkins :venue_id)))
+  (sel :one :field [Field :fk_target_field_id] :id (id :checkins :venue_id)))
 
 (expect (id :users :id)
-  (sel :one :field [ForeignKey :destination_id] :origin_id (id :checkins :user_id)))
+  (sel :one :field [Field :fk_target_field_id] :id (id :checkins :user_id)))
 
 (expect (id :categories :id)
-  (sel :one :field [ForeignKey :destination_id] :origin_id (id :venues :category_id)))
+  (sel :one :field [Field :fk_target_field_id] :id (id :venues :category_id)))
 
 ;; Check that sync-table! causes FKs to be set like we'd expect
-(expect [[:fk true]
-         [nil false]
-         [:fk true]]
+(expect [{:special_type :fk, :fk_target_field_id true}
+         {:special_type nil, :fk_target_field_id false}
+         {:special_type :fk, :fk_target_field_id true}]
   (let [field-id (id :checkins :user_id)
         get-special-type-and-fk-exists? (fn []
-                                          [(sel :one :field [Field :special_type] :id field-id)
-                                           (exists? ForeignKey :origin_id field-id)])]
+                                          (-> (sel :one :fields [Field :special_type :fk_target_field_id] :id field-id)
+                                              (update :fk_target_field_id #(exists? Field :id %))))]
     [ ;; FK should exist to start with
      (get-special-type-and-fk-exists?)
      ;; Clear out FK / special_type
-     (do (del ForeignKey :origin_id field-id)
-         (upd Field field-id :special_type nil)
+     (do (upd Field field-id :special_type nil, :fk_target_field_id nil)
          (get-special-type-and-fk-exists?))
      ;; Run sync-table and they should be set again
      (let [table (Table (id :checkins))]

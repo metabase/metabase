@@ -246,6 +246,7 @@
                                         :created_at      $
                                         :base_type       "BigIntegerField"
                                         :visibility_type "normal"
+                                        :fk_target_field_id $
                                         :parent_id       nil
                                         :values          []})
                                      (match-$ (Field (id :categories :name))
@@ -264,6 +265,7 @@
                                         :created_at      $
                                         :base_type       "TextField"
                                         :visibility_type "normal"
+                                        :fk_target_field_id $
                                         :parent_id       nil
                                         :values          []})]
                    :segments        []

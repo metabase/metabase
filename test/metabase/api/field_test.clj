@@ -57,6 +57,7 @@
        :preview_display true
        :created_at      $
        :base_type       "TextField"
+       :fk_target_field_id nil
        :parent_id       nil})
     ((user->client :rasta) :get 200 (format "field/%d" (id :users :name))))
 
@@ -90,7 +91,8 @@
               :preview_display true
               :created_at      $
               :base_type       "FloatField"
-              :parent_id       nil})
+              :parent_id       nil
+              :fk_target_field_id nil})
   ((user->client :crowberto) :put 200 (format "field/%d" (id :venues :latitude)) {:special_type :fk}))
 
 (expect

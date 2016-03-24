@@ -6,8 +6,7 @@
             [metabase.db.metadata-queries :as metadata]
             (metabase.models [hydrate :refer [hydrate]]
                              [field :refer [Field] :as field]
-                             [field-values :refer [FieldValues create-field-values-if-needed field-should-have-field-values?]]
-                             [foreign-key :refer [ForeignKey] :as fk])))
+                             [field-values :refer [FieldValues create-field-values-if-needed field-should-have-field-values?]])))
 
 (defannotation FieldSpecialType
   "Param must be a valid `Field` special type."
@@ -23,12 +22,6 @@
   "Param must be a valid `Field` base type."
   [symb value :nillable]
   (checkp-contains? field/field-types symb (keyword value)))
-
-(defannotation ForeignKeyRelationship
-  "Param must be a valid `ForeignKey` relationship: one of `1t1` (one-to-one)m
-   `Mt1` (many-to-one), or `MtM` (many-to-many)."
-  [symb value :nillable]
-  (checkp-contains? fk/relationships symb (keyword value)))
 
 (defendpoint GET "/:id"
   "Get `Field` with ID."
@@ -62,27 +55,6 @@
     (read-check field)
     [[:count     (metadata/field-count field)]
      [:distincts (metadata/field-distinct-count field)]]))
-
-
-(defendpoint GET "/:id/foreignkeys"
-  "Get `ForeignKeys` whose origin is `Field` with ID."
-  [id]
-  (read-check Field id)
-  (-> (sel :many ForeignKey :origin_id id)
-      (hydrate [:origin :table] [:destination :table])))
-
-
-(defendpoint POST "/:id/foreignkeys"
-  "Create a new `ForeignKey` relationgship with `Field` with ID as the origin."
-  [id :as {{:keys [target_field relationship]} :body}]
-  {target_field Required, relationship [Required ForeignKeyRelationship]}
-  (write-check Field id)
-  (write-check Field target_field)
-  (-> (ins ForeignKey
-        :origin_id id
-        :destination_id target_field
-        :relationship relationship)
-      (hydrate [:origin :table] [:destination :table])))
 
 
 (defendpoint GET "/:id/values"
