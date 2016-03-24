@@ -32,19 +32,29 @@
 
 (defendpoint PUT "/:id"
   "Update `Field` with ID."
-  [id :as {{:keys [special_type visibility_type description display_name]} :body}]
+  [id :as {{:keys [special_type visibility_type fk_target_field_id description display_name], :as body} :body}]
   {special_type    FieldSpecialType
    visibility_type FieldVisibilityType
    display_name    NonEmptyString}
   (let-404 [field (Field id)]
     (write-check field)
-    (let [special_type    (or special_type (:special_type field))
-          visibility_type (or visibility_type (:visibility_type field))]
+    (let [special_type       (or special_type (:special_type field))
+          visibility_type    (or visibility_type (:visibility_type field))
+          fk_target_field_id (when (= :fk special_type)
+                               ;; only let target field be set for :fk type fields,
+                               ;; and if it's not in the payload then leave the current value
+                               (if (contains? body :fk_target_field_id)
+                                 fk_target_field_id
+                                 (:fk_target_field_id field)))]
       (check-400 (field/valid-metadata? (:base_type field) (:field_type field) special_type visibility_type))
+      ;; validate that fk_target_field_id is a valid Field within the same database as our field
+      (when fk_target_field_id
+        (checkp (exists? Field :id fk_target_field_id) :fk_target_field_id "Invalid target field"))
       ;; update the Field.  start with keys that may be set to NULL then conditionally add other keys if they have values
-      (check-500 (m/mapply upd Field id (merge {:description     description
-                                                :special_type    special_type
-                                                :visibility_type visibility_type}
+      (check-500 (m/mapply upd Field id (merge {:description        description
+                                                :special_type       special_type
+                                                :visibility_type    visibility_type
+                                                :fk_target_field_id fk_target_field_id}
                                                (when display_name {:display_name display_name}))))
       (Field id))))
 
