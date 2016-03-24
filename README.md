@@ -1,6 +1,7 @@
 [![Circle CI](https://circleci.com/gh/metabase/metabase.svg?style=svg&circle-token=3ccf0aa841028af027f2ac9e8df17ce603e90ef9)](https://circleci.com/gh/metabase/metabase)
 [![Leiningen Dependencies Status](https://jarkeeper.com/metabase/metabase/status.png)](https://jarkeeper.com/metabase/metabase)
 [![NPM Dependencies Status](https://david-dm.org/metabase/metabase.svg)](https://david-dm.org/metabase/metabase)
+[![GitHub license](https://img.shields.io/badge/license-GPL-blue.svg)](https://raw.githubusercontent.com/metabase/metabase/master/LICENSE.txt)
 
 # Overview
 
