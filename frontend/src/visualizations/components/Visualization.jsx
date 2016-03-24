@@ -1,12 +1,20 @@
 import React, { Component, PropTypes } from "react";
 
+import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import LegendHeader from "metabase/visualizations/components/LegendHeader.jsx";
+import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
+import Icon from "metabase/components/Icon.jsx";
+import Tooltip from "metabase/components/Tooltip.jsx";
+
 import visualizations from "metabase/visualizations";
 
 import i from "icepick";
 import _ from "underscore";
 import cx from "classnames";
 
+const ERROR_MESSAGE_GENERIC = "There was a problem displaying this chart.";
+
+@ExplicitSize
 export default class Visualization extends Component {
     constructor(props, context) {
         super(props, context)
@@ -38,29 +46,6 @@ export default class Visualization extends Component {
         onUpdateVisualizationSetting: (...args) => console.warn("onUpdateVisualizationSetting", args)
     };
 
-    componentWillMount() {
-        this.componentWillReceiveProps(this.props);
-    }
-
-    componentWillReceiveProps(newProps) {
-        let { card, data } = newProps.series[0]
-        if (!data) {
-            this.setState({ error: "No data (TODO)" });
-        } else if (!card.display) {
-            this.setState({ error: "Chart type not set" });
-        } else {
-            let CardVisualization = visualizations.get(card.display);
-            try {
-                if (CardVisualization.checkRenderable) {
-                    CardVisualization.checkRenderable(data.cols, data.rows);
-                }
-                this.setState({ error: null });
-            } catch (e) {
-                this.setState({ error: e.message || "Missing error message (TODO)" });
-            }
-        }
-    }
-
     onHoverChange(hovered) {
         const { renderInfo } = this.state;
         if (hovered) {
@@ -82,12 +67,30 @@ export default class Visualization extends Component {
     }
 
     render() {
-        let { series, actionButtons, className, isDashboard } = this.props;
-        let CardVisualization = visualizations.get(series[0].card.display);
+        const { series, actionButtons, className, isDashboard, width } = this.props;
+        const CardVisualization = visualizations.get(series[0].card.display);
+        const small = width < 330;
+
         let error = this.props.error || this.state.error;
+        let loading = !(series.length > 0 && _.every(series, (s) => s.data));
+
+        if (!loading && !error) {
+            if (!CardVisualization) {
+                error = "Could not find visualization";
+            } else {
+                try {
+                    if (CardVisualization.checkRenderable) {
+                        CardVisualization.checkRenderable(series[0].data.cols, series[0].data.rows);
+                    }
+                } catch (e) {
+                    error = e.message || "Could not display this chart with this data.";
+                }
+            }
+        }
+
         return (
             <div className={cx(className, "flex flex-column")}>
-                { isDashboard && (error || !CardVisualization.noHeader) ?
+                { isDashboard && (loading || error || !CardVisualization.noHeader) ?
                     <div className="p1 flex-no-shrink">
                         <LegendHeader
                             series={series}
@@ -97,13 +100,24 @@ export default class Visualization extends Component {
                 : null
                 }
                 { error ?
-                    <div className="QueryError flex flex-full align-center text-error">
-                        <div className="QueryError-iconWrapper hide">
-                            <svg className="QueryError-icon" viewBox="0 0 32 32" width="64" height="64" fill="currentcolor">
-                                <path d="M4 8 L8 4 L16 12 L24 4 L28 8 L20 16 L28 24 L24 28 L16 20 L8 28 L4 24 L12 16 z "></path>
-                            </svg>
-                        </div>
-                        <span className="QueryError-message">{error}</span>
+                    <div className="flex-full px1 pb1 text-centered text-slate-light flex flex-column layout-centered">
+                        <Tooltip tooltip={isDashboard ? ERROR_MESSAGE_GENERIC : error} isEnabled={small}>
+                            <div className="mb2">
+                                <Icon name="warning" width={50} height={50} />
+                            </div>
+                        </Tooltip>
+                        { !small &&
+                            <span className="h4 text-bold">
+                                { isDashboard ? ERROR_MESSAGE_GENERIC : error }
+                            </span>
+                        }
+                    </div>
+                : loading ?
+                    <div className="flex-full p1 text-centered text-brand flex flex-column layout-centered">
+                        <LoadingSpinner />
+                        <span className="h4 text-bold ml1 text-slate-light">
+                            Loading...
+                        </span>
                     </div>
                 :
                     <CardVisualization

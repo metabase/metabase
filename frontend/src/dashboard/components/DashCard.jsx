@@ -4,7 +4,6 @@ import ReactDOM from "react-dom";
 import visualizations from "metabase/visualizations";
 
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
-import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 
 import Icon from "metabase/components/Icon.jsx";
 
@@ -73,8 +72,9 @@ export default class DashCard extends Component {
         }
     }
 
-    renderCard(CardVisualization) {
+    render() {
         const { dashcard, cardData, isEditing, onAddSeries, onRemove } = this.props;
+
         const cards = [dashcard.card].concat(dashcard.series || []);
         const series = cards
             .map(card => ({
@@ -85,28 +85,25 @@ export default class DashCard extends Component {
         const errors = series.map(s => s.error).filter(e => e);
         const error = errors[0] || this.state.error;
 
+        let errorMessage;
         if (error) {
-            let message;
             if (error.data) {
-                message = error.data.message;
+                errorMessage = error.data.message;
             } else if (error.status === 503) {
-                message = "I'm sorry, the server timed out while asking your question."
+                errorMessage = "I'm sorry, the server timed out while asking your question."
             } else if (typeof error === "string") {
-                message = error;
+                errorMessage = error;
             } else {
-                message = "Oh snap!  Something went wrong loading this card :sad:";
+                errorMessage = "Oh snap!  Something went wrong loading this card :sad:";
             }
-            return (
-                <div className="p1 text-centered flex-full flex flex-column layout-centered">
-                    <h2 className="text-normal text-grey-2">{message}</h2>
-                </div>
-            );
         }
 
-        if (series.length > 0 && _.every(series, (s) => s.data)) {
-            return (
+        const CardVisualization = visualizations.get(series[0].card.display);
+        return (
+            <div className={"Card bordered rounded flex flex-column " + cx({ "Card--recent": dashcard.isAdded })}>
                 <Visualization
                     className="flex-full"
+                    error={errorMessage}
                     series={series}
                     isDashboard={true}
                     isEditing={isEditing}
@@ -114,24 +111,6 @@ export default class DashCard extends Component {
                     actionButtons={isEditing ? <DashCardActionButtons series={series} visualization={CardVisualization} onRemove={onRemove} onAddSeries={onAddSeries} /> : undefined}
                     onUpdateVisualizationSetting={this.props.onUpdateVisualizationSetting}
                 />
-            );
-        }
-
-        return (
-            <div className="p1 text-brand text-centered flex-full flex flex-column layout-centered">
-                <LoadingSpinner />
-                <h1 className="ml1 text-normal text-grey-2">Loading...</h1>
-            </div>
-        );
-    }
-
-    render() {
-        const { dashcard } = this.props;
-        const series = [dashcard.card].concat(dashcard.series || []).map(card => ({ card }));
-        const Viz = visualizations.get(series[0].card.display);
-        return (
-            <div className={"Card bordered rounded flex flex-column " + cx({ "Card--recent": dashcard.isAdded })}>
-                {this.renderCard(Viz)}
             </div>
         );
     }
