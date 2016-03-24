@@ -395,17 +395,6 @@ CoreServices.factory('Slack', ['$resource', function($resource) {
     });
 }]);
 
-CoreServices.factory('ForeignKey', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/foreignkey/:fkID', {}, {
-        delete: {
-            method: 'DELETE',
-            params: {
-                fkID: '@fkID'
-            }
-        }
-    });
-}]);
-
 CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', function($resource, $cookies, MetabaseCore) {
     return $resource('/api/meta', {}, {
         db_list: {
