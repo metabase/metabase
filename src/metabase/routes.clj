@@ -11,8 +11,7 @@
 (defn- index [_]
   (-> (if (@(resolve 'metabase.core/initialized?))
         (stencil/render-string (slurp (or (io/resource "frontend_client/index.html")
-                                          ;; Occasionally people try to launch from 'lein ring server' and move stuff around. In that case give them a useful error message.
-                                          (throw (Exception. "Cannot find './resources/frontend_client/index.html'."))))
+                                          (throw (Exception. "Cannot find './resources/frontend_client/index.html'. Did you remember to build the Metabase frontend?"))))
                                {:bootstrap_json (json/generate-string (setting/public-settings))})
         (slurp (io/resource "frontend_client/init.html")))
       resp/response
