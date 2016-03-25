@@ -172,33 +172,46 @@
    "STRING"    identity
    "TIMESTAMP" parse-timestamp-str})
 
+(def ^:private ^:const query-timeout-error-message "Query timed out.")
+
 (defn- post-process-native
-  ;; 99% of the time by the time this is called `.getJobComplete` will return `true`. On the off chance it doesn't, wait a few seconds for the job to finish.
   ([^QueryResponse response]
-   (post-process-native response 10))                                        ; wait up to 10 seconds for `.getJobComplete` to return `true`
+   (post-process-native response 15))
   ([^QueryResponse response, ^Integer timeout-seconds]
-   (when-not (.getJobComplete response)
-     (when (zero? timeout-seconds)                                           ; if we've ran out of wait time throw an exception
-       (throw (Exception. (str "Query timed out: " (or (.getErrors response)
-                                                       response)))))
-     (Thread/sleep 1000)                                                     ; otherwise sleep a second, try again, and decrement the remaining `timeout-seconds`
-     (post-process-native response (dec timeout-seconds)))
-   (let [^TableSchema schema (.getSchema response)
-         parsers             (for [^TableFieldSchema field (.getFields schema)]
-                               (type->parser (.getType field)))
-         cols                (table-schema->metabase-field-info schema)]
-     {:columns (map :name cols)
-      :cols    cols
-      :rows    (for [^TableRow row (.getRows response)]
-                 (for [[^TableCell cell, parser] (partition 2 (interleave (.getF row) parsers))]
-                   (when-let [v (.getV cell)]
-                     ;; There is a weird error where everything that *should* be NULL comes back as an Object. See https://jira.talendforge.org/browse/TBD-1592
-                     ;; Everything else comes back as a String luckily so we can proceed normally.
-                     (when-not (= (class v) Object)
-                       (parser v)))))})))
+   (if-not (.getJobComplete response)
+     ;; 99% of the time by the time this is called `.getJobComplete` will return `true`. On the off chance it doesn't, wait a few seconds for the job to finish.
+     (do
+       (when (zero? timeout-seconds)
+         (throw (ex-info query-timeout-error-message response)))
+       (Thread/sleep 1000)
+       (post-process-native response (dec timeout-seconds)))
+     ;; Otherwise the job *is* complete
+     (let [^TableSchema schema (.getSchema response)
+           parsers             (for [^TableFieldSchema field (.getFields schema)]
+                                 (type->parser (.getType field)))
+           cols                (table-schema->metabase-field-info schema)]
+       {:columns (map :name cols)
+        :cols    cols
+        :rows    (for [^TableRow row (.getRows response)]
+                   (for [[^TableCell cell, parser] (partition 2 (interleave (.getF row) parsers))]
+                     (when-let [v (.getV cell)]
+                       ;; There is a weird error where everything that *should* be NULL comes back as an Object. See https://jira.talendforge.org/browse/TBD-1592
+                       ;; Everything else comes back as a String luckily so we can proceed normally.
+                       (when-not (= (class v) Object)
+                         (parser v)))))}))))
 
 (defn- process-native* [database query-string]
-  (post-process-native (execute-query database query-string)))
+  ;; Automatically retry the query a single time if it timed out
+  (let [do-query (fn [] (post-process-native (execute-query database query-string)))]
+    (try
+      (do-query)
+      (catch clojure.lang.ExceptionInfo e
+        (if (= (.getMessage e) query-timeout-error-message)
+          ;; If this was a timeout error, retry
+          (do (log/info "Query timed out, retrying...")
+              (do-query))
+          ;; Otherwise re-throw exception
+          (throw e))))))
 
 (defn- process-native [{database-id :database, {native-query :query} :native}]
   (process-native* (Database database-id) native-query))
@@ -304,7 +317,7 @@
                     (k/as-sql korma-form))
                   #"\]\.\[" ".")
        (catch Throwable e
-         (println (u/format-color 'red "Couldn't convert korma form to SQL:\n%s" (sqlqp/pprint-korma-form korma-form)))
+         (log/error (u/format-color 'red "Couldn't convert korma form to SQL:\n%s" (sqlqp/pprint-korma-form korma-form)))
          (throw e))))
 
 (defn- post-process-structured [dataset-id table-name {:keys [columns rows]}]
@@ -342,7 +355,7 @@
   {:pre [(map? this) (or field
                          index
                          (and (seq schema-name) (seq field-name) (seq table-name))
-                         (println "Don't know how to alias: " this))]}
+                         (log/error "Don't know how to alias: " this))]}
   (cond
     field (recur field) ; DateTimeField
     index (name (let [{{{ag-type :aggregation-type} :aggregation} :query} sqlqp/*query*]
