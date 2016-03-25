@@ -136,7 +136,7 @@ const QUERY_BUILDER_STEPS = [
             <div className="text-centered">
                 <RetinaImage className="mb2" forceOriginalDimensions={false} src="/app/img/qb_tutorial/boat.png" width={190} />
                 <h3>Well done!</h3>
-                <p>That's all! If you still have questions, check out our <a className="link" target="_blank" href="http://www.metabase.com/docs/latest/users-guide/">User's Guide</a>. Have fun exploring your data!</p>
+                <p>That's all! If you still have questions, check out our <a className="link" target="_blank" href="http://www.metabase.com/docs/latest/users-guide/start">User's Guide</a>. Have fun exploring your data!</p>
                 <a className="Button Button--primary" onClick={props.onNext}>Thanks!</a>
             </div>
     },
