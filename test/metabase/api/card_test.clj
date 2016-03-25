@@ -32,31 +32,16 @@
   [true
    false
    true]
-  (with-temp Database [{dbid :id} {:name    (random-name)
-                                   :engine  :h2
-                                   :details {}}]
-    (with-temp Card [{id1 :id} {:name                   (random-name)
-                                :public_perms           common/perms-none
-                                :creator_id             (user->id :crowberto)
-                                :display                :table
-                                :dataset_query          {}
-                                :visualization_settings {}
-                                :database_id            (id)}]
-      (with-temp Card [{id2 :id} {:name                   (random-name)
-                                  :public_perms           common/perms-none
-                                  :creator_id             (user->id :crowberto)
-                                  :display                :table
-                                  :dataset_query          {}
-                                  :visualization_settings {}
-                                  :database_id            dbid}]
+  (with-temp Database [{db-id :id}]
+    (with-temp Card [{card-1-id :id} {:database_id (id)}]
+      (with-temp Card [{card-2-id :id} {:database_id db-id}]
         (let [card-returned? (fn [database-id card-id]
-                               (contains? (->> ((user->client :crowberto) :get 200 "card" :f :database :model_id database-id)
-                                               (map :id)
-                                               set)
+                               (contains? (set (for [card ((user->client :rasta) :get 200 "card", :f :database, :model_id database-id)]
+                                                 (:id card)))
                                           card-id))]
-          [(card-returned? (id) id1)
-           (card-returned? dbid id1)
-           (card-returned? dbid id2)])))))
+          [(card-returned? (id) card-1-id)
+           (card-returned? db-id card-1-id)
+           (card-returned? db-id card-2-id)])))))
 
 ;; Make sure `id` is required when `f` is :database
 (expect {:errors {:id "id is required parameter when filter mode is 'database'"}}
@@ -66,38 +51,18 @@
 (expect [true
          false
          true]
-  (with-temp Database [{database-id :id} {:name      "Card API Test"
-                                          :engine    :yeehaw
-                                          :details   {}
-                                          :is_sample false}]
-    (with-temp Table [{table1 :id} {:name   "Card API Table 1"
-                                      :db_id  database-id
-                                      :active true}]
-      (with-temp Table [{table2 :id} {:name   "Card API Table 2"
-                                        :db_id  database-id
-                                        :active true}]
-        (with-temp Card [{id1 :id} {:name                   (random-name)
-                                    :public_perms           common/perms-none
-                                    :creator_id             (user->id :crowberto)
-                                    :display                :table
-                                    :dataset_query          {}
-                                    :visualization_settings {}
-                                    :table_id               table1}]
-          (with-temp Card [{id2 :id} {:name                   (random-name)
-                                      :public_perms           common/perms-none
-                                      :creator_id             (user->id :crowberto)
-                                      :display                :table
-                                      :dataset_query          {}
-                                      :visualization_settings {}
-                                      :table_id               table2}]
+  (with-temp Database [{database-id :id}]
+    (with-temp Table [{table-1-id :id} {:db_id database-id}]
+      (with-temp Table [{table-2-id :id} {:db_id database-id}]
+        (with-temp Card [{card-1-id :id} {:table_id table-1-id}]
+          (with-temp Card [{card-2-id :id} {:table_id table-2-id}]
             (let [card-returned? (fn [table-id card-id]
-                                   (contains? (->> ((user->client :crowberto) :get 200 "card" :f :table :model_id table-id)
-                                                   (map :id)
-                                                   set)
+                                   (contains? (set (for [card ((user->client :rasta) :get 200 "card", :f :table, :model_id table-id)]
+                                                     (:id card)))
                                               card-id))]
-              [(card-returned? table1 id1)
-               (card-returned? table2 id1)
-               (card-returned? table2 id2)])))))))
+              [(card-returned? table-1-id card-1-id)
+               (card-returned? table-2-id card-1-id)
+               (card-returned? table-2-id card-2-id)])))))))
 
 ;; Make sure `id` is required when `f` is :table
 (expect {:errors {:id "id is required parameter when filter mode is 'table'"}}
@@ -106,17 +71,11 @@
 ;; Check that only the creator of a private Card can see it
 (expect [true
          false]
-  (with-temp Card [{:keys [id]} {:name                   (random-name)
-                                 :public_perms           common/perms-none
-                                 :creator_id             (user->id :crowberto)
-                                 :display                :table
-                                 :dataset_query          {}
-                                 :visualization_settings {}}]
+  (with-temp Card [{card-id :id} {:creator_id (user->id :crowberto)}]
     (let [can-see-card? (fn [user]
-                          (contains? (->> ((user->client user) :get 200 "card" :f :all)
-                                          (map :id)
-                                          set)
-                                     id))]
+                          (contains? (set (for [card ((user->client user) :get 200 "card", :f :all)]
+                                            (:id card)))
+                                     card-id))]
       [(can-see-card? :crowberto)
        (can-see-card? :rasta)])))
 

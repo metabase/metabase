@@ -81,13 +81,8 @@
    :is_active    true
    :definition   {:database 21
                   :query    {:filter ["abc"]}}}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
-                                       :db_id  database-id
-                                       :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{:keys [id]} {:db_id database-id}]
       (segment-response ((user->client :crowberto) :post 200 "segment" {:name        "A Segment"
                                                                         :description "I did it!"
                                                                         :table_id    id
@@ -124,7 +119,7 @@
                                                    :definition       "foobar"}))
 
 (expect
-  {:name         "Tatooine"
+  {:name         "Costa Rica"
    :description  nil
    :creator_id   (user->id :rasta)
    :creator      (user-details (fetch-user :rasta))
@@ -132,26 +127,21 @@
    :updated_at   true
    :is_active    true
    :definition   {:database 2
-                  :query    {:filter ["not" "the droids you're looking for"]}}}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{table-id :id} {:name   "Stuff"
-                                         :db_id  database-id
-                                         :active true}]
+                  :query    {:filter ["not" "the toucans you're looking for"]}}}
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{table-id :id} {:db_id database-id}]
       (tu/with-temp Segment [{:keys [id]} {:creator_id  (user->id :rasta)
                                            :table_id    table-id
-                                           :name        "Droids in the desert"
-                                           :description "Lookin' for a jedi"
+                                           :name        "Toucans in the rainforest"
+                                           :description "Lookin' for a blueberry"
                                            :definition  {}}]
         (segment-response ((user->client :crowberto) :put 200 (format "segment/%d" id) {:id               id
-                                                                                        :name             "Tatooine"
+                                                                                        :name             "Costa Rica"
                                                                                         :description      nil
                                                                                         :table_id         456
                                                                                         :revision_message "I got me some revisions"
                                                                                         :definition       {:database 2
-                                                                                                           :query    {:filter ["not" "the droids you're looking for"]}}}))))))
+                                                                                                           :query    {:filter ["not" "the toucans you're looking for"]}}}))))))
 
 
 ;; ## DELETE /api/segment/:id
@@ -170,25 +160,20 @@
 
 (expect
   [{:success true}
-   {:name         "Droids in the desert"
-    :description  "Lookin' for a jedi"
+   {:name         "Toucans in the rainforest"
+    :description  "Lookin' for a blueberry"
     :creator_id   (user->id :rasta)
     :creator      (user-details (fetch-user :rasta))
     :created_at   true
     :updated_at   true
     :is_active    false
     :definition   {}}]
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{table-id :id} {:name   "Stuff"
-                                         :db_id  database-id
-                                         :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{table-id :id} {:db_id database-id}]
       (tu/with-temp Segment [{:keys [id]} {:creator_id  (user->id :rasta)
                                            :table_id    table-id
-                                           :name        "Droids in the desert"
-                                           :description "Lookin' for a jedi"
+                                           :name        "Toucans in the rainforest"
+                                           :description "Lookin' for a blueberry"
                                            :definition  {}}]
         [((user->client :crowberto) :delete 200 (format "segment/%d" id) :revision_message "carryon")
          (segment-response (segment/retrieve-segment id))]))))
@@ -211,13 +196,8 @@
    :is_active    true
    :definition   {:database 123
                   :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{table-id :id} {:name   "Stuff"
-                                         :db_id  database-id
-                                         :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{table-id :id} {:db_id database-id}]
       (tu/with-temp Segment [{:keys [id]} {:creator_id  (user->id :crowberto)
                                            :table_id    table-id
                                            :name        "One Segment to rule them all, one segment to define them"
@@ -250,13 +230,8 @@
     :diff         {:name       {:after "b"}
                    :definition {:after {:filter ["AND" [">" 1 25]]}}}
     :description  nil}]
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{table-id :id} {:name   "Stuff"
-                                         :db_id  database-id
-                                         :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{table-id :id} {:db_id database-id}]
       (tu/with-temp Segment [{:keys [id]} {:creator_id  (user->id :crowberto)
                                            :table_id    table-id
                                            :name        "One Segment to rule them all, one segment to define them"
@@ -333,13 +308,8 @@
                     :definition  {:after {:database 123
                                           :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}}
      :description  nil}]]
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{table-id :id} {:name   "Stuff"
-                                         :db_id  database-id
-                                         :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{table-id :id} {:db_id database-id}]
       (tu/with-temp Segment [{:keys [id]} {:creator_id  (user->id :crowberto)
                                            :table_id    table-id
                                            :name        "One Segment to rule them all, one segment to define them"

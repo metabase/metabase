@@ -33,8 +33,7 @@
       (@migration-var)
       (k/insert "data_migrations"
                 (k/values {:id        migration-name
-                           :timestamp (u/new-sql-timestamp)}))
-      (log/info "[ok]"))))
+                           :timestamp (u/new-sql-timestamp)})))))
 
 (def ^:private data-migrations (atom []))
 

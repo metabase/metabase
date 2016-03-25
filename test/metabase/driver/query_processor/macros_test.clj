@@ -30,13 +30,8 @@
    :query    {:aggregation ["rows"]
               :filter      ["AND" ["AND" ["=" 5 "abc"]] ["OR" ["AND" ["IS_NULL" 7]] [">" 4 1]]]
               :breakout    [17]}}
-  (tu/with-temp Database [{database-id :id} {:name      "Macro Expansion Test"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{table-id :id} {:name   "Macro Expansion Table"
-                                         :db_id  database-id
-                                         :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{table-id :id} {:db_id database-id}]
       (tu/with-temp Segment [{segment1 :id} {:creator_id  (user->id :crowberto)
                                              :table_id    table-id
                                              :name        "Test Segment"
@@ -59,13 +54,8 @@
               :filter      ["AND" ["AND" [">" 4 1]] ["AND" ["=" 5 "abc"]]]
               :breakout    [17]
               :order_by    [[1 "ASC"]]}}
-  (tu/with-temp Database [{database-id :id} {:name      "Macro Expansion Test"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{table-id :id} {:name   "Macro Expansion Table"
-                                         :db_id  database-id
-                                         :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{table-id :id} {:db_id database-id}]
       (tu/with-temp Metric [{metric1 :id} {:creator_id  (user->id :crowberto)
                                            :table_id    table-id
                                            :name        "Test Metric"
@@ -86,13 +76,8 @@
               :filter      ["AND" ["=" 5 "abc"]]
               :breakout    [17]
               :order_by    [[1 "ASC"]]}}
-  (tu/with-temp Database [{database-id :id} {:name      "Macro Expansion Test"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{table-id :id} {:name   "Macro Expansion Table"
-                                         :db_id  database-id
-                                         :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{table-id :id} {:db_id database-id}]
       (tu/with-temp Metric [{metric1 :id} {:creator_id  (user->id :crowberto)
                                            :table_id    table-id
                                            :name        "Test Metric"
@@ -113,13 +98,8 @@
               :filter      ["AND" ["=" 5 "abc"]]
               :breakout    [17]
               :order_by    [[1 "ASC"]]}}
-  (tu/with-temp Database [{database-id :id} {:name      "Macro Expansion Test"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{table-id :id} {:name   "Macro Expansion Table"
-                                         :db_id  database-id
-                                         :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{table-id :id} {:db_id database-id}]
       (tu/with-temp Metric [{metric1 :id} {:creator_id  (user->id :crowberto)
                                            :table_id    table-id
                                            :name        "Test Metric"
@@ -139,13 +119,8 @@
               :filter      ["AND" ["AND" [">" 4 1] ["AND" ["IS_NULL" 7]]] ["AND" ["=" 5 "abc"] ["AND" ["BETWEEN" 9 0 25]]]]
               :breakout    [17]
               :order_by    [[1 "ASC"]]}}
-  (tu/with-temp Database [{database-id :id} {:name      "Macro Expansion Test"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{table-id :id} {:name   "Macro Expansion Table"
-                                         :db_id  database-id
-                                         :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{table-id :id} {:db_id database-id}]
       (tu/with-temp Segment [{segment1 :id} {:creator_id  (user->id :crowberto)
                                              :table_id    table-id
                                              :name        "Test Segment"

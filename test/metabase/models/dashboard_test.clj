@@ -1,15 +1,14 @@
 (ns metabase.models.dashboard-test
   (:require [expectations :refer :all]
             [metabase.db :as db]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.dashboard :refer :all]
-            [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-            [metabase.models.hydrate :refer :all]
+            (metabase.models [card :refer [Card]]
+                             [dashboard :refer :all]
+                             [dashboard-card :refer [DashboardCard], :as dashboard-card]
+                             [dashboard-card-series :refer [DashboardCardSeries]]
+                             [hydrate :refer :all])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :as tu]
-            [metabase.models.dashboard-card :as dashboard-card]))
+            [metabase.test.util :as tu]))
 
 ;; ## Dashboard Revisions
 
@@ -25,40 +24,18 @@
                    :id      true
                    :card_id true
                    :series  true}]}
-  (tu/with-temp Dashboard [{dashboard-id :id :as dashboard} {:name         "Test Dashboard"
-                                                             :public_perms 0
-                                                             :creator_id   (user->id :rasta)}]
-    (tu/with-temp Card [{card-id :id} {:name                   "Dashboard Test Card"
-                                       :creator_id             (user->id :rasta)
-                                       :public_perms           0
-                                       :display                "scalar"
-                                       :dataset_query          {:something "simple"}
-                                       :visualization_settings {:global {:title nil}}}]
-      (tu/with-temp Card [{series-id1 :id} {:name                   "Additional Series Card 1"
-                                            :creator_id             (user->id :rasta)
-                                            :public_perms           0
-                                            :display                "scalar"
-                                            :dataset_query          {:something "simple"}
-                                            :visualization_settings {:global {:title nil}}}]
-        (tu/with-temp Card [{series-id2 :id} {:name                   "Additional Series Card 2"
-                                              :creator_id             (user->id :rasta)
-                                              :public_perms           0
-                                              :display                "scalar"
-                                              :dataset_query          {:something "simple"}
-                                              :visualization_settings {:global {:title nil}}}]
-          (tu/with-temp DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                          :card_id      card-id}]
-            (tu/with-temp DashboardCardSeries [_ {:dashboardcard_id dashcard-id
-                                                  :card_id          series-id1
-                                                  :position         0}]
-              (tu/with-temp DashboardCardSeries [_ {:dashboardcard_id dashcard-id
-                                                    :card_id          series-id2
-                                                    :position         1}]
-                (update-in (serialize-dashboard dashboard) [:cards] (fn [[{:keys [id card_id series] :as card}]]
-                                                                        [(assoc card
-                                                                           :id      (= dashcard-id id)
-                                                                           :card_id (= card-id card_id)
-                                                                           :series  (= [series-id1 series-id2] series))]))))))))))
+  (tu/with-temp Dashboard [{dashboard-id :id :as dashboard} {:name "Test Dashboard"}]
+    (tu/with-temp Card [{card-id :id}]
+      (tu/with-temp Card [{series-id-1 :id}]
+        (tu/with-temp Card [{series-id-2 :id}]
+          (tu/with-temp DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
+            (tu/with-temp DashboardCardSeries [_ {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
+              (tu/with-temp DashboardCardSeries [_ {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]
+                (update (serialize-dashboard dashboard) :cards (fn [[{:keys [id card_id series], :as card}]]
+                                                                 [(assoc card
+                                                                         :id      (= dashcard-id id)
+                                                                         :card_id (= card-id card_id)
+                                                                         :series  (= [series-id-1 series-id-2] series))]))))))))))
 
 
 ;; diff-dashboards-str
@@ -157,51 +134,29 @@
                     :id      false
                     :card_id true
                     :series  true}]}]
-  (tu/with-temp Dashboard [{dashboard-id :id :as dashboard} {:name         "Test Dashboard"
-                                                             :public_perms 0
-                                                             :creator_id   (user->id :rasta)}]
-    (tu/with-temp Card [{card-id :id} {:name                   "Dashboard Test Card"
-                                       :creator_id             (user->id :rasta)
-                                       :public_perms           0
-                                       :display                "scalar"
-                                       :dataset_query          {:something "simple"}
-                                       :visualization_settings {:global {:title nil}}}]
-      (tu/with-temp Card [{series-id1 :id} {:name                   "Additional Series Card 1"
-                                            :creator_id             (user->id :rasta)
-                                            :public_perms           0
-                                            :display                "scalar"
-                                            :dataset_query          {:something "simple"}
-                                            :visualization_settings {:global {:title nil}}}]
-        (tu/with-temp Card [{series-id2 :id} {:name                   "Additional Series Card 2"
-                                              :creator_id             (user->id :rasta)
-                                              :public_perms           0
-                                              :display                "scalar"
-                                              :dataset_query          {:something "simple"}
-                                              :visualization_settings {:global {:title nil}}}]
-          (tu/with-temp DashboardCard [{dashcard-id :id :as dashboard-card} {:dashboard_id dashboard-id
-                                                                             :card_id      card-id}]
-            (tu/with-temp DashboardCardSeries [_ {:dashboardcard_id dashcard-id
-                                                  :card_id          series-id1
-                                                  :position         0}]
-              (tu/with-temp DashboardCardSeries [_ {:dashboardcard_id dashcard-id
-                                                    :card_id          series-id2
-                                                    :position         1}]
+  (tu/with-temp Dashboard [{dashboard-id :id, :as dashboard} {:name "Test Dashboard"}]
+    (tu/with-temp Card [{card-id :id}]
+      (tu/with-temp Card [{series-id-1 :id}]
+        (tu/with-temp Card [{series-id-2 :id}]
+          (tu/with-temp DashboardCard [{dashcard-id :id :as dashboard-card} {:dashboard_id dashboard-id, :card_id card-id}]
+            (tu/with-temp DashboardCardSeries [_ {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
+              (tu/with-temp DashboardCardSeries [_ {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]
                 (let [check-ids            (fn [[{:keys [id card_id series] :as card}]]
                                              [(assoc card
-                                                :id      (= dashcard-id id)
-                                                :card_id (= card-id card_id)
-                                                :series  (= [series-id1 series-id2] series))])
+                                                     :id      (= dashcard-id id)
+                                                     :card_id (= card-id card_id)
+                                                     :series  (= [series-id-1 series-id-2] series))])
                       serialized-dashboard (serialize-dashboard dashboard)]
                   ;; delete the dashcard and modify the dash attributes
                   (dashboard-card/delete-dashboard-card dashboard-card (user->id :rasta))
                   (db/upd Dashboard dashboard-id
-                          :name        "Revert Test"
-                          :description "something")
+                    :name        "Revert Test"
+                    :description "something")
                   ;; capture our updated dashboard state
-                  (let [serialized-dashboard2 (serialize-dashboard (db/sel :one Dashboard :id dashboard-id))]
+                  (let [serialized-dashboard2 (serialize-dashboard (Dashboard dashboard-id))]
                     ;; now do the reversion
                     (revert-dashboard dashboard-id (user->id :crowberto) serialized-dashboard)
                     ;; final output is original-state, updated-state, reverted-state
                     [(update serialized-dashboard :cards check-ids)
                      serialized-dashboard2
-                     (update (serialize-dashboard (db/sel :one Dashboard :id dashboard-id)) :cards check-ids)]))))))))))
+                     (update (serialize-dashboard (Dashboard dashboard-id)) :cards check-ids)]))))))))))

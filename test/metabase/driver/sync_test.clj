@@ -16,7 +16,7 @@
             (metabase.test.data [datasets :as datasets]
                                 [interface :refer [create-database-definition]])))
 
-(def sync-test-tables
+(def ^:private ^:const sync-test-tables
   {"movie"  {:name "movie"
              :schema "default"
              :fields #{{:name      "id"
@@ -41,227 +41,196 @@
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
          {:analyze-table       (constantly nil)
-          :describe-database   (fn [_ _]
-                                 {:tables (set (->> (vals sync-test-tables)
-                                                    (map #(dissoc % :fields))))})
+          :describe-database   (constantly {:tables (set (for [table (vals sync-test-tables)]
+                                                           (dissoc table :fields)))})
           :describe-table      (fn [_ table]
                                  (get sync-test-tables (:name table)))
-          :descrite-table-fks  (fn [_ _]
-                                 #{{:fk-column-name   "studio"
-                                    :dest-table-name  "studio"
-                                    :dest-column-name "studio"}})}))
+          :descrite-table-fks  (constantly #{{:fk-column-name   "studio"
+                                              :dest-table-name  "studio"
+                                              :dest-column-name "studio"}})}))
 
-;(driver/register-driver! :sync-test (SyncTestDriver.))
-
-(def users-table
-  (delay (sel :one Table :name "USERS")))
-
-(def venues-table
-  (delay (Table (id :venues))))
-
-(def korma-users-table
-  (delay (korma-entity @users-table)))
-
-(def users-name-field
-  (delay (Field (id :users :name))))
+(def ^:private users-table       (delay (sel :one Table, :name "USERS")))
+(def ^:private venues-table      (delay (Table (id :venues))))
+(def ^:private korma-users-table (delay (korma-entity @users-table)))
+(def ^:private users-name-field  (delay (Field (id :users :name))))
 
 
-(defn table-details [table]
+(defn- table-details [table]
   (into {} (-> (dissoc table :id :db :db_id :created_at :updated_at :pk_field :field_values)
-               (assoc :fields (->> (sel :many Field :table_id (:id table) (k/order :name))
-                                   (map #(dissoc % :table_id :table :db :children :qualified-name :qualified-name-components :created_at :updated_at :id :values :target))
-                                   (map #(into {} %)))))))
+               (assoc :fields (for [field (sel :many Field, :table_id (:id table), (k/order :name))]
+                                (into {} (dissoc field :table_id :table :db :children :qualified-name :qualified-name-components :created_at :updated_at :id :values :target)))))))
 
 ;; ## SYNC DATABASE
 (expect
-  [{:schema "default"
-    :name   "movie"
-    :display_name "Movie"
-    :description nil
-    :entity_type nil
-    :entity_name nil
+  [{:schema          "default"
+    :name            "movie"
+    :display_name    "Movie"
+    :description     nil
+    :entity_type     nil
+    :entity_name     nil
     :visibility_type nil
-    :rows   nil
-    :active true
-    :fields [{:description nil,
-              :special_type :id,
-              :name "id",
-              :active true,
-              :parent_id nil,
-              :field_type :info,
-              :position 0,
-              :preview_display true,
-              :display_name "Id",
-              :base_type :IntegerField,
-              :visibility_type :normal
-              :fk_target_field_id nil}
-             {:description nil,
-              :special_type nil,
-              :name "studio",
-              :active true,
-              :parent_id nil,
-              :field_type :info,
-              :position 0,
-              :preview_display true,
-              :display_name "Studio",
-              :base_type :TextField,
-              :visibility_type :normal
-              :fk_target_field_id nil}
-             {:description nil,
-              :special_type nil,
-              :name "title",
-              :active true,
-              :parent_id nil,
-              :field_type :info,
-              :position 0,
-              :preview_display true,
-              :display_name "Title",
-              :base_type :TextField,
-              :visibility_type :normal
-              :fk_target_field_id nil}]}
-   {:schema nil
-    :name   "studio"
-    :display_name "Studio"
-    :description nil
-    :entity_type nil
-    :entity_name nil
+    :rows            nil
+    :active          true
+    :fields          [{:description        nil
+                       :special_type       :id
+                       :name               "id"
+                       :active             true
+                       :parent_id          nil
+                       :field_type         :info
+                       :position           0
+                       :preview_display    true
+                       :display_name       "Id"
+                       :base_type          :IntegerField
+                       :visibility_type    :normal
+                       :fk_target_field_id nil
+                      {:description        nil
+                       :special_type       nil
+                       :name               "studio"
+                       :active             true
+                       :parent_id          nil
+                       :field_type         :info
+                       :position           0
+                       :preview_display    true
+                       :display_name       "Studio"
+                       :base_type          :TextField
+                       :visibility_type    :normal
+                       :fk_target_field_id nil}
+                                                {:description       nil
+                       :special_type       nil
+                       :name               "title"
+                       :active             true
+                       :parent_id          nil
+                       :field_type         :info
+                       :position           0
+                       :preview_display    true
+                       :display_name       "Title"
+                       :base_type          :TextField
+                       :visibility_type    :normal
+                       :fk_target_field_id nil}]}
+   {:schema          nil
+    :name            "studio"
+    :display_name    "Studio"
+    :description     nil
+    :entity_type     nil
+    :entity_name     nil
     :visibility_type nil
-    :rows   nil
-    :active true
-    :fields [{:description nil,
-              :special_type :name,
-              :name "name",
-              :active true,
-              :parent_id nil,
-              :field_type :info,
-              :position 0,
-              :preview_display true,
-              :display_name "Name",
-              :base_type :TextField,
-              :visibility_type :normal
-              :fk_target_field_id nil}
-             {:description nil,
-              :special_type :id,
-              :name "studio",
-              :active true,
-              :parent_id nil,
-              :field_type :info,
-              :position 0,
-              :preview_display true,
-              :display_name "Studio",
-              :base_type :TextField,
-              :visibility_type :normal
-              :fk_target_field_id nil}]}]
-  (tu/with-temp Database [fake-db {:name    "sync-test"
-                                   :engine  :sync-test
-                                   :details {}}]
+    :rows            nil
+    :active          true
+    :fields          [{:description        nil
+                       :special_type       :name
+                       :name               "name"
+                       :active             true
+                       :parent_id          nil
+                       :field_type         :info
+                       :position           0
+                       :preview_display    true
+                       :display_name       "Name"
+                       :base_type          :TextField
+                       :visibility_type    :normal
+                       :fk_target_field_id nil}
+                      {:description        nil
+                       :special_type       :id
+                       :name               "studio"
+                       :active             true
+                       :parent_id          nil
+                       :field_type         :info
+                       :position           0
+                       :preview_display    true
+                       :display_name       "Studio"
+                       :base_type          :TextField
+                       :visibility_type    :normal
+                       :fk_target_field_id nil}]}]
+  (tu/with-temp Database [fake-db]
     (sync/sync-database! (SyncTestDriver.) fake-db)
     ;; we are purposely running the sync twice to test for possible logic issues which only manifest
     ;; on resync of a database, such as adding tables that already exist or duplicating fields
     (sync/sync-database! (SyncTestDriver.) fake-db)
-    (->> (sel :many Table :db_id (:id fake-db) (k/order :name))
-         (mapv table-details))))
+    (mapv table-details (sel :many Table, :db_id (:id fake-db), (k/order :name)))))
 
 
 ;; ## SYNC TABLE
 
 (expect
-  {:schema "default"
-   :name   "movie"
-   :display_name "Movie"
-   :description nil
-   :entity_type nil
-   :entity_name nil
+  {:schema          "default"
+   :name            "movie"
+   :display_name    "Movie"
+   :description     nil
+   :entity_type     nil
+   :entity_name     nil
    :visibility_type nil
-   :rows   nil
-   :active true
-   :fields [{:description nil,
-             :special_type :id,
-             :name "id",
-             :active true,
-             :parent_id nil,
-             :field_type :info,
-             :position 0,
-             :preview_display true,
-             :display_name "Id",
-             :base_type :IntegerField,
-             :visibility_type :normal
-             :fk_target_field_id nil}
-            {:description nil,
-             :special_type nil,
-             :name "studio",
-             :active true,
-             :parent_id nil,
-             :field_type :info,
-             :position 0,
-             :preview_display true,
-             :display_name "Studio",
-             :base_type :TextField,
-             :visibility_type :normal
-             :fk_target_field_id nil}
-            {:description nil,
-             :special_type nil,
-             :name "title",
-             :active true,
-             :parent_id nil,
-             :field_type :info,
-             :position 0,
-             :preview_display true,
-             :display_name "Title",
-             :base_type :TextField,
-             :visibility_type :normal
-             :fk_target_field_id nil}]}
-  (tu/with-temp Database [fake-db {:name    "sync-test"
-                                   :engine  :sync-test
-                                   :details {}}]
-    (tu/with-temp Table [fake-table {:name "movie"
+   :rows            nil
+   :active          true
+   :fields          [{:description        nil
+                      :special_type       :id
+                      :name               "id"
+                      :active             true
+                      :parent_id          nil
+                      :field_type         :info
+                      :position           0
+                      :preview_display    true
+                      :display_name       "Id"
+                      :base_type          :IntegerField
+                      :visibility_type    :normal
+                      :fk_target_field_id nil}
+                     {:description        nil
+                      :special_type       nil
+                      :name               "studio"
+                      :active             true
+                      :parent_id          nil
+                      :field_type         :info
+                      :position           0
+                      :preview_display    true
+                      :display_name       "Studio"
+                      :base_type          :TextField
+                      :visibility_type    :normal
+                      :fk_target_field_id nil}
+                     {:description        nil
+                      :special_type       nil
+                      :name               "title"
+                      :active             true
+                      :parent_id          nil
+                      :field_type         :info
+                      :position           0
+                      :preview_display    true
+                      :display_name       "Title"
+                      :base_type          :TextField
+                      :visibility_type    :normal
+                      :fk_target_field_id nil}]}
+  (tu/with-temp Database [fake-db]
+    (tu/with-temp Table [fake-table {:name   "movie"
                                      :schema "default"
-                                     :db_id (:id fake-db)
-                                     :active true}]
+                                     :db_id  (:id fake-db)}]
       (sync/sync-table! (SyncTestDriver.) fake-table)
-      (table-details (sel :one Table :id (:id fake-table))))))
+      (table-details (sel :one Table, :id (:id fake-table))))))
 
 
 ;; ## Test that we will remove field-values when they aren't appropriate
 
 (expect
-  [[1,2,3]
-   [1,2,3]]
-  (tu/with-temp Database [fake-db {:name    "sync-test"
-                                   :engine  :sync-test
-                                   :details {}}]
-    (tu/with-temp Table [fake-table {:name "movie"
-                                     :schema "default"
-                                     :db_id (:id fake-db)
-                                     :active true}]
+  [[1 2 3]
+   [1 2 3]]
+  (tu/with-temp Database [fake-db]
+    (tu/with-temp Table [fake-table {:db_id (:id fake-db), :name "movie", :schema "default"}]
       (sync/sync-table! (SyncTestDriver.) fake-table)
-      (let [{:keys [id]} (sel :one Field :table_id (:id fake-table) :name "title")]
-        (tu/with-temp FieldValues [_ {:field_id id
+      (let [field-id (sel :one :id Field, :table_id (:id fake-table), :name "title")]
+        (tu/with-temp FieldValues [_ {:field_id field-id
                                       :values   "[1,2,3]"}]
-          (let [starting (sel :one :field [FieldValues :values] :field_id id)]
+          (let [initial-field-values (sel :one :field [FieldValues :values], :field_id field-id)]
             (sync/sync-table! (SyncTestDriver.) fake-table)
-            [starting
-             (sel :one :field [FieldValues :values] :field_id id)]))))))
+            [initial-field-values
+             (sel :one :field [FieldValues :values], :field_id field-id)]))))))
 
 
 ;; ## Individual Helper Fns
 
 ;; infer-field-special-type
 
-(expect nil (sync/infer-field-special-type {:name      "whatever"
-                                            :base-type :foo}))
-(expect :id (sync/infer-field-special-type {:name      "whatever"
-                                            :base-type :TextField
-                                            :pk?       :id}))
-(expect :id (sync/infer-field-special-type {:name      "id"
-                                            :base-type :IntegerField}))
-(expect :category (sync/infer-field-special-type {:name         "whatever"
-                                                  :base-type    :IntegerField
-                                                  :special-type :category}))
-(expect :country (sync/infer-field-special-type {:name      "country"
-                                                 :base-type :TextField}))
-(expect :state (sync/infer-field-special-type {:name      "state"
-                                               :base-type :TextField}))
+(expect nil       (sync/infer-field-special-type {:name "whatever", :base-type :foo}))
+(expect :id       (sync/infer-field-special-type {:name "whatever", :base-type :TextField,    :pk? :id}))
+(expect :id       (sync/infer-field-special-type {:name "id",       :base-type :IntegerField}))
+(expect :category (sync/infer-field-special-type {:name "whatever", :base-type :IntegerField, :special-type :category}))
+(expect :country  (sync/infer-field-special-type {:name "country",  :base-type :TextField}))
+(expect :state    (sync/infer-field-special-type {:name "state",    :base-type :TextField}))
 
 
 ;; ## TEST PK SYNCING

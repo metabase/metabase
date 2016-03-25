@@ -39,13 +39,8 @@
    :description nil
    :is_active   true
    :definition  {:clause ["a" "b"]}}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
-                                       :db_id  database-id
-                                       :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{:keys [id]} {:db_id database-id}]
       (create-segment-then-select id "I only want *these* things" nil (user->id :rasta) {:clause ["a" "b"]}))))
 
 
@@ -53,13 +48,8 @@
 (expect
   [true
    false]
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
-                                       :db_id  database-id
-                                       :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{:keys [id]} {:db_id database-id}]
       (tu/with-temp Segment [{:keys [id]} {:creator_id  (user->id :rasta)
                                            :table_id    id
                                            :name        "Ivory Tower"
@@ -79,13 +69,8 @@
    :is_active    true
    :definition   {:database 45
                   :query    {:filter ["yay"]}}}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
-                                       :db_id  database-id
-                                       :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{:keys [id]} {:db_id database-id}]
       (tu/with-temp Segment [{:keys [id]} {:creator_id  (user->id :rasta)
                                            :table_id    id
                                            :name        "Ivory Tower"
@@ -106,16 +91,9 @@
     :description  nil
     :is_active    true
     :definition   {}}]
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{table-id1 :id} {:name   "Table 1"
-                                          :db_id  database-id
-                                          :active true}]
-      (tu/with-temp Table [{table-id2 :id} {:name   "Table 2"
-                                            :db_id  database-id
-                                            :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{table-id1 :id} {:db_id database-id}]
+      (tu/with-temp Table [{table-id2 :id} {:db_id database-id}]
         (tu/with-temp Segment [{segement-id1 :id} {:creator_id  (user->id :rasta)
                                                    :table_id    table-id1
                                                    :name        "Segment 1"
@@ -148,51 +126,41 @@
 (expect
   {:creator_id   (user->id :rasta)
    :creator      (user-details :rasta)
-   :name         "Tatooine"
+   :name         "Costa Rica"
    :description  nil
    :is_active    true
    :definition   {:database 2
-                  :query    {:filter ["not" "the droids you're looking for"]}}}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
-                                       :db_id  database-id
-                                       :active true}]
+                  :query    {:filter ["not" "the toucans you're looking for"]}}}
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{:keys [id]} {:db_id database-id}]
       (tu/with-temp Segment [{:keys [id]} {:creator_id  (user->id :rasta)
                                            :table_id    id
-                                           :name        "Droids in the desert"
-                                           :description "Lookin' for a jedi"
+                                           :name        "Toucans in the rainforest"
+                                           :description "Lookin' for a blueberry"
                                            :definition  {}}]
         (update-segment-then-select {:id          id
-                                     :name        "Tatooine"
+                                     :name        "Costa Rica"
                                      :description nil
                                      :creator_id  (user->id :crowberto)
                                      :table_id    456
                                      :definition  {:database 2
-                                                   :query    {:filter ["not" "the droids you're looking for"]}}
+                                                   :query    {:filter ["not" "the toucans you're looking for"]}}
                                      :revision_message "Just horsing around"})))))
 
 ;; delete-segment
 (expect
   {:creator_id   (user->id :rasta)
    :creator      (user-details :rasta)
-   :name         "Droids in the desert"
-   :description  "Lookin' for a jedi"
+   :name         "Toucans in the rainforest"
+   :description  "Lookin' for a blueberry"
    :is_active    false
    :definition   {}}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
-                                       :db_id  database-id
-                                       :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{:keys [id]} {:db_id database-id}]
       (tu/with-temp Segment [{:keys [id]} {:creator_id  (user->id :rasta)
                                            :table_id    id
-                                           :name        "Droids in the desert"
-                                           :description "Lookin' for a jedi"
+                                           :name        "Toucans in the rainforest"
+                                           :description "Lookin' for a blueberry"
                                            :definition  {}}]
         (delete-segment id (user->id :crowberto) "revision message")
         (segment-details (retrieve-segment id))))))
@@ -207,21 +175,16 @@
   {:id          true
    :table_id    true
    :creator_id  (user->id :rasta)
-   :name        "Droids in the desert"
-   :description "Lookin' for a jedi"
+   :name        "Toucans in the rainforest"
+   :description "Lookin' for a blueberry"
    :definition  {:filter ["AND",[">",4,"2014-10-19"]]}
    :is_active   true}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{table-id :id} {:name   "Stuff"
-                                         :db_id  database-id
-                                         :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{table-id :id} {:db_id database-id}]
       (tu/with-temp Segment [segment {:creator_id  (user->id :rasta)
                                       :table_id    table-id
-                                      :name        "Droids in the desert"
-                                      :description "Lookin' for a jedi"
+                                      :name        "Toucans in the rainforest"
+                                      :description "Lookin' for a blueberry"
                                       :definition  {:filter ["AND",[">",4,"2014-10-19"]]}}]
         (-> (serialize-segment Segment (:id segment) segment)
             (update :id boolean)
@@ -232,21 +195,16 @@
 (expect
   {:definition  {:before {:filter ["AND" [">" 4 "2014-10-19"]]}
                  :after  {:filter ["AND" ["BETWEEN" 4 "2014-07-01" "2014-10-19"]]}}
-   :description {:before "Lookin' for a jedi"
+   :description {:before "Lookin' for a blueberry"
                  :after  "BBB"}
-   :name        {:before "Droids in the desert"
+   :name        {:before "Toucans in the rainforest"
                  :after  "Something else"}}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
-                                       :db_id  database-id
-                                       :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{:keys [id]} {:db_id database-id}]
       (tu/with-temp Segment [segment {:creator_id  (user->id :rasta)
                                       :table_id    id
-                                      :name        "Droids in the desert"
-                                      :description "Lookin' for a jedi"
+                                      :name        "Toucans in the rainforest"
+                                      :description "Lookin' for a blueberry"
                                       :definition  {:filter ["AND",[">",4,"2014-10-19"]]}}]
         (diff-segments Segment segment (assoc segment :name "Something else"
                                                       :description "BBB"

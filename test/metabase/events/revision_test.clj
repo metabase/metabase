@@ -191,22 +191,16 @@
    :is_reversion false
    :is_creation  true
    :message      nil}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
-                                       :db_id  database-id
-                                       :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{:keys [id]} {:db_id database-id}]
       (tu/with-temp Metric [metric {:creator_id  (user->id :rasta)
-                                      :table_id    id
-                                      :name        "ABC"
-                                      :description "DEF"
-                                      :definition  {:a "b"}}]
+                                    :table_id    id
+                                    :name        "ABC"
+                                    :description "DEF"
+                                    :definition  {:a "b"}}]
         (process-revision-event {:topic :metric-create
                                  :item  metric})
-        (let [revision (-> (db/sel :one Revision :model "Metric" :model_id (:id metric))
-                           (select-keys [:model :user_id :object :is_reversion :is_creation :message]))]
+        (let [revision (db/sel :one :fields [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Metric", :model_id (:id metric))]
           (assoc revision :object (dissoc (:object revision) :id :table_id)))))))
 
 ;; :metric-update
@@ -221,24 +215,18 @@
    :is_reversion false
    :is_creation  false
    :message      "updated"}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
-                                       :db_id  database-id
-                                       :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{:keys [id]} {:db_id database-id}]
       (tu/with-temp Metric [metric {:creator_id  (user->id :rasta)
-                                      :table_id    id
-                                      :name        "ABC"
-                                      :description "DEF"
-                                      :definition  {:a "b"}}]
+                                    :table_id    id
+                                    :name        "ABC"
+                                    :description "DEF"
+                                    :definition  {:a "b"}}]
         (process-revision-event {:topic :metric-update
                                  :item  (assoc metric
-                                          :actor_id         (user->id :crowberto)
-                                          :revision_message "updated")})
-        (let [revision (-> (db/sel :one Revision :model "Metric" :model_id (:id metric))
-                           (select-keys [:model :user_id :object :is_reversion :is_creation :message]))]
+                                               :actor_id         (user->id :crowberto)
+                                               :revision_message "updated")})
+        (let [revision (db/sel :one :fields [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Metric", :model_id (:id metric))]
           (assoc revision :object (dissoc (:object revision) :id :table_id)))))))
 
 ;; :metric-delete
@@ -253,13 +241,8 @@
    :is_reversion false
    :is_creation  false
    :message      nil}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
-                                       :db_id  database-id
-                                       :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{:keys [id]} {:db_id database-id}]
       (tu/with-temp Metric [metric {:creator_id  (user->id :rasta)
                                       :table_id    id
                                       :name        "ABC"
@@ -285,13 +268,8 @@
    :is_reversion false
    :is_creation  true
    :message      nil}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
-                                       :db_id  database-id
-                                       :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{:keys [id]} {:db_id database-id}]
       (tu/with-temp Segment [segment {:creator_id  (user->id :rasta)
                                       :table_id    id
                                       :name        "ABC"
@@ -315,13 +293,8 @@
    :is_reversion false
    :is_creation  false
    :message      "updated"}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
-                                       :db_id  database-id
-                                       :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{:keys [id]} {:db_id database-id}]
       (tu/with-temp Segment [segment {:creator_id  (user->id :rasta)
                                       :table_id    id
                                       :name        "ABC"
@@ -329,8 +302,8 @@
                                       :definition  {:a "b"}}]
         (process-revision-event {:topic :segment-update
                                  :item  (assoc segment
-                                          :actor_id         (user->id :crowberto)
-                                          :revision_message "updated")})
+                                               :actor_id         (user->id :crowberto)
+                                               :revision_message "updated")})
         (let [revision (-> (db/sel :one Revision :model "Segment" :model_id (:id segment))
                            (select-keys [:model :user_id :object :is_reversion :is_creation :message]))]
           (assoc revision :object (dissoc (:object revision) :id :table_id)))))))
@@ -347,13 +320,8 @@
    :is_reversion false
    :is_creation  false
    :message      nil}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
-                                       :db_id  database-id
-                                       :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{:keys [id]} {:db_id database-id}]
       (tu/with-temp Segment [segment {:creator_id  (user->id :rasta)
                                       :table_id    id
                                       :name        "ABC"

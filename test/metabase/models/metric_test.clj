@@ -39,13 +39,8 @@
    :description nil
    :is_active   true
    :definition  {:clause ["a" "b"]}}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
-                                       :db_id  database-id
-                                       :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{:keys [id]} {:db_id database-id}]
       (create-metric-then-select id "I only want *these* things" nil (user->id :rasta) {:clause ["a" "b"]}))))
 
 
@@ -53,13 +48,8 @@
 (expect
   [true
    false]
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
-                                       :db_id  database-id
-                                       :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{:keys [id]} {:db_id database-id}]
       (tu/with-temp Metric [{:keys [id]} {:creator_id  (user->id :rasta)
                                           :table_id    id
                                           :name        "Ivory Tower"
@@ -79,13 +69,8 @@
    :is_active    true
    :definition   {:database 45
                   :query    {:filter ["yay"]}}}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
-                                       :db_id  database-id
-                                       :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{:keys [id]} {:db_id database-id}]
       (tu/with-temp Metric [{:keys [id]} {:creator_id  (user->id :rasta)
                                           :table_id    id
                                           :name        "Ivory Tower"
@@ -106,16 +91,9 @@
     :description  nil
     :is_active    true
     :definition   {}}]
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{table-id1 :id} {:name   "Table 1"
-                                          :db_id  database-id
-                                          :active true}]
-      (tu/with-temp Table [{table-id2 :id} {:name   "Table 2"
-                                            :db_id  database-id
-                                            :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{table-id1 :id} {:db_id database-id}]
+      (tu/with-temp Table [{table-id2 :id} {:db_id database-id}]
         (tu/with-temp Metric [{segement-id1 :id} {:creator_id  (user->id :rasta)
                                                   :table_id    table-id1
                                                   :name        "Metric 1"
@@ -148,51 +126,41 @@
 (expect
   {:creator_id   (user->id :rasta)
    :creator      (user-details :rasta)
-   :name         "Tatooine"
+   :name         "Costa Rica"
    :description  nil
    :is_active    true
    :definition   {:database 2
-                  :query    {:filter ["not" "the droids you're looking for"]}}}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
-                                       :db_id  database-id
-                                       :active true}]
+                  :query    {:filter ["not" "the toucans you're looking for"]}}}
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{:keys [id]} {:db_id database-id}]
       (tu/with-temp Metric [{:keys [id]} {:creator_id  (user->id :rasta)
                                           :table_id    id
-                                          :name        "Droids in the desert"
-                                          :description "Lookin' for a jedi"
+                                          :name        "Toucans in the rainforest"
+                                          :description "Lookin' for a blueberry"
                                           :definition  {}}]
         (update-metric-then-select {:id          id
-                                    :name        "Tatooine"
+                                    :name        "Costa Rica"
                                     :description nil
                                     :creator_id  (user->id :crowberto)
                                     :table_id    456
                                     :definition  {:database 2
-                                                  :query    {:filter ["not" "the droids you're looking for"]}}
+                                                  :query    {:filter ["not" "the toucans you're looking for"]}}
                                     :revision_message "Just horsing around"})))))
 
 ;; delete-metric
 (expect
   {:creator_id   (user->id :rasta)
    :creator      (user-details :rasta)
-   :name         "Droids in the desert"
-   :description  "Lookin' for a jedi"
+   :name         "Toucans in the rainforest"
+   :description  "Lookin' for a blueberry"
    :is_active    false
    :definition   {}}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
-                                       :db_id  database-id
-                                       :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{:keys [id]} {:db_id database-id}]
       (tu/with-temp Metric [{:keys [id]} {:creator_id  (user->id :rasta)
                                           :table_id    id
-                                          :name        "Droids in the desert"
-                                          :description "Lookin' for a jedi"
+                                          :name        "Toucans in the rainforest"
+                                          :description "Lookin' for a blueberry"
                                           :definition  {}}]
         (delete-metric id (user->id :crowberto) "revision message")
         (metric-details (retrieve-metric id))))))
@@ -207,24 +175,19 @@
   {:id          true
    :table_id    true
    :creator_id  (user->id :rasta)
-   :name        "Droids in the desert"
-   :description "Lookin' for a jedi"
+   :name        "Toucans in the rainforest"
+   :description "Lookin' for a blueberry"
    :definition  {:aggregation ["count"]
-                 :filter      ["AND",[">",4,"2014-10-19"]]}
+                 :filter      ["AND" [">" 4 "2014-10-19"]]}
    :is_active   true}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{table-id :id} {:name   "Stuff"
-                                         :db_id  database-id
-                                         :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{table-id :id} {:db_id database-id}]
       (tu/with-temp Metric [metric {:creator_id  (user->id :rasta)
                                     :table_id    table-id
-                                    :name        "Droids in the desert"
-                                    :description "Lookin' for a jedi"
+                                    :name        "Toucans in the rainforest"
+                                    :description "Lookin' for a blueberry"
                                     :definition  {:aggregation ["count"]
-                                                  :filter      ["AND",[">",4,"2014-10-19"]]}}]
+                                                  :filter      ["AND" [">" 4 "2014-10-19"]]}}]
         (-> (serialize-metric Metric (:id metric) metric)
             (update :id boolean)
             (update :table_id boolean))))))
@@ -234,25 +197,20 @@
 (expect
   {:definition  {:before {:filter ["AND" [">" 4 "2014-10-19"]]}
                  :after  {:filter ["AND" ["BETWEEN" 4 "2014-07-01" "2014-10-19"]]}}
-   :description {:before "Lookin' for a jedi"
+   :description {:before "Lookin' for a blueberry"
                  :after  "BBB"}
-   :name        {:before "Droids in the desert"
+   :name        {:before "Toucans in the rainforest"
                  :after  "Something else"}}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
-                                       :db_id  database-id
-                                       :active true}]
+  (tu/with-temp Database [{database-id :id}]
+    (tu/with-temp Table [{:keys [id]} {:db_id database-id}]
       (tu/with-temp Metric [metric {:creator_id  (user->id :rasta)
                                     :table_id    id
-                                    :name        "Droids in the desert"
-                                    :description "Lookin' for a jedi"
-                                    :definition  {:filter ["AND",[">",4,"2014-10-19"]]}}]
+                                    :name        "Toucans in the rainforest"
+                                    :description "Lookin' for a blueberry"
+                                    :definition  {:filter ["AND" [">" 4 "2014-10-19"]]}}]
         (diff-metrics Metric metric (assoc metric :name "Something else"
                                                   :description "BBB"
-                                                  :definition {:filter ["AND",["BETWEEN",4,"2014-07-01","2014-10-19"]]}))))))
+                                                  :definition {:filter ["AND" ["BETWEEN" 4 "2014-07-01" "2014-10-19"]]}))))))
 
 ;; test case where definition doesn't change
 (expect
@@ -261,33 +219,33 @@
   (diff-metrics Metric
                 {:name        "A"
                  :description "Unchanged"
-                 :definition  {:filter ["AND",[">",4,"2014-10-19"]]}}
+                 :definition  {:filter ["AND" [">" 4 "2014-10-19"]]}}
                 {:name        "B"
                  :description "Unchanged"
-                 :definition  {:filter ["AND",[">",4,"2014-10-19"]]}}))
+                 :definition  {:filter ["AND" [">" 4 "2014-10-19"]]}}))
 
 ;; first version, so comparing against nil
 (expect
   {:name        {:after  "A"}
    :description {:after "Unchanged"}
-   :definition  {:after {:filter ["AND",[">",4,"2014-10-19"]]}}}
+   :definition  {:after {:filter ["AND" [">" 4 "2014-10-19"]]}}}
   (diff-metrics Metric
                 nil
                 {:name        "A"
                  :description "Unchanged"
-                 :definition  {:filter ["AND",[">",4,"2014-10-19"]]}}))
+                 :definition  {:filter ["AND" [">" 4 "2014-10-19"]]}}))
 
 ;; removals only
 (expect
-  {:definition  {:before {:filter ["AND",[">",4,"2014-10-19"],["=",5,"yes"]]}
-                 :after  {:filter ["AND",[">",4,"2014-10-19"]]}}}
+  {:definition  {:before {:filter ["AND" [">" 4 "2014-10-19"] ["=" 5 "yes"]]}
+                 :after  {:filter ["AND" [">" 4 "2014-10-19"]]}}}
   (diff-metrics Metric
                 {:name        "A"
                  :description "Unchanged"
-                 :definition  {:filter ["AND",[">",4,"2014-10-19"],["=",5,"yes"]]}}
+                 :definition  {:filter ["AND" [">" 4 "2014-10-19"] ["=" 5 "yes"]]}}
                 {:name        "A"
                  :description "Unchanged"
-                 :definition  {:filter ["AND",[">",4,"2014-10-19"]]}}))
+                 :definition  {:filter ["AND" [">" 4 "2014-10-19"]]}}))
 
 
 
