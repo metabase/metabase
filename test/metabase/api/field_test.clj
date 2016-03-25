@@ -68,31 +68,57 @@
 
 
 ;; ## PUT /api/field/:id
-;; Check that we can update a Field
-;; TODO - this should NOT be modifying a field from our test data, we should create new data to mess with
-(tu/expect-eval-actual-first
-    (tu/match-$ (let [field (Field (id :venues :latitude))]
-               ;; this is sketchy. But return the Field back to its unmodified state so it won't affect other unit tests
-               (db/upd Field (id :venues :latitude) :special_type "latitude")
-               ;; match against the modified Field
-               field)
-             {:description     nil
-              :table_id        (id :venues)
-              :special_type    "fk"
-              :name            "LATITUDE"
-              :display_name    "Latitude"
-              :updated_at      $
-              :active          true
-              :id              $
-              :field_type      "info"
-              :visibility_type "normal"
-              :position        0
-              :preview_display true
-              :created_at      $
-              :base_type       "FloatField"
-              :parent_id       nil})
-  ((user->client :crowberto) :put 200 (format "field/%d" (id :venues :latitude)) {:special_type :fk}))
+(defn simple-field-details [field]
+  (select-keys field [:name :display_name :description :visibility_type :special_type]))
 
+;; test that we can do basic field update work, including unsetting some fields such as special-type
+(expect
+  [{:name            "Field Test"
+    :display_name    "Field test"
+    :description     nil
+    :special_type    nil
+    :visibility_type :normal}
+   {:name            "Field Test"
+    :display_name    "yay"
+    :description     "foobar"
+    :special_type    :name
+    :visibility_type :sensitive}
+   {:name            "Field Test"
+    :display_name    "yay"
+    :description     nil
+    :special_type    nil
+    :visibility_type :sensitive}]
+  (tu/with-temp Database [{database-id :id} {:name      "Field Test"
+                                             :engine    :yeehaw
+                                             :details   {}
+                                             :is_sample false}]
+    (tu/with-temp Table [{table-id :id} {:name   "Field Test"
+                                         :db_id  database-id
+                                         :active true}]
+      (tu/with-temp Field [{field-id :id} {:table_id    table-id
+                                           :name        "Field Test"
+                                           :base_type   :TextField
+                                           :field_type  :info
+                                           :special_type nil
+                                           :active      true
+                                           :preview_display true
+                                           :position    1}]
+        (let [original-val (simple-field-details (db/sel :one Field :id field-id))]
+          ;; set it
+          ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:name "something else"
+                                                                            :display_name "yay"
+                                                                            :description "foobar"
+                                                                            :special_type :name
+                                                                            :visibility_type :sensitive})
+          (let [updated-val (simple-field-details (db/sel :one Field :id field-id))]
+            ;; unset it
+            ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:description nil
+                                                                              :special_type nil})
+            [original-val
+             updated-val
+             (simple-field-details (db/sel :one Field :id field-id))]))))))
+
+;; check that you can't set a field to :timestamp_seconds if it's not of a proper base_type
 (expect
   ["Invalid Request."
    nil]

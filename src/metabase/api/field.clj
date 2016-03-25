@@ -39,13 +39,13 @@
 
 (defendpoint PUT "/:id"
   "Update `Field` with ID."
-  [id :as {{:keys [special_type visibility_type description display_name]} :body}]
+  [id :as {{:keys [special_type visibility_type description display_name], :as body} :body}]
   {special_type    FieldSpecialType
    visibility_type FieldVisibilityType
    display_name    NonEmptyString}
   (let-404 [field (Field id)]
     (write-check field)
-    (let [special_type    (or special_type (:special_type field))
+    (let [special_type    (if (contains? body :special_type) special_type (:special_type field))
           visibility_type (or visibility_type (:visibility_type field))]
       (check-400 (field/valid-metadata? (:base_type field) (:field_type field) special_type visibility_type))
       ;; update the Field.  start with keys that may be set to NULL then conditionally add other keys if they have values
