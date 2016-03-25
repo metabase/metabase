@@ -172,22 +172,29 @@
    "STRING"    identity
    "TIMESTAMP" parse-timestamp-str})
 
-(defn- post-process-native [^QueryResponse response]
-  (when-not (.getJobComplete response)
-    (throw (Exception. (str (.getErrors response)))))
-  (let [^TableSchema schema (.getSchema response)
-        parsers             (for [^TableFieldSchema field (.getFields schema)]
-                              (type->parser (.getType field)))
-        cols                (table-schema->metabase-field-info schema)]
-    {:columns (map :name cols)
-     :cols    cols
-     :rows    (for [^TableRow row (.getRows response)]
-                (for [[^TableCell cell, parser] (partition 2 (interleave (.getF row) parsers))]
-                  (when-let [v (.getV cell)]
-                    ;; There is a weird error where everything that *should* be NULL comes back as an Object. See https://jira.talendforge.org/browse/TBD-1592
-                    ;; Everything else comes back as a String luckily so we can proceed normally.
-                    (when-not (= (class v) Object)
-                      (parser v)))))}))
+(defn- post-process-native
+  ;; 99% of the time by the time this is called `.getJobComplete` will return `true`. On the off chance it doesn't, wait a few seconds for the job to finish.
+  ([^QueryResponse response]
+   (post-process-native response 5))                     ; wait up to 5 seconds for `.getJobComplete` to return `true`
+  ([^QueryResponse response, ^Integer timeout-seconds]
+   (when-not (.getJobComplete response)
+     (when (zero? timeout-seconds)                       ; if we've ran out of wait time throw an exception
+       (throw (Exception. (str (.getErrors response)))))
+     (Thread/sleep 1000)                                 ; otherwise sleep a second, try again, and decrement the remaining `timeout-seconds`
+     (post-process-native response (dec timeout-seconds)))
+   (let [^TableSchema schema (.getSchema response)
+         parsers             (for [^TableFieldSchema field (.getFields schema)]
+                               (type->parser (.getType field)))
+         cols                (table-schema->metabase-field-info schema)]
+     {:columns (map :name cols)
+      :cols    cols
+      :rows    (for [^TableRow row (.getRows response)]
+                 (for [[^TableCell cell, parser] (partition 2 (interleave (.getF row) parsers))]
+                   (when-let [v (.getV cell)]
+                     ;; There is a weird error where everything that *should* be NULL comes back as an Object. See https://jira.talendforge.org/browse/TBD-1592
+                     ;; Everything else comes back as a String luckily so we can proceed normally.
+                     (when-not (= (class v) Object)
+                       (parser v)))))})))
 
 (defn- process-native* [database query-string]
   (post-process-native (execute-query database query-string)))
