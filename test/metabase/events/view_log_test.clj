@@ -6,7 +6,7 @@
             (metabase.models [user :refer [User]]
                              [view-log :refer [ViewLog]])
             [metabase.test.data :refer :all]
-            [metabase.test.util :refer [expect-eval-actual-first with-temp random-name]]
+            [metabase.test.util :refer [expect-eval-actual-first random-name]]
             [metabase.test-setup :refer :all]))
 
 

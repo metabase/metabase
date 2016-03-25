@@ -30,11 +30,11 @@
 (expect
   [{:success true}
    nil]
-  (tu/with-temp Database [{database-id :id}]
-    (tu/with-temp Table [{table-id :id} {:db_id database-id}]
-      (tu/with-temp Field [{field-id :id} {:table_id table-id}]
-        (tu/with-temp ForeignKey [{:keys [id]} {:destination_id field-id
-                                                :origin_id      field-id
-                                                :relationship   "whoot"}]
-          [((user->client :crowberto) :delete 200 (format "foreignkey/%d" id))
-           (db/sel :one ForeignKey :id id)])))))
+  (tu/with-temp* [Database   [{database-id :id}]
+                  Table      [{table-id :id} {:db_id database-id}]
+                  Field      [{field-id :id} {:table_id table-id}]
+                  ForeignKey [{:keys [id]}   {:destination_id field-id
+                                              :origin_id      field-id
+                                              :relationship   "whoot"}]]
+    [((user->client :crowberto) :delete 200 (format "foreignkey/%d" id))
+     (db/sel :one ForeignKey :id id)]))

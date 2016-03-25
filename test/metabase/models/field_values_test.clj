@@ -47,11 +47,10 @@
   [[1,2,3]
    {:status 204, :body nil}
    nil]
-  (tu/with-temp Database [{database-id :id}]
-    (tu/with-temp Table [{table-id :id} {:db_id database-id}]
-      (tu/with-temp Field [{field-id :id} {:table_id table-id}]
-        (tu/with-temp FieldValues [_ {:field_id field-id
-                                      :values   "[1,2,3]"}]
-          [(db/sel :one :field [FieldValues :values] :field_id field-id)
-           (clear-field-values field-id)
-           (db/sel :one :field [FieldValues :values] :field_id field-id)])))))
+  (tu/with-temp* [Database    [{database-id :id}]
+                  Table       [{table-id :id} {:db_id database-id}]
+                  Field       [{field-id :id} {:table_id table-id}]
+                  FieldValues [_              {:field_id field-id, :values "[1,2,3]"}]]
+    [(db/sel :one :field [FieldValues :values] :field_id field-id)
+     (clear-field-values field-id)
+     (db/sel :one :field [FieldValues :values] :field_id field-id)]))

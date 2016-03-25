@@ -1,6 +1,7 @@
 (ns metabase.models.pulse-test
   (:require [clojure.tools.macro :refer [symbol-macrolet]]
             [expectations :refer :all]
+            [medley.core :as m]
             [metabase.db :as db]
             (metabase.models [card :refer [Card]]
                              [hydrate :refer :all]
@@ -11,12 +12,11 @@
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
             [metabase.test.util :as tu]
-            [medley.core :as m]))
+            [metabase.util :as u]))
 
-(defn user-details
+(defn- user-details
   [username]
-  (-> (fetch-user username)
-      (dissoc :date_joined :last_login)))
+  (dissoc (fetch-user username) :date_joined :last_login))
 
 ;; create a channel then select its details
 (defn create-pulse-then-select
@@ -58,26 +58,20 @@
                    :schedule_day  nil,
                    :recipients    [{:email "foo@bar.com"}
                                    (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]}]}
-  (tu/with-temp Pulse [{:keys [id]} {:creator_id (user->id :rasta)
-                                     :name       "Lodi Dodi"}]
-    (tu/with-temp PulseChannel [{channel-id :id :as channel} {:pulse_id      id
-                                                              :channel_type  :email
-                                                              :details       {:other  "stuff"
-                                                                              :emails ["foo@bar.com"]}
-                                                              :schedule_type :daily
-                                                              :schedule_hour 15}]
-      (tu/with-temp Card [{card-id :id} {:name "Test Card"}]
-        (do
-          (db/ins PulseCard :pulse_id id :card_id card-id :position 0)
-          (db/ins PulseChannelRecipient :pulse_channel_id channel-id :user_id (user->id :rasta))
-          (let [{:keys [cards channels creator] :as pulse} (retrieve-pulse id)]
-            (-> pulse
-                (dissoc :id :pulse_id :created_at :updated_at)
-                (assoc :creator (dissoc creator :date_joined :last_login))
-                (assoc :cards (mapv #(dissoc % :id) cards))
-                (assoc :channels (for [channel channels]
-                                   (-> (dissoc channel :id :pulse_id :created_at :updated_at)
-                                       (m/dissoc-in [:details :emails])))))))))))
+  (tu/with-temp* [Pulse        [{pulse-id :id}               {:name "Lodi Dodi"}]
+                  PulseChannel [{channel-id :id :as channel} {:pulse_id pulse-id
+                                                              :details  {:other  "stuff"
+                                                                         :emails ["foo@bar.com"]}}]
+                  Card         [{card-id :id}                {:name "Test Card"}]]
+    (db/ins PulseCard, :pulse_id pulse-id, :card_id card-id, :position 0)
+    (db/ins PulseChannelRecipient, :pulse_channel_id channel-id, :user_id (user->id :rasta))
+    (-> (dissoc (retrieve-pulse pulse-id) :id :pulse_id :created_at :updated_at)
+        (update :creator  (u/rpartial dissoc :date_joined :last_login))
+        (update :cards    (fn [cards] (for [card cards]
+                                        (dissoc card :id))))
+        (update :channels (fn [channels] (for [channel channels]
+                                           (-> (dissoc channel :id :pulse_id :created_at :updated_at)
+                                               (m/dissoc-in [:details :emails]))))))))
 
 
 ;; update-pulse-cards
@@ -87,21 +81,19 @@
    ["card2"]
    ["card2" "card1"]
    ["card1" "card3"]]
-  (tu/with-temp Pulse [{:keys [id]} {:creator_id (user->id :rasta)
-                                     :name       (tu/random-name)}]
-    (tu/with-temp Card [{card-id-1 :id} {:name "card1"}]
-      (tu/with-temp Card [{card-id-2 :id} {:name "card2"}]
-        (tu/with-temp Card [{card-id-3 :id} {:name "card3"}]
-          (let [upd-cards (fn [cards]
-                            (update-pulse-cards {:id id} cards)
-                            (->> (db/sel :many PulseCard :pulse_id id)
-                                 (mapv (fn [{:keys [card_id]}]
-                                         (db/sel :one :field [Card :name] :id card_id)))))]
-            [(upd-cards [])
-             (upd-cards [card-id-1])
-             (upd-cards [card-id-2])
-             (upd-cards [card-id-2 card-id-1])
-             (upd-cards [card-id-1 card-id-3])]))))))
+  (tu/with-temp* [Pulse [{pulse-id :id}]
+                  Card  [{card-id-1 :id} {:name "card1"}]
+                  Card  [{card-id-2 :id} {:name "card2"}]
+                  Card  [{card-id-3 :id} {:name "card3"}]]
+    (let [upd-cards! (fn [cards]
+                       (update-pulse-cards {:id pulse-id} cards)
+                       (doall (for [card-id (db/sel :many :field [PulseCard :card_id] :pulse_id pulse-id)]
+                                (db/sel :one :field [Card :name] :id card-id))))]
+      [(upd-cards! [])
+       (upd-cards! [card-id-1])
+       (upd-cards! [card-id-2])
+       (upd-cards! [card-id-2 card-id-1])
+       (upd-cards! [card-id-1 card-id-3])])))
 
 ;; update-pulse-channels
 (expect
@@ -112,17 +104,15 @@
    :schedule_frame nil
    :recipients    [{:email "foo@bar.com"}
                    (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]}
-  (tu/with-temp Pulse [{:keys [id]} {:creator_id (user->id :rasta)
-                                     :name       (tu/random-name)}]
-    (do
-      (update-pulse-channels {:id id} [{:channel_type  :email
-                                        :schedule_type :daily
-                                        :schedule_hour 4
-                                        :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)}]}])
-      (-> (db/sel :one PulseChannel :pulse_id id)
-          (hydrate :recipients)
-          (dissoc :id :pulse_id :created_at :updated_at)
-          (m/dissoc-in [:details :emails])))))
+  (tu/with-temp Pulse [{:keys [id]}]
+    (update-pulse-channels {:id id} [{:channel_type  :email
+                                      :schedule_type :daily
+                                      :schedule_hour 4
+                                      :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)}]}])
+    (-> (db/sel :one PulseChannel :pulse_id id)
+        (hydrate :recipients)
+        (dissoc :id :pulse_id :created_at :updated_at)
+        (m/dissoc-in [:details :emails]))))
 
 ;; create-pulse
 ;; simple example with a single card
@@ -169,16 +159,15 @@
                    :schedule_day  nil,
                    :recipients    [{:email "foo@bar.com"}
                                    (dissoc (user-details :crowberto) :is_superuser :is_qbnewb)]}]}
-  (tu/with-temp Pulse [{:keys [id]} {:creator_id (user->id :rasta)
-                                     :name       "Lodi Dodi"}]
-    (tu/with-temp Card [{card-id-1 :id} {:name "Test Card"}]
-      (tu/with-temp Card [{card-id-2 :id} {:name "Bar Card", :display :bar}]
-        (update-pulse-then-select {:id         id
-                                   :name       "We like to party"
-                                   :creator_id (user->id :crowberto)
-                                   :cards      [card-id-2 card-id-1]
-                                   :channels   [{:channel_type  :email
-                                                 :schedule_type :daily
-                                                 :schedule_hour 18
-                                                 :recipients    [{:email "foo@bar.com"}
-                                                                 {:id (user->id :crowberto)}]}]})))))
+  (tu/with-temp* [Pulse [{pulse-id :id}]
+                  Card  [{card-id-1 :id} {:name "Test Card"}]
+                  Card  [{card-id-2 :id} {:name "Bar Card", :display :bar}]]
+    (update-pulse-then-select {:id         pulse-id
+                               :name       "We like to party"
+                               :creator_id (user->id :crowberto)
+                               :cards      [card-id-2 card-id-1]
+                               :channels   [{:channel_type  :email
+                                             :schedule_type :daily
+                                             :schedule_hour 18
+                                             :recipients    [{:email "foo@bar.com"}
+                                                             {:id (user->id :crowberto)}]}]})))

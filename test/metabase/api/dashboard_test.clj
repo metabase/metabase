@@ -120,11 +120,10 @@
                       :series       []}]
    :organization_id nil}
   ;; fetch a dashboard WITH a dashboard card on it
-  (tu/with-temp Dashboard [{dashboard-id :id} {:name "Test Dashboard"}]
-    (tu/with-temp Card [{card-id :id} {:name "Dashboard Test Card"}]
-      (tu/with-temp DashboardCard [_ {:dashboard_id dashboard-id
-                                      :card_id      card-id}]
-        (dashboard-response ((user->client :rasta) :get 200 (format "dashboard/%d" dashboard-id)))))))
+  (tu/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
+                  Card          [{card-id :id}      {:name "Dashboard Test Card"}]
+                  DashboardCard [_                  {:dashboard_id dashboard-id, :card_id card-id}]]
+    (dashboard-response ((user->client :rasta) :get 200 (format "dashboard/%d" dashboard-id)))))
 
 
 ;; ## PUT /api/dashboard/:id
@@ -185,15 +184,15 @@
      :sizeY        2
      :col          4
      :row          4}]]
-  (tu/with-temp Dashboard [{dashboard-id :id}]
-    (tu/with-temp Card [{card-id :id}]
-      [(-> ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id) {:cardId card-id
-                                                                                        :row    4
-                                                                                        :col    4})
-           (dissoc :id :dashboard_id :card_id)
-           (update :created_at #(not (nil? %)))
-           (update :updated_at #(not (nil? %))))
-       (db/sel :many :fields [DashboardCard :sizeX :sizeY :col :row] :dashboard_id dashboard-id)])))
+  (tu/with-temp* [Dashboard [{dashboard-id :id}]
+                  Card      [{card-id :id}]]
+    [(-> ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id) {:cardId card-id
+                                                                                      :row    4
+                                                                                      :col    4})
+         (dissoc :id :dashboard_id :card_id)
+         (update :created_at #(not (nil? %)))
+         (update :updated_at #(not (nil? %))))
+     (db/sel :many :fields [DashboardCard :sizeX :sizeY :col :row] :dashboard_id dashboard-id)]))
 
 ;; new dashboard card w/ additional series
 (expect
@@ -213,16 +212,16 @@
      :col          4
      :row          4}]
    [0]]
-  (tu/with-temp Dashboard [{dashboard-id :id}]
-    (tu/with-temp Card [{card-id :id}]
-      (tu/with-temp Card [{series-id-1 :id} {:name "Series Card"}]
-        (let [dashboard-card ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id) {:cardId card-id
-                                                                                                          :row    4
-                                                                                                          :col    4
-                                                                                                          :series [{:id series-id-1}]})]
-          [(remove-ids-and-boolean-timestamps dashboard-card)
-           (db/sel :many :fields [DashboardCard :sizeX :sizeY :col :row] :dashboard_id dashboard-id)
-           (db/sel :many :field [DashboardCardSeries :position] :dashboardcard_id (:id dashboard-card))])))))
+  (tu/with-temp* [Dashboard [{dashboard-id :id}]
+                  Card      [{card-id :id}]
+                  Card      [{series-id-1 :id} {:name "Series Card"}]]
+    (let [dashboard-card ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id) {:cardId card-id
+                                                                                                      :row    4
+                                                                                                      :col    4
+                                                                                                      :series [{:id series-id-1}]})]
+      [(remove-ids-and-boolean-timestamps dashboard-card)
+       (db/sel :many :fields [DashboardCard :sizeX :sizeY :col :row] :dashboard_id dashboard-id)
+       (db/sel :many :field [DashboardCardSeries :position] :dashboardcard_id (:id dashboard-card))])))
 
 
 ;; ## DELETE /api/dashboard/:id/cards
@@ -231,16 +230,16 @@
    {:success true}
    0]
   ;; fetch a dashboard WITH a dashboard card on it
-  (tu/with-temp Dashboard [{dashboard-id :id}]
-    (tu/with-temp Card [{card-id :id}]
-      (tu/with-temp Card [{series-id-1 :id}]
-        (tu/with-temp Card [{series-id-2 :id}]
-          (tu/with-temp DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
-            (tu/with-temp DashboardCardSeries [_ {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
-              (tu/with-temp DashboardCardSeries [_ {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]
-                [(count (db/sel :many :field [DashboardCard :id] :dashboard_id dashboard-id))
-                 ((user->client :rasta) :delete 200 (format "dashboard/%d/cards" dashboard-id) :dashcardId dashcard-id)
-                 (count (db/sel :many :field [DashboardCard :id] :dashboard_id dashboard-id))]))))))))
+  (tu/with-temp* [Dashboard           [{dashboard-id :id}]
+                  Card                [{card-id :id}]
+                  Card                [{series-id-1 :id}]
+                  Card                [{series-id-2 :id}]
+                  DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
+                  DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
+                  DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
+    [(count (db/sel :many :field [DashboardCard :id] :dashboard_id dashboard-id))
+     ((user->client :rasta) :delete 200 (format "dashboard/%d/cards" dashboard-id) :dashcardId dashcard-id)
+     (count (db/sel :many :field [DashboardCard :id] :dashboard_id dashboard-id))]))
 
 
 ;; ## PUT /api/dashboard/:id/cards
@@ -280,26 +279,26 @@
      :created_at   true
      :updated_at   true}]]
   ;; fetch a dashboard WITH a dashboard card on it
-  (tu/with-temp Dashboard [{dashboard-id :id}]
-    (tu/with-temp Card [{card-id :id}]
-      (tu/with-temp DashboardCard [{dashcard-id-1 :id} {:dashboard_id dashboard-id, :card_id card-id}]
-        (tu/with-temp DashboardCard [{dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id}]
-          (tu/with-temp Card [{series-id-1 :id} {:name "Series Card"}]
-            [[(remove-ids-and-boolean-timestamps (retrieve-dashboard-card dashcard-id-1))
-              (remove-ids-and-boolean-timestamps (retrieve-dashboard-card dashcard-id-2))]
-             ((user->client :rasta) :put 200 (format "dashboard/%d/cards" dashboard-id) {:cards [{:id    dashcard-id-1
-                                                                                                  :sizeX 4
-                                                                                                  :sizeY 2
-                                                                                                  :col   0
-                                                                                                  :row   0
-                                                                                                  :series [{:id series-id-1}]}
-                                                                                                 {:id    dashcard-id-2
-                                                                                                  :sizeX 1
-                                                                                                  :sizeY 1
-                                                                                                  :col   1
-                                                                                                  :row   3}]})
-             [(remove-ids-and-boolean-timestamps (retrieve-dashboard-card dashcard-id-1))
-              (remove-ids-and-boolean-timestamps (retrieve-dashboard-card dashcard-id-2))]]))))))
+  (tu/with-temp* [Dashboard     [{dashboard-id :id}]
+                  Card          [{card-id :id}]
+                  DashboardCard [{dashcard-id-1 :id} {:dashboard_id dashboard-id, :card_id card-id}]
+                  DashboardCard [{dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id}]
+                  Card          [{series-id-1 :id}   {:name "Series Card"}]]
+    [[(remove-ids-and-boolean-timestamps (retrieve-dashboard-card dashcard-id-1))
+      (remove-ids-and-boolean-timestamps (retrieve-dashboard-card dashcard-id-2))]
+     ((user->client :rasta) :put 200 (format "dashboard/%d/cards" dashboard-id) {:cards [{:id    dashcard-id-1
+                                                                                          :sizeX 4
+                                                                                          :sizeY 2
+                                                                                          :col   0
+                                                                                          :row   0
+                                                                                          :series [{:id series-id-1}]}
+                                                                                         {:id    dashcard-id-2
+                                                                                          :sizeX 1
+                                                                                          :sizeY 1
+                                                                                          :col   1
+                                                                                          :row   3}]})
+     [(remove-ids-and-boolean-timestamps (retrieve-dashboard-card dashcard-id-1))
+      (remove-ids-and-boolean-timestamps (retrieve-dashboard-card dashcard-id-2))]]))
 
 
 
@@ -325,38 +324,34 @@
                       (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
     :diff         nil
     :description  nil}]
-  (tu/with-temp Dashboard [{:keys [id]}]
-    (tu/with-temp Revision [_ {:model        "Dashboard"
-                               :model_id     id
-                               :user_id      (user->id :rasta)
-                               :object       {:name         "b"
-                                              :description  nil
-                                              :public_perms 0
-                                              :cards        [{:sizeX   2
-                                                              :sizeY   2
-                                                              :row     nil
-                                                              :col     nil
-                                                              :card_id 123
-                                                              :series  []}]}
-                               :is_creation  true
-                               :is_reversion false}]
-      (tu/with-temp Revision [_ {:model        "Dashboard"
-                                 :model_id     id
-                                 :user_id      (user->id :crowberto)
-                                 :object       {:name         "c"
-                                                :description  "something"
-                                                :public_perms 0
-                                                :cards        [{:sizeX   4
-                                                                :sizeY   3
-                                                                :row     0
-                                                                :col     0
-                                                                :card_id 123
-                                                                :series  [8 9]}]}
-                                 :is_creation  false
-                                 :is_reversion false
-                                 :message      "updated"}]
-        (->> ((user->client :crowberto) :get 200 (format "dashboard/%d/revisions" id))
-             (mapv #(dissoc % :timestamp :id)))))))
+  (tu/with-temp* [Dashboard [{dashboard-id :id}]
+                  Revision  [_ {:model        "Dashboard"
+                                :model_id     dashboard-id
+                                :object       {:name         "b"
+                                               :description  nil
+                                               :public_perms 0
+                                               :cards        [{:sizeX   2
+                                                               :sizeY   2
+                                                               :row     nil
+                                                               :col     nil
+                                                               :card_id 123
+                                                               :series  []}]}
+                                :is_creation  true}]
+                  Revision  [_ {:model        "Dashboard"
+                                :model_id     dashboard-id
+                                :user_id      (user->id :crowberto)
+                                :object       {:name         "c"
+                                               :description  "something"
+                                               :public_perms 0
+                                               :cards        [{:sizeX   4
+                                                               :sizeY   3
+                                                               :row     0
+                                                               :col     0
+                                                               :card_id 123
+                                                               :series  [8 9]}]}
+                                :message      "updated"}]]
+    (doall (for [revision ((user->client :crowberto) :get 200 (format "dashboard/%d/revisions" dashboard-id))]
+             (dissoc revision :timestamp :id)))))
 
 
 ;; ## POST /api/dashboard/:id/revert
@@ -369,7 +364,7 @@
 
 
 (expect
-  [;; the api response
+  [ ;; the api response
    {:is_reversion true
     :is_creation  false
     :message      nil
@@ -402,27 +397,22 @@
                        (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
      :diff         nil
      :description  nil}]]
-  (tu/with-temp Dashboard [{:keys [id]}]
-    (tu/with-temp Revision [{revision-id :id} {:model        "Dashboard"
-                                               :model_id     id
-                                               :user_id      (user->id :rasta)
-                                               :object       {:name         "a"
-                                                              :description  nil
-                                                              :public_perms 0
-                                                              :cards        []}
-                               :is_creation  true
-                               :is_reversion false}]
-      (tu/with-temp Revision [_ {:model        "Dashboard"
-                                 :model_id     id
-                                 :user_id      (user->id :crowberto)
-                                 :object       {:name         "b"
-                                                :description  nil
-                                                :public_perms 0
-                                                :cards        []}
-                                 :is_creation  false
-                                 :is_reversion false
-                                 :message      "updated"}]
-        [(-> ((user->client :crowberto) :post 200 (format "dashboard/%d/revert" id) {:revision_id revision-id})
-             (dissoc :id :timestamp))
-         (->> ((user->client :crowberto) :get 200 (format "dashboard/%d/revisions" id))
-              (mapv #(dissoc % :timestamp :id)))]))))
+  (tu/with-temp* [Dashboard [{dashboard-id :id}]
+                  Revision  [{revision-id :id} {:model        "Dashboard"
+                                                :model_id     dashboard-id
+                                                :object       {:name         "a"
+                                                               :description  nil
+                                                               :public_perms 0
+                                                               :cards        []}
+                                                :is_creation  true}]
+                  Revision  [_                 {:model        "Dashboard"
+                                                :model_id     dashboard-id
+                                                :user_id      (user->id :crowberto)
+                                                :object       {:name         "b"
+                                                               :description  nil
+                                                               :public_perms 0
+                                                               :cards        []}
+                                                :message      "updated"}]]
+    [(dissoc ((user->client :crowberto) :post 200 (format "dashboard/%d/revert" dashboard-id) {:revision_id revision-id}) :id :timestamp)
+     (doall (for [revision ((user->client :crowberto) :get 200 (format "dashboard/%d/revisions" dashboard-id))]
+              (dissoc revision :timestamp :id)))]))

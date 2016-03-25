@@ -44,16 +44,14 @@
      :dependent_on_id    18}
     {:dependent_on_model "Segment"
      :dependent_on_id    35}}
-  (tu/with-temp Database [{database-id :id}]
-    (tu/with-temp Table [{table-id :id} {:db_id database-id}]
-      (tu/with-temp Metric [metric {:creator_id  (user->id :rasta)
-                                    :table_id    table-id
-                                    :name        "Dependencies Test"
-                                    :definition  {:aggregation ["count"]
-                                                  :filter      ["AND" ["SEGMENT" 18] ["SEGMENT" 35]]}}]
-        (process-dependencies-event {:topic :metric-create
-                                     :item  metric})
-        (set (db/sel :many :fields [Dependency :dependent_on_model :dependent_on_id], :model "Metric", :model_id (:id metric)))))))
+  (tu/with-temp* [Database [{database-id :id}]
+                  Table    [{table-id :id} {:db_id database-id}]
+                  Metric   [metric         {:table_id   table-id
+                                            :definition {:aggregation ["count"]
+                                                         :filter      ["AND" ["SEGMENT" 18] ["SEGMENT" 35]]}}]]
+    (process-dependencies-event {:topic :metric-create
+                                 :item  metric})
+    (set (db/sel :many :fields [Dependency :dependent_on_model :dependent_on_id], :model "Metric", :model_id (:id metric)))))
 
 ;; `:card-update` event
 (expect
@@ -61,13 +59,11 @@
      :dependent_on_id    18}
     {:dependent_on_model "Segment"
      :dependent_on_id    35}}
-  (tu/with-temp Database [{database-id :id}]
-    (tu/with-temp Table [{table-id :id} {:db_id database-id}]
-      (tu/with-temp Metric [metric {:creator_id  (user->id :rasta)
-                                    :table_id    table-id
-                                    :name        "Dependencies Test"
-                                    :definition  {:aggregation ["count"]
-                                                  :filter      ["AND" ["SEGMENT" 18] ["SEGMENT" 35]]}}]
-        (process-dependencies-event {:topic :metric-update
-                                     :item  metric})
-        (set (db/sel :many :fields [Dependency :dependent_on_model :dependent_on_id], :model "Metric", :model_id (:id metric)))))))
+  (tu/with-temp* [Database [{database-id :id}]
+                  Table    [{table-id :id} {:db_id database-id}]
+                  Metric   [metric         {:table_id   table-id
+                                            :definition {:aggregation ["count"]
+                                                         :filter      ["AND" ["SEGMENT" 18] ["SEGMENT" 35]]}}]]
+    (process-dependencies-event {:topic :metric-update
+                                 :item  metric})
+    (set (db/sel :many :fields [Dependency :dependent_on_model :dependent_on_id], :model "Metric", :model_id (:id metric)))))

@@ -46,17 +46,17 @@
      :model_id           4
      :dependent_on_model "foobar"
      :dependent_on_id    13}}
-  (tu/with-temp Dependency [_ {:model              "Mock"
-                               :model_id           4
-                               :dependent_on_model "test"
-                               :dependent_on_id    1
-                               :created_at         (u/new-sql-timestamp)}]
-    (tu/with-temp Dependency [_ {:model              "Mock"
+  (tu/with-temp* [Dependency [_ {:model              "Mock"
+                                 :model_id           4
+                                 :dependent_on_model "test"
+                                 :dependent_on_id    1
+                                 :created_at         (u/new-sql-timestamp)}]
+                  Dependency [_ {:model              "Mock"
                                  :model_id           4
                                  :dependent_on_model "foobar"
                                  :dependent_on_id    13
-                                 :created_at         (u/new-sql-timestamp)}]
-      (format-dependencies (retrieve-dependencies Mock 4)))))
+                                 :created_at         (u/new-sql-timestamp)}]]
+    (format-dependencies (retrieve-dependencies Mock 4))))
 
 
 ;; update-dependencies

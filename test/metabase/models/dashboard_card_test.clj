@@ -33,11 +33,10 @@
    :col    nil
    :row    nil
    :series []}
-  (tu/with-temp Dashboard [{dashboard-id :id}]
-    (tu/with-temp Card [{card-id :id}]
-      (tu/with-temp DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
-                                                      :card_id      card-id}]
-        (remove-ids-and-timestamps (retrieve-dashboard-card dashcard-id))))))
+  (tu/with-temp* [Dashboard     [{dashboard-id :id}]
+                  Card          [{card-id :id}]
+                  DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]]
+    (remove-ids-and-timestamps (retrieve-dashboard-card dashcard-id))))
 
 ;; retrieve-dashboard-card
 ;; dashcard w/ additional series
@@ -56,14 +55,14 @@
              :display                :table
              :dataset_query          {}
              :visualization_settings {}}]}
-  (tu/with-temp Dashboard [{dashboard-id :id}]
-    (tu/with-temp Card [{card-id :id}]
-      (tu/with-temp Card [{series-id-1 :id} {:name "Additional Series Card 1"}]
-        (tu/with-temp Card [{series-id-2 :id} {:name "Additional Series Card 2"}]
-          (tu/with-temp DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
-            (tu/with-temp DashboardCardSeries [_ {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
-              (tu/with-temp DashboardCardSeries [_ {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]
-                (remove-ids-and-timestamps (retrieve-dashboard-card dashcard-id))))))))))
+  (tu/with-temp* [Dashboard           [{dashboard-id :id}]
+                  Card                [{card-id :id}]
+                  Card                [{series-id-1 :id} {:name "Additional Series Card 1"}]
+                  Card                [{series-id-2 :id} {:name "Additional Series Card 2"}]
+                  DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
+                  DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
+                  DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
+    (remove-ids-and-timestamps (retrieve-dashboard-card dashcard-id))))
 
 
 ;; update-dashboard-card-series
@@ -114,19 +113,19 @@
               :display                :table
               :dataset_query          {}
               :visualization_settings {}}]}]
-  (tu/with-temp Dashboard [{dashboard-id :id}]
-    (tu/with-temp Card [{card-id :id} {:name "Test Card"}]
-      (let [dashboard-card (create-dashboard-card {:creator_id   (user->id :rasta)
-                                                   :dashboard_id dashboard-id
-                                                   :card_id      card-id
-                                                   :sizeX        4
-                                                   :sizeY        3
-                                                   :row          1
-                                                   :col          1
-                                                   :series       [card-id]})]
-        ;; first result is return value from function, second is to validate db captured everything
-        [(remove-ids-and-timestamps dashboard-card)
-         (remove-ids-and-timestamps (retrieve-dashboard-card (:id dashboard-card)))]))))
+  (tu/with-temp* [Dashboard [{dashboard-id :id}]
+                  Card      [{card-id :id} {:name "Test Card"}]]
+    (let [dashboard-card (create-dashboard-card {:creator_id   (user->id :rasta)
+                                                 :dashboard_id dashboard-id
+                                                 :card_id      card-id
+                                                 :sizeX        4
+                                                 :sizeY        3
+                                                 :row          1
+                                                 :col          1
+                                                 :series       [card-id]})]
+      ;; first result is return value from function, second is to validate db captured everything
+      [(remove-ids-and-timestamps dashboard-card)
+       (remove-ids-and-timestamps (retrieve-dashboard-card (:id dashboard-card)))])))
 
 ;; update-dashboard-card
 ;; basic update.  we are testing multiple things here
@@ -168,22 +167,22 @@
               :display                :table
               :dataset_query          {}
               :visualization_settings {}}]}]
-  (tu/with-temp Dashboard [{dashboard-id :id}]
-    (tu/with-temp Card [{card-id :id}]
-      (tu/with-temp DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
-        (tu/with-temp Card [{card-id-1 :id} {:name "Test Card 1"}]
-          (tu/with-temp Card [{card-id-2 :id} {:name "Test Card 2"}]
-            ;; first result is the unmodified dashcard
-            ;; second is the return value from the update call
-            ;; third is to validate db captured everything
-            [(remove-ids-and-timestamps (retrieve-dashboard-card dashcard-id))
-             (remove-ids-and-timestamps (update-dashboard-card {:id           dashcard-id
-                                                                :actor_id     (user->id :rasta)
-                                                                :dashboard_id nil
-                                                                :card_id      nil
-                                                                :sizeX        4
-                                                                :sizeY        3
-                                                                :row          1
-                                                                :col          1
-                                                                :series       [card-id-2 card-id-1]}))
-             (remove-ids-and-timestamps (retrieve-dashboard-card dashcard-id))]))))))
+  (tu/with-temp* [Dashboard     [{dashboard-id :id}]
+                  Card          [{card-id :id}]
+                  DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
+                  Card          [{card-id-1 :id}   {:name "Test Card 1"}]
+                  Card          [{card-id-2 :id}   {:name "Test Card 2"}]]
+    ;; first result is the unmodified dashcard
+    ;; second is the return value from the update call
+    ;; third is to validate db captured everything
+    [(remove-ids-and-timestamps (retrieve-dashboard-card dashcard-id))
+     (remove-ids-and-timestamps (update-dashboard-card {:id           dashcard-id
+                                                        :actor_id     (user->id :rasta)
+                                                        :dashboard_id nil
+                                                        :card_id      nil
+                                                        :sizeX        4
+                                                        :sizeY        3
+                                                        :row          1
+                                                        :col          1
+                                                        :series       [card-id-2 card-id-1]}))
+     (remove-ids-and-timestamps (retrieve-dashboard-card dashcard-id))]))

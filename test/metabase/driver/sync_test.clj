@@ -82,7 +82,7 @@
                        :display_name       "Id"
                        :base_type          :IntegerField
                        :visibility_type    :normal
-                       :fk_target_field_id nil
+                       :fk_target_field_id nil}
                       {:description        nil
                        :special_type       nil
                        :name               "studio"
@@ -95,7 +95,7 @@
                        :base_type          :TextField
                        :visibility_type    :normal
                        :fk_target_field_id nil}
-                                                {:description       nil
+                      {:description        nil
                        :special_type       nil
                        :name               "title"
                        :active             true
@@ -196,12 +196,13 @@
                       :base_type          :TextField
                       :visibility_type    :normal
                       :fk_target_field_id nil}]}
-  (tu/with-temp Database [fake-db]
-    (tu/with-temp Table [fake-table {:name   "movie"
-                                     :schema "default"
-                                     :db_id  (:id fake-db)}]
-      (sync/sync-table! (SyncTestDriver.) fake-table)
-      (table-details (sel :one Table, :id (:id fake-table))))))
+  (tu/with-temp* [Database [fake-db]
+                  Table    [fake-table {:name   "movie"
+                                        :schema "default"
+                                        :db_id  (:id fake-db)}]]
+    (sync/sync-table! (SyncTestDriver.) fake-table)
+
+    (table-details (sel :one Table, :id (:id fake-table)))))
 
 
 ;; ## Test that we will remove field-values when they aren't appropriate
@@ -209,16 +210,16 @@
 (expect
   [[1 2 3]
    [1 2 3]]
-  (tu/with-temp Database [fake-db]
-    (tu/with-temp Table [fake-table {:db_id (:id fake-db), :name "movie", :schema "default"}]
-      (sync/sync-table! (SyncTestDriver.) fake-table)
-      (let [field-id (sel :one :id Field, :table_id (:id fake-table), :name "title")]
-        (tu/with-temp FieldValues [_ {:field_id field-id
-                                      :values   "[1,2,3]"}]
-          (let [initial-field-values (sel :one :field [FieldValues :values], :field_id field-id)]
-            (sync/sync-table! (SyncTestDriver.) fake-table)
-            [initial-field-values
-             (sel :one :field [FieldValues :values], :field_id field-id)]))))))
+  (tu/with-temp* [Database [fake-db]
+                  Table    [fake-table {:db_id (:id fake-db), :name "movie", :schema "default"}]]
+    (sync/sync-table! (SyncTestDriver.) fake-table)
+    (let [field-id (sel :one :id Field, :table_id (:id fake-table), :name "title")]
+      (tu/with-temp FieldValues [_ {:field_id field-id
+                                    :values   "[1,2,3]"}]
+        (let [initial-field-values (sel :one :field [FieldValues :values], :field_id field-id)]
+          (sync/sync-table! (SyncTestDriver.) fake-table)
+          [initial-field-values
+           (sel :one :field [FieldValues :values], :field_id field-id)])))))
 
 
 ;; ## Individual Helper Fns

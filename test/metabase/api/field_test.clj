@@ -158,11 +158,11 @@
 (expect
   ["Invalid Request."
    nil]
-  (tu/with-temp Database [{database-id :id}]
-    (tu/with-temp Table [{table-id :id} {:db_id database-id}]
-      (tu/with-temp Field [{field-id :id} {:table_id table-id}]
-        [((user->client :crowberto) :put 400 (str "field/" field-id) {:special_type :timestamp_seconds})
-         (db/sel :one :field [Field :special_type], :id field-id)]))))
+  (tu/with-temp* [Database [{database-id :id}]
+                  Table    [{table-id :id} {:db_id database-id}]
+                  Field    [{field-id :id} {:table_id table-id}]]
+    [((user->client :crowberto) :put 400 (str "field/" field-id) {:special_type :timestamp_seconds})
+     (db/sel :one :field [Field :special_type], :id field-id)]))
 
 
 (defn- field->field-values

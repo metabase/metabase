@@ -1,37 +1,33 @@
 (ns metabase.models.metric-test
-  (:require [clojure.tools.macro :refer [symbol-macrolet]]
-            [expectations :refer :all]
+  (:require [expectations :refer :all]
             (metabase.models [database :refer [Database]]
                              [hydrate :refer :all]
                              [metric :refer :all]
                              [table :refer [Table]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :as tu]))
+            [metabase.test.util :as tu]
+            [metabase.util :as u]))
 
-(defn user-details
+(defn- user-details
   [username]
-  (-> (fetch-user username)
-      (dissoc :date_joined :last_login)))
+  (dissoc (fetch-user username) :date_joined :last_login))
 
-(defn metric-details
+(defn- metric-details
   [{:keys [creator] :as metric}]
-  (-> metric
-      (dissoc :id :table_id :created_at :updated_at)
-      (assoc :creator (dissoc creator :date_joined :last_login))))
+  (-> (dissoc metric :id :table_id :created_at :updated_at)
+      (update :creator (u/rpartial dissoc :date_joined :last_login))))
 
-(defn create-metric-then-select
+(defn- create-metric-then-select!
   [table name description creator definition]
-  (-> (create-metric table name description creator definition)
-      metric-details))
+  (metric-details (create-metric! table name description creator definition)))
 
-(defn update-metric-then-select
+(defn- update-metric-then-select!
   [metric]
-  (-> (update-metric metric (user->id :crowberto))
-      metric-details))
+  (metric-details (update-metric! metric (user->id :crowberto))))
 
 
-;; create-metric
+;; create-metric!
 (expect
   {:creator_id  (user->id :rasta)
    :creator     (user-details :rasta)
@@ -39,48 +35,41 @@
    :description nil
    :is_active   true
    :definition  {:clause ["a" "b"]}}
-  (tu/with-temp Database [{database-id :id}]
-    (tu/with-temp Table [{:keys [id]} {:db_id database-id}]
-      (create-metric-then-select id "I only want *these* things" nil (user->id :rasta) {:clause ["a" "b"]}))))
+  (tu/with-temp* [Database [{database-id :id}]
+                  Table    [{:keys [id]} {:db_id database-id}]]
+    (create-metric-then-select! id "I only want *these* things" nil (user->id :rasta) {:clause ["a" "b"]})))
 
 
 ;; exists-metric?
 (expect
   [true
    false]
-  (tu/with-temp Database [{database-id :id}]
-    (tu/with-temp Table [{:keys [id]} {:db_id database-id}]
-      (tu/with-temp Metric [{:keys [id]} {:creator_id  (user->id :rasta)
-                                          :table_id    id
-                                          :name        "Ivory Tower"
-                                          :description "All the glorious things..."
-                                          :definition  {:database 45
-                                                        :query    {:filter ["yay"]}}}]
-        [(exists-metric? id)
-         (exists-metric? 34)]))))
+  (tu/with-temp* [Database [{database-id :id}]
+                  Table    [{table-id :id}  {:db_id database-id}]
+                  Metric   [{metric-id :id} {:table_id   table-id
+                                             :definition {:database 45
+                                                          :query    {:filter ["yay"]}}}]]
+    [(exists-metric? metric-id)
+     (exists-metric? 34)]))
 
 
 ;; retrieve-metric
 (expect
   {:creator_id   (user->id :rasta)
    :creator      (user-details :rasta)
-   :name         "Ivory Tower"
-   :description  "All the glorious things..."
+   :name         "Toucans in the rainforest"
+   :description  "Lookin' for a blueberry"
    :is_active    true
    :definition   {:database 45
                   :query    {:filter ["yay"]}}}
-  (tu/with-temp Database [{database-id :id}]
-    (tu/with-temp Table [{:keys [id]} {:db_id database-id}]
-      (tu/with-temp Metric [{:keys [id]} {:creator_id  (user->id :rasta)
-                                          :table_id    id
-                                          :name        "Ivory Tower"
-                                          :description "All the glorious things..."
-                                          :definition  {:database 45
-                                                        :query    {:filter ["yay"]}}}]
-        (let [{:keys [creator] :as metric} (retrieve-metric id)]
-          (-> metric
-              (dissoc :id :table_id :created_at :updated_at)
-              (assoc :creator (dissoc creator :date_joined :last_login))))))))
+  (tu/with-temp* [Database [{database-id :id}]
+                  Table    [{table-id :id}  {:db_id database-id}]
+                  Metric   [{metric-id :id} {:table_id    table-id
+                                             :definition  {:database 45
+                                                           :query    {:filter ["yay"]}}}]]
+    (let [{:keys [creator] :as metric} (retrieve-metric metric-id)]
+      (update (dissoc metric :id :table_id :created_at :updated_at)
+              :creator (u/rpartial dissoc :date_joined :last_login)))))
 
 
 ;; retrieve-segements
@@ -91,32 +80,19 @@
     :description  nil
     :is_active    true
     :definition   {}}]
-  (tu/with-temp Database [{database-id :id}]
-    (tu/with-temp Table [{table-id1 :id} {:db_id database-id}]
-      (tu/with-temp Table [{table-id2 :id} {:db_id database-id}]
-        (tu/with-temp Metric [{segement-id1 :id} {:creator_id  (user->id :rasta)
-                                                  :table_id    table-id1
-                                                  :name        "Metric 1"
-                                                  :definition  {}}]
-          (tu/with-temp Metric [{metric-id2 :id} {:creator_id  (user->id :rasta)
-                                                  :table_id    table-id2
-                                                  :name        "Metric 2"
-                                                  :definition  {}}]
-            (tu/with-temp Metric [{metric-id3 :id} {:creator_id  (user->id :rasta)
-                                                    :table_id    table-id1
-                                                    :name        "Metric 3"
-                                                    :is_active   false
-                                                    :definition  {}}]
-              (let [metrics (retrieve-metrics table-id1)]
-                (assert (= 1 (count metrics)))
-                (->> metrics
-                     (mapv #(into {} %))                      ; expectations doesn't compare our record type properly
-                     (mapv #(dissoc % :id :table_id :created_at :updated_at))
-                     (mapv (fn [{:keys [creator] :as metric}]
-                             (assoc metric :creator (dissoc creator :date_joined :last_login)))))))))))))
+  (tu/with-temp* [Database [{database-id :id}]
+                  Table    [{table-id-1 :id}    {:db_id database-id}]
+                  Table    [{table-id-2 :id}    {:db_id database-id}]
+                  Metric   [{segement-id-1 :id} {:table_id table-id-1, :name "Metric 1", :description nil}]
+                  Metric   [{metric-id-2 :id}   {:table_id table-id-2}]
+                  Metric   [{metric-id3 :id}    {:table_id table-id-1, :is_active false}]]
+    (doall (for [metric (u/prog1 (retrieve-metrics table-id-1)
+                          (assert (= 1 (count <>))))]
+             (update (dissoc (into {} metric) :id :table_id :created_at :updated_at)
+                     :creator (u/rpartial dissoc :date_joined :last_login))))))
 
 
-;; update-metric
+;; update-metric!
 ;; basic update.  we are testing several things here
 ;;  1. ability to update the Metric name
 ;;  2. creator_id cannot be changed
@@ -131,23 +107,19 @@
    :is_active    true
    :definition   {:database 2
                   :query    {:filter ["not" "the toucans you're looking for"]}}}
-  (tu/with-temp Database [{database-id :id}]
-    (tu/with-temp Table [{:keys [id]} {:db_id database-id}]
-      (tu/with-temp Metric [{:keys [id]} {:creator_id  (user->id :rasta)
-                                          :table_id    id
-                                          :name        "Toucans in the rainforest"
-                                          :description "Lookin' for a blueberry"
-                                          :definition  {}}]
-        (update-metric-then-select {:id          id
-                                    :name        "Costa Rica"
-                                    :description nil
-                                    :creator_id  (user->id :crowberto)
-                                    :table_id    456
-                                    :definition  {:database 2
-                                                  :query    {:filter ["not" "the toucans you're looking for"]}}
-                                    :revision_message "Just horsing around"})))))
+  (tu/with-temp* [Database [{database-id :id}]
+                  Table  [{table-id :id}  {:db_id database-id}]
+                  Metric [{metric-id :id} {:table_id table-id}]]
+    (update-metric-then-select! {:id               metric-id
+                                :name             "Costa Rica"
+                                :description      nil
+                                :creator_id       (user->id :crowberto)
+                                :table_id         456
+                                :definition       {:database 2
+                                                   :query    {:filter ["not" "the toucans you're looking for"]}}
+                                :revision_message "Just horsing around"})))
 
-;; delete-metric
+;; delete-metric!
 (expect
   {:creator_id   (user->id :rasta)
    :creator      (user-details :rasta)
@@ -155,15 +127,11 @@
    :description  "Lookin' for a blueberry"
    :is_active    false
    :definition   {}}
-  (tu/with-temp Database [{database-id :id}]
-    (tu/with-temp Table [{:keys [id]} {:db_id database-id}]
-      (tu/with-temp Metric [{:keys [id]} {:creator_id  (user->id :rasta)
-                                          :table_id    id
-                                          :name        "Toucans in the rainforest"
-                                          :description "Lookin' for a blueberry"
-                                          :definition  {}}]
-        (delete-metric id (user->id :crowberto) "revision message")
-        (metric-details (retrieve-metric id))))))
+  (tu/with-temp* [Database [{database-id :id}]
+                  Table    [{table-id :id}  {:db_id database-id}]
+                  Metric   [{metric-id :id} {:table_id table-id}]]
+    (delete-metric! metric-id (user->id :crowberto) "revision message")
+    (metric-details (retrieve-metric metric-id))))
 
 
 ;; ## Metric Revisions
@@ -180,17 +148,14 @@
    :definition  {:aggregation ["count"]
                  :filter      ["AND" [">" 4 "2014-10-19"]]}
    :is_active   true}
-  (tu/with-temp Database [{database-id :id}]
-    (tu/with-temp Table [{table-id :id} {:db_id database-id}]
-      (tu/with-temp Metric [metric {:creator_id  (user->id :rasta)
-                                    :table_id    table-id
-                                    :name        "Toucans in the rainforest"
-                                    :description "Lookin' for a blueberry"
-                                    :definition  {:aggregation ["count"]
-                                                  :filter      ["AND" [">" 4 "2014-10-19"]]}}]
-        (-> (serialize-metric Metric (:id metric) metric)
-            (update :id boolean)
-            (update :table_id boolean))))))
+  (tu/with-temp* [Database [{database-id :id}]
+                  Table    [{table-id :id} {:db_id database-id}]
+                  Metric   [metric         {:table_id   table-id
+                                            :definition {:aggregation ["count"]
+                                                         :filter      ["AND" [">" 4 "2014-10-19"]]}}]]
+    (-> (serialize-metric Metric (:id metric) metric)
+        (update :id boolean)
+        (update :table_id boolean))))
 
 ;; diff-metrics
 
@@ -201,16 +166,14 @@
                  :after  "BBB"}
    :name        {:before "Toucans in the rainforest"
                  :after  "Something else"}}
-  (tu/with-temp Database [{database-id :id}]
-    (tu/with-temp Table [{:keys [id]} {:db_id database-id}]
-      (tu/with-temp Metric [metric {:creator_id  (user->id :rasta)
-                                    :table_id    id
-                                    :name        "Toucans in the rainforest"
-                                    :description "Lookin' for a blueberry"
-                                    :definition  {:filter ["AND" [">" 4 "2014-10-19"]]}}]
-        (diff-metrics Metric metric (assoc metric :name "Something else"
-                                                  :description "BBB"
-                                                  :definition {:filter ["AND" ["BETWEEN" 4 "2014-07-01" "2014-10-19"]]}))))))
+  (tu/with-temp* [Database [{database-id :id}]
+                  Table    [{table-id :id} {:db_id database-id}]
+                  Metric   [metric         {:table_id   table-id
+                                            :definition {:filter ["AND" [">" 4 "2014-10-19"]]}}]]
+    (diff-metrics Metric metric (assoc metric
+                                       :name        "Something else"
+                                       :description "BBB"
+                                       :definition  {:filter ["AND" ["BETWEEN" 4 "2014-07-01" "2014-10-19"]]}))))
 
 ;; test case where definition doesn't change
 (expect
