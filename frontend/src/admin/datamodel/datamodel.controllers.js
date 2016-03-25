@@ -11,8 +11,8 @@ angular
     'metabase.directives',
     'metabase.forms'
 ])
-.controller('MetadataEditor', ['$scope', '$route', '$routeParams', '$location', '$q', '$timeout', 'databases', 'Metabase', 'ForeignKey', 'Segment', 'Metric',
-function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metabase, ForeignKey, Segment, Metric) {
+.controller('MetadataEditor', ['$scope', '$route', '$routeParams', '$location', '$q', '$timeout', 'databases', 'Metabase', 'Segment', 'Metric',
+function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metabase, Segment, Metric) {
     // inject the React component to be rendered
     $scope.MetadataEditor = MetadataEditor;
 
