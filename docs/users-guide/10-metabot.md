@@ -1,8 +1,8 @@
 # Getting answers in Slack with Metabot
 
-You can already send data to Slack on  a set schedule via [Pulses](http://www.metabase.com/docs/latest/users-guide/07-pulses) but what about when you need an answer right now?. Say hello to Metabot.
+You can already send data to Slack on  a set schedule via [Pulses](http://www.metabase.com/docs/latest/users-guide/07-pulses) but what about when you need an answer right now? Say hello to Metabot.
 
-Metabot helps add context to conversations you’re having in Slack by letting you see results from Metabase as part of the conversation.
+Metabot helps add context to conversations you’re having in Slack by letting you insert results from Metabase.
 
 ## Connecting to Slack.
 To use Metabot with Slack you’ll first need to connect Metabase to your Slack with an API token.
@@ -21,11 +21,11 @@ If you ever need help remembering what Metabot can do, just type ```metabot help
 ## Showing questions
 
 To see a question from Metabase in Slack type
-“metabot show” and then specify the name of a saved question. If you have several similarly named questions Metabot will ask you to differentiate between the two by typing the number next to the name.
+```metabot show "<question-name>"``` where question name is the title of one of saved questions. If you have several similarly named questions Metabot will ask you to differentiate between the two by typing the number next to the name.
 
 ![Metabot similar](images/metabot/MetabotSimilarItems.png)
 
-That number is the ID number of the question in Metabase and if you find yourself using the same question over and over again you can save a bit of time by typing “metabot show 19”
+That number is the ID number of the question in Metabase and if you find yourself using the same question over and over again you can save a bit of time by typing “metabot show 19.”
 
 ![Metabot show](images/metabot/MetabotShow.png)
 
