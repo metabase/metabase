@@ -26,7 +26,7 @@ export default class LegendItem extends Component {
         return (
             <a
                 href={href}
-                className={cx(className, "LegendItem", "no-decoration flex align-center", { mr1: showTitle, muted: isMuted })}
+                className={cx(className, "LegendItem", "no-decoration flex align-center fullscreen-normal-text fullscreen-night-text", { mr1: showTitle, muted: isMuted })}
                 style={{ overflowX: "hidden", flex: "0 1 auto" }}
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}

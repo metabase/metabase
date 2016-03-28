@@ -12,6 +12,8 @@ import { formatValue } from "metabase/lib/formatting";
 
 import * as colors from "metabase/lib/colors";
 
+import cx from "classnames";
+
 import d3 from "d3";
 import _ from "underscore";
 
@@ -133,7 +135,7 @@ export default class PieChart extends Component {
             >
                 <div className={styles.ChartAndDetail}>
                     <div ref="detail" className={styles.Detail}>
-                        <div className={styles.Value}>{value}</div>
+                        <div className={cx(styles.Value, "fullscreen-normal-text fullscreen-night-text")}>{value}</div>
                         <div className={styles.Title}>{title}</div>
                     </div>
                     <div className={styles.Chart}>
