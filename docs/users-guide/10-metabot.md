@@ -5,7 +5,7 @@ You can already send data to Slack on  a set schedule via [Pulses](http://www.me
 Metabot helps add context to conversations you’re having in Slack by letting you see results from Metabase as part of the conversation.
 
 ## Connecting to Slack.
-To use Metabot with slack you’ll first need to connect Metabase to your Slack with an API token.
+To use Metabot with Slack you’ll first need to connect Metabase to your Slack with an API token.
 
 See [Setting up Slack](http://www.metabase.com/docs/v0.15.1/administration-guide/07-setting-up-slack) for more information.
 
