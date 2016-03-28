@@ -14,26 +14,31 @@ See [Setting up Slack](http://www.metabase.com/docs/v0.15.1/administration-guide
 
 Metabot can show individual questions and also lists of questions that have already been asked in Metabase.
 
-If you ever need help remembering what Metabot can do, just type “metabot help” in Slack.
+If you ever need help remembering what Metabot can do, just type ```metabot help``` in Slack.
 
-<help screenshot>
+![Metabot help](images/metabot/MetabotHelp.png)
 
 ## Showing questions
 
 To see a question from Metabase in Slack type
 “metabot show” and then specify the name of a saved question. If you have several similarly named questions Metabot will ask you to differentiate between the two by typing the number next to the name.
 
-<similar items screenshot>
+![Metabot similar](images/metabot/MetabotSimilarItems.png)
 
 That number is the ID number of the question in Metabase and if you find yourself using the same question over and over again you can save a bit of time by typing “metabot show 19”
 
+![Metabot show](images/metabot/MetabotShow.png)
+
 ## Listing questions
-…
+If you don’t have a sense of which questions you want to view in  Slack, you can type ```metabot list``` to get a list of recent questions from your Metabase.
+
+![Metabot show](images/metabot/MetabotList.png)
+
 
 ## To review
 
 - [Connect to Slack](http://www.metabase.com/docs/latest/users-guide/07-pulses) to start using Metabot.
-- Show data from Metabase in Slack using “metabot show <question-id>”
-- Get a list of questions by typing “metabot list”
-- Search for questions by typing “metabot show <search-term>”
-- ```metabot help``` lets you see everything metabot can do if you forget or need more information
+- Show data from Metabase in Slack using ```metabot show <question-id>```
+- Search for questions by typing ```metabot show <search-term>```
+- Get a list of questions by typing ```metabot list```
+- ```metabot help``` lets you see everything Metabot can do if you forget or need more information
