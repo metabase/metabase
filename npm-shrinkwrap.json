@@ -36,7 +36,7 @@
               "version": "1.1.1",
               "dependencies": {
                 "ansi-styles": {
-                  "version": "2.2.0",
+                  "version": "2.2.1",
                   "dependencies": {
                     "color-convert": {
                       "version": "1.0.0"
@@ -315,7 +315,7 @@
                   "version": "1.1.1",
                   "dependencies": {
                     "ansi-styles": {
-                      "version": "2.2.0",
+                      "version": "2.2.1",
                       "dependencies": {
                         "color-convert": {
                           "version": "1.0.0"
@@ -614,7 +614,7 @@
                       "version": "1.1.1",
                       "dependencies": {
                         "ansi-styles": {
-                          "version": "2.2.0",
+                          "version": "2.2.1",
                           "dependencies": {
                             "color-convert": {
                               "version": "1.0.0"
@@ -814,7 +814,7 @@
                       "version": "1.1.1",
                       "dependencies": {
                         "ansi-styles": {
-                          "version": "2.2.0",
+                          "version": "2.2.1",
                           "dependencies": {
                             "color-convert": {
                               "version": "1.0.0"
@@ -979,7 +979,7 @@
                       "version": "1.1.1",
                       "dependencies": {
                         "ansi-styles": {
-                          "version": "2.2.0",
+                          "version": "2.2.1",
                           "dependencies": {
                             "color-convert": {
                               "version": "1.0.0"
@@ -1109,7 +1109,7 @@
                               "version": "1.1.1",
                               "dependencies": {
                                 "ansi-styles": {
-                                  "version": "2.2.0",
+                                  "version": "2.2.1",
                                   "dependencies": {
                                     "color-convert": {
                                       "version": "1.0.0"
@@ -1216,7 +1216,7 @@
                               "version": "1.1.1",
                               "dependencies": {
                                 "ansi-styles": {
-                                  "version": "2.2.0",
+                                  "version": "2.2.1",
                                   "dependencies": {
                                     "color-convert": {
                                       "version": "1.0.0"
@@ -1339,7 +1339,7 @@
                           "version": "1.1.1",
                           "dependencies": {
                             "ansi-styles": {
-                              "version": "2.2.0",
+                              "version": "2.2.1",
                               "dependencies": {
                                 "color-convert": {
                                   "version": "1.0.0"
@@ -1486,7 +1486,7 @@
                           "version": "1.1.1",
                           "dependencies": {
                             "ansi-styles": {
-                              "version": "2.2.0",
+                              "version": "2.2.1",
                               "dependencies": {
                                 "color-convert": {
                                   "version": "1.0.0"
@@ -1631,7 +1631,7 @@
                           "version": "1.1.1",
                           "dependencies": {
                             "ansi-styles": {
-                              "version": "2.2.0",
+                              "version": "2.2.1",
                               "dependencies": {
                                 "color-convert": {
                                   "version": "1.0.0"
@@ -1749,7 +1749,7 @@
                           "version": "1.1.1",
                           "dependencies": {
                             "ansi-styles": {
-                              "version": "2.2.0",
+                              "version": "2.2.1",
                               "dependencies": {
                                 "color-convert": {
                                   "version": "1.0.0"
@@ -1891,7 +1891,7 @@
                           "version": "1.1.1",
                           "dependencies": {
                             "ansi-styles": {
-                              "version": "2.2.0",
+                              "version": "2.2.1",
                               "dependencies": {
                                 "color-convert": {
                                   "version": "1.0.0"
@@ -2001,7 +2001,7 @@
                           "version": "1.1.1",
                           "dependencies": {
                             "ansi-styles": {
-                              "version": "2.2.0",
+                              "version": "2.2.1",
                               "dependencies": {
                                 "color-convert": {
                                   "version": "1.0.0"
@@ -2136,7 +2136,7 @@
                           "version": "1.1.1",
                           "dependencies": {
                             "ansi-styles": {
-                              "version": "2.2.0",
+                              "version": "2.2.1",
                               "dependencies": {
                                 "color-convert": {
                                   "version": "1.0.0"
@@ -2297,7 +2297,7 @@
                       "version": "1.1.1",
                       "dependencies": {
                         "ansi-styles": {
-                          "version": "2.2.0",
+                          "version": "2.2.1",
                           "dependencies": {
                             "color-convert": {
                               "version": "1.0.0"
@@ -2432,7 +2432,7 @@
                           "version": "1.1.1",
                           "dependencies": {
                             "ansi-styles": {
-                              "version": "2.2.0",
+                              "version": "2.2.1",
                               "dependencies": {
                                 "color-convert": {
                                   "version": "1.0.0"
@@ -2579,7 +2579,7 @@
                           "version": "1.1.1",
                           "dependencies": {
                             "ansi-styles": {
-                              "version": "2.2.0",
+                              "version": "2.2.1",
                               "dependencies": {
                                 "color-convert": {
                                   "version": "1.0.0"
@@ -2726,7 +2726,7 @@
                               "version": "1.1.1",
                               "dependencies": {
                                 "ansi-styles": {
-                                  "version": "2.2.0",
+                                  "version": "2.2.1",
                                   "dependencies": {
                                     "color-convert": {
                                       "version": "1.0.0"
@@ -2881,7 +2881,7 @@
                       "version": "1.1.1",
                       "dependencies": {
                         "ansi-styles": {
-                          "version": "2.2.0",
+                          "version": "2.2.1",
                           "dependencies": {
                             "color-convert": {
                               "version": "1.0.0"
@@ -3071,7 +3071,7 @@
                               "version": "1.1.1",
                               "dependencies": {
                                 "ansi-styles": {
-                                  "version": "2.2.0",
+                                  "version": "2.2.1",
                                   "dependencies": {
                                     "color-convert": {
                                       "version": "1.0.0"
@@ -3263,7 +3263,7 @@
                               "version": "1.1.1",
                               "dependencies": {
                                 "ansi-styles": {
-                                  "version": "2.2.0",
+                                  "version": "2.2.1",
                                   "dependencies": {
                                     "color-convert": {
                                       "version": "1.0.0"
@@ -3395,7 +3395,7 @@
                                   "version": "1.1.1",
                                   "dependencies": {
                                     "ansi-styles": {
-                                      "version": "2.2.0",
+                                      "version": "2.2.1",
                                       "dependencies": {
                                         "color-convert": {
                                           "version": "1.0.0"
@@ -3510,7 +3510,7 @@
                               "version": "1.1.1",
                               "dependencies": {
                                 "ansi-styles": {
-                                  "version": "2.2.0",
+                                  "version": "2.2.1",
                                   "dependencies": {
                                     "color-convert": {
                                       "version": "1.0.0"
@@ -3631,7 +3631,7 @@
                               "version": "1.1.1",
                               "dependencies": {
                                 "ansi-styles": {
-                                  "version": "2.2.0",
+                                  "version": "2.2.1",
                                   "dependencies": {
                                     "color-convert": {
                                       "version": "1.0.0"
@@ -3741,7 +3741,7 @@
                               "version": "1.1.1",
                               "dependencies": {
                                 "ansi-styles": {
-                                  "version": "2.2.0",
+                                  "version": "2.2.1",
                                   "dependencies": {
                                     "color-convert": {
                                       "version": "1.0.0"
@@ -3933,7 +3933,7 @@
                               "version": "1.1.1",
                               "dependencies": {
                                 "ansi-styles": {
-                                  "version": "2.2.0",
+                                  "version": "2.2.1",
                                   "dependencies": {
                                     "color-convert": {
                                       "version": "1.0.0"
@@ -4076,7 +4076,7 @@
                                   "version": "1.1.1",
                                   "dependencies": {
                                     "ansi-styles": {
-                                      "version": "2.2.0",
+                                      "version": "2.2.1",
                                       "dependencies": {
                                         "color-convert": {
                                           "version": "1.0.0"
@@ -4186,7 +4186,7 @@
                                   "version": "1.1.1",
                                   "dependencies": {
                                     "ansi-styles": {
-                                      "version": "2.2.0",
+                                      "version": "2.2.1",
                                       "dependencies": {
                                         "color-convert": {
                                           "version": "1.0.0"
@@ -4567,7 +4567,7 @@
                               "version": "1.1.1",
                               "dependencies": {
                                 "ansi-styles": {
-                                  "version": "2.2.0",
+                                  "version": "2.2.1",
                                   "dependencies": {
                                     "color-convert": {
                                       "version": "1.0.0"
@@ -4749,7 +4749,7 @@
           "version": "1.1.1",
           "dependencies": {
             "ansi-styles": {
-              "version": "2.2.0",
+              "version": "2.2.1",
               "dependencies": {
                 "color-convert": {
                   "version": "1.0.0"
