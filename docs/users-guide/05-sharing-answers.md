@@ -36,7 +36,7 @@ Once you add a question to your dashboard, it’ll look something like this:
 ### Arranging cards
 Each question on a dashboard is in its own card that you can move around or resize as you see fit; just click the edit icon that looks like a pencil in the top-right of the dashboard screen.  
 
-Once you're in edit mode you'll see a grid appear. You move and resize the cards in the dashboard to your liking and they'll snap to the grid.
+Once you're in edit mode you'll see a grid appear. You can move and resize the cards in the dashboard to your liking and they'll snap to the grid.
 
 ![Editing dashboard](images/dashboards/DashboardEdit.png)
 
@@ -54,11 +54,11 @@ To delete a dashboard, click the pencil-looking **Edit** icon in the top right o
 
 ## Fullscreen dashboards
 
-After you've made your ideal dashboard you may want to put it on a TV or present it in some other visible space to help keep your team up to date through out the day.
+After you've made your ideal dashboard you may want to put it on a TV or present it in some other visible space to help keep your team up-to-date throughout the day.
 
 To enter fullscreen mode just click the fullscreen icon in the top right of the dashboard.
 
-Once you've entered fullscreen mode you can also switch the dashboard into "Night mode" to
+Once you've entered fullscreen mode you can also switch the dashboard into "Night mode" for higher contrast.
 
 ![Night mode](images/dashboards/DashboardNightMode.png)
 
