@@ -193,7 +193,7 @@ export default class LineAreaBarChart extends Component {
         return (
             <div className={cx("flex flex-column p1", this.getHoverClasses(), this.props.className)}>
                 { (isDashboard && isMultiseries) &&
-                    <a href={card.id && Urls.card(card.id)} className="Card-title pt1 px1 flex-no-shrink no-decoration h3 text-bold" style={{fontSize: '1em'}}>{card.name}</a>
+                    <a href={card.id && Urls.card(card.id)} className="Card-title pt1 px1 flex-no-shrink no-decoration h3 text-bold fullscreen-night-text fullscreen-normal-text" style={{fontSize: '1em'}}>{card.name}</a>
                 }
                 { (isDashboard || isMultiseries) &&
                     <LegendHeader
