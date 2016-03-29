@@ -1,6 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
 import DataReferenceQueryButton from './DataReferenceQueryButton.jsx';
+import { createCard } from "metabase/lib/card";
 import { createQuery } from "metabase/lib/query";
 import { foreignKeyCountsByOriginTable } from 'metabase/lib/schema_metadata';
 import inflection from 'inflection';
@@ -23,10 +24,7 @@ export default class DataReferenceTable extends Component {
         query: PropTypes.object.isRequired,
         loadTableFn: PropTypes.func.isRequired,
         closeFn: PropTypes.func.isRequired,
-        runQueryFn: PropTypes.func.isRequired,
-        setQueryFn: PropTypes.func.isRequired,
-        setDatabaseFn: PropTypes.func.isRequired,
-        setSourceTableFn: PropTypes.func.isRequired
+        setCardAndRun: PropTypes.func.isRequired
     };
 
     componentWillMount() {
@@ -47,9 +45,9 @@ export default class DataReferenceTable extends Component {
     }
 
     setQueryAllRows() {
-        var query = createQuery("query", this.state.table.db_id, this.state.table.id);
-        this.props.setQueryFn(query);
-        this.props.runQueryFn();
+        let card = createCard();
+        card.dataset_query = createQuery("query", this.state.table.db_id, this.state.table.id);
+        this.props.setCardAndRun(card);
     }
 
     render() {
