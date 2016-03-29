@@ -45,17 +45,18 @@ export default class TableSimple extends Component {
         let headerHeight = ReactDOM.findDOMNode(this.refs.header).getBoundingClientRect().height;
         let footerHeight = this.refs.footer ? ReactDOM.findDOMNode(this.refs.footer).getBoundingClientRect().height : 0;
         let rowHeight = ReactDOM.findDOMNode(this.refs.firstRow).getBoundingClientRect().height + 1;
-        let pageSize = Math.floor((this.props.height - headerHeight - footerHeight) / rowHeight) || 1;
+        let pageSize = Math.max(1, Math.floor((this.props.height - headerHeight - footerHeight) / rowHeight));
+        console.log(this.props.height, headerHeight, footerHeight, rowHeight)
         if (this.state.pageSize !== pageSize) {
             this.setState({ pageSize });
         }
     }
 
     render() {
-        const { series } = this.props;
+        const { data } = this.props;
         const { page, pageSize, sortColumn, sortDescending } = this.state;
 
-        let { rows, cols } = series[0].data;
+        let { rows, cols } = data;
 
         let start = pageSize * page;
         let end = Math.min(rows.length - 1, pageSize * (page + 1) - 1);
