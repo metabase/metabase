@@ -19,26 +19,31 @@ The core team runs a pretty well defined product process. It is actively being t
 
 ### A) Identify product needs from the community
 
-We actively look for new feature ideas from our community, user base and our own use of Metabase internally. We concentrate on the underlying *problem* or *need*  as opposed to requests for specific features. While sometimes suggested features are built as requested, often we find that they involve changes to existing features, and perhaps an entirely different solution to the underlying problem. 
+We actively look for new feature ideas from our community, user base and our own use of Metabase internally. We concentrate on the underlying *problem* or *need*  as opposed to requests for specific features. While sometimes suggested features are built as requested, often we find that they involve changes to existing features, and perhaps an entirely different solution to the underlying problem. These will typically be collected in a number of issues, and tagged [Proposal](https://github.com/metabase/metabase/labels/Proposal)
 
 ### B) Synthesize these needs into a concrete feature
 
-We typically will collect a group of issues or suggestions into a new topline feature concept. Typically we'll create a working document that collects all "Open Questions" regarding to what the feature is meant to do, and more importantly not do. We'll chat with our users, maybe do in depth interviews and generally try to tightly define the feature.
+We typically will collect a group of issues or suggestions into a new topline feature concept. Typically we'll create a working document that collects all "Open Questions" regarding to what the feature is meant to do, and more importantly not do. We'll chat with our users, maybe do in depth interviews and generally try to tightly define the feature. If a feature seems like it will need time to be discussed and scoped, it will be tagged [Proposal/Being Discussed](https://github.com/metabase/metabase/labels/Proposal%2FBeing%20Discussed) to signify that it is still actively under discussion.
 
 ### C) Design the feature
 
 Once a feature has been defined, typically it will be taken on by a product designer. Here, they will produce low fi mocks, get feedback from our users and community, and iterate.
 
-Once the main UX flows have been dialed in, there will be a hi-fidelity visual design.
+Once the main UX flows have been dialed in, there will be a hi-fidelity visual design. 
 
-### D) Hand off the design to an engineer
+Features that are ready for design are are tagged [Feature/Scoped](https://github.com/metabase/metabase/labels/Feature%2FScoped). Once a feature has had a reasonably complete visual design it should be tagged [Feature/Designed](https://github.com/metabase/metabase/labels/Feature%2FDesigned).
 
-This design is then handed off to one or more engineers.
-Together with the designer who owns the feature, they will work on the feature via a Pull Request.
+### D) Build the feature
+
+Once a feature is tagged [Feature/Designed](https://github.com/metabase/metabase/labels/Feature%2FDesigned), it is considered ready to be built. A core team member (or you, awesomely helpful person that you are) can start working on it.
+Once once or more people have started to work on a feature, it should be marked 
+[Feature/In Progress](https://github.com/metabase/metabase/labels/Feature%2FIn%20Progress). Once there is a branch+some code, a pull request is opened, linked to the feature + any issues that were pulled together to inform the feature. 
 
 ### E) Verification and merging
 
-If all goes well, the feature gets coded up, verified and then the pull request gets merged! High-fives all around.
+If all goes well, the feature gets coded up, verified and then the pull request gets merged! High-fives all around. 
+
+If there are tests missing, code style concerns or specific architectural issues in the pull request, they should be fixed before merging. We have a very high bar on both code and product quality and it's important that this be maintained going forward, so please be patient with us here. 
 
 ## Ways to help:
 
@@ -66,13 +71,13 @@ By our definition, "Bugs" are situations where the program doesn't do what it wa
 
 There are a lot of docs. We often have difficulties keeping them up to date. If you are reading them and you notice inconsistencies, errors or outdated information, please help up keep them current!
 
-### Working on features that don't need visual design
+### Working on features 
 
 Some features, eg Database drivers, don't have any user facing pixels. These are a great place to start off contributing as they don't require as much communication, discussions about tradeoffs and process in general. 
 
-### Working on features that already have a visual design
-
 In situations where a design has already been done, we can always use some help. Chime in on a pull request or an issue and offer to help. 
+
+Generally speaking, any issue in [Feature/Designed](https://github.com/metabase/metabase/labels/Feature%2FDesigned) is fair game.
 
 ### #YOLO JUST SUBMIT A PR
 

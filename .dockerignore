@@ -1,0 +1,6 @@
+.babel_cache/*
+docs/*
+OSX/*
+target/*
+
+**metabase.jar

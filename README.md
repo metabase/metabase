@@ -1,5 +1,7 @@
+[![Latest Release](https://img.shields.io/github/release/metabase/metabase.svg?label=latest%20release)](https://github.com/metabase/metabase/releases)
+[![GitHub license](https://img.shields.io/badge/license-AGPL-05B8CC.svg)](https://raw.githubusercontent.com/metabase/metabase/master/LICENSE.txt)
 [![Circle CI](https://circleci.com/gh/metabase/metabase.svg?style=svg&circle-token=3ccf0aa841028af027f2ac9e8df17ce603e90ef9)](https://circleci.com/gh/metabase/metabase)
-[![Leiningen Dependencies Status](https://jarkeeper.com/metabase/metabase/status.png)](https://jarkeeper.com/metabase/metabase)
+[![Leiningen Dependencies Status](https://jarkeeper.com/metabase/metabase/status.svg)](https://jarkeeper.com/metabase/metabase)
 [![NPM Dependencies Status](https://david-dm.org/metabase/metabase.svg)](https://david-dm.org/metabase/metabase)
 
 # Overview
@@ -8,12 +10,12 @@ Metabase is an easy way to generate charts and dashboards, ask simple ad hoc que
 
 With a bit of tagging and annotation of what the tables and fields in your database mean, it can be used to provide a rich, humanized version analytics server and administration interface.
 
-For more information check out [www.metabase.com](http://www.metabase.com)
+For more information check out [www.metabase.com](http://www.metabase.com).
 
 
 # Security Disclosure
 
-Security is very important to us. If discover any issue regarding security, please disclose the information responsibly by sending an email to security@metabase.com and not by creating a github issue.
+Security is very important to us. If discover any issue regarding security, please disclose the information responsibly by sending an email to security@metabase.com and not by creating a GitHub issue.
 
 # Installation
 
@@ -56,7 +58,7 @@ For a more detailed walkthrough, check out our [Getting Started](docs/getting-st
 
 To get started with a development installation of the Metabase, follow the instructions at our [Developers Guide](docs/developers-guide.md).
 
-The take a look at our [Contribution Guide](docs/contributing.md) for information about our process and where you can fit in!
+Then take a look at our [Contribution Guide](docs/contributing.md) for information about our process and where you can fit in!
 
 # Extending and Deep Integrations
 
@@ -73,4 +75,4 @@ Unless otherwise noted, all Metabase source files are made available under the t
 
 See [LICENSE.txt](https://github.com/metabase/metabase/blob/master/LICENSE.txt) for details and exceptions.
 
-Unless otherwise noted, all files © 2015 Metabase, Inc.
+Unless otherwise noted, all files © 2016 Metabase, Inc.

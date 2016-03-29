@@ -11,7 +11,7 @@ export default class RunButton extends Component {
     };
 
     render() {
-        var runButtonText = (this.props.isRunning) ? "Loading..." : "Run query";
+        var runButtonText = (this.props.isRunning) ? "Loading..." : "Get Answer";
         var classes = cx({
             "Button": true,
             "Button--primary": true,
