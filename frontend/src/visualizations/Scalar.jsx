@@ -108,11 +108,11 @@ export default class Scalar extends Component {
         return (
             <div className={cx(className, styles.Scalar, styles[isSmall ? "small" : "large"])}>
                 <div className="Card-title absolute top right p1 px2">{actionButtons}</div>
-                <Ellipsified className={cx(styles.Value, 'ScalarValue')} tooltip={fullScalarValue} alwaysShowTooltip={fullScalarValue !== compactScalarValue}>
+                <Ellipsified className={cx(styles.Value, 'ScalarValue', 'fullscreen-normal-text', 'fullscreen-night-text')} tooltip={fullScalarValue} alwaysShowTooltip={fullScalarValue !== compactScalarValue}>
                     {compactScalarValue}
                 </Ellipsified>
                 <Ellipsified className={styles.Title} tooltip={card.name}>
-                    <a className="no-decoration" href={Urls.card(card.id)}>{card.name}</a>
+                    <a className="no-decoration fullscreen-normal-text fullscreen-night-text" href={Urls.card(card.id)}>{card.name}</a>
                 </Ellipsified>
             </div>
         );

@@ -1,4 +1,13 @@
-// Card
+const CARD_DETAIL_TEMPLATE =
+`<div class="QueryBuilder flex flex-column bg-white spread" ng-class="{ 'QueryBuilder--showDataReference': isShowingDataReference }">
+    <div id="react_qb_header"></div>
+    <div id="react_qb_editor" class="z2"></div>
+    <div id="react_qb_viz" class="flex z1"></div>
+</div>
+<div class="DataReference" id="react_data_reference"></div>
+<div id="react_qb_tutorial"></div>
+<div id="react_qbnewb_modal"></div>`;
+
 var Card = angular.module('metabase.card', [
     'ngRoute',
     'ngCookies',
@@ -10,11 +19,11 @@ var Card = angular.module('metabase.card', [
 
 Card.config(['$routeProvider', function($routeProvider) {
     $routeProvider.when('/q', {
-        templateUrl: '/app/card/partials/card_detail.html',
+        template: CARD_DETAIL_TEMPLATE,
         controller: 'CardDetail'
     });
     $routeProvider.when('/card/:cardId', {
-        templateUrl: '/app/card/partials/card_detail.html',
+        template: CARD_DETAIL_TEMPLATE,
         controller: 'CardDetail'
     });
 

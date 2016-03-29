@@ -20,4 +20,6 @@
 
 > [Visualizing multiple series](09-data-model-reference.md)
 
+> [Get answers in Slack with Metabot](10-metabot.md)
+
 Let's get started with an overview of [What Metabase does](01-what-is-metabase.md).

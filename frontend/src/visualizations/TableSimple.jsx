@@ -45,17 +45,17 @@ export default class TableSimple extends Component {
         let headerHeight = ReactDOM.findDOMNode(this.refs.header).getBoundingClientRect().height;
         let footerHeight = this.refs.footer ? ReactDOM.findDOMNode(this.refs.footer).getBoundingClientRect().height : 0;
         let rowHeight = ReactDOM.findDOMNode(this.refs.firstRow).getBoundingClientRect().height + 1;
-        let pageSize = Math.floor((this.props.height - headerHeight - footerHeight) / rowHeight) || 1;
+        let pageSize = Math.max(1, Math.floor((this.props.height - headerHeight - footerHeight) / rowHeight));
         if (this.state.pageSize !== pageSize) {
             this.setState({ pageSize });
         }
     }
 
     render() {
-        const { series } = this.props;
+        const { data } = this.props;
         const { page, pageSize, sortColumn, sortDescending } = this.state;
 
-        let { rows, cols } = series[0].data;
+        let { rows, cols } = data;
 
         let start = pageSize * page;
         let end = Math.min(rows.length - 1, pageSize * (page + 1) - 1);
@@ -71,7 +71,7 @@ export default class TableSimple extends Component {
             <div className={cx(this.props.className, "relative flex flex-column")}>
                 <div className="flex-full relative border-bottom">
                     <div className="absolute top bottom left right scroll-x scroll-show scroll-show--horizontal scroll-show--hover" style={{ overflowY: "hidden" }}>
-                        <table className={cx(styles.Table, styles.TableSimple)}>
+                        <table className={cx(styles.Table, styles.TableSimple, 'fullscreen-normal-text', 'fullscreen-night-text')}>
                             <thead ref="header">
                                 <tr>
                                     {cols.map((col, colIndex) =>
@@ -103,7 +103,7 @@ export default class TableSimple extends Component {
                     </div>
                 </div>
                 { pageSize < rows.length ?
-                    <div ref="footer" className="p1 flex flex-no-shrink flex-align-right">
+                    <div ref="footer" className="p1 flex flex-no-shrink flex-align-right fullscreen-normal-text fullscreen-night-text">
                         <span className="text-bold">Rows {start + 1}-{end + 1} of {rows.length}</span>
                         <span className={cx("text-brand-hover px1 cursor-pointer", { disabled: start === 0 })} onClick={() => this.setState({ page: page - 1 })}>
                             <Icon name="left" height={10} />
