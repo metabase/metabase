@@ -113,7 +113,7 @@
 (expect false (is-url? "http://metabasecom"))              ; no period / TLD
 (expect false (is-url? "http://.com"))                     ; no domain
 (expect false (is-url? "http://google."))                  ; no TLD
-
+(expect false (is-url? "http:/"))                          ; nil .getAuthority needs to be handled or NullPointerException
 
 ;;; ## tests for RPARTIAL
 

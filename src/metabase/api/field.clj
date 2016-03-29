@@ -38,7 +38,7 @@
    display_name    NonEmptyString}
   (let-404 [field (Field id)]
     (write-check field)
-    (let [special_type       (or special_type (:special_type field))
+    (let [special_type       (if (contains? body :special_type) special_type (:special_type field))
           visibility_type    (or visibility_type (:visibility_type field))
           fk_target_field_id (when (= :fk special_type)
                                ;; only let target field be set for :fk type fields,

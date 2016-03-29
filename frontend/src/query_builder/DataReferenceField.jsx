@@ -3,6 +3,8 @@ import React, { Component, PropTypes } from "react";
 import DataReferenceQueryButton from './DataReferenceQueryButton.jsx';
 import Icon from "metabase/components/Icon.jsx";
 import Query from "metabase/lib/query";
+import { createCard } from "metabase/lib/card";
+import { createQuery } from "metabase/lib/query";
 import { isDimension } from "metabase/lib/schema_metadata";
 import inflection from 'inflection';
 
@@ -28,9 +30,7 @@ export default class DataReferenceField extends Component {
         loadTableFn: PropTypes.func.isRequired,
         runQueryFn: PropTypes.func.isRequired,
         setQueryFn: PropTypes.func.isRequired,
-        setDatabaseFn: PropTypes.func.isRequired,
-        setSourceTableFn: PropTypes.func.isRequired,
-        setDisplayFn: PropTypes.func.isRequired
+        setCardAndRun: PropTypes.func.isRequired
     };
 
     componentWillMount() {
@@ -54,56 +54,45 @@ export default class DataReferenceField extends Component {
         }
         Query.addFilter(query.query);
         Query.updateFilter(query.query, Query.getFilters(query.query).length - 1, [null, this.props.field.id, null]);
-        this.setQuery(query, false);
+        this.props.setQueryFn(query);
     }
 
     groupBy() {
-        var query = this.setDatabaseAndTable();
+        let query = this.props.query;
         if (!Query.hasValidAggregation(query.query)) {
             Query.updateAggregation(query.query, ["rows"]);
         }
         Query.addDimension(query.query);
         Query.updateDimension(query.query, this.props.field.id, query.query.breakout.length - 1);
-        this.setQuery(query);
+        this.props.setQueryFn(query);
+        this.props.runQueryFn();
+    }
+
+    newCard() {
+        let card = createCard();
+        card.dataset_query = createQuery("query", this.state.table.db_id, this.state.table.id);
+        return card;
     }
 
     setQuerySum() {
-        var query = this.setDatabaseAndTable();
-        query.query.aggregation = ["sum", this.props.field.id];
-        query.query.breakout = [];
-        query.query.filter = [];
-        this.setQuery(query);
+        let card = this.newCard();
+        card.dataset_query.query.aggregation = ["sum", this.props.field.id];
+        this.props.setCardAndRun(card);
     }
 
     setQueryDistinct() {
-        var query = this.setDatabaseAndTable();
-        query.query.aggregation = ["rows"];
-        query.query.breakout = [this.props.field.id];
-        query.query.filter = [];
-        this.setQuery(query);
+        let card = this.newCard();
+        card.dataset_query.query.aggregation = ["rows"];
+        card.dataset_query.query.breakout = [this.props.field.id];
+        this.props.setCardAndRun(card);
     }
 
     setQueryCountGroupedBy(chartType) {
-        var query = this.setDatabaseAndTable();
-        query.query.aggregation = ["count"];
-        query.query.breakout = [this.props.field.id];
-        query.query.filter = [];
-        this.setQuery(query);
-        this.props.setDisplayFn(chartType);
-    }
-
-    setDatabaseAndTable() {
-        var query;
-        query = this.props.setDatabaseFn(this.state.table.db_id);
-        query = this.props.setSourceTableFn(this.state.table.id);
-        return query;
-    }
-
-    setQuery(query, run = true) {
-        this.props.setQueryFn(query);
-        if (run) {
-            this.props.runQueryFn();
-        }
+        let card = this.newCard();
+        card.dataset_query.query.aggregation = ["count"];
+        card.dataset_query.query.breakout = [this.props.field.id];
+        card.display = chartType;
+        this.props.setCardAndRun(card);
     }
 
     render() {
@@ -125,20 +114,21 @@ export default class DataReferenceField extends Component {
 
         // TODO: allow for filters/grouping via foreign keys
         if (!query.query || query.query.source_table == undefined || query.query.source_table === field.table_id) {
-            useForCurrentQuestion.push(
-                <li key="filter-by" className="mt1">
-                    <a className="Button Button--white text-default text-brand-hover border-brand-hover no-decoration" onClick={this.filterBy}>
-                        <Icon className="mr1" name="add" width="12px" height="12px"/> Filter by {name}
-                        </a>
-                </li>
-            );
+            // NOTE: disabled this for now because we need a way to capture the completed filter before adding it to the query, or to pop open the filter widget here?
+            // useForCurrentQuestion.push(
+            //     <li key="filter-by" className="mt1">
+            //         <a className="Button Button--white text-default text-brand-hover border-brand-hover no-decoration" onClick={this.filterBy}>
+            //             <Icon className="mr1" name="add" width="12px" height="12px"/> Filter by {name}
+            //             </a>
+            //     </li>
+            // );
 
             // current field must be a valid breakout option for this table AND cannot already be in the breakout clause of our query
-            if (validBreakout && (query.query.breakout && !_.contains(query.query.breakout, field.id))) {
+            if (validBreakout && this.state.table.id === this.props.query.query.source_table && (query.query.breakout && !_.contains(query.query.breakout, field.id))) {
                 useForCurrentQuestion.push(
                     <li key="group-by" className="mt1">
                         <a className="Button Button--white text-default text-brand-hover border-brand-hover no-decoration" onClick={this.groupBy}>
-                            <Icon className="mr2" name="add" width="12px" height="12px" /> Group by {name}
+                            <Icon className="mr1" name="add" width="12px" height="12px" /> Group by {name}
                         </a>
                     </li>
                 );

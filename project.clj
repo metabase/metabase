@@ -8,7 +8,8 @@
   :aliases {"bikeshed" ["bikeshed" "--max-line-length" "240"]
             "check-reflection-warnings" ["with-profile" "+reflection-warnings" "check"]
             "test" ["with-profile" "+expectations" "expectations"]
-            "generate-sample-dataset" ["with-profile" "+generate-sample-dataset" "run"]}
+            "generate-sample-dataset" ["with-profile" "+generate-sample-dataset" "run"]
+            "h2" ["with-profile" "+h2-shell" "run"]}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/core.async "0.2.374"]
                  [org.clojure/core.match "0.3.0-alpha4"]              ; optimized pattern matching library for Clojure
@@ -36,7 +37,7 @@
                                ring/ring-core]]
                  [com.draines/postal "1.11.4"]                        ; SMTP library
                  [com.google.apis/google-api-services-bigquery        ; Google BigQuery Java Client Library
-                  "v2-rev275-1.21.0"]
+                  "v2-rev277-1.21.0"]
                  [com.h2database/h2 "1.4.191"]                        ; embedded SQL database
                  [com.mattbertolini/liquibase-slf4j "2.0.0"]          ; Java Migrations lib
                  [com.novemberain/monger "3.0.2"]                     ; MongoDB Driver
@@ -136,4 +137,5 @@
                               :jar-name "reset-password.jar"
                               ;; Exclude everything except for reset-password specific code in the created jar
                               :jar-exclusions [#"^(?!metabase/reset_password).*$"]
-                              :target-path "reset-password-artifacts/%s"}}) ; different than ./target because otherwise lein uberjar will delete our artifacts and vice versa
+                              :target-path "reset-password-artifacts/%s"} ; different than ./target because otherwise lein uberjar will delete our artifacts and vice versa
+             :h2-shell {:main org.h2.tools.Shell}})

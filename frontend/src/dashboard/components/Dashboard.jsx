@@ -4,6 +4,7 @@ import ReactDOM from "react-dom";
 import DashboardHeader from "../components/DashboardHeader.jsx";
 import DashboardGrid from "../components/DashboardGrid.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import MetabaseAnalytics from "metabase/lib/analytics";
 
 import screenfull from "screenfull";
 
@@ -134,6 +135,7 @@ export default class Dashboard extends Component {
         if (refreshPeriod != null) {
             this._interval = setInterval(this.tickRefreshClock, TICK_PERIOD * 1000);
             this.setState({ refreshPeriod, refreshElapsed: 0 });
+            MetabaseAnalytics.trackEvent("Dashboard", "Set Refresh", refreshPeriod);
         } else {
             this.setState({ refreshPeriod: null, refreshElapsed: null });
         }

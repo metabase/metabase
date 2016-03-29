@@ -2,7 +2,6 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
-import AbsoluteContainer from "metabase/components/AbsoluteContainer.jsx";
 
 import * as charting from "metabase/visualizations/lib/CardRenderer";
 
@@ -10,9 +9,9 @@ import { isSameSeries } from "metabase/visualizations/lib/utils";
 import { getSettingsForVisualization } from "metabase/lib/visualization_settings";
 
 import dc from "dc";
+import cx from "classnames";
 
 @ExplicitSize
-@AbsoluteContainer
 export default class CardRenderer extends Component {
     static propTypes = {
         chartType: PropTypes.string.isRequired,
@@ -27,8 +26,7 @@ export default class CardRenderer extends Component {
     }
 
     componentDidMount() {
-        // avoid race condition with initial layout
-        setTimeout(() => this.renderChart());
+        this.renderChart();
     }
 
     componentDidUpdate() {
@@ -55,7 +53,11 @@ export default class CardRenderer extends Component {
 
         // reset the DOM:
         let element = parent.firstChild;
-        parent.removeChild(element);
+        if (element) {
+            parent.removeChild(element);
+        }
+
+        // create a new container element
         element = document.createElement("div");
         parent.appendChild(element);
 
@@ -80,9 +82,7 @@ export default class CardRenderer extends Component {
 
     render() {
         return (
-            <div className="Card-outer">
-                <div ref="chart"></div>
-            </div>
+            <div className={cx(this.props.className, "Card-outer")}></div>
         );
     }
 }

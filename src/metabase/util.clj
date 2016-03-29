@@ -365,8 +365,9 @@
              (when-let [^java.net.URL url (try (java.net.URL. string)
                                                (catch java.net.MalformedURLException _
                                                  nil))]
-               (and (re-matches #"^https?$" (.getProtocol url))          ; these are both automatically downcased
-                    (re-matches #"^.+\..{2,}$" (.getAuthority url))))))) ; this is the part like 'google.com'. Make sure it contains at least one period and 2+ letter TLD
+               (when (and (.getProtocol url) (.getAuthority url))
+                 (and (re-matches #"^https?$" (.getProtocol url))           ; these are both automatically downcased
+                      (re-matches #"^.+\..{2,}$" (.getAuthority url)))))))) ; this is the part like 'google.com'. Make sure it contains at least one period and 2+ letter TLD
 
 (def ^:private ^:const host-up-timeout
   "Timeout (in ms) for checking if a host is available with `host-up?` and `host-port-up?`."

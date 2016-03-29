@@ -24,6 +24,6 @@ export default ComposedComponent => class extends Component {
     }
 
     render() {
-        return <ComposedComponent {...this.state} {...this.props} />
+        return <ComposedComponent {...this.props} {...this.state} />
     }
 }

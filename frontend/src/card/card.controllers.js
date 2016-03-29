@@ -290,6 +290,7 @@ CardControllers.controller('CardDetail', [
         var dataReferenceModel = {
             Metabase: Metabase,
             closeFn: toggleDataReference,
+            setCardAndRun: (card) => setCard(card, {runQuery: true}),
             runQueryFn: runQuery,
             setQueryFn: onQueryChanged,
             setDatabaseFn: setDatabase,

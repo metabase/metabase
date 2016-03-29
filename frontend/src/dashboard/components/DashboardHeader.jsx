@@ -134,7 +134,7 @@ export default class DashboardHeader extends Component {
                     ref="dashboardHistory"
                     triggerElement={
                         <Tooltip tooltip="Revision History">
-                            <span>
+                            <span data-metabase-event={"Dashboard;Revisions"}>
                                 <Icon className="text-brand-hover" name="history" width="16px" height="16px" />
                             </span>
                         </Tooltip>
@@ -190,14 +190,14 @@ export default class DashboardHeader extends Component {
 
         if (!isEditing && !isEmpty) {
             buttons.push(
-                <RefreshWidget className="text-brand-hover" key="refresh" period={this.props.refreshPeriod} elapsed={this.props.refreshElapsed} onChangePeriod={this.props.setRefreshPeriod} />
+                <RefreshWidget data-metabase-event="Dashboard;Refresh Menu Open" className="text-brand-hover" key="refresh" period={this.props.refreshPeriod} elapsed={this.props.refreshElapsed} onChangePeriod={this.props.setRefreshPeriod} />
             );
         }
 
         if (!isEditing && isFullscreen) {
             buttons.push(
                 <Tooltip tooltip={isNightMode ? "Daytime mode" : "Nighttime mode"}>
-                    <span>
+                    <span data-metabase-event={"Dashboard;Night Mode;"+!isNightMode}>
                         <NightModeIcon className="text-brand-hover cursor-pointer" key="night" isNightMode={isNightMode} onClick={() => this.props.onNightModeChange(!isNightMode) } />
                     </span>
                 </Tooltip>
@@ -208,7 +208,7 @@ export default class DashboardHeader extends Component {
             // option click to enter fullscreen without making the browser go fullscreen
             buttons.push(
                 <Tooltip tooltip={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}>
-                    <span>
+                    <span data-metabase-event={"Dashboard;Fullscreen Mode;"+!isFullscreen}>
                         <FullscreenIcon className="text-brand-hover cursor-pointer" key="fullscreen" isFullscreen={isFullscreen} onClick={(e) => this.props.onFullscreenChange(!isFullscreen, !e.altKey)} />
                     </span>
                 </Tooltip>

@@ -1,3 +1,6 @@
+:root {
+  --night-mode-color: rgba(255, 255, 255, 0.86);
+}
 .Dashboard {
     background-color: #f9fbfc;
 }
@@ -37,20 +40,24 @@
 }
 
 /* Night mode */
-.Dashboard.Dashboard--night .Header-button,
-.Dashboard.Dashboard--night .Header-button svg {
-    color: rgba(151, 151, 151, 0.3) !important;
-}
-
 .Dashboard.Dashboard--night {
   background-color: rgb(34, 37, 39);
 }
 
+.Dashboard.Dashboard--night .Header-button,
+.Dashboard.Dashboard--night .Header-button svg {
+    color: rgba(151, 151, 151, 0.3);
+}
 
-.Dashboard.Dashboard--night .DashCard .Card a,
-.Dashboard.Dashboard--night .DashCard .Card div,
-.Dashboard.Dashboard--night .DashCard .Card span {
-  color: rgba(255, 255, 255, 0.86) !important;
+
+.Dashboard.Dashboard--fullscreen .fullscreen-normal-text {
+  color: #3f3a3a;
+  transition: color 1s linear;
+}
+
+.Dashboard.Dashboard--night.Dashboard--fullscreen .fullscreen-night-text {
+  color: var(--night-mode-color);
+  transition: color 1s linear;
 }
 
 .Dashboard.Dashboard--night .DashCard .Card svg text {
@@ -59,12 +66,12 @@
 
 .Dashboard.Dashboard--night .DashCard .Card {
   background-color: rgb(54, 58, 61);
-  border: 1px solid rgb(46, 49, 52) !important;
+  border: 1px solid rgb(46, 49, 52);
 }
 
 .Dashboard.Dashboard--night .enable-dots-onhover .dc-tooltip circle.dot:hover,
 .Dashboard.Dashboard--night .enable-dots .dc-tooltip circle.dot {
-  fill: currentColor !important;
+  fill: currentColor;
 }
 
 /* Night mode transition */
@@ -72,16 +79,6 @@
 .Dashboard.Dashboard--fullscreen .DashCard .Card {
   transition: background-color 1s linear, border 1s linear;
 }
-
-.Dashboard.Dashboard--fullscreen .DashCard .Card a,
-.Dashboard.Dashboard--fullscreen .DashCard .Card div,
-.Dashboard.Dashboard--fullscreen .DashCard .Card span,
-.Dashboard.Dashboard--fullscreen .Header-button,
-.Dashboard.Dashboard--fullscreen .Header-button svg {
-  transition: color 1s linear;
-}
-
-
 
 .DashboardGrid {
   margin-top: 5px;
