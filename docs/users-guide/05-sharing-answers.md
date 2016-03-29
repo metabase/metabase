@@ -65,7 +65,7 @@ Once you've entered fullscreen mode you can also switch the dashboard into "Nigh
 ## Auto refresh
 If your data is more realtime in nature you can set your dashboard up to auto refresh.
 
-![Autorefresh](images/dashboards/DashboardAutoRefresh.png)
+![Autorefresh](images/dashboards/DashboardAutorefresh.png)
 
 You can set your dashboard to update in 1, 5, 10, 15, 30, and 60 minute intervals depending on how fresh you need the data to be.
 
