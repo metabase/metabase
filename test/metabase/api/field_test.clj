@@ -57,6 +57,7 @@
        :preview_display true
        :created_at      $
        :base_type       "TextField"
+       :fk_target_field_id nil
        :parent_id       nil})
     ((user->client :rasta) :get 200 (format "field/%d" (id :users :name))))
 
@@ -68,6 +69,7 @@
 
 
 ;; ## PUT /api/field/:id
+
 (defn simple-field-details [field]
   (select-keys field [:name :display_name :description :visibility_type :special_type]))
 
@@ -117,6 +119,40 @@
             [original-val
              updated-val
              (simple-field-details (db/sel :one Field :id field-id))]))))))
+
+;; when we set the special-type from :fk to something else, make sure fk_target_field_id is set to nil
+(expect
+  [true
+   nil]
+  (tu/with-temp Database [{database-id :id} {:name      "Field Test"
+                                             :engine    :yeehaw
+                                             :details   {}
+                                             :is_sample false}]
+    (tu/with-temp Table [{table-id :id} {:name   "Field Test"
+                                         :db_id  database-id
+                                         :active true}]
+      (tu/with-temp Field [{field-id1 :id} {:table_id    table-id
+                                            :name        "Target Field"
+                                            :base_type   :TextField
+                                            :field_type  :info
+                                            :special_type :id
+                                            :active      true
+                                            :preview_display true
+                                            :position    1}]
+        (tu/with-temp Field [{field-id :id} {:table_id    table-id
+                                             :name        "Field Test"
+                                             :base_type   :TextField
+                                             :field_type  :info
+                                             :special_type :fk
+                                             :fk_target_field_id field-id1
+                                             :active      true
+                                             :preview_display true
+                                             :position    1}]
+          (let [original-val (boolean (db/sel :one :field [Field :fk_target_field_id] :id field-id))]
+            ;; unset the :fk special-type
+            ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:special_type :name})
+            [original-val
+             (db/sel :one :field [Field :fk_target_field_id] :id field-id)]))))))
 
 ;; check that you can't set a field to :timestamp_seconds if it's not of a proper base_type
 (expect

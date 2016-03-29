@@ -170,3 +170,13 @@
             (k/where      {:id  (:id bad-card)}))
           (when more
             (recur more (+ row-target (:sizeY bad-card)))))))))
+
+
+;; migrate FK information from old ForeignKey model to Field.fk_target_field_id
+(defmigration migrate-fk-metadata
+  (when (> 1 (:cnt (first (k/select Field (k/aggregate (count :*) :cnt) (k/where (not= :fk_target_field_id nil))))))
+    (when-let [fks (not-empty (db/sel :many ForeignKey))]
+      (doseq [{:keys [origin_id destination_id]} fks]
+        (k/update Field
+          (k/set-fields {:fk_target_field_id destination_id})
+          (k/where      {:id                 origin_id}))))))

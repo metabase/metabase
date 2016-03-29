@@ -4,8 +4,7 @@
             [medley.core :as m]
             [metabase.db :refer [sel]]
             [metabase.driver.query-processor.interface :as i]
-            (metabase.models [field :refer [Field], :as field]
-                             [foreign-key :refer [ForeignKey]])
+            [metabase.models.field :refer [Field]]
             [metabase.util :as u]))
 
 ;; Fields should be returned in the following order:
@@ -195,9 +194,9 @@
   ;; Fetch the ForeignKey objects whose origin is in the returned Fields, create a map of origin-field-id->destination-field-id
   ([fields fk-ids]
    (when (seq fk-ids)
-     (fk-field->dest-fn fields fk-ids (sel :many :field->field [ForeignKey :origin_id :destination_id]
-                                           :origin_id      [in fk-ids]
-                                           :destination_id [not= nil]))))
+     (fk-field->dest-fn fields fk-ids (sel :many :field->field [Field :id :fk_target_field_id]
+                                           :id                 [in fk-ids]
+                                           :fk_target_field_id [not= nil]))))
   ;; Fetch the destination Fields referenced by the ForeignKeys
   ([fields fk-ids id->dest-id]
    (when (seq id->dest-id)

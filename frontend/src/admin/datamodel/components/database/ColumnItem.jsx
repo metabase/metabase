@@ -55,7 +55,7 @@ export default class Column extends Component {
     }
 
     onTargetChange(target_field) {
-        this.props.field.target_id = target_field.id;
+        this.props.field.fk_target_field_id = target_field.id;
         this.props.updateFieldTarget(this.props.field);
     }
 
@@ -66,7 +66,7 @@ export default class Column extends Component {
                 <Select
                     className="TableEditor-field-target block"
                     placeholder="Select a target"
-                    value={this.props.field.target && _.find(this.props.idfields, (field) => field.id === this.props.field.target.id)}
+                    value={this.props.field.fk_target_field_id && _.find(this.props.idfields, (field) => field.id === this.props.field.fk_target_field_id)}
                     options={this.props.idfields}
                     optionNameFn={(field) => field.table.schema && field.table.schema !== "public" ? titleize(humanize(field.table.schema))+"."+field.displayName : field.displayName}
                     onChange={this.onTargetChange}
