@@ -46,7 +46,6 @@ export default class TableSimple extends Component {
         let footerHeight = this.refs.footer ? ReactDOM.findDOMNode(this.refs.footer).getBoundingClientRect().height : 0;
         let rowHeight = ReactDOM.findDOMNode(this.refs.firstRow).getBoundingClientRect().height + 1;
         let pageSize = Math.max(1, Math.floor((this.props.height - headerHeight - footerHeight) / rowHeight));
-        console.log(this.props.height, headerHeight, footerHeight, rowHeight)
         if (this.state.pageSize !== pageSize) {
             this.setState({ pageSize });
         }
