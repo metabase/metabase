@@ -9,7 +9,7 @@
    Add more mappings here as you come across them."
   [_ column-type]
   ({:int           :IntegerField
-    :text          :TextField} column-type))
+    :string          :TextField} column-type))
 
 (defrecord CrateDriver []
   Named
