@@ -4,10 +4,16 @@
             (korma [core :as k]))
   (:import (clojure.lang Named)))
 
+(defn- column->base-type
+  "Map of Postgres column types -> Field base types.
+   Add more mappings here as you come across them."
+  [_ column-type]
+  ({:int           :IntegerField
+    :text          :TextField} column-type))
+
 (defrecord CrateDriver []
   Named
   (getName [_] "Crate"))
-
 
 (defn- crate-spec
   [{:keys [host port]
@@ -31,7 +37,8 @@
 (def CrateISQLDriverMixin
   "Implementations of `ISQLDriver` methods for `CrateDriver`."
   (merge (sql/ISQLDriverDefaultsMixin)
-         {:connection-details->spec  connection-details->spec}))
+         {:connection-details->spec  connection-details->spec
+          :column->base-type         column->base-type}))
 
 (extend CrateDriver
   driver/IDriver
