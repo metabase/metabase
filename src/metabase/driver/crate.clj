@@ -8,8 +8,9 @@
   "Map of Postgres column types -> Field base types.
    Add more mappings here as you come across them."
   [_ column-type]
-  ({:int           :IntegerField
-    :string          :TextField} column-type))
+  ({:int       :IntegerField
+    :integer   :IntegerField
+    :string    :TextField} column-type))
 
 (defrecord CrateDriver []
   Named
@@ -38,7 +39,8 @@
   "Implementations of `ISQLDriver` methods for `CrateDriver`."
   (merge (sql/ISQLDriverDefaultsMixin)
          {:connection-details->spec  connection-details->spec
-          :column->base-type         column->base-type}))
+          :column->base-type         column->base-type
+          :string-length-fn          (constantly :CHAR_LENGTH)}))
 
 (extend CrateDriver
   driver/IDriver
