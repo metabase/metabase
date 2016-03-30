@@ -95,9 +95,10 @@ export default class LineAreaBarChart extends Component {
             isStacked: false
         };
         let s = series && series.length === 1 && series[0];
-        if (s && s.data && s.data.cols.length > 2) {
+        if (s && s.data) {
             // Dimension-Dimension-Metric
-            if (isAnyDimension(s.data.cols[0]) &&
+            if (s.data.cols.length === 3 &&
+                isAnyDimension(s.data.cols[0]) &&
                 isNonNumericDimension(s.data.cols[1]) &&
                 isMetric(s.data.cols[2])
             ) {
@@ -119,10 +120,10 @@ export default class LineAreaBarChart extends Component {
                     }));
                     nextState.isMultiseries = true;
                 }
-            // Dimension-Metric-Metric
-            } else if (isAnyDimension(s.data.cols[0]) &&
-                       isMetric(s.data.cols[1]) &&
-                       isMetric(s.data.cols[2])
+            // Dimension-Metric-Metric+
+            } else if (s.data.cols.length >= 3 &&
+                       isAnyDimension(s.data.cols[0]) &&
+                       s.data.cols.slice(1).reduce((acc, col) => acc && isMetric(col), true)
             ) {
                 nextState.series = s.data.cols.slice(1).map((col, index) => ({
                     card: { ...s.card, name: col.display_name || col.name, id: null },
