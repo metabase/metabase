@@ -17,6 +17,15 @@ import _ from "underscore";
 import cx from "classnames";
 import i from "icepick";
 
+const isAnyDimension = (col) =>
+    (isDimension(col) || isString(col))
+
+const isNonNumericDimension = (col) =>
+    !isNumeric(col) && isAnyDimension(col)
+
+const isMetric = (col) =>
+    isNumeric(col)
+
 export default class LineAreaBarChart extends Component {
     static noHeader = true;
     static supportsSeries = true;
@@ -87,7 +96,11 @@ export default class LineAreaBarChart extends Component {
         };
         let s = series && series.length === 1 && series[0];
         if (s && s.data && s.data.cols.length > 2) {
-            if (isDimension(s.data.cols[1]) || isString(s.data.cols[1])) {
+            // Dimension-Dimension-Metric
+            if (isAnyDimension(s.data.cols[0]) &&
+                isNonNumericDimension(s.data.cols[1]) &&
+                isMetric(s.data.cols[2])
+            ) {
                 let dataset = crossfilter(s.data.rows);
                 let groups = [0,1].map(i => dataset.dimension(d => d[i]).group());
                 let cardinalities = groups.map(group => group.size())
@@ -106,7 +119,11 @@ export default class LineAreaBarChart extends Component {
                     }));
                     nextState.isMultiseries = true;
                 }
-            } else {
+            // Dimension-Metric-Metric
+            } else if (isAnyDimension(s.data.cols[0]) &&
+                       isMetric(s.data.cols[1]) &&
+                       isMetric(s.data.cols[2])
+            ) {
                 nextState.series = s.data.cols.slice(1).map((col, index) => ({
                     card: { ...s.card, name: col.display_name || col.name, id: null },
                     data: {
