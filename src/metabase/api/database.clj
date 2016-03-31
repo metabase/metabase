@@ -53,7 +53,7 @@
 (defendpoint GET "/"
   "Fetch all `Databases`."
   [include_tables]
-  (let [dbs (sel :many Database (k/order :name))]
+  (let [dbs (sel :many Database (k/order (k/sqlfn :LOWER :name)))]
     (if-not include_tables
       dbs
       (let [db-id->tables (group-by :db_id (sel :many Table, :active true))]
