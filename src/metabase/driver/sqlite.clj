@@ -37,13 +37,14 @@
 (defn- date
   "Apply truncation / extraction to a date field or value for SQLite.
    See also the [SQLite Date and Time Functions Reference](http://www.sqlite.org/lang_datefunc.html)."
-  [_ unit expr]
+  [unit expr]
   ;; Convert Timestamps to ISO 8601 strings before passing to SQLite, otherwise they don't seem to work correctly
   (let [v (if (instance? java.sql.Timestamp expr)
             (kx/literal (u/date->iso-8601 expr))
             expr)]
     (case unit
       :default         (->datetime v)
+      :second          (->datetime (strftime "%Y-%m-%d %H:%M:%S" v))
       :minute          (->datetime (strftime "%Y-%m-%d %H:%M" v))
       :minute-of-hour  (kx/->integer (strftime "%M" v))
       :hour            (->datetime (strftime "%Y-%m-%d %H:00" v))
@@ -78,26 +79,28 @@
                              3)
       :year            (kx/->integer (strftime "%Y" v)))))
 
-(def ^:private datetime (partial k/sqlfn* :DATETIME))
+(defn- date-interval [unit amount]
+  (let [[multiplier sqlite-unit] (case unit
+                                   :second  [1 "seconds"]
+                                   :minute  [1 "minutes"]
+                                   :hour    [1 "hours"]
+                                   :day     [1 "days"]
+                                   :week    [7 "days"]
+                                   :month   [1 "months"]
+                                   :quarter [3 "months"]
+                                   :year    [1 "years"])]
+    ;; Make a string like DATETIME(DATE('now', 'start of month'), '-1 month')
+    ;; The date bucketing will end up being done twice since `date` is called on the results of `date-interval` automatically. This shouldn't be a big deal because it's used for relative dates and only needs to be done once in a given query.
+    ;; It's important to call `date` on 'now' to apply bucketing *before* adding/subtracting dates to handle certain edge cases as discussed in issue #2275 (https://github.com/metabase/metabase/issues/2275).
+    ;; Basically, March 30th minus one month becomes Feb 30th in SQLite, which becomes March 2nd. DATE(DATETIME('2016-03-30', '-1 month'), 'start of month') is thus March 1st.
+    ;; The SQL we produce instead (for "last month") ends up looking something like: DATE(DATETIME(DATE('2015-03-30', 'start of month'), '-1 month'), 'start of month'). It's a little verbose, but gives us the correct answer (Feb 1st).
+    (->datetime (date unit (kx/literal "now"))
+                (kx/literal (format "%+d %s" (* amount multiplier) sqlite-unit)))))
 
-(defn- date-interval [_ unit amount]
-  (let [[multiplier unit] (case unit
-                            :second  [1 "seconds"]
-                            :minute  [1 "minutes"]
-                            :hour    [1 "hours"]
-                            :day     [1 "days"]
-                            :week    [7 "days"]
-                            :month   [1 "months"]
-                            :quarter [3 "months"]
-                            :year    [1 "years"])]
-    ;; Make a string like DATE('now', '+7 days')
-    (datetime (kx/literal "now")
-              (kx/literal (format "%+d %s" (* amount multiplier) unit)))))
-
-(defn- unix-timestamp->timestamp [_ expr seconds-or-milliseconds]
+(defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
-    :seconds      (datetime expr (kx/literal "unixepoch"))
-    :milliseconds (recur nil (kx// expr 1000) :seconds)))
+    :seconds      (->datetime expr (kx/literal "unixepoch"))
+    :milliseconds (recur (kx// expr 1000) :seconds)))
 
 (defrecord SQLiteDriver []
   clojure.lang.Named
@@ -106,7 +109,7 @@
 (u/strict-extend SQLiteDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:date-interval  date-interval
+         {:date-interval  (u/drop-first-arg date-interval)
           :details-fields (constantly [{:name         "db"
                                         :display-name "Filename"
                                         :placeholder  "/home/camsaul/toucan_sightings.sqlite 😋"
@@ -126,8 +129,8 @@
           :connection-details->spec  (fn [_ details]
                                        (kdb/sqlite3 details))
           :current-datetime-fn       (constantly (k/raw "DATETIME('now')"))
-          :date                      date
+          :date                      (u/drop-first-arg date)
           :string-length-fn          (constantly :LENGTH)
-          :unix-timestamp->timestamp unix-timestamp->timestamp}))
+          :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
 (driver/register-driver! :sqlite (SQLiteDriver.))
