@@ -14,9 +14,10 @@
                              [table :refer [Table]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [expect-eval-actual-first with-temp random-name]]
+            [metabase.test.util :refer [expect-eval-actual-first random-name]]
             [metabase.test-setup :refer :all]
-            [metabase.test.util :as tu]))
+            [metabase.test.util :as tu]
+            [metabase.util :as u]))
 
 (defn- create-test-card []
   (let [rand-name (random-name)]
@@ -183,185 +184,129 @@
 (expect
   {:model        "Metric"
    :user_id      (user->id :rasta)
-   :object       {:name        "ABC"
-                  :description "DEF"
+   :object       {:name        "Toucans in the rainforest"
+                  :description "Lookin' for a blueberry"
                   :is_active    true
                   :creator_id  (user->id :rasta)
                   :definition  {:a "b"}}
    :is_reversion false
    :is_creation  true
    :message      nil}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
-                                       :db_id  database-id
-                                       :active true}]
-      (tu/with-temp Metric [metric {:creator_id  (user->id :rasta)
-                                      :table_id    id
-                                      :name        "ABC"
-                                      :description "DEF"
-                                      :definition  {:a "b"}}]
-        (process-revision-event {:topic :metric-create
-                                 :item  metric})
-        (let [revision (-> (db/sel :one Revision :model "Metric" :model_id (:id metric))
-                           (select-keys [:model :user_id :object :is_reversion :is_creation :message]))]
-          (assoc revision :object (dissoc (:object revision) :id :table_id)))))))
+  (tu/with-temp* [Database [{database-id :id}]
+                  Table    [{:keys [id]} {:db_id database-id}]
+                  Metric   [metric       {:table_id id, :definition {:a "b"}}]]
+    (process-revision-event {:topic :metric-create
+                             :item  metric})
+
+    (let [revision (db/sel :one :fields [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Metric", :model_id (:id metric))]
+      (assoc revision :object (dissoc (:object revision) :id :table_id)))))
 
 ;; :metric-update
 (expect
   {:model        "Metric"
    :user_id      (user->id :crowberto)
-   :object       {:name        "ABC"
-                  :description "DEF"
+   :object       {:name        "Toucans in the rainforest"
+                  :description "Lookin' for a blueberry"
                   :is_active   true
                   :creator_id  (user->id :rasta)
                   :definition  {:a "b"}}
    :is_reversion false
    :is_creation  false
    :message      "updated"}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
-                                       :db_id  database-id
-                                       :active true}]
-      (tu/with-temp Metric [metric {:creator_id  (user->id :rasta)
-                                      :table_id    id
-                                      :name        "ABC"
-                                      :description "DEF"
-                                      :definition  {:a "b"}}]
-        (process-revision-event {:topic :metric-update
-                                 :item  (assoc metric
-                                          :actor_id         (user->id :crowberto)
-                                          :revision_message "updated")})
-        (let [revision (-> (db/sel :one Revision :model "Metric" :model_id (:id metric))
-                           (select-keys [:model :user_id :object :is_reversion :is_creation :message]))]
-          (assoc revision :object (dissoc (:object revision) :id :table_id)))))))
+  (tu/with-temp* [Database [{database-id :id}]
+                  Table    [{:keys [id]} {:db_id database-id}]
+                  Metric   [metric       {:table_id id, :definition {:a "b"}}]]
+    (process-revision-event {:topic :metric-update
+                             :item  (assoc metric
+                                           :actor_id         (user->id :crowberto)
+                                           :revision_message "updated")})
+    (let [revision (db/sel :one :fields [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Metric", :model_id (:id metric))]
+      (assoc revision :object (dissoc (:object revision) :id :table_id)))))
 
 ;; :metric-delete
 (expect
   {:model        "Metric"
    :user_id      (user->id :rasta)
-   :object       {:name        "ABC"
-                  :description "DEF"
+   :object       {:name        "Toucans in the rainforest"
+                  :description "Lookin' for a blueberry"
                   :is_active   false
                   :creator_id  (user->id :rasta)
                   :definition  {:a "b"}}
    :is_reversion false
    :is_creation  false
    :message      nil}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
-                                       :db_id  database-id
-                                       :active true}]
-      (tu/with-temp Metric [metric {:creator_id  (user->id :rasta)
-                                      :table_id    id
-                                      :name        "ABC"
-                                      :description "DEF"
-                                      :definition  {:a "b"}
-                                      :is_active   false}]
-        (process-revision-event {:topic :metric-delete
-                                 :item  metric})
-        (let [revision (-> (db/sel :one Revision :model "Metric" :model_id (:id metric))
-                           (select-keys [:model :user_id :object :is_reversion :is_creation :message]))]
-          (assoc revision :object (dissoc (:object revision) :id :table_id)))))))
+  (tu/with-temp* [Database [{database-id :id}]
+                  Table    [{:keys [id]} {:db_id database-id}]
+                  Metric   [metric       {:table_id id, :definition {:a "b"}, :is_active false}]]
+    (process-revision-event {:topic :metric-delete
+                             :item  metric})
+    (let [revision (db/sel :one :fields [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Metric", :model_id (:id metric))]
+      (assoc revision :object (dissoc (:object revision) :id :table_id)))))
 
 
 ;; :segment-create
 (expect
   {:model        "Segment"
    :user_id      (user->id :rasta)
-   :object       {:name        "ABC"
-                  :description "DEF"
+   :object       {:name        "Toucans in the rainforest"
+                  :description "Lookin' for a blueberry"
                   :is_active    true
                   :creator_id  (user->id :rasta)
                   :definition  {:a "b"}}
    :is_reversion false
    :is_creation  true
    :message      nil}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
-                                       :db_id  database-id
-                                       :active true}]
-      (tu/with-temp Segment [segment {:creator_id  (user->id :rasta)
-                                      :table_id    id
-                                      :name        "ABC"
-                                      :description "DEF"
-                                      :definition  {:a "b"}}]
-        (process-revision-event {:topic :segment-create
-                                 :item  segment})
-        (let [revision (-> (db/sel :one Revision :model "Segment" :model_id (:id segment))
-                           (select-keys [:model :user_id :object :is_reversion :is_creation :message]))]
-          (assoc revision :object (dissoc (:object revision) :id :table_id)))))))
+  (tu/with-temp* [Database [{database-id :id}]
+                  Table    [{:keys [id]} {:db_id database-id}]
+                  Segment  [segment      {:table_id   id
+                                          :definition {:a "b"}}]]
+    (process-revision-event {:topic :segment-create
+                             :item  segment})
+    (let [revision (-> (db/sel :one Revision :model "Segment" :model_id (:id segment))
+                       (select-keys [:model :user_id :object :is_reversion :is_creation :message]))]
+      (assoc revision :object (dissoc (:object revision) :id :table_id)))))
 
 ;; :segment-update
 (expect
   {:model        "Segment"
    :user_id      (user->id :crowberto)
-   :object       {:name        "ABC"
-                  :description "DEF"
+   :object       {:name        "Toucans in the rainforest"
+                  :description "Lookin' for a blueberry"
                   :is_active   true
                   :creator_id  (user->id :rasta)
                   :definition  {:a "b"}}
    :is_reversion false
    :is_creation  false
    :message      "updated"}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
-                                       :db_id  database-id
-                                       :active true}]
-      (tu/with-temp Segment [segment {:creator_id  (user->id :rasta)
-                                      :table_id    id
-                                      :name        "ABC"
-                                      :description "DEF"
-                                      :definition  {:a "b"}}]
-        (process-revision-event {:topic :segment-update
-                                 :item  (assoc segment
-                                          :actor_id         (user->id :crowberto)
-                                          :revision_message "updated")})
-        (let [revision (-> (db/sel :one Revision :model "Segment" :model_id (:id segment))
-                           (select-keys [:model :user_id :object :is_reversion :is_creation :message]))]
-          (assoc revision :object (dissoc (:object revision) :id :table_id)))))))
+  (tu/with-temp* [Database [{database-id :id}]
+                  Table [{:keys [id]} {:db_id database-id}]
+                  Segment [segment {:table_id   id
+                                    :definition {:a "b"}}]]
+    (process-revision-event {:topic :segment-update
+                             :item  (assoc segment
+                                           :actor_id         (user->id :crowberto)
+                                           :revision_message "updated")})
+    (update (db/sel :one :fields [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Segment", :model_id (:id segment))
+            :object (u/rpartial dissoc :id :table_id))))
 
 ;; :segment-delete
 (expect
   {:model        "Segment"
    :user_id      (user->id :rasta)
-   :object       {:name        "ABC"
-                  :description "DEF"
+   :object       {:name        "Toucans in the rainforest"
+                  :description "Lookin' for a blueberry"
                   :is_active   false
                   :creator_id  (user->id :rasta)
                   :definition  {:a "b"}}
    :is_reversion false
    :is_creation  false
    :message      nil}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
-                                       :db_id  database-id
-                                       :active true}]
-      (tu/with-temp Segment [segment {:creator_id  (user->id :rasta)
-                                      :table_id    id
-                                      :name        "ABC"
-                                      :description "DEF"
-                                      :definition  {:a "b"}
-                                      :is_active   false}]
-        (process-revision-event {:topic :segment-delete
-                                 :item  segment})
-        (let [revision (-> (db/sel :one Revision :model "Segment" :model_id (:id segment))
-                           (select-keys [:model :user_id :object :is_reversion :is_creation :message]))]
-          (assoc revision :object (dissoc (:object revision) :id :table_id)))))))
+  (tu/with-temp* [Database [{database-id :id}]
+                  Table    [{:keys [id]} {:db_id database-id}]
+                  Segment  [segment      {:table_id   id
+                                          :definition {:a "b"}
+                                          :is_active  false}]]
+    (process-revision-event {:topic :segment-delete
+                             :item  segment})
+    (update (db/sel :one :fields [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Segment", :model_id (:id segment))
+            :object (u/rpartial dissoc :id :table_id))))
