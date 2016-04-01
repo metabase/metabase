@@ -1,7 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
-import DatabaseDetailsForm from "metabase/components/database/DatabaseDetailsForm.jsx";
+import DatabaseDetailsForm from "metabase/components/DatabaseDetailsForm.jsx";
 
 import cx from "classnames";
 

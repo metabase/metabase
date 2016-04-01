@@ -106,13 +106,6 @@
     padding: 0;
 }
 
-.QueryTable-wrapper {
-    box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
-    margin-bottom: 3px; /* we need a small amount of margin here for the box shadow to show */
-    overflow: scroll;
-    border-top: 1px solid #E8E8E8;
-}
-
 .TooltipFilterList .Query-filter {
   padding-left: 0 !important;
   padding-bottom: 0 !important;

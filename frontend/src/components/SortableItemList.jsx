@@ -1,5 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
+import "./SortableItemList.css";
+
 import Icon from "metabase/components/Icon.jsx";
 import RadioSelect from 'metabase/components/RadioSelect.jsx';
 

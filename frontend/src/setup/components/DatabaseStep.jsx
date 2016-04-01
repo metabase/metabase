@@ -4,7 +4,7 @@ import ReactDOM from "react-dom";
 import StepTitle from './StepTitle.jsx'
 import CollapsedStep from "./CollapsedStep.jsx";
 
-import DatabaseDetailsForm from "metabase/components/database/DatabaseDetailsForm.jsx";
+import DatabaseDetailsForm from "metabase/components/DatabaseDetailsForm.jsx";
 import FormField from "metabase/components/form/FormField.jsx";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";

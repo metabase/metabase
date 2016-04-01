@@ -1,5 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
+import "./ColumnarSelector.css";
+
 import Icon from "metabase/components/Icon.jsx";
 
 import cx from "classnames";

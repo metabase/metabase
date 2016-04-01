@@ -1,4 +1,7 @@
 import React, { Component, PropTypes } from 'react';
+
+import "./Calendar.css";
+
 import cx from 'classnames';
 import moment from "moment";
 

@@ -21,7 +21,7 @@ var SRC_PATH = __dirname + '/frontend';
 var BUILD_PATH = __dirname + '/resources/frontend_client';
 
 // All CSS files in frontend/src
-var CSS_SRC = glob.sync(SRC_PATH + '/src/**/*.css');
+var CSS_SRC = glob.sync(SRC_PATH + '/src/css/**/*.css');
 
 // Need to scan the CSS files for variable and custom media used across files
 // NOTE: this requires "webpack -w" (watch mode) to be restarted when variables change :(

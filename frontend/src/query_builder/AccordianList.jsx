@@ -3,7 +3,7 @@ import cx from "classnames";
 import _ from "underscore";
 
 import Icon from "metabase/components/Icon.jsx";
-import ListSearchField from "metabase/components/search/ListSearchField.jsx";
+import ListSearchField from "metabase/components/ListSearchField.jsx";
 
 
 export default class AccordianList extends Component {
