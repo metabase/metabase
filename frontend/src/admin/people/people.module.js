@@ -1,3 +1,5 @@
+import "./people.controllers";
+
 var AdminPeople = angular.module('metabase.admin.people', [
     'metabase.admin.people.controllers'
 ]);

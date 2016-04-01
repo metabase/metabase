@@ -15,6 +15,3 @@ import 'ace/ace';
 import 'ace/ext-language_tools';
 import 'ace/mode-sql';
 import 'ace/snippets/sql';
-
-// clamp
-import './vendor/clamp';

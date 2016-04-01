@@ -20,8 +20,6 @@ function hasArg(arg) {
 var SRC_PATH = __dirname + '/frontend';
 var BUILD_PATH = __dirname + '/resources/frontend_client';
 
-// All JS files in frontend/src
-var JS_SRC = glob.sync(SRC_PATH + '/src/**/*.js');
 // All CSS files in frontend/src
 var CSS_SRC = glob.sync(SRC_PATH + '/src/**/*.css');
 
@@ -71,7 +69,7 @@ var config = module.exports = {
     // eventually we should have multiple (single file) entry points for various pieces of the app to enable code splitting
     entry: {
         vendor: SRC_PATH + '/vendor.js',
-        app: JS_SRC,
+        app: SRC_PATH + '/src/app.js',
         styles: [
             SRC_PATH + '/vendor.css'
         ].concat(CSS_SRC)
