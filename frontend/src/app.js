@@ -16,6 +16,8 @@ import "./filters";
 import "./forms";
 import "./services";
 
+import "./icons";
+
 import "./auth/auth.module";
 import "./card/card.module";
 import "./dashboard/dashboard.module";
@@ -48,6 +50,7 @@ var Metabase = angular.module('metabase', [
     'metabase.filters',
     'metabase.directives',
     'metabase.controllers',
+    'metabase.icons',
     'metabase.card',
     'metabase.dashboard',
     'metabase.home',
