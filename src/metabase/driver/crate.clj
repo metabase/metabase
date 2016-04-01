@@ -8,9 +8,20 @@
   "Map of Postgres column types -> Field base types.
    Add more mappings here as you come across them."
   [_ column-type]
-  ({:int       :IntegerField
-    :integer   :IntegerField
-    :string    :TextField} column-type))
+  ({:integer   :IntegerField
+    :string    :TextField
+    :boolean   :BooleanField
+    :byte      :UnknownField
+    :short     :UnknownField
+    :long      :BigIntegerField
+    :float     :FloatField
+    :double    :FloatField
+    :ip        :UnknownField
+    :timestamp :DateTimeField
+    :geo_point :UnknownField
+    :geo_shape :UnknownField
+    :
+    } column-type))
 
 (defrecord CrateDriver []
   Named
