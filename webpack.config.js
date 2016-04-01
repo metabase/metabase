@@ -8,6 +8,8 @@ var CommonsChunkPlugin = webpack.optimize.CommonsChunkPlugin;
 var ExtractTextPlugin = require('extract-text-webpack-plugin');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
 
+var UnusedFilesWebpackPlugin = require("unused-files-webpack-plugin").default;
+
 var _ = require('underscore');
 var glob = require('glob');
 var fs = require('fs');
@@ -17,11 +19,11 @@ function hasArg(arg) {
     return process.argv.filter(regex.test.bind(regex)).length > 0;
 }
 
-var SRC_PATH = __dirname + '/frontend';
+var SRC_PATH = __dirname + '/frontend/src';
 var BUILD_PATH = __dirname + '/resources/frontend_client';
 
 // All CSS files in frontend/src
-var CSS_SRC = glob.sync(SRC_PATH + '/src/css/**/*.css');
+var CSS_SRC = glob.sync(SRC_PATH + '/css/**/*.css');
 
 // Need to scan the CSS files for variable and custom media used across files
 // NOTE: this requires "webpack -w" (watch mode) to be restarted when variables change :(
@@ -65,14 +67,14 @@ var CSS_CONFIG = {
 }
 
 var config = module.exports = {
+    context: SRC_PATH,
+
     // output a bundle for the app JS and a bundle for styles
     // eventually we should have multiple (single file) entry points for various pieces of the app to enable code splitting
     entry: {
-        vendor: SRC_PATH + '/vendor.js',
-        app: SRC_PATH + '/src/app.js',
-        styles: [
-            SRC_PATH + '/vendor.css'
-        ].concat(CSS_SRC)
+        vendor: './vendor.js',
+        app: './app.js',
+        styles: CSS_SRC
     },
 
     // output to "dist"
@@ -113,7 +115,7 @@ var config = module.exports = {
     resolve: {
         extensions: ["", ".webpack.js", ".web.js", ".js", ".jsx", ".css"],
         alias: {
-            'metabase':             SRC_PATH + '/src',
+            'metabase':             SRC_PATH,
 
             // angular
             'angular':              __dirname + '/node_modules/angular/angular.min.js',
@@ -142,6 +144,7 @@ var config = module.exports = {
     },
 
     plugins: [
+        new UnusedFilesWebpackPlugin(),
         // Separates out modules common to multiple entry points into a single common file that should be loaded first.
         // Not currently useful but necessary for code-splitting
         new CommonsChunkPlugin({
@@ -153,7 +156,7 @@ var config = module.exports = {
         new ExtractTextPlugin('[name].bundle.css?[contenthash]'),
         new HtmlWebpackPlugin({
             filename: '../../index.html',
-            template: 'resources/frontend_client/index_template.html',
+            template: __dirname + '/resources/frontend_client/index_template.html',
             inject: 'head'
         }),
         new webpack.DefinePlugin({
