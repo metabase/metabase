@@ -173,10 +173,11 @@ var config = module.exports = {
 };
 
 if (NODE_ENV === "hot") {
-    config.entry.app.unshift(
+    config.entry.app = [
         'webpack-dev-server/client?http://localhost:8080',
-        'webpack/hot/only-dev-server'
-    );
+        'webpack/hot/only-dev-server',
+        config.entry.app
+    ];
 
     // suffixing with ".hot" allows us to run both `npm run build-hot` and `npm run test` or `npm run test-watch` simultaneously
     config.output.filename = "[name].hot.bundle.js?[hash]";
