@@ -20,7 +20,6 @@
     :timestamp :DateTimeField
     :geo_point :UnknownField
     :geo_shape :UnknownField
-    :
     } column-type))
 
 (defrecord CrateDriver []
