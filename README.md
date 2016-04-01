@@ -12,21 +12,24 @@ Metabase is the easy, open source way for everyone in your company to ask questi
 - 5 minute [setup](http://www.metabase.com/docs/latest/setting-up-metabase) (We're not kidding)
 - Let anyone on your team [ask questions](http://www.metabase.com/docs/latest/users-guide/03-asking-questions) without knowing SQL
 - Rich beautiful [dashboards](http://www.metabase.com/docs/latest/users-guide/05-sharing-answers) with auto refresh and fullscreen
-- SQL Mode for analysts and data pros.
-- Create canonical [segments and metrics](http://www.metabase.com/docs/latest/administration-guide/05-segments-and-metrics) for your team to use.
+- SQL Mode for analysts and data pros
+- Create canonical [segments and metrics](http://www.metabase.com/docs/latest/administration-guide/05-segments-and-metrics) for your team to use
 - Send data to Slack or email on a schedule with [Pulses](http://www.metabase.com/docs/latest/users-guide/07-pulses)
 - View data in Slack anytime with [Metabot](http://www.metabase.com/docs/latest/users-guide/10-metabot)
 - [Humanize data](http://www.metabase.com/docs/latest/administration-guide/03-metadata-editing) for your team by renaming, annotating and hiding fields
 
-For more information check out [metabase.com](http://www.metabase.com).
+For more information check out [metabase.com](http://www.metabase.com)
 
 ## Supported databases
 
 - Postgres
 - MySQL
+- Druid
+- SQL Server
 - Redshift
 - MongoDB
 - Google BigQuery
+- H2
 
 Don't see your favorite database? File an issue to let us know.
 
@@ -34,7 +37,7 @@ Don't see your favorite database? File an issue to let us know.
 
 You can run Metabase in two primary ways, as a docker container or as a jar.
 
-- ### Docker
+### Docker
 
 To run Metabase via Docker, just type
 
@@ -42,12 +45,12 @@ To run Metabase via Docker, just type
 docker run -d -p 3000:3000 --name metabase metabase/metabase
 ```
 
-- ### JVM Jar
+### JVM Jar
 
 To run the jar you will need to have a Java Runtime installed. As a quick check to see if you system already has one, try
 
 ```sh
-  java -version
+java -version
 ```
 
 If you see something like
@@ -63,7 +66,7 @@ you are good to go. Otherwise, download the Java Runtime Environment at http://j
 Go to the [Metabase Download Page](http://www.metabase.com/start/) and download the current build. Place the downloaded jar into a newly created directory (as it will create some files when it is run), and run it on the command line:
 
 ```sh
-  java -jar metabase.jar
+java -jar metabase.jar
 ```
 
 Now, open a browser and go to [http://localhost:3000](http://localhost:3000) , and you will be asked a set of questions that will set up a user account, and then you can add a database connection. For this to work you will need to get some information about which database you want to connect to, such as the Host Name and Port that it is running on, the Database Name and the User and Password that you will be using.
