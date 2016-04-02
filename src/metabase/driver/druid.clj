@@ -92,8 +92,8 @@
            {:field-type :metric, :base-type :FloatField}
            {:field-type :dimension, :base-type :TextField})))
 
-(defn- describe-table [table]
-  (let [details                      (:details (table/database table))
+(defn- describe-table [database table]
+  (let [details                      (:details database)
         {:keys [dimensions metrics]} (GET (details->url details "/druid/v2/datasources/" (:name table) "?interval=-5000/5000"))]
     (clojure.pprint/pprint dimensions)
     {:name   (:name table)

@@ -277,14 +277,14 @@
   (with-metadata [metadata driver database]
     {:tables (active-tables driver, ^DatabaseMetaData metadata)}))
 
-(defn- describe-table [driver table]
-  (with-metadata [metadata driver (table/database table)]
+(defn- describe-table [driver database table]
+  (with-metadata [metadata driver database]
     (->> (assoc (select-keys table [:name :schema]) :fields (describe-table-fields metadata driver table))
          ;; find PKs and mark them
          (add-table-pks metadata))))
 
-(defn- describe-table-fks [driver table]
-  (with-metadata [metadata driver (table/database table)]
+(defn- describe-table-fks [driver database table]
+  (with-metadata [metadata driver database]
     (set (->> (.getImportedKeys metadata nil (:schema table) (:name table))
               jdbc/result-set-seq
               (mapv (fn [result]

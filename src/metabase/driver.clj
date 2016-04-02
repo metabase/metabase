@@ -106,12 +106,12 @@
      It is expected that this function will be peformant and avoid draining meaningful resources of the database.
      Results should match the `DescribeDatabase` schema.")
 
-  (describe-table ^java.util.Map [this, ^TableInstance table]
+  (describe-table ^java.util.Map [this, ^DatabaseInstance database, ^java.util.Map table]
     "Return a map containing information that describes the physical schema of TABLE.
      It is expected that this function will be peformant and avoid draining meaningful resources of the database.
      Results should match the `DescribeTable` schema.")
 
-  (describe-table-fks ^java.util.Set [this, ^TableInstance table]
+  (describe-table-fks ^java.util.Set [this, ^DatabaseInstance database, ^java.util.Map table]
     "*OPTIONAL*, BUT REQUIRED FOR DRIVERS THAT SUPPORT `:foreign-keys`*
      Results should match the `DescribeTableFKs` schema.")
 

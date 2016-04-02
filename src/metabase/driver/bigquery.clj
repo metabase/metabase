@@ -128,12 +128,9 @@
     {:name            (.getName field)
      :base-type       (bigquery-type->base-type (.getType field))}))
 
-(defn- describe-table
-  ([table]
-   (describe-table (table/database table) (:name table)))
-  ([database table-name]
-   {:name   table-name
-    :fields (set (table-schema->metabase-field-info (.getSchema (get-table database table-name))))}))
+(defn- describe-table [database {table-name :name}]
+  {:name   table-name
+   :fields (set (table-schema->metabase-field-info (.getSchema (get-table database table-name))))})
 
 
 (defn- ^QueryResponse execute-query

@@ -159,7 +159,7 @@
   [driver table & {:keys [analyze?]
                    :or {analyze? true}}]
   (let [active-field-ids         #(set (sel :many :field [Field :id], :table_id (:id table), :visibility_type [not= "retired"], :parent_id nil))
-        table-def                (driver/describe-table driver table)
+        table-def                (driver/describe-table driver (metabase.models.table/database table) table)
         current-active-field-ids (active-field-ids)]
     (schema/validate driver/DescribeTable table-def)
 
@@ -464,7 +464,7 @@ infer-field-special-type
 
 (defn- sync-table-fks! [driver table]
   (when (contains? (driver/features driver) :foreign-keys)
-    (let [fks (driver/describe-table-fks driver table)]
+    (let [fks (driver/describe-table-fks driver (metabase.models.table/database table) table)]
       (schema/validate driver/DescribeTableFKs fks)
       (when (seq fks)
         (let [fk-name->id (sel :many :field->id [Field :name], :table_id (:id table), :name [in (map :fk-column-name fks)], :parent_id nil)]

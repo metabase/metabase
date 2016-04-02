@@ -93,7 +93,7 @@
              {:name "_id",
               :base-type :IntegerField,
               :pk? true}}}
-  (driver/describe-table (MongoDriver.) (table-name->table :venues)))
+  (driver/describe-table (MongoDriver.) (mongo-db) (table-name->table :venues)))
 
 ;; ANALYZE-TABLE
 (expect-when-testing-mongo

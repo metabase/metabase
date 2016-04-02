@@ -116,8 +116,8 @@
     {:tables (set (for [collection (set/difference (mdb/get-collection-names conn) #{"system.indexes"})]
                     {:name collection}))}))
 
-(defn- describe-table [table]
-  (with-mongo-connection [^com.mongodb.DB conn (table/database table)]
+(defn- describe-table [database table]
+  (with-mongo-connection [^com.mongodb.DB conn database]
     ;; TODO: ideally this would take the LAST set of rows added to the table so we could ensure this data changes on reruns
     (let [parsed-rows (try
                         (->> (mc/find-maps conn (:name table))
