@@ -20,7 +20,8 @@
 
 (defn- pre-cascade-delete [{:keys [id]}]
   (cascade-delete 'Card  :database_id id)
-  (cascade-delete 'Table :db_id id))
+  (cascade-delete 'Table :db_id id)
+  (cascade-delete 'RawTable :database_id id))
 
 (defn ^:hydrate tables
   "Return the `Tables` associated with this `Database`."

@@ -13,6 +13,8 @@
                              [metric :refer [Metric]]
                              [pulse :refer [Pulse]]
                              [pulse-channel :refer [PulseChannel]]
+                             [raw-column :refer [RawColumn]]
+                             [raw-table :refer [RawTable]]
                              [revision :refer [Revision]]
                              [segment :refer [Segment]]
                              [table :refer [Table]])))
@@ -84,6 +86,24 @@
   (->> (repeatedly 20 #(-> (rand-int 26) (+ (int \A)) char))
        (apply str)))
 
+
+(defn boolean-ids-and-timestamps
+  "Useful for unit test comparisons.  Converts map keys with 'id' or '_at' to booleans."
+  [m]
+  (let [f (fn [v]
+            (cond
+              (map? v) (boolean-ids-and-timestamps v)
+              (coll? v) (mapv boolean-ids-and-timestamps v)
+              :else v))]
+    (into {} (for [[k v] m]
+               (if (or (= :id k)
+                       (.endsWith (name k) "_id")
+                       (= :created_at k)
+                       (= :updated_at k))
+                 [k (not (nil? v))]
+                 [k (f v)])))))
+
+
 (defprotocol ^:private WithTempDefaults
   (^:private with-temp-defaults [this]))
 
@@ -117,6 +137,10 @@
                                                                                          :details       {}
                                                                                          :schedule_type :daily
                                                                                          :schedule_hour 15})})
+(u/strict-extend (class RawColumn)    WithTempDefaults {:with-temp-defaults (fn [_] {:active true
+                                                                                     :name   (random-name)})})
+(u/strict-extend (class RawTable)     WithTempDefaults {:with-temp-defaults (fn [_] {:active true
+                                                                                     :name   (random-name)})})
 (u/strict-extend (class Revision)     WithTempDefaults {:with-temp-defaults (fn [_] {:user_id      ((resolve 'metabase.test.data.users/user->id) :rasta)
                                                                                      :is_creation  false
                                                                                      :is_reversion false})})
