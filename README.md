@@ -29,6 +29,7 @@ For more information check out [metabase.com](http://www.metabase.com)
 - Redshift
 - MongoDB
 - Google BigQuery
+- SQLite
 - H2
 
 Don't see your favorite database? File an issue to let us know.
