@@ -43,11 +43,6 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: fks
-                  type: text
-                  constraints:
-                    nullable: true
-              - column:
                   name: created_at
                   type: DATETIME
                   constraints:
@@ -79,7 +74,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
                     references: raw_table(id)
-                    foreignKeyName: fk_rawcolumn_ref_rawtable
+                    foreignKeyName: fk_rawcolumn_tableid_ref_rawtable
                     deferrable: false
                     initiallyDeferred: false
               - column:
@@ -102,6 +97,15 @@ databaseChangeLog:
                   type: boolean
                   constraints:
                     nullable: false
+              - column:
+                  name: fk_target_column_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    references: raw_column(id)
+                    foreignKeyName: fk_rawcolumn_fktarget_ref_rawcolumn
+                    deferrable: false
+                    initiallyDeferred: false
               - column:
                   name: details
                   type: text
