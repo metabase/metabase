@@ -181,7 +181,7 @@
                                            (resolve/resolve-table {source-table-id source-table}))]
                              (if (or (contains? #{:DateField :DateTimeField} (:base-type field))
                                      (contains? #{:timestamp_seconds :timestamp_milliseconds} (:special-type field)))
-                               (map->DateTimeField {:field field, :unit :day})
+                               (map->DateTimeField {:field field, :unit :default})
                                field)))]
               (if-not (seq fields)
                 (do (log/warn (format "Table '%s' has no Fields associated with it." (:name source-table)))

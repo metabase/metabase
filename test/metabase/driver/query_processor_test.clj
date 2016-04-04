@@ -116,7 +116,7 @@
                   :base_type    (expected-base-type->actual :DateTimeField)
                   :name         (format-name "last_login")
                   :display_name "Last Login"
-                  :unit         :day})))
+                  :unit         :default})))
 
 ;; #### venues
 (defn- venues-columns
@@ -136,13 +136,14 @@
                    :base_type    (id-field-type)
                    :name         (format-name "id")
                    :display_name "Id"}
-     :category_id {:extra_info   (if (fks-supported?) {:target_table_id (id :categories)}
-                                     {})
-                   :target       (if (fks-supported?) (-> (categories-col :id)
-                                                          (dissoc :target :extra_info :schema_name))
-                                     nil)
-                   :special_type (if (fks-supported?) :fk
-                                     :category)
+     :category_id {:extra_info   (if (fks-supported?)
+                                   {:target_table_id (id :categories)}
+                                   {})
+                   :target       (when (fks-supported?)
+                                   (dissoc (categories-col :id) :target :extra_info :schema_name))
+                   :special_type (if (fks-supported?)
+                                   :fk
+                                   :category)
                    :base_type    (expected-base-type->actual :IntegerField)
                    :name         (format-name "category_id")
                    :display_name "Category Id"}
