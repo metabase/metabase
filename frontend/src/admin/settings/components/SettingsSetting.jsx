@@ -59,7 +59,7 @@ export default class SettingsSetting extends Component {
         var on = (setting.value == null ? setting.default : setting.value) === "true";
         return (
             <div className="flex align-center pt1">
-                <Toggle value={on} onChange={this.props.updateSetting.bind(null, setting, on ? "false" : "true")}/>
+                <Toggle value={on} onChange={!this.props.disabled ? this.props.updateSetting.bind(null, setting, on ? "false" : "true") : null}/>
                 <span className="text-bold mx1">{on ? "Enabled" : "Disabled"}</span>
             </div>
         );
