@@ -13,6 +13,7 @@
     (merge defaults table)))
 
 (defn- pre-cascade-delete [{:keys [id]}]
+  (db/cascade-delete 'Table :raw_table_id id)
   (db/cascade-delete RawColumn :raw_table_id id))
 
 (u/strict-extend (class RawTable)

@@ -2,6 +2,7 @@
   "Common utility functions useful throughout the codebase."
   (:require [clojure.data :as data]
             [clojure.java.jdbc :as jdbc]
+            [clojure.math.numeric-tower :as math]
             (clojure [pprint :refer [pprint]]
                      [string :as s])
             [clojure.tools.logging :as log]
@@ -430,6 +431,36 @@
      (with-out-str (pprint x))))
   ([color-symb x]
    ((ns-resolve 'colorize.core color-symb) (pprint-to-str x))))
+
+(def emoji-progress-bar
+  "Create a string that shows sync progress for a database.
+
+     (sync-progress-meter-string 10 40)
+       -> \"[************······································] 25%\""
+  (let [^:const meter-width    50
+        ^:const progress-emoji ["😱"  ; face screaming in fear
+                                "😢"  ; crying face
+                                "😞"  ; disappointed face
+                                "😒"  ; unamused face
+                                "😕"  ; confused face
+                                "😐"  ; neutral face
+                                "😬"  ; grimacing face
+                                "😌"  ; relieved face
+                                "😏"  ; smirking face
+                                "😋"  ; face savouring delicious food
+                                "😊"  ; smiling face with smiling eyes
+                                "😍"  ; smiling face with heart shaped eyes
+                                "😎"] ; smiling face with sunglasses
+        percent-done->emoji    (fn [percent-done]
+                                 (progress-emoji (int (math/round (* percent-done (dec (count progress-emoji)))))))]
+    (fn [completed total]
+      (let [percent-done (float (/ completed total))
+            filleds      (int (* percent-done meter-width))
+            blanks       (- meter-width filleds)]
+        (str "["
+             (apply str (repeat filleds "*"))
+             (apply str (repeat blanks "·"))
+             (format "] %s  %3.0f%%" (percent-done->emoji percent-done) (* percent-done 100.0)))))))
 
 (defn filtered-stacktrace
   "Get the stack trace associated with E and return it as a vector with non-metabase frames filtered out."
