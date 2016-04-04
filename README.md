@@ -36,7 +36,7 @@ Don't see your favorite database? File an issue to let us know.
 
 ## Installation
 
-You can run Metabase in two primary ways, as a docker container or as a jar.
+Metabase can be run just about anywhere so checkout our [Installation Guides](http://www.metabase.com/docs/latest/operations-guide/start.html#installing-and-running-metabase) for detailed instructions for various deployments.  Here's the TLDR:
 
 ### Docker
 
