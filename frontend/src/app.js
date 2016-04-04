@@ -1,3 +1,35 @@
+import 'babel-polyfill';
+
+// angular:
+import 'angular';
+import 'angular-cookies';
+import 'angular-resource';
+import 'angular-route';
+
+// angular 3rd-party:
+import 'angular-cookie';
+import 'angular-http-auth';
+
+import "./controllers";
+import "./directives";
+import "./filters";
+import "./forms";
+import "./services";
+
+import "./icons";
+
+import "./auth/auth.module";
+import "./card/card.module";
+import "./dashboard/dashboard.module";
+import "./home/home.module";
+import "./pulse/pulse.module";
+import "./setup/setup.module";
+import "./user/user.module";
+
+import "./admin/databases/databases.module";
+import "./admin/people/people.module";
+import "./admin/settings/settings.module";
+import "./admin/datamodel/datamodel.module";
 
 import Routes from "./Routes.jsx";
 
@@ -18,7 +50,7 @@ var Metabase = angular.module('metabase', [
     'metabase.filters',
     'metabase.directives',
     'metabase.controllers',
-    'metabase.components',
+    'metabase.icons',
     'metabase.card',
     'metabase.dashboard',
     'metabase.home',

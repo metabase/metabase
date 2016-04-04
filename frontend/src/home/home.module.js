@@ -1,3 +1,5 @@
+import "./home.controllers";
+
 var Home = angular.module('metabase.home', [
     'metabase.home.controllers',
 ]);

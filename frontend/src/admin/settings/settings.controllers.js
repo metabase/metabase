@@ -1,3 +1,5 @@
+import "metabase/services";
+
 import _ from "underscore";
 
 import SettingsEditor from './components/SettingsEditor.jsx';

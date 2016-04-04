@@ -1,3 +1,5 @@
+import "./datamodel.controllers";
+
 angular
 .module('metabase.admin.datamodel', [
     'metabase.admin.datamodel.controllers'
