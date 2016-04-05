@@ -6,10 +6,12 @@
             [metabase.events.activity-feed :refer [activity-feed-topics]]
             (metabase.models [activity :refer [Activity]]
                              [card :refer [Card]]
+                             [dashboard-card :refer [DashboardCard]]
                              [database :refer [Database]]
+                             [field :refer [Field]]
+                             [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]]
                              [setting :as setting])
-            [metabase.sample-data :as sample-data]
             [metabase.util :as u]))
 
 ;;; # Migration Helpers
@@ -31,8 +33,7 @@
       (@migration-var)
       (k/insert "data_migrations"
                 (k/values {:id        migration-name
-                           :timestamp (u/new-sql-timestamp)}))
-      (log/info "[ok]"))))
+                           :timestamp (u/new-sql-timestamp)})))))
 
 (def ^:private data-migrations (atom []))
 
@@ -45,7 +46,9 @@
 (defn run-all
   "Run all data migrations defined by `defmigration`."
   []
-  (dorun (map run-migration-if-needed @data-migrations)))
+  (log/info "Running all necessary data migrations, this may take a minute.")
+  (dorun (map run-migration-if-needed @data-migrations))
+  (log/info "Finished running data migrations."))
 
 
 ;;; # Migration Definitions
@@ -96,3 +99,83 @@
   (when-not (contains? activity-feed-topics :database-sync-begin)
     (k/delete Activity
       (k/where {:topic "database-sync"}))))
+
+
+;; Clean up duplicate FK entries
+(defmigration remove-duplicate-fk-entries
+  (let [existing-fks (db/sel :many ForeignKey)
+        grouped-fks  (group-by #(str (:origin_id %) "_" (:destination_id %)) existing-fks)]
+    (doseq [[k fks] grouped-fks]
+      (when (< 1 (count fks))
+        (log/debug "Removing duplicate FK entries for" k)
+        (doseq [duplicate-fk (drop-last fks)]
+          (db/del ForeignKey :id (:id duplicate-fk)))))))
+
+
+;; Migrate dashboards to the new grid
+;; NOTE: this scales the dashboards by 4x in the Y-scale and 3x in the X-scale
+(defmigration update-dashboards-to-new-grid
+  (doseq [{:keys [id row col sizeX sizeY]} (db/sel :many DashboardCard)]
+    (k/update DashboardCard
+      (k/set-fields {:row   (when row (* row 4))
+                     :col   (when col (* col 3))
+                     :sizeX (when sizeX (* sizeX 3))
+                     :sizeY (when sizeY (* sizeY 4))})
+      (k/where {:id id}))))
+
+
+;; migrate data to new visibility_type column on field
+(defmigration migrate-field-visibility-type
+  (when (< 0 (:cnt (first (k/select Field (k/aggregate (count :*) :cnt) (k/where (= :visibility_type "unset"))))))
+    ;; start by marking all inactive fields as :retired
+    (k/update Field
+      (k/set-fields {:visibility_type "retired"})
+      (k/where      {:visibility_type "unset"
+                     :active          false}))
+    ;; anything that is active with field_type = :sensitive gets visibility_type :sensitive
+    (k/update Field
+      (k/set-fields {:visibility_type "sensitive"})
+      (k/where      {:visibility_type "unset"
+                     :active          true
+                     :field_type      "sensitive"}))
+    ;; if field is active but preview_display = false then it becomes :details-only
+    (k/update Field
+      (k/set-fields {:visibility_type "details-only"})
+      (k/where      {:visibility_type "unset"
+                     :active          true
+                     :preview_display false}))
+    ;; everything else should end up as a :normal field
+    (k/update Field
+      (k/set-fields {:visibility_type "normal"})
+      (k/where      {:visibility_type "unset"
+                     :active          true}))))
+
+
+;; deal with dashboard cards which have NULL `:row` or `:col` values
+(defmigration fix-dashboard-cards-without-positions
+  (when-let [bad-dashboards (not-empty (k/select DashboardCard (k/fields [:dashboard_id]) (k/modifier "DISTINCT") (k/where (or (= :row nil) (= :col nil)))))]
+    (log/info "Looks like we need to fix unpositioned cards in these dashboards:" (mapv :dashboard_id bad-dashboards))
+    ;; we are going to take the easy way out, which is to put bad-cards at the bottom of the dashboard
+    (doseq [{dash-to-fix :dashboard_id} bad-dashboards]
+      (let [max-row   (or (:row (first (k/select DashboardCard (k/aggregate (max :row) :row) (k/where {:dashboard_id dash-to-fix})))) 0)
+            max-size  (or (:size (first (k/select DashboardCard (k/aggregate (max :sizeY) :size) (k/where {:dashboard_id dash-to-fix, :row max-row})))) 0)
+            max-y     (+ max-row max-size)
+            bad-cards (k/select DashboardCard (k/fields :id :sizeY) (k/where {:dashboard_id dash-to-fix}) (k/where (or (= :row nil) (= :col nil))))]
+        (loop [[bad-card & more] bad-cards
+               row-target        max-y]
+          (k/update DashboardCard
+            (k/set-fields {:row row-target
+                           :col 0})
+            (k/where      {:id  (:id bad-card)}))
+          (when more
+            (recur more (+ row-target (:sizeY bad-card)))))))))
+
+
+;; migrate FK information from old ForeignKey model to Field.fk_target_field_id
+(defmigration migrate-fk-metadata
+  (when (> 1 (:cnt (first (k/select Field (k/aggregate (count :*) :cnt) (k/where (not= :fk_target_field_id nil))))))
+    (when-let [fks (not-empty (db/sel :many ForeignKey))]
+      (doseq [{:keys [origin_id destination_id]} fks]
+        (k/update Field
+          (k/set-fields {:fk_target_field_id destination_id})
+          (k/where      {:id                 origin_id}))))))

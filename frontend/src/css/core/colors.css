@@ -19,6 +19,8 @@
   --green-color: #9CC177;
   --dark-color: #4C545B;
   --error-color: #EF8C8C;
+  --slate-color: #9BA5B1;
+  --slate-light-color: #DFE8EA;
 }
 
 .text-default {
@@ -106,6 +108,18 @@
     color: var(--green-color);
 }
 
+.text-orange {
+    color: var(--orange-color);
+}
+
+.text-slate {
+    color: var(--slate-color);
+}
+
+.text-slate-light {
+    color: var(--slate-light-color);
+}
+
 .bg-gold { background-color: var(--gold-color); }
 .bg-purple { background-color: var(--purple-color); }
 .bg-purple-light { background-color: var(--purple-light-color); }
@@ -127,6 +141,7 @@
 .text-grey-4,
 .text-grey-4-hover:hover { color: color(var(--base-grey) shade(40%)) }
 
+.bg-grey-0 { background-color: var(--base-grey) }
 .bg-grey-1 { background-color: color(var(--base-grey) shade(10%)) }
 .bg-grey-2 { background-color: color(var(--base-grey) shade(20%)) }
 .bg-grey-3 { background-color: color(var(--base-grey) shade(30%)) }

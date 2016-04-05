@@ -1,29 +1,124 @@
+import 'babel-polyfill';
+
+// angular:
+import 'angular';
+import 'angular-cookies';
+import 'angular-resource';
+import 'angular-route';
+
+// angular 3rd-party:
+import 'angular-cookie';
+import 'angular-http-auth';
+
+import "./controllers";
+import "./directives";
+import "./filters";
+import "./forms";
+import "./services";
+
+import "./icons";
+
+import "./auth/auth.module";
+import "./card/card.module";
+import "./dashboard/dashboard.module";
+import "./home/home.module";
+import "./pulse/pulse.module";
+import "./setup/setup.module";
+import "./user/user.module";
+
+import "./admin/databases/databases.module";
+import "./admin/people/people.module";
+import "./admin/settings/settings.module";
+import "./admin/datamodel/datamodel.module";
+
+import Routes from "./Routes.jsx";
+
+import { createStore, combineReducers } from "metabase/lib/redux";
+
+import { routerStateReducer as router } from 'redux-router';
+import { reducer as form } from "redux-form";
+
+import * as datamodel from 'metabase/admin/datamodel/reducers';
+
+import { registerAnalyticsClickListener } from "metabase/lib/analytics";
+
 // Declare app level module which depends on filters, and services
 var Metabase = angular.module('metabase', [
     'ngRoute',
     'ngCookies',
-    'ui.bootstrap', // bootstrap LIKE widgets via angular directives
     'metabase.auth',
     'metabase.filters',
     'metabase.directives',
     'metabase.controllers',
-    'metabase.components',
+    'metabase.icons',
     'metabase.card',
     'metabase.dashboard',
     'metabase.home',
     'metabase.pulse',
     'metabase.setup',
     'metabase.user',
-    'metabaseadmin.databases',
-    'metabaseadmin.people',
-    'metabaseadmin.settings',
-    'metabase.admin.metadata',
+    'metabase.admin.databases',
+    'metabase.admin.people',
+    'metabase.admin.settings',
+    'metabase.admin.datamodel',
 ]);
 Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider, $locationProvider) {
     $locationProvider.html5Mode({
         enabled: true,
         requireBase: false
     });
+
+    const route = {
+        template: '<div mb-redux-component class="flex flex-column flex-full" />',
+        controller: ['$scope', '$location', '$route', '$routeParams', 'AppState',
+            function($scope, $location, $route, $routeParams, AppState) {
+                $scope.Component = Routes;
+                $scope.props = {};
+                $scope.store = createStore(combineReducers({
+                    // admin: {
+                    //     datamodel
+                    // },
+                    datamodel: combineReducers(datamodel),
+                    form,
+                    router,
+                    user: (state = null) => state
+                }), { user: AppState.model.currentUser });
+
+                // HACK: prevent reloading controllers as the URL changes
+                var route = $route.current;
+                $scope.$on('$locationChangeSuccess', function (event) {
+                    var newParams = $route.current.params;
+                    var oldParams = route.params;
+
+                    if ($route.current.$$route.controller === route.controller) {
+                        $route.current = route;
+
+                        angular.forEach(oldParams, function(value, key) {
+                            delete $route.current.params[key];
+                            delete $routeParams[key];
+                        });
+                        angular.forEach(newParams, function(value, key) {
+                            $route.current.params[key] = value;
+                            $routeParams[key] = value;
+                        });
+                    }
+                });
+            }
+        ],
+        resolve: {
+            appState: ["AppState", function(AppState) {
+                return AppState.init();
+            }]
+        }
+    };
+
+    $routeProvider.when('/admin/datamodel/metric', route);
+    $routeProvider.when('/admin/datamodel/metric/:segmentId', route);
+
+    $routeProvider.when('/admin/datamodel/segment', route);
+    $routeProvider.when('/admin/datamodel/segment/:segmentId', route);
+
+    $routeProvider.when('/admin/datamodel/:objectType/:objectId/revisions', route);
 
     $routeProvider.when('/unauthorized/', {
         templateUrl: '/app/unauthorized.html',
@@ -52,4 +147,7 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
 Metabase.run(["AppState", function(AppState) {
     // initialize app state
     AppState.init();
+
+    // start our analytics click listener
+    registerAnalyticsClickListener();
 }]);

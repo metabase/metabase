@@ -1,11 +1,10 @@
 (ns metabase.driver.mongo.util
   "`*mongo-connection*`, `with-mongo-connection`, and other functions shared between several Mongo driver namespaces."
-  (:require [clojure.string :as s]
-            [clojure.tools.logging :as log]
-            [colorize.core :as color]
+  (:require [clojure.tools.logging :as log]
             (monger [core :as mg]
                     [credentials :as mcred])
-            [metabase.driver :as driver]))
+            (metabase [driver :as driver]
+                      [util :as u])))
 
 (def ^:const ^:private connection-timeout-ms
   "Number of milliseconds to wait when attempting to establish a Mongo connection.
@@ -15,7 +14,7 @@
 
    Don't set the timeout too low -- I've have Circle fail when the timeout was 1000ms
    on *one* occasion."
-  1500)
+  3000)
 
 (def ^:dynamic ^com.mongodb.DB *mongo-connection*
   "Connection to a Mongo database.
@@ -62,7 +61,7 @@
                            (connect credentials)
                            (connect))
         mongo-connection (mg/get-db conn dbname)]
-    (log/debug (color/cyan "<< OPENED NEW MONGODB CONNECTION >>"))
+    (log/debug (u/format-color 'cyan "<< OPENED NEW MONGODB CONNECTION >>"))
     (try
       (binding [*mongo-connection* mongo-connection]
         (f *mongo-connection*))

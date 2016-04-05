@@ -1,10 +1,13 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import cx from "classnames";
 
 // higher order component that takes a component which takes props "isOpen" and optionally "onClose"
 // and returns a component that renders a <a> element "trigger", and tracks whether that component is open or not
 export default ComposedComponent => class extends Component {
+    static displayName = "Triggerable["+(ComposedComponent.displayName || ComposedComponent.name)+"]";
+
     constructor(props, context) {
         super(props, context);
         this.state = {
@@ -26,15 +29,15 @@ export default ComposedComponent => class extends Component {
 
     onClose(e) {
         // don't close if clicked the actual trigger, it will toggle
-        if (e && e.target && React.findDOMNode(this.refs.trigger).contains(e.target)) {
+        if (e && e.target && ReactDOM.findDOMNode(this.refs.trigger).contains(e.target)) {
             return;
         }
         this.close();
     }
 
-    getTriggerTarget() {
-        if (this.props.getTriggerTarget) {
-            return this.props.getTriggerTarget();
+    getTarget() {
+        if (this.props.getTarget) {
+            return this.props.getTarget();
         } else {
             return this.refs.trigger;
         }
@@ -42,13 +45,13 @@ export default ComposedComponent => class extends Component {
 
     render() {
         return (
-            <a ref="trigger" href="#" onClick={() => this.toggle()} className={cx("no-decoration", this.props.triggerClasses)}>
+            <a ref="trigger" onClick={() => this.toggle()} className={cx("no-decoration", this.props.triggerClasses)}>
                 {this.props.triggerElement}
                 <ComposedComponent
                     {...this.props}
                     isOpen={this.state.isOpen}
                     onClose={this.onClose.bind(this)}
-                    getTriggerTarget={() => this.getTriggerTarget()}
+                    getTarget={() => this.getTarget()}
                 />
             </a>
         );

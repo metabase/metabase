@@ -1,52 +1,51 @@
 (ns metabase.models.pulse
-  (:require [clojure.tools.logging :as log]
-            [korma.core :as k]
-            [korma.db :as kdb]
+  (:require (korma [core :as k]
+                   [db :as kdb])
+            [medley.core :as m]
             [metabase.db :as db]
             [metabase.events :as events]
             (metabase.models [card :refer [Card]]
                              [common :refer [perms-readwrite]]
                              [hydrate :refer :all]
-                             [interface :refer :all]
+                             [interface :as i]
                              [pulse-card :refer [PulseCard]]
-                             [pulse-channel :refer [PulseChannel] :as pulse-channel]
-                             [user :refer [User]])
+                             [pulse-channel :refer [PulseChannel] :as pulse-channel])
             [metabase.util :as u]))
 
 
-(defrecord PulseInstance []
-  ;; preserve normal IFn behavior so things like ((sel :one Database) :id) work correctly
-  clojure.lang.IFn
-  (invoke [this k]
-    (get this k)))
+(i/defentity Pulse :pulse)
 
-(extend-ICanReadWrite PulseInstance :read :public-perms, :write :public-perms)
+(defn- pre-insert [pulse]
+  (let [defaults {:public_perms perms-readwrite}]
+    (merge defaults pulse)))
 
+(defn ^:hydrate channels
+  "Return the `PulseChannels` associated with this PULSE."
+  [{:keys [id]}]
+  (db/sel :many PulseChannel, :pulse_id id))
 
-(defentity Pulse
-  [(k/table :pulse)
-   (hydration-keys pulse)
-   timestamped]
+(defn- pre-cascade-delete [{:keys [id]}]
+  (db/cascade-delete PulseCard :pulse_id id)
+  (db/cascade-delete PulseChannel :pulse_id id))
 
-  (pre-insert [_ pulse]
-    (let [defaults {:public_perms perms-readwrite}]
-      (merge defaults pulse)))
+(defn ^:hydrate cards
+  "Return the `Cards` assoicated with this PULSE."
+  [{:keys [id]}]
+  (k/select Card
+            (k/join PulseCard (= :pulse_card.card_id :id))
+            (k/fields :id :name :description :display)
+            (k/where {:pulse_card.pulse_id id})
+            (k/order :pulse_card.position :asc)))
 
-  (post-select [_ {:keys [id creator_id] :as pulse}]
-    (map->PulseInstance
-      (assoc pulse :cards    (delay (k/select Card
-                                      (k/join PulseCard (= :pulse_card.card_id :id))
-                                      (k/fields :id :name :description :display)
-                                      (k/where {:pulse_card.pulse_id id})
-                                      (k/order :pulse_card.position :asc)))
-                   :channels (delay (db/sel :many PulseChannel (k/where {:pulse_id id})))
-                   :creator  (delay (when creator_id (db/sel :one User :id creator_id))))))
-
-  (pre-cascade-delete [_ {:keys [id]}]
-    (db/cascade-delete PulseCard :pulse_id id)
-    (db/cascade-delete PulseChannel :pulse_id id)))
-
-(extend-ICanReadWrite PulseEntity :read :public-perms, :write :public-perms)
+(u/strict-extend (class Pulse)
+  i/IEntity
+  (merge i/IEntityDefaults
+         {:hydration-keys     (constantly [:pulse])
+          :timestamped?       (constantly true)
+          :can-read?          i/publicly-readable?
+          :can-write?         i/publicly-writeable?
+          :pre-insert         pre-insert
+          :pre-cascade-delete pre-cascade-delete}))
 
 
 ;; ## Persistence Functions
@@ -76,10 +75,11 @@
   ;; NOTE that we force the :id of the channel being updated to the :id we *know* from our
   ;;      existing list of `PulseChannels` pulled from the db to ensure we affect the right record
   (let [channel (when new-channel (assoc new-channel
-                                    :pulse_id      pulse-id
-                                    :id            (:id existing-channel)
-                                    :channel_type  (keyword (:channel_type new-channel))
-                                    :schedule_type (keyword (:schedule_type new-channel))))]
+                                    :pulse_id       pulse-id
+                                    :id             (:id existing-channel)
+                                    :channel_type   (keyword (:channel_type new-channel))
+                                    :schedule_type  (keyword (:schedule_type new-channel))
+                                    :schedule_frame (keyword (:schedule_frame new-channel))))]
     (cond
       ;; 1. in channels, NOT in db-channels = CREATE
       (and channel (not existing-channel))  (pulse-channel/create-pulse-channel channel)
@@ -114,13 +114,15 @@
   [id]
   {:pre [(integer? id)]}
   (-> (db/sel :one Pulse :id id)
-      (hydrate :creator :cards [:channels :recipients])))
+      (hydrate :creator :cards [:channels :recipients])
+      (m/dissoc-in [:details :emails])))
 
 (defn retrieve-pulses
   "Fetch all `Pulses`."
   []
-  (-> (db/sel :many Pulse (k/order :name :ASC))
-      (hydrate :creator :cards [:channels :recipients])))
+  (for [pulse (-> (db/sel :many Pulse (k/order :name :ASC))
+                  (hydrate :creator :cards [:channels :recipients]))]
+    (m/dissoc-in pulse [:details :emails])))
 
 (defn update-pulse
   "Update an existing `Pulse`, including all associated data such as: `PulseCards`, `PulseChannels`, and `PulseChannelRecipients`.
@@ -151,22 +153,21 @@
   `PulseCards`, `PulseChannels`, and `PulseChannelRecipients`.
 
    Returns the newly created `Pulse` or throws an Exception."
-  [pulse-name creator-id cards channels]
+  [pulse-name creator-id card-ids channels]
   {:pre [(string? pulse-name)
          (integer? creator-id)
-         (sequential? cards)
-         (> (count cards) 0)
-         (every? integer? cards)
+         (sequential? card-ids)
+         (> (count card-ids) 0)
+         (every? integer? card-ids)
          (coll? channels)
          (every? map? channels)]}
   (kdb/transaction
     (let [{:keys [id] :as pulse} (db/ins Pulse
                                    :creator_id creator-id
                                    :name pulse-name)]
-      ;; add cards to the Pulse
-      (update-pulse-cards pulse cards)
+      ;; add card-ids to the Pulse
+      (update-pulse-cards pulse card-ids)
       ;; add channels to the Pulse
       (update-pulse-channels pulse channels)
       ;; return the full Pulse (and record our create event)
-      (->> (retrieve-pulse id)
-           (events/publish-event :pulse-create)))))
+      (events/publish-event :pulse-create (retrieve-pulse id)))))

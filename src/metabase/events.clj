@@ -8,37 +8,38 @@
    `events-init` function which accepts zero arguments.  This function is dynamically resolved and called exactly
    once when the application goes through normal startup procedures.  Inside this function you can do any work
    needed and add your events subscribers to the bus as usual via `start-event-listener`."
-  (:require clojure.java.classpath
-            [clojure.core.async :as async]
+  (:require [clojure.core.async :as async]
+            [clojure.java.classpath :as classpath]
             [clojure.tools.logging :as log]
-            [clojure.tools.namespace.find :as ns-find]))
+            [clojure.tools.namespace.find :as ns-find]
+            (metabase [config :as config]
+                      [util :as u])))
 
 
 ;;; ## ---------------------------------------- LIFECYCLE ----------------------------------------
 
 
-(defonce ^:private events-initialized
+(defonce ^:private events-initialized?
   (atom nil))
 
-(defn- find-and-load-event-handlers
+(defn- find-and-load-event-handlers!
   "Search Classpath for namespaces that start with `metabase.events.`, and call their `events-init` function if it exists."
   []
-  (doseq [events-ns (->> (ns-find/find-namespaces (clojure.java.classpath/classpath))
-                         (filter (fn [ns-symb]
-                                   (re-find #"^metabase\.events\." (name ns-symb)))))]
-    (log/info "loading events namespace: " events-ns)
-    (require events-ns)
-    ;; look for `events-init` function in the namespace and call it if it exists
-    (when-let [init-fn (ns-resolve events-ns 'events-init)]
-      (init-fn))))
+  (when-not config/is-test?
+    (doseq [ns-symb (ns-find/find-namespaces (classpath/classpath))
+            :when (re-find #"^metabase\.events\." (name ns-symb))]
+      (require ns-symb)
+      ;; look for `events-init` function in the namespace and call it if it exists
+      (when-let [init-fn (ns-resolve ns-symb 'events-init)]
+        (log/info "Starting events listener:" (u/format-color 'blue ns-symb) "👂")
+        (init-fn)))))
 
 (defn initialize-events!
   "Initialize the asynchronous internal events system."
   []
-  (when-not @events-initialized
-    (log/info "Starting events system ...")
-    (find-and-load-event-handlers)
-    (reset! events-initialized true)))
+  (when-not @events-initialized?
+    (find-and-load-event-handlers!)
+    (reset! events-initialized? true)))
 
 
 ;;; ## ---------------------------------------- PUBLICATION ----------------------------------------
@@ -75,7 +76,7 @@
   channel)
 
 (defn subscribe-to-topics
-  "Convenience method for subscribing to series of topics against a single channel."
+  "Convenience method for subscribing to a series of topics against a single channel."
   [topics channel]
   {:pre [(coll? topics)]}
   (loop [[topic & rest] (vec topics)]
@@ -93,9 +94,8 @@
   (async/go-loop []
     ;; try/catch here to get possible exceptions thrown by core.async trying to read from the channel
     (try
-      (let [evt (async/<! channel)]
-        (handler-fn evt))
-      (catch Exception e
+      (handler-fn (async/<! channel))
+      (catch Throwable e
         (log/error "Unexpected error listening on events" e)))
     (recur)))
 

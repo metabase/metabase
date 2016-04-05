@@ -7,6 +7,7 @@ module.exports = function(config) {
     config.set({
         basePath: '../',
         files: [
+            'test/metabase-bootstrap.js',
             '../resources/frontend_client/app/dist/vendor.bundle.js',
             '../resources/frontend_client/app/dist/app.bundle.js',
             '../node_modules/angular-mocks/angular-mocks.js',

@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 
-# Return the version string used to describe this version of Metabase.
+VERSION="v0.17.0-snapshot"
 
-TAG=$(git describe origin/master --tags --abbrev=0)
+# dynamically pull more interesting stuff from latest git commit
 HASH=$(git show-ref --head --hash=7 head)            # first 7 letters of hash should be enough; that's what GitHub uses
-BRANCH=$(git symbolic-ref --short HEAD)
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
 DATE=$(git log -1 --pretty=%ad --date=short)
 
-echo "$TAG $HASH $BRANCH $DATE"
+
+# Return the version string used to describe this version of Metabase.
+echo "$VERSION $HASH $BRANCH $DATE"

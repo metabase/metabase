@@ -7,7 +7,7 @@ Metadata is data about other data. It's information that tells you about the dat
 Metabase allows you to optionally annotate the data in your database, which provides Metabase with an understanding of what the data actually means and allows it to more intelligently process and display it for you. 
 
 ### Editing your database’s metadata
-All of these settings are editable via the **Metadata** page within the **Admin Panel**. To get there, click the dropdown in the top right of Metabase that shows your initials, and select **Admin Panel**. Then click on **Metadata** from the top menu.
+All of these settings are editable via the **Metadata** page within the **Admin Panel**. To get there, click the dropdown in the top right of Metabase that shows your initials, and select **Admin Panel**. Then click on **Data Model** from the top menu.
 
 In the column on the left, you can choose which database to view, and then select the table whose metadata you want to view and edit.
 

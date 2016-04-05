@@ -1,0 +1,89 @@
+
+.Modal {
+  position: fixed;
+
+  top: 50%;
+  left: 50%;
+
+  margin: auto;
+
+  width: 640px;
+
+  transform: translate3d(-50%, -50%, 0);
+
+  -webkit-font-smoothing: antialiased;
+
+  background-color: #fff;
+
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  box-shadow: 0 0 6px rgba(0, 0, 0, .12);
+
+  outline: none;
+
+  max-height: 90%;
+  overflow-y: auto;
+}
+
+.Modal.Modal--small {
+  width: 480px;
+}
+
+.Modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.6);
+}
+
+/* TRANSITIONS */
+
+/* backdrop */
+
+.Modal-backdrop.Modal-appear,
+.Modal-backdrop.Modal-enter {
+  transition: background-color 200ms ease-in-out;
+  background-color: rgba(255, 255, 255, 0.01);
+}
+
+.Modal-backdrop.Modal-appear-active,
+.Modal-backdrop.Modal-enter-active {
+  background-color: rgba(255, 255, 255, 0.6);
+}
+
+.Modal-backdrop.Modal-leave {
+  transition: background-color 200ms ease-in-out;
+  background-color: rgba(255, 255, 255, 0.6);
+}
+
+.Modal-backdrop.Modal-leave-active {
+  background-color: rgba(255, 255, 255, 0.01);
+}
+
+/* modal */
+
+.Modal-backdrop.Modal-appear .Modal,
+.Modal-backdrop.Modal-enter .Modal {
+  transition: opacity 200ms linear, transform 200ms ease-in-out;
+  opacity: 0.01;
+  transform: translate(-50%, -55%);
+}
+
+.Modal-backdrop.Modal-appear-active .Modal,
+.Modal-backdrop.Modal-enter-active .Modal {
+  opacity: 1;
+  transform: translate(-50%, -50%);
+}
+
+.Modal-backdrop.Modal-leave .Modal {
+  transition: opacity 200ms linear, transform 200ms ease-in-out;
+  opacity: 1;
+  transform: translate(-50%, -50%);
+}
+
+.Modal-backdrop.Modal-leave-active .Modal {
+  opacity: 0.01;
+  transform: translate(-50%, -55%);
+}

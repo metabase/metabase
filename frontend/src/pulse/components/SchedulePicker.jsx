@@ -26,6 +26,12 @@ const DAY_OF_WEEK_OPTIONS = [
     { name: "Saturday", value: "sat" }
 ];
 
+const MONTH_DAY_OPTIONS = [
+    { name: "First", value: "first" },
+    { name: "Last", value: "last" },
+    { name: "15th (Midpoint)", value: "mid" }
+];
+
 const CHANNEL_NOUN_PLURAL = {
     "email": "Emails",
     "slack": "Slack messages"
@@ -38,7 +44,36 @@ export default class SchedulePicker extends Component {
         onPropertyChange: PropTypes.func.isRequired
     };
 
-    renderDayPicker(c) {
+    renderMonthlyPicker(c, cs) {
+        let DAY_OPTIONS = DAY_OF_WEEK_OPTIONS.slice(0);
+        DAY_OPTIONS.unshift({ name: "Calendar Day", value: null });
+
+        return (
+            <span className="mt1">
+                <span className="h4 text-bold mx1">on the</span>
+                <Select
+                    value={_.find(MONTH_DAY_OPTIONS, (o) => o.value === c.schedule_frame)}
+                    options={MONTH_DAY_OPTIONS}
+                    optionNameFn={o => o.name}
+                    optionValueFn={o => o.value}
+                    onChange={(o) => this.props.onPropertyChange("schedule_frame", o) }
+                />
+                { c.schedule_frame !== "mid" &&
+                    <span className="mt1 mx1">
+                        <Select
+                            value={_.find(DAY_OPTIONS, (o) => o.value === c.schedule_day)}
+                            options={DAY_OPTIONS}
+                            optionNameFn={o => o.name}
+                            optionValueFn={o => o.value}
+                            onChange={(o) => this.props.onPropertyChange("schedule_day", o) }
+                        />
+                    </span>
+                }
+            </span>
+        );
+    }
+
+    renderDayPicker(c, cs) {
         return (
             <span className="mt1">
                 <span className="h4 text-bold mx1">on</span>
@@ -97,10 +132,13 @@ export default class SchedulePicker extends Component {
                     optionValueFn={o => o}
                     onChange={(o) => this.props.onPropertyChange("schedule_type", o)}
                 />
+                { channel.schedule_type === "monthly" &&
+                    this.renderMonthlyPicker(channel, channelSpec)
+                }
                 { channel.schedule_type === "weekly" &&
                     this.renderDayPicker(channel, channelSpec)
                 }
-                { (channel.schedule_type === "daily" || channel.schedule_type === "weekly") &&
+                { (channel.schedule_type === "daily" || channel.schedule_type === "weekly" || channel.schedule_type === "monthly") &&
                     this.renderHourPicker(channel, channelSpec)
                 }
             </div>

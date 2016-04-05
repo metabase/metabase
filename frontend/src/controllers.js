@@ -2,7 +2,7 @@ import Navbar from 'metabase/components/Navbar.jsx';
 
 
 // Global Controllers
-var MetabaseControllers = angular.module('metabase.controllers', ['metabase.services', 'metabase.navbar.directives']);
+var MetabaseControllers = angular.module('metabase.controllers', ['metabase.services']);
 
 MetabaseControllers.controller('Metabase', ['$scope', '$location', 'MetabaseCore', 'AppState', function($scope, $location, MetabaseCore, AppState) {
 

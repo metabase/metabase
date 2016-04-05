@@ -4,15 +4,20 @@
   (:require (clojure [set :as set]
                      [walk :as walk])
             [medley.core :as m]
+            [schema.core :as s]
             [metabase.db :refer [sel]]
-            (metabase.driver.query-processor [interface :refer :all]
-                                             [parse :as parse])
+            [metabase.driver.query-processor.interface :refer :all]
             (metabase.models [database :refer [Database]]
                              [field :as field]
-                             [foreign-key :refer [ForeignKey]]
-                             [table :refer [Table]]))
-  (:import (metabase.driver.query_processor.interface Field
+                             [table :refer [Table]])
+            [metabase.util :as u])
+  (:import (metabase.driver.query_processor.interface DateTimeField
+                                                      DateTimeValue
+                                                      Field
                                                       FieldPlaceholder
+                                                      RelativeDatetime
+                                                      RelativeDateTimeValue
+                                                      Value
                                                       ValuePlaceholder)))
 
 ;; # ---------------------------------------------------------------------- UTIL FNS ------------------------------------------------------------
@@ -24,50 +29,44 @@
                           :name            :field-name
                           :display_name    :field-display-name
                           :special_type    :special-type
+                          :visibility_type :visibility-type
                           :base_type       :base-type
-                          :preview_display :preview-display
                           :table_id        :table-id
                           :parent_id       :parent-id}))
 
-;;; # ------------------------------------------------------------ MULTIMETHODS - INTERNAL ------------------------------------------------------------
+;;; # ------------------------------------------------------------ IRESOLVE PROTOCOL ------------------------------------------------------------
 
-;; Return the unresolved Field ID associated with this object, if any.
-(defmulti unresolved-field-id class)
+(defprotocol ^:private IResolve
+  (^:private unresolved-field-id ^Integer [this]
+   "Return the unresolved Field ID associated with this object, if any.")
+  (^:private fk-field-id ^Integer [this]
+   "Return a the FK Field ID (for joining) associated with this object, if any.")
+  (^:private resolve-field [this, ^clojure.lang.IPersistentMap field-id->fields]
+   "This method is called when walking the Query after fetching `Fields`.
+    Placeholder objects should lookup the relevant Field in FIELD-ID->FIELDS and
+    return their expanded form. Other objects should just return themselves.a")
+  (resolve-table [this, ^clojure.lang.IPersistentMap table-id->tables]
+   "Called when walking the Query after `Fields` have been resolved and `Tables` have been fetched.
+    Objects like `Fields` can add relevant information like the name of their `Table`."))
 
-(defmethod unresolved-field-id :default [_]
-  nil)
+(def ^:private IResolveDefaults
+  {:unresolved-field-id (constantly nil)
+   :fk-field-id         (constantly nil)
+   :resolve-field       (fn [this _] this)
+   :resolve-table       (fn [this _] this)})
 
-;; Return a the FK Field ID (for joining) associated with this object, if any.
-(defmulti fk-field-id class)
-
-(defmethod fk-field-id :default [_]
-  nil)
-
-;; This method is called when walking the Query after fetching `Fields`.
-;; Placeholder objects should lookup the relevant Field in FIELD-ID->FIELDS and
-;; return their expanded form. Other objects should just return themselves.
-(defmulti resolve-field (fn [this field-id->fields]
-                          (class this)))
-
-(defmethod resolve-field :default [this _]
-  this)
-
-;; Called when walking the Query after `Fields` have been resolved and `Tables` have been fetched.
-;; Objects like `Fields` can add relevant information like the name of their `Table`.
-(defmulti resolve-table (fn [this table-id->tables]
-                          (class this)))
-
-(defmethod resolve-table :default [this _]
-  this)
+(u/strict-extend Object IResolve IResolveDefaults)
+(u/strict-extend nil    IResolve IResolveDefaults)
 
 
-;; ## Field
-(defmethod unresolved-field-id Field [{:keys [parent parent-id]}]
+;;; ## ------------------------------------------------------------ FIELD ------------------------------------------------------------
+
+(defn- field-unresolved-field-id [{:keys [parent parent-id]}]
   (or (unresolved-field-id parent)
       (when (instance? FieldPlaceholder parent)
         parent-id)))
 
-(defmethod resolve-field Field [{:keys [parent parent-id], :as this} field-id->fields]
+(defn- field-resolve-field [{:keys [parent parent-id], :as this} field-id->fields]
   (cond
     parent    (or (when (instance? FieldPlaceholder parent)
                     (when-let [resolved (resolve-field parent field-id->fields)]
@@ -77,22 +76,23 @@
                                       (map->FieldPlaceholder {:field-id parent-id})))
     :else     this))
 
-(defmethod resolve-table Field [{:keys [table-id], :as this} table-id->table]
+(defn- field-resolve-table [{:keys [table-id], :as this} table-id->table]
   (let [table (or (table-id->table table-id)
                   (throw (Exception. (format "Query expansion failed: could not find table %d." table-id))))]
     (assoc this
            :table-name  (:name table)
            :schema-name (:schema table))))
 
+(u/strict-extend Field
+  IResolve (merge IResolveDefaults
+                  {:unresolved-field-id field-unresolved-field-id
+                   :resolve-field       field-resolve-field
+                   :resolve-table       field-resolve-table}))
 
-;; ## FieldPlaceholder
-(defmethod unresolved-field-id FieldPlaceholder [{:keys [field-id]}]
-    field-id)
 
-(defmethod fk-field-id FieldPlaceholder [{:keys [fk-field-id]}]
-  fk-field-id)
+;;; ## ------------------------------------------------------------ FIELD PLACEHOLDER ------------------------------------------------------------
 
-(defmethod resolve-field FieldPlaceholder [{:keys [field-id, datetime-unit], :as this} field-id->fields]
+(defn- field-ph-resolve-field [{:keys [field-id, datetime-unit], :as this} field-id->fields]
   (if-let [{:keys [base-type special-type], :as field} (some-> (field-id->fields field-id)
                                                                map->Field)]
     ;; try to resolve the Field with the ones available in field-id->fields
@@ -106,13 +106,49 @@
     ;; If that fails just return ourselves as-is
     this))
 
+(u/strict-extend FieldPlaceholder
+  IResolve (merge IResolveDefaults
+                  {:unresolved-field-id :field-id
+                   :fk-field-id         :fk-field-id
+                   :resolve-field       field-ph-resolve-field}))
 
-;; ## ValuePlaceholder
-(defmethod resolve-field ValuePlaceholder [{:keys [field-placeholder value], :as this} field-id->fields]
+
+;;; ## ------------------------------------------------------------ VALUE PLACEHOLDER ------------------------------------------------------------
+
+(defprotocol ^:private IParseValueForField
+  (^:private parse-value [this value]
+    "Parse a value for a given type of `Field`."))
+
+(extend-protocol IParseValueForField
+  Field
+  (parse-value [this value]
+    (s/validate Value (map->Value {:field this, :value value})))
+
+  DateTimeField
+  (parse-value [this value]
+    (cond
+      (u/date-string? value)
+      (s/validate DateTimeValue (map->DateTimeValue {:field this, :value (u/->Timestamp value)}))
+
+      (instance? RelativeDatetime value)
+      (do (s/validate RelativeDatetime value)
+          (s/validate RelativeDateTimeValue (map->RelativeDateTimeValue {:field this, :amount (:amount value), :unit (:unit value)})))
+
+      (nil? value)
+      nil
+
+      :else
+      (throw (Exception. (format "Invalid value '%s': expected a DateTime." value))))))
+
+(defn- value-ph-resolve-field [{:keys [field-placeholder value]} field-id->fields]
   (let [resolved-field (resolve-field field-placeholder field-id->fields)]
     (when-not resolved-field
       (throw (Exception. (format "Unable to resolve field: %s" field-placeholder))))
-    (parse/parse-value resolved-field value)))
+    (parse-value resolved-field value)))
+
+(u/strict-extend ValuePlaceholder
+  IResolve (merge IResolveDefaults
+                  {:resolve-field value-ph-resolve-field}))
 
 
 ;;; # ------------------------------------------------------------ IMPL ------------------------------------------------------------
@@ -144,7 +180,7 @@
         ;; If there are no more Field IDs to resolve we're done.
         expanded-query-dict
         ;; Otherwise fetch + resolve the Fields in question
-        (let [fields (->> (sel :many :id->fields [field/Field :name :display_name :base_type :special_type :preview_display :table_id :parent_id :description]
+        (let [fields (->> (sel :many :id->fields [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description]
                                :id [in field-ids])
                           (m/map-vals rename-mb-field-keys)
                           (m/map-vals #(assoc % :parent (when-let [parent-id (:parent-id %)]
@@ -173,8 +209,9 @@
           fk-field-id->field-name      (sel :many :id->field [field/Field :name], :id [in fk-field-ids], :table_id source-table-id, :special_type "fk")
 
           ;; Build a map of join table PK field IDs -> source table FK field IDs
-          pk-field-id->fk-field-id     (sel :many :field->field [ForeignKey :destination_id :origin_id],
-                                            :origin_id [in (set (keys fk-field-id->field-name))])
+          pk-field-id->fk-field-id     (sel :many :field->field [field/Field :fk_target_field_id :id],
+                                            :id                 [in (set (keys fk-field-id->field-name))]
+                                            :fk_target_field_id [not= nil])
 
           ;; Build a map of join table ID -> PK field info
           join-table-id->pk-field      (let [pk-fields (sel :many :fields [field/Field :id :table_id :name], :id [in (set (keys pk-field-id->fk-field-id))])]
@@ -194,7 +231,7 @@
 
 (defn- resolve-tables
   "Resolve the `Tables` in an EXPANDED-QUERY-DICT."
-  [{{source-table-id :source-table} :query, database-id :database, :keys [table-ids fk-field-ids], :as expanded-query-dict}]
+  [{{source-table-id :source-table} :query, :keys [table-ids fk-field-ids], :as expanded-query-dict}]
   {:pre [(integer? source-table-id)]}
   (let [table-ids       (conj table-ids source-table-id)
         table-id->table (sel :many :id->fields [Table :schema :name :id], :id [in table-ids])
@@ -208,7 +245,9 @@
 
 ;;; # ------------------------------------------------------------ PUBLIC INTERFACE ------------------------------------------------------------
 
-(defn resolve [expanded-query-dict]
+(defn resolve
+  "Resolve placeholders by fetching `Fields`, `Databases`, and `Tables` that are referred to in EXPANDED-QUERY-DICT."
+  [expanded-query-dict]
   (some-> expanded-query-dict
           record-fk-field-ids
           resolve-fields

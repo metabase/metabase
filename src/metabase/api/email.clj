@@ -8,7 +8,7 @@
             [metabase.email :as email]
             [metabase.models.setting :as setting]))
 
-(defonce ^:private ^:const mb-to-smtp-settings
+(def ^:private ^:const mb-to-smtp-settings
   {:email-smtp-host     :host
    :email-smtp-username :user
    :email-smtp-password :pass
@@ -58,7 +58,7 @@
   (let [email-settings (select-keys settings (keys mb-to-smtp-settings))
         smtp-settings  (-> (set/rename-keys email-settings mb-to-smtp-settings)
                            (assoc :port (Integer/parseInt (:email-smtp-port settings))))
-        response       (if-not (config/is-test?)
+        response       (if-not config/is-test?
                          ;; in normal conditions, validate connection
                          (email/test-smtp-connection smtp-settings)
                          ;; for unit testing just respond with a success message

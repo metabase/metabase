@@ -1,19 +1,20 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import Icon from "metabase/components/Icon.jsx";
 import LoadingSpinner from 'metabase/components/LoadingSpinner.jsx';
-import QueryVisualizationTable from './QueryVisualizationTable.jsx';
-import QueryVisualizationChart from './QueryVisualizationChart.jsx';
 import QueryVisualizationObjectDetailTable from './QueryVisualizationObjectDetailTable.jsx';
 import RunButton from './RunButton.jsx';
 import VisualizationSettings from './VisualizationSettings.jsx';
 
+import Visualization from "metabase/visualizations/components/Visualization.jsx";
+
 import MetabaseSettings from "metabase/lib/settings";
-import Modal from "metabase/components/Modal.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import Query from "metabase/lib/query";
 
 import cx from "classnames";
+import _ from "underscore";
 
 export default class QueryVisualization extends Component {
     constructor(props, context) {
@@ -21,17 +22,20 @@ export default class QueryVisualization extends Component {
         this.runQuery = this.runQuery.bind(this);
 
         this.state = {
-            origQuery: JSON.stringify(props.card.dataset_query)
+            lastRunDatasetQuery: props.card.dataset_query
         };
     }
 
     static propTypes = {
-        visualizationSettingsApi: PropTypes.object.isRequired,
         card: PropTypes.object.isRequired,
         result: PropTypes.object,
-        downloadLink: PropTypes.string,
+        databases: PropTypes.array,
+        tableMetadata: PropTypes.object,
+        tableForeignKeys: PropTypes.array,
+        tableForeignKeyReferences: PropTypes.object,
         setDisplayFn: PropTypes.func.isRequired,
-        setChartColorFn: PropTypes.func.isRequired,
+        onUpdateVisualizationSetting: PropTypes.func.isRequired,
+        onUpdateVisualizationSettings: PropTypes.func.isRequired,
         setSortFn: PropTypes.func.isRequired,
         cellIsClickableFn: PropTypes.func,
         cellClickedFn: PropTypes.func,
@@ -48,14 +52,14 @@ export default class QueryVisualization extends Component {
         // whenever we are told that we are running a query lets update our understanding of the "current" query
         if (nextProps.isRunning) {
             this.setState({
-                origQuery: JSON.stringify(nextProps.card.dataset_query)
+                lastRunDatasetQuery: nextProps.card.dataset_query
             });
         }
     }
 
     queryIsDirty() {
         // a query is considered dirty if ANY part of it has been changed
-        return (JSON.stringify(this.props.card.dataset_query) !== this.state.origQuery);
+        return JSON.stringify(this.props.card.dataset_query) !== JSON.stringify(this.state.lastRunDatasetQuery);
     }
 
     isChartDisplay(display) {
@@ -82,7 +86,7 @@ export default class QueryVisualization extends Component {
         }
 
         return (
-            <div className="relative flex full mt3 mb1">
+            <div className="relative flex flex-no-shrink mt3 mb1">
                 <span className="relative z3">{visualizationSettings}</span>
                 <div className="absolute flex layout-centered left right z2">
                     <RunButton
@@ -128,63 +132,82 @@ export default class QueryVisualization extends Component {
         }
     }
 
+    onDownloadCSV() {
+        const form = this._downloadCsvForm.getDOMNode();
+        form.query.value = JSON.stringify(this.props.card.dataset_query);
+        form.submit();
+    }
+
     renderDownloadButton() {
-        const { downloadLink } = this.props;
+        const { card, result } = this.props;
 
-        // NOTE: we expect our component provider set this to something falsey if download not available
-        if (downloadLink) {
-            const { result } = this.props;
-
+        if (result && !result.error) {
             if (result && result.data && result.data.rows_truncated) {
                 // this is a "large" dataset, so show a modal to inform users about this and make them click again to d/l
                 let downloadButton;
                 if (window.OSX) {
                     downloadButton = (<button className="Button Button--primary" onClick={() => {
-                            window.OSX.saveCSV(this.props.downloadLink);
+                            window.OSX.saveCSV(JSON.stringify(card.dataset_query));
                             this.refs.downloadModal.toggle()
                         }}>Download CSV</button>);
                 } else {
-                    downloadButton = (<a className="Button Button--primary" href={downloadLink} target="_blank" onClick={() => this.refs.downloadModal.toggle()}>Download CSV</a>);
+                    downloadButton = (
+                        <form ref={(c) => this._downloadCsvForm = c} method="POST" action="/api/dataset/csv">
+                            <input type="hidden" name="query" value="" />
+                            <a className="Button Button--primary" onClick={() => {this.onDownloadCSV(); this.refs.downloadModal.toggle();}}>
+                                Download CSV
+                            </a>
+                        </form>
+                    );
                 }
 
                 return (
                     <ModalWithTrigger
                         key="download"
                         ref="downloadModal"
+                        className="Modal Modal--small"
                         triggerElement={<Icon className="mx1" title="Download this data" name='download' width="16px" height="16px" />}
                     >
-                        <Modal className="Modal Modal--small">
-                            <div className="p4 text-centered relative">
-                                <span className="absolute top right p4 text-normal text-grey-3 cursor-pointer" onClick={() => this.refs.downloadModal.toggle()}>
-                                    <Icon name={'close'} width={16} height={16} />
-                                </span>
-                                <div className="p3 text-strong">
-                                    <h2 className="text-bold">Download large data set</h2>
-                                    <div className="pt2">Your answer has a large amount of data so we wanted to let you know it could take a while to download.</div>
-                                    <div className="py4">The maximum download amount is 1 million rows.</div>
-                                    {downloadButton}
-                                </div>
+                        <div style={{width: "480px"}} className="Modal--small p4 text-centered relative">
+                            <span className="absolute top right p4 text-normal text-grey-3 cursor-pointer" onClick={() => this.refs.downloadModal.toggle()}>
+                                <Icon name={'close'} width={16} height={16} />
+                            </span>
+                            <div className="p3 text-strong">
+                                <h2 className="text-bold">Download large data set</h2>
+                                <div className="pt2">Your answer has a large amount of data so we wanted to let you know it could take a while to download.</div>
+                                <div className="py4">The maximum download amount is 1 million rows.</div>
+                                {downloadButton}
                             </div>
-                        </Modal>
+                        </div>
                     </ModalWithTrigger>
                 );
             } else {
                 if (window.OSX) {
                     return (
-                        <a classname="mx1" href="#" title="Download this data" onClick={function() {
-                            window.OSX.saveCSV(downloadLink);
+                        <a className="mx1" title="Download this data" onClick={function() {
+                            window.OSX.saveCSV(JSON.stringify(card.dataset_query));
                         }}>
                             <Icon name='download' width="16px" height="16px" />
                         </a>
                     );
                 } else {
                     return (
-                        <a className="mx1" href={downloadLink} title="Download this data" target="_blank">
-                            <Icon name='download' width="16px" height="16px" />
-                        </a>
+                        <form ref={(c) => this._downloadCsvForm = c} method="POST" action="/api/dataset/csv">
+                            <input type="hidden" name="query" value="" />
+                            <a className="mx1" title="Download this data" onClick={() => this.onDownloadCSV()}>
+                                <Icon name='download' width="16px" height="16px" />
+                            </a>
+                        </form>
                     );
                 }
             }
+        }
+    }
+
+    showDetailError() {
+        if (this._detailErrorLink && this._detailErrorBody ) {
+            ReactDOM.findDOMNode(this._detailErrorLink).style.display = "none";
+            ReactDOM.findDOMNode(this._detailErrorBody).style.display = "inherit";
         }
     }
 
@@ -194,7 +217,7 @@ export default class QueryVisualization extends Component {
 
         if(this.props.isRunning) {
             loading = (
-                <div className="Loading absolute top left bottom right flex flex-column layout-centered text-brand z2">
+                <div className="Loading spread flex flex-column layout-centered text-brand z2">
                     <LoadingSpinner />
                     <h2 className="Loading-message text-brand text-uppercase mt3">Doing science...</h2>
                 </div>
@@ -202,17 +225,19 @@ export default class QueryVisualization extends Component {
         }
 
         if (!this.props.result) {
+            let hasSampleDataset = !!_.findWhere(this.props.databases, { is_sample: true });
             viz = (
-                <div className="flex full layout-centered text-grey-1">
-                    <h1>If you're stuck, you can always just pick a table and hit "Run Query" to get started.</h1>
+                <div className="flex full layout-centered text-grey-1 flex-column">
+                    <h1>If you give me some data I can show you something cool. Run a Query!</h1>
+                    { hasSampleDataset && <a className="link cursor-pointer my2" href="/q?tutorial">How do I use this thing?</a> }
                 </div>
             );
         } else {
             let { result } = this.props;
             let error = result.error;
+            let adminEmail = MetabaseSettings.adminEmail();
             if (error) {
                 if (typeof error.status === "number") {
-                    let adminEmail = MetabaseSettings.adminEmail();
                     // Assume if the request took more than 15 seconds it was due to a timeout
                     // Some platforms like Heroku return a 503 for numerous types of errors so we can't use the status code to distinguish between timeouts and other failures.
                     if (result.duration > 15*1000) {
@@ -252,14 +277,18 @@ export default class QueryVisualization extends Component {
                     );
                 } else {
                     viz = (
-                        <div className="QueryError flex full align-center">
-                            <div className="QueryError-image QueryError-image--queryError"></div>
-                            <div className="QueryError-message text-centered">
-                                <h1 className="text-bold">We couldn't understand your question.</h1>
-                                <p className="QueryError-messageText">Your question might contain an invalid parameter or some other error.</p>
-                                <button className="Button" onClick={() => window.history.back() }>
-                                    Back to last run
-                                </button>
+                        <div className="QueryError2 flex full justify-center">
+                            <div className="QueryError-image QueryError-image--queryError mr4"></div>
+                            <div className="QueryError2-details">
+                                <h1 className="text-bold">There was a problem with your question</h1>
+                                <p className="QueryError-messageText">Most of the time this is caused by an invalid selection or bad input value.  Double check your inputs and retry your query.</p>
+                                <div ref={(c) => this._detailErrorLink = c} className="pt2">
+                                    <a onClick={this.showDetailError.bind(this)} className="link cursor-pointer">Show error details</a>
+                                </div>
+                                <div ref={(c) => this._detailErrorBody = c} style={{display: "none"}} className="pt3 text-left">
+                                    <h2>Here's the full error message</h2>
+                                    <div style={{fontFamily: "monospace"}} className="QueryError2-detailBody bordered rounded bg-grey-0 text-bold p2 mt1">{error}</div>
+                                </div>
                             </div>
                         </div>
                     );
@@ -293,56 +322,26 @@ export default class QueryVisualization extends Component {
                         </div>
                     );
 
-                } else if (this.props.card.display === "scalar") {
-                    var scalarValue;
-                    if (this.props.result.data.rows &&
-                        this.props.result.data.rows.length > 0 &&
-                        this.props.result.data.rows[0].length > 0) {
-                        scalarValue = this.props.result.data.rows[0][0];
-                    }
-
-                    viz = (
-                        <div className="Visualization--scalar flex full layout-centered">
-                            <span>{scalarValue}</span>
-                        </div>
-                    );
-
-                } else if (this.props.card.display === "table") {
-
-                    var pivotTable = false,
-                        cellClickable = this.props.cellIsClickableFn,
-                        sortFunction = this.props.setSortFn,
-                        sort = (this.props.card.dataset_query.query && this.props.card.dataset_query.query.order_by) ?
-                                    this.props.card.dataset_query.query.order_by : null;
-
-                    // check if the data is pivotable (2 groupings + 1 agg != 'rows')
-                    if (Query.isStructured(this.props.card.dataset_query) &&
-                            !Query.isBareRowsAggregation(this.props.card.dataset_query.query) &&
-                            this.props.result.data.cols.length === 3) {
-                        pivotTable = true;
-                        sortFunction = undefined;
-                        cellClickable = function() { return false; };
-                    }
-
-                    viz = (
-                        <QueryVisualizationTable
-                            data={this.props.result.data}
-                            pivot={pivotTable}
-                            maxRows={this.props.maxTableRows}
-                            setSortFn={sortFunction}
-                            sort={sort}
-                            cellIsClickableFn={cellClickable}
-                            cellClickedFn={this.props.cellClickedFn}
-                        />
-                    );
-
                 } else {
-                    // assume that anything not a table is a chart
+                    // we want to provide the visualization with a card containing the latest
+                    // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
+                    // BUT the last executed "dataset_query" (to ensure data matches the query)
+                    let card = {
+                        ...this.props.card,
+                        dataset_query: this.state.lastRunDatasetQuery
+                    };
                     viz = (
-                        <QueryVisualizationChart
-                            visualizationSettingsApi={this.props.visualizationSettingsApi}
-                            card={this.props.card}
-                            data={this.props.result.data} />
+                        <Visualization
+                            className="full"
+                            series={[{ card: card, data: this.props.result.data }]}
+                            isEditing={true}
+                            // Table:
+                            setSortFn={this.props.setSortFn}
+                            cellIsClickableFn={this.props.cellIsClickableFn}
+                            cellClickedFn={this.props.cellClickedFn}
+                            onUpdateVisualizationSetting={this.props.onUpdateVisualizationSetting}
+                            onUpdateVisualizationSettings={this.props.onUpdateVisualizationSettings}
+                        />
                     );
                 }
             }
@@ -353,7 +352,7 @@ export default class QueryVisualization extends Component {
             'flex-column': !this.props.isObjectDetail
         });
 
-        var visualizationClasses = cx('flex flex-full Visualization z1', {
+        var visualizationClasses = cx('flex flex-full Visualization z1 px1', {
             'Visualization--errors': (this.props.result && this.props.result.error),
             'Visualization--loading': this.props.isRunning
         });

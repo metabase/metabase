@@ -58,7 +58,8 @@ export default class PulseEditChannels extends Component {
             details: details,
             schedule_type: channelSpec.schedules[0],
             schedule_day: "mon",
-            schedule_hour: 8
+            schedule_hour: 8,
+            schedule_frame: "first"
         };
 
         this.props.setPulse({ ...pulse, channels: pulse.channels.concat(channel) });
@@ -75,11 +76,27 @@ export default class PulseEditChannels extends Component {
         let { pulse } = this.props;
         let channels = [...pulse.channels];
 
-        if (_.contains(['schedule_type', 'schedule_day', 'schedule_hour'], name)) {
+        if (_.contains(['schedule_type', 'schedule_day', 'schedule_hour', 'schedule_frame'], name)) {
             MetabaseAnalytics.trackEvent((this.props.pulseId) ? "PulseEdit" : "PulseCreate", channels[index].channel_type+":"+name, value);
         }
 
         channels[index] = { ...channels[index], [name]: value };
+
+        // default to Monday when user wants a weekly schedule
+        if (name === "schedule_type" && value === "weekly") {
+            channels[index] = { ...channels[index], ["schedule_day"]: "mon" };
+        }
+
+        // default to First, Monday when user wants a monthly schedule
+        if (name === "schedule_type" && value === "monthly") {
+            channels[index] = { ...channels[index], ["schedule_frame"]: "first", ["schedule_day"]: "mon" };
+        }
+
+        // when the monthly schedule frame is the 15th, clear out the schedule_day
+        if (name === "schedule_frame" && value === "mid") {
+            channels[index] = { ...channels[index], ["schedule_day"]: null };
+        }
+
         this.props.setPulse({ ...pulse, channels });
     }
 

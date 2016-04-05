@@ -1,15 +1,10 @@
 (ns metabase.models.card-favorite
-  (:require [korma.core :refer :all, :exclude [defentity update]]
-            [metabase.db :refer :all]
-            (metabase.models [card :refer [Card]]
-                             [interface :refer :all]
-                             [user :refer [User]])))
+  (:require [metabase.models.interface :as i]
+            [metabase.util :as u]))
 
-(defentity CardFavorite
-  [(table :report_cardfavorite)
-   timestamped]
+(i/defentity CardFavorite :report_cardfavorite)
 
-  (post-select [_ {:keys [card_id owner_id] :as card-favorite}]
-    (assoc card-favorite
-           :owner (delay (User owner_id))
-           :card  (delay (Card card_id)))))
+(u/strict-extend (class CardFavorite)
+  i/IEntity
+  (merge i/IEntityDefaults
+         {:timestamped? (constantly true)}))

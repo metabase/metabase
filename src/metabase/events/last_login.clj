@@ -1,14 +1,13 @@
 (ns metabase.events.last-login
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [metabase.config :as config]
             [metabase.db :as db]
             [metabase.events :as events]
             [metabase.models.user :refer [User]]
             [metabase.util :as u]))
 
 
-(def last-login-topics
+(def ^:const last-login-topics
   "The `Set` of event topics which are subscribed to for use in last login tracking."
   #{:user-login})
 
@@ -25,7 +24,7 @@
   [last-login-event]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
-    (when-let [{topic :topic object :item} last-login-event]
+    (when-let [{object :item} last-login-event]
       (log/info object)
       ;; just make a simple attempt to set the `:last_login` for the given user to now
       (when-let [user-id (:user_id object)]
@@ -38,7 +37,7 @@
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
-(defn events-init []
-  (when-not (config/is-test?)
-    (log/info "Starting last-login events listener")
-    (events/start-event-listener last-login-topics last-login-channel process-last-login-event)))
+(defn events-init
+  "Automatically called during startup; start the events listener for last login events."
+  []
+  (events/start-event-listener last-login-topics last-login-channel process-last-login-event))

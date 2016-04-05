@@ -1,14 +1,13 @@
 (ns metabase.events.sync-database
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [metabase.config :as config]
             [metabase.db :as db]
             [metabase.driver :as driver]
             [metabase.events :as events]
             [metabase.models.database :refer [Database]]))
 
 
-(def sync-database-topics
+(def ^:const sync-database-topics
   "The `Set` of event topics which are subscribed to for use in database syncing."
   #{:database-create
     :database-trigger-sync})
@@ -41,7 +40,7 @@
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
-(defn events-init []
-  (when-not (config/is-test?)
-    (log/info "Starting database sync events listener")
-    (events/start-event-listener sync-database-topics sync-database-channel process-sync-database-event)))
+(defn events-init
+  "Automatically called during startup; start event listener for database sync events."
+  []
+  (events/start-event-listener sync-database-topics sync-database-channel process-sync-database-event))

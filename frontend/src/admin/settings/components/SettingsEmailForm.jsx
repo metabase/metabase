@@ -2,6 +2,7 @@ import React, { Component, PropTypes } from "react";
 import cx from "classnames";
 import _ from "underscore";
 
+import MetabaseAnalytics from 'metabase/lib/analytics';
 import MetabaseUtils from "metabase/lib/utils";
 import SettingsEmailFormElement from "./SettingsEmailFormElement.jsx";
 
@@ -88,7 +89,7 @@ export default class SettingsEmailForm extends Component {
                     validationErrors[element.key] = this.validateElement(validation, formData[element.key], element);
                     if (validationErrors[element.key]) valid = false;
                 }, this);
-            };
+            }
         }, this);
 
         if (this.state.valid !== valid || !_.isEqual(this.state.validationErrors, validationErrors)) {
@@ -129,6 +130,7 @@ export default class SettingsEmailForm extends Component {
 
         this.props.sendTestEmail().then(() => {
             this.setState({sendingEmail: "success"});
+            MetabaseAnalytics.trackEvent("Email Settings", "Test Email", "success");
 
             // show a confirmation for 3 seconds, then return to normal
             setTimeout(() => this.setState({sendingEmail: "default"}), 3000);
@@ -137,6 +139,7 @@ export default class SettingsEmailForm extends Component {
                 sendingEmail: "default",
                 formErrors: this.handleFormErrors(error)
             });
+            MetabaseAnalytics.trackEvent("Email Settings", "Test Email", "error");
         });
     }
 
@@ -157,6 +160,8 @@ export default class SettingsEmailForm extends Component {
                     submitting: "success"
                 });
 
+                MetabaseAnalytics.trackEvent("Email Settings", "Update", "success");
+
                 // show a confirmation for 3 seconds, then return to normal
                 setTimeout(() => this.setState({submitting: "default"}), 3000);
             }, (error) => {
@@ -164,6 +169,8 @@ export default class SettingsEmailForm extends Component {
                     submitting: "default",
                     formErrors: this.handleFormErrors(error)
                 });
+
+                MetabaseAnalytics.trackEvent("Email Settings", "Update", "error");
             });
         }
     }

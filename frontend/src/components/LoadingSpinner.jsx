@@ -1,5 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
+import "./LoadingSpinner.css";
+
 export default class LoadingSpinner extends Component {
     static defaultProps = {
         width: '32px',

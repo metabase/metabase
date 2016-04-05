@@ -1,5 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 import SettingsHeader from "./SettingsHeader.jsx";
 import SettingsSetting from "./SettingsSetting.jsx";
 import SettingsEmailForm from "./SettingsEmailForm.jsx";
@@ -45,8 +47,12 @@ export default class SettingsEditor extends Component {
         setting.value = value;
         this.props.updateSetting(setting).then(() => {
             this.refs.header.refs.status.setSaved();
+
+            let val = (setting.key === "report-timezone" || setting.key === "anon-tracking-enabled") ? setting.value : "success";
+            MetabaseAnalytics.trackEvent("General Settings", setting.display_name, val);
         }, (error) => {
             this.refs.header.refs.status.setSaveError(error.data);
+            MetabaseAnalytics.trackEvent("General Settings", setting.display_name, "error");
         });
     }
 
@@ -107,7 +113,7 @@ export default class SettingsEditor extends Component {
         });
 
         return (
-            <div className="MetadataEditor-table-list AdminList">
+            <div className="MetadataEditor-table-list AdminList flex-no-shrink">
                 <ul className="AdminList-items pt1">
                     {sections}
                 </ul>
@@ -117,7 +123,7 @@ export default class SettingsEditor extends Component {
 
     render() {
         return (
-            <div className="MetadataEditor flex flex-column flex-full p4">
+            <div className="MetadataEditor full-height flex flex-column flex-full p4">
                 <SettingsHeader ref="header" />
                 <div className="MetadataEditor-main flex flex-row flex-full mt2">
                     {this.renderSettingsSections()}

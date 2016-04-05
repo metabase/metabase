@@ -1,15 +1,12 @@
 (ns metabase.http-client
   "HTTP client for making API calls against the Metabase API. For test/REPL purposes."
   (:require [clojure.tools.logging :as log]
-            [cheshire.core :as cheshire]
-            [clj-http.lite.client :as client]
+            [cheshire.core :as json]
+            [clj-http.client :as client]
             [metabase.config :as config]
             [metabase.util :as u]))
 
-(declare authenticate
-         auto-deserialize-dates
-         build-url
-         -client)
+(declare authenticate auto-deserialize-dates build-url -client)
 
 ;; ## API CLIENT
 
@@ -18,7 +15,6 @@
   (str "http://localhost:" (config/config-str :mb-jetty-port) "/api/"))
 
 (defn
-  ^{:arglists ([credentials? method expected-status-code? url http-body-map? & url-kwargs])}
   client
   "Perform an API call and return the response (for test purposes).
    The first arg after URL will be passed as a JSON-encoded body if it is a map.
@@ -38,6 +34,7 @@
    *  URL                   Base URL of the request, which will be appended to `*url-prefix*`. e.g. `card/1/favorite`
    *  HTTP-BODY-MAP         Optional map to send a the JSON-serialized HTTP body of the request
    *  URL-KWARGS            key-value pairs that will be encoded and added to the URL as GET params"
+  {:arglists '([credentials? method expected-status-code? url http-body-map? & url-kwargs])}
   [& args]
   (let [[credentials [method & args]] (u/optional #(or (map? %)
                                                        (string? %)) args)
@@ -67,7 +64,7 @@
                                                                                   credentials))}}
                       (seq http-body) (assoc
                                        :content-type :json
-                                       :body         (cheshire/generate-string http-body)))
+                                       :body         (json/generate-string http-body)))
         request-fn  (case method
                       :get    client/get
                       :post   client/post
@@ -80,38 +77,36 @@
         {:keys [status body]} (try (request-fn url request-map)
                                    (catch clojure.lang.ExceptionInfo e
                                      (log/debug method-name url)
-                                     (:object (.getData ^clojure.lang.ExceptionInfo e))))]
+                                     (:object (ex-data e))))]
 
     ;; -check the status code if EXPECTED-STATUS was passed
     (log/debug method-name url status)
     (when expected-status
       (when-not (= status expected-status)
         (let [message (format "%s %s expected a status code of %d, got %d." method-name url expected-status status)
-              body    (try (-> (cheshire/parse-string body)
+              body    (try (-> (json/parse-string body)
                                clojure.walk/keywordize-keys)
-                           (catch Exception _ body))]
+                           (catch Throwable _ body))]
           (log/error (u/pprint-to-str 'red body))
           (throw (ex-info message {:status-code status})))))
 
     ;; Deserialize the JSON response or return as-is if that fails
     (try (-> body
-             cheshire/parse-string
+             json/parse-string
              clojure.walk/keywordize-keys
              auto-deserialize-dates)
-         (catch Exception _
+         (catch Throwable _
            (if (clojure.string/blank? body) nil
                body)))))
 
 (defn authenticate [{:keys [email password] :as credentials}]
-  {:pre [(string? email)
-         (string? password)]}
+  {:pre [(string? email) (string? password)]}
   (try
-    (-> (client :post 200 "session" credentials)
-        :id)
-    (catch Exception e
+    (:id (client :post 200 "session" credentials))
+    (catch Throwable e
       (log/error "Failed to authenticate with email:" email "and password:" password ". Does user exist?"))))
 
-(defn build-url [url url-param-kwargs]
+(defn- build-url [url url-param-kwargs]
   {:pre [(string? url)
          (or (nil? url-param-kwargs)
              (map? url-param-kwargs))]}
@@ -128,7 +123,7 @@
 
 ;; ## AUTO-DESERIALIZATION
 
-(def auto-deserialize-dates-keys
+(def ^:private ^:const auto-deserialize-dates-keys
   #{:created_at :updated_at :last_login :date_joined :started_at :finished_at})
 
 (defn- auto-deserialize-dates

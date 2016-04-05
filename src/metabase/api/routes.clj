@@ -8,10 +8,11 @@
                           [dataset :as dataset]
                           [email :as email]
                           [field :as field]
-                          [foreignkey :as fk]
+                          [metric :as metric]
                           [notify :as notify]
                           [pulse :as pulse]
                           [revision :as revision]
+                          [segment :as segment]
                           [session :as session]
                           [setting :as setting]
                           [setup :as setup]
@@ -30,7 +31,7 @@
   "Wrap API-ROUTES so they may only be accessed with proper authentiaction credentials."
   middleware/enforce-authentication)
 
-(defroutes routes
+(defroutes ^{:doc "Ring routes for API endpoints."} routes
   (context "/activity"     [] (+auth activity/routes))
   (context "/card"         [] (+auth card/routes))
   (context "/dashboard"    [] (+auth dashboard/routes))
@@ -38,13 +39,14 @@
   (context "/dataset"      [] (+auth dataset/routes))
   (context "/email"        [] (+auth email/routes))
   (context "/field"        [] (+auth field/routes))
-  (context "/foreignkey"   [] (+auth fk/routes))
   (GET     "/health"       [] (if ((resolve 'metabase.core/initialized?))
                                 {:status 200 :body {:status "ok"}}
                                 {:status 503 :body {:status "initializing" :progress ((resolve 'metabase.core/initialization-progress))}}))
+  (context "/metric"       [] (+auth metric/routes))
   (context "/notify"       [] (+apikey notify/routes))
   (context "/pulse"        [] (+auth pulse/routes))
   (context "/revision"     [] (+auth revision/routes))
+  (context "/segment"      [] (+auth segment/routes))
   (context "/session"      [] session/routes)
   (context "/setting"      [] (+auth setting/routes))
   (context "/setup"        [] setup/routes)

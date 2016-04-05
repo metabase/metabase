@@ -1,13 +1,15 @@
 import React, { Component, PropTypes } from "react";
-import _ from "underscore";
-import cx from "classnames";
+import ReactDOM from "react-dom";
 
 import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
 import FormMessage from "metabase/components/form/FormMessage.jsx";
+
 import MetabaseUtils from "metabase/lib/utils";
 import MetabaseSettings from "metabase/lib/settings";
 
+import _ from "underscore";
+import cx from "classnames";
 
 export default class SetUserPassword extends Component {
 
@@ -31,9 +33,9 @@ export default class SetUserPassword extends Component {
 
         // required: first_name, last_name, email
         for (var fieldName in this.refs) {
-            let node = React.findDOMNode(this.refs[fieldName]);
+            let node = ReactDOM.findDOMNode(this.refs[fieldName]);
             if (node.required && MetabaseUtils.isEmpty(node.value)) isValid = false;
-        };
+        }
 
         if(isValid !== valid) {
             this.setState({
@@ -56,7 +58,7 @@ export default class SetUserPassword extends Component {
         let formErrors = {data:{errors:{}}};
 
         // make sure new passwords match
-        if (React.findDOMNode(this.refs.password).value !== React.findDOMNode(this.refs.password2).value) {
+        if (ReactDOM.findDOMNode(this.refs.password).value !== ReactDOM.findDOMNode(this.refs.password2).value) {
             formErrors.data.errors.password2 = "Passwords do not match";
         }
 
@@ -70,8 +72,8 @@ export default class SetUserPassword extends Component {
         let details = {};
 
         details.user_id = this.props.user.id;
-        details.old_password = React.findDOMNode(this.refs.oldPassword).value;
-        details.password = React.findDOMNode(this.refs.password).value;
+        details.old_password = ReactDOM.findDOMNode(this.refs.oldPassword).value;
+        details.password = ReactDOM.findDOMNode(this.refs.password).value;
 
         this.props.submitFn(details);
     }
@@ -85,7 +87,7 @@ export default class SetUserPassword extends Component {
 
         return (
             <div>
-                <form className="Form-new bordered rounded shadowed" onSubmit={this.formSubmitted.bind(this)} novalidate>
+                <form className="Form-new bordered rounded shadowed" onSubmit={this.formSubmitted.bind(this)} noValidate>
                     <FormField fieldName="old_password" formError={formError}>
                         <FormLabel title="Current password" fieldName="old_password" formError={formError}></FormLabel>
                         <input ref="oldPassword" type="password" className="Form-input Form-offset full" name="old_password" placeholder="Shhh..." onChange={this.onChange.bind(this)} autoFocus={true} required />

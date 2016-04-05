@@ -40,11 +40,9 @@ const TYPES = {
     [LOCATION]: {
         special: ["city", "country", "state", "zip_code"]
     },
-
     [ENTITY]: {
         special: ["fk", "id", "name"]
     },
-
     [SUMMABLE]: {
         include: [NUMBER],
         exclude: [ENTITY, LOCATION, DATE_TIME]
@@ -54,6 +52,7 @@ const TYPES = {
         special: ["category"],
         include: [LOCATION]
     },
+    // NOTE: this is defunct right now.  see definition of isDimension below.
     [DIMENSION]: {
         field: ["dimension"],
         include: [DATE_TIME, CATEGORY, ENTITY]
@@ -61,6 +60,10 @@ const TYPES = {
 };
 
 export function isFieldType(type, field) {
+    if (!field) {
+        return false;
+    }
+
     let def = TYPES[type];
     // check to see if it belongs to any of the field types:
     for (let prop of ["field", "base", "special"]) {
@@ -99,9 +102,10 @@ export function getFieldType(field) {
 export const isDate = isFieldType.bind(null, DATE_TIME);
 export const isNumeric = isFieldType.bind(null, NUMBER);
 export const isBoolean = isFieldType.bind(null, BOOLEAN);
+export const isString = isFieldType.bind(null, STRING);
 export const isSummable = isFieldType.bind(null, SUMMABLE);
 export const isCategory = isFieldType.bind(null, CATEGORY);
-export const isDimension = isFieldType.bind(null, DIMENSION);
+export const isDimension = () => true;
 
 
 // operator argument constructors:
@@ -150,7 +154,7 @@ function equivalentArgument(field, table) {
     }
 
     if (isCategory(field)) {
-        if (field.id in table.field_values && table.field_values[field.id].length > 0) {
+        if (table.field_values && field.id in table.field_values && table.field_values[field.id].length > 0) {
             let validValues = table.field_values[field.id];
             // this sort function works for both numbers and strings:
             validValues.sort((a, b) => a === b ? 0 : (a < b ? -1 : 1));
@@ -237,57 +241,64 @@ const OPERATORS = {
     },
     "CONTAINS": {
         validArgumentsFilters: [freeformArgument]
+    },
+    "DOES_NOT_CONTAIN": {
+        validArgumentsFilters: [freeformArgument]
     }
 };
 
 // ordered list of operators and metadata per type
 const OPERATORS_BY_TYPE_ORDERED = {
     [NUMBER]: [
-        { name: "=",       verboseName: "Equal" },
-        { name: "!=",      verboseName: "Not equal" },
-        { name: ">",       verboseName: "Greater than" },
-        { name: "<",       verboseName: "Less than" },
-        { name: "BETWEEN", verboseName: "Between" },
-        { name: ">=",      verboseName: "Greater than or equal to", advanced: true },
-        { name: "<=",      verboseName: "Less than or equal to", advanced: true },
-        { name: "IS_NULL", verboseName: "Is empty", advanced: true },
-        { name: "NOT_NULL",verboseName: "Not empty", advanced: true }
+        { name: "=",                verboseName: "Equal" },
+        { name: "!=",               verboseName: "Not equal" },
+        { name: ">",                verboseName: "Greater than" },
+        { name: "<",                verboseName: "Less than" },
+        { name: "BETWEEN",          verboseName: "Between" },
+        { name: ">=",               verboseName: "Greater than or equal to", advanced: true },
+        { name: "<=",               verboseName: "Less than or equal to", advanced: true },
+        { name: "IS_NULL",          verboseName: "Is empty", advanced: true },
+        { name: "NOT_NULL",         verboseName: "Not empty", advanced: true }
     ],
     [STRING]: [
-        { name: "=",       verboseName: "Is" },
-        { name: "!=",      verboseName: "Is not" },
-        { name: "IS_NULL", verboseName: "Is empty", advanced: true },
-        { name: "NOT_NULL",verboseName: "Not empty", advanced: true }
+        { name: "=",                verboseName: "Is" },
+        { name: "!=",               verboseName: "Is not" },
+        { name: "CONTAINS",         verboseName: "Contains"},
+        { name: "DOES_NOT_CONTAIN", verboseName: "Does not contain"},
+        { name: "IS_NULL",          verboseName: "Is empty", advanced: true },
+        { name: "NOT_NULL",         verboseName: "Not empty", advanced: true },
+        { name: "STARTS_WITH",      verboseName: "Starts with", advanced: true},
+        { name: "ENDS_WITH",        verboseName: "Ends with", advanced: true}
     ],
     [DATE_TIME]: [
-        { name: "=",       verboseName: "Is" },
-        { name: "<",       verboseName: "Before" },
-        { name: ">",       verboseName: "After" },
-        { name: "BETWEEN", verboseName: "Between" },
-        { name: "IS_NULL", verboseName: "Is empty", advanced: true },
-        { name: "NOT_NULL",verboseName: "Not empty", advanced: true }
+        { name: "=",                verboseName: "Is" },
+        { name: "<",                verboseName: "Before" },
+        { name: ">",                verboseName: "After" },
+        { name: "BETWEEN",          verboseName: "Between" },
+        { name: "IS_NULL",          verboseName: "Is empty", advanced: true },
+        { name: "NOT_NULL",         verboseName: "Not empty", advanced: true }
     ],
     [LOCATION]: [
-        { name: "=",       verboseName: "Is" },
-        { name: "!=",      verboseName: "Is not" },
-        { name: "IS_NULL", verboseName: "Is empty", advanced: true },
-        { name: "NOT_NULL",verboseName: "Not empty", advanced: true }
+        { name: "=",                verboseName: "Is" },
+        { name: "!=",               verboseName: "Is not" },
+        { name: "IS_NULL",          verboseName: "Is empty", advanced: true },
+        { name: "NOT_NULL",         verboseName: "Not empty", advanced: true }
     ],
     [COORDINATE]: [
-        { name: "=",       verboseName: "Is" },
-        { name: "!=",      verboseName: "Is not" },
-        { name: "INSIDE",  verboseName: "Inside" }
+        { name: "=",                verboseName: "Is" },
+        { name: "!=",               verboseName: "Is not" },
+        { name: "INSIDE",           verboseName: "Inside" }
     ],
     [BOOLEAN]: [
-        { name: "=",       verboseName: "Is", multi: false, defaults: [true] },
-        { name: "IS_NULL", verboseName: "Is empty" },
-        { name: "NOT_NULL",verboseName: "Not empty" }
+        { name: "=",                verboseName: "Is", multi: false, defaults: [true] },
+        { name: "IS_NULL",          verboseName: "Is empty" },
+        { name: "NOT_NULL",         verboseName: "Not empty" }
     ],
     [UNKNOWN]: [
-        { name: "=",       verboseName: "Is" },
-        { name: "!=",      verboseName: "Is not" },
-        { name: "IS_NULL", verboseName: "Is empty", advanced: true },
-        { name: "NOT_NULL",verboseName: "Not empty", advanced: true }
+        { name: "=",                verboseName: "Is" },
+        { name: "!=",               verboseName: "Is not" },
+        { name: "IS_NULL",          verboseName: "Is empty", advanced: true },
+        { name: "NOT_NULL",         verboseName: "Not empty", advanced: true }
     ]
 };
 
@@ -300,7 +311,7 @@ const MORE_VERBOSE_NAMES = {
     "less than": "is less than",
     "greater than": "is greater than",
     "less than or equal to": "is less than or equal to",
-    "greater than or equal to": "is greater than or equal to",
+    "greater than or equal to": "is greater than or equal to"
 }
 
 function getOperators(field, table) {
@@ -334,44 +345,57 @@ var Aggregators = [{
     "name": "Raw data",
     "short": "rows",
     "description": "Just a table with the rows in the answer, no additional operations.",
-    "advanced": false,
-    "validFieldsFilters": []
+    "validFieldsFilters": [],
+    "requiresField": false
 }, {
-    "name": "Count",
+    "name": "Count of rows",
     "short": "count",
     "description": "Total number of rows in the answer.",
-    "advanced": false,
-    "validFieldsFilters": []
+    "validFieldsFilters": [],
+    "requiresField": false
 }, {
-    "name": "Sum",
+    "name": "Sum of ...",
     "short": "sum",
     "description": "Sum of all the values of a column.",
-    "advanced": false,
-    "validFieldsFilters": [summableFields]
+    "validFieldsFilters": [summableFields],
+    "requiresField": true
 }, {
-    "name": "Average",
+    "name": "Average of ...",
     "short": "avg",
     "description": "Average of all the values of a column",
-    "advanced": false,
-    "validFieldsFilters": [summableFields]
+    "validFieldsFilters": [summableFields],
+    "requiresField": true
 }, {
-    "name": "Number of distinct values",
+    "name": "Number of distinct values of ...",
     "short": "distinct",
     "description":  "Number of unique values of a column among all the rows in the answer.",
-    "advanced": true,
-    "validFieldsFilters": [allFields]
+    "validFieldsFilters": [allFields],
+    "requiresField": true
 }, {
-    "name": "Cumulative sum",
+    "name": "Cumulative sum of ...",
     "short": "cum_sum",
     "description": "Additive sum of all the values of a column.\ne.x. total revenue over time.",
-    "advanced": true,
-    "validFieldsFilters": [summableFields]
+    "validFieldsFilters": [summableFields],
+    "requiresField": true
 }, {
-    "name": "Standard deviation",
+    "name": "Standard deviation of ...",
     "short": "stddev",
-    "description": "Number which expresses how much the values of a colum vary among all rows in the answer.",
-    "advanced": true,
-    "validFieldsFilters": [summableFields]
+    "description": "Number which expresses how much the values of a column vary among all rows in the answer.",
+    "validFieldsFilters": [summableFields],
+    "requiresField": true,
+    "requiredDriverFeature": "standard-deviation-aggregations"
+}, {
+    name: "Minimum of ...",
+    short: "min",
+    description: "Minimum value of a column",
+    validFieldsFilters: [summableFields],
+    requiresField: true,
+}, {
+    name: "Maximum of ...",
+    short: "max",
+    description: "Maximum value of a column",
+    validFieldsFilters: [summableFields],
+    requiresField: true,
 }];
 
 var BreakoutAggregator = {
@@ -389,14 +413,29 @@ function populateFields(aggregator, fields) {
         'fields': _.map(aggregator.validFieldsFilters, function(validFieldsFilterFn) {
             return validFieldsFilterFn(fields);
         }),
-        'validFieldsFilters': aggregator.validFieldsFilters
+        'validFieldsFilters': aggregator.validFieldsFilters,
+        "requiresField": aggregator.requiresField,
+        "requiredDriverFeature": aggregator.requiredDriverFeature
     };
 }
 
-function getAggregators(fields) {
-    return _.map(Aggregators, function(aggregator) {
-        return populateFields(aggregator, fields);
+// TODO: unit test
+export function getAggregators(table) {
+    const supportedAggregations = Aggregators.filter(function (agg) {
+        if (agg.requiredDriverFeature && table.db && !_.contains(table.db.features, agg.requiredDriverFeature)) {
+            return false;
+        } else {
+            return true;
+        }
     });
+    return _.map(supportedAggregations, function(aggregator) {
+        return populateFields(aggregator, table.fields);
+    });
+}
+
+// TODO: unit test
+export function getAggregator(short) {
+    return _.findWhere(Aggregators, { short: short });
 }
 
 function getBreakouts(fields) {
@@ -410,7 +449,7 @@ export function addValidOperatorsToFields(table) {
     for (let field of table.fields) {
         field.valid_operators = getOperators(field, table);
     }
-    table.aggregation_options = getAggregators(table.fields);
+    table.aggregation_options = getAggregators(table);
     table.breakout_options = getBreakouts(table.fields);
     return table;
 }

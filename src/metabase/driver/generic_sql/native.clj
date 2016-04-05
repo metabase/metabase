@@ -2,8 +2,6 @@
   "The `native` query processor."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
-            (korma [core :as korma]
-                   db)
             [metabase.db :refer [sel]]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
@@ -17,8 +15,8 @@
 
 (defn process-and-run
   "Process and run a native (raw SQL) QUERY."
-  [driver {{sql :query} :native, database-id :database, :as query}]
-  (try (let [database (sel :one :fields [Database :engine :details] :id database-id)
+  [driver {{sql :query} :native, database-id :database, settings :settings}]
+  (try (let [database (sel :one :fields [Database :id :engine :details] :id database-id)
              db-conn  (sql/db->jdbc-connection-spec database)]
 
          (jdbc/with-db-transaction [t-conn db-conn]
@@ -27,13 +25,11 @@
              (.setAutoCommit jdbc-connection false)
              (try
                ;; Set the timezone if applicable
-               (when-let [timezone (driver/report-timezone)]
-                 (when (and (seq timezone)
-                            (contains? (driver/features driver) :set-timezone))
-                   (log/debug (u/format-color 'green "%s" (sql/set-timezone-sql driver)))
-                   (try (jdbc/db-do-prepared t-conn (sql/set-timezone-sql driver) [timezone])
-                        (catch Throwable e
-                          (log/error (u/format-color 'red "Failed to set timezone: %s" (.getMessage e)))))))
+               (when-let [timezone (:report-timezone settings)]
+                 (log/debug (u/format-color 'green "%s" (sql/set-timezone-sql driver)))
+                 (try (jdbc/db-do-prepared t-conn (sql/set-timezone-sql driver) [timezone])
+                      (catch Throwable e
+                        (log/error (u/format-color 'red "Failed to set timezone: %s" (.getMessage e))))))
 
                ;; Now run the query itself
                (log/debug (u/format-color 'green "%s" sql))
@@ -47,8 +43,8 @@
                ;; Rollback any changes made during this transaction just to be extra-double-sure JDBC doesn't try to commit them automatically for us
                (finally (.rollback jdbc-connection))))))
        (catch java.sql.SQLException e
-         (let [^String message (or (->> (.getMessage e) ; error message comes back like 'Column "ZID" not found; SQL statement: ... [error-code]' sometimes
+         (let [^String message (or (->> (.getMessage e)     ; error message comes back like 'Column "ZID" not found; SQL statement: ... [error-code]' sometimes
                                         (re-find #"^(.*);") ; the user already knows the SQL, and error code is meaningless
-                                        second) ; so just return the part of the exception that is relevant
+                                        second)             ; so just return the part of the exception that is relevant
                                    (.getMessage e))]
            (throw (Exception. message))))))

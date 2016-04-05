@@ -1,13 +1,10 @@
 (ns metabase.driver.query-processor.annotate
-  (:refer-clojure :exclude [==])
-  (:require (clojure [set :as set]
-                     [string :as s])
+  (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.db :refer [sel]]
             [metabase.driver.query-processor.interface :as i]
-            (metabase.models [field :refer [Field], :as field]
-                             [foreign-key :refer [ForeignKey]])
+            [metabase.models.field :refer [Field]]
             [metabase.util :as u]))
 
 ;; Fields should be returned in the following order:
@@ -59,10 +56,6 @@
 
     metabase.driver.query_processor.interface.Field
     (if-let [parent (:parent this)]
-      ;; Nested Mongo fields come back inside of their parent when you specify them in the fields clause
-      ;; e.g. (Q fields venue...name) will return rows like {:venue {:name "Kyle's Low-Carb Grill"}}
-      ;; Until we fix this the right way we'll just include the parent Field in the :query-fields list so the pattern
-      ;; matching works correctly.
       [this parent]
       [this])
 
@@ -90,7 +83,7 @@
 
 (defn- add-aggregate-field-if-needed
   "Add a Field containing information about an aggregate column such as `:count` or `:distinct` if needed."
-  [{{ag-type :aggregation-type, ag-field :field, :as ag} :aggregation} fields]
+  [{{ag-type :aggregation-type, ag-field :field} :aggregation} fields]
   (if (or (not ag-type)
           (= ag-type :rows))
     fields
@@ -187,7 +180,7 @@
                            :field-display-name :display_name
                            :schema-name        :schema_name
                            :special-type       :special_type
-                           :preview-display    :preview_display
+                           :visibility-type    :visibility_type
                            :table-id           :table_id})
         (dissoc :position :clause-position :source :parent :parent-id :table-name))))
 
@@ -201,13 +194,13 @@
   ;; Fetch the ForeignKey objects whose origin is in the returned Fields, create a map of origin-field-id->destination-field-id
   ([fields fk-ids]
    (when (seq fk-ids)
-     (fk-field->dest-fn fields fk-ids (sel :many :field->field [ForeignKey :origin_id :destination_id]
-                                           :origin_id      [in fk-ids]
-                                           :destination_id [not= nil]))))
+     (fk-field->dest-fn fields fk-ids (sel :many :field->field [Field :id :fk_target_field_id]
+                                           :id                 [in fk-ids]
+                                           :fk_target_field_id [not= nil]))))
   ;; Fetch the destination Fields referenced by the ForeignKeys
   ([fields fk-ids id->dest-id]
    (when (seq id->dest-id)
-     (fk-field->dest-fn fields fk-ids id->dest-id (sel :many :id->fields [Field :id :name :display_name :table_id :description :base_type :special_type :preview_display]
+     (fk-field->dest-fn fields fk-ids id->dest-id (sel :many :id->fields [Field :id :name :display_name :table_id :description :base_type :special_type :visibility_type]
                                                        :id [in (vals id->dest-id)]))))
   ;; Return a function that will return the corresponding destination Field for a given Field
   ([fields fk-ids id->dest-id dest-id->field]

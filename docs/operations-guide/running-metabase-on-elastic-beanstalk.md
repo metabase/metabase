@@ -16,7 +16,7 @@ The Metabase team runs a number of production installations on AWS using Elastic
 
 Metabase provides an Elastic Beanstalk pre-configured launch url to help new installations getting started.  If you are starting fresh we recommend you follow this link to begin creating the Elastic Beanstalk deployment with a few choices pre-filled.
 
-[Launch Metabase on Elastic Beanstalk](http://downloads.metabase.com/v0.13.1/launch-aws-eb.html)
+[Launch Metabase on Elastic Beanstalk](http://downloads.metabase.com/v0.16.0/launch-aws-eb.html)
 
 The rest of this guide will follow each phase of the Elastic Beanstalk setup step-by-step.
 
@@ -53,7 +53,7 @@ When your environment type settings look like the above then go ahead and click 
 
 The application version describes the exact binary you wish to deploy to your Elastic Beanstalk application.  Metabase provides a pre-built AWS Elastic Beanstalk application version which can be linked to directly.  Simply enter the following url in the `S3 URL` textbox:
 
-https://s3.amazonaws.com/downloads.metabase.com/v0.13.1/metabase-aws-eb.zip
+https://s3.amazonaws.com/downloads.metabase.com/v0.16.0/metabase-aws-eb.zip
 
 Leave all the settings under Deployment Limits on their defaults.  These settings won't impact Metabase.
 
@@ -83,7 +83,7 @@ NOTE: it's possible to skip this step if you wish, however this will force Metab
 
 ##### Using Metabase in a VPC
 
-Newer AWS accounts are encouraging the use of VPC for deployments and in general we thing it's simplest to follow that best practice.
+Newer AWS accounts are encouraging the use of VPC for deployments and in general we think it's simplest to follow that best practice.
 
 If you prefer not to use a VPC that is fine, however one thing to note is that some EC2 instance types (t2.* in specific) are not available outside of a VPC, so if you choose to not use a VPC then make sure and pick appropriate instance types.
 
@@ -186,7 +186,7 @@ Here's each step:
 1. Go to Elastic Beanstalk and select your `Metabase` application
 * Click on `Application Versions` on the left nav (you can also choose `Application Versions` from the dropdown at the top of the page)
 * Download the latest Metabase Elastic Beanstalk deployment file
-  * https://s3.amazonaws.com/downloads.metabase.com/v0.13.1/metabase-aws-eb.zip
+  * https://s3.amazonaws.com/downloads.metabase.com/v0.16.0/metabase-aws-eb.zip
 * Upload a new Application Version
 	* Click the `Upload` button on the upper right side of the listing
 		* Give the new version a name, ideally including the Metabase version number (e.g. v0.13.0)

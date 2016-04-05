@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - changeSet:
+      id: 26
+      author: agilliland
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: is_full_sync
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+        - sql:
+            sql: update metabase_database set is_full_sync = true

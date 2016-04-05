@@ -3,7 +3,8 @@
                     [core :as mg])
             metabase.driver.mongo
             [metabase.driver.mongo.util :refer [with-mongo-connection]]
-            [metabase.test.data.interface :as i])
+            [metabase.test.data.interface :as i]
+            [metabase.util :as u])
   (:import metabase.driver.mongo.MongoDriver))
 
 (defn- database->connection-details
@@ -40,17 +41,13 @@
               (catch com.mongodb.MongoException _))))))))
 
 
-(extend MongoDriver
+(u/strict-extend MongoDriver
   i/IDatasetLoader
   (merge i/IDatasetLoaderDefaultsMixin
          {:create-db!                   create-db!
           :destroy-db!                  destroy-db!
           :database->connection-details database->connection-details
           :engine                       (constantly :mongo)
-          :expected-base-type->actual   (fn [_ base-type]
-                                          (let [expected->actual {:DateTimeField :DateField}]
-                                            (or (expected->actual base-type)
-                                                base-type)))
           :format-name                  (fn [_ table-or-field-name]
                                           (if (= table-or-field-name "id") "_id"
                                               table-or-field-name))}))

@@ -2,7 +2,7 @@ import _ from "underscore";
 
 import MetabaseAnalytics from 'metabase/lib/analytics';
 import MetabaseCookies from 'metabase/lib/cookies';
-import MetabaseCore from 'metabase/lib/core';
+import * as MetabaseCore from 'metabase/lib/core';
 import MetabaseSettings from 'metabase/lib/settings';
 
 
@@ -332,7 +332,7 @@ CoreServices.factory('Card', ['$resource', '$cookies', function($resource, $cook
 CoreServices.factory('Dashboard', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/dashboard/:dashId', {}, {
         list: {
-            url:'/api/dashboard?org=:orgId&f=:filterMode',
+            url:'/api/dashboard?f=:filterMode',
             method:'GET',
             isArray:true
         },
@@ -363,8 +363,8 @@ CoreServices.factory('Dashboard', ['$resource', '$cookies', function($resource, 
             params:{dashId:'@dashId'}
         },
         reposition_cards: {
-            url:'/api/dashboard/:dashId/reposition',
-            method:'POST',
+            url:'/api/dashboard/:dashId/cards',
+            method:'PUT',
             params:{dashId:'@dashId'}
         }
     });
@@ -395,22 +395,19 @@ CoreServices.factory('Slack', ['$resource', function($resource) {
     });
 }]);
 
-CoreServices.factory('ForeignKey', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/foreignkey/:fkID', {}, {
-        delete: {
-            method: 'DELETE',
-            params: {
-                fkID: '@fkID'
-            }
-        }
-    });
-}]);
-
 CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', function($resource, $cookies, MetabaseCore) {
     return $resource('/api/meta', {}, {
         db_list: {
-            url: '/api/database/?org=:orgId',
+            url: '/api/database/',
             method: 'GET',
+            isArray: true
+        },
+        db_list_with_tables: {
+            method: 'GET',
+            url: '/api/database/',
+            params: {
+                include_tables: 'true'
+            },
             isArray: true
         },
         db_create: {
@@ -575,21 +572,6 @@ CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', funct
                 fieldId: '@id'
             }
         },
-        field_foreignkeys: {
-            url: '/api/field/:fieldId/foreignkeys',
-            method: 'GET',
-            params: {
-                fieldId: '@fieldId'
-            },
-            isArray: true
-        },
-        field_addfk: {
-            url: '/api/field/:fieldId/foreignkeys',
-            method: 'POST',
-            params: {
-                fieldId: '@fieldId'
-            }
-        },
         dataset: {
             url: '/api/dataset',
             method: 'POST'
@@ -636,6 +618,48 @@ CoreServices.factory('Pulse', ['$resource', '$cookies', function($resource, $coo
     });
 }]);
 
+CoreServices.factory('Segment', ['$resource', '$cookies', function($resource, $cookies) {
+    return $resource('/api/segment/:segmentId', {}, {
+        create: {
+            url: '/api/segment',
+            method: 'POST'
+        },
+        get: {
+            method: 'GET',
+            params: { segmentId: '@segmentId' },
+        },
+        update: {
+            method: 'PUT',
+            params: { segmentId: '@id' }
+        },
+        delete: {
+            method: 'DELETE',
+            params: { segmentId: '@segmentId' }
+        }
+    });
+}]);
+
+CoreServices.factory('Metric', ['$resource', '$cookies', function($resource, $cookies) {
+    return $resource('/api/metric/:metricId', {}, {
+        create: {
+            url: '/api/metric',
+            method: 'POST'
+        },
+        get: {
+            method: 'GET',
+            params: { metricId: '@metricId' },
+        },
+        update: {
+            method: 'PUT',
+            params: { metricId: '@id' }
+        },
+        delete: {
+            method: 'DELETE',
+            params: { metricId: '@metricId' }
+        }
+    });
+}]);
+
 CoreServices.factory('Revision', ['$resource', function($resource) {
     return $resource('/api/revision', {}, {
         list: {
@@ -654,6 +678,20 @@ CoreServices.factory('Revision', ['$resource', function($resource) {
                 'entity': '@entity',
                 'id': '@id',
                 'revision_id': '@revision_id'
+            }
+        }
+    });
+}]);
+
+// Revisions V2
+CoreServices.factory('Revisions', ['$resource', function($resource) {
+    return $resource('/api/:entity/:id/revisions', {}, {
+        get: {
+            method: 'GET',
+            isArray: true,
+            params: {
+                'entity': '@entity',
+                'id': '@id'
             }
         }
     });
@@ -762,6 +800,13 @@ CoreServices.factory('User', ['$resource', '$cookies', function($resource, $cook
         },
         update_password: {
             url: '/api/user/:userId/password',
+            method: 'PUT',
+            params: {
+                'userId': '@id'
+            }
+        },
+        update_qbnewb: {
+            url: '/api/user/:userId/qbnewb',
             method: 'PUT',
             params: {
                 'userId': '@id'

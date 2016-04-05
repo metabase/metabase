@@ -5,9 +5,7 @@
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
             (metabase.models [hydrate :refer :all]
-                             [database :refer [Database]]
                              [field :refer [Field]]
-                             [foreign-key :refer [ForeignKey]]
                              [table :refer [Table] :as table])
             [metabase.driver :as driver]))
 
@@ -56,8 +54,9 @@
 (defendpoint GET "/:id/fields"
   "Get all `Fields` for `Table` with ID."
   [id]
-  (read-check Table id)
-  (sel :many Field :table_id id, :active true, :field_type [not= "sensitive"], (k/order :name :ASC)))
+  (let-404 [table (Table id)]
+    (read-check table)
+    (sel :many Field :table_id id, :visibility_type [not-in ["sensitive" "retired"]], (k/order :name :ASC))))
 
 (defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
@@ -69,22 +68,27 @@
   {include_sensitive_fields String->Boolean}
   (->404 (Table id)
          read-check
-         (hydrate :db [:fields :target] :field_values)
+         (hydrate :db [:fields :target] :field_values :segments :metrics)
          (update-in [:fields] (if include_sensitive_fields
                                 ;; If someone passes include_sensitive_fields return hydrated :fields as-is
                                 identity
                                 ;; Otherwise filter out all :sensitive fields
-                                (partial filter (fn [{:keys [field_type]}]
-                                                  (not= (keyword field_type) :sensitive)))))))
+                                (partial filter (fn [{:keys [visibility_type]}]
+                                                  (not= (keyword visibility_type) :sensitive)))))))
 
 (defendpoint GET "/:id/fks"
   "Get all `ForeignKeys` whose destination is a `Field` that belongs to this `Table`."
   [id]
-  (read-check Table id)
-  (let-404 [field-ids (sel :many :id Field :table_id id :active true)]
-    (-> (sel :many ForeignKey :destination_id [in field-ids])
-        ;; TODO - it's a little silly to hydrate both of these table objects
-        (hydrate [:origin [:table :db]] [:destination :table]))))
+  (let-404 [table (Table id)]
+    (read-check table)
+    (let [field-ids (sel :many :id Field :table_id id :visibility_type [not= "retired"])]
+      (for [origin-field (sel :many Field :fk_target_field_id [in field-ids])]
+        ;; it's silly to be hydrating some of these tables/dbs
+        {:relationship   :Mt1
+         :origin_id      (:id origin-field)
+         :origin         (hydrate origin-field [:table :db])
+         :destination_id (:fk_target_field_id origin-field)
+         :destination    (hydrate (Field (:fk_target_field_id origin-field)) :table)}))))
 
 (defendpoint POST "/:id/sync"
   "Re-sync the metadata for this `Table`."

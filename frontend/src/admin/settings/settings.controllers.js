@@ -1,24 +1,12 @@
+import "metabase/services";
+
 import _ from "underscore";
 
 import SettingsEditor from './components/SettingsEditor.jsx';
+import MetabaseSettings from 'metabase/lib/settings';
 
 
-var SettingsAdminControllers = angular.module('metabaseadmin.settings.controllers', ['metabase.services']);
-
-// from common.clj
-var TIMEZONES = [
-    { name: "Database Default", value: "" },
-    "GMT",
-    "UTC",
-    "US/Alaska",
-    "US/Arizona",
-    "US/Central",
-    "US/Eastern",
-    "US/Hawaii",
-    "US/Mountain",
-    "US/Pacific",
-    "America/Costa_Rica",
-];
+var SettingsAdminControllers = angular.module('metabase.admin.settings.controllers', ['metabase.services']);
 
 const SECTIONS = [
     {
@@ -43,8 +31,12 @@ const SECTIONS = [
                 key: "report-timezone",
                 display_name: "Report Timezone",
                 type: "select",
-                options: TIMEZONES,
-                placeholder: "Select a timezone"
+                options: [
+                    { name: "Database Default", value: "" },
+                    ...MetabaseSettings.get('timezones')
+                ],
+                placeholder: "Select a timezone",
+                note: "Not all databases support timezones, in which case this setting won't take effect."
             },
             {
                 key: "anon-tracking-enabled",
@@ -111,11 +103,19 @@ const SECTIONS = [
                 key: "slack-token",
                 display_name: "Slack API Token",
                 description: "",
-                placeholder: "Enter the token you recieved from Slack",
+                placeholder: "Enter the token you received from Slack",
                 type: "string",
                 required: true,
                 autoFocus: true
-            }
+            },
+            {
+                key: "metabot-enabled",
+                display_name: "Metabot",
+                type: "boolean",
+                defaultValue: "true",
+                required: true,
+                autoFocus: false
+            },
         ]
     }
 ];

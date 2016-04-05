@@ -1,5 +1,7 @@
-var AdminDatabases = angular.module('metabaseadmin.databases', [
-    'metabaseadmin.databases.controllers'
+import "./databases.controllers";
+
+var AdminDatabases = angular.module('metabase.admin.databases', [
+    'metabase.admin.databases.controllers'
 ]);
 
 AdminDatabases.config(['$routeProvider', function ($routeProvider) {

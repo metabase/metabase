@@ -9,7 +9,7 @@
     (count-occurrences \"GoodPw!!\")
       -> {:total  8, :lower 4, :upper 2, :letter 6, :digit 0, :special 2}"
   [password]
-  (loop [[^Character c & more] password, {:keys [total, lower, upper, letter, digit, special], :as counts} {:total 0, :lower 0, :upper 0, :letter 0, :digit 0, :special 0}]
+  (loop [[^Character c & more] password, {:keys [lower, upper, letter, digit, special], :as counts} {:total 0, :lower 0, :upper 0, :letter 0, :digit 0, :special 0}]
     (if-not c counts
       (recur more (merge (update counts :total inc)
                          (cond
@@ -45,9 +45,8 @@
                  (when (>= (occurances char-type) min-count)
                    (recur more)))))))
 
-(defn active-password-complexity
+(def ^:const active-password-complexity
   "The currently configured description of the password complexity rules being enforced"
-  []
   (merge (complexity->char-type->min (config/config-kw :mb-password-complexity))
          ;; Setting MB_PASSWORD_LENGTH overrides the default :total for a given password complexity class
          (when-let [min-len (config/config-int :mb-password-length)]
@@ -55,7 +54,7 @@
 
 (def ^{:arglists '([password])} is-complex?
   "Check if a given password meets complexity standards for the application."
-  (partial password-has-char-counts? (active-password-complexity)))
+  (partial password-has-char-counts? active-password-complexity))
 
 
 (defn verify-password
@@ -63,6 +62,6 @@
   [password salt hashed-password]
   (try
     (creds/bcrypt-verify (str salt password) hashed-password)
-    (catch Exception e
+    (catch Throwable e
       ;; we wrap the friend/bcrypt-verify with this function specifically to avoid unintended exceptions getting out
       false)))

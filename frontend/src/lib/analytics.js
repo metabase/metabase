@@ -4,7 +4,7 @@ import MetabaseSettings from "metabase/lib/settings";
 
 
 // Simple module for in-app analytics.  Currently sends data to GA but could be extended to anything else.
-var MetabaseAnalytics = {
+const MetabaseAnalytics = {
     // track a pageview (a.k.a. route change)
     trackPageView: function(url) {
         if (url) {
@@ -32,3 +32,20 @@ var MetabaseAnalytics = {
 }
 
 export default MetabaseAnalytics;
+
+
+export function registerAnalyticsClickListener() {
+    document.body.addEventListener("click", function(e) {
+        var node = e.target;
+
+        // check the target and all parent elements
+        while (node) {
+            if (node.dataset && node.dataset.metabaseEvent) {
+                // we expect our event to be a semicolon delimited string
+                const parts = node.dataset.metabaseEvent.split(";").map(p => p.trim());
+                MetabaseAnalytics.trackEvent(...parts);
+            }
+            node = node.parentNode;
+        }
+    }, true);
+}

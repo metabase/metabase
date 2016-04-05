@@ -1,8 +1,10 @@
 (ns metabase.test-setup
   "Functions that run before + after unit tests (setup DB, start web server, load test data)."
-  (:require [clojure.java.io :as io]
+  (:require clojure.data
+            [clojure.java.io :as io]
             [clojure.set :as set]
             [clojure.tools.logging :as log]
+            [colorize.core :as color]
             [expectations :refer :all]
             (metabase [core :as core]
                       [db :as db]
@@ -74,7 +76,7 @@
   []
   ;; We can shave about a second from unit test launch time by doing the various setup stages in on different threads
   ;; Start Jetty in the BG so if test setup fails we have an easier time debugging it -- it's trickier to debug things on a BG thread
-  (let [start-jetty! (future (core/start-jetty))]
+  (let [start-jetty! (future (core/start-jetty!))]
 
     (try
       (log/info "Setting up test DB and running migrations...")
@@ -93,4 +95,4 @@
   {:expectations-options :after-run}
   []
   (log/info "Shutting down Metabase unit test runner")
-  (core/stop-jetty))
+  (core/stop-jetty!))

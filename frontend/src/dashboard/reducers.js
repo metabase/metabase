@@ -1,18 +1,22 @@
-import { handleActions } from 'redux-actions';
+import { handleActions, combineReducers } from "metabase/lib/redux";
+
+import i from "icepick";
 
 import {
     FETCH_CARDS,
     SELECT_DASHBOARD,
     SET_EDITING_DASHBOARD,
     FETCH_DASHBOARD,
-    FETCH_DASHCARD_DATASET,
+    FETCH_CARD_DATA,
     SET_DASHBOARD_ATTRIBUTES,
     SET_DASHCARD_ATTRIBUTES,
+    SET_DASHCARD_VISUALIZATION_SETTING,
     ADD_CARD_TO_DASH,
     REMOVE_CARD_FROM_DASH,
     DELETE_CARD,
     FETCH_REVISIONS,
-    MARK_NEW_CARD_SEEN
+    MARK_NEW_CARD_SEEN,
+    FETCH_DATABASE_METADATA
 } from './actions';
 
 export const selectedDashboard = handleActions({
@@ -53,6 +57,13 @@ export const dashcards = handleActions({
             [id]: { ...state[id], ...attributes, isDirty: true }
         })
     },
+    [SET_DASHCARD_VISUALIZATION_SETTING]: {
+        next: (state, { payload: { id, setting, value } }) =>
+            i.chain(state)
+                .assocIn([id, "card", "visualization_settings"].concat(setting), value)
+                .assocIn([id, "card", "isDirty"], true)
+                .value()
+    },
     [ADD_CARD_TO_DASH]: (state, { payload: dashcard }) => ({
         ...state,
         [dashcard.id]: { ...dashcard, isAdded: true, justAdded: true }
@@ -71,6 +82,14 @@ export const revisions = handleActions({
     [FETCH_REVISIONS]: { next: (state, { payload: { entity, id, revisions } }) => ({ ...state, [entity+'-'+id]: revisions })}
 }, {});
 
-export const dashcardDatasets = handleActions({
-    [FETCH_DASHCARD_DATASET]: { next: (state, { payload: { id, result }}) => ({ ...state, [id]: result }) }
+export const cardData = handleActions({
+    [FETCH_CARD_DATA]: { next: (state, { payload: { id, result }}) => ({ ...state, [id]: result }) }
 }, {});
+
+const databases = handleActions({
+    [FETCH_DATABASE_METADATA]: { next: (state, { payload }) => ({ ...state, [payload.id]: payload }) }
+}, {});
+
+export const metadata = combineReducers({
+    databases
+});

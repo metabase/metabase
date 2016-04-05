@@ -9,11 +9,23 @@
 (def ^:private ^:const friday-the-13th   #inst "2015-11-13T19:05:55")
 (def ^:private ^:const saturday-the-14th #inst "2015-11-14T04:18:26")
 
+(expect false (is-temporal? nil))
+(expect false (is-temporal? 123))
+(expect false (is-temporal? "abc"))
+(expect false (is-temporal? [1 2 3]))
+(expect false (is-temporal? {:a "b"}))
+(expect true (is-temporal? friday-the-13th))
+
 (expect friday-the-13th (->Timestamp (->Date friday-the-13th)))
 (expect friday-the-13th (->Timestamp (->Calendar friday-the-13th)))
 (expect friday-the-13th (->Timestamp (->Calendar (.getTime friday-the-13th))))
 (expect friday-the-13th (->Timestamp (.getTime friday-the-13th)))
 (expect friday-the-13th (->Timestamp "2015-11-13T19:05:55+00:00"))
+
+(expect nil (->iso-8601-datetime nil nil))
+(expect "2015-11-13T19:05:55.000Z" (->iso-8601-datetime friday-the-13th nil))
+(expect "2015-11-13T11:05:55.000-08:00" (->iso-8601-datetime friday-the-13th "US/Pacific"))
+(expect "2015-11-14T04:05:55.000+09:00" (->iso-8601-datetime friday-the-13th "Asia/Tokyo"))
 
 (expect 5    (date-extract :minute-of-hour  friday-the-13th))
 (expect 19   (date-extract :hour-of-day     friday-the-13th))
@@ -34,16 +46,16 @@
 (expect #inst "2015-11-01"       (date-trunc :month   friday-the-13th))
 (expect #inst "2015-10-01"       (date-trunc :quarter friday-the-13th))
 
-;;; ## tests for ASSOC*
+;;; ## tests for ASSOC<>
 
-(expect {:a 100
-         :b 200
-         :c 300}
-  (assoc* {}
-          :a 100
-          :b (+ 100 (:a <>))
-          :c (+ 100 (:b <>))))
-
+(expect
+  {:a 100
+   :b 200
+   :c 300}
+  (assoc<> {}
+    :a 100
+    :b (+ 100 (:a <>))
+    :c (+ 100 (:b <>))))
 
 ;;; ## tests for HOST-UP?
 
@@ -101,7 +113,7 @@
 (expect false (is-url? "http://metabasecom"))              ; no period / TLD
 (expect false (is-url? "http://.com"))                     ; no domain
 (expect false (is-url? "http://google."))                  ; no TLD
-
+(expect false (is-url? "http:/"))                          ; nil .getAuthority needs to be handled or NullPointerException
 
 ;;; ## tests for RPARTIAL
 

@@ -60,7 +60,7 @@ export default class DatabaseList extends Component {
                                 )
                             :
                                 <tr>
-                                    <td colspan={4}>
+                                    <td colSpan={4}>
                                         <LoadingSpinner />
                                         <h3>Loading ...</h3>
                                     </td>

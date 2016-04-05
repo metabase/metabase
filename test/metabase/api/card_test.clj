@@ -3,13 +3,14 @@
   (:require [expectations :refer :all]
             [metabase.db :refer :all]
             [metabase.http-client :refer :all]
+            [metabase.driver.query-processor.expand :as ql]
             (metabase.models [card :refer [Card]]
                              [common :as common]
-                             [database :refer [Database]])
+                             [database :refer [Database]]
+                             [table :refer [Table]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp]]
-            [metabase.test.util.q :refer [Q-expand]]))
+            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp with-temp* obj->json->obj]]))
 
 ;; # CARD LIFECYCLE
 
@@ -20,70 +21,49 @@
                                            :can_read               true
                                            :can_write              true
                                            :display                "scalar"
-                                           :dataset_query          (Q-expand aggregate count of categories)
+                                           :dataset_query          (obj->json->obj (ql/wrap-inner-query
+                                                                                    (query categories
+                                                                                      (ql/aggregation (ql/count)))))
                                            :visualization_settings {:global {:title nil}}}))
 
 ;; ## GET /api/card
 ;; Filter cards by database
-(expect [true
-         false
-         true]
-  (with-temp Database [{dbid :id} {:name    (random-name)
-                                    :engine  :h2
-                                    :details {}}]
-    (with-temp Card [{id1 :id} {:name                   (random-name)
-                                :public_perms           common/perms-none
-                                :creator_id             (user->id :crowberto)
-                                :display                :table
-                                :dataset_query          {}
-                                :visualization_settings {}
-                                :database_id            (id)}]
-      (with-temp Card [{id2 :id} {:name                   (random-name)
-                                  :public_perms           common/perms-none
-                                  :creator_id             (user->id :crowberto)
-                                  :display                :table
-                                  :dataset_query          {}
-                                  :visualization_settings {}
-                                  :database_id            dbid}]
-        (let [card-returned? (fn [database-id card-id]
-                               (contains? (->> ((user->client :crowberto) :get 200 "card" :f :database :model_id database-id)
-                                               (map :id)
-                                               set)
-                                          card-id))]
-          [(card-returned? (id) id1)
-           (card-returned? dbid id1)
-           (card-returned? dbid id2)])))))
+(expect
+  [true
+   false
+   true]
+  (with-temp* [Database [{db-id :id}]
+               Card     [{card-1-id :id} {:database_id (id)}]
+               Card     [{card-2-id :id} {:database_id db-id}]]
+    (let [card-returned? (fn [database-id card-id]
+                           (contains? (set (for [card ((user->client :rasta) :get 200 "card", :f :database, :model_id database-id)]
+                                             (:id card)))
+                                      card-id))]
+      [(card-returned? (id) card-1-id)
+       (card-returned? db-id card-1-id)
+       (card-returned? db-id card-2-id)])))
 
 ;; Make sure `id` is required when `f` is :database
 (expect {:errors {:id "id is required parameter when filter mode is 'database'"}}
   ((user->client :crowberto) :get 400 "card" :f :database))
 
 ;; Filter cards by table
-(expect [true
-         false
-         true]
-  (with-temp Card [{id1 :id} {:name                   (random-name)
-                              :public_perms           common/perms-none
-                              :creator_id             (user->id :crowberto)
-                              :display                :table
-                              :dataset_query          {}
-                              :visualization_settings {}
-                              :table_id               1}]
-    (with-temp Card [{id2 :id} {:name                   (random-name)
-                                :public_perms           common/perms-none
-                                :creator_id             (user->id :crowberto)
-                                :display                :table
-                                :dataset_query          {}
-                                :visualization_settings {}
-                                :table_id               2}]
-      (let [card-returned? (fn [table-id card-id]
-                             (contains? (->> ((user->client :crowberto) :get 200 "card" :f :table :model_id table-id)
-                                             (map :id)
-                                             set)
-                                        card-id))]
-      [(card-returned? 1 id1)
-       (card-returned? 2 id1)
-       (card-returned? 2 id2)]))))
+(expect
+  [true
+   false
+   true]
+  (with-temp* [Database [{database-id :id}]
+               Table    [{table-1-id :id} {:db_id database-id}]
+               Table    [{table-2-id :id} {:db_id database-id}]
+               Card     [{card-1-id :id} {:table_id table-1-id}]
+               Card     [{card-2-id :id} {:table_id table-2-id}]]
+    (let [card-returned? (fn [table-id card-id]
+                           (contains? (set (for [card ((user->client :rasta) :get 200 "card", :f :table, :model_id table-id)]
+                                             (:id card)))
+                                      card-id))]
+      [(card-returned? table-1-id card-1-id)
+       (card-returned? table-2-id card-1-id)
+       (card-returned? table-2-id card-2-id)])))
 
 ;; Make sure `id` is required when `f` is :table
 (expect {:errors {:id "id is required parameter when filter mode is 'table'"}}
@@ -92,17 +72,11 @@
 ;; Check that only the creator of a private Card can see it
 (expect [true
          false]
-  (with-temp Card [{:keys [id]} {:name                   (random-name)
-                                 :public_perms           common/perms-none
-                                 :creator_id             (user->id :crowberto)
-                                 :display                :table
-                                 :dataset_query          {}
-                                 :visualization_settings {}}]
+  (with-temp Card [{card-id :id} {:creator_id (user->id :crowberto)}]
     (let [can-see-card? (fn [user]
-                          (contains? (->> ((user->client user) :get 200 "card" :f :all)
-                                          (map :id)
-                                          set)
-                                     id))]
+                          (contains? (set (for [card ((user->client user) :get 200 "card", :f :all)]
+                                            (:id card)))
+                                     card-id))]
       [(can-see-card? :crowberto)
        (can-see-card? :rasta)])))
 
@@ -111,20 +85,22 @@
 ;; Test that we can make a card
 (let [card-name (random-name)]
   (expect-eval-actual-first (match-$ (sel :one Card :name card-name)
-                              {:description nil
-                               :organization_id nil
-                               :name card-name
-                               :creator_id (user->id :rasta)
-                               :updated_at $
-                               :dataset_query (Q-expand aggregate count of categories)
-                               :id $
-                               :display "scalar"
+                              {:description            nil
+                               :organization_id        nil
+                               :name                   card-name
+                               :creator_id             (user->id :rasta)
+                               :updated_at             $
+                               :dataset_query          (obj->json->obj (ql/wrap-inner-query
+                                                                        (query categories
+                                                                          (ql/aggregation (ql/count)))))
+                               :id                     $
+                               :display                "scalar"
                                :visualization_settings {:global {:title nil}}
-                               :public_perms 0
-                               :created_at $
-                               :database_id (id)
-                               :table_id (id :categories)
-                               :query_type "query"})
+                               :public_perms           0
+                               :created_at             $
+                               :database_id            (id)
+                               :table_id               (id :categories)
+                               :query_type             "query"})
     (post-card card-name)))
 
 ;; ## GET /api/card/:id
@@ -142,6 +118,7 @@
          :creator (match-$ (fetch-user :rasta)
                     {:common_name "Rasta Toucan",
                      :is_superuser false,
+                     :is_qbnewb true,
                      :last_login $,
                      :last_name "Toucan",
                      :first_name "Rasta",
@@ -149,7 +126,9 @@
                      :email "rasta@metabase.com",
                      :id $})
          :updated_at $
-         :dataset_query (Q-expand aggregate count of categories)
+         :dataset_query (obj->json->obj (ql/wrap-inner-query
+                                         (query categories
+                                           (ql/aggregation (ql/count)))))
          :id $
          :display "scalar"
          :visualization_settings {:global {:title nil}}
@@ -180,6 +159,9 @@
     ((user->client :rasta) :delete 204 (format "card/%d" id))
     (Card id)))
 
+;; deleting a card that doesn't exist should return a 404 (#1957)
+(expect "Not found."
+  ((user->client :crowberto) :delete 404 "card/12345"))
 
 ;; # CARD FAVORITE STUFF
 

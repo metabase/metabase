@@ -1,9 +1,9 @@
 import React, { Component, PropTypes } from "react";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
 import ModalContent from "metabase/components/ModalContent.jsx";
 import Toggle from 'metabase/components/Toggle.jsx';
 
-import { removeCardFromDashboard } from '../actions';
 
 export default class RemoveFromDashboardModal extends Component {
     constructor(props, context) {
@@ -12,22 +12,24 @@ export default class RemoveFromDashboardModal extends Component {
     }
 
     static propTypes = {
-        dispatch: PropTypes.func.isRequired,
         dashcard: PropTypes.object.isRequired,
         dashboard: PropTypes.object.isRequired,
+        removeCardFromDashboard: PropTypes.func.isRequired,
         onClose: PropTypes.func.isRequired
     };
 
     onRemove() {
-        this.props.dispatch(removeCardFromDashboard({
+        this.props.removeCardFromDashboard({
             dashId: this.props.dashboard.id,
             dashcardId: this.props.dashcard.id
-        }));
+        });
         if (this.state.deleteCard) {
             // this.props.dispatch(deleteCard(this.props.dashcard.card_id))
             // this.props.dispatch(markCardForDeletion(this.props.dashcard.card_id))
         }
         this.props.onClose();
+
+        MetabaseAnalytics.trackEvent("Dashboard", "Remove Card");
     }
 
     render() {

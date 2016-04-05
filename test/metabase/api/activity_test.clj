@@ -10,7 +10,7 @@
                              [view-log :refer [ViewLog]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp]]
+            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name]]
             [metabase.util :as u]))
 
 ;; GET /
@@ -52,6 +52,7 @@
                        :last_name    $
                        :last_login   $
                        :is_superuser $
+                       :is_qbnewb    $
                        :common_name  $})
       :model        $
       :model_id     $
@@ -74,6 +75,7 @@
                        :last_name    $
                        :last_login   $
                        :is_superuser $
+                       :is_qbnewb    $
                        :common_name  $})
       :model        $
       :model_id     $

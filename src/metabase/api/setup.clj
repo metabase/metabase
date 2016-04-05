@@ -21,7 +21,7 @@
 (defendpoint POST "/"
   "Special endpoint for creating the first user during setup.
    This endpoint both creates the user AND logs them in and returns a session ID."
-  [:as {{:keys [token] {:keys [name engine details]} :database {:keys [first_name last_name email password]} :user {:keys [allow_tracking site_name]} :prefs} :body, :as request}]
+  [:as {{:keys [token] {:keys [name engine details is_full_sync]} :database, {:keys [first_name last_name email password]} :user, {:keys [allow_tracking site_name]} :prefs} :body, :as request}]
   {token      [Required SetupToken]
    site_name  [Required NonEmptyString]
    first_name [Required NonEmptyString]
@@ -46,7 +46,8 @@
     (setting/set :anon-tracking-enabled (or allow_tracking "true"))
     ;; setup database (if needed)
     (when (driver/is-engine? engine)
-      (->> (ins Database :name name :engine engine :details details)
+      (->> (ins Database :name name :engine engine :details details :is_full_sync (if-not (nil? is_full_sync) is_full_sync
+                                                                                                              true))
            (events/publish-event :database-create)))
     ;; clear the setup token now, it's no longer needed
     (setup/token-clear)
@@ -62,7 +63,7 @@
 
 (defendpoint POST "/validate"
   "Validate that we can connect to a database given a set of details."
-  [:as {{{:keys [engine] {:keys [host port] :as details} :details} :details token :token} :body}]
+  [:as {{{:keys [engine] {:keys [host port] :as details} :details} :details, token :token} :body}]
   {token      [Required SetupToken]
    engine     [Required DBEngine]}
   (let [engine           (keyword engine)

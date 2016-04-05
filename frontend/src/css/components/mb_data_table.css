@@ -1,0 +1,81 @@
+
+.MB-DataTable-header:hover {
+    cursor: pointer;
+}
+
+.MB-DataTable-header .Icon       { opacity: 0; }
+.MB-DataTable-header:hover .Icon,
+.MB-DataTable-header--sorted .Icon     {
+    opacity: 1;
+    transition: opacity .3s linear;
+}
+
+.PagingButtons {
+    border: 1px solid #ddd;
+}
+
+/* if the column is the one that is being sorted*/
+.MB-DataTable-header--sorted {
+     color: var(--brand-color);
+}
+
+/* what follows is a war crime but such is the state of FE development */
+.MB-DataTable .public_fixedDataTable_main {
+    border-color: rgb(205, 205, 205);
+}
+
+.MB-DataTable .public_fixedDataTableCell_main {
+    border-right: 1px solid #e8e8e8;
+    border-bottom: 1px solid #e8e8e8;
+    border-top: 1px solid transparent;
+    border-left: 1px solid transparent;
+}
+
+.MB-DataTable .public_fixedDataTableCell_main:hover {
+    cursor: pointer;
+    border-color: var(--brand-color);
+    color: var(--brand-color);
+}
+
+.MB-DataTable .public_fixedDataTableRow_highlighted,
+.MB-DataTable .public_fixedDataTableRow_highlighted .public_fixedDataTableCell_main {
+    background-color: #fff;
+}
+
+.MB-DataTable .public_fixedDataTable_header,
+.MB-DataTable .public_fixedDataTable_header .public_fixedDataTableCell_main {
+    background-color: #fff;
+    background-image: none;
+}
+
+.MB-DataTable .public_fixedDataTable_header,
+.MB-DataTable .public_fixedDataTable_header .public_fixedDataTableCell_main {
+    background-color: #fff;
+}
+
+.MB-DataTable .public_fixedDataTable_header .public_fixedDataTableCell_main:hover {
+    border-color: #e8e8e8;
+}
+
+/* this is so that our column calculation code works correctly */
+.MB-DataTable .public_fixedDataTableCell_cellContent {
+    display: block;
+}
+
+/* cell overflow ellipsis */
+.MB-DataTable .cellData {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow-x: hidden;
+}
+
+/* needs to be display:block so .cellData doesn't overflow the width and not show ellipsis */
+/* only enable once the contentWidths have been computed (.MB-DataTable--ready) */
+/* only enable for the body rows (.public_fixedDataTable_bodyRow) */
+.MB-DataTable.MB-DataTable--ready .public_fixedDataTable_bodyRow .public_fixedDataTableCell_wrap1,
+.MB-DataTable.MB-DataTable--ready .public_fixedDataTable_bodyRow .public_fixedDataTableCell_wrap2,
+.MB-DataTable.MB-DataTable--ready .public_fixedDataTable_bodyRow .public_fixedDataTableCell_wrap3,
+.MB-DataTable.MB-DataTable--ready .public_fixedDataTable_bodyRow .public_fixedDataTableCell_cellContent,
+.MB-DataTable.MB-DataTable--ready .public_fixedDataTable_bodyRow .cellData {
+    display: block;
+}

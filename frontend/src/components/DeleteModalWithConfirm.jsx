@@ -38,7 +38,7 @@ export default class DeleteModalWithConfirm extends Component {
                 title={"Delete \"" + objectName + "\"?"}
                 closeFn={this.props.onClose}
             >
-            <div className="px4">
+            <div className="px4 pb4">
                 <ul>
                     {confirmItems.map((item, index) =>
                         <li className="pb2 mb2 border-row-divider flex align-center">

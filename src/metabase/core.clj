@@ -3,7 +3,6 @@
   (:gen-class)
   (:require [clojure.string :as s]
             [clojure.tools.logging :as log]
-            [colorize.core :as color]
             [ring.adapter.jetty :as ring-jetty]
             (ring.middleware [cookies :refer [wrap-cookies]]
                              [gzip :refer [wrap-gzip]]
@@ -17,6 +16,7 @@
                       [db :as db]
                       [driver :as driver]
                       [events :as events]
+                      [metabot :as metabot]
                       [middleware :as mb-middleware]
                       [routes :as routes]
                       [sample-data :as sample-data]
@@ -24,7 +24,6 @@
                       [task :as task]
                       [util :as u])
             (metabase.models [setting :refer [defsetting]]
-                             [database :refer [Database]]
                              [user :refer [User]])))
 
 ;; ## CONFIG
@@ -55,21 +54,20 @@
 (def app
   "The primary entry point to the HTTP server"
   (-> routes/routes
-      (mb-middleware/log-api-call :request :response)
-      mb-middleware/add-security-headers              ; [METABASE] Add HTTP headers to API responses to prevent them from being cached
-      mb-middleware/format-response                   ; [METABASE] Do formatting before converting to JSON so serializer doesn't barf
-      (wrap-json-body                                 ; extracts json POST body and makes it avaliable on request
+      (mb-middleware/log-api-call)
+      mb-middleware/add-security-headers ; Add HTTP headers to API responses to prevent them from being cached
+      (wrap-json-body                    ; extracts json POST body and makes it avaliable on request
         {:keywords? true})
-      wrap-json-response                              ; middleware to automatically serialize suitable objects as JSON in responses
-      wrap-keyword-params                             ; converts string keys in :params to keyword keys
-      wrap-params                                     ; parses GET and POST params as :query-params/:form-params and both as :params
-      mb-middleware/bind-current-user                 ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
-      mb-middleware/wrap-current-user-id              ; looks for :metabase-session-id and sets :metabase-user-id if Session ID is valid
-      mb-middleware/wrap-api-key                      ; looks for a Metabase API Key on the request and assocs as :metabase-api-key
-      mb-middleware/wrap-session-id                   ; looks for a Metabase Session ID and assoc as :metabase-session-id
-      wrap-cookies                                    ; Parses cookies in the request map and assocs as :cookies
-      wrap-session                                    ; reads in current HTTP session and sets :session/key
-      wrap-gzip))                                     ; GZIP response if client can handle it
+      wrap-json-response                 ; middleware to automatically serialize suitable objects as JSON in responses
+      wrap-keyword-params                ; converts string keys in :params to keyword keys
+      wrap-params                        ; parses GET and POST params as :query-params/:form-params and both as :params
+      mb-middleware/bind-current-user    ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
+      mb-middleware/wrap-current-user-id ; looks for :metabase-session-id and sets :metabase-user-id if Session ID is valid
+      mb-middleware/wrap-api-key         ; looks for a Metabase API Key on the request and assocs as :metabase-api-key
+      mb-middleware/wrap-session-id      ; looks for a Metabase Session ID and assoc as :metabase-session-id
+      wrap-cookies                       ; Parses cookies in the request map and assocs as :cookies
+      wrap-session                       ; reads in current HTTP session and sets :session/key
+      wrap-gzip))                        ; GZIP response if client can handle it
 
 
 ;;; ## ---------------------------------------- LIFECYCLE ----------------------------------------
@@ -102,9 +100,8 @@
                          (or hostname "localhost")
                          (when-not (= 80 port) (str ":" port))
                          "/setup/")]
-    (log/info (color/green "Please use the following url to setup your Metabase installation:\n\n"
-                           setup-url
-                           "\n\n"))))
+    (log/info (u/format-color 'green "Please use the following url to setup your Metabase installation:\n\n%s\n\n"
+                              setup-url))))
 
 (defn destroy
   "General application shutdown function which should be called once at application shuddown."
@@ -116,7 +113,7 @@
 (defn init!
   "General application initialization function which should be run once at application startup."
   []
-  (log/info (format "Starting Metabase version %s..." (config/mb-version-string)))
+  (log/info (format "Starting Metabase version %s..." config/mb-version-string))
   (reset! metabase-initialization-progress 0.1)
 
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
@@ -156,7 +153,10 @@
       ;; add the sample dataset DB for fresh installs
       (sample-data/add-sample-dataset!)
       ;; otherwise update if appropriate
-      (sample-data/update-sample-dataset-if-needed!)))
+      (sample-data/update-sample-dataset-if-needed!))
+
+    ;; start the metabot thread
+    (metabot/start-metabot!))
 
   (initialization-complete!)
   (log/info "Metabase Initialization COMPLETE"))
@@ -168,7 +168,7 @@
 (def ^:private jetty-instance
   (atom nil))
 
-(defn start-jetty
+(defn start-jetty!
   "Start the embedded Jetty web server."
   []
   (when-not @jetty-instance
@@ -177,12 +177,12 @@
                                                     :key-password   (config/config-str :mb-jetty-ssl-keystore-password)
                                                     :truststore     (config/config-str :mb-jetty-ssl-truststore)
                                                     :trust-password (config/config-str :mb-jetty-ssl-truststore-password)})
-          jetty-config     (cond-> (m/filter-vals identity {:port           (config/config-int :mb-jetty-port)
-                                                            :host           (config/config-str :mb-jetty-host)
-                                                            :max-threads    (config/config-int :mb-jetty-maxthreads)
-                                                            :min-threads    (config/config-int :mb-jetty-minthreads)
-                                                            :max-queued     (config/config-int :mb-jetty-maxqueued)
-                                                            :max-idle-time  (config/config-int :mb-jetty-maxidletime)})
+          jetty-config     (cond-> (m/filter-vals identity {:port          (config/config-int :mb-jetty-port)
+                                                            :host          (config/config-str :mb-jetty-host)
+                                                            :max-threads   (config/config-int :mb-jetty-maxthreads)
+                                                            :min-threads   (config/config-int :mb-jetty-minthreads)
+                                                            :max-queued    (config/config-int :mb-jetty-maxqueued)
+                                                            :max-idle-time (config/config-int :mb-jetty-maxidletime)})
                              (config/config-str :mb-jetty-daemon) (assoc :daemon? (config/config-bool :mb-jetty-daemon))
                              (config/config-str :mb-jetty-ssl)    (-> (assoc :ssl? true)
                                                                       (merge jetty-ssl-config)))]
@@ -191,7 +191,7 @@
       (->> (ring-jetty/run-jetty app (assoc jetty-config :join? false))
            (reset! jetty-instance)))))
 
-(defn stop-jetty
+(defn stop-jetty!
   "Stop the embedded Jetty web server."
   []
   (when @jetty-instance
@@ -207,27 +207,36 @@
   (log/info "Starting Metabase in STANDALONE mode")
   (try
     ;; launch embedded webserver async
-    (start-jetty)
+    (start-jetty!)
     ;; run our initialization process
     (init!)
     ;; Ok, now block forever while Jetty does its thing
     (when (config/config-bool :mb-jetty-join)
       (.join ^org.eclipse.jetty.server.Server @jetty-instance))
-    (catch Exception e
+    (catch Throwable e
       (.printStackTrace e)
       (log/error "Metabase Initialization FAILED: " (.getMessage e))
       (System/exit 1))))
 
+(def ^:private cmd->fn
+  {:migrate      (fn [direction]
+                   (db/migrate @db/db-connection-details (keyword direction)))
+   :load-from-h2 (fn [& [h2-connection-string-or-nil]]
+                   (require 'metabase.cmd.load-from-h2)
+                   ((resolve 'metabase.cmd.load-from-h2/load-from-h2) h2-connection-string-or-nil))})
+
 (defn- run-cmd [cmd & args]
-  (let [cmd->fn {:migrate (fn [direction]
-                            (db/migrate @db/db-connection-details (keyword direction)))}]
-    (if-let [f (cmd->fn cmd)]
-      (do (apply f args)
-          (println "Success.")
-          (System/exit 0))
-      (do (println "Unrecognized command:" (name cmd))
-          (println "Valid commands are:\n" (u/pprint-to-str (map name (keys cmd->fn))))
-          (System/exit 1)))))
+  (let [f (or (cmd->fn cmd)
+              (do (println (u/format-color 'red "Unrecognized command: %s" (name cmd)))
+                  (println "Valid commands are:\n" (u/pprint-to-str (map name (keys cmd->fn))))
+                  (System/exit 1)))]
+    (try (apply f args)
+         (catch Throwable e
+           (.printStackTrace e)
+           (println (u/format-color 'red "Command failed with exception: %s" (.getMessage e)))
+           (System/exit 1)))
+    (println "Success.")
+    (System/exit 0)))
 
 (defn -main
   "Launch Metabase in standalone mode."

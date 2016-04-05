@@ -1,0 +1,98 @@
+:root {
+  --card-border-color: #d9d9d9;
+  --card-text-color: #777;
+  --card-border-radius: 4px;
+
+  --card-scalar-text-lg: 2.4em;
+  --card-scalar-text-xl: 3.4em;
+}
+
+.Card {
+  position: relative;
+}
+
+.Card-footing {
+  font-size: 0.8rem;
+  color: #999;
+}
+
+.Card-title {
+  color: #3F3A3A;
+  font-size: 0.8em;
+}
+
+.Card-dataSource {
+  color: #999;
+  padding-top: 0.5em;
+}
+
+.Card-defaultBox {
+  height: 500px;
+}
+
+@media screen and (--breakpoint-min-md) {
+    .Card-title {
+        font-size: 0.8em;
+    }
+}
+
+.Card--errored {
+  min-height: 80px;
+}
+
+.Card-scalarValue {
+    overflow: hidden;
+}
+
+@media screen and (--breakpoint-min-lg) {
+  .Card-scalarValue {
+    font-size: var(--card-scalar-text-lg);
+  }
+}
+
+@media screen and (--breakpoint-min-xl) {
+  .Card-scalarValue {
+    font-size: var(--card-scalar-text-xl);
+  }
+}
+
+.CardSettings-group {
+  border-bottom: 1px solid #ddd;
+}
+
+.CardSettings-groupTitle {
+  padding: 0.5em;
+  border-bottom: 1px solid #ddd;
+}
+
+.CardSettings-content {
+  padding: 2em;
+  background-color: #fafafa;
+}
+
+.CardSettings {
+  border-top: 1px solid #ddd;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, .12);
+}
+
+.CardSettings-label {
+  font-size: 1.15em;
+  margin-left: 0.5em;
+  color: #666;
+}
+
+.CardSettings-colorBlock {
+  display: inline-block;
+  width: 2.5em;
+  height: 2.5em;
+  margin-right: 1em;
+  border-radius: 4px;
+}
+
+.CardSettings-colorBlock:last-child {
+    margin-right: 0;
+}
+
+.Card--scalar {
+    padding: 1em;
+}

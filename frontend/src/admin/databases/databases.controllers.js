@@ -1,11 +1,12 @@
 import _ from "underscore";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import DatabaseList from "./components/DatabaseList.jsx";
 import DatabaseEdit from "./components/DatabaseEdit.jsx";
 
 
-var DatabasesControllers = angular.module('metabaseadmin.databases.controllers', ['metabase.services']);
+var DatabasesControllers = angular.module('metabase.admin.databases.controllers', ['metabase.services']);
 
 DatabasesControllers.controller('DatabaseList', ['$scope', '$routeParams', 'Metabase', function($scope, $routeParams, Metabase) {
 
@@ -33,6 +34,8 @@ DatabasesControllers.controller('DatabaseList', ['$scope', '$routeParams', 'Meta
                     return database.id != databaseId;
                 });
                 $scope.hasSampleDataset = hasSampleDataset($scope.databases);
+
+                MetabaseAnalytics.trackEvent("Databases", "Delete", "Using List");
             }, function(error) {
                 console.log('error deleting database', error);
             });
@@ -44,6 +47,8 @@ DatabasesControllers.controller('DatabaseList', ['$scope', '$routeParams', 'Meta
             Metabase.db_add_sample_dataset().$promise.then(function(result) {
                 $scope.databases.push(result);
                 $scope.hasSampleDataset = true;
+
+                MetabaseAnalytics.trackEvent("Databases", "Add Sample Data");
             }, function(error) {
                 console.log('error adding sample dataset', error);
             });
@@ -81,8 +86,11 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             return Metabase.db_update(database).$promise.then(function(updated_database) {
                 $scope.database = updated_database;
                 $scope.$broadcast("form:api-success", "Successfully saved!");
+
+                MetabaseAnalytics.trackEvent("Databases", "Update", database.engine);
             }, function(error) {
                 $scope.$broadcast("form:api-error", error);
+                MetabaseAnalytics.trackEvent("Databases", "Update Failed", database.engine);
                 throw error;
             });
         };
@@ -94,9 +102,13 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             return Metabase.db_create(database).$promise.then(function(new_database) {
                 $scope.$broadcast("form:api-success", "Successfully created!");
                 $scope.$emit("database:created", new_database);
+
+                MetabaseAnalytics.trackEvent("Databases", "Create", database.engine);
+
                 $location.url('/admin/databases?created');
             }, function(error) {
                 $scope.$broadcast("form:api-error", error);
+                MetabaseAnalytics.trackEvent("Databases", "Create Failed", database.engine);
                 throw error;
             });
         };
@@ -116,6 +128,8 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
                 'dbId': $scope.database.id
             });
 
+            MetabaseAnalytics.trackEvent("Databases", "Manual Sync");
+
             return call.$promise;
         };
 
@@ -123,6 +137,8 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             Metabase.db_delete({
                 'dbId': $scope.database.id
             }, function(result) {
+                MetabaseAnalytics.trackEvent("Databases", "Delete", "Using Detail");
+
                 $location.path('/admin/databases/');
             }, function(error) {
                 console.log('error deleting database', error);

@@ -4,6 +4,8 @@ import CreateDashboardModal from 'metabase/components/CreateDashboardModal.jsx';
 import ModalContent from "metabase/components/ModalContent.jsx";
 import SortableItemList from 'metabase/components/SortableItemList.jsx';
 
+import Urls from "metabase/lib/urls";
+
 import moment from 'moment';
 
 export default class AddToDashSelectDashModal extends Component {
@@ -22,12 +24,12 @@ export default class AddToDashSelectDashModal extends Component {
         card: PropTypes.object.isRequired,
         dashboardApi: PropTypes.func.isRequired,
         closeFn: PropTypes.func.isRequired,
-        notifyCardAddedToDashFn: PropTypes.func.isRequired
+        onChangeLocation: PropTypes.func.isRequired
     };
 
     async loadDashboardList() {
         var dashboards = await this.props.dashboardApi.list({
-            'filterMode': 'mine'
+            'filterMode': 'all'
         }).$promise;
         for (var dashboard of dashboards) {
             dashboard.updated_at = moment(dashboard.updated_at);
@@ -35,12 +37,9 @@ export default class AddToDashSelectDashModal extends Component {
         this.setState({ dashboards });
     }
 
-    async addToDashboard(dashboard) {
-        var dashCard = await this.props.dashboardApi.addcard({
-            'dashId': dashboard.id,
-            'cardId': this.props.card.id
-        }).$promise;
-        this.props.notifyCardAddedToDashFn(dashCard);
+    addToDashboard(dashboard) {
+        // we send the user over to the chosen dashboard in edit mode with the current card added
+        this.props.onChangeLocation(Urls.dashboard(dashboard.id)+"?add="+this.props.card.id);
     }
 
     async createDashboard(newDashboard) {

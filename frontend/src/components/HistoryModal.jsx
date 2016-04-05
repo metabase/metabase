@@ -20,13 +20,17 @@ function formatDate(date) {
 export default class HistoryModal extends Component {
     constructor(props, context) {
         super(props, context);
-        this.state = { error: null };
+
+        this.state = {
+            error: null
+        };
     }
 
     static propTypes = {
         revisions: PropTypes.array,
         entityType: PropTypes.string.isRequired,
         entityId: PropTypes.number.isRequired,
+
         onFetchRevisions: PropTypes.func.isRequired,
         onRevertToRevision: PropTypes.func.isRequired,
         onClose: PropTypes.func.isRequired,
@@ -54,6 +58,16 @@ export default class HistoryModal extends Component {
         }
     }
 
+    revisionDescription(revision) {
+        if (revision.is_creation) {
+            return "First revision.";
+        } else if (revision.is_reversion) {
+            return "Reverted to an earlier revision and "+revision.description;
+        } else {
+            return revision.description;
+        }
+    }
+
     render() {
         var { revisions } = this.props;
         return (
@@ -75,7 +89,7 @@ export default class HistoryModal extends Component {
                                     <span className="flex-half">{formatDate(revision.timestamp)}</span>
                                     <span className="flex-half">{revision.user.common_name}</span>
                                     <span className="flex-full flex">
-                                        <span>{revision.description}</span>
+                                        <span>{this.revisionDescription(revision)}</span>
                                         {index !== 0 ?
                                             <div className="flex-align-right pl1">
                                                 <ActionButton

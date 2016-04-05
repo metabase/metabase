@@ -2,12 +2,8 @@
     --selection-color: #ccdff6;
 }
 
-#react_qb_editor {
-    z-index: 2;
-}
-
 #react_qb_viz {
-    z-index: 1;
+    flex-grow: 1;
 }
 
 /* @layout */
@@ -72,17 +68,20 @@
 }
 
 .Query-filters {
+  max-width: 400px;
+}
+
+.Query-filterList {
     display: flex;
     overflow-x: auto;
     overflow-y: hidden;
-    max-width: 400px;
     white-space: nowrap;
-    height: 55px;
+    min-height: 55px;
 }
 
 .Query-filter {
     display: flex;
-    align-items: center;
+    flex-shrink: 0;
     font-size: 0.75em;
     border: 2px solid transparent;
     border-radius: var(--default-border-radius);
@@ -95,6 +94,7 @@
 .Filter-section {
     display: flex;
     align-items: center;
+    flex-shrink: 0;
 }
 
 .Query-filter .input {
@@ -106,11 +106,17 @@
     padding: 0;
 }
 
-.QueryTable-wrapper {
-    box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
-    margin-bottom: 3px; /* we need a small amount of margin here for the box shadow to show */
-    overflow: scroll;
-    border-top: 1px solid #E8E8E8;
+.TooltipFilterList .Query-filter {
+  padding-left: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.TooltipFilterList .Query-filterList {
+  flex-direction: column;
+}
+
+.TooltipFilterList .Query-section {
+  margin-left: -0.5rem;
 }
 
 /*
@@ -210,8 +216,9 @@
     font-weight: 200;
 }
 
-.Visualization .Card-outer {
+.Card-outer {
     width: 100%;
+    height: 100%;
     display: flex;
     align-items: center;
     justify-content: flex-start;
@@ -300,6 +307,23 @@
   left: 50%;
   margin-left: -41px; /* ugh */
 }
+
+.QueryError2 {
+    padding-top: 4rem;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.QueryError2-details {
+    max-width: 500px;
+}
+
+.QueryError2-detailBody {
+    background-color: #f8f8f8;
+    max-height: 15rem;
+    overflow: auto;
+}
+
 
 /* GUI BUILDER */
 
@@ -415,6 +439,7 @@
 
 .Filter-section-value {
     padding-right: 0.5em;
+    padding-bottom: 0.25em;
 }
 
 .Filter-section-sort-field.selected .QueryOption,
@@ -596,11 +621,6 @@
     border-right: 1px solid var(--border-color);
 }
 
-.QueryBuilder .Entity-title,
-.QueryBuilder .Entity-attribution {
-    margin-left: 0.5rem;
-}
-
 .PopoverBody.AddToDashboard {
     min-width: 25em;
 }
@@ -615,8 +635,12 @@
 }
 
 .List-section-header .Icon,
+.List-item .List-item-arrow .Icon {
+  color: var(--default-font-color);
+}
+
 .List-item .Icon {
-    color: #DFE8EA;
+    color: var(--slate-light-color);
 }
 
 .List-section-header {
@@ -637,12 +661,22 @@
     color: var(--default-font-color);
 }
 
+.List-section-title {
+  word-wrap: break-word;
+  max-width: 230px;
+}
+
 .List-item {
     display: flex;
     border-radius: 6px;
     border: 2px solid transparent;
     margin-top: 2px;
     margin-bottom: 2px;
+}
+
+.List-item--segment .Icon,
+.List-item--segment .List-item-title {
+  color: var(--purple-color);
 }
 
 .List-item:hover,
@@ -667,12 +701,58 @@
 }
 
 .FieldList-grouping-trigger {
-    display: none;
+    display: flex;
+    visibility: hidden;
 }
 
 .List-item:hover .FieldList-grouping-trigger,
 .List-item--selected .FieldList-grouping-trigger {
-    display: flex;
+    visibility: visible;
     border-left: 2px solid rgba(0,0,0,0.1);
     color: rgba(255,255,255,0.5);
+}
+
+.QuestionTooltipTarget {
+  color: rgb(225,225,225);
+  display: inline-block;
+  border: 2px solid currentColor;
+  border-radius: 99px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+
+  cursor: pointer;
+}
+
+.QuestionTooltipTarget:after {
+  content: "?";
+  font-size: 13px;
+  font-weight: bold;
+}
+
+
+.FilterRemove-field {
+  border-radius: 99px;
+  opacity: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--purple-color);
+  border: 1px solid var(--purple-color);
+  transition: opacity .3s ease-out;
+}
+
+.FilterInput:hover .FilterRemove-field {
+  opacity: 1;
+}
+
+/* need to do this ugliness to override the locally scoped font size from Scalar.css */
+#react_qb_viz .ScalarValue {
+  font-size: 5em;
 }

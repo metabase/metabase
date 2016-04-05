@@ -9,11 +9,11 @@
 
 ;; ## CONFIG
 
-(defsetting email-from-address "Email address you want to use as the sender of Metabase." "notifications@metabase.com")
-(defsetting email-smtp-host "The address of the SMTP server that handles your emails.")
+(defsetting email-from-address  "Email address you want to use as the sender of Metabase." "notifications@metabase.com")
+(defsetting email-smtp-host     "The address of the SMTP server that handles your emails.")
 (defsetting email-smtp-username "SMTP username.")
 (defsetting email-smtp-password "SMTP password.")
-(defsetting email-smtp-port "The port your SMTP server uses for outgoing emails.")
+(defsetting email-smtp-port     "The port your SMTP server uses for outgoing emails.")
 (defsetting email-smtp-security "SMTP secure connection protocol. (tls, ssl, or none)" "none")
 
 ;; ## PUBLIC INTERFACE
@@ -100,7 +100,7 @@
         (.connect transport host port user pass)))
     {:error   :SUCCESS
      :message nil}
-    (catch Exception e
+    (catch Throwable e
       (println "err" (.getMessage e))
       {:error   :ERROR
        :message (.getMessage e)})))

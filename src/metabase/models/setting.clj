@@ -4,9 +4,10 @@
             [environ.core :as env]
             [korma.core :as k]
             [metabase.config :as config]
-            [metabase.db :refer [sel del]]
+            [metabase.db :refer [exists? sel del]]
+            [metabase.events :as events]
             [metabase.models [common :as common]
-                             [interface :refer :all]]
+                             [interface :as i]]
             [metabase.setup :as setup]
             [metabase.util :as u]
             [metabase.util.password :as password])
@@ -58,14 +59,21 @@
   "Fetch value of `Setting`, first trying our cache, or fetching the value
    from the DB if that fails. (Cached lookup time is ~60µs, compared to ~1800µs for DB lookup)
 
-   Unlike using the setting getter fn, this will *not* return default values or values specified by env vars."
+     (get :mandrill-api-key)
+
+   Unlike using the setting getter fn, this will *not* return default values or values specified by env vars.
+
+   Prefer using the automatically generated getter function unless absolutely necessary:
+
+     (mandrill-api-key)"
   [k]
   {:pre [(keyword? k)]}
   (restore-cache-if-needed)
-  (or (@cached-setting->value k)
-      (when-let [v (sel :one :field [Setting :value] :key (name k))]
-        (swap! cached-setting->value assoc k v)
-        v)))
+  (if (contains? @cached-setting->value k)
+    (@cached-setting->value k)
+    (let [v (sel :one :field [Setting :value] :key (name k))]
+      (swap! cached-setting->value assoc k v)
+      v)))
 
 (defn- get-from-env-var
   "Given a `Setting` like `:mandrill-api-key`, return the value of the corresponding env var,
@@ -85,7 +93,11 @@
 (defn set
   "Set the value of a `Setting`.
 
-    (set :mandrill-api-key \"xyz123\")"
+    (set :mandrill-api-key \"xyz123\")
+
+   Don't use this directly unless absolutely neccesary! Prefer using the setting directly instead:
+
+     (mandrill-api-key \"xyz123\")"
   [k v]
   {:pre [(keyword? k)
          (string? v)]}
@@ -108,16 +120,16 @@
   (del Setting :key (name k)))
 
 (defn set-all
-  "Set the value of a `Setting`.
+  "Set the value of several `Settings` at once.
 
-    (set :mandrill-api-key \"xyz123\")"
+    (set-all {:mandrill-api-key \"xyz123\", :another-setting \"ABC\"})"
   [settings]
   {:pre [(map? settings)]}
   (doseq [k (keys settings)]
     (if-let [v (clojure.core/get settings k)]
       (set k v)
       (delete k)))
-  settings)
+  (events/publish-event :settings-update settings))
 
 (defn set*
   "Set the value of a `Setting`, deleting it if VALUE is `nil` or an empty string."
@@ -130,6 +142,21 @@
 
 
 ;;; ## DEFSETTING
+
+(defn- setting-extra-dox
+  "Generate some extra documentation for a `Setting`."
+  [symb default-value]
+  (str (format "`%s` is a `Setting`. You can get its value by calling\n\n" symb)
+       (format  "    (%s)\n\n" symb)
+       "and set its value by calling\n\n"
+       (format "    (%s <new-value>)\n\n" symb)
+       (format "You can also set its value with the env var `MB_%s`.\n"
+               (s/upper-case (s/replace (name symb) #"-" "_")))
+       "Clear its value by calling\n\n"
+       (format "    (%s nil)\n\n" symb)
+       (format "Its default value is `%s`." (if (nil? default-value)
+                                              "nil"
+                                              default-value))))
 
 (defmacro defsetting
   "Defines a new `Setting` that will be added to the DB at some point in the future.
@@ -146,17 +173,19 @@
    You may optionally pass any of the kwarg OPTIONS below, which are kept as part of the
    metadata of the `Setting` under the key `::options`:
 
-     *  `:internal` - This `Setting` is for internal use and shouldn't be exposed in the UI (i.e., not
-                      returned by the corresponding endpoints). Default: `false`
-     *  `:getter` - A custom getter fn, which takes no arguments. Overrides the default implementation.
-     *  `:setter` - A custom setter fn, which takes a single argument. Overrides the default implementation."
+   *  `:internal` - This `Setting` is for internal use and shouldn't be exposed in the UI (i.e., not
+                    returned by the corresponding endpoints). Default: `false`
+   *  `:getter` - A custom getter fn, which takes no arguments. Overrides the default implementation.
+   *  `:setter` - A custom setter fn, which takes a single argument. Overrides the default implementation."
   [nm description & [default-value & {:as options}]]
   {:pre [(symbol? nm)
          (string? description)]}
   (let [setting-key (keyword nm)
         value       (gensym "value")]
-    `(defn ~nm ~description
-       {::is-setting?   true
+    `(defn ~nm ~(str description "\n\n" (setting-extra-dox nm default-value))
+       {:arglists       '~'([] [new-value])
+        ::description   ~description
+        ::is-setting?   true
         ::default-value ~default-value
         ::options       ~options}
        ([]       ~(if (:getter options)
@@ -183,58 +212,52 @@
   []
   (let [settings (all)]
     (->> (settings-list)
-         (map (fn [{k :key :as setting}]
+         (map (fn [{k :key, :as setting}]
                 (assoc setting
                        :value (k settings))))
          (sort-by :key))))
 
-(defn short-timezone-name
-  "Get a short display name for a TIMEZONE, e.g. `PST`."
-  [^TimeZone timezone]
-  (.getDisplayName timezone (.inDaylightTime timezone (new java.util.Date)) TimeZone/SHORT))
-
-(defn get-instance-timezone
-  "Get the `report-timezone`, or fall back to the System default if it's not set."
-  []
-  (let [^String timezone-name (get :report-timezone)]
-    (or (when (seq timezone-name)
-          (TimeZone/getTimeZone timezone-name))
-        (TimeZone/getDefault))))
+(def ^:private short-timezone-name
+  "Get a short display name (e.g. `PST`) for `report-timezone`, or fall back to the System default if it's not set."
+  (memoize (fn [^String timezone-name]
+             (let [^TimeZone timezone (or (when (seq timezone-name)
+                                            (TimeZone/getTimeZone timezone-name))
+                                          (TimeZone/getDefault))]
+               (.getDisplayName timezone (.inDaylightTime timezone (java.util.Date.)) TimeZone/SHORT)))))
 
 (defn public-settings
   "Return a simple map of key/value pairs which represent the public settings for the front-end application."
   []
-  {:engines               (@(resolve 'metabase.driver/available-drivers))
-   :ga_code               "UA-60817802-1"
-   :password_complexity   (password/active-password-complexity)
-   :setup_token           (setup/token-value)
+  {:ga_code               "UA-60817802-1"
+   :password_complexity   password/active-password-complexity
    :timezones             common/timezones
-   :version               (config/mb-version-info)
-   ;; all of these values are dynamic settings controlled at runtime
+   :version               config/mb-version-info
+   :engines               ((resolve 'metabase.driver/available-drivers))
+   :setup_token           (setup/token-value)
    :anon_tracking_enabled (let [tracking? (get :anon-tracking-enabled)]
                             (or (nil? tracking?) (= "true" tracking?)))
    :site_name             (get :site-name)
-   :email_configured      (@(resolve 'metabase.email/email-configured?))
+   :email_configured      ((resolve 'metabase.email/email-configured?))
    :admin_email           (get :admin-email)
    :report_timezone       (get :report-timezone)
-   :timezone_short        (short-timezone-name (get-instance-timezone))})
+   :timezone_short        (short-timezone-name (get :report-timezone))
+   :has_sample_dataset    (exists? 'Database, :is_sample true)})
+
 
 ;;; # IMPLEMENTATION
 
 (defn- restore-cache-if-needed []
   (when-not @cached-setting->value
-    (reset! cached-setting->value (->> (sel :many Setting)
-                                       (map (fn [{k :key v :value}]
-                                              {(keyword k) v}))
-                                       (into {})))))
+    (reset! cached-setting->value (into {} (for [{k :key, v :value} (sel :many Setting)]
+                                             {(keyword k) v})))))
 
 (def ^:private cached-setting->value
   "Map of setting name (keyword) -> string value, as they exist in the DB."
   (atom nil))
 
-(defentity ^{:doc "The model that underlies `defsetting`."}
-  Setting
-  [(k/table :setting)])
+(i/defentity Setting
+  "The model that underlies `defsetting`."
+  :setting)
 
 (defn- settings-list
   "Return a list of all Settings (as created with `defsetting`).
@@ -246,13 +269,11 @@
        (map meta)
        (filter ::is-setting?)
        (filter (complement (u/rpartial get-in [::options :internal]))) ; filter out :internal Settings
-       (map (fn [{k :name desc :doc default ::default-value}]
+       (map (fn [{k :name, description ::description, default ::default-value}]
               {:key         (keyword k)
-               :description desc
+               :description description
                :default     (or (when (get-from-env-var k)
                                   (format "Using $MB_%s" (-> (name k)
                                                              (s/replace "-" "_")
                                                              s/upper-case)))
                                 default)}))))
-
-(u/require-dox-in-this-namespace)

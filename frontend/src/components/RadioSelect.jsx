@@ -26,7 +26,7 @@ export default class RadioButtons extends Component {
             var classes = cx("h3", "text-bold", "text-brand-hover", "no-decoration",  { "text-brand": this.props.value === value });
             return (
                 <li className="mr3" key={key}>
-                    <a className={classes} href="#" onClick={this.props.onChange.bind(null, value)}>{name}</a>
+                    <a className={classes} onClick={this.props.onChange.bind(null, value)}>{name}</a>
                 </li>
             );
         });

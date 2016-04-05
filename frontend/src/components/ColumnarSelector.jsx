@@ -1,5 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
+import "./ColumnarSelector.css";
+
 import Icon from "metabase/components/Icon.jsx";
 
 import cx from "classnames";
@@ -32,7 +34,7 @@ export default class ColumnarSelector extends Component {
                         }
                         return (
                             <li key={rowIndex}>
-                                <a className={itemClasses} href="#" onClick={column.itemSelectFn.bind(null, item)}>
+                                <a className={itemClasses} onClick={column.itemSelectFn.bind(null, item)}>
                                     {checkIcon}
                                     <div className="flex flex-column">
                                         {column.itemTitleFn(item)}

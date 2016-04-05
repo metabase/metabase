@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 28
+      author: agilliland
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: is_qbnewb
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false

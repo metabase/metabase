@@ -1,93 +1,118 @@
 (ns metabase.integrations.slack
-  (:require [cheshire.core :as cheshire]
-            [clj-http.lite.client :as client]
+  (:require [clojure.tools.logging :as log]
+            [cheshire.core :as json]
             [clj-http.client :as http]
-            [clojure.tools.logging :as log]
-            [metabase.models.setting :refer [defsetting]]))
+            [metabase.models.setting :as setting, :refer [defsetting]]
+            [metabase.util :as u]))
 
 
 ;; Define a setting which captures our Slack api token
-(defsetting slack-token "Slack API bearer token obtained from https://api.slack.com/web#authentication")
+(defsetting slack-token "Slack API bearer token obtained from https://api.slack.com/web#authentication" nil)
 
-(def ^:const slack-api-baseurl "https://slack.com/api")
-
+(def ^:private ^:const ^String slack-api-base-url "https://slack.com/api")
+(def ^:private ^:const ^String files-channel-name "metabase_files")
 
 (defn slack-configured?
-  "Predicate function which returns `true` if the application has a valid integration with Slack, `false` otherwise."
+  "Is Slack integration configured?"
   []
-  (not (empty? (slack-token))))
+  (boolean (seq (slack-token))))
 
 
-(defn slack-api-get
-  "Generic function which calls a given method on the Slack api via HTTP GET."
-  ([token method]
-    (slack-api-get token method {}))
-  ([token method params]
-    {:pre [(string? method)
-           (map? params)]}
-   (when token
-     (try
-       (client/get (str slack-api-baseurl "/" method) {:query-params   (merge params {:token token})
-                                                       :conn-timeout   1000
-                                                       :socket-timeout 1000})
-       (catch Throwable t
-         (log/warn "Error making Slack API call:" (.getMessage t)))))))
+(defn- handle-response [{:keys [status body]}]
+  (let [body (json/parse-string body keyword)]
+    (if (and (= 200 status) (:ok body))
+      body
+      (let [error (if (= (:error body) "invalid_auth")
+                    {:errors {:slack-token "Invalid token"}}
+                    {:message (str "Slack API error: " (:error body)), :response body})]
+        (log/warn (u/pprint-to-str 'red error))
+        (throw (ex-info (:message error) error))))))
 
-(defn slack-api-post
-  "Generic function which calls a given method on the Slack api via HTTP POST."
-  ([token method]
-   (slack-api-get token method {}))
-  ([token method params]
-   {:pre [(string? method)
-          (map? params)]}
-   (when token
-     (try
-       (client/post (str slack-api-baseurl "/" method) {:form-params   (merge params {:token token})
-                                                        :conn-timeout   1000
-                                                        :socket-timeout 1000})
-       (catch Throwable t
-         (log/warn "Error making Slack API call:" (.getMessage t)))))))
+(defn- do-slack-request [request-fn params-key endpoint & {:keys [token], :as params, :or {token (slack-token)}}]
+  (when token
+    (handle-response (request-fn (str slack-api-base-url "/" (name endpoint)) {params-key      (assoc params :token token)
+                                                                              :conn-timeout   1000
+                                                                              :socket-timeout 1000}))))
 
-(defn- ^:private handle-api-response
-  "Simple helper that checks that response is a HTTP 200 and deserializes the `:body` if so, otherwise logs an error"
-  [response]
-  (if (= 200 (:status response))
-    (cheshire/parse-string (:body response))
-    (log/warn "Error in Slack api response:" (with-out-str (clojure.pprint/pprint response)))))
+(def ^{:arglists '([endpoint & {:as params}]), :style/indent 1} GET  "Make a GET request to the Slack API."  (partial do-slack-request http/get  :query-params))
+(def ^{:arglists '([endpoint & {:as params}]), :style/indent 1} POST "Make a POST request to the Slack API." (partial do-slack-request http/post :form-params))
 
-(defn channels-list
+(def ^:private ^{:arglists '([channel-id & {:as args}])} create-channel!
+  "Calls Slack api `channels.create` for CHANNEL."
+  (partial POST :channels.create, :name))
+
+(def ^:private ^{:arglists '([channel-id & {:as args}])} archive-channel!
+  "Calls Slack api `channels.archive` for CHANNEL."
+  (partial POST :channels.archive, :channel))
+
+(def ^{:arglists '([& {:as args}])} channels-list
   "Calls Slack api `channels.list` function and returns the list of available channels."
-  []
-  (-> (slack-api-get (slack-token) "channels.list" {:exclude_archived 1})
-      (handle-api-response)))
+  (comp :channels (partial GET :channels.list, :exclude_archived 1)))
 
-(defn users-list
+(def ^{:arglists '([& {:as args}])} users-list
   "Calls Slack api `users.list` function and returns the list of available users."
+  (comp :members (partial GET :users.list)))
+
+(defn- create-files-channel!
+  "Convenience function for creating our Metabase files channel to store file uploads."
   []
-  (-> (slack-api-get (slack-token) "users.list")
-      (handle-api-response)))
+  (when-let [{files-channel :channel, :as response} (create-channel! files-channel-name)]
+    (when-not files-channel
+      (log/error (u/pprint-to-str 'red response))
+      (throw (ex-info "Error creating Slack channel for Metabase file uploads" response)))
+    ;; Right after creating our files channel, archive it. This is because we don't need users to see it.
+    (u/prog1 files-channel
+      (archive-channel! (:id <>)))))
 
-(defn files-upload
-  "Calls Slack api `files.upload` function and returns the url of the uploaded file."
-  [file]
-  (let [response (http/post (str slack-api-baseurl "/files.upload") {:multipart [["token" (slack-token)]
-                                                                                 ["file" file]]
-                                                                     :as :json})]
+(defn- files-channel
+  "Return the `metabase_files` channel (as a map) if it exists."
+  []
+  (some (fn [channel] (when (= (:name channel) files-channel-name)
+                        channel))
+        (channels-list :exclude_archived 0)))
+
+(defn get-or-create-files-channel!
+  "Calls Slack api `channels.info` and `channels.create` function as needed to ensure that a #metabase_files channel exists."
+  []
+  (or (files-channel)
+      (create-files-channel!)))
+
+(defn upload-file!
+  "Calls Slack api `files.upload` function and returns the body of the uploaded file."
+  [file filename channel-ids-str]
+  {:pre [file
+         (instance? (Class/forName "[B") file)
+         (not (zero? (count file)))
+         (string? filename)
+         (seq filename)
+         (string? channel-ids-str)
+         (seq channel-ids-str)
+         (seq (slack-token))]}
+  (let [response (http/post (str slack-api-base-url "/files.upload") {:multipart [{:name "token",    :content (slack-token)}
+                                                                                  {:name "file",     :content file}
+                                                                                  {:name "filename", :content filename}
+                                                                                  {:name "channels", :content channel-ids-str}]
+                                                                      :as        :json})]
     (if (= 200 (:status response))
-      (:body response)
-      (log/warn "Error uploading file to Slack:" (with-out-str (clojure.pprint/pprint response))))))
+      (u/prog1 (get-in (:body response) [:file :url_private])
+        (log/debug "Uploaded image" <>))
+      (log/warn "Error uploading file to Slack:" (u/pprint-to-str response)))))
 
-(defn chat-post-message
-  "Calls Slack api `chat.postMessage` function and posts a message to a given channel."
-  ([channel text]
-    (chat-post-message channel text []))
-  ([channel text attachments]
-   {:pre [(string? channel)
-          (string? text)]}
-    ;; TODO: it would be nice to have an emoji or icon image to use here
-   (-> (slack-api-post (slack-token) "chat.postMessage" {:channel     channel
-                                                         :username    "MetaBot"
-                                                         :icon_url    "http://static.metabase.com/mb_slack_avatar.png"
-                                                         :text        text
-                                                         :attachments attachments})
-       (handle-api-response))))
+(defn post-chat-message!
+  "Calls Slack api `chat.postMessage` function and posts a message to a given channel.
+   ATTACHMENTS should be serialized JSON."
+  [channel-id text & [attachments]]
+  {:pre [(string? channel-id) (string? text)]}
+  ;; TODO: it would be nice to have an emoji or icon image to use here
+  (POST :chat.postMessage
+    :channel     channel-id
+    :username    "MetaBot"
+    :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
+    :text        text
+    :attachments (when (seq attachments)
+                   (json/generate-string attachments))))
+
+(def ^{:arglists '([& {:as params}])} websocket-url
+  "Return a new WebSocket URL for [Slack's Real Time Messaging API](https://api.slack.com/rtm)
+   This makes an API request so don't call it more often than needed."
+  (comp :url (partial GET :rtm.start)))

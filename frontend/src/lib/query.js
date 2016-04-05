@@ -1,21 +1,58 @@
+import React from "react";
+
 import inflection from "inflection";
 import _ from "underscore";
 
+
+export const NEW_QUERY_TEMPLATES = {
+    query: {
+        database: null,
+        type: "query",
+        query: {
+            source_table: null,
+            aggregation: ["rows"],
+            breakout: [],
+            filter: []
+        }
+    },
+    native: {
+        database: null,
+        type: "native",
+        native: {
+            query: ""
+        }
+    }
+};
+
+export function createQuery(type = "query", databaseId, tableId) {
+    let dataset_query = angular.copy(NEW_QUERY_TEMPLATES[type]);
+
+    if (databaseId) {
+        dataset_query.database = databaseId;
+    }
+
+    if (type === "query" && databaseId && tableId) {
+        dataset_query.query.source_table = tableId;
+    }
+
+    return dataset_query;
+}
+
 var Query = {
 
-    isStructured: function(query) {
-        return query && query.type && query.type === "query";
+    isStructured(dataset_query) {
+        return dataset_query && dataset_query.type === "query";
     },
 
-    isNative: function(query) {
-        return query && query.type && query.type === "native";
+    isNative(dataset_query) {
+        return dataset_query && dataset_query.type === "native";
     },
 
-    canRun: function(query) {
+    canRun(query) {
         return query && query.source_table != undefined && Query.hasValidAggregation(query);
     },
 
-    cleanQuery: function(query) {
+    cleanQuery(query) {
         if (!query) {
             return query;
         }
@@ -104,12 +141,12 @@ var Query = {
         return query;
     },
 
-    canAddDimensions: function(query) {
+    canAddDimensions(query) {
         var MAX_DIMENSIONS = 2;
         return query && query.breakout && (query.breakout.length < MAX_DIMENSIONS);
     },
 
-    numDimensions: function(query) {
+    numDimensions(query) {
         if (query && query.breakout) {
             return query.breakout.filter(function(b) {
                 return b !== null;
@@ -119,28 +156,31 @@ var Query = {
         return 0;
     },
 
-    hasValidBreakout: function(query) {
+    hasValidBreakout(query) {
         return (query && query.breakout &&
                     query.breakout.length > 0 &&
                     query.breakout[0] !== null);
     },
 
-    canSortByAggregateField: function(query) {
-        var SORTABLE_AGGREGATION_TYPES = new Set(["avg", "count", "distinct", "stddev", "sum"]);
+    canSortByAggregateField(query) {
+        var SORTABLE_AGGREGATION_TYPES = new Set(["avg", "count", "distinct", "stddev", "sum", "min", "max"]);
 
         return Query.hasValidBreakout(query) && SORTABLE_AGGREGATION_TYPES.has(query.aggregation[0]);
     },
 
-    addDimension: function(query) {
+    addDimension(query) {
         query.breakout.push(null);
     },
 
-    updateDimension: function(query, dimension, index) {
-        query.breakout[index] = dimension;
+    updateDimension(query, value, index) {
+        query.breakout = BreakoutClause.setBreakout(query.breakout, index, value);
     },
 
-    removeDimension: function(query, index) {
-        let field = query.breakout.splice(index, 1)[0];
+    removeDimension(query, index) {
+        let field = query.breakout[index];
+
+        // remove the field from the breakout clause
+        query.breakout = BreakoutClause.removeBreakout(query.breakout, index);
 
         // remove sorts that referenced the dimension that was removed
         if (query.order_by) {
@@ -151,7 +191,7 @@ var Query = {
         }
     },
 
-    hasEmptyAggregation: function(query) {
+    hasEmptyAggregation(query) {
         var aggregation = query.aggregation;
         if (aggregation !== undefined &&
                 aggregation.length > 0 &&
@@ -161,7 +201,7 @@ var Query = {
         return true;
     },
 
-    hasValidAggregation: function(query) {
+    hasValidAggregation(query) {
         var aggregation = query && query.aggregation;
         if (aggregation &&
                 ((aggregation.length === 1 && aggregation[0] !== null) ||
@@ -171,13 +211,11 @@ var Query = {
         return false;
     },
 
-    isBareRowsAggregation: function(query) {
-        return (query.aggregation &&
-                    query.aggregation.length > 0 &&
-                    query.aggregation[0] === "rows");
+    isBareRowsAggregation(query) {
+        return (query.aggregation && query.aggregation[0] === "rows");
     },
 
-    updateAggregation: function(query, aggregationClause) {
+    updateAggregation(query, aggregationClause) {
         // when switching to or from "rows" aggregation clear out any sorting clauses
         if ((query.aggregation[0] === "rows" || aggregationClause[0] === "rows") && query.aggregation[0] !== aggregationClause[0]) {
             delete query.order_by;
@@ -191,7 +229,7 @@ var Query = {
         }
     },
 
-    getFilters: function(query) {
+    getFilters(query) {
         // Special handling for accessing query filters because it's been fairly complex to deal with their structure.
         // This method provide a unified and consistent view of the filter definition for the rest of the tool to use.
 
@@ -214,7 +252,7 @@ var Query = {
         return queryFilters;
     },
 
-    canAddFilter: function(query) {
+    canAddFilter(query) {
         var queryFilters = Query.getFilters(query);
         if (!queryFilters) {
             return false;
@@ -231,19 +269,19 @@ var Query = {
         return true;
     },
 
-    addFilter: function(query) {
+    addFilter(query) {
         var queryFilters = Query.getFilters(query);
 
         if (queryFilters.length === 0) {
             queryFilters = ["AND", [null, null, null]];
         } else {
-            queryFilters.push([null, null, null]);
+            queryFilters = queryFilters.concat([[null, null, null]]);
         }
 
         query.filter = queryFilters;
     },
 
-    updateFilter: function(query, index, filter) {
+    updateFilter(query, index, filter) {
         var queryFilters = Query.getFilters(query);
 
         queryFilters[index] = filter;
@@ -251,7 +289,7 @@ var Query = {
         query.filter = queryFilters;
     },
 
-    removeFilter: function(query, index) {
+    removeFilter(query, index) {
         var queryFilters = Query.getFilters(query);
 
         if (queryFilters.length === 2) {
@@ -264,7 +302,11 @@ var Query = {
         query.filter = queryFilters;
     },
 
-    canAddLimitAndSort: function(query) {
+    isSegmentFilter(filter) {
+        return Array.isArray(filter) && filter[0] === "SEGMENT";
+    },
+
+    canAddLimitAndSort(query) {
         if (Query.isBareRowsAggregation(query)) {
             return true;
         } else if (Query.hasValidBreakout(query)) {
@@ -274,7 +316,7 @@ var Query = {
         }
     },
 
-    getSortableFields: function(query, fields) {
+    getSortableFields(query, fields) {
         // in bare rows all fields are sortable, otherwise we only sort by our breakout columns
 
         if (Query.isBareRowsAggregation(query)) {
@@ -306,24 +348,24 @@ var Query = {
         }
     },
 
-    addLimit: function(query) {
+    addLimit(query) {
         query.limit = null;
     },
 
-    updateLimit: function(query, limit) {
+    updateLimit(query, limit) {
         query.limit = limit;
     },
 
-    removeLimit: function(query) {
+    removeLimit(query) {
         delete query.limit;
     },
 
-    canAddSort: function(query) {
+    canAddSort(query) {
         // TODO: allow for multiple sorting choices
         return false;
     },
 
-    addSort: function(query) {
+    addSort(query) {
         // TODO: make sure people don't try to sort by the same field multiple times
         var order_by = query.order_by;
         if (!order_by) {
@@ -334,37 +376,37 @@ var Query = {
         query.order_by = order_by;
     },
 
-    updateSort: function(query, index, sort) {
+    updateSort(query, index, sort) {
         query.order_by[index] = sort;
     },
 
-    removeSort: function(query, index) {
-        var queryOrderBy = query.order_by;
-
-        if (queryOrderBy.length === 1) {
-            delete query.order_by;
-        } else {
-            queryOrderBy.splice(index, 1);
+    removeSort(query, index) {
+        if (query.order_by) {
+            if (query.order_by.length === 1) {
+                delete query.order_by;
+            } else {
+                query.order_by.splice(index, 1);
+            }
         }
     },
 
-    isRegularField: function(field) {
+    isRegularField(field) {
         return typeof field === "number";
     },
 
-    isForeignKeyField: function(field) {
+    isForeignKeyField(field) {
         return Array.isArray(field) && field[0] === "fk->";
     },
 
-    isDatetimeField: function(field) {
+    isDatetimeField(field) {
         return Array.isArray(field) && field[0] === "datetime_field";
     },
 
-    isAggregateField: function(field) {
+    isAggregateField(field) {
         return Array.isArray(field) && field[0] === "aggregation";
     },
 
-    isValidField: function(field) {
+    isValidField(field) {
         return (
             (Query.isRegularField(field)) ||
             (Query.isForeignKeyField(field) && Query.isRegularField(field[1]) && Query.isRegularField(field[2])) ||
@@ -396,10 +438,10 @@ var Query = {
     // gets the table and field definitions from from a raw, fk->, or datetime_field field
     getFieldTarget: function(field, tableDef) {
         if (Query.isRegularField(field)) {
-            return { table: tableDef, field: tableDef.fields_lookup[field] };
+            return { table: tableDef, field: tableDef.fields_lookup && tableDef.fields_lookup[field] };
         } else if (Query.isForeignKeyField(field)) {
-            let fkFieldDef = tableDef.fields_lookup[field[1]];
-            let targetTableDef = fkFieldDef.target.table;
+            let fkFieldDef = tableDef.fields_lookup && tableDef.fields_lookup[field[1]];
+            let targetTableDef = fkFieldDef && fkFieldDef.target.table;
             return Query.getFieldTarget(field[2], targetTableDef);
         } else if (Query.isDatetimeField(field)) {
             return Query.getFieldTarget(field[1], tableDef);
@@ -407,7 +449,7 @@ var Query = {
         console.warn("Unknown field type: ", field);
     },
 
-    getFieldOptions: function(fields, includeJoins = false, filterFn = (fields) => fields, usedFields = {}) {
+    getFieldOptions(fields, includeJoins = false, filterFn = (fields) => fields, usedFields = {}) {
         var results = {
             count: 0,
             fields: null,
@@ -429,68 +471,261 @@ var Query = {
         return results;
     },
 
-    generateQueryDescription: function(dataset_query, tableMetadata) {
+    getFieldName(tableMetadata, field, options) {
+        try {
+            if (Query.isRegularField(field)) {
+                let fieldDef = tableMetadata.fields_lookup && tableMetadata.fields_lookup[field];
+                if (fieldDef) {
+                    return fieldDef.display_name.replace(/\s+id\s*$/i, "");
+                }
+            } else if (Query.isForeignKeyField(field)) {
+                let fkFieldDef = tableMetadata.fields_lookup && tableMetadata.fields_lookup[field[1]];
+                let targetTableDef = fkFieldDef && fkFieldDef.target.table;
+                return [Query.getFieldName(tableMetadata, field[1], options), " → ", Query.getFieldName(targetTableDef, field[2], options)];
+            } else if (Query.isDatetimeField(field)) {
+                return [Query.getFieldName(tableMetadata, field[1], options), " (" + field[3] + ")"];
+            }
+        } catch (e) {
+            console.warn("Couldn't format field name for field", field, "in table", tableMetadata);
+        }
+        return "[Unknown Field]";
+    },
+
+    getTableDescription(tableMetadata) {
+        return [inflection.pluralize(tableMetadata.display_name)];
+    },
+
+    getAggregationDescription(tableMetadata, { aggregation }, options) {
+        if (aggregation) {
+            switch (aggregation[0]) {
+                case "METRIC":
+                    let metric = _.findWhere(tableMetadata.metrics, { id: aggregation[1] });
+                    let name = metric ? metric.name : "[Unknown Metric]";
+                    return [options.jsx ? <span className="text-green text-bold">{name}</span> : name];
+                case "rows":     return           ["Raw data"];
+                case "count":    return              ["Count"];
+                case "avg":      return            ["Average of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "distinct": return    ["Distinct values of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "stddev":   return ["Standard deviation of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "sum":      return                ["Sum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "cum_sum":  return     ["Cumulative sum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "max":      return            ["Maximum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "min":      return            ["Minimum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
+            }
+        }
+        return "";
+    },
+
+    getBreakoutDescription(tableMetadata, { breakout }, options) {
+        if (breakout && breakout.length > 0) {
+            return ["Grouped by ", joinList(breakout.map((b) => Query.getFieldName(tableMetadata, b, options)), " and ")];
+        }
+    },
+
+    getFilterDescription(tableMetadata, query, options) {
+        let filters = Query.getFilters(query);
+        if (filters && filters.length > 0) {
+            return ["Filtered by ", Query.getFilterClauseDescription(tableMetadata, filters, options)];
+        }
+    },
+
+    getFilterClauseDescription(tableMetadata, filter, options) {
+        if (filter[0] === "AND" || filter[0] === "OR") {
+            let clauses = filter.slice(1).map((f) => Query.getFilterClauseDescription(tableMetadata, f, options));
+            return conjunctList(clauses, filter[0].toLowerCase());
+        } else if (filter[0] === "SEGMENT") {
+            let segment = _.findWhere(tableMetadata.segments, { id: filter[1] });
+            let name = segment ? segment.name : "[Unknown Segment]";
+            return options.jsx ? <span className="text-purple text-bold">{name}</span> : name;
+        } else {
+            return Query.getFieldName(tableMetadata, filter[1], options);
+        }
+    },
+
+    getOrderByDescription(tableMetadata, { order_by }, options) {
+        if (order_by && order_by.length > 0) {
+            return ["Sorted by ", joinList(order_by.map(o => Query.getFieldName(tableMetadata, o[0], options) + " " + o[1]), " and ")];
+        }
+    },
+
+    getLimitDescription(tableMetadata, { limit }) {
+        if (limit != null) {
+            return [limit, " ", inflection.inflect("row", limit)];
+        }
+    },
+
+    generateQueryDescription(tableMetadata, query, options = {}) {
         if (!tableMetadata) {
             return "";
         }
 
-        function getFieldName(id, table) {
-            if (Query.isForeignKeyField(id)) {
-                var field = table.fields_lookup[id[1]];
-                if (field) {
-                    return field.display_name.replace(/\s+id$/i, "") + " → " + getFieldName(id[2], field.target.table);
-                }
-            } else if (Query.isDatetimeField(id)) {
-                return getFieldName(id[1], table) + " (by " + id[3] + ")";
-            } else if (Query.isAggregateField(id)) {
-                return "aggregation";
-            } else if (table.fields_lookup[id]) {
-                return table.fields_lookup[id].display_name
+        options = {
+            jsx: false,
+            sections: ["table", "aggregation", "breakout", "filter", "order_by", "limit"],
+            ...options
+        };
+
+        const sectionFns = {
+            table:       Query.getTableDescription,
+            aggregation: Query.getAggregationDescription,
+            breakout:    Query.getBreakoutDescription,
+            filter:      Query.getFilterDescription,
+            order_by:    Query.getOrderByDescription,
+            limit:       Query.getLimitDescription
+        }
+
+        // these array gymnastics are needed to support JSX formatting
+        let sections = options.sections
+            .map((section) => _.flatten(sectionFns[section](tableMetadata, query, options)).filter(s => !!s))
+            .filter(s => s && s.length > 0);
+
+        let description = _.flatten(joinList(sections, ", "));
+        if (options.jsx) {
+            return <span>{description}</span>;
+        } else {
+            return description.join("");
+        }
+    },
+
+    getDatetimeFieldUnit(field) {
+        return field && field[3];
+    },
+
+    getAggregationType(query) {
+        return query && query.aggregation && query.aggregation[0];
+    },
+
+    getAggregationField(query) {
+        return query && query.aggregation && query.aggregation[1];
+    },
+
+    getBreakouts(query) {
+        return (query && query.breakout) || [];
+    },
+
+    getQueryColumn(tableMetadata, field) {
+        let target = Query.getFieldTarget(field, tableMetadata);
+        let column = { ...target.field };
+        if (Query.isDatetimeField(field)) {
+            column.unit = Query.getDatetimeFieldUnit(field);
+        }
+        return column;
+    },
+
+    getQueryColumns(tableMetadata, query) {
+        let columns = Query.getBreakouts(query).map(b => Query.getQueryColumn(tableMetadata, b))
+        if (Query.getAggregationType(query) === "rows") {
+            if (columns.length === 0) {
+                return null;
             }
-            return '[unknown]';
+        } else {
+            // NOTE: incomplete (missing name etc), count/distinct are actually IntegerField, but close enough for now
+            columns.push({ base_type: "FloatField", special_type: "number" });
         }
+        return columns;
+    }
+}
 
-        function getFilterDescription(filter) {
-            if (filter[0] === "AND" || filter[0] === "OR") {
-                return filter.slice(1).map(getFilterDescription).join(" " + filter[0].toLowerCase() + " ");
-            } else {
-                return getFieldName(filter[1], tableMetadata);
-            }
+export const AggregationClause = {
+
+    // predicate function to test if a given aggregation clause is fully formed
+    isValid(aggregation) {
+        if (aggregation && _.isArray(aggregation) &&
+                ((aggregation.length === 1 && aggregation[0] !== null) ||
+                 (aggregation.length === 2 && aggregation[0] !== null && aggregation[1] !== null))) {
+            return true;
         }
+        return false;
+    },
 
-        var query = dataset_query.query;
+    // predicate function to test if the given aggregation clause represents a Bare Rows aggregation
+    isBareRows(aggregation) {
+        return AggregationClause.isValid(aggregation) && aggregation[0] === "rows";
+    },
 
-        var name = inflection.pluralize(tableMetadata.display_name) + " ";
+    // predicate function to test if a given aggregation clause represents a standard aggregation
+    isStandard(aggregation) {
+        return AggregationClause.isValid(aggregation) && aggregation[0] !== "METRIC";
+    },
 
-        switch (query.aggregation[0]) {
-            case "rows":     name += "raw data"; break;
-            case "count":    name += "count"; break;
-            case "avg":      name += "average of " + getFieldName(query.aggregation[1], tableMetadata); break;
-            case "distinct": name += "distinct values of " + getFieldName(query.aggregation[1], tableMetadata); break;
-            case "stddev":   name += "standard deviation of " + getFieldName(query.aggregation[1], tableMetadata); break;
-            case "sum":      name += "sum of " + getFieldName(query.aggregation[1], tableMetadata); break;
-            case "cum_sum":  name += "cumulative sum of " + getFieldName(query.aggregation[1], tableMetadata); break;
-            default:
+    // predicate function to test if a given aggregation clause represents a metric
+    isMetric(aggregation) {
+        return AggregationClause.isValid(aggregation) && aggregation[0] === "METRIC";
+    },
+
+    // get the metricId from a metric aggregation clause
+    getMetric(aggregation) {
+        if (aggregation && AggregationClause.isMetric(aggregation)) {
+            return aggregation[1];
+        } else {
+            return null;
         }
+    },
 
-        if (query.breakout && query.breakout.length > 0) {
-            name += ", grouped by " + query.breakout.map((b) => getFieldName(b, tableMetadata)).join(" and ");
+    // get the operator from a standard aggregation clause
+    getOperator(aggregation) {
+        if (aggregation && aggregation.length > 0 && aggregation[0] !== "METRIC") {
+            return aggregation[0];
+        } else {
+            return null;
         }
+    },
 
-        var filters = Query.getFilters(dataset_query.query);
-        if (filters && filters.length > 0) {
-            name += ", filtered by " + getFilterDescription(filters);
+    // get the fieldId from a standard aggregation clause
+    getField(aggregation) {
+        if (aggregation && aggregation.length > 1 && aggregation[0] !== "METRIC") {
+            return aggregation[1];
+        } else {
+            return null;
         }
+    },
 
-        if (query.order_by && query.order_by.length > 0) {
-            name += ", sorted by " + query.order_by.map((ordering) => getFieldName(ordering[0], tableMetadata) + " " + ordering[1]).join(" and ");
+    // set the fieldId on a standard aggregation clause
+    setField(aggregation, fieldId) {
+        if (aggregation && aggregation.length > 0 && aggregation[0] && aggregation[0] !== "METRIC") {
+            return [aggregation[0], fieldId];
+        } else {
+            // TODO: is there a better failure response than just returning the aggregation unmodified??
+            return aggregation;
         }
+    }
+}
 
-        if (query.limit != null) {
-            name += ", " + query.limit + " " + inflection.inflect("row", query.limit);
+export const BreakoutClause = {
+
+    setBreakout(breakout, index, value) {
+        if (!breakout) return breakout;
+
+        if (breakout.length >= index+1) {
+            breakout[index] = value;
+            return breakout;
+
+        } else {
+            breakout.push(value);
+            return breakout;
         }
+    },
 
-        return name;
+    removeBreakout(breakout, index) {
+        if (breakout && breakout.length >= index+1) {
+            breakout.splice(index, 1);
+            return breakout;
+        } else {
+            return breakout;
+        }
+    }
+}
+
+function joinList(list, joiner) {
+    return _.flatten(list.map((l, i) => i === list.length - 1 ? [l] : [l, joiner]), true);
+}
+
+function conjunctList(list, conjunction) {
+    switch (list.length) {
+        case 0: return null;
+        case 1: return list[0];
+        case 2: return [list[0], " ", conjunction, " ", list[1]];
+        default: return [list.slice(0, -1).join(", "), ", ", conjunction, " ", list[list.length - 1]];
     }
 }
 

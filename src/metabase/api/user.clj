@@ -1,12 +1,10 @@
 (ns metabase.api.user
   (:require [cemerick.friend.credentials :as creds]
             [compojure.core :refer [defroutes GET DELETE POST PUT]]
-            [medley.core :refer [mapply]]
             [metabase.api.common :refer :all]
             [metabase.db :refer [sel upd upd-non-nil-keys exists?]]
             [metabase.email.messages :as email]
-            (metabase.models [hydrate :refer [hydrate]]
-                             [user :refer [User create-user set-user-password set-user-password-reset-token form-password-reset-url]])))
+            [metabase.models.user :refer [User create-user set-user-password set-user-password-reset-token form-password-reset-url]]))
 
 (defn ^:private check-self-or-superuser
   "Check that USER-ID is `*current-user-id*` or that `*current-user*` is a superuser, or throw a 403."
@@ -23,26 +21,25 @@
 
 (defendpoint POST "/"
   "Create a new `User`."
-  [:as {{:keys [first_name last_name email password]} :body :as request}]
+  [:as {{:keys [first_name last_name email password]} :body}]
   {first_name [Required NonEmptyString]
    last_name  [Required NonEmptyString]
    email      [Required Email]}
   (check-superuser)
   (let [existing-user (sel :one [User :id :is_active] :email email)]
-    (-> (cond
-          ;; new user account, so create it
-          (nil? existing-user) (create-user first_name last_name email :password password :send-welcome true :invitor @*current-user*)
-          ;; this user already exists but is inactive, so simply reactivate the account
-          (not (:is_active existing-user)) (do
-                                             (upd User (:id existing-user)
-                                               :first_name first_name
-                                               :last_name last_name
-                                               :is_active true
-                                               :is_superuser false)
-                                             (User (:id existing-user)))
-          ;; account already exists and is active, so do nothing and just return the account
-          :else (User (:id existing-user)))
-        (hydrate :user :organization))))
+    (cond
+      ;; new user account, so create it
+      (nil? existing-user) (create-user first_name last_name email :password password :send-welcome true :invitor @*current-user*)
+      ;; this user already exists but is inactive, so simply reactivate the account
+      (not (:is_active existing-user)) (do
+                                         (upd User (:id existing-user)
+                                           :first_name first_name
+                                           :last_name last_name
+                                           :is_active true
+                                           :is_superuser false)
+                                         (User (:id existing-user)))
+      ;; account already exists and is active, so do nothing and just return the account
+      :else (User (:id existing-user)))))
 
 
 (defendpoint GET "/current"
@@ -60,7 +57,7 @@
 
 (defendpoint PUT "/:id"
   "Update a `User`."
-  [id :as {{:keys [email first_name last_name is_superuser] :as body} :body}]
+  [id :as {{:keys [email first_name last_name is_superuser]} :body}]
   {email      [Required Email]
    first_name NonEmptyString
    last_name  NonEmptyString}
@@ -68,12 +65,12 @@
   (check-404 (exists? User :id id :is_active true))           ; only allow updates if the specified account is active
   (check-400 (not (exists? User :email email :id [not= id]))) ; can't change email if it's already taken BY ANOTHER ACCOUNT
   (check-500 (upd-non-nil-keys User id
-                               :email email
-                               :first_name first_name
-                               :last_name last_name
-                               :is_superuser (if (:is_superuser @*current-user*)
-                                               is_superuser
-                                               nil)))
+              :email        email
+              :first_name   first_name
+              :last_name    last_name
+              :is_superuser (if (:is_superuser @*current-user*)
+                              is_superuser
+                              nil)))
   (User id))
 
 
@@ -87,6 +84,14 @@
       (checkp (creds/bcrypt-verify (str (:password_salt user) old_password) (:password user)) "old_password" "Invalid password")))
   (set-user-password id password)
   (User id))
+
+
+(defendpoint PUT "/:id/qbnewb"
+  "Indicate that a user has been informed about the vast intricacies of 'the' QueryBuilder."
+  [id]
+  (check-self-or-superuser id)
+  (check-500 (upd User id :is_qbnewb false))
+  {:success true})
 
 
 (defendpoint POST "/:id/send_invite"

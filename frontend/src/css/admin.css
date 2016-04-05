@@ -127,65 +127,10 @@
     transition: opacity .2s linear;
 }
 
-.DatabaseList,
-.TableFieldList {
-    padding-bottom: 3em;
-    position: absolute;
-    left: 0;
-    right: 0;
-    height: 100%;
-    overflow-y: scroll;
-}
-
-.DatabaseListItem .h4 {
-    line-height: 0.8em;
-}
-
-.DatabaseListItem.DatabaseListItem--active {
-    background-color: rgb(227,238,250);
-    color: rgb(74,144,226);
-}
-
 /* TODO: this is for the ace editor and should be handled without an ID */
 #id_sql {
     height: 200px;
 }
-
-.DatabaseTablesAdmin {
-    overflow: hidden;
-}
-
-.TableField {
-    border-bottom: 1px solid #F0F0F0;
-    padding-left: 3em;
-}
-
-.TableField-name {
-    color: #676C72;
-}
-
-.DatabaseTablesAdmin .editable-click {
-    font-size: 0.8em;
-    border-bottom: none;
-    font-style: normal;
-}
-.DatabaseTablesAdmin .editable-click:hover, .DatabaseTablesAdmin .editable-empty:hover {
-    color: inherit !important;
-    font-style: normal;
-}
-
-.DatabaseTablesAdmin .editable-empty {
-    font-style: normal;
-}
-
-.Select--unselected {
-    border-style: dotted !important;
-}
-
-.ScrollShadow {
-    border-top: 1px solid rgba(0, 0, 0, .05);
-}
-
 
 .AdminList {
     background-color: #F9FBFC;
@@ -309,31 +254,31 @@
 }
 
 .TableEditor-field-visibility {
-    color: var(--orange-color);
+    /*color: var(--orange-color);*/
 }
 
 .TableEditor-field-visibility .ColumnarSelector-row:hover {
-    background-color: var(--orange-color) !important;
+    background-color: var(--brand-color) !important;
     color: white !important;
 }
 
 .TableEditor-field-type {
-    color: var(--purple-color);
+    /*color: var(--purple-color);*/
 }
 
 .TableEditor-field-type .ColumnarSelector-row:hover {
-    background-color: var(--purple-color) !important;
+    background-color: var(--brand-color) !important;
     color: white !important;
 }
 
 .TableEditor-field-special-type,
 .TableEditor-field-target {
-    color: var(--green-color);
+    /*color: var(--green-color);*/
 }
 
 .TableEditor-field-special-type .ColumnarSelector-row:hover,
 .TableEditor-field-target .ColumnarSelector-row:hover {
-    background-color: var(--green-color) !important;
+    background-color: var(--brand-color) !important;
     color: white !important;
 }
 
@@ -425,4 +370,27 @@
 .UserActionsSelect {
     padding-top: 1em;
     min-width: 180px;
+}
+
+.AdminTable {
+  border-collapse: collapse;
+  border-spacing: 0;
+
+  white-space: nowrap;
+  text-align: left;
+}
+
+.AdminTable th {
+  text-transform: uppercase;
+  color: color(var(--base-grey) shade(40%));
+  padding:  var(--padding-1);
+  font-weight: normal;
+}
+
+.AdminTable thead {
+  border-bottom: var(--border-size) var(--border-style) var(--border-color);
+}
+
+.AdminTable tbody tr:first-child td {
+  padding-top: var(--margin-1);
 }

@@ -5,7 +5,6 @@
             (clojure [set :as set]
                      [string :as s]
                      [walk :as walk])
-            [environ.core :refer [env]]
             (korma [core :as k]
                    [db :as kdb])
             [medley.core :as m]
@@ -24,7 +23,7 @@
 
 ;; ## DB FILE, JDBC/KORMA DEFINITONS
 
-(def ^:private db-file
+(def db-file
   "Path to our H2 DB file from env var or app config."
   ;; see http://h2database.com/html/features.html for explanation of options
   (delay (if (config/config-bool :mb-db-in-memory)
@@ -75,7 +74,7 @@
                           :user     (config/config-str :mb-db-user)
                           :password (config/config-str :mb-db-pass)}))))
 
-(defn- jdbc-details
+(defn jdbc-details
   "Takes our own MB details map and formats them properly for connection details for Korma / JDBC."
   [db-details]
   {:pre [(map? db-details)]}
@@ -145,15 +144,15 @@
   "Test connection to database with DETAILS and throw an exception if we have any troubles connecting."
   [engine details]
   {:pre [(keyword? engine) (map? details)]}
-  (log/info "Verifying Database Connection ...")
+  (log/info (u/format-color 'cyan "Verifying Database Connection ..."))
   (assert (binding [*allow-potentailly-unsafe-connections* true]
             (require 'metabase.driver)
             (@(resolve 'metabase.driver/can-connect-with-details?) engine details))
     "Unable to connect to Metabase DB.")
-  (log/info "Verify Database Connection ... CHECK"))
+  (log/info (str "Verify Database Connection ... ✅")))
 
 (defn setup-db
-  "Do general perparation of database by validating that we can connect.
+  "Do general preparation of database by validating that we can connect.
    Caller can specify if we should run any pending database migrations."
   [& {:keys [db-details auto-migrate]
       :or   {db-details   @db-connection-details
@@ -175,7 +174,7 @@
                      "\n\n"
                      "Once your database is updated try running the application again.\n"))
       (throw (java.lang.Exception. "Database requires manual upgrade."))))
-  (log/info "Database Migrations Current ... CHECK")
+  (log/info "Database Migrations Current ... ✅")
 
   ;; Establish our 'default' Korma DB Connection
   (kdb/default-connection (kdb/create-db (jdbc-details db-details)))
@@ -185,7 +184,9 @@
   (require 'metabase.db.migrations)
   (@(resolve 'metabase.db.migrations/run-all)))
 
-(defn setup-db-if-needed [& args]
+(defn setup-db-if-needed
+  "Call `setup-db` if DB is not already setup; otherwise no-op."
+  [& args]
   (when-not @setup-db-has-been-called?
     (apply setup-db args)))
 
@@ -203,18 +204,17 @@
    Returns true if update modified rows, false otherwise."
   [entity entity-id & {:as kwargs}]
   {:pre [(integer? entity-id)]}
-  (let [obj (->> (assoc kwargs :id entity-id)
-                 (models/pre-update entity)
-                 (models/internal-pre-update entity)
-                 (#(dissoc % :id)))
-        result (-> (k/update entity (k/set-fields obj) (k/where {:id entity-id}))
-                   (> 0))]
-    (when result
-      (models/post-update entity (assoc obj :id entity-id)))
-    result))
+  (let [obj           (models/do-pre-update entity (assoc kwargs :id entity-id))
+        rows-affected (k/update entity
+                                (k/set-fields (dissoc obj :id))
+                                (k/where {:id entity-id}))]
+    (when (> rows-affected 0)
+      (models/post-update obj))
+    (> rows-affected 0)))
 
 (defn upd-non-nil-keys
   "Calls `upd`, but filters out KWARGS with `nil` values."
+  {:style/indent 2}
   [entity entity-id & {:as kwargs}]
   (->> (m/filter-vals (complement nil?) kwargs)
        (m/mapply upd entity entity-id)))
@@ -233,7 +233,10 @@
 
 ;; ## SEL
 
-(def ^:dynamic *sel-disable-logging* false)
+(def ^:dynamic *sel-disable-logging*
+  "Should we disable logging for the `sel` macro? Normally `false`, but bind this to `true` to keep logging from getting too noisy during
+   operations that require a lot of DB access, like the sync process."
+  false)
 
 (defmacro sel
   "Wrapper for korma `select` that calls `post-select` on results and provides a few other conveniences.
@@ -285,7 +288,7 @@
 
   ENTITY may be either an entity like `User` or a vector like `[entity & field-keys]`.
   If just an entity is passed, `sel` will return `default-fields` for ENTITY.
-  Otherwise is a vector is passed `sel` will return the fields specified by FIELD-KEYS.
+  Otherwise, if a vector is passed `sel` will return the fields specified by FIELD-KEYS.
 
     (sel :many [OrgPerm :admin :id] :user_id 1) -> return admin and id of OrgPerms whose user_id is 1
 
@@ -318,16 +321,14 @@
   "Wrapper around `korma.core/insert` that renames the `:scope_identity()` keyword in output to `:id`
    and automatically passes &rest KWARGS to `korma.core/values`.
 
-   Returns newly created object by calling `sel`."
+   Returns a newly created object by calling `sel`."
   [entity & {:as kwargs}]
-  (let [vals (->> kwargs
-                  (models/pre-insert entity)
-                  (models/internal-pre-insert entity))
-        {:keys [id]} (-> (k/insert entity (k/values vals))
-                         ;; this takes database specific keys returned from a jdbc insert and maps them to :id
-                         (set/rename-keys {(keyword "scope_identity()") :id
-                                           :generated_key               :id}))]
-    (models/post-insert entity (entity id))))
+  (let [vals         (models/do-pre-insert entity kwargs)
+        ;; take database-specific keys returned from a jdbc insert and map them to :id
+        {:keys [id]} (set/rename-keys (k/insert entity (k/values vals))
+                                      {(keyword "scope_identity()") :id
+                                       :generated_key               :id})]
+    (some-> id entity models/post-insert)))
 
 
 ;; ## EXISTS?
@@ -344,11 +345,13 @@
 
 ;; ## CASADE-DELETE
 
-(defn -cascade-delete [entity f]
+(defn -cascade-delete
+  "Internal implementation of `cascade-delete`. Don't use this directly!"
+  [entity f]
   (let [entity  (i/entity->korma entity)
         results (i/sel-exec entity f)]
-    (dorun (for [obj results]
-             (do (models/pre-cascade-delete entity obj)
+    (dorun (for [obj (map (partial models/do-post-select entity) results)]
+             (do (models/pre-cascade-delete obj)
                  (del entity :id (:id obj))))))
   {:status 204, :body nil})
 

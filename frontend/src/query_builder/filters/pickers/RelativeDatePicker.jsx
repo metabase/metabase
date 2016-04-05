@@ -78,13 +78,14 @@ export default class RelativeDatePicker extends Component {
                     <section key={sectionName}>
                         <div style={{}} className="border-bottom text-uppercase flex layout-centered mb2">
                             <h6 style={{"position": "relative", "backgroundColor": "white", "top": "6px" }} className="px2">
-                                {{sectionName}}
+                                {sectionName}
                             </h6>
                         </div>
                         <div className="flex">
                             { RELATIVE_SHORTCUTS[sectionName].map((s, index) =>
                                 <button
                                     key={index}
+                                    data-ui-tag={"relative-date-shortcut-" + sectionName.toLowerCase() + "-" + s.name.toLowerCase()}
                                     className={cx("Button Button-normal Button--medium flex-full mb1", { "Button--purple": this.isSelectedShortcut(s), "mr1": index !== RELATIVE_SHORTCUTS[sectionName].length - 1 })}
                                     onClick={() => this.onSetShortcut(s)}
                                 >

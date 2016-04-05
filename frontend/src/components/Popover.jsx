@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper.jsx";
 import Tether from "tether";
@@ -15,7 +16,7 @@ export default class Popover extends Component {
     static propTypes = {
         isOpen: PropTypes.bool,
         hasArrow: PropTypes.bool,
-        getTriggerTarget: PropTypes.func,
+        getTarget: PropTypes.func,
         tetherOptions: PropTypes.object
     };
 
@@ -48,7 +49,7 @@ export default class Popover extends Component {
             this._tether.destroy();
             delete this._tether;
         }
-        React.unmountComponentAtNode(this._popoverElement);
+        ReactDOM.unmountComponentAtNode(this._popoverElement);
         if (this._popoverElement.parentNode) {
             this._popoverElement.parentNode.removeChild(this._popoverElement);
         }
@@ -124,17 +125,30 @@ export default class Popover extends Component {
     _renderPopover() {
         if (this.props.isOpen) {
             // popover is open, lets do this!
-            React.render(this._popoverComponent(), this._popoverElement);
+            ReactDOM.render(this._popoverComponent(), this._popoverElement);
 
             var tetherOptions = {};
 
             tetherOptions.element = this._popoverElement;
 
-            if (!tetherOptions.target && this.props.getTriggerTarget) {
-                tetherOptions.target = React.findDOMNode(this.props.getTriggerTarget());
+            if (this.props.targetEvent) {
+                // create a fake element at the event coordinates
+                tetherOptions.target = document.getElementById("popover-event-target");
+                if (!tetherOptions.target) {
+                    tetherOptions.target = document.createElement("div");
+                    tetherOptions.target.id = "popover-event-target";
+                    document.body.appendChild(tetherOptions.target);
+
+                }
+                tetherOptions.target.style.left = (this.props.targetEvent.clientX - 3) + "px";
+                tetherOptions.target.style.top = (this.props.targetEvent.clientY - 3) + "px";
+            } else if (this.props.target) {
+                tetherOptions.target = ReactDOM.findDOMNode(this.props.target);
+            } else if (this.props.getTarget) {
+                tetherOptions.target = ReactDOM.findDOMNode(this.props.getTarget());
             }
-            if (!tetherOptions.target) {
-                tetherOptions.target = React.findDOMNode(this).parentNode;
+            if (tetherOptions.target == null) {
+                tetherOptions.target = ReactDOM.findDOMNode(this).parentNode;
             }
 
             if (this.props.tetherOptions) {
@@ -179,7 +193,7 @@ export default class Popover extends Component {
             }
         } else {
             // if the popover isn't open then actively unmount our popover
-            React.unmountComponentAtNode(this._popoverElement);
+            ReactDOM.unmountComponentAtNode(this._popoverElement);
         }
     }
 

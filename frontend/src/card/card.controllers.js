@@ -1,34 +1,32 @@
+/*global ace*/
+
 import React from "react";
+import ReactDOM from "react-dom";
 
 import DataReference from '../query_builder/DataReference.jsx';
 import GuiQueryEditor from '../query_builder/GuiQueryEditor.jsx';
 import NativeQueryEditor from '../query_builder/NativeQueryEditor.jsx';
 import QueryHeader from '../query_builder/QueryHeader.jsx';
 import QueryVisualization from '../query_builder/QueryVisualization.jsx';
+import QueryBuilderTutorial from '../tutorial/QueryBuilderTutorial.jsx';
+import SavedQuestionIntroModal from "../query_builder/SavedQuestionIntroModal.jsx";
 
 import SavedQuestionsApp from './containers/SavedQuestionsApp.jsx';
 
-import { createStore, applyMiddleware, combineReducers, compose } from 'redux';
-import promiseMiddleware from 'redux-promise';
-import thunkMidleware from "redux-thunk";
+import { createStore, combineReducers } from "metabase/lib/redux";
 import _ from "underscore";
+import i from "icepick";
 
-import MetabaseAnalytics from '../lib/analytics';
+import MetabaseAnalytics from "metabase/lib/analytics";
 import DataGrid from "metabase/lib/data_grid";
-import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
-
 import Query from "metabase/lib/query";
-import { serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
+import { createQuery } from "metabase/lib/query";
+import { createCard, serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
+import { loadTable } from "metabase/lib/table";
+
+import NotFound from "metabase/components/NotFound.jsx";
 
 import * as reducers from './reducers';
-
-const finalCreateStore = compose(
-  applyMiddleware(
-      thunkMidleware,
-      promiseMiddleware
-  ),
-  createStore
-);
 
 const reducer = combineReducers(reducers);
 
@@ -43,12 +41,12 @@ CardControllers.controller('CardList', ['$scope', '$location', function($scope, 
             $scope.$apply(() => $location.url(url));
         }
     };
-    $scope.store = finalCreateStore(reducer, {});
+    $scope.store = createStore(reducer, {});
 }]);
 
 CardControllers.controller('CardDetail', [
-    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'Metabase', 'VisualizationSettings', 'QueryUtils', 'Revision',
-    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, Metabase, VisualizationSettings, QueryUtils, Revision) {
+    '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'Metabase', 'Revision', 'User',
+    function($rootScope, $scope, $route, $routeParams, $location, $q, $window, $timeout, Card, Dashboard, Metabase, Revision, User) {
         // promise helper
         $q.resolve = function(object) {
             var deferred = $q.defer();
@@ -57,26 +55,6 @@ CardControllers.controller('CardDetail', [
         }
 
         // =====  Controller local objects
-
-        var newQueryTemplates = {
-            "query": {
-                database: null,
-                type: "query",
-                query: {
-                    source_table: null,
-                    aggregation: ["rows"],
-                    breakout: [],
-                    filter: []
-                }
-            },
-            "native": {
-                database: null,
-                type: "native",
-                native: {
-                    query: ""
-                }
-            }
-        };
 
         $scope.isShowingDataReference = false;
 
@@ -87,7 +65,10 @@ CardControllers.controller('CardDetail', [
             tableForeignKeys = null,
             tableForeignKeyReferences = null,
             isRunning = false,
+            isEditing = false,
             isObjectDetail = false,
+            isShowingTutorial = false,
+            isShowingNewbModal = false,
             card = {
                 name: null,
                 public_perms: 0,
@@ -95,6 +76,7 @@ CardControllers.controller('CardDetail', [
                 visualization_settings: {},
                 dataset_query: {},
             },
+            originalCard,
             savedCardSerialized = null;
 
         resetDirty();
@@ -112,13 +94,12 @@ CardControllers.controller('CardDetail', [
             broadcastEventFn: function(eventName, value) {
                 $rootScope.$broadcast(eventName, value);
             },
-            notifyCardChangedFn: async function(modifiedCard) {
+            onSetCardAttribute: function(attribute, value) {
                 // these are the only things we let the header change
-                card.name = modifiedCard.name;
-                card.description = modifiedCard.description;
-                card.public_perms = modifiedCard.public_perms;
-
-                renderAll();
+                if (attribute === "name" || attribute === "description") {
+                    card[attribute] = value;
+                    renderAll();
+                }
             },
             notifyCardCreatedFn: function(newCard) {
                 setCard(newCard, { resetDirty: true, replaceState: true });
@@ -130,17 +111,12 @@ CardControllers.controller('CardDetail', [
 
                 MetabaseAnalytics.trackEvent('QueryBuilder', 'Update Card', updatedCard.dataset_query.type);
             },
-            notifyCardAddedToDashFn: function(dashCard) {
-                $scope.$apply(() => $location.path('/dash/'+dashCard.dashboard_id));
-            },
-            setQueryModeFn: function(mode) {
-                if (!card.dataset_query.type || mode !== card.dataset_query.type) {
-
-                    resetCardQuery(mode);
-                    resetDirty();
-                    updateUrl();
-
-                    renderAll();
+            setQueryModeFn: function(type) {
+                if (!card.dataset_query.type || type !== card.dataset_query.type) {
+                    // switching to a new query type represents a brand new card & query on the given mode
+                    let newCard = startNewCard(type, card.dataset_query.database);
+                    setCard(newCard, {resetDirty: true, runQuery: false});
+                    MetabaseAnalytics.trackEvent('QueryBuilder', 'Query Started', type);
                 }
             },
             cloneCardFn: function() {
@@ -154,6 +130,21 @@ CardControllers.controller('CardDetail', [
                 $timeout(() => $location.url(url))
             },
             toggleDataReferenceFn: toggleDataReference,
+            onBeginEditing: function() {
+                isEditing = true;
+                renderAll();
+                MetabaseAnalytics.trackEvent('QueryBuilder', 'Edit Begin');
+            },
+            onCancelEditing: function() {
+                // reset back to our original card
+                isEditing = false;
+                setCard(originalCard, {resetDirty: true});
+                MetabaseAnalytics.trackEvent('QueryBuilder', 'Edit Cancel');
+            },
+            onRestoreOriginalQuery: function () {
+                setCard(originalCard, {resetDirty: true});
+                MetabaseAnalytics.trackEvent('QueryBuilder', 'Restore Original');
+            },
             cardIsNewFn: cardIsNew,
             cardIsDirtyFn: cardIsDirty
         };
@@ -165,7 +156,7 @@ CardControllers.controller('CardDetail', [
             tableMetadata: null,
             tableForeignKeys: null,
             query: null,
-            setQueryFn: setQuery,
+            setQueryFn: onQueryChanged,
             setDatabaseFn: setDatabase,
             setSourceTableFn: setSourceTable,
             autocompleteResultsFn: function(prefix) {
@@ -174,54 +165,34 @@ CardControllers.controller('CardDetail', [
                     prefix: prefix
                 });
                 return apiCall.$promise;
-            },
-            toggleExpandCollapseFn: function() {
-                editorModel.isExpanded = !editorModel.isExpanded;
-                renderAll();
             }
         };
 
         var visualizationModel = {
-            visualizationSettingsApi: VisualizationSettings,
             card: null,
             result: null,
+            databases: null,
+            tableMetadata: null,
             tableForeignKeys: null,
             tableForeignKeyReferences: null,
             isRunning: false,
             runQueryFn: runQuery,
             isObjectDetail: false,
-            setDisplayFn: setDisplay,
-            setChartColorFn: function(color) {
-                var vizSettings = card.visualization_settings;
-
-                // if someone picks the default color then clear any color settings
-                if (color === VisualizationSettings.getDefaultColor()) {
-                    // NOTE: this only works if setting color is the only option we allow
-                    card.visualization_settings = {};
-
-                } else {
-                    // this really needs to be better
-                    var lineSettings = (vizSettings.line) ? vizSettings.line : {};
-                    var areaSettings = (vizSettings.area) ? vizSettings.area : {};
-                    var barSettings = (vizSettings.bar) ? vizSettings.bar : {};
-
-                    lineSettings.lineColor = color;
-                    lineSettings.marker_fillColor = color;
-                    lineSettings.marker_lineColor = color;
-                    areaSettings.fillColor = color;
-                    barSettings.color = color;
-
-                    vizSettings.line = lineSettings;
-                    vizSettings.area = areaSettings;
-                    vizSettings.bar = barSettings;
-                }
-
-                renderAll();
+            setDisplayFn: function(display) {
+                onVisualizationSettingsChanged(display, card.visualization_settings);
+            },
+            onUpdateVisualizationSetting: function(path, value) {
+                onVisualizationSettingsChanged(card.display, i.assocIn(card.visualization_settings, path, value));
+            },
+            onUpdateVisualizationSettings: function(settings) {
+                onVisualizationSettingsChanged(card.display, settings);
             },
             setSortFn: function(fieldId) {
                 // NOTE: we only allow this for structured type queries & we only allow sorting by a single column
                 if (card.dataset_query.type === "query") {
-                    var sortClause = [fieldId, "ascending"];
+                    let dataset_query = card.dataset_query,
+                        sortClause = [fieldId, "ascending"];
+
                     if (card.dataset_query.query.order_by &&
                         card.dataset_query.query.order_by.length > 0 &&
                         card.dataset_query.query.order_by[0].length > 0 &&
@@ -232,7 +203,10 @@ CardControllers.controller('CardDetail', [
                     }
 
                     // set clause
-                    card.dataset_query.query.order_by = [sortClause];
+                    dataset_query.query.order_by = [sortClause];
+
+                    // update the query
+                    onQueryChanged(dataset_query);
 
                     // run updated query
                     runQuery();
@@ -261,31 +235,32 @@ CardControllers.controller('CardDetail', [
 
                 if (coldef.special_type === "id") {
                     // action is on a PK column
-                    resetCardQuery("query");
+                    let newCard = startNewCard("query", card.dataset_query.database);
 
-                    card.dataset_query.query.source_table = coldef.table_id;
-                    card.dataset_query.query.aggregation = ["rows"];
-                    card.dataset_query.query.filter = ["AND", ["=", coldef.id, value]];
+                    newCard.dataset_query.query.source_table = coldef.table_id;
+                    newCard.dataset_query.query.aggregation = ["rows"];
+                    newCard.dataset_query.query.filter = ["AND", ["=", coldef.id, value]];
 
                     // run it
-                    runQuery();
+                    setCard(newCard);
 
                 } else if (coldef.special_type === "fk") {
                     // action is on an FK column
-                    resetCardQuery("query");
+                    let newCard = startNewCard("query", card.dataset_query.database);
 
-                    card.dataset_query.query.source_table = coldef.target.table_id;
-                    card.dataset_query.query.aggregation = ["rows"];
-                    card.dataset_query.query.filter = ["AND", ["=", coldef.target.id, value]];
-
-                    // load table metadata now that we are switching to a new table
-                    loadTableInfo(card.dataset_query.query.source_table);
+                    newCard.dataset_query.query.source_table = coldef.target.table_id;
+                    newCard.dataset_query.query.aggregation = ["rows"];
+                    newCard.dataset_query.query.filter = ["AND", ["=", coldef.target.id, value]];
 
                     // run it
-                    runQuery();
+                    setCard(newCard);
+
                 } else {
-                    Query.addFilter(card.dataset_query.query);
-                    Query.updateFilter(card.dataset_query.query, card.dataset_query.query.filter.length - 1, [filter, coldef.id, value]);
+                    // this is applying a filter by clicking on a cell value
+                    let dataset_query = angular.copy(card.dataset_query);
+                    Query.addFilter(dataset_query.query);
+                    Query.updateFilter(dataset_query.query, dataset_query.query.filter.length - 1, [filter, coldef.id, value]);
+                    onQueryChanged(dataset_query);
                     runQuery();
                  }
             },
@@ -301,28 +276,28 @@ CardControllers.controller('CardDetail', [
                 }
 
                 // action is on an FK column
-                resetCardQuery("query");
+                let newCard = startNewCard("query", card.dataset_query.database);
 
-                card.dataset_query.query.source_table = fk.origin.table.id;
-                card.dataset_query.query.aggregation = ["rows"];
-                card.dataset_query.query.filter = ["AND", ["=", fk.origin.id, originValue]];
-
-                // load table metadata now that we are switching to a new table
-                loadTableInfo(card.dataset_query.query.source_table);
+                newCard.dataset_query.query.source_table = fk.origin.table.id;
+                newCard.dataset_query.query.aggregation = ["rows"];
+                newCard.dataset_query.query.filter = ["AND", ["=", fk.origin.id, originValue]];
 
                 // run it
-                runQuery();
+                setCard(newCard);
             }
         };
 
         var dataReferenceModel = {
             Metabase: Metabase,
             closeFn: toggleDataReference,
+            setCardAndRun: (card) => setCard(card, {runQuery: true}),
             runQueryFn: runQuery,
-            setQueryFn: setQuery,
+            setQueryFn: onQueryChanged,
             setDatabaseFn: setDatabase,
             setSourceTableFn: setSourceTable,
-            setDisplayFn: setDisplay,
+            setDisplayFn: function(display) {
+                onVisualizationSettingsChanged(display, card.visualization_settings);
+            },
             loadTableFn: loadTable
         };
 
@@ -331,25 +306,28 @@ CardControllers.controller('CardDetail', [
         function renderHeader() {
             // ensure rendering model is up to date
             headerModel.card = angular.copy(card);
+            headerModel.isEditing = isEditing;
+            headerModel.originalCard = originalCard;
             headerModel.tableMetadata = tableMetadata;
             headerModel.isShowingDataReference = $scope.isShowingDataReference;
 
-            React.render(<QueryHeader {...headerModel}/>, document.getElementById('react_qb_header'));
+            ReactDOM.render(<QueryHeader {...headerModel}/>, document.getElementById('react_qb_header'));
         }
 
         function renderEditor() {
             // ensure rendering model is up to date
             editorModel.isRunning = isRunning;
             editorModel.isShowingDataReference = $scope.isShowingDataReference;
+            editorModel.isShowingTutorial = isShowingTutorial;
             editorModel.databases = databases;
             editorModel.tableMetadata = tableMetadata;
             editorModel.tableForeignKeys = tableForeignKeys;
             editorModel.query = card.dataset_query;
 
             if (card.dataset_query && card.dataset_query.type === "native") {
-                React.render(<NativeQueryEditor {...editorModel}/>, document.getElementById('react_qb_editor'));
+                ReactDOM.render(<NativeQueryEditor {...editorModel}/>, document.getElementById('react_qb_editor'));
             } else {
-                React.render(<GuiQueryEditor {...editorModel}/>, document.getElementById('react_qb_editor'));
+                ReactDOM.render(<div className="wrapper"><GuiQueryEditor {...editorModel}/></div>, document.getElementById('react_qb_editor'));
             }
         }
 
@@ -357,25 +335,58 @@ CardControllers.controller('CardDetail', [
             // ensure rendering model is up to date
             visualizationModel.card = angular.copy(card);
             visualizationModel.result = queryResult;
+            visualizationModel.databases = databases;
             visualizationModel.tableMetadata = tableMetadata;
             visualizationModel.tableForeignKeys = tableForeignKeys;
             visualizationModel.tableForeignKeyReferences = tableForeignKeyReferences;
             visualizationModel.isRunning = isRunning;
             visualizationModel.isObjectDetail = isObjectDetail;
 
-            if (queryResult && !queryResult.error) {
-                visualizationModel.downloadLink = '/api/dataset/csv?query=' + encodeURIComponent(JSON.stringify(card.dataset_query));
-            } else {
-                visualizationModel.downloadLink = null;
-            }
-
-            React.render(<QueryVisualization {...visualizationModel}/>, document.getElementById('react_qb_viz'));
+            ReactDOM.render(<QueryVisualization {...visualizationModel}/>, document.getElementById('react_qb_viz'));
         }
 
         function renderDataReference() {
             dataReferenceModel.databases = databases;
             dataReferenceModel.query = card.dataset_query;
-            React.render(<DataReference {...dataReferenceModel}/>, document.getElementById('react_data_reference'));
+            ReactDOM.render(<DataReference {...dataReferenceModel}/>, document.getElementById('react_data_reference'));
+        }
+
+        let tutorialModel = {
+            onClose: () => {
+                isShowingTutorial = false;
+                updateUrl();
+                renderAll();
+                MetabaseAnalytics.trackEvent('QueryBuilder', 'Tutorial Close');
+            }
+        }
+
+        function renderTutorial() {
+            tutorialModel.isShowingTutorial = isShowingTutorial;
+            ReactDOM.render(
+                <span>{tutorialModel.isShowingTutorial && <QueryBuilderTutorial {...tutorialModel} /> }</span>
+            , document.getElementById('react_qb_tutorial'));
+        }
+
+        let newbModalModel = {
+            onClose: () => {
+                isShowingNewbModal = false;
+                renderAll();
+
+                // persist the fact that this user has seen the NewbModal
+                $scope.user.is_qbnewb = false;
+                User.update_qbnewb({id: $scope.user.id});
+            }
+        }
+
+        function renderNewbModal() {
+            newbModalModel.isShowingNewbModal = isShowingNewbModal;
+            ReactDOM.render(
+                <span>{newbModalModel.isShowingNewbModal && <SavedQuestionIntroModal {...newbModalModel} /> }</span>
+            , document.getElementById('react_qbnewb_modal'));
+        }
+
+        function renderNotFound() {
+            ReactDOM.render(<NotFound></NotFound>, document.getElementById('react_qb_viz'));
         }
 
         var renderAll = _.debounce(function() {
@@ -383,6 +394,8 @@ CardControllers.controller('CardDetail', [
             renderEditor();
             renderVisualization();
             renderDataReference();
+            renderTutorial();
+            renderNewbModal();
         }, 10);
 
 
@@ -417,7 +430,7 @@ CardControllers.controller('CardDetail', [
                     // run a query on FK origin table where FK origin field = objectDetailIdValue
                     var fkReferences = {};
                     tableForeignKeys.map(function(fk) {
-                        var fkQuery = angular.copy(newQueryTemplates["query"]);
+                        var fkQuery = createQuery("query");
                         fkQuery.database = card.dataset_query.database;
                         fkQuery.query.source_table = fk.origin.table_id;
                         fkQuery.query.aggregation = ["count"];
@@ -443,7 +456,7 @@ CardControllers.controller('CardDetail', [
                 } else {
                     isObjectDetail = false;
 
-                    // if we are display bare rows, filter out columns with preview_display = false
+                    // if we are display bare rows, filter out columns with visibility_type = details-only
                     if (Query.isStructured(dataset_query) &&
                             Query.isBareRowsAggregation(dataset_query.query)) {
                         queryResult.data = DataGrid.filterOnPreviewDisplay(queryResult.data);
@@ -483,38 +496,9 @@ CardControllers.controller('CardDetail', [
             });
 
             MetabaseAnalytics.trackEvent('QueryBuilder', 'Run Query', dataset_query.type);
-        }
 
-        function getDefaultQuery() {
-            return angular.copy(newQueryTemplates[card.dataset_query.type]);
-        }
-
-        function loadTable(tableId) {
-            return $q.all([
-                Metabase.table_query_metadata({
-                    'tableId': tableId
-                }).$promise.then(function (table) {
-                    // Decorate with valid operators
-                    // TODO: would be better if this was in our component
-                    table = markupTableMetadata(table);
-                    // Load joinable tables
-                    return $q.all(table.fields.filter((f) => f.target != null).map((field) => {
-                        return Metabase.table_query_metadata({
-                            'tableId': field.target.table_id
-                        }).$promise.then((targetTable) => {
-                            field.target.table = markupTableMetadata(targetTable);
-                        });
-                    })).then(() => table);
-                }),
-                Metabase.table_fks({
-                    'tableId': tableId
-                }).$promise
-            ]).then(function(results) {
-                return {
-                    metadata: results[0],
-                    foreignKeys: results[1]
-                }
-            });
+            // HACK: prevent SQL editor from losing focus
+            try { ace.edit("id_sql").focus() } catch (e) {}
         }
 
         function loadTableInfo(tableId) {
@@ -526,7 +510,7 @@ CardControllers.controller('CardDetail', [
             tableForeignKeys = null;
 
             loadTable(tableId).then(function (results) {
-                tableMetadata = results.metadata;
+                tableMetadata = results.table;
                 tableForeignKeys = results.foreignKeys;
                 renderAll();
             }, function (error) {
@@ -542,6 +526,13 @@ CardControllers.controller('CardDetail', [
             tables = null;
             tableMetadata = null;
 
+            let db = _.findWhere(databases, { id: databaseId });
+            if (db && db.tables) {
+                tables = db.tables;
+                renderAll();
+                return;
+            }
+
             // get tables for db
             Metabase.db_tables({
                 'dbId': databaseId
@@ -554,44 +545,67 @@ CardControllers.controller('CardDetail', [
             });
         }
 
+        // indicates that the database for the query should be changed to the given value
+        // when editing, simply update the value.  otherwise, this should create a completely new card
         function setDatabase(databaseId) {
             if (databaseId !== card.dataset_query.database) {
-                // reset to a brand new query
-                var query = getDefaultQuery();
+                let existingQuery = (card.dataset_query.native) ? card.dataset_query.native.query : undefined;
+                if (!isEditing) {
+                    let newCard = startNewCard(card.dataset_query.type, databaseId);
+                    if (existingQuery) {
+                        newCard.dataset_query.native.query = existingQuery;
+                    }
 
-                // set our new database on the query
-                query.database = databaseId;
+                    setCard(newCard, {runQuery: false});
+                } else {
+                    // if we are editing a saved query we don't want to replace the card, so just start a fresh query only
+                    // TODO: should this clear the visualization as well?
+                    let query = createQuery(card.dataset_query.type, databaseId);
+                    if (existingQuery) {
+                        query.native.query = existingQuery;
+                    }
 
-                // carry over our previous query if we had one
-                if (card.dataset_query.native) {
-                    query.native.query = card.dataset_query.native.query;
+                    setQuery(query);
+
+                    loadDatabaseInfo(databaseId);
                 }
-
-                // TODO: should this clear the visualization as well?
-                setQuery(query);
-
-                // load rest of the data we need
-                loadDatabaseInfo(databaseId);
             }
             return card.dataset_query;
         }
 
+        // indicates that the table for the query should be changed to the given value
+        // when editing, simply update the value.  otherwise, this should create a completely new card
         function setSourceTable(sourceTable) {
             // this will either be the id or an object with an id
             var tableId = sourceTable.id || sourceTable;
             if (tableId !== card.dataset_query.query.source_table) {
+                if (!isEditing) {
+                    let newCard = startNewCard(card.dataset_query.type, card.dataset_query.database, tableId);
+                    setCard(newCard, {runQuery: false});
+                } else {
+                    // if we are editing a saved query we don't want to replace the card, so just start a fresh query only
+                    // TODO: should this clear the visualization as well?
+                    let query = createQuery(card.dataset_query.type, card.dataset_query.database, tableId);
 
-                // when the table changes we reset everything else in the query, except the database of course
-                // TODO: should this clear the visualization as well?
-                var query = getDefaultQuery();
-                query.database = card.dataset_query.database;
-                query.query.source_table = tableId;
+                    setQuery(query);
 
-                setQuery(query);
-
-                loadTableInfo(tableId);
+                    loadTableInfo(tableId);
+                }
             }
             return card.dataset_query;
+        }
+
+        // this indicates that the user has taken an action that changed one of the query clauses (not the database or table)
+        // when we are a saved card but not in edit mode this triggers the creation of a new card started from a specific card, otherwise we just apply the change
+        function onQueryChanged(dataset_query) {
+            // when the query changes on saved card we change this into a new query w/ a known starting point
+            if (!isEditing && card.id) {
+                delete card.id;
+                delete card.name;
+                delete card.description;
+            }
+
+            setQuery(dataset_query);
         }
 
         function setQuery(dataset_query) {
@@ -601,13 +615,31 @@ CardControllers.controller('CardDetail', [
             return card.dataset_query;
         }
 
-        function setDisplay(type) {
-            card.display = type;
+        // this indicates that the user has taken an action that changed one of the visualization settings
+        // when we are a saved card but not in edit mode this triggers the creation of a new card started from a specific card, otherwise we just apply the change
+        function onVisualizationSettingsChanged(display, cardVizSettings) {
+            // make sure that something actually changed
+            if (card.display === display && _.isEqual(card.visualization_settings, cardVizSettings)) return;
+
+            // when the visualization changes on saved card we change this into a new card w/ a known starting point
+            if (!isEditing && card.id) {
+                delete card.id;
+                delete card.name;
+                delete card.description;
+            }
+
+            card.display = display;
+            card.visualization_settings = cardVizSettings;
+
+            updateUrl();
+
             renderAll();
         }
 
         function isObjectDetailQuery(card, data) {
             var response = false;
+
+            // TODO: why can't we just use the Table Metadata here instead of the query result?
 
             // "rows" type query w/ an '=' filter against the PK column
             if (card.dataset_query &&
@@ -658,11 +690,6 @@ CardControllers.controller('CardDetail', [
             }
         }
 
-        function markupTableMetadata(table) {
-            var updatedTable = addValidOperatorsToFields(table);
-            return QueryUtils.populateQueryOptions(updatedTable);
-        }
-
         function toggleDataReference() {
             $scope.$apply(function() {
                 $scope.isShowingDataReference = !$scope.isShowingDataReference;
@@ -673,80 +700,87 @@ CardControllers.controller('CardDetail', [
             });
         }
 
-        function resetCardQuery(mode) {
-            var queryTemplate = angular.copy(newQueryTemplates[mode]);
-            if (queryTemplate) {
-
-                // carry over currently selected database to new query, if possible
-                // otherwise try to set the database to a sensible default
-                if (card.dataset_query.database !== undefined &&
-                    card.dataset_query.database !== null) {
-                    queryTemplate.database = card.dataset_query.database;
-                } else if (databases && databases.length > 0) {
-                    // TODO: be smarter about this and use the most recent or popular db
-                    queryTemplate.database = parseInt($routeParams.db) || databases[0].id;
-                }
-
-                // apply the new query to our card
-                card.dataset_query = queryTemplate;
-
-                // clear out any visualization and reset to defaults
-                queryResult = null;
-                card.display = "table";
-
-                MetabaseAnalytics.trackEvent('QueryBuilder', 'Query Started', mode);
+        // start a new card using the given query type and optional database and table selections
+        function startNewCard(type, databaseId, tableId) {
+            // carry over currently selected database to new query, if possible otherwise try to set the database to a sensible default
+            // TODO: be smarter about this and use the most recent or popular db
+            if (!databaseId && databases && databases.length > 0) {
+                databaseId = databases[0].id;
             }
-        }
 
-        function loadSavedCard(cardId) {
-            return Card.get({ 'cardId': cardId }).$promise;
-        }
+            // create a brand new card to work from
+            let card = createCard();
+            card.dataset_query = createQuery(type, databaseId, tableId);
 
-        function loadSerializedCard(serialized) {
-            var card = deserializeCardFromUrl(serialized);
-            // consider this since it's not saved:
-            card.isDirty = true;
             return card;
         }
 
-        function loadNewCard() {
-            // show data reference
-            // $scope.isShowingDataReference = true;
+        function loadSerializedCard(serialized) {
+            const card = deserializeCardFromUrl(serialized);
 
-            // this is just an easy way to ensure defaults are all setup
-            resetCardQuery("query");
-
-            // initialize the table & db from our query params, if we have them
-            if ($routeParams.db != undefined) {
-                card.dataset_query.database = parseInt($routeParams.db);
-            }
-            if ($routeParams.table != undefined && card.dataset_query.query) {
-                card.dataset_query.query.source_table = parseInt($routeParams.table);
+            if (serialized !== serializeCardForUrl(startNewCard(card.dataset_query.type))) {
                 card.isDirty = true;
             }
 
             return card;
         }
 
-        async function loadCard() {
-            if ($routeParams.cardId != undefined) {
-                var card = await loadSavedCard($routeParams.cardId);
-                if ($routeParams.serializedCard) {
-                    let serializedCard = await loadSerializedCard($routeParams.serializedCard);
-                    return _.extend(card, serializedCard);
+        // load up a card, either from existing data such as a cardId or serialized card info, or create a new one including options from url params
+        async function loadCard(cardId, serializedCard) {
+            if (cardId != undefined) {
+                let card = await Card.get({ 'cardId': cardId }).$promise;
+                if (serializedCard) {
+                    let deserializedCard = await loadSerializedCard(serializedCard);
+                    return _.extend(card, deserializedCard);
                 } else {
                     return card;
                 }
-            } else if ($routeParams.serializedCard != undefined) {
-                return loadSerializedCard($routeParams.serializedCard);
+
+            } else if (serializedCard) {
+                return loadSerializedCard(serializedCard);
+
             } else {
-                return loadNewCard();
+                let card = startNewCard("query");
+
+                // initialize parts of the query based on the information we have in the query params
+                if ($routeParams.db != undefined) {
+                    card.dataset_query.database = parseInt($routeParams.db);
+                } else if (databases && databases.length > 0) {
+                    card.dataset_query.database = databases[0].id;
+                }
+
+                if ($routeParams.table != undefined && card.dataset_query.query) {
+                    card.dataset_query.query.source_table = parseInt($routeParams.table);
+                    card.isDirty = true;
+                }
+
+                if ($routeParams.segment != undefined && card.dataset_query.query) {
+                    card.dataset_query.query.filter = ["AND", ["SEGMENT", parseInt($routeParams.segment)]];
+                    card.isDirty = true;
+                }
+
+                if ($routeParams.metric != undefined && card.dataset_query.query) {
+                    card.dataset_query.query.aggregation = ["METRIC", parseInt($routeParams.metric)];
+                    card.isDirty = true;
+                }
+
+                MetabaseAnalytics.trackEvent('QueryBuilder', 'Query Started', "query");
+                return card;
             }
         }
 
+        // completely reset the active card on the QB.  includes options for: resetDirty, setDirty, runQuery
         function setCard(result, options = {}) {
             // update our react models as needed
             card = result;
+            queryResult = null;
+            isEditing = false;
+
+            if (card.id) {
+                originalCard = angular.copy(result);
+            } else {
+                originalCard = undefined;
+            }
 
             if (options.resetDirty) {
                 resetDirty();
@@ -757,6 +791,11 @@ CardControllers.controller('CardDetail', [
 
             updateUrl(options.replaceState);
 
+            // track our lineage
+            if (card.id) {
+                originalCard = angular.copy(card);
+            }
+
             // load metadata
             loadDatabaseInfo(card.dataset_query.database);
 
@@ -765,7 +804,8 @@ CardControllers.controller('CardDetail', [
             }
 
             // run the query
-            if (Query.canRun(card.dataset_query.query) || card.dataset_query.type === "native") {
+            // TODO: if the card isn't actually modified then ideally we won't run the query here
+            if (options.runQuery !== false && (Query.canRun(card.dataset_query.query) || card.dataset_query.type === "native")) {
                 runQuery();
             }
 
@@ -776,19 +816,22 @@ CardControllers.controller('CardDetail', [
         // meant to be called once on controller startup
         async function loadAndSetCard() {
             try {
-                let card = await loadCard();
-                if ($routeParams.clone) {
-                    delete card.id;
-                    card.isDirty = true;
+                const cardId = $routeParams.cardId;
+                const serializedCard = _.isEmpty($location.hash()) ? null : $location.hash();
+
+                let card = await loadCard(cardId, serializedCard);
+
+                if ($routeParams.edit) {
+                    isEditing = true;
                 }
+
                 // HACK: dirty status passed in the object itself, delete it
                 let isDirty = !!card.isDirty;
                 delete card.isDirty;
                 return setCard(card, { setDirty: isDirty, resetDirty: !isDirty, replaceState: true });
             } catch (error) {
-                if (error.status == 404) {
-                    // TODO() - we should redirect to the card builder with no query instead of /
-                    $location.path('/');
+                if (error.status === 404) {
+                    renderNotFound();
                 }
             }
         }
@@ -812,12 +855,21 @@ CardControllers.controller('CardDetail', [
         }
 
         function reloadCard() {
-            delete $routeParams.serializedCard;
+            $location.hash(null);
             loadAndSetCard();
         }
 
-        // needs to be performed asynchronously otherwise we get weird infinite recursion
-        var updateUrl = (replaceState) => setTimeout(function() {
+        function setSampleDataset() {
+            let sampleDataset = _.findWhere(databases, { is_sample: true });
+            setDatabase(sampleDataset.id);
+        }
+
+        function updateUrl(replaceState) {
+            // don't update the URL if we're currently showing the tutorial
+            if (isShowingTutorial) {
+                return;
+            }
+
             var copy = cleanCopyCard(card);
             var newState = {
                 card: copy,
@@ -834,12 +886,20 @@ CardControllers.controller('CardDetail', [
             // if the serialized card is identical replace the previous state instead of adding a new one
             // e.x. when saving a new card we want to replace the state and URL with one with the new card ID
             replaceState = replaceState || (window.history.state && window.history.state.serializedCard === newState.serializedCard);
-            if (replaceState) {
-                window.history.replaceState(newState, null, url);
-            } else {
-                window.history.pushState(newState, null, url);
-            }
-        }, 0);
+
+            // ensure the digest cycle is run, otherwise pending location changes will prevent navigation away from query builder on the first click
+            $scope.$apply(() => {
+                // prevents infinite digest loop
+                // https://stackoverflow.com/questions/22914228/successfully-call-history-pushstate-from-angular-without-inifinite-digest
+                $location.url(url);
+                $location.replace();
+                if (replaceState) {
+                    window.history.replaceState(newState, null, $location.absUrl());
+                } else {
+                    window.history.pushState(newState, null, $location.absUrl());
+                }
+            });
+        }
 
         function popStateListener(e) {
             if (e.state && e.state.card) {
@@ -862,14 +922,18 @@ CardControllers.controller('CardDetail', [
 
             // any time we route away from the query builder force unmount our react components to make sure they have a chance
             // to fully clean themselves up and remove things like popover elements which may be on the screen
-            React.unmountComponentAtNode(document.getElementById('react_qb_header'));
-            React.unmountComponentAtNode(document.getElementById('react_qb_editor'));
-            React.unmountComponentAtNode(document.getElementById('react_qb_viz'));
-            React.unmountComponentAtNode(document.getElementById('react_data_reference'));
+            ReactDOM.unmountComponentAtNode(document.getElementById('react_qb_header'));
+            ReactDOM.unmountComponentAtNode(document.getElementById('react_qb_editor'));
+            ReactDOM.unmountComponentAtNode(document.getElementById('react_qb_viz'));
+            ReactDOM.unmountComponentAtNode(document.getElementById('react_data_reference'));
         });
 
+        // prevent angular route change when we manually update the url
+        // NOTE: we tried listening on $locationChangeStart and simply canceling that, but doing so prevents the history and everything
+        //       and ideally we'd simply listen on $routeChangeStart and cancel that when it's the same controller, but that doesn't work :(
 
         // mildly hacky way to prevent reloading controllers as the URL changes
+        // this works by setting the new route to the old route and manually moving over params
         var route = $route.current;
         $scope.$on('$locationChangeSuccess', function (event) {
             var newParams = $route.current.params;
@@ -878,7 +942,9 @@ CardControllers.controller('CardDetail', [
             // reload the controller if:
             // 1. not CardDetail
             // 2. both serializedCard and cardId are not set (new card)
-            if ($route.current.$$route.controller === 'CardDetail' && (newParams.serializedCard || newParams.cardId)) {
+            // TODO: is there really ever a reason to reload this route if we are going to the same place?
+            const serializedCard = _.isEmpty($location.hash()) ? null : $location.hash();
+            if ($route.current.$$route.controller === 'CardDetail' && (serializedCard || newParams.cardId)) {
                 $route.current = route;
 
                 angular.forEach(oldParams, function(value, key) {
@@ -892,29 +958,49 @@ CardControllers.controller('CardDetail', [
             }
         });
 
-        // TODO: while we wait for the databases list we should put something on screen
-        // grab our database list, then handle the rest
-        async function loadDatabasesAndTables() {
-            let dbs = await Metabase.db_list().$promise;
-            return await * dbs.map(async function(db) {
-                db.tables = await Metabase.db_tables({ dbId: db.id }).$promise;
-                return db;
-            });
+        async function init() {
+            try {
+                databases = await Metabase.db_list_with_tables().$promise;
+
+                if (databases.length < 1) {
+                    // TODO: some indication that setting up a db is required
+                    return;
+                }
+
+                isShowingTutorial = $routeParams.tutorial;
+                isShowingNewbModal = $routeParams.cardId && $scope.user.is_qbnewb;
+
+                // finish initializing our page and render
+                await loadAndSetCard();
+
+                if (isShowingTutorial) {
+                    setSampleDataset();
+                    MetabaseAnalytics.trackEvent('QueryBuilder', 'Tutorial Start');
+                }
+            } catch (error) {
+                console.log('error getting database list', error);
+            }
         }
 
-        loadDatabasesAndTables().then(function(dbs) {
-            databases = dbs;
+        init();
 
-            if (dbs.length < 1) {
-                // TODO: some indication that setting up a db is required
-                return;
-            }
+        // for debugging visualizations allow dumping/loading of visualization state from JavaScript console
+        window.dumpQueryBuilderState = function() {
+            return {
+                card: card,
+                data: queryResult
+            };
+        };
 
-            // finish initializing our page and render
-            loadAndSetCard();
+        window.loadQueryBuilderState = function(state) {
+            card = state.card;
+            queryResult = state.data;
+            renderAll();
+        };
 
-        }, function (error) {
-            console.log('error getting database list', error);
-        });
+        $scope.$on("$destroy", function() {
+            delete window.dumpQueryBuilderState;
+            delete window.loadQueryBuilderState;
+        })
     }
 ]);

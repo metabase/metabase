@@ -1,13 +1,12 @@
 (ns metabase.events.view-log
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [metabase.config :as config]
             [metabase.db :as db]
             [metabase.events :as events]
             [metabase.models.view-log :refer [ViewLog]]))
 
 
-(def view-counts-topics
+(def ^:private ^:const view-counts-topics
   "The `Set` of event topics which we subscribe to for view counting."
   #{:card-create
     :card-read
@@ -47,7 +46,7 @@
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
-(defn events-init []
-  (when-not (config/is-test?)
-    (log/info "Starting view-log events listener")
-    (events/start-event-listener view-counts-topics view-counts-channel process-view-count-event)))
+(defn events-init
+  "Automatically called during startup; start the events listener for view events."
+  []
+  (events/start-event-listener view-counts-topics view-counts-channel process-view-count-event))

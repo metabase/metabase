@@ -1,20 +1,18 @@
 (ns metabase.middleware
   "Metabase-specific middleware functions & configuration."
-  (:require [clojure.math.numeric-tower :as math]
-            [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
+  (:require [clojure.tools.logging :as log]
             (cheshire factory
                       [generate :refer [add-encoder encode-str encode-nil]])
             [korma.core :as k]
-            [medley.core :refer [filter-vals map-vals]]
             [metabase.api.common :refer [*current-user* *current-user-id*]]
             [metabase.config :as config]
             [metabase.db :refer [sel]]
-            (metabase.models [interface :refer [api-serialize]]
+            (metabase.models [interface :as models]
                              [session :refer [Session]]
                              [setting :refer [defsetting]]
                              [user :refer [User]])
-            [metabase.util :as u]))
+            [metabase.util :as u])
+  (:import com.fasterxml.jackson.core.JsonGenerator))
 
 ;;; # ------------------------------------------------------------ UTIL FNS ------------------------------------------------------------
 
@@ -35,12 +33,12 @@
 
 ;;; # ------------------------------------------------------------ AUTH & SESSION MANAGEMENT ------------------------------------------------------------
 
-(def ^:const metabase-session-cookie "metabase.SESSION_ID")
-(def ^:const metabase-session-header "x-metabase-session")
-(def ^:const metabase-api-key-header "x-metabase-apikey")
+(def ^:private ^:const metabase-session-cookie "metabase.SESSION_ID")
+(def ^:private ^:const metabase-session-header "x-metabase-session")
+(def ^:private ^:const metabase-api-key-header "x-metabase-apikey")
 
-(def ^:const response-unauthentic {:status 401, :body "Unauthenticated"})
-(def ^:const response-forbidden   {:status 403, :body "Forbidden"})
+(def ^:const response-unauthentic "Generic `401 (Unauthenticated)` Ring response map." {:status 401, :body "Unauthenticated"})
+(def ^:const response-forbidden   "Generic `403 (Forbidden)` Ring response map."       {:status 403, :body "Forbidden"})
 
 
 (defn wrap-session-id
@@ -82,7 +80,6 @@
       (handler request)
       response-unauthentic)))
 
-
 (defn bind-current-user
   "Middleware that binds `metabase.api.common/*current-user*` and `*current-user-id*`
 
@@ -92,7 +89,7 @@
   (fn [request]
     (if-let [current-user-id (:metabase-user-id request)]
       (binding [*current-user-id* current-user-id
-                *current-user*    (delay (sel :one `[User ~@(:metabase.models.interface/default-fields User) :is_active :is_staff], :id current-user-id))]
+                *current-user*    (delay (sel :one `[User ~@(models/default-fields User) :is_active :is_staff], :id current-user-id))]
         (handler request))
       (handler request))))
 
@@ -143,22 +140,30 @@
                                                       :script-src  ["'unsafe-inline'"
                                                                     "'unsafe-eval'"
                                                                     "'self'"
-                                                                    "www.google-analytics.com"
-                                                                    "*.googleapis.com"
+                                                                    "https://maps.google.com"
+                                                                    "https://www.google-analytics.com" ; Safari requires the protocol
+                                                                    "https://*.googleapis.com"
                                                                     "*.gstatic.com"
                                                                     "js.intercomcdn.com"
-                                                                    "*.intercom.io"]
+                                                                    "*.intercom.io"
+                                                                    (when config/is-dev?
+                                                                      "localhost:8080")]
                                                       :style-src   ["'unsafe-inline'"
                                                                     "'self'"
                                                                     "fonts.googleapis.com"]
-                                                      :font-src    ["fonts.gstatic.com"
-                                                                    "themes.googleusercontent.com"]
+                                                      :font-src    ["'self'"
+                                                                    "fonts.gstatic.com"
+                                                                    "themes.googleusercontent.com"
+                                                                    (when config/is-dev?
+                                                                      "localhost:8080")]
                                                       :img-src     ["*"
                                                                     "self data:"]
                                                       :connect-src ["'self'"
                                                                     "metabase.us10.list-manage.com"
                                                                     "*.intercom.io"
-                                                                    "wss://*.intercom.io"]}] ; allow websockets as well
+                                                                    "wss://*.intercom.io" ; allow websockets as well
+                                                                    (when config/is-dev?
+                                                                      "localhost:8080 ws://localhost:8080")]}]
                                           (format "%s %s; " (name k) (apply str (interpose " " vs)))))})
 
 (defsetting ssl-certificate-public-key
@@ -197,80 +202,38 @@
 
 ;;; # ------------------------------------------------------------ JSON SERIALIZATION CONFIG ------------------------------------------------------------
 
-;; Tell the JSON middleware to use a date format that includes milliseconds
-(intern 'cheshire.factory 'default-date-format "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+;; Tell the JSON middleware to use a date format that includes milliseconds (why?)
+(def ^:private ^:const default-date-format "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+(intern 'cheshire.factory 'default-date-format default-date-format)
+(intern 'cheshire.generate '*date-format* default-date-format)
 
 ;; ## Custom JSON encoders
 
+;; Always fall back to `.toString` instead of barfing.
+;; In some cases we should be able to improve upon this behavior; `.toString` may just return the Class and address, e.g. `net.sourceforge.jtds.jdbc.ClobImpl@72a8b25e`
+;; The following are known few classes where `.toString` is the optimal behavior:
+;; *  `org.postgresql.jdbc4.Jdbc4Array` (Postgres arrays)
+;; *  `org.bson.types.ObjectId`         (Mongo BSON IDs)
+;; *  `java.sql.Date`                   (SQL Dates -- .toString returns YYYY-MM-DD)
+(add-encoder Object encode-str)
+
+(defn- encode-jdbc-clob [clob, ^JsonGenerator json-generator]
+  (.writeString json-generator (u/jdbc-clob->str clob)))
+
 ;; stringify JDBC clobs
-(add-encoder org.h2.jdbc.JdbcClob (fn [clob ^com.fasterxml.jackson.core.JsonGenerator json-generator]
-                                    (.writeString json-generator (u/jdbc-clob->str clob))))
+(add-encoder org.h2.jdbc.JdbcClob               encode-jdbc-clob) ; H2
+(add-encoder net.sourceforge.jtds.jdbc.ClobImpl encode-jdbc-clob) ; SQLServer
+(add-encoder org.postgresql.util.PGobject       encode-jdbc-clob) ; Postgres
 
-;; stringify Postgres binary objects (e.g. PostGIS geometries)
-(add-encoder org.postgresql.util.PGobject encode-str)
-
-;; Do the same for PG arrays
-(add-encoder org.postgresql.jdbc4.Jdbc4Array encode-str)
-
-;; Encode BSON IDs like strings
-(add-encoder org.bson.types.ObjectId encode-str)
-
-;; Encode BSON undefined like nil
+;; Encode BSON undefined like `nil`
 (add-encoder org.bson.BsonUndefined encode-nil)
 
-;; serialize sql dates (i.e., QueryProcessor results) like YYYY-MM-DD instead of as a full-blown timestamp
-(add-encoder java.sql.Date encode-str)
-
-(defn- remove-fns-and-delays
-  "Remove values that are fns or delays from map M."
-  [m]
-  (filter-vals #(not (or (delay? %)
-                         (fn? %)))
-               ;; Convert typed maps such as metabase.models.database/DatabaseInstance to plain maps because empty, which is used internally by filter-vals,
-               ;; will fail otherwise
-               (into {} m)))
-
-(defn format-response
-  "Middleware that recurses over Clojure object before it gets converted to JSON and makes adjustments neccessary so the formatter doesn't barf.
-   e.g. functions and delays are stripped and H2 Clobs are converted to strings."
-  [handler]
-  (let [-format-response (fn -format-response [obj]
-                           (cond
-                             (map? obj)  (->> (api-serialize obj)
-                                              remove-fns-and-delays
-                                              (map-vals -format-response)) ; recurse over all vals in the map
-                             (coll? obj) (map -format-response obj)        ; recurse over all items in the collection
-                             :else       obj))]
-    (fn [request]
-      (-format-response (handler request)))))
-
-
+;; Binary arrays ("[B") -- hex-encode their first four bytes, e.g. "0xC42360D7"
+(add-encoder (Class/forName "[B") (fn [byte-ar, ^JsonGenerator json-generator]
+                                    (.writeString json-generator ^String (apply str "0x" (for [b (take 4 byte-ar)]
+                                                                                           (format "%02X" b))))))
 
 ;;; # ------------------------------------------------------------ LOGGING ------------------------------------------------------------
-
-(def ^:private ^:const sensitive-fields
-  "Fields that we should censor before logging."
-  #{:password})
-
-(defn- scrub-sensitive-fields
-  "Replace values of fields in `sensitive-fields` with `\"**********\"` before logging."
-  [request]
-  (walk/prewalk (fn [form]
-                  (if-not (and (vector? form)
-                               (= (count form) 2)
-                               (keyword? (first form))
-                               (contains? sensitive-fields (first form)))
-                    form
-                    [(first form) "**********"]))
-                request))
-
-(defn- log-request [{:keys [uri request-method body query-string]}]
-  (log/debug (u/format-color 'blue "%s %s "
-                             (.toUpperCase (name request-method)) (str uri
-                                                                       (when-not (empty? query-string)
-                                                                         (str "?" query-string)))
-                             (when (or (string? body) (coll? body))
-                               (str "\n" (u/pprint-to-str (scrub-sensitive-fields body)))))))
 
 (defn- log-response [{:keys [uri request-method]} {:keys [status body]} elapsed-time]
   (let [log-error #(log/error %) ; these are macros so we can't pass by value :sad:
@@ -281,7 +244,7 @@
                                 (=  status 403) [true  'red   log-warn]
                                 (>= status 400) [true  'red   log-debug]
                                 :else           [false 'green log-debug])]
-    (log-fn (str (u/format-color color "%s %s %d (%d ms)" (.toUpperCase (name request-method)) uri status elapsed-time)
+    (log-fn (str (u/format-color color "%s %s %d (%s)" (.toUpperCase (name request-method)) uri status elapsed-time)
                  ;; only print body on error so we don't pollute our environment by over-logging
                  (when (and error?
                             (or (string? body) (coll? body)))
@@ -290,20 +253,9 @@
 (defn log-api-call
   "Middleware to log `:request` and/or `:response` by passing corresponding OPTIONS."
   [handler & options]
-  (let [{:keys [request response]} (set options)
-        log-request? request
-        log-response? response]
-    (fn [request]
-      (if-not (api-call? request) (handler request)
-              (do
-                (when log-request?
-                  (log-request request))
-                (let [start-time (System/nanoTime)
-                      response (handler request)
-                      elapsed-time (-> (- (System/nanoTime) start-time)
-                                       double
-                                       (/ 1000000.0)
-                                       math/round)]
-                  (when log-response?
-                    (log-response request response elapsed-time))
-                  response))))))
+  (fn [request]
+    (if-not (api-call? request)
+      (handler request)
+      (let [start-time (System/nanoTime)]
+        (u/prog1 (handler request)
+          (log-response request <> (u/format-nanoseconds (- (System/nanoTime) start-time))))))))

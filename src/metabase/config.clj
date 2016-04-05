@@ -2,8 +2,7 @@
   (:require (clojure.java [io :as io]
                           [shell :as shell])
             [clojure.string :as s]
-            [environ.core :as environ]
-            [medley.core :as m])
+            [environ.core :as environ])
   (:import clojure.lang.Keyword))
 
 (def ^:private ^:const app-defaults
@@ -27,7 +26,8 @@
    ;; Other Application Settings
    :mb-password-complexity "normal"
    ;:mb-password-length "8"
-   :max-session-age "20160"})                    ; session length in minutes (14 days)
+   :max-session-age "20160"                     ; session length in minutes (14 days)
+   :mb-colorize-logs "true"})
 
 
 (defn config-str
@@ -35,7 +35,7 @@
 
    We resolve properties from these places:
    1.  environment variables (ex: MB_DB_TYPE -> :mb-db-type)
-   2.  jvm opitons (ex: -Dmb.db.type -> :mb-db-type)
+   2.  jvm options (ex: -Dmb.db.type -> :mb-db-type)
    3.  hard coded `app-defaults`"
   [k]
   (let [k (keyword k)]
@@ -43,35 +43,13 @@
 
 
 ;; These are convenience functions for accessing config values that ensures a specific return type
-(defn ^Integer config-int  [k] (some-> k config-str Integer/parseInt))
-(defn ^Boolean config-bool [k] (some-> k config-str Boolean/parseBoolean))
-(defn ^Keyword config-kw   [k] (some-> k config-str keyword))
+(defn ^Integer config-int  "Fetch a configuration key and parse it as an integer." [k] (some-> k config-str Integer/parseInt))
+(defn ^Boolean config-bool "Fetch a configuration key and parse it as a boolean."  [k] (some-> k config-str Boolean/parseBoolean))
+(defn ^Keyword config-kw   "Fetch a configuration key and parse it as a keyword."  [k] (some-> k config-str keyword))
 
-
-(def ^:const config-all
-  "Global application configuration as a dictionary.
-   Combines hard coded defaults with optional user specified overrides from environment variables."
-  (into {} (for [k (keys app-defaults)]
-               [k (config-str k)])))
-
-
-(defn config-match
-  "Retrieves all configuration values whose key begin with a specified prefix.
-   The returned map will strip the prefix from the key names.
-   All returned values will be Strings.
-
-   For example if you wanted all of Java's internal environment config values:
-   * (config-match \"java-\") -> {:version \"25.25-b02\" :info \"mixed mode\"}"
-  [prefix]
-  (let [prefix-regex (re-pattern (str ":" prefix ".*"))]
-    (->> (merge
-          (m/filter-keys (fn [k] (re-matches prefix-regex (str k))) app-defaults)
-          (m/filter-keys (fn [k] (re-matches prefix-regex (str k))) environ/env))
-      (m/map-keys (fn [k] (let [kstr (str k)] (keyword (subs kstr (+ 1 (count prefix))))))))))
-
-(defn ^Boolean is-dev?  [] (= :dev  (config-kw :mb-run-mode)))
-(defn ^Boolean is-prod? [] (= :prod (config-kw :mb-run-mode)))
-(defn ^Boolean is-test? [] (= :test (config-kw :mb-run-mode)))
+(def ^:const ^Boolean is-dev?  "Are we running in `dev` mode (i.e. in a REPL or via `lein ring server`)?" (= :dev  (config-kw :mb-run-mode)))
+(def ^:const ^Boolean is-prod? "Are we running in `prod` mode (i.e. from a JAR)?"                         (= :prod (config-kw :mb-run-mode)))
+(def ^:const ^Boolean is-test? "Are we running in `test` mode (i.e. via `lein test`)?"                    (= :test (config-kw :mb-run-mode)))
 
 
 ;;; Version stuff
@@ -79,30 +57,26 @@
 
 (defn- version-info-from-shell-script []
   (let [[tag hash branch date] (-> (shell/sh "./bin/version") :out s/trim (s/split #" "))]
-    {:tag    tag
-     :hash   hash
-     :branch branch
-     :date   date}))
+    {:tag tag, :hash hash, :branch branch, :date date}))
 
 (defn- version-info-from-properties-file []
-  (with-open [reader (io/reader (io/resource "version.properties"))]
-    (let [props (java.util.Properties.)]
-      (.load props reader)
-      (into {} (for [[k v] props]
-                 [(keyword k) v])))))
+  (when-let [props-file (io/resource "version.properties")]
+    (with-open [reader (io/reader props-file)]
+      (let [props (java.util.Properties.)]
+        (.load props reader)
+        (into {} (for [[k v] props]
+                   [(keyword k) v]))))))
 
-(defn mb-version-info
-  "Return information about the current version of Metabase.
+(def ^:const mb-version-info
+  "Information about the current version of Metabase.
    This comes from `resources/version.properties` for prod builds and is fetched from `git` via the `./bin/version` script for dev.
 
-     (mb-version) -> {:tag: \"v0.11.1\", :hash: \"afdf863\", :branch: \"about_metabase\", :date: \"2015-10-05\"}"
-  []
-  (if (is-prod?)
+     mb-version-info -> {:tag: \"v0.11.1\", :hash: \"afdf863\", :branch: \"about_metabase\", :date: \"2015-10-05\"}"
+  (if is-prod?
     (version-info-from-properties-file)
     (version-info-from-shell-script)))
 
-(defn mb-version-string
-  "Return a formatted version string representing the currently running application."
-  []
-  (let [{:keys [tag hash branch date]} (mb-version-info)]
+(def ^:const mb-version-string
+  "A formatted version string representing the currently running application."
+  (let [{:keys [tag hash branch]} mb-version-info]
     (format "%s (%s %s)" tag hash branch)))

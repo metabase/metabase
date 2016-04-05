@@ -1,13 +1,11 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
+
+import ReactCSSTransitionGroup from "react-addons-css-transition-group";
 
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper.jsx";
 
 export default class Modal extends Component {
-    constructor(props, context) {
-        super(props, context);
-        this.state = {};
-    }
-
     static propTypes = {
         isOpen: PropTypes.bool
     };
@@ -33,7 +31,7 @@ export default class Modal extends Component {
     }
 
     componentWillUnmount() {
-        React.unmountComponentAtNode(this._modalElement);
+        ReactDOM.unmountComponentAtNode(this._modalElement);
         if (this._modalElement.parentNode) {
             this._modalElement.parentNode.removeChild(this._modalElement);
         }
@@ -56,17 +54,15 @@ export default class Modal extends Component {
     }
 
     _renderPopover() {
-        if (this.props.isOpen) {
-            // modal is open, lets do this!
-            React.render(
-                <div className="Modal-backdrop">
-                    {this._modalComponent()}
-                </div>
-            , this._modalElement);
-        } else {
-            // if the modal isn't open then actively unmount our popover
-            React.unmountComponentAtNode(this._modalElement);
-        }
+        ReactDOM.render(
+            <ReactCSSTransitionGroup transitionName="Modal" transitionAppear={true} transitionAppearTimeout={250} transitionEnterTimeout={250} transitionLeaveTimeout={250}>
+                { this.props.isOpen &&
+                    <div key="modal" className="Modal-backdrop" style={this.props.style}>
+                        {this._modalComponent()}
+                    </div>
+                }
+            </ReactCSSTransitionGroup>
+        , this._modalElement);
     }
 
     render() {

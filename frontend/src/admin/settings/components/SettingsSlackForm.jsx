@@ -1,7 +1,9 @@
 import React, { Component, PropTypes } from "react";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseUtils from "metabase/lib/utils";
 import SettingsEmailFormElement from "./SettingsEmailFormElement.jsx";
+import SettingsSetting from "./SettingsSetting.jsx";
 
 import Icon from "metabase/components/Icon.jsx";
 
@@ -33,7 +35,7 @@ export default class SettingsSlackForm extends Component {
         // this gives us an opportunity to load up our formData with any existing values for elements
         let formData = {};
         this.props.elements.forEach(function(element) {
-            formData[element.key] = element.value;
+            formData[element.key] = element.value || element.defaultValue;
         });
 
         this.setState({formData});
@@ -85,7 +87,7 @@ export default class SettingsSlackForm extends Component {
                     validationErrors[element.key] = this.validateElement(validation, formData[element.key], element);
                     if (validationErrors[element.key]) valid = false;
                 }, this);
-            };
+            }
         }, this);
 
         if (this.state.valid !== valid || !_.isEqual(this.state.validationErrors, validationErrors)) {
@@ -97,6 +99,10 @@ export default class SettingsSlackForm extends Component {
         this.setState({
             formData: { ...this.state.formData, [element.key]: (MetabaseUtils.isEmpty(value)) ? null : value }
         });
+
+        if (element.key === "metabot-enabled") {
+            MetabaseAnalytics.trackEvent("Slack Settings", "Toggle Metabot", value);
+        }
     }
 
     handleFormErrors(error) {
@@ -131,6 +137,8 @@ export default class SettingsSlackForm extends Component {
                     submitting: "success"
                 });
 
+                MetabaseAnalytics.trackEvent("Slack Settings", "Update", "success");
+
                 // show a confirmation for 3 seconds, then return to normal
                 setTimeout(() => this.setState({submitting: "default"}), 3000);
             }, (error) => {
@@ -138,6 +146,8 @@ export default class SettingsSlackForm extends Component {
                     submitting: "default",
                     formErrors: this.handleFormErrors(error)
                 });
+
+                MetabaseAnalytics.trackEvent("Slack Settings", "Update", "error");
             });
         }
     }
@@ -151,10 +161,22 @@ export default class SettingsSlackForm extends Component {
             let errorMessage = (formErrors && formErrors.elements) ? formErrors.elements[element.key] : validationErrors[element.key],
                 value = formData[element.key] || element.defaultValue;
 
-            return <SettingsEmailFormElement
+            if (element.key === "slack-token") {
+                return (
+                    <SettingsEmailFormElement
                         key={element.key}
                         element={_.extend(element, {value, errorMessage })}
                         handleChangeEvent={this.handleChangeEvent.bind(this)} />
+                );
+            } else if (element.key === "metabot-enabled") {
+                return (
+                    <SettingsSetting
+                        key={element.key}
+                        setting={_.extend(element, {value, errorMessage })}
+                        updateSetting={(setting, value) => this.handleChangeEvent(setting, value)}
+                    />
+                );
+            }
         });
 
         let saveSettingsButtonStates = {
