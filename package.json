@@ -49,6 +49,7 @@
     "redux-thunk": "^2.0.1",
     "reselect": "^2.0.1",
     "screenfull": "^3.0.0",
+    "stack-source-map": "^1.0.4",
     "tether": "^1.2.0",
     "underscore": "^1.8.3",
     "xkcdplot": "^1.1.0",
@@ -89,6 +90,7 @@
     "unused-files-webpack-plugin": "^2.0.2",
     "webpack": "^1.12.14",
     "webpack-dev-server": "^1.14.0",
+    "webpack-hot-middleware": "^2.10.0",
     "webpack-postcss-tools": "^1.1.1"
   },
   "scripts": {
@@ -100,6 +102,7 @@
     "build-watch": "./node_modules/.bin/webpack --watch",
     "build-hot": "NODE_ENV=hot ./node_modules/.bin/webpack && NODE_ENV=hot node_modules/webpack-dev-server/bin/webpack-dev-server.js --hot --inline --content-base frontend",
     "shrinkwrap": "npm prune && npm shrinkwrap --dev && ./bin/clean-shrinkwrap",
-    "start": "npm run build && lein ring server"
+    "start": "npm run build && lein ring server",
+    "storybook": "./node_modules/.bin/start-storybook -p 9001"
   }
 }
