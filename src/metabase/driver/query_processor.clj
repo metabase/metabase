@@ -148,7 +148,10 @@
   (for [row rows]
     (for [v row]
       (if (u/is-temporal? v)
-        (u/->iso-8601-datetime v report-timezone)
+        ;; NOTE: if we don't have an explicit report-timezone then use the JVM timezone
+        ;;       this ensures alignment between the way dates are processed by JDBC and our returned data
+        ;;       GH issues: #2282, #2035
+        (u/->iso-8601-datetime v (or report-timezone (System/getProperty "user.timezone")))
         v))))
 
 (defn- post-format-rows
