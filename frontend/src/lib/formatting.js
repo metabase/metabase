@@ -50,6 +50,9 @@ function formatMajorMinor(major, minor, options = {}) {
 
 function formatTimeWithUnit(value, unit, options = {}) {
     let m = parseTimestamp(value);
+    if (!m.isValid()) {
+        return String(value);
+    }
     switch (unit) {
         case "hour": // 12 AM - January 1, 2015
             return formatMajorMinor(m.format("h A"), m.format("MMMM D, YYYY"), options);
@@ -75,8 +78,9 @@ function formatTimeWithUnit(value, unit, options = {}) {
             return moment().week(value).format("wo");
         case "month-of-year": // January
             return moment().month(value - 1).format("MMMM");
+        default:
+            return m.format("LLLL");
     }
-    return String(value);
 }
 
 export function formatValue(value, options = {}) {
