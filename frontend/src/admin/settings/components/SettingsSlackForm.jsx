@@ -174,6 +174,7 @@ export default class SettingsSlackForm extends Component {
                         key={element.key}
                         setting={_.extend(element, {value, errorMessage })}
                         updateSetting={(setting, value) => this.handleChangeEvent(setting, value)}
+                        disabled={!this.state.formData["slack-token"]}
                     />
                 );
             }

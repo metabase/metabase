@@ -115,7 +115,8 @@
                             :resource-paths ["test_resources"]
                             :env {:mb-test-setting-1 "ABCDEFG"
                                   :mb-run-mode "test"}
-                            :jvm-opts ["-Dmb.db.in.memory=true"
+                            :jvm-opts ["-Duser.timezone=UTC"
+                                       "-Dmb.db.in.memory=true"
                                        "-Dmb.jetty.join=false"
                                        "-Dmb.jetty.port=3010"
                                        "-Dmb.api.key=test-api-key"

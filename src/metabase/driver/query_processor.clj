@@ -148,7 +148,10 @@
   (for [row rows]
     (for [v row]
       (if (u/is-temporal? v)
-        (u/->iso-8601-datetime v report-timezone)
+        ;; NOTE: if we don't have an explicit report-timezone then use the JVM timezone
+        ;;       this ensures alignment between the way dates are processed by JDBC and our returned data
+        ;;       GH issues: #2282, #2035
+        (u/->iso-8601-datetime v (or report-timezone (System/getProperty "user.timezone")))
         v))))
 
 (defn- post-format-rows
@@ -181,7 +184,7 @@
                                            (resolve/resolve-table {source-table-id source-table}))]
                              (if (or (contains? #{:DateField :DateTimeField} (:base-type field))
                                      (contains? #{:timestamp_seconds :timestamp_milliseconds} (:special-type field)))
-                               (map->DateTimeField {:field field, :unit :day})
+                               (map->DateTimeField {:field field, :unit :default})
                                field)))]
               (if-not (seq fields)
                 (do (log/warn (format "Table '%s' has no Fields associated with it." (:name source-table)))

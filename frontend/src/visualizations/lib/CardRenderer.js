@@ -26,6 +26,7 @@ import { determineSeriesIndexFromElement } from "./tooltip";
 import { colorShades } from "./utils";
 
 import { formatValue } from "metabase/lib/formatting";
+import { parseTimestamp } from "metabase/lib/time";
 
 const MIN_PIXELS_PER_TICK = { x: 100, y: 32 };
 const BAR_PADDING_RATIO = 0.2;
@@ -79,7 +80,7 @@ function applyChartBoundary(chart, element) {
 
 function applyChartTimeseriesXAxis(chart, settings, series, xValues) {
     // setup an x-axis where the dimension is a timeseries
-    const dimensionColumn = series[0].data.cols[0];
+    let dimensionColumn = series[0].data.cols[0];
 
     let unit = minTimeseriesUnit(series.map(s => s.data.cols[0].unit));
 
@@ -89,7 +90,6 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues) {
 
     // compute the domain
     let xDomain = d3.extent(xValues);
-    let utcOffset = xDomain[0].utcOffset();
 
     if (settings.xAxis.labels_enabled) {
         chart.xAxisLabel(settings.xAxis.title_text || getFriendlyName(dimensionColumn));
@@ -97,21 +97,11 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues) {
     if (settings.xAxis.axis_enabled) {
         chart.renderVerticalGridLines(settings.xAxis.gridLine_enabled);
 
-        if (dimensionColumn && dimensionColumn.unit) {
-            // need to pass the utcOffset here since d3.time returns Dates not Moments and thus doesn't propagate the offset
-            chart.xAxis().tickFormat(d => formatValue(d, { column: dimensionColumn, utcOffset: utcOffset }));
-        } else {
-            chart.xAxis().tickFormat(d3.time.format.multi([
-                [".%L",    (d) => d.getMilliseconds()],
-                [":%S",    (d) => d.getSeconds()],
-                ["%I:%M",  (d) => d.getMinutes()],
-                ["%I %p",  (d) => d.getHours()],
-                ["%a %d",  (d) => d.getDay() && d.getDate() != 1],
-                ["%b %d",  (d) => d.getDate() != 1],
-                ["%B", (d) => d.getMonth()], // default "%B"
-                ["%Y", () => true] // default "%Y"
-            ]));
+        if (dimensionColumn.unit == null) {
+            dimensionColumn = { ...dimensionColumn, unit: dataInterval.interval };
         }
+
+        chart.xAxis().tickFormat(d => formatValue(d, { column: dimensionColumn }));
 
         // Compute a sane interval to display based on the data granularity, domain, and chart width
         tickInterval = computeTimeseriesTicksInterval(xValues, unit, chart.width(), MIN_PIXELS_PER_TICK.x);
@@ -459,8 +449,7 @@ export let CardRenderer = {
 
         let datas = series.map((s, index) =>
             s.data.rows.map(row => [
-                // use parseZone to retain the report timezone
-                (isTimeseries) ? moment.parseZone(row[0]) : row[0],
+                (isTimeseries) ? parseTimestamp(row[0]) : row[0],
                 ...row.slice(1)
             ])
         );
