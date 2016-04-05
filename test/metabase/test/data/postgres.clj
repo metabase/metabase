@@ -42,4 +42,6 @@
   (merge generic/IDatasetLoaderMixin
          {:database->connection-details database->connection-details
           :default-schema               (constantly "public")
-          :engine                       (constantly :postgres)}))
+          :engine                       (constantly :postgres)
+          ;; TODO: this is suspect, but it works
+          :has-questionable-timezone-support? (constantly true)}))
