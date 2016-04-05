@@ -16,11 +16,6 @@
   [symb value :nillable]
   (checkp-contains? #{:all :mine :fav :database :table} symb (keyword value)))
 
-(defannotation CardDisplayType
-  "Option must be a valid `display_type`."
-  [symb value :nillable]
-  (checkp-contains? card/display-types symb (keyword value)))
-
 (defendpoint GET "/"
   "Get all the `Cards`. With param `f` (default is `all`), restrict cards as follows:
 
@@ -60,7 +55,7 @@
   [:as {{:keys [dataset_query description display name public_perms visualization_settings]} :body}]
   {name         [Required NonEmptyString]
    public_perms [Required PublicPerms]
-   display      [Required CardDisplayType]}
+   display      [Required NonEmptyString]}
   (->> (ins Card
             :creator_id             *current-user-id*
             :dataset_query          dataset_query
@@ -86,7 +81,7 @@
   [id :as {{:keys [dataset_query description display name public_perms visualization_settings]} :body}]
   {name         NonEmptyString
    public_perms PublicPerms
-   display      CardDisplayType}
+   display      NonEmptyString}
   (write-check Card id)
   (upd-non-nil-keys Card id
                     :dataset_query dataset_query
