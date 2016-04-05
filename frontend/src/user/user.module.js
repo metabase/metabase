@@ -1,3 +1,5 @@
+import "./user.controllers";
+
 var UserAdmin = angular.module('metabase.user', ['metabase.user.controllers']);
 
 UserAdmin.config(['$routeProvider', function ($routeProvider) {

@@ -1,7 +1,6 @@
 import React, { Component, PropTypes } from 'react';
 
-import Calendar from '../../Calendar.jsx';
-
+import Calendar from "metabase/components/Calendar.jsx";
 import Input from "metabase/components/Input.jsx";
 
 import { computeFilterTimeRange } from "metabase/lib/query_time";

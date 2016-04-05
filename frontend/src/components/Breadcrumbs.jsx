@@ -1,5 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
+import "./Breadcrumbs.css";
+
 import Icon from "metabase/components/Icon.jsx"
 
 export default class Breadcrumbs extends Component {

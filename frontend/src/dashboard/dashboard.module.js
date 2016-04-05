@@ -1,3 +1,7 @@
+import "metabase/directives";
+import "metabase/services";
+import "./dashboard.controllers";
+
 // Dashboard
 var Dashboard = angular.module('metabase.dashboard', [
     'ngRoute',

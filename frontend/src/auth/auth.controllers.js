@@ -1,3 +1,5 @@
+import "./auth.services";
+
 import MetabaseSettings from "metabase/lib/settings";
 
 var AuthControllers = angular.module('metabase.auth.controllers', [

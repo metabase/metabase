@@ -6,8 +6,7 @@
             [metabase.db.metadata-queries :as metadata]
             (metabase.models [hydrate :refer [hydrate]]
                              [field :refer [Field] :as field]
-                             [field-values :refer [FieldValues create-field-values-if-needed field-should-have-field-values?]]
-                             [foreign-key :refer [ForeignKey] :as fk])))
+                             [field-values :refer [FieldValues create-field-values-if-needed field-should-have-field-values?]])))
 
 (defannotation FieldSpecialType
   "Param must be a valid `Field` special type."
@@ -24,12 +23,6 @@
   [symb value :nillable]
   (checkp-contains? field/field-types symb (keyword value)))
 
-(defannotation ForeignKeyRelationship
-  "Param must be a valid `ForeignKey` relationship: one of `1t1` (one-to-one)m
-   `Mt1` (many-to-one), or `MtM` (many-to-many)."
-  [symb value :nillable]
-  (checkp-contains? fk/relationships symb (keyword value)))
-
 (defendpoint GET "/:id"
   "Get `Field` with ID."
   [id]
@@ -39,19 +32,29 @@
 
 (defendpoint PUT "/:id"
   "Update `Field` with ID."
-  [id :as {{:keys [special_type visibility_type description display_name], :as body} :body}]
+  [id :as {{:keys [special_type visibility_type fk_target_field_id description display_name], :as body} :body}]
   {special_type    FieldSpecialType
    visibility_type FieldVisibilityType
    display_name    NonEmptyString}
   (let-404 [field (Field id)]
     (write-check field)
-    (let [special_type    (if (contains? body :special_type) special_type (:special_type field))
-          visibility_type (or visibility_type (:visibility_type field))]
+    (let [special_type       (if (contains? body :special_type) special_type (:special_type field))
+          visibility_type    (or visibility_type (:visibility_type field))
+          fk_target_field_id (when (= :fk special_type)
+                               ;; only let target field be set for :fk type fields,
+                               ;; and if it's not in the payload then leave the current value
+                               (if (contains? body :fk_target_field_id)
+                                 fk_target_field_id
+                                 (:fk_target_field_id field)))]
       (check-400 (field/valid-metadata? (:base_type field) (:field_type field) special_type visibility_type))
+      ;; validate that fk_target_field_id is a valid Field within the same database as our field
+      (when fk_target_field_id
+        (checkp (exists? Field :id fk_target_field_id) :fk_target_field_id "Invalid target field"))
       ;; update the Field.  start with keys that may be set to NULL then conditionally add other keys if they have values
-      (check-500 (m/mapply upd Field id (merge {:description     description
-                                                :special_type    special_type
-                                                :visibility_type visibility_type}
+      (check-500 (m/mapply upd Field id (merge {:description        description
+                                                :special_type       special_type
+                                                :visibility_type    visibility_type
+                                                :fk_target_field_id fk_target_field_id}
                                                (when display_name {:display_name display_name}))))
       (Field id))))
 
@@ -62,27 +65,6 @@
     (read-check field)
     [[:count     (metadata/field-count field)]
      [:distincts (metadata/field-distinct-count field)]]))
-
-
-(defendpoint GET "/:id/foreignkeys"
-  "Get `ForeignKeys` whose origin is `Field` with ID."
-  [id]
-  (read-check Field id)
-  (-> (sel :many ForeignKey :origin_id id)
-      (hydrate [:origin :table] [:destination :table])))
-
-
-(defendpoint POST "/:id/foreignkeys"
-  "Create a new `ForeignKey` relationgship with `Field` with ID as the origin."
-  [id :as {{:keys [target_field relationship]} :body}]
-  {target_field Required, relationship [Required ForeignKeyRelationship]}
-  (write-check Field id)
-  (write-check Field target_field)
-  (-> (ins ForeignKey
-        :origin_id id
-        :destination_id target_field
-        :relationship relationship)
-      (hydrate [:origin :table] [:destination :table])))
 
 
 (defendpoint GET "/:id/values"

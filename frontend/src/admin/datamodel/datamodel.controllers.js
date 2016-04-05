@@ -11,8 +11,8 @@ angular
     'metabase.directives',
     'metabase.forms'
 ])
-.controller('MetadataEditor', ['$scope', '$route', '$routeParams', '$location', '$q', '$timeout', 'databases', 'Metabase', 'ForeignKey', 'Segment', 'Metric',
-function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metabase, ForeignKey, Segment, Metric) {
+.controller('MetadataEditor', ['$scope', '$route', '$routeParams', '$location', '$q', '$timeout', 'databases', 'Metabase', 'Segment', 'Metric',
+function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metabase, Segment, Metric) {
     // inject the React component to be rendered
     $scope.MetadataEditor = MetadataEditor;
 
@@ -145,15 +145,9 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
         // If we are changing the field from a FK to something else, we should delete any FKs present
         if (field.target && field.target.id != null && field.special_type !== "fk") {
             // we have something that used to be an FK and is now not an FK
-            // Let's delete its foreign keys
-            try {
-                await deleteAllFieldForeignKeys(field);
-            } catch (e) {
-                console.warn("Errpr deleting foreign keys", e);
-            }
             // clean up after ourselves
             field.target = null;
-            field.target_id = null;
+            field.fk_target_field_id = null;
         }
         // save the field
         return $scope.updateField(field);
@@ -161,29 +155,8 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
 
     $scope.updateFieldTarget = async function(field) {
         // This function notes a change in the target of the target of a foreign key
-        // If there is already a target, we should delete that FK and create a new one
-        // This is meant to be transitional until we add an FK modify function to the API
-        // If there was not a target, we should create a new FK
-        try {
-            await deleteAllFieldForeignKeys(field);
-        } catch (e) {
-            console.warn("Error deleting foreign keys", e);
-        }
-        var result = await Metabase.field_addfk({
-            "db": $scope.databaseId,
-            "fieldId": field.id,
-            'target_field': field.target_id,
-            "relationship": "Mt1"
-        }).$promise;
-        field.target = result.destination;
+        $scope.updateField(field);
     };
-
-    async function deleteAllFieldForeignKeys(field) {
-        var fks = await Metabase.field_foreignkeys({ 'fieldId': field.id }).$promise;
-        return await Promise.all(fks.map(function(fk) {
-            return ForeignKey.delete({ 'fkID': fk.id }).$promise;
-        }));
-    }
 
     $scope.onRetireSegment = async function(segment) {
         await Segment.delete(segment).$promise;

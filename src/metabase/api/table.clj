@@ -6,7 +6,6 @@
             [metabase.db :refer :all]
             (metabase.models [hydrate :refer :all]
                              [field :refer [Field]]
-                             [foreign-key :refer [ForeignKey]]
                              [table :refer [Table] :as table])
             [metabase.driver :as driver]))
 
@@ -80,11 +79,16 @@
 (defendpoint GET "/:id/fks"
   "Get all `ForeignKeys` whose destination is a `Field` that belongs to this `Table`."
   [id]
-  (read-check Table id)
-  (let-404 [field-ids (sel :many :id Field :table_id id :visibility_type [not= "retired"])]
-    (-> (sel :many ForeignKey :destination_id [in field-ids])
-        ;; TODO - it's a little silly to hydrate both of these table objects
-        (hydrate [:origin [:table :db]] [:destination :table]))))
+  (let-404 [table (Table id)]
+    (read-check table)
+    (let [field-ids (sel :many :id Field :table_id id :visibility_type [not= "retired"])]
+      (for [origin-field (sel :many Field :fk_target_field_id [in field-ids])]
+        ;; it's silly to be hydrating some of these tables/dbs
+        {:relationship   :Mt1
+         :origin_id      (:id origin-field)
+         :origin         (hydrate origin-field [:table :db])
+         :destination_id (:fk_target_field_id origin-field)
+         :destination    (hydrate (Field (:fk_target_field_id origin-field)) :table)}))))
 
 (defendpoint POST "/:id/sync"
   "Re-sync the metadata for this `Table`."

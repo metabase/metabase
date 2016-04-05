@@ -5,7 +5,6 @@
             (metabase [http-client :as http]
                       [middleware :as middleware])
             (metabase.models [field :refer [Field]]
-                             [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])
             [metabase.test.data :refer :all]
             (metabase.test.data [dataset-definitions :as defs]
@@ -108,6 +107,7 @@
             :created_at          $
             :base_type           "BigIntegerField"
             :visibility_type     "normal"
+            :fk_target_field_id  $
             :parent_id           nil})
          (match-$ (Field (id :categories :name))
            {:description         nil
@@ -124,6 +124,7 @@
             :created_at          $
             :base_type           "TextField"
             :visibility_type     "normal"
+            :fk_target_field_id  $
             :parent_id           nil})]
   ((user->client :rasta) :get 200 (format "table/%d/fields" (id :categories))))
 
@@ -153,6 +154,7 @@
                             :created_at      $
                             :base_type       "BigIntegerField"
                             :visibility_type "normal"
+                            :fk_target_field_id $
                             :parent_id       nil})
                          (match-$ (Field (id :categories :name))
                            {:description     nil
@@ -170,6 +172,7 @@
                             :created_at      $
                             :base_type       "TextField"
                             :visibility_type "normal"
+                            :fk_target_field_id $
                             :parent_id       nil})]
        :field_values    {}
        :rows            75
@@ -229,6 +232,7 @@
                             :created_at      $
                             :base_type       "BigIntegerField"
                             :visibility_type "normal"
+                            :fk_target_field_id $
                             :parent_id       nil})
                          (match-$ (sel :one Field :id (id :users :last_login))
                            {:description     nil
@@ -246,6 +250,7 @@
                             :created_at      $
                             :base_type       "DateTimeField"
                             :visibility_type "normal"
+                            :fk_target_field_id $
                             :parent_id       nil})
                          (match-$ (sel :one Field :id (id :users :name))
                            {:description     nil
@@ -263,6 +268,7 @@
                             :created_at      $
                             :base_type       "TextField"
                             :visibility_type "normal"
+                            :fk_target_field_id $
                             :parent_id       nil})
                          (match-$ (sel :one Field :table_id (id :users) :name "PASSWORD")
                            {:description     nil
@@ -280,6 +286,7 @@
                             :created_at      $
                             :base_type       "TextField"
                             :visibility_type "sensitive"
+                            :fk_target_field_id $
                             :parent_id       nil})]
        :rows            15
        :updated_at      $
@@ -335,6 +342,7 @@
                             :created_at      $
                             :base_type       "BigIntegerField"
                             :visibility_type "normal"
+                            :fk_target_field_id $
                             :parent_id       nil})
                          (match-$ (Field (id :users :last_login))
                            {:description     nil
@@ -352,6 +360,7 @@
                             :created_at      $
                             :base_type       "DateTimeField"
                             :visibility_type "normal"
+                            :fk_target_field_id $
                             :parent_id       nil})
                          (match-$ (Field (id :users :name))
                            {:description     nil
@@ -369,6 +378,7 @@
                             :created_at      $
                             :base_type       "TextField"
                             :visibility_type "normal"
+                            :fk_target_field_id $
                             :parent_id       nil})]
        :rows            15
        :updated_at      $
@@ -439,15 +449,12 @@
 
 ;; ## GET /api/table/:id/fks
 ;; We expect a single FK from CHECKINS.USER_ID -> USERS.ID
-(expect-let [checkins-user-field (sel :one Field :table_id (id :checkins) :name "USER_ID")
-             users-id-field (sel :one Field :table_id (id :users) :name "ID")]
-  [(match-$ (sel :one ForeignKey :destination_id (:id users-id-field))
-     {:id             $
-      :origin_id      (:id checkins-user-field)
+(expect
+  (let [checkins-user-field (sel :one Field :table_id (id :checkins) :name "USER_ID")
+        users-id-field (sel :one Field :table_id (id :users) :name "ID")]
+    [{:origin_id      (:id checkins-user-field)
       :destination_id (:id users-id-field)
       :relationship   "Mt1"
-      :created_at     $
-      :updated_at     $
       :origin         (match-$ checkins-user-field
                         {:id              $
                          :table_id        $
@@ -462,6 +469,7 @@
                          :field_type      "info"
                          :active          true
                          :special_type    "fk"
+                         :fk_target_field_id $
                          :created_at      $
                          :updated_at      $
                          :table           (match-$ (Table (id :checkins))
@@ -493,6 +501,7 @@
                          :field_type      "info"
                          :active          true
                          :special_type    "id"
+                         :fk_target_field_id $
                          :created_at      $
                          :updated_at      $
                          :table           (match-$ (Table (id :users))
@@ -508,7 +517,7 @@
                                              :active          true
                                              :id              $
                                              :db_id           $
-                                             :created_at      $})})})]
+                                             :created_at      $})})}])
   ((user->client :rasta) :get 200 (format "table/%d/fks" (id :users))))
 
 

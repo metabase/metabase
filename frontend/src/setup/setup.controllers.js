@@ -1,3 +1,5 @@
+import "metabase/services";
+
 import { createStore, combineReducers } from "metabase/lib/redux";
 
 import SetupApp from 'metabase/setup/containers/SetupApp.jsx';

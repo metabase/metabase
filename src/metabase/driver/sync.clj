@@ -17,7 +17,6 @@
             (metabase.models [common :as common]
                              [field :refer [Field] :as field]
                              [field-values :as field-values]
-                             [foreign-key :refer [ForeignKey]]
                              [table :refer [Table], :as table])
             [metabase.util :as u]))
 
@@ -474,14 +473,9 @@ infer-field-special-type
               (when-let [dest-table-id (sel :one :field [Table :id], :db_id (:db_id table) :name (:name dest-table) :schema (:schema dest-table))]
                 (when-let [dest-column-id (sel :one :id Field, :table_id dest-table-id, :name dest-column-name, :parent_id nil)]
                   (log/debug (u/format-color 'green "Marking foreign key '%s.%s' -> '%s.%s'." (:name table) fk-column-name (:name dest-table) dest-column-name))
-                  (when-not (exists? ForeignKey :origin_id fk-column-id, :destination_id dest-column-id)
-                    (ins ForeignKey
-                      :origin_id      fk-column-id
-                      :destination_id dest-column-id
-                      ;; TODO: do we even care about this?
-                      ;:relationship  (determine-fk-type {:id fk-column-id, :table (delay table)}) ; fake a Field instance
-                      :relationship   :Mt1))
-                  (upd Field fk-column-id :special_type :fk))))))))))
+                  (upd Field fk-column-id
+                       :special_type       :fk
+                       :fk_target_field_id dest-column-id))))))))))
 
 
 ;; ## Analyze Table

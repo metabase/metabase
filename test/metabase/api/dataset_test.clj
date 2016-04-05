@@ -128,11 +128,11 @@
              :description            nil
              :public_perms           0
              :creator                (user-details (fetch-user :rasta))
-             :display                "scalar"
+             :display                "table"
              :query_type             "query"
              :dataset_query          (-> (ql/wrap-inner-query
                                            (query checkins
-                                                  (ql/aggregation (ql/count))))
+                                             (ql/aggregation (ql/count))))
                                          (assoc :type "query")
                                          (assoc-in [:query :aggregation] {:aggregation-type "count"}))
              :visualization_settings {}
@@ -148,7 +148,7 @@
              :uuid         true
              :json_query   (-> (ql/wrap-inner-query
                                  (query checkins
-                                        (ql/aggregation (ql/count))))
+                                   (ql/aggregation (ql/count))))
                                (assoc :type "query")
                                (assoc-in [:query :aggregation] {:aggregation-type "count"})
                                (assoc :constraints dataset-query-api-constraints))
@@ -164,7 +164,7 @@
     :raw_query    ""
     :json_query   (-> (ql/wrap-inner-query
                         (query checkins
-                               (ql/aggregation (ql/count))))
+                          (ql/aggregation (ql/count))))
                       (assoc :type "query")
                       (assoc-in [:query :aggregation] {:aggregation-type "count"})
                       (assoc :constraints dataset-query-api-constraints))
@@ -172,14 +172,10 @@
     :finished_at  true
     :running_time true
     :version      0}]
-  (tu/with-temp Card [{card-id :id} {:name                   "Dataset Test Card"
-                                     :creator_id             (user->id :rasta)
-                                     :public_perms           0
-                                     :display                "scalar"
-                                     :dataset_query          (ql/wrap-inner-query
-                                                               (query checkins
-                                                                      (ql/aggregation (ql/count))))
-                                     :visualization_settings {}}]
+  (tu/with-temp Card [{card-id :id} {:name          "Dataset Test Card"
+                                     :dataset_query (ql/wrap-inner-query
+                                                      (query checkins
+                                                        (ql/aggregation (ql/count))))}]
     (let [result ((user->client :rasta) :get 200 (format "dataset/card/%d" card-id))]
       [(-> result
            (update :card remove-ids-and-boolean-timestamps)

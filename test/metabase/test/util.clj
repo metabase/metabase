@@ -4,7 +4,18 @@
             [expectations :refer :all]
             [medley.core :as m]
             (metabase [db :refer :all]
-                      [util :as u])))
+                      [util :as u])
+            (metabase.models [card :refer [Card]]
+                             [common :as common]
+                             [dashboard :refer [Dashboard]]
+                             [database :refer [Database]]
+                             [field :refer [Field]]
+                             [metric :refer [Metric]]
+                             [pulse :refer [Pulse]]
+                             [pulse-channel :refer [PulseChannel]]
+                             [revision :refer [Revision]]
+                             [segment :refer [Segment]]
+                             [table :refer [Table]])))
 
 (declare $->prop)
 
@@ -73,9 +84,62 @@
   (->> (repeatedly 20 #(-> (rand-int 26) (+ (int \A)) char))
        (apply str)))
 
+(defprotocol ^:private WithTempDefaults
+  (^:private with-temp-defaults [this]))
 
-;; ## with-temp
-;;
+(u/strict-extend Object               WithTempDefaults {:with-temp-defaults (constantly nil)})
+(u/strict-extend (class Card)         WithTempDefaults {:with-temp-defaults (fn [_] {:creator_id             ((resolve 'metabase.test.data.users/user->id) :rasta)
+                                                                                     :dataset_query          {}
+                                                                                     :display                :table
+                                                                                     :name                   (random-name)
+                                                                                     :public_perms           common/perms-none
+                                                                                     :visualization_settings {}})})
+(u/strict-extend (class Dashboard)    WithTempDefaults {:with-temp-defaults (fn [_] {:creator_id   ((resolve 'metabase.test.data.users/user->id) :rasta)
+                                                                                     :name         (random-name)
+                                                                                     :public_perms 0})})
+(u/strict-extend (class Database)     WithTempDefaults {:with-temp-defaults (fn [_] {:details   {}
+                                                                                     :engine    :yeehaw
+                                                                                     :is_sample false
+                                                                                     :name      (random-name)})})
+(u/strict-extend (class Field)        WithTempDefaults {:with-temp-defaults (fn [_] {:active          true
+                                                                                     :base_type       :TextField
+                                                                                     :field_type      :info
+                                                                                     :name            (random-name)
+                                                                                     :position        1
+                                                                                     :preview_display true})})
+(u/strict-extend (class Metric)       WithTempDefaults {:with-temp-defaults (fn [_] {:creator_id  ((resolve 'metabase.test.data.users/user->id) :rasta)
+                                                                                     :definition  {}
+                                                                                     :description "Lookin' for a blueberry"
+                                                                                     :name        "Toucans in the rainforest"})})
+(u/strict-extend (class Pulse)        WithTempDefaults {:with-temp-defaults (fn [_] {:creator_id ((resolve 'metabase.test.data.users/user->id) :rasta)
+                                                                                     :name       (random-name)})})
+(u/strict-extend (class PulseChannel) WithTempDefaults {:with-temp-defaults (constantly {:channel_type  :email
+                                                                                         :details       {}
+                                                                                         :schedule_type :daily
+                                                                                         :schedule_hour 15})})
+(u/strict-extend (class Revision)     WithTempDefaults {:with-temp-defaults (fn [_] {:user_id      ((resolve 'metabase.test.data.users/user->id) :rasta)
+                                                                                     :is_creation  false
+                                                                                     :is_reversion false})})
+(u/strict-extend (class Segment)      WithTempDefaults {:with-temp-defaults (fn [_] {:creator_id ((resolve 'metabase.test.data.users/user->id) :rasta)
+                                                                                     :definition  {}
+                                                                                     :description "Lookin' for a blueberry"
+                                                                                     :name        "Toucans in the rainforest"})})
+(u/strict-extend (class Table)        WithTempDefaults {:with-temp-defaults (fn [_] {:active true
+                                                                                     :name   (random-name)})})
+
+
+(defn do-with-temp
+  "Internal implementation of `with-temp` (don't call this directly)."
+  [entity attributes f]
+  (let [temp-object (m/mapply ins entity (merge (with-temp-defaults entity)
+                                                attributes))]
+    (try
+      (f temp-object)
+      (finally
+        (cascade-delete entity :id (:id temp-object))))))
+
+
+;;; # with-temp
 (defmacro with-temp
   "Create a temporary instance of ENTITY bound to BINDING-FORM, execute BODY,
    then delete it via `cascade-delete`.
@@ -93,15 +157,22 @@
                                     :organization_id @org-id}]
       ...)"
   [entity [binding-form & [options-map]] & body]
-  `(let [object# (m/mapply ins ~entity ~options-map)
-         ~binding-form object#
-         delete-fn# (fn [] (cascade-delete ~entity :id (:id object#)))]
-     (let [result# (try (do ~@body)
-                        (catch Throwable e#
-                          (delete-fn#)
-                          (throw e#)))]
-       (delete-fn#)
-       result#)))
+  `(do-with-temp ~entity ~options-map (fn [~binding-form]
+                                        ~@body)))
+
+(defmacro with-temp*
+  "Like `with-temp` but establishes multiple temporary objects at the same time.
+
+     (with-temp* [Database [{database-id :id}]
+                  Table    [table {:db_id database-id}]]
+       ...)"
+  [entity-bindings & body]
+  (loop [[pair & more] (reverse (partition 2 entity-bindings)), body `(do ~@body)]
+    (let [body `(with-temp ~@pair
+                  ~body)]
+      (if (seq more)
+        (recur more body)
+        body))))
 
 
 ;; ## resolve-private-fns

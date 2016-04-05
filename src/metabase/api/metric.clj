@@ -16,7 +16,7 @@
    definition [Required Dict]}
   (check-superuser)
   (checkp #(db/exists? Table :id table_id) "table_id" "Table does not exist.")
-  (check-500 (metric/create-metric table_id name description *current-user-id* definition)))
+  (check-500 (metric/create-metric! table_id name description *current-user-id* definition)))
 
 
 (defendpoint GET "/:id"
@@ -34,7 +34,7 @@
    definition       [Required Dict]}
   (check-superuser)
   (check-404 (metric/exists-metric? id))
-  (metric/update-metric
+  (metric/update-metric!
     {:id               id
      :name             name
      :description      description
@@ -49,7 +49,7 @@
   {revision_message [Required NonEmptyString]}
   (check-superuser)
   (check-404 (metric/exists-metric? id))
-  (metric/delete-metric id *current-user-id* revision_message)
+  (metric/delete-metric! id *current-user-id* revision_message)
   {:success true})
 
 
