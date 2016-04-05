@@ -96,5 +96,5 @@
           :engine                             (constantly :h2)
           :format-name                        (fn [_ table-or-field-name]
                                                 (s/upper-case table-or-field-name))
-          :has-questionable-timezone-support? (constantly false)
+          :has-questionable-timezone-support? (constantly true)
           :id-field-type                      (constantly :BigIntegerField)}))

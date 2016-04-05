@@ -5,6 +5,7 @@ import Humanize from "humanize";
 import React from "react";
 
 import { isDate } from "metabase/lib/schema_metadata";
+import { parseTimestamp } from "metabase/lib/time";
 
 const PRECISION_NUMBER_FORMATTER      = d3.format(".2r");
 const FIXED_NUMBER_FORMATTER          = d3.format(",.f");
@@ -48,9 +49,9 @@ function formatMajorMinor(major, minor, options = {}) {
 }
 
 function formatTimeWithUnit(value, unit, options = {}) {
-    let m = moment.parseZone(value);
-    if (options.utcOffset != null) {
-        m.utcOffset(options.utcOffset);
+    let m = parseTimestamp(value);
+    if (!m.isValid()) {
+        return String(value);
     }
     switch (unit) {
         case "hour": // 12 AM - January 1, 2015
@@ -77,8 +78,9 @@ function formatTimeWithUnit(value, unit, options = {}) {
             return moment().week(value).format("wo");
         case "month-of-year": // January
             return moment().month(value - 1).format("MMMM");
+        default:
+            return m.format("LLLL");
     }
-    return String(value);
 }
 
 export function formatValue(value, options = {}) {
@@ -93,7 +95,7 @@ export function formatValue(value, options = {}) {
     } else if (column && column.unit != null) {
         return formatTimeWithUnit(value, column.unit, options);
     } else if (isDate(column) || moment.isDate(value) || moment.isMoment(value) || moment(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()) {
-        return moment.parseZone(value).format("LLLL");
+        return parseTimestamp(value).format("LLLL");
     } else if (typeof value === "string") {
         return value;
     } else if (typeof value === "number") {
