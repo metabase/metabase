@@ -61,15 +61,17 @@
     ;;      we'll want some way to reconstructing the path if needed.
     ;; TODO :custom -> :details
 
-    ;; start with capturing a full introspection of the database
-    (introspect/introspect-database-and-update-raw-tables! driver database)
+    (binding [qp/*disable-qp-logging*  true
+              db/*sel-disable-logging* true]
+      ;; start with capturing a full introspection of the database
+      (introspect/introspect-database-and-update-raw-tables! driver database)
 
-    ;; use the introspected schema information and update our working data models
-    (sync/update-data-models-from-raw-tables! driver database)
+      ;; use the introspected schema information and update our working data models
+      (sync/update-data-models-from-raw-tables! driver database)
 
-    ;; now do any in-depth data analysis which requires querying the tables (if enabled)
-    (when full-sync?
-      (analyze/analyze-tables driver database))
+      ;; now do any in-depth data analysis which requires querying the tables (if enabled)
+      (when full-sync?
+        (analyze/analyze-data-shape-for-tables! driver database)))
 
     (events/publish-event :database-sync-end {:database_id (:id database) :custom_id tracking-hash :running_time (int (/ (- (System/nanoTime) start-time) 1000000.0))}) ; convert to ms
     (log/info (u/format-color 'magenta "Finished syncing %s database '%s'. (%s)" (name driver) (:name database)

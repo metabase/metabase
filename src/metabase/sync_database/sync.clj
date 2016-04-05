@@ -13,7 +13,14 @@
             [metabase.util :as u]))
 
 
-(defn- save-all-fks! [{database-id :id}]
+(def ^:private ^:dynamic *sync-dynamic* false)
+
+
+(defn- save-all-fks!
+  "Update all of the FK relationships present in DATABASE based on what's captured in the raw schema.
+   This will set :special_type :fk and :fk_target_field_id <field-id> for each found FK relationship.
+   NOTE: we currently overwrite any previously defined metadata when doing this."
+  [{database-id :id}]
   (when-let [fk-sources (k/select raw-column/RawColumn
                           (k/fields :id :fk_target_column_id)
                           (k/join raw-table/RawTable (= :raw_table.id :raw_table_id))
@@ -21,8 +28,8 @@
                           (k/where (not= :raw_column.fk_target_column_id nil)))]
     (doseq [{fk-source-id :id, fk-target-id :fk_target_column_id} fk-sources]
       ;; TODO: it's possible there are multiple fields here with the same source/target column ids
-      (when-let [source-field-id (db/sel :one :field [field/Field :id] :raw_column_id fk-source-id)]
-        (when-let [target-field-id (db/sel :one :field [field/Field :id] :raw_column_id fk-target-id)]
+      (when-let [source-field-id (db/sel :one :field [field/Field :id] :raw_column_id fk-source-id, :visibility_type [not= "retired"])]
+        (when-let [target-field-id (db/sel :one :field [field/Field :id] :raw_column_id fk-target-id, :visibility_type [not= "retired"])]
           (db/upd field/Field source-field-id
             :special_type       :fk
             :fk_target_field_id target-field-id))))))
@@ -48,6 +55,7 @@
     (let [[_ table-name field-name k] (re-matches #"^([^.]+)\.(?:([^.]+)\.)?([^.]+)$" keypath)]
       (try (when (not= 1 (if field-name
                            (k/update field/Field
+                             ;; TODO: need to handle issue where subselect could return multiple values
                              (k/where {:name field-name, :table_id (k/subselect table/Table
                                                                                 (k/fields :id)
                                                                                 (k/where {:db_id (:id database), :name table-name}))})
@@ -130,7 +138,9 @@
                 (last matching-pattern))))))))
 
 
-(defn- update-field! [{:keys [id], :as existing-field} {column-name :name, :keys [base_type], :as column}]
+(defn- update-field!
+  "Update a single `Field` with values from `RawColumn`."
+  [{:keys [id], :as existing-field} {column-name :name, :keys [base_type], :as column}]
   (let [special-type (or (:special_type existing-field)
                          (infer-field-special-type column))]
     ;; if we have a different base-type or special-type, then update
@@ -143,24 +153,32 @@
         :special_type special-type))))
 
 
-(defn- create-field! [table-id {column-name :name, column-id :id, :keys [base_type], :as column}]
+(defn- create-field!
+  "Create a new `Field` with values from `RawColumn`."
+  [table-id {column-name :name, column-id :id, :keys [base_type], :as column}]
   (let [fk-target-field (when-let [fk-target-column (:fk_target_column_id column)]
                           ;; we need the field-id in this database which corresponds to this raw-columns fk target
                           (db/sel :one :field [field/Field :id] :raw_column_id fk-target-column))]
     (db/ins field/Field
       :table_id           table-id
       :raw_column_id      column-id
-      :name               column-name                           ; TODO: eventually this shouldn't be here as it duplicates raw data
+      :name               column-name
       :display_name       (common/name->human-readable-name column-name)
       :base_type          base_type
       :special_type       (infer-field-special-type column)
       :fk_target_field_id fk-target-field)))
 
 
-(defn- save-table-fields! [{table-id :id, raw-table-id :raw_table_id}]
+(defn- save-table-fields!
+  "Refresh all `Fields` in a given `Table` based on what's available in the associated `RawColumns`.
+
+   If a raw column has been disabled, the field is retired.
+   If there is a new raw column, then a new field is created.
+   If a raw column has been updated, then we update the values for the field."
+  [{table-id :id, raw-table-id :raw_table_id}]
   (let [active-raw-columns  (raw-table/active-columns {:id raw-table-id})
         active-column-ids   (set (map :id active-raw-columns))
-        existing-fields     (into {} (for [{raw-column-id :raw_column_id, :as fld} (db/sel :many [field/Field :name :base_type :special_type :display_name :raw_column_id :id], :table_id table-id, :visibility_type [not= "retired"], :parent_id nil)]
+        existing-fields     (into {} (for [{raw-column-id :raw_column_id, :as fld} (db/sel :many field/Field, :table_id table-id, :visibility_type [not= "retired"], :parent_id nil)]
                                        {raw-column-id fld}))]
     ;; retire any fields which were disabled in the schema (including child nested fields)
     (doseq [[raw-column-id {field-id :id}] existing-fields]
@@ -179,16 +197,31 @@
         (create-field! table-id column)))))
 
 
-(defn- update-table! [{:keys [id display_name], :as existing-table} {table-name :name}]
+(defn- save-fields!
+  "Update `Fields` for `Table`.
+
+   This is a simple delegating function which either calls sync-dynamic/save-table-fields! or sync/save-table-fields! based
+   on whether the database being synced has a `:dynamic-schema`."
+  [tbl]
+  (if *sync-dynamic*
+    ((ns-resolve 'metabase.sync-database.sync-dynamic 'save-table-fields!) tbl)
+    (save-table-fields! tbl)))
+
+
+(defn- update-table!
+  "Update `Table` with the data from `RawTable`, including saving all fields."
+  [{:keys [id display_name], :as existing-table} {table-name :name}]
   ;; the only thing we need to update on a table is the :display_name, if it never got set
   (when (nil? display_name)
     (db/upd table/Table id
       :display_name (common/name->human-readable-name table-name)))
   ;; now update the all the table fields
-  (save-table-fields! existing-table))
+  (save-fields! existing-table))
 
 
-(defn- create-table! [database-id {schema-name :schema, table-name :name, raw-table-id :id}]
+(defn- create-table!
+  "Create `Table` with the data from `RawTable`, including all fields."
+  [database-id {schema-name :schema, table-name :name, raw-table-id :id}]
   (let [new-table  (db/ins table/Table
                      :db_id        database-id
                      :raw_table_id raw-table-id
@@ -197,12 +230,14 @@
                      :display_name (common/name->human-readable-name table-name)
                      :active       true)]
     ;; now create all the table fields
-    (save-table-fields! new-table)))
+    (save-fields! new-table)))
 
 
 (defn update-data-models-from-raw-tables!
   "Update the working `Table` and `Field` metadata for DATABASE based on the latest raw schema information.
-   This function uses the data in `RawTable` and `RawColumn` to update the working data models as needed."
+   This function uses the data in `RawTable` and `RawColumn` to update the working data models as needed.
+
+   NOTE: when a database is a `:dynamic-schema` database we follow a slightly different execution path."
   [driver {database-id :id, :as database}]
   {:pre [(integer? database-id)]}
 
@@ -223,17 +258,18 @@
       (k/set-fields {:visibility_type "retired"})))
 
   (let [raw-tables      (raw-table/active-tables database-id)
-        existing-tables (into {} (for [{raw-table-id :raw_table_id, :as table} (db/sel :many :fields [table/Table :id :name :schema :display_name :raw_table_id], :db_id database-id, :active true)]
+        existing-tables (into {} (for [{raw-table-id :raw_table_id, :as table} (db/sel :many table/Table, :db_id database-id, :active true)]
                                    {raw-table-id table}))]
     ;; create/update tables (and their fields)
     ;; NOTE: we make sure to skip the _metabase_metadata table here.  it's not a normal table.
     (doseq [{raw-table-id :id, :as raw-tbl} (filter #(not= "_metabase_metadata" (s/lower-case (:name %))) raw-tables)]
       (try
-        (if-let [existing-table (get existing-tables raw-table-id)]
-          ;; table already exists, update it
-          (update-table! existing-table raw-tbl)
-          ;; must be a new table, insert it
-          (create-table! database-id raw-tbl))
+        (binding [*sync-dynamic* (driver/driver-supports? driver :dynamic-schema)]
+          (if-let [existing-table (get existing-tables raw-table-id)]
+            ;; table already exists, update it
+            (update-table! existing-table raw-tbl)
+            ;; must be a new table, insert it
+            (create-table! database-id raw-tbl)))
         (catch Throwable t
           (log/error (u/format-color 'red "Unexpected error syncing table") t))))
 

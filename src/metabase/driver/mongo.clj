@@ -192,7 +192,7 @@
                                                            :display-name "Use a secure connection (SSL)?"
                                                            :type         :boolean
                                                            :default      false}])
-          :features                          (constantly #{:nested-fields})
+          :features                          (constantly #{:dynamic-schema :nested-fields})
           :field-values-lazy-seq             field-values-lazy-seq
           :humanize-connection-error-message humanize-connection-error-message
           :process-native                    qp/process-and-run-native
