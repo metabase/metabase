@@ -204,7 +204,9 @@
    on whether the database being synced has a `:dynamic-schema`."
   [tbl]
   (if *sync-dynamic*
-    ((ns-resolve 'metabase.sync-database.sync-dynamic 'save-table-fields!) tbl)
+    (do
+      (require 'metabase.sync-database.sync-dynamic)
+      ((ns-resolve 'metabase.sync-database.sync-dynamic 'save-table-fields!) tbl))
     (save-table-fields! tbl)))
 
 

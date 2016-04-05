@@ -4,6 +4,7 @@
             [clojure.math.numeric-tower :as math]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
+            [korma.core :as k]
             [schema.core :as schema]
             [metabase.db :as db]
             [metabase.db.metadata-queries :as queries]
@@ -172,8 +173,7 @@
         finished-tables-count (atom 0)]
     (doseq [{table-id :id, table-name :name, :as tbl} tables]
       (try
-        ;; TODO: need to flush this out.  should be fields with last_analyzed = NULL
-        (let [new-field-ids (set (db/sel :many :field [field/Field :id] :table_id table-id, :visibility_type [not= "retired"]))]
+        (let [new-field-ids (set (db/sel :many :field [field/Field :id] :table_id table-id, :visibility_type [not= "retired"], :last_analyzed nil))]
           ;; TODO: this call should include the database
           (when-let [table-stats (u/prog1 (driver/analyze-table driver tbl new-field-ids)
                                    (schema/validate driver/AnalyzeTable <>))]
@@ -192,7 +192,13 @@
               ;; handle field values, setting them if applicable otherwise clearing them
               (if (and id values (< 0 (count (filter identity values))))
                 (field-values/save-field-values id values)
-                (field-values/clear-field-values id)))))
+                (field-values/clear-field-values id))))
+
+          ;; update :last_analyzed for all fields in the table
+          (k/update field/Field
+            (k/set-fields {:last_analyzed (u/new-sql-timestamp)})
+            (k/where {:table_id table-id
+                      :visibility_type [not= "retired"]})))
         (catch Throwable t
           (log/error "Unexpected error analyzing table" t))
         (finally

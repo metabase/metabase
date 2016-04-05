@@ -147,6 +147,16 @@ databaseChangeLog:
                     nullable: true
                     deferrable: false
                     initiallyDeferred: false
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: last_analyzed
+                  type: DATETIME
+                  constraints:
+                    nullable: true
+                    deferrable: false
+                    initiallyDeferred: false
         - modifySql:
             dbms: postgresql
             replace:
