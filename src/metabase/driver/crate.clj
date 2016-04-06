@@ -39,17 +39,17 @@
   [{:keys [filter-type field value], :as filter}]
   {:pre [(map? filter) field]}
   (let [field (qp/formatted field)]
-    {field (case          filter-type
+    {field (case filter-type
              ;; TODO: implement Crate equivalent for "BETWEEN"
              :between     ['between [(qp/formatted (:min-val filter)) (qp/formatted (:max-val filter))]]
-             :starts-with ['like (qp/formatted (update value :value (fn [s] (str    s \%)))) ]
+             :starts-with ['like (qp/formatted (update value :value (fn [s] (str s \%))))]
              :contains    ['like (qp/formatted (update value :value (fn [s] (str \% s \%))))]
              :ends-with   ['like (qp/formatted (update value :value (fn [s] (str \% s))))]
-             :>           ['>    (qp/formatted value)]
-             :<           ['<    (qp/formatted value)]
-             :>=          ['>=   (qp/formatted value)]
-             :<=          ['<=   (qp/formatted value)]
-             :=           ['=    (qp/formatted value)]
+             :>           ['> (qp/formatted value)]
+             :<           ['< (qp/formatted value)]
+             :>=          ['>= (qp/formatted value)]
+             :<=          ['<= (qp/formatted value)]
+             :=           ['= (qp/formatted value)]
              :!=          ['not= (qp/formatted value)])}))
 
 (defn- filter-clause->predicate [{:keys [compound-type subclause subclauses], :as clause}]
@@ -64,6 +64,16 @@
   [_ korma-form {clause :filter}]
   (k/where korma-form (filter-clause->predicate clause)))
 
+
+;; # Adapt datetime operations to support Crate SQL
+
+(def ^:private now (k/sqlfn :CURRENT_TIMESTAMP (k/raw 3)))
+
+(def ^:private YEAR   (constantly 31536000000))
+(def ^:private MONTH  (constantly 2628000000))
+(def ^:private WEEK   (constantly 604800000))
+(def ^:private DAY    (constantly 86400000))
+
 (defn- convert-to-isotime
   "Prints datetime as ISO time"
   [sql-time format]
@@ -75,7 +85,9 @@
 
 (defn- unix-timestamp->timestamp [_ expr seconds-or-milliseconds]
   "Converts datetime string to a valid timestamp"
-  (kutils/func (format "TRY_CAST('%s' as TIMESTAMP)" seconds-or-milliseconds) [expr]))
+  (case seconds-or-milliseconds
+    :seconds       (kutils/func (format "TRY_CAST('%s' as TIMESTAMP)" seconds-or-milliseconds) [expr])
+    :milliseconds  (recur nil (kx// expr 1000) :seconds)))
 
 (defn- date-trunc [unit expr]
   "date_trunc('interval', timestamp): truncates a timestamp to a given interval"
@@ -107,25 +119,17 @@
     :quarter-of-year (extract-integer :quarter expr)
     :year            (extract-integer :year expr)))
 
-
-(def ^:private now (k/sqlfn :CURRENT_TIMESTAMP (k/raw 3)))
-
-(def ^:private YEAR (constantly 31536000000))
-(def ^:private MONTH (constantly 2628000000))
-(def ^:private WEEK (constantly 604800000))
-(def ^:private DAY (constantly 86400000))
-
 (defn- sql-interval [unit amount]
   (format "CURRENT_TIMESTAMP + %d" (* (unit) amount)))
 
 (defn- date-interval [_ unit amount]
   "defines the sql command required for date-interval calculation"
   (case unit
-    :quarter (recur nil :month (kx/* amount 3))
-    :year (k/raw (sql-interval YEAR amount))
-    :month (k/raw (sql-interval MONTH amount))
-    :week (k/raw (sql-interval WEEK amount))
-    :day (k/raw (sql-interval DAY amount))))
+    :quarter  (recur nil :month (kx/* amount 3))
+    :year     (k/raw (sql-interval YEAR amount))
+    :month    (k/raw (sql-interval MONTH amount))
+    :week     (k/raw (sql-interval WEEK amount))
+    :day      (k/raw (sql-interval DAY amount))))
 
 (defrecord CrateDriver []
   Named
