@@ -18,18 +18,33 @@
   "Map of Postgres column types -> Field base types.
    Add more mappings here as you come across them."
   [_ column-type]
-  ({:integer   :IntegerField
-    :string    :TextField
-    :boolean   :BooleanField
-    :byte      :IntegerField
-    :short     :IntegerField
-    :long      :BigIntegerField
-    :float     :FloatField
-    :double    :FloatField
-    :ip        :UnknownField
-    :timestamp :DateTimeField
-    :geo_point :UnknownField
-    :geo_shape :UnknownField
+  ({:integer          :IntegerField
+    :string           :TextField
+    :boolean          :BooleanField
+    :byte             :IntegerField
+    :short            :IntegerField
+    :long             :BigIntegerField
+    :float            :FloatField
+    :double           :FloatField
+    :ip               :UnknownField
+    :timestamp        :DateTimeField
+    :geo_shape        :UnknownField
+    :geo_point        :UnknownField
+    :object           :DictionaryField
+    :array            :ArrayField
+    :object_array     :ArrayField
+    :string_array     :ArrayField
+    :integer_array    :ArrayField
+    :float_array      :ArrayField
+    :boolean_array    :ArrayField
+    :byte_array       :ArrayField
+    :timestamp_array  :ArrayField
+    :short_array      :ArrayField
+    :long_array       :ArrayField
+    :double_array     :ArrayField
+    :ip_array         :UnknownField
+    :geo_shape_array  :UnknownField
+    :geo_point_array  :UnknownField
     } column-type))
 
 ;; # Adapt generic SQL to Crate SQL
