@@ -1,11 +1,11 @@
-import React from 'react';
-import Toggle from '../src/components/Toggle.jsx';
-import { storiesOf, action } from '@kadira/storybook';
+import { React, Centered, storiesOf, action } from ".";
 
-storiesOf('Toggle', module)
-  .add('on', () => {
-    return <Toggle value={true} onChange={action('onChange')} />
-  })
-  .add('off', () => {
-    return <Toggle value={false} onChange={action('onChange')} />
-  });
+import Toggle from "metabase/components/Toggle.jsx";
+
+storiesOf("Toggle", module)
+    .add("on", () =>
+        <Centered><Toggle value={true} onChange={action("onChange")} /></Centered>
+    )
+    .add("off", () =>
+        <Centered><Toggle value={false} onChange={action("onChange")} /></Centered>
+    )

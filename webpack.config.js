@@ -59,7 +59,9 @@ var CSSNEXT_CONFIG = {
 };
 
 var CSS_CONFIG = {
-    localIdentName: NODE_ENV !== "production" ? "[local]---[hash:base64:5]" : undefined,
+    localIdentName: NODE_ENV !== "production" ?
+        "[name]__[local]___[hash:base64:5]" :
+        "[hash:base64:5]",
     restructuring: false,
     compatibility: true
 }
