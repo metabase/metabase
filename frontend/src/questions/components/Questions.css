@@ -1,0 +1,10 @@
+:root {
+    --title-color: #606E7B;
+    --subtitle-color: #AAB7C3;
+    --muted-color: #DEEAF1;
+    --blue-color: #2D86D4;
+}
+
+:local(.questions) a {
+    text-decoration: none;
+}

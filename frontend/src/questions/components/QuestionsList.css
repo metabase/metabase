@@ -1,0 +1,122 @@
+@import './Questions.css';
+
+:local(.list) {
+    padding-left: 75px;
+    padding-right: 75px;
+}
+
+:local(.header) {
+    composes: mt4 mb2 from "style/spacing";
+    color: var(--title-color);
+    font-size: 24px;
+}
+
+:local(.item) {
+    composes: border-top from "style/bordered";
+    composes: flex align-center from "style/flex";
+    padding-top: 30px;
+    padding-bottom: 30px;
+    position: relative;
+}
+
+:local(.itemBody) {
+    composes: flex-full from "style/flex";
+}
+
+:local(.itemTitle) {
+    color: var(--title-color);
+    font-size: 22px;
+}
+
+:local(.itemName) {
+    composes: mr1 from "style/spacing";
+}
+
+:local(.itemSubtitle) {
+    composes: mt1 from "style/spacing";
+    color: var(--subtitle-color);
+    font-size: 14px;
+}
+
+:local(.itemSubtitleBold) {
+    color: var(--title-color);
+}
+
+:local(.icons) {
+    composes: flex flex-row align-center from "style/flex";
+}
+:local(.leftIcons) {
+    composes: icons;
+    width: 50px;
+}
+:local(.rightIcons) {
+    composes: icons;
+}
+:local(.extraIcons) {
+    composes: icons;
+    position: absolute;
+    left: 100%;
+    height: 100%;
+    top: 0;
+}
+
+:local(.icon) {
+    composes: cursor-pointer from "style/cursor";
+    color: var(--muted-color);
+}
+
+:local(.item) :local(.icon) {
+    visibility: hidden;
+}
+:local(.item):hover :local(.icon) {
+    visibility: visible;
+}
+:local(.icon):hover {
+    color: var(--blue-color);
+}
+
+/* ITEM CHECKBOX */
+:local(.itemCheckbox) {
+    composes: icon;
+    display: none;
+    visibility: visible !important;
+}
+:local(.item):hover :local(.itemCheckbox),
+:local(.item.checked) :local(.itemCheckbox) {
+    display: inline;
+}
+:local(.item.checked) :local(.itemCheckbox) {
+    color: var(--blue-color);
+}
+
+/* CHART ICON */
+:local(.chartIcon) {
+    composes: icon;
+    visibility: visible !important;
+}
+:local(.item):hover :local(.chartIcon),
+:local(.item.checked) :local(.chartIcon) {
+    display: none;
+}
+
+/* TAG */
+:local(.tagIcon) {
+    composes: icon;
+    composes: mx1 from "style/spacing";
+}
+
+/* FAVORITE */
+:local(.favoriteIcon) {
+    composes: icon;
+    composes: mr1 from "style/spacing";
+}
+:local(.item.favorite) :local(.favoriteIcon) {
+    visibility: visible;
+    color: var(--blue-color);
+}
+
+/* ARCHIVE */
+:local(.archiveIcon) {
+    composes: icon;
+    composes: ml1 from "style/spacing";
+}

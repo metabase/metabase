@@ -1,10 +1,10 @@
 /* provide flex utilities in lieu of float based layouts */
 
-.flex {
+.flex, :local(.flex) {
     display: flex;
 }
 
-.flex-full {
+.flex-full, :local(.flex-full) {
     flex: 1;
 }
 
@@ -16,7 +16,7 @@
     flex-shrink: 0;
 }
 
-.align-center {
+.align-center, :local(.align-center) {
     align-items: center;
 }
 
@@ -92,7 +92,7 @@
     .md-flex-column { flex-direction: column; }
 }
 
-.flex-row {
+.flex-row, :local(.flex-row) {
   flex-direction: row;
 }
 

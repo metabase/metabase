@@ -69,7 +69,7 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
     });
 
     const route = {
-        template: '<div mb-redux-component class="flex flex-column flex-full" />',
+        template: '<div mb-redux-component class="flex flex-column spread" />',
         controller: ['$scope', '$location', '$route', '$routeParams', 'AppState',
             function($scope, $location, $route, $routeParams, AppState) {
                 $scope.Component = Routes;
@@ -111,6 +111,11 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
             }]
         }
     };
+
+    $routeProvider.when('/questions', route);
+    $routeProvider.when('/questions/edit/:section', route);
+    $routeProvider.when('/questions/:section', route);
+    $routeProvider.when('/questions/:section/:slug', route);
 
     $routeProvider.when('/admin/datamodel/metric', route);
     $routeProvider.when('/admin/datamodel/metric/:segmentId', route);

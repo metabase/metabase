@@ -22,8 +22,6 @@ function hasArg(arg) {
 var SRC_PATH = __dirname + '/frontend/src';
 var BUILD_PATH = __dirname + '/resources/frontend_client';
 
-// All CSS files in frontend/src
-var CSS_SRC = glob.sync(SRC_PATH + '/css/**/*.css');
 
 // Need to scan the CSS files for variable and custom media used across files
 // NOTE: this requires "webpack -w" (watch mode) to be restarted when variables change :(
@@ -41,11 +39,14 @@ var BABEL_CONFIG = {
     cacheDirectory: ".babel_cache"
 };
 
-// CSS Next:
+// Build mapping of CSS variables
+var CSS_SRC = glob.sync(SRC_PATH + '/css/**/*.css');
 var CSS_MAPS = { vars: {}, media: {}, selector: {} };
 CSS_SRC.map(webpackPostcssTools.makeVarMap).forEach(function(map) {
     for (var name in CSS_MAPS) _.extend(CSS_MAPS[name], map[name]);
 });
+
+// CSS Next:
 var CSSNEXT_CONFIG = {
     features: {
         // pass in the variables and custom media we scanned for before
@@ -74,7 +75,7 @@ var config = module.exports = {
     entry: {
         vendor: './vendor.js',
         app: './app.js',
-        styles: CSS_SRC
+        styles: './css/index.css',
     },
 
     // output to "dist"
@@ -116,6 +117,7 @@ var config = module.exports = {
         extensions: ["", ".webpack.js", ".web.js", ".js", ".jsx", ".css"],
         alias: {
             'metabase':             SRC_PATH,
+            'style':                SRC_PATH + '/css/core',
 
             // angular
             'angular':              __dirname + '/node_modules/angular/angular.min.js',

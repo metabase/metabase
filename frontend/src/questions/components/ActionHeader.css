@@ -1,0 +1,18 @@
+@import './Questions.css';
+
+:local(.actionHeader) {
+    composes: flex align-center from "style/flex";
+    composes: my3 from "style/spacing";
+    font-size: 14px;
+    color: var(--blue-color);
+}
+
+:local(.selectedCount) {
+    composes: mx4 from "style/spacing";
+}
+
+/* ALL CHECKBOX */
+:local(.allCheckbox) {
+    composes: icon from "./QuestionsList.css";
+    visibility: visible !important;
+}

@@ -60,3 +60,7 @@ textarea {
 .MB-lightBG {
   background-color: #f9fbfc;
 }
+
+.undefined {
+    border: 1px solid red !important;
+}

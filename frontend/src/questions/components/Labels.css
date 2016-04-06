@@ -1,0 +1,19 @@
+:local(.labels) {
+    display: inline;
+}
+
+:local(.label) {
+    display: inline;
+    color: white;
+    font-size: 14px;
+    border-radius: 2px;
+    padding: 0.25em 0.5em;
+    margin: 0 0.25em;
+}
+
+:local(.emojiLabel) {
+    color: rgba(0,0,0,0.54);
+    background-color: white;
+    border: 1px solid #DEEAF1;
+    box-shadow: 1px 1px 0 0 #BFD5E1;
+}

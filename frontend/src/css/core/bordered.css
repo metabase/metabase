@@ -4,11 +4,11 @@
   --border-color: #F0F0F0;
 }
 
-.bordered {
+.bordered, :local(.bordered) {
   border: var(--border-size) var(--border-style) var(--border-color);
 }
 
-.border-bottom {
+.border-bottom, :local(.border-bottom) {
   border-bottom: var(--border-size) var(--border-style) var(--border-color);
 }
 
@@ -17,7 +17,7 @@
   border-bottom: none;
 }
 
-.border-top {
+.border-top, :local(.border-top) {
   border-top: var(--border-size) var(--border-style) var(--border-color);
 }
 
@@ -89,7 +89,7 @@
 /* BORDERLESS IS THE DEFAULT */
 /* ONLY USE IF needing to override an existing border! */
 /* ensure there is no border via important */
-.borderless {
+.borderless, :local(.borderless) {
   border: none !important;
 }
 
