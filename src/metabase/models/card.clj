@@ -8,19 +8,6 @@
             (metabase [query :as q]
                       [util :as u])))
 
-(def ^:const display-types
-  "Valid values of `Card.display_type`."
-  #{:area
-    :bar
-    :country
-    :line
-    :pie
-    :pin_map
-    :scalar
-    :state
-    :table
-    :timeseries})
-
 (i/defentity Card :report_card)
 
 (defn- populate-query-fields [card]
