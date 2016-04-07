@@ -8,6 +8,7 @@
                           [dataset :as dataset]
                           [email :as email]
                           [field :as field]
+                          [label :as label]
                           [metric :as metric]
                           [notify :as notify]
                           [pulse :as pulse]
@@ -19,6 +20,7 @@
                           [slack :as slack]
                           [table :as table]
                           [tiles :as tiles]
+                          [topic :as topic]
                           [user :as user]
                           [util :as util])
             [metabase.middleware :as middleware]))
@@ -42,6 +44,7 @@
   (GET     "/health"       [] (if ((resolve 'metabase.core/initialized?))
                                 {:status 200 :body {:status "ok"}}
                                 {:status 503 :body {:status "initializing" :progress ((resolve 'metabase.core/initialization-progress))}}))
+  (context "/label"        [] (+auth label/routes))
   (context "/metric"       [] (+auth metric/routes))
   (context "/notify"       [] (+apikey notify/routes))
   (context "/pulse"        [] (+auth pulse/routes))
@@ -53,6 +56,7 @@
   (context "/slack"        [] (+auth slack/routes))
   (context "/table"        [] (+auth table/routes))
   (context "/tiles"        [] (+auth tiles/routes))
+  (context "/topic"        [] (+auth topic/routes))
   (context "/user"         [] (+auth user/routes))
   (context "/util"         [] util/routes)
   (route/not-found (fn [{:keys [request-method uri]}]

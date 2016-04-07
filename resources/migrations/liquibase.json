@@ -29,6 +29,7 @@
       {"include": {"file": "migrations/028_add_user_is_qbnewb.yaml"}},
       {"include": {"file": "migrations/029_add_pulse_channel_schedule_frame.yaml"}},
       {"include": {"file": "migrations/030_add_field_visibility_type.yaml"}},
-      {"include": {"file": "migrations/031_add_field_fk_target.yaml"}}
+      {"include": {"file": "migrations/031_add_field_fk_target.yaml"}},
+      {"include": {"file": "migrations/032_add_label_and_topic_tables.yaml"}}
   ]
 }

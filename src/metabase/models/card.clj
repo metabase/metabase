@@ -2,9 +2,13 @@
   (:require [korma.core :as k]
             [medley.core :as m]
             [metabase.db :as db]
-            (metabase.models [dependency :as dependency]
+            (metabase.models [card-topic :refer [CardTopic]]
+                             [card-label :refer [CardLabel]]
+                             [dependency :as dependency]
                              [interface :as i]
-                             [revision :as revision])
+                             [label :refer [Label]]
+                             [revision :as revision]
+                             [topic :refer [Topic]])
             (metabase [query :as q]
                       [util :as u])))
 
@@ -31,12 +35,34 @@
       first
       :dashboards))
 
+(defn topics
+  "Return `Topics` for CARD."
+  {:hydrate :topics}
+  [{:keys [id]}]
+  (if-let [topic-ids (seq (db/sel :many :field [CardTopic :topic_id] :card_id id))]
+    (db/sel :many Topic
+            (k/where {:id [in topic-ids]})
+            (k/order (k/sqlfn :LOWER :name)))
+    []))
+
+(defn labels
+  "Return `Labels` for CARD."
+  {:hydrate :labels}
+  [{:keys [id]}]
+  (if-let [label-ids (seq (db/sel :many :field [CardLabel :label_id] :card_id id))]
+    (db/sel :many Label
+            (k/where {:id [in label-ids]})
+            (k/order (k/sqlfn :LOWER :name)))
+    []))
+
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete 'PulseCard :card_id id)
   (db/cascade-delete 'Revision :model "Card" :model_id id)
   (db/cascade-delete 'DashboardCardSeries :card_id id)
   (db/cascade-delete 'DashboardCard :card_id id)
-  (db/cascade-delete 'CardFavorite :card_id id))
+  (db/cascade-delete 'CardFavorite :card_id id)
+  (db/cascade-delete 'CardLabel :card_id id)
+  (db/cascade-delete 'CardTopic :card_id id))
 
 
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
