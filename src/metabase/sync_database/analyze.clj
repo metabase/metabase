@@ -157,7 +157,43 @@
                                (test-for-cardinality? field new-field?) (test:cardinality-and-extract-field-values field)
                                new-field?                               (test:new-field driver field))))})))
 
+(defn generic-analyze-table
+  "An implementation of `analyze-table` using the defaults (`default-field-avg-length` and `field-percent-urls`)."
+  [driver table new-field-ids]
+  ((make-analyze-table driver) driver table new-field-ids))
 
+
+
+(defn analyze-table-data-shape!
+  "Analyze the data shape for a single `Table`."
+  [driver {table-id :id, :as tbl}]
+  (let [new-field-ids (set (db/sel :many :field [field/Field :id] :table_id table-id, :visibility_type [not= "retired"], :last_analyzed nil))]
+    ;; TODO: this call should include the database
+    (when-let [table-stats (u/prog1 (driver/analyze-table driver tbl new-field-ids)
+                             (when <>
+                               (schema/validate driver/AnalyzeTable <>)))]
+      ;; update table row count
+      (when (:row_count table-stats)
+        (db/upd table/Table table-id :rows (:row_count table-stats)))
+
+      ;; update individual fields
+      (doseq [{:keys [id preview-display special-type values]} (:fields table-stats)]
+        ;; set Field metadata we may have detected
+        (when (and id (or preview-display special-type))
+          (db/upd-non-nil-keys field/Field id
+                               ;; if a field marked `preview-display` as false then set the visibility type to `:details-only` (see models.field/visibility-types)
+                               :visibility_type (when (false? preview-display) :details-only)
+                               :special_type    special-type))
+        ;; handle field values, setting them if applicable otherwise clearing them
+        (if (and id values (< 0 (count (filter identity values))))
+          (field-values/save-field-values id values)
+          (field-values/clear-field-values id))))
+
+    ;; update :last_analyzed for all fields in the table
+    (k/update field/Field
+      (k/set-fields {:last_analyzed (u/new-sql-timestamp)})
+      (k/where {:table_id table-id
+                :visibility_type [not= "retired"]}))))
 
 (defn analyze-data-shape-for-tables!
   "Perform in-depth analysis on the data shape for all `Tables` in a given DATABASE.
@@ -171,34 +207,9 @@
   (let [tables                (db/sel :many table/Table :db_id database-id, :active true)
         tables-count          (count tables)
         finished-tables-count (atom 0)]
-    (doseq [{table-id :id, table-name :name, :as tbl} tables]
+    (doseq [{table-name :name, :as tbl} tables]
       (try
-        (let [new-field-ids (set (db/sel :many :field [field/Field :id] :table_id table-id, :visibility_type [not= "retired"], :last_analyzed nil))]
-          ;; TODO: this call should include the database
-          (when-let [table-stats (u/prog1 (driver/analyze-table driver tbl new-field-ids)
-                                   (schema/validate driver/AnalyzeTable <>))]
-            ;; update table row count
-            (when (:row_count table-stats)
-              (db/upd table/Table table-id :rows (:row_count table-stats)))
-
-            ;; update individual fields
-            (doseq [{:keys [id preview-display special-type values]} (:fields table-stats)]
-              ;; set Field metadata we may have detected
-              (when (and id (or preview-display special-type))
-                (db/upd-non-nil-keys field/Field id
-                                     ;; if a field marked `preview-display` as false then set the visibility type to `:details-only` (see models.field/visibility-types)
-                                     :visibility_type (when (false? preview-display) :details-only)
-                                     :special_type    special-type))
-              ;; handle field values, setting them if applicable otherwise clearing them
-              (if (and id values (< 0 (count (filter identity values))))
-                (field-values/save-field-values id values)
-                (field-values/clear-field-values id))))
-
-          ;; update :last_analyzed for all fields in the table
-          (k/update field/Field
-            (k/set-fields {:last_analyzed (u/new-sql-timestamp)})
-            (k/where {:table_id table-id
-                      :visibility_type [not= "retired"]})))
+        (analyze-table-data-shape! driver tbl)
         (catch Throwable t
           (log/error "Unexpected error analyzing table" t))
         (finally

@@ -99,7 +99,8 @@
                (if (or (= :id k)
                        (.endsWith (name k) "_id")
                        (= :created_at k)
-                       (= :updated_at k))
+                       (= :updated_at k)
+                       (= :last_analyzed k))
                  [k (not (nil? v))]
                  [k (f v)])))))
 

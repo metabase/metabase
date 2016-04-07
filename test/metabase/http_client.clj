@@ -124,7 +124,7 @@
 ;; ## AUTO-DESERIALIZATION
 
 (def ^:private ^:const auto-deserialize-dates-keys
-  #{:created_at :updated_at :last_login :date_joined :started_at :finished_at})
+  #{:created_at :updated_at :last_login :date_joined :started_at :finished_at :last_analyzed})
 
 (defn- auto-deserialize-dates
   "Automatically recurse over RESPONSE and look for keys that are known to correspond to dates.

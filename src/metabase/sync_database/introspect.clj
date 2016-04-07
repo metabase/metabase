@@ -82,6 +82,7 @@
   [database-id {table-name :name, table-schema :schema, :keys [details columns]}]
   {:pre [(integer? database-id)
          (string? table-name)]}
+  (log/debug (u/format-color 'cyan "Found new table: %s" (named-table table-schema table-name)))
   (let [table (db/ins raw-table/RawTable
                 :database_id  database-id
                 :schema       table-schema
@@ -119,6 +120,30 @@
         (k/set-fields {:active false})))))
 
 
+(defn introspect-raw-table-and-update!
+  "Introspect a single `RawTable` and persist the results as `RawTables` and `RawColumns`.
+   Uses the various `describe-*` functions on the IDriver protocol to gather information."
+  [driver database raw-tbl]
+  (let [table-def (select-keys raw-tbl [:schema :name])
+        table-def (if (contains? (driver/features driver) :dynamic-schema)
+                    ;; dynamic schemas are handled differently, we'll handle them elsewhere
+                    (assoc table-def :columns [])
+                    ;; static schema databases get introspected now
+                    (u/prog1 (driver/describe-table driver database table-def)
+                      (schema/validate driver/DescribeTable <>)))
+        ;; TODO: we should update drivers to return :columns instead of :fields
+        table-def (set/rename-keys table-def {:fields :columns})]
+
+    ;; save the latest updates from the introspection
+    (update-raw-table! raw-tbl table-def)
+
+    ;; if we support FKs then try updating those as well
+    (when (contains? (driver/features driver) :foreign-keys)
+      (when-let [table-fks (u/prog1 (driver/describe-table-fks driver database table-def)
+                             (schema/validate driver/DescribeTableFKs <>))]
+        (save-all-table-fks! raw-tbl table-fks)))))
+
+
 (defn introspect-database-and-update-raw-tables!
   "Introspect a `Database` and persist the results as `RawTables` and `RawColumns`.
    Uses the various `describe-*` functions on the IDriver protocol to gather information."
@@ -147,9 +172,7 @@
                 table-def (set/rename-keys table-def {:fields :columns})]
             (if-let [raw-tbl (get existing-tables (select-keys table-def [:schema :name]))]
               (update-raw-table! raw-tbl table-def)
-              (do
-                (log/debug (u/format-color 'cyan "Found new table: %s" (named-table table-schema table-name)))
-                (create-raw-table! (:id database) table-def))))
+              (create-raw-table! (:id database) table-def)))
           (catch Throwable t
             ;; TODO: we should capture this and save it on the RawTable
             (log/error (u/format-color 'red "Unexpected error introspecting table schema: %s" (named-table table-schema table-name)) t))

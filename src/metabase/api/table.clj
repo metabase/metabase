@@ -4,10 +4,11 @@
             [korma.core :as k]
             [metabase.api.common :refer :all]
             [metabase.db :refer :all]
+            [metabase.driver :as driver]
             (metabase.models [hydrate :refer :all]
                              [field :refer [Field]]
                              [table :refer [Table] :as table])
-            [metabase.driver :as driver]))
+            [metabase.sync-database :as sync-database]))
 
 (defannotation TableEntityType
   "Param must be one of `person`, `event`, `photo`, or `place`."
@@ -96,7 +97,7 @@
   (let-404 [table (Table id)]
     (write-check table)
     ;; run the task asynchronously
-    (future (driver/sync-table! table)))
+    (future (sync-database/sync-table! table)))
   {:status :ok})
 
 (defendpoint POST "/:id/reorder"

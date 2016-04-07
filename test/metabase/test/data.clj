@@ -9,6 +9,7 @@
             (metabase.models [database :refer [Database]]
                              [field :refer [Field] :as field]
                              [table :refer [Table]])
+            [metabase.sync-database :as sync-database]
             (metabase.test.data [datasets :refer [*data-loader*]]
                                 [dataset-definitions :as defs]
                                 [h2 :as h2]
@@ -165,7 +166,7 @@
                       :details (i/database->connection-details dataset-loader :db database-definition))]
 
              ;; Sync the database
-             (driver/sync-database! db)
+             (sync-database/sync-database! db)
 
              ;; Add extra metadata like Field field-type, base-type, etc.
              (doseq [^TableDefinition table-definition (:table-definitions database-definition)]

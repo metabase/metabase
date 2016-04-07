@@ -398,5 +398,6 @@
        (get-tables database-id))]))
 
 
-;; introspect-database-and-update-raw-tables!
+;; TODO: introspect-raw-table-and-update!
+;; TODO: introspect-database-and-update-raw-tables!
 ;; make sure to test case where FK relationship tables are out of order

@@ -388,23 +388,6 @@
           (throw (Exception. (humanize-connection-error-message driver (.getMessage e)))))
         false))))
 
-(defn sync-database!
-  "Sync a `Database`, its `Tables`, and `Fields`.
-
-   Takes an optional kwarg `:full-sync?` (default = `true`).  A full sync includes more in depth table analysis work."
-  [database & {:keys [full-sync?]}]
-  {:pre [(map? database)]}
-  (require 'metabase.driver.sync)
-  (@(resolve 'metabase.driver.sync/sync-database!) (engine->driver (:engine database)) database :full-sync? full-sync?))
-
-(defn sync-table!
-  "Sync a `Table` and its `Fields`.
-
-   Takes an optional kwarg `:full-sync?` (default = `true`).  A full sync includes more in depth table analysis work."
-  [table & {:keys [full-sync?]}]
-  {:pre [(map? table)]}
-  (require 'metabase.driver.sync)
-  (@(resolve 'metabase.driver.sync/sync-table!) (database-id->driver (:db_id table)) table :full-sync? full-sync?))
 
 (defn process-query
   "Process a structured or native query, and return the result."

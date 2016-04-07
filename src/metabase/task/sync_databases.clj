@@ -4,9 +4,9 @@
                                     [triggers :as triggers])
             [clojurewerkz.quartzite.schedule.cron :as cron]
             (metabase [db :as db]
-                      [driver :as driver]
                       [task :as task])
-            [metabase.models.database :refer [Database]]))
+            [metabase.models.database :refer [Database]]
+            [metabase.sync-database :as sync-database]))
 
 (def ^:private ^:const sync-databases-job-key     "metabase.task.sync-databases.job")
 (def ^:private ^:const sync-databases-trigger-key "metabase.task.sync-databases.trigger")
@@ -21,7 +21,7 @@
     (for [database (db/sel :many Database :is_sample false)] ; skip Sample Dataset DB
       (try
         ;; NOTE: this happens synchronously for now to avoid excessive load if there are lots of databases
-        (driver/sync-database! database)
+        (sync-database/sync-database! database)
         (catch Throwable e
           (log/error "Error syncing database: " (:id database) e))))))
 

@@ -2,40 +2,36 @@
   (:require [clojure.string :as s]
             [clojure.tools.logging :as log]
             [korma.core :as k]
-            [medley.core :as m]
             [metabase.db :as db]
             [metabase.driver :as driver]
-            [metabase.models.common :as common]
             [metabase.models.field :as field]
             [metabase.models.raw-column :as raw-column]
             [metabase.models.raw-table :as raw-table]
             [metabase.models.table :as table]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [clojure.set :as set]))
 
 
 (def ^:private ^:dynamic *sync-dynamic* false)
 
 
-(defn- save-all-fks!
+(defn- save-fks!
   "Update all of the FK relationships present in DATABASE based on what's captured in the raw schema.
    This will set :special_type :fk and :fk_target_field_id <field-id> for each found FK relationship.
    NOTE: we currently overwrite any previously defined metadata when doing this."
-  [{database-id :id}]
-  (when-let [fk-sources (k/select raw-column/RawColumn
-                          (k/fields :id :fk_target_column_id)
-                          (k/join raw-table/RawTable (= :raw_table.id :raw_table_id))
-                          (k/where {:raw_table.database_id database-id})
-                          (k/where (not= :raw_column.fk_target_column_id nil)))]
-    (doseq [{fk-source-id :id, fk-target-id :fk_target_column_id} fk-sources]
-      ;; TODO: it's possible there are multiple fields here with the same source/target column ids
-      (when-let [source-field-id (db/sel :one :field [field/Field :id] :raw_column_id fk-source-id, :visibility_type [not= "retired"])]
-        (when-let [target-field-id (db/sel :one :field [field/Field :id] :raw_column_id fk-target-id, :visibility_type [not= "retired"])]
-          (db/upd field/Field source-field-id
-            :special_type       :fk
-            :fk_target_field_id target-field-id))))))
+  [fk-sources]
+  {:pre [(coll? fk-sources)
+         (every? map? fk-sources)]}
+  (doseq [{fk-source-id :source-column, fk-target-id :target-column} fk-sources]
+    ;; TODO: it's possible there are multiple fields here with the same source/target column ids
+    (when-let [source-field-id (db/sel :one :field [field/Field :id] :raw_column_id fk-source-id, :visibility_type [not= "retired"])]
+      (when-let [target-field-id (db/sel :one :field [field/Field :id] :raw_column_id fk-target-id, :visibility_type [not= "retired"])]
+        (db/upd field/Field source-field-id
+          :special_type       :fk
+          :fk_target_field_id target-field-id)))))
 
 
-(defn- sync-metabase-metadata-table!
+(defn sync-metabase-metadata-table!
   "Databases may include a table named `_metabase_metadata` (case-insentive) which includes descriptions or other metadata about the `Tables` and `Fields`
    it contains. This table is *not* synced normally, i.e. a Metabase `Table` is not created for it. Instead, *this* function is called, which reads the data it
    contains and updates the relevant Metabase objects.
@@ -68,107 +64,6 @@
              (log/error (u/format-color 'red "Error in _metabase_metadata: %s" (.getMessage e))))))))
 
 
-(def ^{:arglists '([column])} infer-field-special-type
-  "If RAW-COLUMN has a `name` and `base_type` that matches a known pattern, return the `special_type` we should assign to it."
-  (let [bool-or-int #{:BooleanField :BigIntegerField :IntegerField}
-        float       #{:DecimalField :FloatField}
-        int-or-text #{:BigIntegerField :IntegerField :CharField :TextField}
-        text        #{:CharField :TextField}
-        ;; tuples of [pattern set-of-valid-base-types special-type
-        ;; * Convert field name to lowercase before matching against a pattern
-        ;; * consider a nil set-of-valid-base-types to mean "match any base type"
-        pattern+base-types+special-type [[#"^.*_lat$"       float       :latitude]
-                                         [#"^.*_lon$"       float       :longitude]
-                                         [#"^.*_lng$"       float       :longitude]
-                                         [#"^.*_long$"      float       :longitude]
-                                         [#"^.*_longitude$" float       :longitude]
-                                         [#"^.*_rating$"    int-or-text :category]
-                                         [#"^.*_type$"      int-or-text :category]
-                                         [#"^.*_url$"       text        :url]
-                                         [#"^_latitude$"    float       :latitude]
-                                         [#"^active$"       bool-or-int :category]
-                                         [#"^city$"         text        :city]
-                                         [#"^country$"      text        :country]
-                                         [#"^countryCode$"  text        :country]
-                                         [#"^currency$"     int-or-text :category]
-                                         [#"^first_name$"   text        :name]
-                                         [#"^full_name$"    text        :name]
-                                         [#"^gender$"       int-or-text :category]
-                                         [#"^last_name$"    text        :name]
-                                         [#"^lat$"          float       :latitude]
-                                         [#"^latitude$"     float       :latitude]
-                                         [#"^lon$"          float       :longitude]
-                                         [#"^lng$"          float       :longitude]
-                                         [#"^long$"         float       :longitude]
-                                         [#"^longitude$"    float       :longitude]
-                                         [#"^name$"         text        :name]
-                                         [#"^postalCode$"   int-or-text :zip_code]
-                                         [#"^postal_code$"  int-or-text :zip_code]
-                                         [#"^rating$"       int-or-text :category]
-                                         [#"^role$"         int-or-text :category]
-                                         [#"^sex$"          int-or-text :category]
-                                         [#"^state$"        text        :state]
-                                         [#"^status$"       int-or-text :category]
-                                         [#"^type$"         int-or-text :category]
-                                         [#"^url$"          text        :url]
-                                         [#"^zip_code$"     int-or-text :zip_code]
-                                         [#"^zipcode$"      int-or-text :zip_code]]]
-    ;; Check that all the pattern tuples are valid
-    (doseq [[name-pattern base-types special-type] pattern+base-types+special-type]
-      (assert (= (type name-pattern) java.util.regex.Pattern))
-      (assert (every? (partial contains? field/base-types) base-types))
-      (assert (contains? field/special-types special-type)))
-
-    (fn [{:keys [base_type details], field-name :name, pk? :is_pk}]
-      (when (and (string? field-name)
-                 (keyword? base_type))
-        (let [{:keys [special-type]} details]
-          (or special-type
-              (when pk? :id)
-              (when (= "id" (s/lower-case field-name)) :id)
-              (when-let [matching-pattern (m/find-first (fn [[name-pattern valid-base-types _]]
-                                                          (and (or (nil? valid-base-types)
-                                                                   (contains? valid-base-types base_type))
-                                                               (re-matches name-pattern (s/lower-case field-name))))
-                                                        pattern+base-types+special-type)]
-                ;; a little something for the app log
-                (log/debug (u/format-color 'green "%s '%s' matches '%s'. Setting special_type to '%s'."
-                                           (name base_type) field-name (first matching-pattern) (name (last matching-pattern))))
-                ;; the actual special-type is the last element of the pattern
-                (last matching-pattern))))))))
-
-
-(defn- update-field!
-  "Update a single `Field` with values from `RawColumn`."
-  [{:keys [id], :as existing-field} {column-name :name, :keys [base_type], :as column}]
-  (let [special-type (or (:special_type existing-field)
-                         (infer-field-special-type column))]
-    ;; if we have a different base-type or special-type, then update
-    (when (or (not= base_type (:base_type existing-field))
-              (not= special-type (:special_type existing-field)))
-      (db/upd field/Field id
-        :display_name (or (:display_name existing-field)
-                          (common/name->human-readable-name column-name))
-        :base_type    base_type
-        :special_type special-type))))
-
-
-(defn- create-field!
-  "Create a new `Field` with values from `RawColumn`."
-  [table-id {column-name :name, column-id :id, :keys [base_type], :as column}]
-  (let [fk-target-field (when-let [fk-target-column (:fk_target_column_id column)]
-                          ;; we need the field-id in this database which corresponds to this raw-columns fk target
-                          (db/sel :one :field [field/Field :id] :raw_column_id fk-target-column))]
-    (db/ins field/Field
-      :table_id           table-id
-      :raw_column_id      column-id
-      :name               column-name
-      :display_name       (common/name->human-readable-name column-name)
-      :base_type          base_type
-      :special_type       (infer-field-special-type column)
-      :fk_target_field_id fk-target-field)))
-
-
 (defn- save-table-fields!
   "Refresh all `Fields` in a given `Table` based on what's available in the associated `RawColumns`.
 
@@ -189,64 +84,31 @@
           (k/set-fields {:visibility_type "retired"}))))
 
     ;; create/update the active columns
-    (doseq [{raw-column-id :id, :as column} active-raw-columns]
-      (if-let [existing-field (get existing-fields raw-column-id)]
-        ;; field already exists, so we UPDATE it
-        (update-field! existing-field column)
-        ;; looks like a new field, so we CREATE it
-        (create-field! table-id column)))))
+    (doseq [{raw-column-id :id, :keys [details], :as column} active-raw-columns]
+      ;; do a little bit of key renaming to match what's expected for a call to update/create-field
+      (let [column (-> (set/rename-keys column {:base_type :base-type
+                                                :is_pk     :pk?
+                                                :id        :raw-column-id})
+                       (assoc :special-type (:special-type details)))]
+        (if-let [existing-field (get existing-fields raw-column-id)]
+          ;; field already exists, so we UPDATE it
+          (field/update-field existing-field column)
+          ;; looks like a new field, so we CREATE it
+          (field/create-field table-id (assoc column :raw-column-id raw-column-id)))))))
 
 
-(defn- save-fields!
-  "Update `Fields` for `Table`.
-
-   This is a simple delegating function which either calls sync-dynamic/save-table-fields! or sync/save-table-fields! based
-   on whether the database being synced has a `:dynamic-schema`."
-  [tbl]
-  (if *sync-dynamic*
-    (do
-      (require 'metabase.sync-database.sync-dynamic)
-      ((ns-resolve 'metabase.sync-database.sync-dynamic 'save-table-fields!) tbl))
-    (save-table-fields! tbl)))
-
-
-(defn- update-table!
-  "Update `Table` with the data from `RawTable`, including saving all fields."
-  [{:keys [id display_name], :as existing-table} {table-name :name}]
-  ;; the only thing we need to update on a table is the :display_name, if it never got set
-  (when (nil? display_name)
-    (db/upd table/Table id
-      :display_name (common/name->human-readable-name table-name)))
-  ;; now update the all the table fields
-  (save-fields! existing-table))
-
-
-(defn- create-table!
-  "Create `Table` with the data from `RawTable`, including all fields."
-  [database-id {schema-name :schema, table-name :name, raw-table-id :id}]
-  (let [new-table  (db/ins table/Table
-                     :db_id        database-id
-                     :raw_table_id raw-table-id
-                     :schema       schema-name
-                     :name         table-name
-                     :display_name (common/name->human-readable-name table-name)
-                     :active       true)]
-    ;; now create all the table fields
-    (save-fields! new-table)))
-
-
-(defn update-data-models-from-raw-tables!
-  "Update the working `Table` and `Field` metadata for DATABASE based on the latest raw schema information.
-   This function uses the data in `RawTable` and `RawColumn` to update the working data models as needed.
-
-   NOTE: when a database is a `:dynamic-schema` database we follow a slightly different execution path."
-  [driver {database-id :id, :as database}]
+(defn retire-tables!
+  "Retire any `Table` who's `RawTable` has been deactivated.
+  This occurs when a database introspection reveals the table is no longer available."
+  [{database-id :id}]
   {:pre [(integer? database-id)]}
-
   ;; retire tables (and their fields) as needed
   (let [tables-to-remove (set (map :id (k/select table/Table
                                          (k/fields :id)
-                                         (k/join raw-table/RawTable (= :raw_table.id :raw_table_id))
+                                         ;; NOTE: something really wrong happening with SQLKorma here which requires us
+                                         ;;       to be explicit about :metabase_table.raw_table_id in the join condition
+                                         ;;       without this it seems to want to join against metabase_field !?
+                                         (k/join raw-table/RawTable (= :raw_table.id :metabase_table.raw_table_id))
                                          (k/where {:db_id database-id
                                                    :active true
                                                    :raw_table.active false}))))]
@@ -257,7 +119,47 @@
     ;; retire the fields of retired tables
     (k/update field/Field
       (k/where {:table_id [in tables-to-remove]})
-      (k/set-fields {:visibility_type "retired"})))
+      (k/set-fields {:visibility_type "retired"}))))
+
+
+(defn update-data-models-for-table!
+  "Update the working `Table` and `Field` metadata for a given `Table` based on the latest raw schema information.
+   This function uses the data in `RawTable` and `RawColumn` to update the working data models as needed."
+  [{raw-table-id :raw_table_id, :as existing-table}]
+  (when-let [{database-id :database_id, :as raw-tbl} (db/sel :one raw-table/RawTable :id raw-table-id)]
+    (try
+      (-> (table/update-table existing-table raw-tbl)
+          save-table-fields!)
+
+      ;; TODO: handle setting any fk relationships
+      (when-let [table-fks (k/select raw-column/RawColumn
+                             (k/fields [:id :source-column]
+                                       [:fk_target_column_id :target-column])
+                             ;; NOTE: something really wrong happening with SQLKorma here which requires us
+                             ;;       to be explicit about :metabase_table.raw_table_id in the join condition
+                             ;;       without this it seems to want to join against metabase_field !?
+                             (k/join raw-table/RawTable (= :raw_table.id :raw_column.raw_table_id))
+                             (k/where {:raw_table.database_id database-id
+                                       :raw_table.id raw-table-id})
+                             (k/where (not= :raw_column.fk_target_column_id nil)))]
+        (save-fks! table-fks))
+
+      (catch Throwable t
+        (log/error (u/format-color 'red "Unexpected error syncing table") t)))))
+
+
+(defn update-data-models-from-raw-tables!
+  "Update the working `Table` and `Field` metadata for *all* tables in a `Database` based on the latest raw schema information.
+   This function uses the data in `RawTable` and `RawColumn` to update the working data models as needed."
+  [{database-id :id, :as database}]
+  {:pre [(integer? database-id)]}
+
+  ;; quick sanity check that this is indeed a :dynamic-schema database
+  (when (driver/driver-supports? (driver/engine->driver (:engine database)) :dynamic-schema)
+    (throw (IllegalStateException. "This function cannot be called on databases which are :dynamic-schema")))
+
+  ;; retire any tables which were disabled
+  (retire-tables! database)
 
   (let [raw-tables      (raw-table/active-tables database-id)
         existing-tables (into {} (for [{raw-table-id :raw_table_id, :as table} (db/sel :many table/Table, :db_id database-id, :active true)]
@@ -266,19 +168,29 @@
     ;; NOTE: we make sure to skip the _metabase_metadata table here.  it's not a normal table.
     (doseq [{raw-table-id :id, :as raw-tbl} (filter #(not= "_metabase_metadata" (s/lower-case (:name %))) raw-tables)]
       (try
-        (binding [*sync-dynamic* (driver/driver-supports? driver :dynamic-schema)]
-          (if-let [existing-table (get existing-tables raw-table-id)]
-            ;; table already exists, update it
-            (update-table! existing-table raw-tbl)
-            ;; must be a new table, insert it
-            (create-table! database-id raw-tbl)))
+        (if-let [existing-table (get existing-tables raw-table-id)]
+          ;; table already exists, update it
+          (-> (table/update-table existing-table raw-tbl)
+              save-table-fields!)
+          ;; must be a new table, insert it
+          (-> (table/create-table database-id (assoc raw-tbl :raw-table-id raw-table-id))
+              save-table-fields!))
         (catch Throwable t
           (log/error (u/format-color 'red "Unexpected error syncing table") t))))
 
     ;; handle setting any fk relationships
     ;; NOTE: this must be done after fully syncing the tables/fields because we need all tables/fields in place
-    (save-all-fks! database)
+    (when-let [db-fks (k/select raw-column/RawColumn
+                        (k/fields [:id :source-column]
+                                  [:fk_target_column_id :target-column])
+                        ;; NOTE: something really wrong happening with SQLKorma here which requires us
+                        ;;       to be explicit about :metabase_table.raw_table_id in the join condition
+                        ;;       without this it seems to want to join against metabase_field !?
+                        (k/join raw-table/RawTable (= :raw_table.id :raw_column.raw_table_id))
+                        (k/where {:raw_table.database_id database-id})
+                        (k/where (not= :raw_column.fk_target_column_id nil)))]
+      (save-fks! db-fks))
 
     ;; NOTE: if per chance there were multiple _metabase_metadata tables in different schemas, we just take the first
     (when-let [_metabase_metadata (first (filter #(= (s/lower-case (:name %)) "_metabase_metadata") raw-tables))]
-      (sync-metabase-metadata-table! driver database _metabase_metadata))))
+      (sync-metabase-metadata-table! (driver/engine->driver (:engine database)) database _metabase_metadata))))

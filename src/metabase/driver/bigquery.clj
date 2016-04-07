@@ -4,17 +4,16 @@
             [clojure.tools.logging :as log]
             (korma [core :as k]
                    [db :as kdb])
-            [korma.sql.utils :as kutils]
             (metabase [config :as config]
                       [db :as db]
                       [driver :as driver])
-            (metabase.driver [generic-sql :as sql]
-                             [sync :as sync])
+            [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
             metabase.driver.query-processor.interface
             (metabase.models [database :refer [Database]]
                              [field :as field]
                              [table :as table])
+            [metabase.sync-database.analyze :as analyze]
             [metabase.util :as u]
             [metabase.util.korma-extensions :as kx])
   (:import (java.util Collections Date)
@@ -404,7 +403,7 @@
 
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table         sync/generic-analyze-table
+         {:analyze-table         analyze/generic-analyze-table
           :can-connect?          (u/drop-first-arg can-connect?)
           :date-interval         (u/drop-first-arg (comp prepare-value u/relative-date))
           :describe-database     (u/drop-first-arg describe-database)
