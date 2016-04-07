@@ -9,7 +9,9 @@
             [korma.sql.utils :as kutils]
             [clj-time.format :as f]
             [clj-time.coerce :as c]
-            [clj-time.core :as t])
+            [clj-time.core :as t]
+            [metabase.driver.sync :as sync]
+            [metabase.models.field :as field])
   (:import (clojure.lang Named)
            (java.sql Timestamp)))
 
@@ -146,9 +148,42 @@
     :week     (k/raw (sql-interval WEEK amount))
     :day      (k/raw (sql-interval DAY amount))))
 
+
 (defrecord CrateDriver []
   Named
   (getName [_] "Crate"))
+
+(defn- field-avg-length [_ field]
+  (or (some-> (sql/korma-entity (field/table field))
+              (k/select (k/aggregate (avg (k/sqlfn :CHAR_LENGTH
+                                                   (sql/escape-field-name (:name field))))
+                                     :len))
+              first
+              :len
+              int)
+      0))
+
+(defn- field-percent-urls [_ field]
+  (or (let [korma-table (sql/korma-entity (field/table field))]
+        (when-let [total-non-null-count (:count (first (k/select korma-table
+                                                                 (k/aggregate (count (k/raw "*")) :count)
+                                                                 (k/where {(sql/escape-field-name (:name field)) [not= nil]}))))]
+          (when (> total-non-null-count 0)
+            (when-let [url-count (:count (first (k/select korma-table
+                                                          (k/aggregate (count (k/raw "*")) :count)
+                                                          (k/where {(sql/escape-field-name (:name field)) [like "http%://_%.__%"]}))))]
+              (float (/ url-count total-non-null-count))))))
+      0.0))
+
+(defn- analyze-table
+  "Default implementation of `analyze-table` for SQL drivers."
+  [driver table new-table-ids]
+  ((sync/make-analyze-table driver
+                            :field-avg-length-fn (partial field-avg-length driver)
+                            :field-percent-urls-fn (partial field-percent-urls driver))
+    driver
+    table
+    new-table-ids))
 
 (defn- crate-spec
   [{:keys [host port]
@@ -191,7 +226,8 @@
                                         :type         :integer
                                         :default      4300}])
           :can-connect?  can-connect
-          :date-interval date-interval})
+          :date-interval date-interval
+          :analyze-table analyze-table})
   sql/ISQLDriver CrateISQLDriverMixin)
 
 (driver/register-driver! :crate (CrateDriver.))
