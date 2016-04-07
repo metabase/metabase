@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import { Link } from "react-router";
 import S from "./QuestionsSidebar.css";
 
 import Icon from "metabase/components/Icon.jsx";
@@ -26,15 +27,15 @@ const QuestionsSidebar = ({ sections, topics, labels }) =>
 
 const QuestionSidebarSectionTitle = ({ name, href }) =>
     <li>
-        <a href={href} className={S.sectionTitle}>{name}</a>
+        <Link to={href} className={S.sectionTitle} activeClassName={S.selected}>{name}</Link>
     </li>
 
 const QuestionSidebarItem = ({ name, icon, href }) =>
     <li>
-        <a href={href} className={S.item}>
+        <Link to={href} className={S.item} activeClassName={S.selected}>
             <QuestionSidebarIcon icon={icon} width={32} height={32} />
             <span>{name}</span>
-        </a>
+        </Link>
     </li>
 
 const QuestionSidebarIcon = ({ icon }) =>

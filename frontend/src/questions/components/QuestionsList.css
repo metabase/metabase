@@ -93,6 +93,8 @@
 :local(.chartIcon) {
     composes: icon;
     visibility: visible !important;
+    position: relative;
+    left: -6px;
 }
 :local(.item):hover :local(.chartIcon),
 :local(.item.checked) :local(.chartIcon) {

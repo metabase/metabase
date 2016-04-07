@@ -5,10 +5,16 @@ import Icon from "metabase/components/Icon.jsx";
 
 import cx from "classnames";
 
-const SearchHeader = () =>
+const SearchHeader = ({ searchText, setSearchText }) =>
     <div className={S.searchHeader}>
         <Icon className={S.searchIcon} name="search" width={18} height={18} />
-        <input className={cx("input", S.searchBox)} type="text" placeholder="Search for a question..." />
+        <input
+            className={cx("input", S.searchBox)}
+            type="text"
+            placeholder="Search for a question..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+        />
     </div>
 
 export default SearchHeader;

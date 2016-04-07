@@ -5,6 +5,6 @@
     --blue-color: #2D86D4;
 }
 
-:local(.questions) a {
+a {
     text-decoration: none;
 }
