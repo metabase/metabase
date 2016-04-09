@@ -2,13 +2,11 @@
   (:require [korma.core :as k]
             [medley.core :as m]
             [metabase.db :as db]
-            (metabase.models [card-topic :refer [CardTopic]]
-                             [card-label :refer [CardLabel]]
+            (metabase.models [card-label :refer [CardLabel]]
                              [dependency :as dependency]
                              [interface :as i]
                              [label :refer [Label]]
-                             [revision :as revision]
-                             [topic :refer [Topic]])
+                             [revision :as revision])
             (metabase [query :as q]
                       [util :as u])))
 
@@ -35,16 +33,6 @@
       first
       :dashboards))
 
-(defn topics
-  "Return `Topics` for CARD."
-  {:hydrate :topics}
-  [{:keys [id]}]
-  (if-let [topic-ids (seq (db/sel :many :field [CardTopic :topic_id] :card_id id))]
-    (db/sel :many Topic
-            (k/where {:id [in topic-ids]})
-            (k/order (k/sqlfn :LOWER :name)))
-    []))
-
 (defn labels
   "Return `Labels` for CARD."
   {:hydrate :labels}
@@ -61,8 +49,7 @@
   (db/cascade-delete 'DashboardCardSeries :card_id id)
   (db/cascade-delete 'DashboardCard :card_id id)
   (db/cascade-delete 'CardFavorite :card_id id)
-  (db/cascade-delete 'CardLabel :card_id id)
-  (db/cascade-delete 'CardTopic :card_id id))
+  (db/cascade-delete 'CardLabel :card_id id))
 
 
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------

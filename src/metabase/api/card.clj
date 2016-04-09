@@ -9,32 +9,16 @@
                              [card :refer [Card] :as card]
                              [card-favorite :refer [CardFavorite]]
                              [card-label :refer [CardLabel]]
-                             [card-topic :refer [CardTopic]]
                              [common :as common]
                              [database :refer [Database]]
                              [label :refer [Label]]
-                             [table :refer [Table]]
-                             [topic :refer [Topic]])
+                             [table :refer [Table]])
             [metabase.util :as u]))
 
 (defannotation CardFilterOption
   "Option must be one of `all`, `mine`, or `fav`."
   [symb value :nillable]
   (checkp-contains? #{:all :mine :fav :database :table} symb (keyword value)))
-
-;; hydrate-topics and hydrate-labels are ugly but they save us from having to do DB calls for every single Card to hydrate their Topics and Labels.
-;; It would be nice if hydrate could be extended to handle MtM relationships like these automatically.
-
-(defn- hydrate-topics
-  "Efficiently hydrate the `Topics` for a large collection of `Cards`."
-  [cards]
-  (let [card-topics          (sel :many :fields [CardTopic :card_id :topic_id])
-        topic-id->topic      (when (seq card-topics)
-                               (sel :many :field->obj [Topic :id] (k/where {:id [in (set (map :topic_id card-topics))]})))
-        card-id->card-topics (group-by :card_id card-topics)]
-    (for [card cards]
-      (assoc card :topics (for [card-topic (card-id->card-topics (:id card))] ; TODO - do these need to be sorted ?
-                            (topic-id->topic (:topic_id card-topic)))))))
 
 (defn- hydrate-labels
   "Efficiently hydrate the `Labels` for a large collection of `Cards`."
@@ -80,7 +64,6 @@
                                                                      (or {:creator_id *current-user-id*}
                                                                          {:public_perms [> common/perms-none]})))))
       (hydrate :creator)
-      hydrate-topics
       hydrate-labels))
 
 (defendpoint POST "/"
@@ -104,7 +87,7 @@
   [id]
   (->404 (Card id)
          read-check
-         (hydrate :creator :can_read :can_write :dashboard_count :topics :labels)
+         (hydrate :creator :can_read :can_write :dashboard_count :labels)
          (assoc :actor_id *current-user-id*)
          (->> (events/publish-event :card-read))
          (dissoc :actor_id)))
@@ -123,7 +106,7 @@
                     :name name
                     :public_perms public_perms
                     :visualization_settings visualization_settings)
-  (events/publish-event :card-update (assoc (sel :one Card :id id) :actor_id *current-user-id*)))
+  (events/publish-event :card-update (assoc (Card id) :actor_id *current-user-id*)))
 
 (defendpoint DELETE "/:id"
   "Delete a `Card`."
@@ -162,22 +145,6 @@
       (cascade-delete CardLabel :label_id label-id, :card_id card-id))
     (doseq [label-id labels-to-add]
       (ins CardLabel :label_id label-id, :card_id card-id)))
-  ;; TODO - Should this endpoint return something more useful instead ?
-  {:status :ok})
-
-(defendpoint POST "/:card-id/topics"
-  "Update the set of `Topics` that apply to a `Card`."
-  [card-id :as {{:keys [topic_ids]} :body}]
-  {topic_ids [Required ArrayOfIntegers]}
-  (write-check Card card-id)
-  (let [[topics-to-remove topics-to-add] (data/diff (set (sel :many :field [CardTopic :topic_id] :card_id card-id))
-                                                    (set topic_ids))]
-    (println "topics-to-remove:" topics-to-remove
-             "topics-to-add:" topics-to-add)
-    (doseq [topic-id topics-to-remove]
-      (cascade-delete CardTopic :topic_id topic-id, :card_id card-id))
-    (doseq [topic-id topics-to-add]
-      (ins CardTopic :topic_id topic-id, :card_id card-id)))
   ;; TODO - Should this endpoint return something more useful instead ?
   {:status :ok})
 

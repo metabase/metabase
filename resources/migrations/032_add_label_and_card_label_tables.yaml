@@ -1,0 +1,91 @@
+databaseChangeLog:
+  - changeSet:
+      id: 32
+      author: camsaul
+      changes:
+        ######################################## label table ########################################
+        - createTable:
+            tableName: label
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: slug
+                  type: VARCHAR(254)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: icon
+                  type: VARCHAR(128)
+        - createIndex:
+            tableName: label
+            indexName: idx_label_slug
+            columns:
+              column:
+                name: slug
+        ######################################## card_label table ########################################
+        - createTable:
+            tableName: card_label
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: report_card(id)
+                    foreignKeyName: fk_card_label_ref_card_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: label_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: label(id)
+                    foreignKeyName: fk_card_label_ref_label_id
+                    deferrable: false
+                    initiallyDeferred: false
+        - addUniqueConstraint:
+            tableName: card_label
+            columnNames: card_id, label_id
+            constraintName: unique_card_label_card_id_label_id
+        - createIndex:
+            tableName: card_label
+            indexName: idx_card_label_card_id
+            columns:
+              column:
+                name: card_id
+        - createIndex:
+            tableName: card_label
+            indexName: idx_card_label_label_id
+            columns:
+              column:
+                name: label_id
+        ######################################## add archived column to report_card ########################################
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
