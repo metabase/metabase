@@ -115,17 +115,27 @@
            qp))))
 
 
-(defn- pre-expand [qp]
+(defn- pre-expand-macros [qp]
   (fn [query]
-    (qp (if (structured-query? query)
-          (let [macro-expanded-query (macros/expand-macros query)]
-            (when (and (not *disable-qp-logging*)
-                       (not= macro-expanded-query query))
-              (log/debug (u/format-color 'cyan "\n\nMACRO/SUBSTITUTED: 😻\n%s" (u/pprint-to-str macro-expanded-query))))
-            (-> macro-expanded-query
-                expand/expand
-                resolve/resolve))
-          query))))
+    ;; if necessary, handle macro substitution
+    (let [query (if-not (structured-query? query)
+                  query
+                  ;; for structured queries run our macro expansion
+                  (u/prog1 (macros/expand-macros query)
+                    (when (and (not *disable-qp-logging*)
+                               (not= <> query))
+                      (log/debug (u/format-color 'cyan "\n\nMACRO/SUBSTITUTED: 😻\n%s" (u/pprint-to-str <>))))))]
+      (qp query))))
+
+
+(defn- pre-expand-resolve [qp]
+  (fn [query]
+    ;; if necessary, expand/resolve the query
+    (let [query (if-not (structured-query? query)
+                  query
+                  ;; for structured queries we expand first, then resolve
+                  (resolve/resolve (expand/expand query)))]
+      (qp query))))
 
 
 (defn- post-add-row-count-and-status
@@ -357,7 +367,8 @@
                                                driver/process-native) driver)]
       ((<<- wrap-catch-exceptions
             pre-add-settings
-            pre-expand
+            pre-expand-macros
+            pre-expand-resolve
             driver-process-in-context
             post-add-row-count-and-status
             post-format-rows
