@@ -296,6 +296,18 @@
                                               absolute-max-results))))))
 
 
+(defn post-annotate
+  "QP middleware that runs directly after the the query is run and adds metadata as appropriate."
+  [qp]
+  (fn [query]
+    (if-not (structured-query? query)
+      ;; non-structured queries are not affected
+      (qp query)
+      ;; for structured queries capture the results and annotate
+      (let [results (qp query)]
+        (annotate/annotate query results)))))
+
+
 (defn- pre-log-query [qp]
   (fn [query]
     (when (and (structured-query? query)
@@ -376,7 +388,7 @@
             pre-add-implicit-breakout-order-by
             cumulative-sum
             limit
-            annotate/post-annotate
+            post-annotate
             pre-log-query
             wrap-guard-multiple-calls
             driver-process-query) (assoc query :driver driver)))))

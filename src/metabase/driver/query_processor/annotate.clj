@@ -234,23 +234,18 @@
          (m/distinct-by :name)
          add-extra-info-to-fk-fields)))
 
-(defn post-annotate
-  "QP middleware that runs directly after the the query is ran. This stage:
+(defn annotate
+  "Post-process a structured query to add metadata to the results. This stage:
 
   1.  Sorts the results according to the rules at the top of this page
   2.  Resolves the Fields returned in the results and adds information like `:columns` and `:cols`
       expected by the frontend."
-  [qp]
-  (fn [query]
-    (if (= :query (keyword (:type query)))
-      (let [results     (qp query)
-            result-keys (set (keys (first results)))
-            cols        (resolve-sort-and-format-columns (:query query) result-keys)
-            columns     (mapv :name cols)]
-        {:cols    (vec (for [col cols]
-                         (update col :name name)))
-         :columns (mapv name columns)
-         :rows    (for [row results]
-                    (mapv row columns))})
-      ;; for non-structured queries we do nothing
-      (qp query))))
+  [query results]
+  (let [result-keys (set (keys (first results)))
+        cols        (resolve-sort-and-format-columns (:query query) result-keys)
+        columns     (mapv :name cols)]
+    {:cols    (vec (for [col cols]
+                     (update col :name name)))
+     :columns (mapv name columns)
+     :rows    (for [row results]
+                (mapv row columns))}))
