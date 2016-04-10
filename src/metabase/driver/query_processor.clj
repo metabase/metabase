@@ -351,13 +351,14 @@
   (when-not *disable-qp-logging*
     (log/debug (u/format-color 'blue "\nQUERY: 😎\n%s"  (u/pprint-to-str query))))
   (binding [*driver* driver]
-    (let [driver-process-query (partial (if (structured-query? query)
-                                          driver/process-structured
-                                          driver/process-native) driver)]
+    (let [driver-process-in-context (partial driver/process-query-in-context driver)
+          driver-process-query      (partial (if (structured-query? query)
+                                               driver/process-structured
+                                               driver/process-native) driver)]
       ((<<- wrap-catch-exceptions
             pre-add-settings
             pre-expand
-            (driver/process-query-in-context driver)
+            driver-process-in-context
             post-add-row-count-and-status
             post-format-rows
             pre-add-implicit-fields
