@@ -164,18 +164,21 @@
 
 (defendpoint PUT "/:id"
   "Update a `Card`."
-  [id :as {{:keys [dataset_query description display name public_perms visualization_settings]} :body}]
-  {name         NonEmptyString
-   public_perms PublicPerms
-   display      NonEmptyString}
+  [id :as {{:keys [dataset_query description display name public_perms visualization_settings archived]} :body}]
+  {name                   NonEmptyString
+   public_perms           PublicPerms
+   display                NonEmptyString
+   visualization_settings Dict
+   archived               Boolean}
   (write-check Card id)
   (upd-non-nil-keys Card id
-                    :dataset_query dataset_query
-                    :description description
-                    :display display
-                    :name name
-                    :public_perms public_perms
-                    :visualization_settings visualization_settings)
+    :dataset_query          dataset_query
+    :description            description
+    :display                display
+    :name                   name
+    :public_perms           public_perms
+    :visualization_settings visualization_settings
+    :archived               archived)
   (events/publish-event :card-update (assoc (Card id) :actor_id *current-user-id*)))
 
 (defendpoint DELETE "/:id"
