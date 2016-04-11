@@ -35,6 +35,7 @@ export default class Bar extends Component {
     }
 
     componentWillReceiveProps(newProps) {
+        // TODO: remove use of deprecated "card" and "data" props
         if (newProps.data !== this.state.rawData && newProps.data) {
             // check if the data is pivotable (2 groupings + 1 agg != 'rows')
             const isPivoted = !!(

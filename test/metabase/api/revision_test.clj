@@ -9,7 +9,7 @@
                              [revision-test :refer [with-fake-card]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [expect-eval-actual-first with-temp random-name]]))
+            [metabase.test.util :refer [expect-eval-actual-first random-name]]))
 
 (def ^:private rasta-revision-info
   (delay {:id (user->id :rasta) :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"}))

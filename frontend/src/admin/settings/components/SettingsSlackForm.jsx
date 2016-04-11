@@ -99,6 +99,10 @@ export default class SettingsSlackForm extends Component {
         this.setState({
             formData: { ...this.state.formData, [element.key]: (MetabaseUtils.isEmpty(value)) ? null : value }
         });
+
+        if (element.key === "metabot-enabled") {
+            MetabaseAnalytics.trackEvent("Slack Settings", "Toggle Metabot", value);
+        }
     }
 
     handleFormErrors(error) {
@@ -170,6 +174,7 @@ export default class SettingsSlackForm extends Component {
                         key={element.key}
                         setting={_.extend(element, {value, errorMessage })}
                         updateSetting={(setting, value) => this.handleChangeEvent(setting, value)}
+                        disabled={!this.state.formData["slack-token"]}
                     />
                 );
             }

@@ -13,7 +13,6 @@ fullscreen dashboard mode
 :local .LegendHeader {
   margin-top: 0.5em;
   margin-bottom: 0.5em;
-  height: 24px;
 }
 
 :local(.LegendItem).muted {

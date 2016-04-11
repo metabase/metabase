@@ -1,0 +1,45 @@
+:root {
+  --table-border-color: rgba(213, 213, 213, .3);
+  --table-alt-bg-color: rgba(0, 0, 0, .02);
+
+  --entity-image-small-size: 24px;
+  --entity-image-large-size: 64px;
+}
+
+/*
+  explicitly set the th text alignment to left. this is required for IE
+  which follows the suggested rendering and defaults to center, whereas
+  chrome and others do not
+*/
+th { text-align: left; }
+
+.Table {
+  /* standard table reset */
+  border-collapse: collapse;
+  border-spacing: 0;
+
+  width: 100%;
+
+  font-family: "Helvetica Neue", "Helvetica", sans-serif;
+  font-size: 0.76rem;
+  line-height: 0.76rem;
+  text-align: left;
+}
+
+.Table--bordered {
+  border: 1px solid var(--table-border-color);
+}
+
+.Table tr {
+  border-bottom: 1px solid var(--table-border-color);
+}
+
+.Table tr:nth-child(even) {
+  background-color: var(--table-alt-bg-color);
+}
+
+.Table th,
+.Table td {
+  padding: 1em;
+  border: 1px solid var(--table-border-color);
+}

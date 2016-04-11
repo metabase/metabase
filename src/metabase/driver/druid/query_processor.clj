@@ -44,9 +44,7 @@
   DateTimeField         (->rvalue [this] (->rvalue (:field this)))
   Value                 (->rvalue [this] (:value this))
   DateTimeValue         (->rvalue [{{unit :unit} :field, value :value}] (u/date->iso-8601 (u/date-trunc-or-extract unit value)))
-  RelativeDateTimeValue (->rvalue [{:keys [unit amount]}] (if (zero? amount)
-                                                            (u/date->iso-8601)
-                                                            (u/date->iso-8601 (u/date-trunc-or-extract unit (u/relative-date unit amount))))))
+  RelativeDateTimeValue (->rvalue [{:keys [unit amount]}] (u/date->iso-8601 (u/date-trunc-or-extract unit (u/relative-date unit amount)))))
 
 (defprotocol ^:private IDimensionOrMetric
   (^:private dimension-or-metric? [this]

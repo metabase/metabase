@@ -149,7 +149,10 @@
   (for [row rows]
     (for [v row]
       (if (u/is-temporal? v)
-        (u/->iso-8601-datetime v report-timezone)
+        ;; NOTE: if we don't have an explicit report-timezone then use the JVM timezone
+        ;;       this ensures alignment between the way dates are processed by JDBC and our returned data
+        ;;       GH issues: #2282, #2035
+        (u/->iso-8601-datetime v (or report-timezone (System/getProperty "user.timezone")))
         v))))
 
 (defn- post-format-rows
@@ -192,15 +195,15 @@
   "Add an implicit `fields` clause to queries with `rows` aggregations."
   [qp]
   (fn [{{:keys [source-table]} :query, :as query}]
-    (println "should-add-implicit-fields?" (should-add-implicit-fields? query))
-    (qp (if-not (should-add-implicit-fields? query)
-          query
-          (let [fields (fields-for-source-table source-table)]
-            (when-not (seq fields)
-              (log/warn (format "Table '%s' has no Fields associated with it." (:name source-table))))
-            (-> query
-                (assoc-in [:query :fields-is-implicit] true)
-                (assoc-in [:query :fields] fields)))))))
+    (let [query (if-not (should-add-implicit-fields? query)
+                  query
+                  (let [fields (fields-for-source-table source-table)]
+                    (when-not (seq fields)
+                      (log/warn (format "Table '%s' has no Fields associated with it." (:name source-table))))
+                    (-> query
+                        (assoc-in [:query :fields-is-implicit] true)
+                        (assoc-in [:query :fields] fields))))]
+      (qp query))))
 
 (defn- pre-add-expressions-to-fields
   "Add `:expressions` to the `:fields` clause."

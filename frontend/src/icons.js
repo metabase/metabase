@@ -8,7 +8,7 @@ import { loadIcon } from 'metabase/icon_paths';
         React: <Icon name="<NAME FROM ICON_PATHS>" width="<PIXEL VALUE>" height="<PIXEL VALUE>" />
 */
 
-angular.module('metabase.components')
+angular.module('metabase.icons', [])
     .directive('mbIcon', function () {
 
         return {
@@ -57,7 +57,7 @@ angular.module('metabase.components')
     };
 
 
-    angular.module('metabase.components')
+    angular.module('metabase.icons')
         .directive('mbLogoIcon', function () {
             return {
                 restrict: 'E',

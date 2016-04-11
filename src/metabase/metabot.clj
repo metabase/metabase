@@ -235,7 +235,7 @@
    This will spin up a background thread that opens and maintains a Slack WebSocket connection."
   []
   (when (and (setting/get :slack-token)
-             (= "true" (setting/get :metabot-enabled)))
+             (= "true" (metabot-enabled)))
     (log/info "Starting MetaBot WebSocket monitor thread...")
     (start-websocket-monitor!)))
 

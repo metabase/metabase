@@ -17,6 +17,15 @@ import _ from "underscore";
 import cx from "classnames";
 import i from "icepick";
 
+const isAnyDimension = (col) =>
+    (isDimension(col) || isString(col))
+
+const isNonNumericDimension = (col) =>
+    !isNumeric(col) && isAnyDimension(col)
+
+const isMetric = (col) =>
+    isNumeric(col)
+
 export default class LineAreaBarChart extends Component {
     static noHeader = true;
     static supportsSeries = true;
@@ -86,8 +95,13 @@ export default class LineAreaBarChart extends Component {
             isStacked: false
         };
         let s = series && series.length === 1 && series[0];
-        if (s && s.data && s.data.cols.length > 2) {
-            if (isDimension(s.data.cols[1]) || isString(s.data.cols[1])) {
+        if (s && s.data) {
+            // Dimension-Dimension-Metric
+            if (s.data.cols.length === 3 &&
+                isAnyDimension(s.data.cols[0]) &&
+                isNonNumericDimension(s.data.cols[1]) &&
+                isMetric(s.data.cols[2])
+            ) {
                 let dataset = crossfilter(s.data.rows);
                 let groups = [0,1].map(i => dataset.dimension(d => d[i]).group());
                 let cardinalities = groups.map(group => group.size())
@@ -106,7 +120,11 @@ export default class LineAreaBarChart extends Component {
                     }));
                     nextState.isMultiseries = true;
                 }
-            } else {
+            // Dimension-Metric-Metric+
+            } else if (s.data.cols.length >= 3 &&
+                       isAnyDimension(s.data.cols[0]) &&
+                       s.data.cols.slice(1).reduce((acc, col) => acc && isMetric(col), true)
+            ) {
                 nextState.series = s.data.cols.slice(1).map((col, index) => ({
                     card: { ...s.card, name: col.display_name || col.name, id: null },
                     data: {
@@ -193,7 +211,7 @@ export default class LineAreaBarChart extends Component {
         return (
             <div className={cx("flex flex-column p1", this.getHoverClasses(), this.props.className)}>
                 { (isDashboard && isMultiseries) &&
-                    <a href={card.id && Urls.card(card.id)} className="Card-title pt1 px1 flex-no-shrink no-decoration h3 text-bold" style={{fontSize: '1em'}}>{card.name}</a>
+                    <a href={card.id && Urls.card(card.id)} className="Card-title pt1 px1 flex-no-shrink no-decoration h3 text-bold fullscreen-night-text fullscreen-normal-text" style={{fontSize: '1em'}}>{card.name}</a>
                 }
                 { (isDashboard || isMultiseries) &&
                     <LegendHeader

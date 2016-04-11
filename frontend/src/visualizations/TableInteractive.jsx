@@ -228,7 +228,7 @@ export default class TableInteractive extends Component {
             colVal = (column && column.display_name && column.display_name.toString()) ||
                      (column && column.name && column.name.toString());
 
-        if (column.unit) {
+        if (column.unit && column.unit !== "default") {
             colVal += ": " + capitalize(column.unit.replace(/-/g, " "))
         }
 

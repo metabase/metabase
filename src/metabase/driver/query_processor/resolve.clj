@@ -9,7 +9,6 @@
             [metabase.driver.query-processor.interface :refer :all]
             (metabase.models [database :refer [Database]]
                              [field :as field]
-                             [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])
             [metabase.util :as u])
   (:import (metabase.driver.query_processor.interface DateTimeField
@@ -210,8 +209,9 @@
           fk-field-id->field-name      (sel :many :id->field [field/Field :name], :id [in fk-field-ids], :table_id source-table-id, :special_type "fk")
 
           ;; Build a map of join table PK field IDs -> source table FK field IDs
-          pk-field-id->fk-field-id     (sel :many :field->field [ForeignKey :destination_id :origin_id],
-                                            :origin_id [in (set (keys fk-field-id->field-name))])
+          pk-field-id->fk-field-id     (sel :many :field->field [field/Field :fk_target_field_id :id],
+                                            :id                 [in (set (keys fk-field-id->field-name))]
+                                            :fk_target_field_id [not= nil])
 
           ;; Build a map of join table ID -> PK field info
           join-table-id->pk-field      (let [pk-fields (sel :many :fields [field/Field :id :table_id :name], :id [in (set (keys pk-field-id->fk-field-id))])]

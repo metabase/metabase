@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: 31
+      author: agilliland
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: fk_target_field_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    deferrable: false
+                    initiallyDeferred: false

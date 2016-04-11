@@ -1,6 +1,7 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
   (:require [clojure.set :as set]
+            [clojure.tools.logging :as log]
             (monger [collection :as mc]
                     [command :as cmd]
                     [conversion :as conv]
@@ -118,16 +119,19 @@
 (defn- describe-table [table]
   (with-mongo-connection [^com.mongodb.DB conn (table/database table)]
     ;; TODO: ideally this would take the LAST set of rows added to the table so we could ensure this data changes on reruns
-    (let [parsed-rows (->> (mc/find-maps conn (:name table))
-                           (take driver/max-sync-lazy-seq-results)
-                           (reduce
-                             (fn [field-defs row]
-                               (loop [[k & more-keys] (keys row)
-                                      fields field-defs]
-                                 (if-not k
-                                   fields
-                                   (recur more-keys (update fields k (partial update-field-attrs (k row)))))))
-                             {}))]
+    (let [parsed-rows (try
+                        (->> (mc/find-maps conn (:name table))
+                             (take driver/max-sync-lazy-seq-results)
+                             (reduce
+                               (fn [field-defs row]
+                                 (loop [[k & more-keys] (keys row)
+                                        fields field-defs]
+                                   (if-not k
+                                     fields
+                                     (recur more-keys (update fields k (partial update-field-attrs (k row)))))))
+                               {}))
+                        (catch Throwable t
+                          (log/error (format "Error introspecting collection: %s" (:name table)) t)))]
       {:name   (:name table)
        :fields (set (for [field (keys parsed-rows)]
                       (describe-table-field field (field parsed-rows))))})))

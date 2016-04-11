@@ -65,7 +65,7 @@
 
 ;; ## Persistence Functions
 
-(defn create-metric
+(defn create-metric!
   "Create a new `Metric`.
 
    Returns the newly created `Metric` or throws an Exception."
@@ -111,7 +111,7 @@
          (db/sel :many Metric :table_id table-id, :is_active (if (= :active state) true false), (k/order :name :ASC)))
        (hydrate :creator))))
 
-(defn update-metric
+(defn update-metric!
   "Update an existing `Metric`.
 
    Returns the updated `Metric` or throws an Exception."
@@ -129,7 +129,7 @@
   (u/prog1 (retrieve-metric id)
     (events/publish-event :metric-update (assoc <> :actor_id user-id, :revision_message revision_message))))
 
-(defn delete-metric
+(defn delete-metric!
   "Delete a `Metric`.
 
    This does a soft delete and simply marks the `Metric` as deleted but does not actually remove the

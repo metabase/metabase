@@ -1,3 +1,5 @@
+import "./databases.controllers";
+
 var AdminDatabases = angular.module('metabase.admin.databases', [
     'metabase.admin.databases.controllers'
 ]);

@@ -14,7 +14,7 @@
 
    Don't set the timeout too low -- I've have Circle fail when the timeout was 1000ms
    on *one* occasion."
-  1500)
+  3000)
 
 (def ^:dynamic ^com.mongodb.DB *mongo-connection*
   "Connection to a Mongo database.

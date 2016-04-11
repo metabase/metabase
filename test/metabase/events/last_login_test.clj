@@ -4,7 +4,7 @@
             [metabase.events.last-login :refer :all]
             (metabase.models [user :refer [User]])
             [metabase.test.data :refer :all]
-            [metabase.test.util :refer [expect-eval-actual-first with-temp random-name]]
+            [metabase.test.util :refer [expect-eval-actual-first random-name]]
             [metabase.test-setup :refer :all]))
 
 

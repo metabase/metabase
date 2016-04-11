@@ -1,5 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
+import "./PageFlag.css";
+
 import ReactCSSTransitionGroup from "react-addons-css-transition-group";
 
 import BodyComponent from "metabase/components/BodyComponent.jsx";

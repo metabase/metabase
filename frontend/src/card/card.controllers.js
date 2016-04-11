@@ -290,6 +290,7 @@ CardControllers.controller('CardDetail', [
         var dataReferenceModel = {
             Metabase: Metabase,
             closeFn: toggleDataReference,
+            setCardAndRun: (card) => setCard(card, {runQuery: true}),
             runQueryFn: runQuery,
             setQueryFn: onQueryChanged,
             setDatabaseFn: setDatabase,
@@ -982,5 +983,24 @@ CardControllers.controller('CardDetail', [
         }
 
         init();
+
+        // for debugging visualizations allow dumping/loading of visualization state from JavaScript console
+        window.dumpQueryBuilderState = function() {
+            return {
+                card: card,
+                data: queryResult
+            };
+        };
+
+        window.loadQueryBuilderState = function(state) {
+            card = state.card;
+            queryResult = state.data;
+            renderAll();
+        };
+
+        $scope.$on("$destroy", function() {
+            delete window.dumpQueryBuilderState;
+            delete window.loadQueryBuilderState;
+        })
     }
 ]);
