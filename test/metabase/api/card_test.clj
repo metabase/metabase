@@ -67,7 +67,23 @@
 
 ;; Make sure `id` is required when `f` is :table
 (expect {:errors {:id "id is required parameter when filter mode is 'table'"}}
-  ((user->client :crowberto) :get 400 "card" :f :table))
+        ((user->client :crowberto) :get 400 "card" :f :table))
+
+
+;;; Filter by `recent`
+
+;;; Filter by `popular`
+
+;;; Filter by `archived`
+;; check that the set of Card IDs returned with f=archived is equal to the set of archived cards
+(expect
+  (with-temp* [Database [{database-id :id}]
+               Table    [{table-id :id}  {:db_id database-id}]
+               Card     [{card-1-id :id} {:table_id table-id}]
+               Card     [{card-2-id :id} {:table_id table-id, :archived true}]
+               Card     [{card-3-id :id} {:table_id table-id, :archived true}]]
+    (= #{card-2-id card-3-id}
+       (set (map :id ((user->client :rasta) :get 200 "card" :f :archived))))))
 
 ;; ## POST /api/card
 ;; Test that we can make a card
