@@ -12,13 +12,9 @@
                              [common :as common]
                              [database :refer [Database]]
                              [label :refer [Label]]
-                             [table :refer [Table]])
+                             [table :refer [Table]]
+                             [view-log :refer [ViewLog]])
             [metabase.util :as u]))
-
-(defannotation CardFilterOption
-  "Option must be one of `all`, `mine`, or `fav`."
-  [symb value :nillable]
-  (checkp-contains? #{:all :mine :fav :database :table} symb (keyword value)))
 
 (defn- hydrate-labels
   "Efficiently hydrate the `Labels` for a large collection of `Cards`."
@@ -38,56 +34,107 @@
     (for [card cards]
       (assoc card :favorite (contains? favorite-card-ids (:id card))))))
 
-(defn- cards:all []
-  (sel :many Card (k/order :name :ASC) (k/where (or {:creator_id *current-user-id*}
-                                                    {:public_perms [> common/perms-none]}))))
+(defn- cards:all
+  "Return all `Cards`."
+  []
+  (sel :many Card, (k/order :name :ASC)))
 
-(defn- cards:mine []
-  (sel :many Card :creator_id *current-user-id* (k/order :name :ASC)))
+(defn- cards:mine
+  "Return all `Cards` created by current user."
+  []
+  (sel :many Card, :creator_id *current-user-id*, (k/order :name :ASC)))
 
-(defn- cards:fav []
-  (->> (hydrate (sel :many [CardFavorite :card_id] :owner_id *current-user-id*)
+(defn- cards:fav
+  "Return all `Cards` favorited by the current user."
+  []
+  (->> (hydrate (sel :many [CardFavorite :card_id], :owner_id *current-user-id*)
                 :card)
        (map :card)
        (sort-by :name)))
 
-(defn- cards:database [database-id]
-  (sel :many Card (k/order :name :ASC) (k/where (and {:database_id database-id}
-                                                     (or {:creator_id *current-user-id*}
-                                                         {:public_perms [> common/perms-none]})))))
+(defn- cards:database
+  "Return all `Cards` belonging to `Database` with DATABASE-ID."
+  [database-id]
+  (sel :many Card (k/order :name :ASC), :database_id database-id))
 
-(defn- cards:table [table-id]
-  (sel :many Card (k/order :name :ASC) (k/where (and {:table_id table-id}
-                                                     (or {:creator_id *current-user-id*}
-                                                         {:public_perms [> common/perms-none]})))))
+(defn- cards:table
+  "Return all `Cards` belonging to `Table` with TABLE-ID."
+  [table-id]
+  (sel :many Card (k/order :name :ASC), :table_id table-id))
+
+(defn- cards-with-ids
+  "Return `Cards` with CARD-IDS.
+   Make sure cards are returned in the same order as CARD-IDS`; `[in card-ids]` won't preserve the order."
+  [card-ids]
+  (let [card-id->card (sel :many :field->obj [Card :id], :id [in card-ids])]
+    (filter identity (map card-id->card card-ids))))
+
+(defn- cards:recent
+  "Return the 10 `Cards` most recently viewed by the current user, sorted by how recently they were viewed.0"
+  []
+  (cards-with-ids (k/select (k/subselect ViewLog
+                              (k/fields :model_id)
+                              (k/where {:model "card", :user_id *current-user-id*})
+                              (k/order :timestamp :DESC))
+                    (k/modifier "DISTINCT")
+                    (k/fields :model_id)
+                    (k/limit 10))))
+
+(defn- cards:popular
+  "All `Cards`, sorted by popularity (the total number of times they are viewed in `ViewLogs`).
+   (yes, this isn't actually filtering anything, but for the sake of simplicitiy it is included amongst the filter options for the time being)."
+  []
+  (cards-with-ids (map :model_id (k/select ViewLog
+                                   (k/aggregate (count (k/raw "*")) :count)
+                                   (k/fields :model_id)
+                                   (k/where {:model "card"})
+                                   (k/group :model_id)
+                                   (k/order :count :DESC)))))
+
+(defn- cards:archived
+  "`Cards` that have been archived."
+  []
+  (sel :many Card, :archived true, (k/order :name :ASC)))
+
+(def ^:private filter-option->fn
+  "Functions that should be used to return cards for a given filter option. These functions are all be called with `model-id` as the sole paramenter;
+   functions that don't use the param discard it via `u/drop-first-arg`.
+
+     ((filter->option->fn :recent) model-id) -> (cards:recent)"
+  {:all      (u/drop-first-arg cards:all)
+   :mine     (u/drop-first-arg cards:mine)
+   :fav      (u/drop-first-arg cards:fav)
+   :database cards:database
+   :table    cards:table
+   :recent   (u/drop-first-arg cards:recent)
+   :popular  (u/drop-first-arg cards:popular)
+   :archived (u/drop-first-arg cards:archived)})
+
+(defn- cards-for-filter-option [filter-option model-id]
+  (-> ((filter-option->fn (or filter-option :all)) model-id)
+      (hydrate :creator)
+      hydrate-labels
+      hydrate-favorites))
+
+(defannotation CardFilterOption
+  "Option must be a valid card filter option."
+  [symb value :nillable]
+  (checkp-contains? (set (keys filter-option->fn)) symb (keyword value)))
 
 (defendpoint GET "/"
-  "Get all the `Cards`. With param `f` (default is `all`), restrict cards as follows:
-
-   *  `all`         Return all `Cards`
-   *  `mine`        Return all `Cards` created by current user
-   *  `fav`         Return all `Cards` favorited by the current user
-   *  `database`    Return all `Cards` with `:database_id` equal to `id`
-   *  `table`       Return all `Cards` with `:table_id` equal to `id`
+  "Get all the `Cards`. Option filter param `f` can be used to change the set of Cards that are returned; default is `all`,
+   but other options include `mine`, `fav`, `database`, `table`, `recent`, `popular`, and `archived`. See corresponding implementation
+   functions above for the specific behavior of each filter option.
 
    All returned cards must be either created by current user or are publicly visible."
   [f model_id]
-  {f CardFilterOption
-   model_id Integer}
+  {f CardFilterOption, model_id Integer}
   (when (contains? #{:database :table} f)
     (checkp (integer? model_id) "id" (format "id is required parameter when filter mode is '%s'" (name f)))
     (case f
       :database (read-check Database model_id)
       :table    (read-check Database (:db_id (sel :one :fields [Table :db_id] :id model_id)))))
-  (-> (case (or f :all) ; default value for `f` is `:all`
-        :all      (cards:all)
-        :mine     (cards:mine)
-        :fav      (cards:fav)
-        :database (cards:database model_id)
-        :table    (cards:table model_id))
-      (hydrate :creator)
-      hydrate-labels
-      hydrate-favorites))
+  (cards-for-filter-option f model_id))
 
 (defendpoint POST "/"
   "Create a new `Card`."
