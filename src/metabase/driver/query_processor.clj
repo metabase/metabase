@@ -13,7 +13,7 @@
                                              [interface :refer :all]
                                              [macros :as macros]
                                              [resolve :as resolve])
-            [metabase.models.field :refer [Field], :as field]
+            [metabase.models.field :refer [Field]]
             [metabase.util :as u])
   (:import (schema.utils NamedError ValidationError)))
 
@@ -92,6 +92,12 @@
                                                   msg)))
                                             explanation))))
 
+
+;; +-------------------------------------------------------------------------------------------------------------------+
+;; |                                             MIDDLEWARE FUNCTIONS                                                  |
+;; +-------------------------------------------------------------------------------------------------------------------+
+
+
 (defn- wrap-catch-exceptions [qp]
   (fn [query]
     (try (qp query)
@@ -104,7 +110,13 @@
            (fail query e)))))
 
 
-(defn- pre-add-settings [qp]
+(defn- pre-add-settings
+  "Adds the `:settings` map to the query which can contain any fixed properties that would be useful at execution time.
+   Currently supports a settings object like:
+
+       {:report-timezone \"US/Pacific\"}
+   "
+  [qp]
   (fn [{:keys [driver] :as query}]
     (let [settings {:report-timezone (when (driver/driver-supports? driver :set-timezone)
                                        (let [report-tz (driver/report-timezone)]
@@ -115,7 +127,9 @@
            qp))))
 
 
-(defn- pre-expand-macros [qp]
+(defn- pre-expand-macros
+  "Looks for macros in a structured (unexpanded) query and substitutes the macros for their contents."
+  [qp]
   (fn [query]
     ;; if necessary, handle macro substitution
     (let [query (if-not (structured-query? query)
@@ -128,7 +142,10 @@
       (qp query))))
 
 
-(defn- pre-expand-resolve [qp]
+(defn- pre-expand-resolve
+  "Transforms an MBQL into an expanded form with more information and structure.  Also resolves references to fields, tables,
+   etc, into their concrete details which are necessary for query formation by the executing driver."
+  [qp]
   (fn [query]
     ;; if necessary, expand/resolve the query
     (let [query (if-not (structured-query? query)
@@ -153,6 +170,7 @@
                :data      results}
         ;; Add :rows_truncated if we've hit the limit so the UI can let the user know
         (= num-results results-limit) (assoc-in [:data :rows_truncated] results-limit)))))
+
 
 (defn- format-rows [{:keys [report-timezone]} rows]
   (for [row rows]
