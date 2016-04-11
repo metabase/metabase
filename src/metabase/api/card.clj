@@ -14,7 +14,8 @@
                              [label :refer [Label]]
                              [table :refer [Table]]
                              [view-log :refer [ViewLog]])
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.util.korma-extensions :as kx]))
 
 (defn- hydrate-labels
   "Efficiently hydrate the `Labels` for a large collection of `Cards`."
@@ -71,14 +72,14 @@
     (filter identity (map card-id->card card-ids))))
 
 (defn- cards:recent
-  "Return the 10 `Cards` most recently viewed by the current user, sorted by how recently they were viewed.0"
+  "Return the 10 `Cards` most recently viewed by the current user, sorted by how recently they were viewed."
   []
-  (cards-with-ids (map :model_id (k/select (k/subselect ViewLog
-                                             (k/fields :model_id)
-                                             (k/where {:model "card", :user_id *current-user-id*})
-                                             (k/order :timestamp :DESC))
-                                   (k/modifier "DISTINCT")
+  (cards-with-ids (map :model_id (k/select ViewLog
+                                   (k/aggregate (max :timestamp) :max)
+                                   (k/group :model_id)
                                    (k/fields :model_id)
+                                   (k/where {:model (kx/literal "card"), :user_id *current-user-id*})
+                                   (k/order :max :DESC)
                                    (k/limit 10)))))
 
 (defn- cards:popular
@@ -87,9 +88,9 @@
   []
   (cards-with-ids (map :model_id (k/select ViewLog
                                    (k/aggregate (count (k/raw "*")) :count)
-                                   (k/fields :model_id)
-                                   (k/where {:model "card"})
                                    (k/group :model_id)
+                                   (k/fields :model_id)
+                                   (k/where {:model (kx/literal "card")})
                                    (k/order :count :DESC)))))
 
 (defn- cards:archived
