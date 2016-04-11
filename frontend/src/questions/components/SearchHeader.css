@@ -1,4 +1,4 @@
-@import './Questions.css';
+@import '../Questions.css';
 
 :local(.searchHeader) {
     composes: flex align-center from "style/flex";

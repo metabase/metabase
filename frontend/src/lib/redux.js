@@ -4,6 +4,7 @@ import _ from "underscore";
 import { createStore as originalCreateStore, applyMiddleware, compose } from "redux";
 import promise from 'redux-promise';
 import thunk from "redux-thunk";
+import createLogger from "redux-logger";
 
 import { createHistory } from 'history';
 import { reduxReactRouter } from 'redux-router';
@@ -12,9 +13,11 @@ import { reduxReactRouter } from 'redux-router';
 export { combineReducers } from "redux";
 export { handleActions, createAction } from "redux-actions";
 
+const logger = createLogger();
+
 // common createStore with middleware applied
 export const createStore = compose(
-  applyMiddleware(thunk, promise),
+  applyMiddleware(thunk, promise, logger),
   reduxReactRouter({ createHistory })
 )(originalCreateStore);
 

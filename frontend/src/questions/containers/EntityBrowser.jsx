@@ -1,24 +1,20 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 import { connect } from "react-redux";
 
-import QuestionsSidebar from "../components/QuestionsSidebar.jsx";
+import Sidebar from "../components/Sidebar.jsx";
 import SidebarLayout from "../components/SidebarLayout.jsx";
 
 import cx from "classnames";
 
 import * as questionsActions from "../duck";
-import { getSections, getTopics, getLabels, getSearchText, getQuestionItemsFilteredBySearchText } from "../selectors";
+import { getSections, getTopics, getLabels } from "../selectors";
 
 const mapStateToProps = (state, props) => {
   return {
       sections: getSections(state),
       topics:  getTopics(state),
-      labels: getLabels(state),
-      questions: getQuestionItemsFilteredBySearchText(state),
-      searchText: getSearchText(state),
-
-      name: "foo",
-      selectedCount: 0
+      labels: getLabels(state)
   }
 }
 
@@ -34,22 +30,20 @@ export default class EntityBrowser extends Component {
     };
 
     componentWillMount() {
-        this.props.selectQuestionSection(this.props.params.section, this.props.params.slug);
+        this.props.selectSection(this.props.params.section, this.props.params.slug);
     }
 
     componentWillReceiveProps(newProps) {
-        console.log(newProps.params)
         if (this.props.params.section !== newProps.params.section || this.props.params.slug !== newProps.params.slug) {
-            this.props.selectQuestionSection(newProps.params.section, newProps.params.slug);
+            this.props.selectSection(newProps.params.section, newProps.params.slug);
         }
     }
 
     render() {
-        console.log(this.props);
         return (
             <SidebarLayout
                 className={cx("spread")}
-                sidebar={<QuestionsSidebar {...this.props} children={undefined}/>}
+                sidebar={<Sidebar {...this.props} children={undefined}/>}
             >
                 {this.props.children}
             </SidebarLayout>

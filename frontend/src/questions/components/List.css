@@ -1,4 +1,4 @@
-@import './Questions.css';
+@import '../Questions.css';
 
 :local(.list) {
     padding-left: 75px;
@@ -82,10 +82,10 @@
     visibility: visible !important;
 }
 :local(.item):hover :local(.itemCheckbox),
-:local(.item.checked) :local(.itemCheckbox) {
+:local(.item.selected) :local(.itemCheckbox) {
     display: inline;
 }
-:local(.item.checked) :local(.itemCheckbox) {
+:local(.item.selected) :local(.itemCheckbox) {
     color: var(--blue-color);
 }
 
@@ -97,7 +97,7 @@
     left: -6px;
 }
 :local(.item):hover :local(.chartIcon),
-:local(.item.checked) :local(.chartIcon) {
+:local(.item.selected) :local(.chartIcon) {
     display: none;
 }
 

@@ -1,40 +1,48 @@
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
 
-import QuestionsList from "../components/QuestionsList.jsx";
+import S from "../components/List.css";
+
+import List from "../components/List.jsx";
+import SearchHeader from "../components/SearchHeader.jsx";
+import ActionHeader from "../components/ActionHeader.jsx";
 
 import * as questionsActions from "../duck";
-import { getSections, getTopics, getLabels, getSearchText, getChecked, getQuestionItemsFilteredBySearchText } from "../selectors";
+import { getSearchText, getEntityType, getEntityIds, getSectionName, getSelectedCount, getVisibleCount } from "../selectors";
 
 const mapStateToProps = (state, props) => {
   return {
-      sections: getSections(state),
-      topics:  getTopics(state),
-      labels: getLabels(state),
-      questions: getQuestionItemsFilteredBySearchText(state),
-      searchText: getSearchText(state),
+      entityType:       getEntityType(state),
+      entityIds:        getEntityIds(state),
 
-      name: "foo",
-      selectedCount: 0,
+      searchText:       getSearchText(state),
 
-      checked: getChecked(state)
+      name:             getSectionName(state),
+      selectedCount:    getSelectedCount(state),
+      visibleCount:     getVisibleCount(state)
   }
 }
 
 @connect(mapStateToProps, questionsActions)
 export default class EntityList extends Component {
-    constructor(props, context) {
-        super(props, context);
-        this.state = {};
-    }
-
-    static propTypes = {};
-    static defaultProps = {};
-
     render() {
-        console.log("PROPS", this.props)
+        const { style, name, selectedCount, visibleCount, searchText, setSearchText, entityType, entityIds, setItemSelected, setAllSelected } = this.props;
         return (
-            <QuestionsList {...this.props} />
+            <div style={style} className={S.list}>
+                <div className={S.header}>
+                    {name}
+                </div>
+                { selectedCount > 0 ?
+                    <ActionHeader
+                        selectedCount={selectedCount}
+                        allSelected={selectedCount === visibleCount && visibleCount > 0}
+                        setAllSelected={setAllSelected}
+                    />
+                :
+                    <SearchHeader searchText={searchText} setSearchText={setSearchText} />
+                }
+                <List entityType={entityType} entityIds={entityIds} setItemSelected={setItemSelected} />
+            </div>
         );
     }
 }

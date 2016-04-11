@@ -1,4 +1,4 @@
-@import './Questions.css';
+@import '../Questions.css';
 
 :local(.actionHeader) {
     composes: flex align-center from "style/flex";
@@ -13,6 +13,27 @@
 
 /* ALL CHECKBOX */
 :local(.allCheckbox) {
-    composes: icon from "./QuestionsList.css";
+    composes: icon from "./List.css";
     visibility: visible !important;
+}
+
+:local(.labelButton) {
+    composes: px1 from "style/spacing";
+    composes: cursor-pointer from "style/cursor";
+}
+
+:local(.archiveButton) {
+    composes: px1 from "style/spacing";
+    composes: cursor-pointer from "style/cursor";
+}
+
+
+:local(.labelButton) .Icon,
+:local(.archiveButton) .Icon {
+    padding-left: 0.25em;
+    padding-right: 0.25em;
+}
+
+:local(.labelButton) .Icon-chevrondown {
+    color: #DEEAF1;
 }

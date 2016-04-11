@@ -1,45 +1,82 @@
 
 import { AngularResourceProxy, createAction, createThunkAction } from "metabase/lib/redux";
 
+import { normalize, Schema, arrayOf } from 'normalizr';
+
+const card = new Schema('cards');
+// const user = new Schema('users');
+//
+// card.define({
+//   creator: user
+// });
+
 const CardApi = new AngularResourceProxy("Card", ["list"]);
 
-const SELECT_QUESTION_SECTION = 'metabase/questions/SELECT_QUESTION_SECTION';
+const SELECT_SECTION = 'metabase/questions/SELECT_SECTION';
 const SET_SEARCH_TEXT = 'metabase/questions/SET_SEARCH_TEXT';
-const SET_ITEM_CHECKED = 'metabase/questions/SET_ITEM_CHECKED';
+const SET_ITEM_SELECTED = 'metabase/questions/SET_ITEM_SELECTED';
+const SET_ALL_SELECTED = 'metabase/questions/SET_ALL_SELECTED';
 
-export const selectQuestionSection = createThunkAction(SELECT_QUESTION_SECTION, (section = "all", slug) => {
-    console.log("section1", section)
+export const selectSection = createThunkAction(SELECT_SECTION, (section = "all", slug = null, type = "cards") => {
     return async (dispatch, getState) => {
-        console.log("section2", section)
-        let result;
+        let response;
         switch (section) {
             case "all":
-                result = await CardApi.list({ filterMode: "all" });
+                response = await CardApi.list({ filterMode: "all" });
                 break;
             default:
-                console.log("unknown section " + section);
+                console.warn("unknown section " + section);
         }
-        return { section, slug, result };
+        return { type, section, slug, ...normalize(response, arrayOf(card)) };
     }
 });
 
 export const setSearchText = createAction(SET_SEARCH_TEXT);
-export const setItemChecked = createAction(SET_ITEM_CHECKED);
+export const setItemSelected = createAction(SET_ITEM_SELECTED);
+export const setAllSelected = createAction(SET_ALL_SELECTED);
 
 const initialState = {
-    questions: [],
+    entities: {},
+    type: "cards",
+    section: null,
+    slug: null,
+    itemsBySectionId: {},
     searchText: "",
-    checkedItems: {}
+    selectedIds: {},
+    allSelected: false
 };
 
 export default function(state = initialState, { type, payload, error }) {
+    if (payload && payload.entities) {
+        // FIXME: deep merge
+        state = {
+            ...state,
+            entities: {
+                ...state.entities,
+                ...payload.entities
+            }
+        };
+    }
+
     switch (type) {
         case SET_SEARCH_TEXT:
             return { ...state, searchText: payload };
-        case SET_ITEM_CHECKED:
-            return { ...state, checkedItems: { ...state.checkedItems, ...payload } };
-        case SELECT_QUESTION_SECTION:
-            return { ...state, questions: payload.result };
+        case SET_ITEM_SELECTED:
+            return { ...state, selectedIds: { ...state.selectedIds, ...payload } };
+        case SET_ALL_SELECTED:
+            return { ...state, selectedIds: {}, allSelected: payload };
+        case SELECT_SECTION:
+            let sectionId = [payload.type, payload.section, payload.slug].join(",");
+            return {
+                ...state,
+                type: payload.type,
+                section: payload.section,
+                slug: payload.slug,
+                itemsBySectionId: {
+                    ...state.itemsBySectionId,
+                    [sectionId]: payload.result
+                }
+            };
         default:
             return state;
     }

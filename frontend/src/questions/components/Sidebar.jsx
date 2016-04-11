@@ -1,12 +1,13 @@
 import React, { Component, PropTypes } from "react";
 import { Link } from "react-router";
-import S from "./QuestionsSidebar.css";
+import S from "./Sidebar.css";
 
 import Icon from "metabase/components/Icon.jsx";
 
+import { pure } from "recompose";
 import cx from "classnames";
 
-const QuestionsSidebar = ({ sections, topics, labels }) =>
+const Sidebar = ({ sections, topics, labels }) =>
     <div className={S.sidebar}>
         <ul>
             {sections.map(section =>
@@ -46,4 +47,4 @@ const QuestionSidebarIcon = ({ icon }) =>
     :
         <Icon className={S.icon} name={icon} />
 
-export default QuestionsSidebar;
+export default pure(Sidebar);

@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from "react";
 
-const SidebarLayout = ({ className, style, sidebar, children }) => { console.log("children", children); return (
+const SidebarLayout = ({ className, style, sidebar, children }) =>
     <div className={className} style={{ ...style, display: "flex", flexDirection: "row" }}>
         { React.cloneElement(
             sidebar,
@@ -13,5 +13,5 @@ const SidebarLayout = ({ className, style, sidebar, children }) => { console.log
             React.Children.only(children).props.children
         )}
     </div>
-)}
+
 export default SidebarLayout;
