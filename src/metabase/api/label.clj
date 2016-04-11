@@ -14,16 +14,16 @@
 
 (defendpoint POST "/"
   "Create a new label."
-  [:as {{label-name :name, icon :icon} :body}]
-  {label-name [Required NonEmptyString]
-   icon       NonEmptyString}
-  (db/ins Label, :name label-name, :icon icon))
+  [:as {{:keys [name icon]} :body}]
+  {name [Required NonEmptyString]
+   icon NonEmptyString}
+  (db/ins Label, :name name, :icon icon))
 
 (defendpoint PUT "/:id"
   "Update a label."
-  [id :as {{label-name :name, icon :icon, :as body} :body}]
-  {label-name NonEmptyString
-   icon       NonEmptyString}
+  [id :as {{:keys [name icon], :as body} :body}]
+  {name NonEmptyString
+   icon NonEmptyString}
   (write-check Label id)
   (m/mapply db/upd Label id body)
   (Label id)) ; return the updated Label
