@@ -645,3 +645,18 @@
   (extend atype protocol method-map)
   (when (seq more)
     (apply strict-extend atype more)))
+
+(def ^:private ^:const slugify-valid-chars
+  #{\a \b \c \d \e \f \g \h \i \j \k \l \m \n \o \p \q \r \s \t \u \v \w \x \y \z
+    \0 \1 \2 \3 \4 \5 \6 \7 \8 \9
+    \_})
+
+(defn slugify
+  "Return a version of `String` S appropriate for use as a URL slug.
+   Downcase the name and replace non-alphanumeric characters with underscores."
+  ^String [s]
+  (when (seq s)
+    (apply str (for [c (s/lower-case (name s))]
+                 (if (contains? slugify-valid-chars c)
+                   c
+                   \_)))))
