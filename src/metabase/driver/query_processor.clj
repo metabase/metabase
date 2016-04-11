@@ -197,23 +197,15 @@
   (fn [{{:keys [source-table]} :query, :as query}]
     (let [query (if-not (should-add-implicit-fields? query)
                   query
-                  (let [fields (fields-for-source-table source-table)]
+                  ;; this is a structured `:rows` query, so lets add a `:fields` clause with all fields from the source table + expressions
+                  (let [fields      (fields-for-source-table source-table)
+                        expressions (get-in query [:query :expressions])]
                     (when-not (seq fields)
                       (log/warn (format "Table '%s' has no Fields associated with it." (:name source-table))))
                     (-> query
                         (assoc-in [:query :fields-is-implicit] true)
-                        (assoc-in [:query :fields] fields))))]
+                        (assoc-in [:query :fields] (concat fields expressions)))))]
       (qp query))))
-
-(defn- pre-add-expressions-to-fields
-  "Add `:expressions` to the `:fields` clause."
-  [qp]
-  (fn [{{:keys [expressions fields]} :query, :as query}]
-    (qp (if-not (structured-query? query)
-          query
-          (-> query
-              (update-in [:query :fields] (u/rpartial concat expressions))
-              (m/dissoc-in [:query :expressions]))))))
 
 
 (defn- pre-add-implicit-breakout-order-by
@@ -381,7 +373,7 @@
             post-add-row-count-and-status
             post-format-rows
             pre-add-implicit-fields
-            pre-add-expressions-to-fields
+            ;pre-add-expressions-to-fields
             pre-add-implicit-breakout-order-by
             cumulative-sum
             limit
