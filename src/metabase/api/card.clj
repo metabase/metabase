@@ -31,6 +31,36 @@
       (assoc card :labels (for [card-label (card-id->card-labels (:id card))] ; TODO - do these need to be sorted ?
                             (label-id->label (:label_id card-label)))))))
 
+(defn- hydrate-favorites
+  "Efficiently add `favorite` status for a large collection of `Cards`."
+  [cards]
+  (let [favorite-card-ids (set (sel :many :field [CardFavorite :card_id], :owner_id *current-user-id*, :id [in (map :id cards)]))]
+    (for [card cards]
+      (assoc card :favorite (contains? favorite-card-ids (:id card))))))
+
+(defn- cards:all []
+  (sel :many Card (k/order :name :ASC) (k/where (or {:creator_id *current-user-id*}
+                                                    {:public_perms [> common/perms-none]}))))
+
+(defn- cards:mine []
+  (sel :many Card :creator_id *current-user-id* (k/order :name :ASC)))
+
+(defn- cards:fav []
+  (->> (hydrate (sel :many [CardFavorite :card_id] :owner_id *current-user-id*)
+                :card)
+       (map :card)
+       (sort-by :name)))
+
+(defn- cards:database [database-id]
+  (sel :many Card (k/order :name :ASC) (k/where (and {:database_id database-id}
+                                                     (or {:creator_id *current-user-id*}
+                                                         {:public_perms [> common/perms-none]})))))
+
+(defn- cards:table [table-id]
+  (sel :many Card (k/order :name :ASC) (k/where (and {:table_id table-id}
+                                                     (or {:creator_id *current-user-id*}
+                                                         {:public_perms [> common/perms-none]})))))
+
 (defendpoint GET "/"
   "Get all the `Cards`. With param `f` (default is `all`), restrict cards as follows:
 
@@ -50,21 +80,14 @@
       :database (read-check Database model_id)
       :table    (read-check Database (:db_id (sel :one :fields [Table :db_id] :id model_id)))))
   (-> (case (or f :all) ; default value for `f` is `:all`
-        :all      (sel :many Card (k/order :name :ASC) (k/where (or {:creator_id *current-user-id*}
-                                                                    {:public_perms [> common/perms-none]})))
-        :mine     (sel :many Card :creator_id *current-user-id* (k/order :name :ASC))
-        :fav      (->> (hydrate (sel :many [CardFavorite :card_id] :owner_id *current-user-id*)
-                                :card)
-                       (map :card)
-                       (sort-by :name))
-        :database (sel :many Card (k/order :name :ASC) (k/where (and {:database_id model_id}
-                                                                  (or {:creator_id *current-user-id*}
-                                                                      {:public_perms [> common/perms-none]}))))
-        :table    (sel :many Card (k/order :name :ASC) (k/where (and {:table_id model_id}
-                                                                     (or {:creator_id *current-user-id*}
-                                                                         {:public_perms [> common/perms-none]})))))
+        :all      (cards:all)
+        :mine     (cards:mine)
+        :fav      (cards:fav)
+        :database (cards:database model_id)
+        :table    (cards:table model_id))
       (hydrate :creator)
-      hydrate-labels))
+      hydrate-labels
+      hydrate-favorites))
 
 (defendpoint POST "/"
   "Create a new `Card`."
