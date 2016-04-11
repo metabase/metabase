@@ -73,6 +73,16 @@ Enabling auto refresh will re-run all the queries on the dashboard at the interv
 
 Combining fullscreen mode and auto refresh is a great way to keep your team in sync with your data throughout the day.
 
+## Configuring dashboard using URL
+
+It is possible to amend URL of the dashboard to automatically enter fullscreen, enable night mode or autorefresh the dashboard. This allows you to configure the dashboard even when you do not have any input access to the device where dashboard will be displayed, for example, scripted screens.
+
+To configure dashboard using URL address, you can append it with hash keys like `fullscreen`, `night`, or `refresh`. Consider this example:
+
+`https://metabase.mydomain.com/dash/2#refresh=60&fullscreen&night`
+
+This URL will make dashboard enter night mode, fullscreen and refresh every 60 seconds.
+
 ---
 
 Next, we'll offer up some suggestions on how to create useful dashboards, in our [Tips on Dashboards](06-dashboard-tips.md).
