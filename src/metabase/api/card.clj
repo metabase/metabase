@@ -66,19 +66,20 @@
   "Return `Cards` with CARD-IDS.
    Make sure cards are returned in the same order as CARD-IDS`; `[in card-ids]` won't preserve the order."
   [card-ids]
+  {:pre [(every? integer? card-ids)]}
   (let [card-id->card (sel :many :field->obj [Card :id], :id [in card-ids])]
     (filter identity (map card-id->card card-ids))))
 
 (defn- cards:recent
   "Return the 10 `Cards` most recently viewed by the current user, sorted by how recently they were viewed.0"
   []
-  (cards-with-ids (k/select (k/subselect ViewLog
-                              (k/fields :model_id)
-                              (k/where {:model "card", :user_id *current-user-id*})
-                              (k/order :timestamp :DESC))
-                    (k/modifier "DISTINCT")
-                    (k/fields :model_id)
-                    (k/limit 10))))
+  (cards-with-ids (map :model_id (k/select (k/subselect ViewLog
+                                             (k/fields :model_id)
+                                             (k/where {:model "card", :user_id *current-user-id*})
+                                             (k/order :timestamp :DESC))
+                                   (k/modifier "DISTINCT")
+                                   (k/fields :model_id)
+                                   (k/limit 10)))))
 
 (defn- cards:popular
   "All `Cards`, sorted by popularity (the total number of times they are viewed in `ViewLogs`).
