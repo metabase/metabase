@@ -137,7 +137,8 @@
                                          (assoc-in [:query :aggregation] {:aggregation-type "count"}))
              :visualization_settings {}
              :created_at             true
-             :updated_at             true}
+             :updated_at             true
+             :archived               false}
     :result {:data         {:rows    [[1000]]
                             :columns ["count"]
                             :cols    [{:base_type "IntegerField", :special_type "number", :name "count", :display_name "count", :id nil, :table_id nil,

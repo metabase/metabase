@@ -34,18 +34,19 @@
       :creator_id             (user->id :crowberto))))
 
 (defn- test-card-object [card]
-  {:description (:name card),
-   :table_id (id :categories),
-   :database_id (id),
-   :organization_id nil,
-   :query_type "query",
-   :name (:name card),
-   :creator_id (user->id :crowberto),
-   :dataset_query (:dataset_query card),
-   :id (:id card),
-   :display "table",
-   :visualization_settings {},
-   :public_perms 2})
+  {:description            (:name card)
+   :table_id               (id :categories)
+   :database_id            (id)
+   :organization_id        nil
+   :query_type             "query"
+   :name                   (:name card)
+   :creator_id             (user->id :crowberto)
+   :dataset_query          (:dataset_query card)
+   :id                     (:id card)
+   :display                "table"
+   :visualization_settings {}
+   :public_perms           2
+   :archived               false})
 
 (defn- create-test-dashboard []
   (let [rand-name (random-name)]

@@ -69,18 +69,6 @@
 (expect {:errors {:id "id is required parameter when filter mode is 'table'"}}
   ((user->client :crowberto) :get 400 "card" :f :table))
 
-;; Check that only the creator of a private Card can see it
-(expect [true
-         false]
-  (with-temp Card [{card-id :id} {:creator_id (user->id :crowberto)}]
-    (let [can-see-card? (fn [user]
-                          (contains? (set (for [card ((user->client user) :get 200 "card", :f :all)]
-                                            (:id card)))
-                                     card-id))]
-      [(can-see-card? :crowberto)
-       (can-see-card? :rasta)])))
-
-
 ;; ## POST /api/card
 ;; Test that we can make a card
 (let [card-name (random-name)]
@@ -100,7 +88,8 @@
                                :created_at             $
                                :database_id            (id)
                                :table_id               (id :categories)
-                               :query_type             "query"})
+                               :query_type             "query"
+                               :archived               false})
     (post-card card-name)))
 
 ;; ## GET /api/card/:id
@@ -108,37 +97,39 @@
 (let [card-name (random-name)]
   (expect-eval-actual-first
       (match-$ (sel :one Card :name card-name)
-        {:description nil
-         :can_read true
-         :can_write true
-         :organization_id nil
-         :dashboard_count 0
-         :name card-name
-         :creator_id (user->id :rasta)
-         :creator (match-$ (fetch-user :rasta)
-                    {:common_name "Rasta Toucan",
-                     :is_superuser false,
-                     :is_qbnewb true,
-                     :last_login $,
-                     :last_name "Toucan",
-                     :first_name "Rasta",
-                     :date_joined $,
-                     :email "rasta@metabase.com",
-                     :id $})
-         :updated_at $
-         :dataset_query (obj->json->obj (ql/wrap-inner-query
-                                         (query categories
-                                           (ql/aggregation (ql/count)))))
-         :id $
-         :display "scalar"
+        {:description            nil
+         :can_read               true
+         :can_write              true
+         :organization_id        nil
+         :dashboard_count        0
+         :name                   card-name
+         :creator_id             (user->id :rasta)
+         :creator                (match-$ (fetch-user :rasta)
+                                   {:common_name  "Rasta Toucan",
+                                    :is_superuser false,
+                                    :is_qbnewb    true,
+                                    :last_login   $,
+                                    :last_name    "Toucan",
+                                    :first_name   "Rasta",
+                                    :date_joined  $,
+                                    :email        "rasta@metabase.com",
+                                    :id           $})
+         :updated_at             $
+         :dataset_query          (obj->json->obj (ql/wrap-inner-query
+                                                   (query categories
+                                                     (ql/aggregation (ql/count)))))
+         :id                     $
+         :display                "scalar"
          :visualization_settings {:global {:title nil}}
-         :public_perms 0
-         :created_at $
-         :database_id (id)
-         :table_id (id :categories)
-         :query_type "query"})
-    (let [{:keys [id]} (post-card card-name)]
-      ((user->client :rasta) :get 200 (format "card/%d" id)))))
+         :public_perms           0
+         :created_at             $
+         :database_id            (id)
+         :table_id               (id :categories)
+         :query_type             "query"
+         :archived               false
+         :labels                 []})
+      (let [{:keys [id]} (post-card card-name)]
+        ((user->client :rasta) :get 200 (format "card/%d" id)))))
 
 ;; ## PUT /api/card/:id
 ;; Test that we can edit a Card

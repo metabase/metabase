@@ -116,7 +116,8 @@
                                      :display                "table"
                                      :query_type             nil
                                      :dataset_query          {}
-                                     :visualization_settings {} }
+                                     :visualization_settings {}
+                                     :archived               false}
                       :series       []}]
    :organization_id nil}
   ;; fetch a dashboard WITH a dashboard card on it
