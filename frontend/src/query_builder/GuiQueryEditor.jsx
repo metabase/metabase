@@ -200,6 +200,7 @@ export default class GuiQueryEditor extends Component {
                 <AggregationWidget
                     aggregation={this.props.query.query.aggregation}
                     tableMetadata={this.props.tableMetadata}
+                    customFields={Query.getExpressions(this.props.query.query)}
                     updateAggregation={this.updateAggregation}
                 />
             );

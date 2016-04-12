@@ -432,6 +432,10 @@ var Query = {
         return Array.isArray(field) && field[0] === "datetime_field";
     },
 
+    isCustomField(field) {
+        return Array.isArray(field) && field.length === 2 && field[0] === "custom_field";
+    },
+
     isAggregateField(field) {
         return Array.isArray(field) && field[0] === "aggregation";
     },
@@ -441,6 +445,7 @@ var Query = {
             (Query.isRegularField(field)) ||
             (Query.isForeignKeyField(field) && Query.isRegularField(field[1]) && Query.isRegularField(field[2])) ||
             (Query.isDatetimeField(field)   && Query.isValidField(field[1]) && field[2] === "as" && typeof field[3] === "string") ||
+            (Query.isCustomField(field)     && _.isString(field[1])) ||
             (Query.isAggregateField(field)  && typeof field[1] === "number")
         );
     },

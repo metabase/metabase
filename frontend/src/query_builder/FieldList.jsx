@@ -52,7 +52,7 @@ export default class FieldList extends Component {
         if (customFieldOptions) {
             specialOptions = Object.keys(customFieldOptions).map(name => ({
                 name: name,
-                value: ["custom-field", name],
+                value: ["custom_field", name],
                 customField: customFieldOptions[name]
             }));
         }
