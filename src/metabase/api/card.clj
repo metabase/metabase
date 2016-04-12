@@ -31,7 +31,7 @@
 (defn- hydrate-favorites
   "Efficiently add `favorite` status for a large collection of `Cards`."
   [cards]
-  (let [favorite-card-ids (set (sel :many :field [CardFavorite :card_id], :owner_id *current-user-id*, :id [in (map :id cards)]))]
+  (let [favorite-card-ids (set (sel :many :field [CardFavorite :card_id], :owner_id *current-user-id*, :card_id [in (map :id cards)]))]
     (for [card cards]
       (assoc card :favorite (contains? favorite-card-ids (:id card))))))
 
@@ -48,9 +48,10 @@
 (defn- cards:fav
   "Return all `Cards` favorited by the current user."
   []
-  (->> (hydrate (sel :many [CardFavorite :card_id], :owner_id *current-user-id*, :archived false)
+  (->> (hydrate (sel :many [CardFavorite :card_id], :owner_id *current-user-id*)
                 :card)
        (map :card)
+       (filter (complement :archived))
        (sort-by :name)))
 
 (defn- cards:database
