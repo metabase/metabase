@@ -66,7 +66,6 @@ export default class TableInteractive extends Component {
 
     componentDidMount() {
         this.calculateSizing(this.state);
-        console.log('TableInteractive.componentDidMount() state = ', this.state);
     }
 
     shouldComponentUpdate(nextProps, nextState) {
@@ -190,16 +189,16 @@ export default class TableInteractive extends Component {
                     <Popover
                         hasArrow={false}
                         tetherOptions={{
-                                targetAttachment: "middle center",
-                                attachment: "middle center"
-                            }}
+                            targetAttachment: "middle center",
+                            attachment: "middle center"
+                        }}
                         onClose={this.onClosePopover}
                     >
                         <div className="bg-white bordered shadowed p1">
                             <ul className="h1 flex align-center">
                                 { QUICK_FILTERS.map(({ name, value }) =>
                                     <li key={value} className="p2 text-brand-hover" onClick={this.popoverFilterClicked.bind(this, rowIndex, cellDataKey, value)}>{name}</li>
-                                  )}
+                                )}
                             </ul>
                         </div>
                     </Popover>

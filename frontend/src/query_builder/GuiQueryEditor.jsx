@@ -56,8 +56,8 @@ export default class GuiQueryEditor extends Component {
         }
     };
 
-    setQuery(query) {
-        this.props.setQueryFn(query);
+    setQuery(datasetQuery) {
+        this.props.setQueryFn(datasetQuery);
     }
 
     setBreakout(index, field) {
@@ -290,20 +290,20 @@ export default class GuiQueryEditor extends Component {
             <div className={"GuiBuilder-section GuiBuilder-data flex align-center arrow-right"}>
                 <span className="GuiBuilder-section-label Query-label">Data</span>
                 { this.props.features.data ?
-                  <DataSelector
-                      ref="dataSection"
-                      includeTables={true}
-                      query={this.props.query}
-                      databases={this.props.databases}
-                      tables={this.props.tables}
-                      setDatabaseFn={this.props.setDatabaseFn}
-                      setSourceTableFn={this.props.setSourceTableFn}
-                      isInitiallyOpen={(!this.props.query.database || !this.props.query.query.source_table) && !this.props.isShowingTutorial}
-                  />
-                  :
-                  <span className="flex align-center px2 py2 text-bold text-grey">
-                      {this.props.tableMetadata && this.props.tableMetadata.display_name}
-                  </span>
+                    <DataSelector
+                        ref="dataSection"
+                        includeTables={true}
+                        query={this.props.query}
+                        databases={this.props.databases}
+                        tables={this.props.tables}
+                        setDatabaseFn={this.props.setDatabaseFn}
+                        setSourceTableFn={this.props.setSourceTableFn}
+                        isInitiallyOpen={(!this.props.query.database || !this.props.query.query.source_table) && !this.props.isShowingTutorial}
+                    />
+                    :
+                    <span className="flex align-center px2 py2 text-bold text-grey">
+                        {this.props.tableMetadata && this.props.tableMetadata.display_name}
+                    </span>
                 }
             </div>
         );
