@@ -29,11 +29,13 @@ export default class Popover extends Component {
         targetOffsetY: 5
     };
 
-    componentWillMount() {
-        this._popoverElement = document.createElement('span');
-        this._popoverElement.className = 'PopoverContainer';
-        this._popoverElement.id = Math.floor((Math.random() * 698754) + 1);
-        document.querySelector('body').appendChild(this._popoverElement);
+    _getPopoverElement() {
+        if (!this._popoverElement) {
+            this._popoverElement = document.createElement('span');
+            this._popoverElement.className = 'PopoverContainer';
+            document.querySelector('body').appendChild(this._popoverElement);
+        }
+        return this._popoverElement;
     }
 
     componentDidMount() {
@@ -49,9 +51,11 @@ export default class Popover extends Component {
             this._tether.destroy();
             delete this._tether;
         }
-        ReactDOM.unmountComponentAtNode(this._popoverElement);
-        if (this._popoverElement.parentNode) {
-            this._popoverElement.parentNode.removeChild(this._popoverElement);
+        if (this._popoverElement) {
+            ReactDOM.unmountComponentAtNode(this._popoverElement);
+            if (this._popoverElement.parentNode) {
+                this._popoverElement.parentNode.removeChild(this._popoverElement);
+            }
         }
     }
 
@@ -65,7 +69,11 @@ export default class Popover extends Component {
         return (
             <OnClickOutsideWrapper handleClickOutside={this.handleClickOutside}>
                 <div className={cx("PopoverBody", { "PopoverBody--withArrow": this.props.hasArrow }, this.props.className)}>
-                    {this.props.children}
+                    { typeof this.props.children === "function" ?
+                        this.props.children()
+                    :
+                        this.props.children
+                    }
                 </div>
             </OnClickOutsideWrapper>
         );
@@ -125,11 +133,12 @@ export default class Popover extends Component {
     _renderPopover() {
         if (this.props.isOpen) {
             // popover is open, lets do this!
-            ReactDOM.render(this._popoverComponent(), this._popoverElement);
+            const popoverElement = this._getPopoverElement();
+            ReactDOM.render(this._popoverComponent(), popoverElement);
 
             var tetherOptions = {};
 
-            tetherOptions.element = this._popoverElement;
+            tetherOptions.element = popoverElement;
 
             if (this.props.targetEvent) {
                 // create a fake element at the event coordinates
@@ -193,7 +202,10 @@ export default class Popover extends Component {
             }
         } else {
             // if the popover isn't open then actively unmount our popover
-            ReactDOM.unmountComponentAtNode(this._popoverElement);
+            if (this._popoverElement) {
+                ReactDOM.unmountComponentAtNode(this._popoverElement);
+                delete this._popoverElement;
+            }
         }
     }
 
