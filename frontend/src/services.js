@@ -279,7 +279,7 @@ CoreServices.factory('Activity', ['$resource', '$cookies', function($resource, $
 CoreServices.factory('Card', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/card/:cardId', {}, {
         list: {
-            url: '/api/card/?f=:filterMode',
+            url: '/api/card',
             method: 'GET',
             isArray: true
         },
@@ -340,7 +340,7 @@ CoreServices.factory('Card', ['$resource', '$cookies', function($resource, $cook
 CoreServices.factory('Dashboard', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/dashboard/:dashId', {}, {
         list: {
-            url:'/api/dashboard?f=:filterMode',
+            url:'/api/dashboard',
             method:'GET',
             isArray:true
         },

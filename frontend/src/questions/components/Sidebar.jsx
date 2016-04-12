@@ -20,7 +20,7 @@ const Sidebar = ({ sections, topics, labels }) =>
             */}
             <QuestionSidebarSectionTitle name="Labels" href="/questions/edit/labels" />
             {labels.map(label =>
-                <QuestionSidebarItem key={label.id} href={"/questions/labels/"+label.slug} {...label} />
+                <QuestionSidebarItem key={label.id} href={"/questions/label/"+label.slug} {...label} />
             )}
             <li className={S.divider} />
             <QuestionSidebarItem name="Archive" href="/questions/archived" icon="star" />

@@ -84,7 +84,7 @@ export const testPulse = createThunkAction(TEST_PULSE, function(pulse) {
 // NOTE: duplicated from dashboards/actions.js
 export const fetchCards = createThunkAction(FETCH_CARDS, function(filterMode = "all") {
     return async function(dispatch, getState) {
-        let cards = await Card.list({ filterMode });
+        let cards = await Card.list({ f: filterMode });
         return normalize(cards, arrayOf(card));
     };
 });
