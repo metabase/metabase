@@ -5,12 +5,12 @@ import S from "./LabelIcon.css";
 import Icon from "metabase/components/Icon.jsx";
 import cx from "classnames";
 
-const LabelIcon = ({ icon = "", size = 18}) =>
+const LabelIcon = ({ icon = "", size = 18, className }) =>
     icon.charAt(0) === ":" ?
-        <span className={S.icon} style={{ width: size, height: size }}>🐱</span>
+        <span className={cx(S.icon, className)} style={{ width: size, height: size }}>🐱</span>
     : icon.charAt(0) === "#" ?
-        <span className={cx(S.icon, S.colorIcon)} style={{ backgroundColor: icon, width: size, height: size }}></span>
+        <span className={cx(S.icon, S.colorIcon, className)} style={{ backgroundColor: icon, width: size, height: size }}></span>
     :
-        <Icon className={S.icon} name={icon} />
+        <Icon className={cx(S.icon, className)} name={icon} />
 
 export default LabelIcon;

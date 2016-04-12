@@ -1,0 +1,43 @@
+@import "../Questions.css";
+
+:local(.picker) {
+    width: 290px;
+    color: var(--title-color);
+}
+
+:local(.heading) {
+    composes: p2 from "style/spacing";
+    composes: border-bottom from "style/bordered";
+    font-size: 14px;
+}
+
+:local(.options) {
+    composes: py1 from "style/spacing";
+}
+
+:local(.option) {
+    composes: px3 py1 from "style/spacing";
+    composes: flex align-center from "style/flex";
+    font-size: 18px;
+}
+
+:local(.option):hover,
+:local(.option.selected) {
+    background-color: rgba(132,187,76, 0.1);
+}
+
+:local(.option.selected) {
+    color: rgb(132,187,76);
+}
+
+:local(.mainIcon) {
+    composes: mr1 from "style/spacing";
+}
+
+:local(.removeIcon) {
+    composes: flex-align-right from "style/flex";
+    visibility: hidden;
+}
+:local(.option.selected):hover :local(.removeIcon) {
+    visibility: visible;
+}
