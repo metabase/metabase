@@ -179,6 +179,7 @@ export default class GuiQueryEditor extends Component {
                         <FilterPopover
                             isNew={true}
                             tableMetadata={this.props.tableMetadata || {}}
+                            customFields={Query.getExpressions(this.props.query.query)}
                             onCommitFilter={this.addFilter}
                             onClose={() => this.refs.filterPopover.close()}
                         />
