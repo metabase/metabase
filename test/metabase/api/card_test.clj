@@ -192,13 +192,20 @@
          (sel :one :field [Card :name] :id card-id))]))
 
 
-;; TODO - can we update a card's `archived` status?
-
-
-
 (defmacro ^:private with-temp-card {:style/indent 1} [binding & body]
   `(with-temp Card ~binding
      ~@body))
+
+;; Can we update a Card's archived status?
+(defn- x []
+  (with-temp-card [{:keys [id]}]
+    (let [archived?     (fn [] (:archived (Card id)))
+          set-archived! (fn [archived]
+                          ((user->client :rasta) :put 200 (str "card/" id) {:archived archived})
+                          (archived?))]
+      [(archived?)
+       (set-archived! true)
+       (set-archived! false)])))
 
 
 ;; ## DELETE /api/card/:id
@@ -258,7 +265,6 @@
 
 ;;; POST /api/card/:id/labels
 ;; Check that we can update card labels
-
 (expect-with-temp [Card  [{card-id :id}]
                    Label [{label-1-id :id} {:name "Toucan-Friendly"}]
                    Label [{label-2-id :id} {:name "Toucan-Unfriendly"}]]

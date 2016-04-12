@@ -91,8 +91,8 @@
    (when-not tst
      (throw (invalid-param-exception (str field-name) message)))))
 
-(defmacro checkp-with
-  "Check (TEST-FN VALUE), or throw an exception with STATUS-CODE (default is 400).
+(defn checkp-with
+  "Check (F VALUE), or throw an exception with STATUS-CODE (default is 400).
    SYMB is passed in order to give the user a relevant error message about which parameter was bad.
 
    Returns VALUE upon success.
@@ -100,20 +100,18 @@
     (checkp-with (partial? contains? {:all :mine}) f :all)
       -> :all
     (checkp-with (partial? contains {:all :mine}) f :bad)
-      -> ExceptionInfo: Invalid value ':bad' for 'f': test failed: (partial? contains? {:all :mine}
+      -> ExceptionInfo: Invalid value ':bad' for 'f': test failed: (partial? contains?) {:all :mine}
 
    You may optionally pass a MESSAGE to append to the exception upon failure;
    this will be used in place of the \"test failed: ...\" message.
 
    MESSAGE may be either a string or a pair like `[status-code message]`."
-  ([test-fn symb value message]
+  ([f symb value]
+   (checkp-with f symb value (str "test failed: " f)))
+  ([f symb value message]
    {:pre [(symbol? symb)]}
-   `(let [message# ~message
-          value# ~value]
-      (checkp (~test-fn value#) ~symb (format "Invalid value '%s' for '%s': %s" (str value#) ~symb message#))
-      value#))
-  ([test-fn symb value]
-   `(checkp-with ~test-fn ~symb ~value ~(str "test failed: " test-fn))))
+   (checkp (f value) symb (format "Invalid value '%s' for '%s': %s" (str value) symb message))
+   value))
 
 (defn checkp-contains?
   "Check that the VALUE of parameter SYMB is in VALID-VALUES, or throw a 400.
@@ -279,7 +277,7 @@
          (defn ~fn-name ~@(when docstr [docstr]) [~symbol-binding ~value-binding]
            {:pre [(symbol? ~symbol-binding)]}
            ~(if nillable?
-              `(when ~value-binding
+              `(when-not (nil? ~value-binding)
                  ~@body)
               `(do
                  ~@body)))

@@ -173,7 +173,7 @@
 
 (defendpoint PUT "/:id"
   "Update a `Card`."
-  [id :as {{:keys [dataset_query description display name public_perms visualization_settings archived]} :body}]
+  [id :as {{:keys [dataset_query description display name public_perms visualization_settings archived], :as body} :body}]
   {name                   NonEmptyString
    public_perms           PublicPerms
    display                NonEmptyString
