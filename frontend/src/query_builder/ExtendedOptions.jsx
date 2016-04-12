@@ -24,8 +24,7 @@ export default class ExtendedOptions extends Component {
 
         _.bindAll(
             this,
-            "addSort", "updateSort", "removeSort",
-            "updateLimit"
+            "addSort", "updateSort", "removeSort"
         );
     }
 
@@ -41,17 +40,6 @@ export default class ExtendedOptions extends Component {
         expressions: {}
     };
 
-
-    updateLimit(limit) {
-        if (limit) {
-            Query.updateLimit(this.props.query.query, limit);
-            MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Limit');
-        } else {
-            Query.removeLimit(this.props.query.query);
-            MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Limit');
-        }
-        this.props.setQuery(this.props.query);
-    }
 
     addSort() {
         Query.addSort(this.props.query.query);
@@ -203,7 +191,17 @@ export default class ExtendedOptions extends Component {
                         { features.limit &&
                             <div className="py1">
                                 <div className="Query-label mb1">Row limit</div>
-                                <LimitWidget limit={query.query.limit} onChange={(count) => this.updateLimit(count)} />
+                                <LimitWidget limit={query.query.limit} onChange={(limit) => {
+                                    if (limit) {
+                                        Query.updateLimit(this.props.query.query, limit);
+                                        MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Limit');
+                                    } else {
+                                        Query.removeLimit(this.props.query.query);
+                                        MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Limit');
+                                    }
+                                    this.props.setQuery(this.props.query);
+                                    this.refs.limitSortPopover.toggle();
+                                }} />
                             </div>
                         }
                     </div>
