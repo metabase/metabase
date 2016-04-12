@@ -133,8 +133,8 @@
      :name                   card-name
      :creator_id             (user->id :rasta)
      :dataset_query          {:database database-id
-                              :type     :query
-                              :query    {:source-table table-id, :aggregation {:aggregation-type :count}}}
+                              :type     "query"
+                              :query    {:source-table table-id, :aggregation {:aggregation-type "count"}}}
      :display                "scalar"
      :visualization_settings {:global {:title nil}}
      :public_perms           0
