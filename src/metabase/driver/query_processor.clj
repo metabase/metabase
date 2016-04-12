@@ -13,7 +13,7 @@
                                              [interface :refer :all]
                                              [macros :as macros]
                                              [resolve :as resolve])
-            [metabase.models.field :refer [Field], :as field]
+            [metabase.models.field :refer [Field]]
             [metabase.util :as u])
   (:import (schema.utils NamedError ValidationError)))
 
@@ -34,9 +34,9 @@
   false)
 
 
-;; +----------------------------------------------------------------------------------------------------+
-;; |                                     QP INTERNAL IMPLEMENTATION                                     |
-;; +----------------------------------------------------------------------------------------------------+
+;;; +----------------------------------------------------------------------------------------------------+
+;;; |                                     QP INTERNAL IMPLEMENTATION                                     |
+;;; +----------------------------------------------------------------------------------------------------+
 
 
 (defn structured-query?
@@ -92,6 +92,12 @@
                                                   msg)))
                                             explanation))))
 
+
+;;; +-----------------------------------------------------------------------------------------------------------------+
+;;; |                                           MIDDLEWARE FUNCTIONS                                                  |
+;;; +-----------------------------------------------------------------------------------------------------------------+
+
+
 (defn- wrap-catch-exceptions [qp]
   (fn [query]
     (try (qp query)
@@ -104,7 +110,13 @@
            (fail query e)))))
 
 
-(defn- pre-add-settings [qp]
+(defn- pre-add-settings
+  "Adds the `:settings` map to the query which can contain any fixed properties that would be useful at execution time.
+   Currently supports a settings object like:
+
+       {:report-timezone \"US/Pacific\"}
+   "
+  [qp]
   (fn [{:keys [driver] :as query}]
     (let [settings {:report-timezone (when (driver/driver-supports? driver :set-timezone)
                                        (let [report-tz (driver/report-timezone)]
@@ -115,18 +127,32 @@
            qp))))
 
 
-(defn- pre-expand [qp]
+(defn- pre-expand-macros
+  "Looks for macros in a structured (unexpanded) query and substitutes the macros for their contents."
+  [qp]
   (fn [query]
-    (println "expand:" (u/pprint-to-str 'yellow query))
-    (qp (if (structured-query? query)
-          (let [macro-expanded-query (macros/expand-macros query)]
-            (when (and (not *disable-qp-logging*)
-                       (not= macro-expanded-query query))
-              (log/debug (u/format-color 'cyan "\n\nMACRO/SUBSTITUTED: 😻\n%s" (u/pprint-to-str macro-expanded-query))))
-            (-> macro-expanded-query
-                expand/expand
-                resolve/resolve))
-          query))))
+    ;; if necessary, handle macro substitution
+    (let [query (if-not (structured-query? query)
+                  query
+                  ;; for structured queries run our macro expansion
+                  (u/prog1 (macros/expand-macros query)
+                    (when (and (not *disable-qp-logging*)
+                               (not= <> query))
+                      (log/debug (u/format-color 'cyan "\n\nMACRO/SUBSTITUTED: 😻\n%s" (u/pprint-to-str <>))))))]
+      (qp query))))
+
+
+(defn- pre-expand-resolve
+  "Transforms an MBQL into an expanded form with more information and structure.  Also resolves references to fields, tables,
+   etc, into their concrete details which are necessary for query formation by the executing driver."
+  [qp]
+  (fn [query]
+    ;; if necessary, expand/resolve the query
+    (let [query (if-not (structured-query? query)
+                  query
+                  ;; for structured queries we expand first, then resolve
+                  (resolve/resolve (expand/expand query)))]
+      (qp query))))
 
 
 (defn- post-add-row-count-and-status
@@ -144,6 +170,7 @@
                :data      results}
         ;; Add :rows_truncated if we've hit the limit so the UI can let the user know
         (= num-results results-limit) (assoc-in [:data :rows_truncated] results-limit)))))
+
 
 (defn- format-rows [{:keys [report-timezone]} rows]
   (for [row rows]
@@ -298,6 +325,18 @@
                                               absolute-max-results))))))
 
 
+(defn post-annotate
+  "QP middleware that runs directly after the the query is run and adds metadata as appropriate."
+  [qp]
+  (fn [query]
+    (if-not (structured-query? query)
+      ;; non-structured queries are not affected
+      (qp query)
+      ;; for structured queries capture the results and annotate
+      (let [results (qp query)]
+        (annotate/annotate query results)))))
+
+
 (defn- pre-log-query [qp]
   (fn [query]
     (when (and (structured-query? query)
@@ -326,9 +365,9 @@
       (qp query))))
 
 
-;; +------------------------------------------------------------------------------------------------------------------------+
-;; |                                                     QUERY PROCESSOR                                                    |
-;; +------------------------------------------------------------------------------------------------------------------------+
+;;; +-------------------------------------------------------------------------------------------------------+
+;;; |                                           QUERY PROCESSOR                                             |
+;;; +-------------------------------------------------------------------------------------------------------+
 
 
 ;; The way these functions are applied is actually straight-forward; it matches the middleware pattern used by Compojure.
@@ -363,21 +402,22 @@
   (when-not *disable-qp-logging*
     (log/debug (u/format-color 'blue "\nQUERY: 😎\n%s"  (u/pprint-to-str query))))
   (binding [*driver* driver]
-    (let [driver-process-query (partial (if (structured-query? query)
-                                          driver/process-structured
-                                          driver/process-native) driver)]
+    (let [driver-process-in-context (partial driver/process-query-in-context driver)
+          driver-process-query      (partial (if (structured-query? query)
+                                               driver/process-structured
+                                               driver/process-native) driver)]
       ((<<- wrap-catch-exceptions
             pre-add-settings
-            pre-expand
-            (driver/process-query-in-context driver)
+            pre-expand-macros
+            pre-expand-resolve
+            driver-process-in-context
             post-add-row-count-and-status
             post-format-rows
             pre-add-implicit-fields
-            ;pre-add-expressions-to-fields
             pre-add-implicit-breakout-order-by
             cumulative-sum
             limit
-            annotate/post-annotate
+            post-annotate
             pre-log-query
             wrap-guard-multiple-calls
             driver-process-query) (assoc query :driver driver)))))
