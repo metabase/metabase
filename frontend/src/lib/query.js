@@ -393,28 +393,19 @@ var Query = {
         }
     },
 
-    addExpression(query) {
-        let expressions = query.expressions || {};
-        expressions[''] = [null, ''];
-        query.expressions = expressions;
-
-        console.log('added expressions. expressions =', query.expressions);
+    getExpressions(query) {
+        return query.expressions;
     },
 
-    updateExpression(query, name, expression) {
-        query.expressions[name] = expression;
+    setExpression(query, name, expression) {
+        if (name && expression) {
+            let expressions = query.expressions || {};
+            expressions[name] = expression;
+            query.expressions = expressions;
+            console.log('set expression. expressions =', query.expressions);
+        }
 
-        console.log('updated expression. expressions =', query.expressions);
-    },
-
-    renameExpression(query, oldName, newName) {
-        if (oldName === newName) return;
-
-        oldName = oldName || '';
-        query.expressions[newName] = query.expressions[oldName];
-        delete query.expressions[oldName];
-
-        console.log('renamed expression. expressions =', query.expressions);
+        return query;
     },
 
     removeExpression(query, name) {
@@ -425,6 +416,8 @@ var Query = {
         if (_.isEmpty(query.expressions)) delete query.expressions;
 
         console.log('removed expression. expressions =', query.expressions);
+
+        return query;
     },
 
     isRegularField(field) {

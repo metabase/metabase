@@ -1,8 +1,7 @@
 import React, { Component, PropTypes } from 'react';
-
+import cx from "classnames";
 import _ from 'underscore';
 
-import Icon from "metabase/components/Icon.jsx";
 import Popover from "metabase/components/Popover.jsx";
 
 
@@ -162,13 +161,18 @@ export default class ExpressionWidget extends Component {
     }
 
     static propTypes = {
-        tableMetadata:    PropTypes.object.isRequired,
-        updateExpression: PropTypes.func.isRequired,
-        updateName:       PropTypes.func.isRequired,
-        removeExpression: PropTypes.func.isRequired,
-        name:             PropTypes.string.isRequired,
-        expression:       PropTypes.array.isRequired    // should be an array like [parsedExpressionObj, expressionStringi
+        tableMetadata: PropTypes.object.isRequired,
+        expression: PropTypes.array,      // should be an array like [parsedExpressionObj, expressionString]
+        onSetExpression: PropTypes.func.isRequired,
+        onRemoveExpression: PropTypes.func.isRequired,
+        onCancel: PropTypes.func.isRequired,
+        name: PropTypes.string
     };
+
+    static defaultProps = {
+        expression: [null, ""],
+        name: ""
+    }
 
     componentWillMount() {
         this.componentWillReceiveProps(this.props);
@@ -191,15 +195,6 @@ export default class ExpressionWidget extends Component {
         });
 
         console.log('component recieved props, state is now: ', this.state);
-    }
-
-    componentWillUnmount() {
-        if (this.state.nameErrorMessage || this.state.expressionErrorMessage) {
-            this.props.removeExpression(this.state.name);
-        } else {
-            this.props.updateName(this.props.name, this.state.name);
-            this.props.updateExpression(this.state.name, [this.state.parsedExpression, this.state.expressionString]);
-        }
     }
 
     onExpressionInputKeyDown(event) {
@@ -437,29 +432,58 @@ export default class ExpressionWidget extends Component {
         ) : null;
 
         return (
-            <div className="align-center">
-                <input type="text"
-                       onChange={(event) => this.updateName(event.target.value)}
-                       value={this.state.name}
-                       placeholder="field name"
-                />
-                <input className="mx2" type="text"
-                       onChange={this.onExpressionInputChange}
-                       value={this.state.expressionString}
-                       placeholder="expression"
-                       onKeyDown={this.onExpressionInputKeyDown}
-                       onBlur={this.onExpressionInputBlur}
-                       onFocus={this.onExpressionInputChange}
-                />
-                <a onClick={() => this.removeExpression()}>
-                    <Icon name='close' width="12px" height="12px" />
-                </a>
-                {autocomplete}
-                <p className={errorMessage ? 'text-warning' : 'text-green'}>
-                    {errorMessage || '✓ expression is valid'}
-                </p>
+            <div style={{maxWidth: "500px"}}>
+                <div className="p2">
+                    <div className="h5 text-uppercase text-grey-3 text-bold">Field formula</div>
+                    <div>
+                        <input
+                            className="my1 p1 input block full h4 text-dark"
+                            type="text"
+                            value={this.state.expressionString}
+                            placeholder="= write some math!"
+                            onChange={this.onExpressionInputChange}
+                            onKeyDown={this.onExpressionInputKeyDown}
+                            onBlur={this.onExpressionInputBlur}
+                            onFocus={this.onExpressionInputChange}
+                            focus={true}
+                        />
+                        {autocomplete}
+                        <p className="h5 text-grey-3">
+                            Think of this as being kind of like writing a forumla in a spreadsheet program: you can use numbers, fields in this table,
+                            mathematic symbols like +, and some functions.  So you could type, Subtotal - Cost.  <a className="link" href="">Learn more</a>
+                        </p>
+                    </div>
+
+                    <div className="mt3 h5 text-uppercase text-grey-3 text-bold">Give it a name</div>
+                    <div>
+                        <input
+                            className="my1 p1 input block full h4 text-dark"
+                            type="text"
+                            value={this.state.name}
+                            placeholder="Something nice and descriptive"
+                            onChange={(event) => this.updateName(event.target.value)}
+                        />
+                    </div>
+
+                    {this.props.expression && this.props.expression[0] && false && // this is a bit dangerous because it could mess up the query
+                        <div className="mt3">
+                            <div className="h5 text-uppercase text-grey-3 text-bold">Danger zone</div>
+                            <a className="link text-warning">Delete this field</a>
+                        </div>
+                    }
+                </div>
+
+                <div className="mt2 p2 border-top">
+                    <button
+                        className={cx("Button", {"Button--primary": !errorMessage})}
+                        onClick={() => this.props.onSetExpression(this.state.name, [this.state.parsedExpression, this.state.expressionString])}
+                        disabled={errorMessage}>{this.props.expression[0] ? "Save changes" : "Done"}</button>
+                    <span className="pl1">or</span> <a className="link" onClick={() => this.props.onCancel()}>Cancel</a>
+                    <span className={cx("pl2", {"text-warning": errorMessage, "text-green": !errorMessage})}>
+                        {errorMessage || '✓ expression is valid'}
+                    </span>
+                </div>
             </div>
         );
-        // TODO - CSS
     }
 }
