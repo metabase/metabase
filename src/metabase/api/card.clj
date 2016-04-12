@@ -38,17 +38,17 @@
 (defn- cards:all
   "Return all `Cards`."
   []
-  (sel :many Card, (k/order :name :ASC)))
+  (sel :many Card, :archived false, (k/order :name :ASC)))
 
 (defn- cards:mine
   "Return all `Cards` created by current user."
   []
-  (sel :many Card, :creator_id *current-user-id*, (k/order :name :ASC)))
+  (sel :many Card, :creator_id *current-user-id*, :archived false, (k/order :name :ASC)))
 
 (defn- cards:fav
   "Return all `Cards` favorited by the current user."
   []
-  (->> (hydrate (sel :many [CardFavorite :card_id], :owner_id *current-user-id*)
+  (->> (hydrate (sel :many [CardFavorite :card_id], :owner_id *current-user-id*, :archived false)
                 :card)
        (map :card)
        (sort-by :name)))
@@ -56,19 +56,19 @@
 (defn- cards:database
   "Return all `Cards` belonging to `Database` with DATABASE-ID."
   [database-id]
-  (sel :many Card (k/order :name :ASC), :database_id database-id))
+  (sel :many Card (k/order :name :ASC), :database_id database-id, :archived false))
 
 (defn- cards:table
   "Return all `Cards` belonging to `Table` with TABLE-ID."
   [table-id]
-  (sel :many Card (k/order :name :ASC), :table_id table-id))
+  (sel :many Card (k/order :name :ASC), :table_id table-id, :archived false))
 
 (defn- cards-with-ids
-  "Return `Cards` with CARD-IDS.
+  "Return unarchived `Cards` with CARD-IDS.
    Make sure cards are returned in the same order as CARD-IDS`; `[in card-ids]` won't preserve the order."
   [card-ids]
   {:pre [(every? integer? card-ids)]}
-  (let [card-id->card (sel :many :field->obj [Card :id], :id [in card-ids])]
+  (let [card-id->card (sel :many :field->obj [Card :id], :id [in card-ids], :archived false)]
     (filter identity (map card-id->card card-ids))))
 
 (defn- cards:recent
@@ -112,8 +112,8 @@
    :popular  (u/drop-first-arg cards:popular)
    :archived (u/drop-first-arg cards:archived)})
 
-(defn- card-has-label? [label card]
-  (contains? (set (map :slug (:labels card))) label))
+(defn- card-has-label? [label-slug card]
+  (contains? (set (map :slug (:labels card))) label-slug))
 
 (defn- cards-for-filter-option [filter-option model-id label]
   (let [cards (-> ((filter-option->fn (or filter-option :all)) model-id)
