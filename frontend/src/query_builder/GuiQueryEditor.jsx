@@ -232,6 +232,7 @@ export default class GuiQueryEditor extends Component {
                     <BreakoutWidget
                         className="View-section-breakout SelectionModule p1"
                         fieldOptions={Query.getFieldOptions(this.props.tableMetadata.fields, true, this.props.tableMetadata.breakout_options.validFieldsFilter, {})}
+                        customFieldOptions={Query.getExpressions(this.props.query.query)}
                         tableMetadata={this.props.tableMetadata}
                         setField={(field) => this.setBreakout(0, field)}
                         addButton={this.renderAdd("Add a grouping")}
@@ -249,6 +250,7 @@ export default class GuiQueryEditor extends Component {
                         key={"breakout0"}
                         className="View-section-breakout SelectionModule p1"
                         fieldOptions={Query.getFieldOptions(this.props.tableMetadata.fields, true, this.props.tableMetadata.breakout_options.validFieldsFilter, {})}
+                        customFieldOptions={Query.getExpressions(this.props.query.query)}
                         tableMetadata={this.props.tableMetadata}
                         field={breakout[0]}
                         setField={(fieldId) => this.setBreakout(0, fieldId)}
@@ -266,6 +268,7 @@ export default class GuiQueryEditor extends Component {
                         key={"breakout1"}
                         className="View-section-breakout SelectionModule p1"
                         fieldOptions={Query.getFieldOptions(this.props.tableMetadata.fields, true, this.props.tableMetadata.breakout_options.validFieldsFilter, {[breakout[0]]: true})}
+                        customFieldOptions={Query.getExpressions(this.props.query.query)}
                         tableMetadata={this.props.tableMetadata}
                         field={breakout.length > 1 ? breakout[1] : null}
                         setField={(field) => this.setBreakout(1, field)}
