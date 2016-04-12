@@ -24,7 +24,6 @@ export const saveLabel = createThunkAction(SAVE_LABEL, (values) => {
     return async (dispatch, getState) => {
         try {
             let response;
-            console.log("values", values)
             if (values.id == null) {
                 response = await LabelApi.create(values);
             } else {
@@ -44,7 +43,7 @@ export const saveLabel = createThunkAction(SAVE_LABEL, (values) => {
 export const deleteLabel = createThunkAction(DELETE_LABEL, (id) => {
     return async (dispatch, getState) => {
         try {
-            let response = await LabelApi.delete({ id });
+            await LabelApi.delete({ id });
             return id;
         } catch (e) {
             // TODO: handle error

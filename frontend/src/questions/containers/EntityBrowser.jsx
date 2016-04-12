@@ -8,6 +8,7 @@ import SidebarLayout from "../components/SidebarLayout.jsx";
 import cx from "classnames";
 
 import * as questionsActions from "../questions";
+import * as labelsActions from "../labels";
 import { getSections, getTopics, getLabels } from "../selectors";
 
 const mapStateToProps = (state, props) => {
@@ -18,7 +19,12 @@ const mapStateToProps = (state, props) => {
   }
 }
 
-@connect(mapStateToProps, questionsActions)
+const mapDispatchToProps = {
+    ...questionsActions,
+    ...labelsActions
+};
+
+@connect(mapStateToProps, mapDispatchToProps)
 export default class EntityBrowser extends Component {
     constructor(props, context) {
         super(props, context);
@@ -31,6 +37,7 @@ export default class EntityBrowser extends Component {
 
     componentWillMount() {
         this.props.selectSection(this.props.params.section, this.props.params.slug);
+        this.props.loadLabels();
     }
 
     componentWillReceiveProps(newProps) {

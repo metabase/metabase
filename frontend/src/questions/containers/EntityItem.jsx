@@ -3,14 +3,8 @@ import { connect } from "react-redux";
 
 import Item from "../components/Item.jsx";
 
-import * as questionsActions from "../questions";
+import { setItemSelected, setFavorited, setArchived } from "../questions";
 import { makeGetItem } from "../selectors";
-
-// const mapStateToProps = (state, props) => {
-//   return {
-//       item: getItem(state, props)
-//   }
-// }
 
 const makeMapStateToProps = () => {
     const getItem = makeGetItem()
@@ -22,7 +16,13 @@ const makeMapStateToProps = () => {
     return mapStateToProps;
 }
 
-@connect(makeMapStateToProps, questionsActions)
+const mapDispatchToProps = {
+    setItemSelected,
+    setFavorited,
+    setArchived
+};
+
+@connect(makeMapStateToProps, mapDispatchToProps)
 export default class EntityItem extends Component {
     constructor(props, context) {
         super(props, context);
@@ -33,7 +33,7 @@ export default class EntityItem extends Component {
     static defaultProps = {};
 
     render() {
-        let { item, setItemSelected } = this.props;
+        let { item, setItemSelected, setFavorited, setArchived } = this.props;
         return (
             <li style={{ display: item.visible ? undefined : "none" }}>
                 <Item
@@ -42,10 +42,13 @@ export default class EntityItem extends Component {
                     created={item.created}
                     by={item.by}
                     favorite={item.favorite}
+                    archived={item.archived}
                     icon={item.icon}
                     selected={item.selected}
                     labels={item.labels}
                     setItemSelected={setItemSelected}
+                    setFavorited={setFavorited}
+                    setArchived={setArchived}
                 />
             </li>
         )

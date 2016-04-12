@@ -325,6 +325,14 @@ CoreServices.factory('Card', ['$resource', '$cookies', function($resource, $cook
             params: {
                 cardId: '@cardId'
             }
+        },
+        updateLabels: {
+            url: '/api/card/:cardId/labels',
+            method: 'POST',
+            params: {
+                cardId: '@cardId',
+                label_ids: '@label_ids'
+            }
         }
     });
 }]);

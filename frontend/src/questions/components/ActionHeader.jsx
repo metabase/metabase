@@ -2,10 +2,9 @@ import React, { Component, PropTypes } from "react";
 import S from "./ActionHeader.css";
 
 import StackedCheckBox from "metabase/components/StackedCheckBox.jsx";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import Icon from "metabase/components/Icon.jsx";
 
-import LabelPopover from "./LabelPopover.jsx";
+import LabelPopover from "../containers/LabelPopover.jsx";
 
 const ActionHeader = ({ selectedCount, allSelected, setAllSelected, archiveSelected }) =>
     <div className={S.actionHeader}>
@@ -20,7 +19,7 @@ const ActionHeader = ({ selectedCount, allSelected, setAllSelected, archiveSelec
             {selectedCount} selected
         </span>
         <span className="flex-align-right">
-            <PopoverWithTrigger
+            <LabelPopover
                 triggerElement={
                     <span className={S.labelButton}>
                         <Icon name="grid" />
@@ -28,9 +27,7 @@ const ActionHeader = ({ selectedCount, allSelected, setAllSelected, archiveSelec
                         <Icon name="chevrondown" width={12} height={12} />
                     </span>
                 }
-            >
-                <LabelPopover />
-            </PopoverWithTrigger>
+            />
             <span className={S.archiveButton} onClick={archiveSelected}>
                 <Icon name="grid" />
                 Archive

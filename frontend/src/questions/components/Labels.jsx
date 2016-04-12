@@ -6,7 +6,7 @@ import cx from "classnames";
 const Labels = ({ labels }) =>
     <ul className={S.labels}>
         { labels.map(label =>
-            <Label {...label} />
+            <Label key={label.id} {...label} />
         )}
     </ul>
 

@@ -36,21 +36,20 @@ const getEntitySelected = (state, props) =>
 const getEntityVisible = (state, props) =>
     caseInsensitiveSearch(getEntity(state, props).name, getSearchText(state));
 
-let fakeLabels = [];
-const getEntityLabels = (state, props) => {
-    return fakeLabels;
-}
+const getLabelEntities = (state) => state.questions.entities.labels
 
 export const makeGetItem = () => {
     const getItem = createSelector(
-        [getEntity, getEntityLabels, getEntitySelected, getEntityVisible],
-        (entity, labels, selected, visible) => ({
+        [getEntity, getEntitySelected, getEntityVisible, getLabelEntities],
+        (entity, selected, visible, labelEntities) => ({
             name: entity.name,
             id: entity.id,
             created: moment(entity.created_at).fromNow(),
             by: entity.creator.common_name,
             icon: (visualizations.get(entity.display)||{}).iconName,
-            labels,
+            favorite: entity.favorite,
+            archived: entity.archived,
+            labels: entity.labels.map(labelId => labelEntities[labelId]),
             selected,
             visible
         })
@@ -86,41 +85,20 @@ export const getSelectedCount = createSelector(
     (selectedEntities) => selectedEntities.length
 );
 
-// TODO:
-export const getSectionName = (state) =>
-    fakeState.sections[0].name;
+// FIXME:
+export const getSectionName = (state, props) =>
+    sections[0].name;
 
+const sections = [
+    { id: "all",       name: "All questions",   icon: "star" },
+    { id: "favorites", name: "Favorites",       icon: "star" },
+    { id: "recent",    name: "Recently viewed", icon: "star" },
+    { id: "saved",     name: "Saved by me",     icon: "star" },
+    { id: "popular",   name: "Most popular",    icon: "star" }
+];
 
-const fakeState = {
-    sections: [
-        { id: "all",       name: "All questions",   icon: "star", selected: true },
-        { id: "favorites", name: "Favorites",       icon: "star" },
-        { id: "recent",    name: "Recently viewed", icon: "star" },
-        { id: "saved",     name: "Saved by me",     icon: "star" },
-        { id: "popular",   name: "Most popular",    icon: "star" }
-    ],
-    topics: [
-        { id: 0, name: "Revenue",    icon: "star", slug: "revenue" },
-        { id: 1, name: "Users",      icon: "star", slug: "users" },
-        { id: 2, name: "Orders",     icon: "star", slug: "orders" },
-        { id: 3, name: "Shipments",  icon: "star", slug: "shipments" }
-    ],
-    labels: [
-        { id: 1,  name: "CATPIs",    icon: ":cat:",   slug: "catpis"},
-        { id: 2,  name: "Marketing", icon: "#885AB1", slug: "marketing" },
-        { id: 3,  name: "Growth",    icon: "#F9CF48", slug: "growth" },
-        { id: 4,  name: "KPIs",      icon: "#9CC177", slug: "kpis" },
-        { id: 5,  name: "Q1",        icon: "#ED6E6E", slug: "q1" },
-        { id: 6,  name: "q2",        icon: "#ED6E6E", slug: "q2" },
-        { id: 7,  name: "All-hands", icon: "#B8A2CC", slug: "all-hands" },
-        { id: 9,  name: "OLD",       icon: "#2D86D4", slug: "old" },
-        { id: 10, name: "v2 schema", icon: "#2D86D4", slug: "v2-schema" },
-        { id: 11, name: "Rebekah",   icon: "#2D86D4", slug: "rebekah" }
-    ]
-}
-
-export const getSections    = (state) => fakeState.sections;
-export const getTopics      = (state) => fakeState.topics;
+export const getSections    = (state) => sections;
+export const getTopics      = (state) => [];
 
 export const getLabels = createSelector(
     [(state) => state.labels.entities.labels, (state) => state.labels.labels],

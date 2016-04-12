@@ -120,3 +120,6 @@
     composes: icon;
     composes: ml1 from "style/spacing";
 }
+:local(.item.archived) :local(.archiveIcon) {
+    color: var(--blue-color);
+}

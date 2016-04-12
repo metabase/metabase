@@ -7,7 +7,7 @@ import List from "../components/List.jsx";
 import SearchHeader from "../components/SearchHeader.jsx";
 import ActionHeader from "../components/ActionHeader.jsx";
 
-import * as questionsActions from "../questions";
+import { setSearchText, setItemSelected, setAllSelected } from "../questions";
 import { getSearchText, getEntityType, getEntityIds, getSectionName, getSelectedCount, getVisibleCount } from "../selectors";
 
 const mapStateToProps = (state, props) => {
@@ -23,7 +23,13 @@ const mapStateToProps = (state, props) => {
   }
 }
 
-@connect(mapStateToProps, questionsActions)
+const mapDispatchToProps = {
+    setItemSelected,
+    setAllSelected,
+    setSearchText
+}
+
+@connect(mapStateToProps, mapDispatchToProps)
 export default class EntityList extends Component {
     render() {
         const { style, name, selectedCount, visibleCount, searchText, setSearchText, entityType, entityIds, setItemSelected, setAllSelected } = this.props;
