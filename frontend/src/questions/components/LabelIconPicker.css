@@ -1,0 +1,39 @@
+:local(.picker) {
+    composes: p2 from "style/spacing";
+}
+
+:local(.option) {
+    composes: p1 from "style/spacing";
+    border: 1px solid transparent;
+}
+
+:local(.option):hover {
+    border: 1px solid rgb(235,235,235);
+    border-radius: 3px;
+    background-color: rgb(248,248,248);
+}
+
+:local(.list) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    width: 255px;
+}
+
+:local(.dropdownButton) {
+    composes: flex layout-centered from "style/flex";
+    composes: px1 from "style/spacing";
+    border: 1px solid #d9d9d9;
+    border-radius: 4px;
+    height: 40px;
+}
+
+:local(.dropdownButton):hover {
+    border-color: #aaa;
+}
+
+:local(.chevron) {
+    composes: ml1 from "style/spacing";
+    color: #d9d9d9;
+}

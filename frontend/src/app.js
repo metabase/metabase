@@ -39,7 +39,8 @@ import { routerStateReducer as router } from 'redux-router';
 import { reducer as form } from "redux-form";
 
 import * as datamodel from 'metabase/admin/datamodel/reducers';
-import questions from 'metabase/questions/duck';
+import questions from 'metabase/questions/questions';
+import labels from 'metabase/questions/labels';
 
 import { registerAnalyticsClickListener } from "metabase/lib/analytics";
 
@@ -81,6 +82,7 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
                     // },
                     datamodel: combineReducers(datamodel),
                     questions,
+                    labels,
                     form,
                     router,
                     user: (state = null) => state

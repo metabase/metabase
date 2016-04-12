@@ -1,0 +1,11 @@
+
+:local(.colorIcon) {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+}
+
+:local(.icon) {
+    color: #CFE4F5;
+}

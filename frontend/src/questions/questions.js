@@ -24,8 +24,24 @@ export const selectSection = createThunkAction(SELECT_SECTION, (section = "all",
             case "all":
                 response = await CardApi.list({ filterMode: "all" });
                 break;
+            case "favorites":
+                response = await CardApi.list({ filterMode: "fav" });
+                break;
+            case "saved":
+                response = await CardApi.list({ filterMode: "mine" });
+                break;
+            case "popular":
+                response = await CardApi.list({ filterMode: "popular" });
+                break;
+            case "recent":
+                response = await CardApi.list({ filterMode: "recent" });
+                break;
+            case "archive":
+                response = await CardApi.list({ filterMode: "archived" });
+                break;
             default:
                 console.warn("unknown section " + section);
+                response = [];
         }
         return { type, section, slug, ...normalize(response, arrayOf(card)) };
     }

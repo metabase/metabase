@@ -1,0 +1,52 @@
+@import '../Questions.css';
+
+:local(.header) {
+    composes: header from "../Questions.css";
+}
+
+:local(.editor) {
+    margin-left: 75px;
+    margin-right: 75px;
+}
+
+:local(.list) {
+    composes: pt2 from "style/spacing";
+}
+
+:local(.label),
+:local(.labelEditing) {
+    composes: flex align-center from "style/flex";
+    composes: border-top from "style/bordered";
+    composes: py2 from "style/spacing";
+}
+
+:local(.label) {
+    composes: pl1 from "style/spacing";
+}
+
+:local(.name) {
+    composes: flex-full from "style/flex";
+    composes: ml4 from "style/spacing";
+    font-size: 18px;
+    color: var(--title-color);
+}
+
+:local(.edit) {
+    font-weight: bold;
+    composes: pr2 from "style/spacing";
+    color: var(--brand-color);
+}
+
+:local(.delete) {
+    composes: cursor-pointer from "style/cursor";
+}
+
+:local(.delete),
+:local(.edit) {
+    visibility: hidden;
+}
+
+:local(.label):hover :local(.delete),
+:local(.label):hover :local(.edit) {
+    visibility: visible;;
+}

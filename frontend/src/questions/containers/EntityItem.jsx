@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 
 import Item from "../components/Item.jsx";
 
-import * as questionsActions from "../duck";
+import * as questionsActions from "../questions";
 import { makeGetItem } from "../selectors";
 
 // const mapStateToProps = (state, props) => {

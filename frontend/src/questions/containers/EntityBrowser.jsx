@@ -7,7 +7,7 @@ import SidebarLayout from "../components/SidebarLayout.jsx";
 
 import cx from "classnames";
 
-import * as questionsActions from "../duck";
+import * as questionsActions from "../questions";
 import { getSections, getTopics, getLabels } from "../selectors";
 
 const mapStateToProps = (state, props) => {

@@ -7,7 +7,7 @@ import List from "../components/List.jsx";
 import SearchHeader from "../components/SearchHeader.jsx";
 import ActionHeader from "../components/ActionHeader.jsx";
 
-import * as questionsActions from "../duck";
+import * as questionsActions from "../questions";
 import { getSearchText, getEntityType, getEntityIds, getSectionName, getSelectedCount, getVisibleCount } from "../selectors";
 
 const mapStateToProps = (state, props) => {

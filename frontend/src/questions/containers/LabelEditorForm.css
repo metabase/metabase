@@ -1,0 +1,8 @@
+:local(.form) {
+    composes: flex align-center from "style/flex";
+}
+
+:local(.nameInput) {
+    composes: flex-full from "style/flex";
+    composes: mx1 from "style/spacing";
+}

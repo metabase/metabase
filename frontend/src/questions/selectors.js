@@ -121,4 +121,11 @@ const fakeState = {
 
 export const getSections    = (state) => fakeState.sections;
 export const getTopics      = (state) => fakeState.topics;
-export const getLabels      = (state) => fakeState.labels;
+
+export const getLabels = createSelector(
+    [(state) => state.labels.entities.labels, (state) => state.labels.labels],
+    (labelEntities, labelIds) =>
+        labelIds.map(id => labelEntities[id])
+)
+
+export const getEditingLabelId = (state) => state.labels.editing;

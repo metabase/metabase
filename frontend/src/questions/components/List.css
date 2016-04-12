@@ -6,9 +6,7 @@
 }
 
 :local(.header) {
-    composes: mt4 mb2 from "style/spacing";
-    color: var(--title-color);
-    font-size: 24px;
+    composes: header from "../Questions.css";
 }
 
 :local(.item) {

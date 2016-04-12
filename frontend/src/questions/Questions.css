@@ -5,6 +5,12 @@
     --blue-color: #2D86D4;
 }
 
+:local(.header) {
+    composes: mt4 mb2 from "style/spacing";
+    color: var(--title-color);
+    font-size: 24px;
+}
+
 a {
     text-decoration: none;
 }

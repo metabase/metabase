@@ -40,7 +40,7 @@
     align-self: flex-end;
 }
 
-.flex-align-right {
+.flex-align-right, :local(.flex-align-right) {
     margin-left: auto;
 }
 
@@ -56,7 +56,7 @@
     .lg-flex-align-right { margin-left: auto; }
 }
 
-.layout-centered {
+.layout-centered, :local(.layout-centered) {
   align-items: center;
   justify-content: center;
 }

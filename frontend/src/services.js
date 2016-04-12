@@ -697,6 +697,32 @@ CoreServices.factory('Revisions', ['$resource', function($resource) {
     });
 }]);
 
+CoreServices.factory('Label', ['$resource', function($resource) {
+    return $resource('/api/label/:id', {}, {
+        list: {
+            url: '/api/label',
+            method: 'GET',
+            isArray: true
+        },
+        create: {
+            url: '/api/label',
+            method: 'POST'
+        },
+        update: {
+            method: 'PUT',
+            params: {
+                id: '@id'
+            }
+        },
+        delete: {
+            method: 'DELETE',
+            params: {
+                id: '@id'
+            }
+        }
+    });
+}]);
+
 CoreServices.factory('Session', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/session/', {}, {
         create: {

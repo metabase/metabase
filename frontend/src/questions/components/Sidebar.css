@@ -29,17 +29,6 @@
     font-size: 16px;
 }
 
-:local(.colorIcon) {
-    display: inline-block;
-    width: 18px;
-    height: 18px;
-    border-radius: 3px;
-}
-
-:local(.icon) {
-    composes: mr2 from "style/spacing";
-    color: #CFE4F5;
-}
 
 :local(.item.selected),
 :local(.item.selected) :local(.icon),
@@ -56,4 +45,8 @@
     composes: border-bottom from "style/bordered";
     margin-left: var(--item-padding);
     margin-right: var(--item-padding);
+}
+
+:local(.name) {
+    composes: ml2 from "style/spacing";
 }
