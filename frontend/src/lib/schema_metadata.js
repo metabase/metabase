@@ -314,7 +314,7 @@ const MORE_VERBOSE_NAMES = {
     "greater than or equal to": "is greater than or equal to"
 }
 
-function getOperators(field, table) {
+export function getOperators(field, table) {
     let type = getFieldType(field) || UNKNOWN;
     return OPERATORS_BY_TYPE_ORDERED[type].map(operatorForType => {
         let operator = OPERATORS[operatorForType.name];

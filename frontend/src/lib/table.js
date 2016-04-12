@@ -74,7 +74,7 @@ function addFkTargets(field, tables) {
     }
 }
 
-function createLookupByProperty(items, property) {
+export function createLookupByProperty(items, property) {
     return items.reduce((lookup, item) => {
         lookup[item[property]] = item;
         return lookup;

@@ -3,6 +3,9 @@ import React from "react";
 import inflection from "inflection";
 import _ from "underscore";
 
+import { getOperators } from "metabase/lib/schema_metadata";
+import { createLookupByProperty } from "metabase/lib/table";
+
 
 export const NEW_QUERY_TEMPLATES = {
     query: {
@@ -480,7 +483,33 @@ var Query = {
             return Query.getFieldTarget(field[2], targetTableDef);
         } else if (Query.isDatetimeField(field)) {
             return Query.getFieldTarget(field[1], tableDef);
+        } else if (Query.isCustomField(field)) {
+            // hmmm, since this is a dynamic field we'll need to build this here
+            let fieldDef = {
+                display_name: field[1],
+                name: field[1],
+                // TODO: we need to do something better here because filtering depends on knowing a sensible type for the field
+                base_type: "UnknownField",
+                operators_lookup: {},
+                valid_operators: [],
+                active: true,
+                field_type: "info",
+                fk_target_field_id: null,
+                parent_id: null,
+                preview_display: true,
+                special_type: null,
+                target: null,
+                visibility_type: "normal"
+            };
+            fieldDef.valid_operators = getOperators(fieldDef, tableDef);
+            fieldDef.operators_lookup = createLookupByProperty(fieldDef.valid_operators, "name");
+
+            return {
+                table: tableDef,
+                field: fieldDef
+            }
         }
+
         console.warn("Unknown field type: ", field);
     },
 
