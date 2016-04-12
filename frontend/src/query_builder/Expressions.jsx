@@ -13,6 +13,10 @@ export default class Expressions extends Component {
         onEditExpression: PropTypes.func.isRequired
     };
 
+    static defaultProps = {
+        expressions: {}
+    };
+
     render() {
         const { expressions, onAddExpression, onEditExpression } = this.props;
 
