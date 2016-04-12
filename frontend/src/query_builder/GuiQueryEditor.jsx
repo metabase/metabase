@@ -148,12 +148,14 @@ export default class GuiQueryEditor extends Component {
 
             let filters = Query.getFilters(this.props.query.query);
             if (filters && filters.length > 0) {
-                filterList = <FilterList
-                                 filters={filters}
-                                 tableMetadata={this.props.tableMetadata}
-                                 removeFilter={this.removeFilter}
-                                 updateFilter={this.updateFilter}
-                             />
+                filterList = (
+                    <FilterList
+                        filters={filters}
+                        tableMetadata={this.props.tableMetadata}
+                        removeFilter={this.removeFilter}
+                        updateFilter={this.updateFilter}
+                    />
+                );
             }
 
             // TODO: proper check for isFilterComplete(filter)
