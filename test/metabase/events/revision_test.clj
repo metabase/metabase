@@ -9,7 +9,6 @@
                              [database :refer [Database]]
                              [metric :refer [Metric]]
                              [revision :refer [Revision revisions]]
-                             [revision-test :refer [with-fake-card]]
                              [segment :refer [Segment]]
                              [table :refer [Table]])
             [metabase.test.data :refer :all]

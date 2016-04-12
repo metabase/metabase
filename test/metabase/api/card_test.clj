@@ -18,16 +18,6 @@
 ;; # CARD LIFECYCLE
 
 ;; ## Helper fns
-(defn post-card [card-name]
-  ((user->client :rasta) :post 200 "card" {:name                   card-name
-                                           :public_perms           0
-                                           :can_read               true
-                                           :can_write              true
-                                           :display                "scalar"
-                                           :dataset_query          (obj->json->obj (ql/wrap-inner-query
-                                                                                    (query categories
-                                                                                      (ql/aggregation (ql/count)))))
-                                           :visualization_settings {:global {:title nil}}}))
 
 ;; ## GET /api/card
 ;; Filter cards by database
@@ -75,12 +65,10 @@
 
 ;;; Filter by `recent`
 ;; Should return cards that were recently viewed by current user only
-(expect-with-temp [Database [{database-id :id}]
-                   Table    [{table-id :id}  {:db_id database-id}]
-                   Card     [{card-1-id :id} {:table_id table-id}]
-                   Card     [{card-2-id :id} {:table_id table-id}]
-                   Card     [{card-3-id :id} {:table_id table-id}]
-                   Card     [{card-4-id :id} {:table_id table-id}]
+(expect-with-temp [Card     [{card-1-id :id}]
+                   Card     [{card-2-id :id}]
+                   Card     [{card-3-id :id}]
+                   Card     [{card-4-id :id}]
                    ;; 3 was viewed most recently, followed by 4, then 1. Card 2 was viewed by a different user so shouldn't be returned
                    ViewLog  [_               {:model "card", :model_id card-1-id, :user_id (user->id :rasta),     :timestamp #inst "2015-12-01"}]
                    ViewLog  [_               {:model "card", :model_id card-2-id, :user_id (user->id :trashbird), :timestamp #inst "2016-01-01"}]
@@ -92,11 +80,9 @@
 
 ;;; Filter by `popular`
 ;; `f=popular` should return cards sorted by number of ViewLog entries for all users; cards with no entries should be excluded
-(expect-with-temp [Database [{database-id :id}]
-                   Table    [{table-id :id}  {:db_id database-id}]
-                   Card     [{card-1-id :id} {:table_id table-id}]
-                   Card     [{card-2-id :id} {:table_id table-id}]
-                   Card     [{card-3-id :id} {:table_id table-id}]
+(expect-with-temp [Card     [{card-1-id :id}]
+                   Card     [{card-2-id :id}]
+                   Card     [{card-3-id :id}]
                    ;; 3 entries for card 3, 2 for card 2, none for card 1,
                    ViewLog  [_               {:model "card", :model_id card-3-id, :user_id (user->id :rasta)}]
                    ViewLog  [_               {:model "card", :model_id card-2-id, :user_id (user->id :trashbird)}]
@@ -108,19 +94,15 @@
 
 ;;; Filter by `archived`
 ;; check that the set of Card IDs returned with f=archived is equal to the set of archived cards
-(expect-with-temp [Database [{database-id :id}]
-                   Table    [{table-id :id}  {:db_id database-id}]
-                   Card     [{card-1-id :id} {:table_id table-id}]
-                   Card     [{card-2-id :id} {:table_id table-id, :archived true}]
-                   Card     [{card-3-id :id} {:table_id table-id, :archived true}]]
+(expect-with-temp [Card [{card-1-id :id}]
+                   Card [{card-2-id :id} {:archived true}]
+                   Card [{card-3-id :id} {:archived true}]]
   #{card-2-id card-3-id}
   (set (map :id ((user->client :rasta) :get 200 "card", :f :archived))))
 
 ;;; Filter by labels
-(expect-with-temp [Database  [{database-id :id}]
-                   Table     [{table-id :id}   {:db_id database-id}]
-                   Card      [{card-1-id :id}  {:table_id table-id}]
-                   Card      [{card-2-id :id}  {:table_id table-id}]
+(expect-with-temp [Card      [{card-1-id :id}]
+                   Card      [{card-2-id :id}]
                    Label     [{label-1-id :id} {:name "Toucans"}]                           ; slug will be `toucans`
                    Label     [{label-2-id :id} {:name "More Toucans"}]                      ; slug will be `more_toucans`
                    CardLabel [_                {:card_id card-1-id, :label_id label-1-id}]
@@ -133,82 +115,98 @@
 ;; ## POST /api/card
 ;; Test that we can make a card
 (let [card-name (random-name)]
-  (expect-eval-actual-first (match-$ (sel :one Card :name card-name)
-                              {:description            nil
-                               :organization_id        nil
-                               :name                   card-name
-                               :creator_id             (user->id :rasta)
-                               :updated_at             $
-                               :dataset_query          (obj->json->obj (ql/wrap-inner-query
-                                                                        (query categories
-                                                                          (ql/aggregation (ql/count)))))
-                               :id                     $
-                               :display                "scalar"
-                               :visualization_settings {:global {:title nil}}
-                               :public_perms           0
-                               :created_at             $
-                               :database_id            (id)
-                               :table_id               (id :categories)
-                               :query_type             "query"
-                               :archived               false})
-    (post-card card-name)))
+  (expect-with-temp [Database [{database-id :id}]
+                     Table    [{table-id :id}  {:db_id database-id}]]
+    {:description            nil
+     :organization_id        nil
+     :name                   card-name
+     :creator_id             (user->id :rasta)
+     :dataset_query          {:database database-id
+                              :type     :query
+                              :query    {:source-table table-id, :aggregation {:aggregation-type :count}}}
+     :display                "scalar"
+     :visualization_settings {:global {:title nil}}
+     :public_perms           0
+     :database_id            database-id ; these should be inferred automatically
+     :table_id               table-id
+     :query_type             "query"
+     :archived               false}
+    (dissoc ((user->client :rasta) :post 200 "card" {:name                   card-name
+                                                     :public_perms           0
+                                                     :can_read               true
+                                                     :can_write              true
+                                                     :display                "scalar"
+                                                     :dataset_query          {:database database-id
+                                                                              :type     :query
+                                                                              :query    {:source-table table-id, :aggregation {:aggregation-type :count}}}
+                                                     :visualization_settings {:global {:title nil}}})
+            :created_at :updated_at :id)))
 
 ;; ## GET /api/card/:id
 ;; Test that we can fetch a card
-(let [card-name (random-name)]
-  (expect-eval-actual-first
-      (match-$ (sel :one Card :name card-name)
-        {:description            nil
-         :can_read               true
-         :can_write              true
-         :organization_id        nil
-         :dashboard_count        0
-         :name                   card-name
-         :creator_id             (user->id :rasta)
-         :creator                (match-$ (fetch-user :rasta)
-                                   {:common_name  "Rasta Toucan"
-                                    :is_superuser false
-                                    :is_qbnewb    true
-                                    :last_login   $
-                                    :last_name    "Toucan"
-                                    :first_name   "Rasta"
-                                    :date_joined  $
-                                    :email        "rasta@metabase.com"
-                                    :id           $})
-         :updated_at             $
-         :dataset_query          (obj->json->obj (ql/wrap-inner-query
-                                                   (query categories
-                                                     (ql/aggregation (ql/count)))))
-         :id                     $
-         :display                "scalar"
-         :visualization_settings {:global {:title nil}}
-         :public_perms           0
-         :created_at             $
-         :database_id            (id)
-         :table_id               (id :categories)
-         :query_type             "query"
-         :archived               false
-         :labels                 []})
-      (let [{:keys [id]} (post-card card-name)]
-        ((user->client :rasta) :get 200 (format "card/%d" id)))))
+(expect-with-temp [Database  [{database-id :id}]
+                   Table     [{table-id :id}   {:db_id database-id}]
+                   Card      [card             {:dataset_query {:database database-id
+                                                                :type     :query
+                                                                :query    {:source-table table-id, :aggregation {:aggregation-type :count}}}}]]
+  (match-$ card
+    {:description            nil
+     :can_read               true
+     :can_write              true
+     :organization_id        nil
+     :dashboard_count        0
+     :name                   $
+     :creator_id             (user->id :rasta)
+     :creator                (match-$ (fetch-user :rasta)
+                               {:common_name  "Rasta Toucan"
+                                :is_superuser false
+                                :is_qbnewb    true
+                                :last_login   $
+                                :last_name    "Toucan"
+                                :first_name   "Rasta"
+                                :date_joined  $
+                                :email        "rasta@metabase.com"
+                                :id           $})
+     :updated_at             $
+     :dataset_query          $
+     :id                     $
+     :display                "table"
+     :visualization_settings {}
+     :public_perms           0
+     :created_at             $
+     :database_id            database-id ; these should be inferred from the dataset_query
+     :table_id               table-id
+     :query_type             "query"
+     :archived               false
+     :labels                 []})
+  ((user->client :rasta) :get 200 (str "card/" (:id card))))
 
 ;; ## PUT /api/card/:id
 ;; Test that we can edit a Card
-(let [card-name (random-name)
-      updated-name (random-name)]
-  (expect-eval-actual-first
-      [card-name
-       updated-name]
-    (let [{id :id} (post-card card-name)]
-      [(sel :one :field [Card :name] :id id)
-       (do ((user->client :rasta) :put 200 (format "card/%d" id) {:name updated-name})
-           (sel :one :field [Card :name] :id id))])))
+(let [updated-name (random-name)]
+  (expect-with-temp [Card [{card-id :id, original-name :name}]]
+    [original-name
+     updated-name]
+    [(sel :one :field [Card :name] :id card-id)
+     (do ((user->client :rasta) :put 200 (str "card/" card-id) {:name updated-name})
+         (sel :one :field [Card :name] :id card-id))]))
+
+
+;; TODO - can we update a card's `archived` status?
+
+
+
+(defmacro ^:private with-temp-card {:style/indent 1} [binding & body]
+  `(with-temp Card ~binding
+     ~@body))
+
 
 ;; ## DELETE /api/card/:id
 ;; Check that we can delete a card
-(expect-eval-actual-first nil
-  (let [{:keys [id]} (post-card (random-name))]
-    ((user->client :rasta) :delete 204 (format "card/%d" id))
+(expect
+  nil
+  (with-temp-card [{:keys [id]}]
+    ((user->client :rasta) :delete 204 (str "card/" id))
     (Card id)))
 
 ;; deleting a card that doesn't exist should return a 404 (#1957)
@@ -218,39 +216,61 @@
 ;; # CARD FAVORITE STUFF
 
 ;; Helper Functions
-(defn fave? [card]
+(defn- fave? [card]
   ((user->client :rasta) :get 200 (format "card/%d/favorite" (:id card))))
 
-(defn fave [card]
+(defn- fave [card]
   ((user->client :rasta) :post 200 (format "card/%d/favorite" (:id card))))
 
-(defn unfave [card]
+(defn- unfave [card]
   ((user->client :rasta) :delete 204 (format "card/%d/favorite" (:id card))))
 
 ;; ## GET /api/card/:id/favorite
 ;; Can we see if a Card is a favorite ?
-(expect-let [card (post-card (random-name))]
+(expect
   {:favorite false}
-  (fave? card))
+  (with-temp-card [card]
+    (fave? card)))
 
 ;; ## POST /api/card/:id/favorite
 ;; Can we favorite a card?
-(expect-let [card (post-card (random-name))]
+(expect
   [{:favorite false}
    {:favorite true}]
-  [(fave? card)
-   (do (fave card)
-       (fave? card))])
+  (with-temp-card [card]
+    [(fave? card)
+     (do (fave card)
+         (fave? card))]))
 
 ;; DELETE /api/card/:id/favorite
 ;; Can we unfavorite a card?
-(expect-let [card (post-card (random-name))
-             get-fave? ((user->client :rasta) :get (format "card/%d/favorite" (:id card)))]
+(expect
   [{:favorite false}
    {:favorite true}
    {:favorite false}]
-  [(fave? card)
-   (do (fave card)
-       (fave? card))
-   (do (unfave card)
-       (fave? card))])
+  (with-temp-card [card]
+    [(fave? card)
+     (do (fave card)
+         (fave? card))
+     (do (unfave card)
+         (fave? card))]))
+
+
+;;; POST /api/card/:id/labels
+;; Check that we can update card labels
+
+(expect-with-temp [Card  [{card-id :id}]
+                   Label [{label-1-id :id} {:name "Toucan-Friendly"}]
+                   Label [{label-2-id :id} {:name "Toucan-Unfriendly"}]]
+  [[]                                                                                  ; (1) should start out with no labels
+   [{:id label-1-id, :name "Toucan-Friendly",   :slug "toucan_friendly",   :icon nil}  ; (2) set a few labels
+    {:id label-2-id, :name "Toucan-Unfriendly", :slug "toucan_unfriendly", :icon nil}]
+   []]                                                                                 ; (3) should be able to reset to no labels
+  (let [get-labels    (fn []
+                        (:labels ((user->client :rasta) :get 200, (str "card/" card-id))))
+        update-labels (fn [label-ids]
+                        ((user->client :rasta) :post 200, (format "card/%d/labels" card-id) {:label_ids label-ids})
+                        (get-labels))]
+    [(get-labels)                            ; (1)
+     (update-labels [label-1-id label-2-id]) ; (2)
+     (update-labels [])]))                   ; (3)

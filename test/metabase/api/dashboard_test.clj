@@ -1,7 +1,6 @@
 (ns metabase.api.dashboard-test
   "Tests for /api/dashboard endpoints."
   (:require [expectations :refer :all]
-            [metabase.api.card-test :refer [post-card]]
             [metabase.db :as db]
             [metabase.http-client :as http]
             [metabase.middleware :as middleware]
