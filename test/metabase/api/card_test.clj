@@ -5,8 +5,10 @@
             [metabase.http-client :refer :all]
             [metabase.driver.query-processor.expand :as ql]
             (metabase.models [card :refer [Card]]
+                             [card-label :refer [CardLabel]]
                              [common :as common]
                              [database :refer [Database]]
+                             [label :refer [Label]]
                              [table :refer [Table]]
                              [view-log :refer [ViewLog]])
             [metabase.test.data :refer :all]
@@ -113,6 +115,20 @@
                    Card     [{card-3-id :id} {:table_id table-id, :archived true}]]
   #{card-2-id card-3-id}
   (set (map :id ((user->client :rasta) :get 200 "card", :f :archived))))
+
+;;; Filter by labels
+(expect-with-temp [Database  [{database-id :id}]
+                   Table     [{table-id :id}   {:db_id database-id}]
+                   Card      [{card-1-id :id}  {:table_id table-id}]
+                   Card      [{card-2-id :id}  {:table_id table-id}]
+                   Label     [{label-1-id :id} {:name "Toucans"}]                           ; slug will be `toucans`
+                   Label     [{label-2-id :id} {:name "More Toucans"}]                      ; slug will be `more_toucans`
+                   CardLabel [_                {:card_id card-1-id, :label_id label-1-id}]
+                   CardLabel [_                {:card_id card-2-id, :label_id label-2-id}]]
+  ;; When filtering by `more_toucans` only the second Card should get returned
+  [card-2-id]
+  (map :id ((user->client :rasta) :get 200 "card", :label "more_toucans")))                 ; filtering is done by slug
+
 
 ;; ## POST /api/card
 ;; Test that we can make a card

@@ -112,11 +112,18 @@
    :popular  (u/drop-first-arg cards:popular)
    :archived (u/drop-first-arg cards:archived)})
 
-(defn- cards-for-filter-option [filter-option model-id]
-  (-> ((filter-option->fn (or filter-option :all)) model-id)
-      (hydrate :creator)
-      hydrate-labels
-      hydrate-favorites))
+(defn- card-has-label? [label card]
+  (contains? (set (map :slug (:labels card))) label))
+
+(defn- cards-for-filter-option [filter-option model-id label]
+  (let [cards (-> ((filter-option->fn (or filter-option :all)) model-id)
+                  (hydrate :creator)
+                  hydrate-labels
+                  hydrate-favorites)]
+    ;; Since labels are hydrated in Clojure-land we need to wait until this point to apply label filtering if applicable
+    (if-not (seq label)
+      cards
+      (filter (partial card-has-label? label) cards))))
 
 (defannotation CardFilterOption
   "Option must be a valid card filter option."
@@ -128,15 +135,15 @@
    but other options include `mine`, `fav`, `database`, `table`, `recent`, `popular`, and `archived`. See corresponding implementation
    functions above for the specific behavior of each filter option.
 
-   All returned cards must be either created by current user or are publicly visible."
-  [f model_id]
-  {f CardFilterOption, model_id Integer}
+   Optionally filter cards by LABEL slug."
+  [f model_id label]
+  {f CardFilterOption, model_id Integer, label NonEmptyString}
   (when (contains? #{:database :table} f)
     (checkp (integer? model_id) "id" (format "id is required parameter when filter mode is '%s'" (name f)))
     (case f
       :database (read-check Database model_id)
       :table    (read-check Database (:db_id (sel :one :fields [Table :db_id] :id model_id)))))
-  (cards-for-filter-option f model_id))
+  (cards-for-filter-option f model_id label))
 
 (defendpoint POST "/"
   "Create a new `Card`."
