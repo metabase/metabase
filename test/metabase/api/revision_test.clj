@@ -5,31 +5,17 @@
             (metabase.models [card :refer [Card serialize-instance]]
                              [dashboard :refer [Dashboard]]
                              [dashboard-card :refer [DashboardCard]]
-                             [revision :refer [Revision push-revision revert revisions]]
-                             [revision-test :refer [with-fake-card]])
+                             [revision :refer [Revision push-revision revert revisions]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [expect-eval-actual-first random-name]]))
+            [metabase.test.util :refer [expect-eval-actual-first random-name expect-with-temp with-temp]]))
 
 (def ^:private rasta-revision-info
   (delay {:id (user->id :rasta) :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"}))
 
 (defn- get-revisions [entity object-id]
-  (->> ((user->client :rasta) :get 200 "revision", :entity entity, :id object-id)
-       (mapv #(dissoc % :timestamp :id))))
-
-(defn- create-test-card []
-  (let [rand-name (random-name)]
-    (db/ins Card
-      :name                   rand-name
-      :description            rand-name
-      :public_perms           2
-      :display                "table"
-      :dataset_query          {:database (id)
-                               :type     "query"
-                               :query    {:source_table (id :categories)}}
-      :visualization_settings {}
-      :creator_id             (user->id :rasta))))
+  (for [revision ((user->client :rasta) :get 200 "revision", :entity entity, :id object-id)]
+    (dissoc revision :timestamp :id)))
 
 (defn- create-card-revision [card is-creation?]
   (push-revision
@@ -38,14 +24,6 @@
     :id            (:id card)
     :user-id       (user->id :rasta)
     :is-creation?  is-creation?))
-
-(defn- create-test-dashboard []
-  (let [rand-name (random-name)]
-    (db/ins Dashboard
-      :name                   rand-name
-      :description            rand-name
-      :public_perms           2
-      :creator_id             (user->id :rasta))))
 
 (defn- create-dashboard-revision [dash is-creation?]
   (push-revision
@@ -64,24 +42,25 @@
 ;  3. :description is calculated
 
 ;; case with no revisions (maintains backwards compatibility with old installs before revisions)
-(expect-let [{:keys [id] :as card} (create-test-card)]
+(expect
   [{:user {}, :diff nil, :description nil}]
-  (get-revisions :card id))
+  (with-temp Card [{:keys [id]}]
+    (get-revisions :card id)))
 
 ;; case with single creation revision
-(expect-let [{:keys [id] :as card} (create-test-card)]
+(expect
   [{:is_reversion false
     :is_creation  true
     :message      nil
     :user         @rasta-revision-info
     :diff         nil
     :description  nil}]
-  (do
+  (with-temp Card [{:keys [id] :as card}]
     (create-card-revision card true)
     (get-revisions :card id)))
 
 ;; case with multiple revisions, including reversion
-(expect-let [{:keys [id name] :as card} (create-test-card)]
+(expect-with-temp [Card [{:keys [id name], :as card}]]
   [{:is_reversion true
     :is_creation  false
     :message      "because i wanted to"
@@ -122,8 +101,8 @@
   [objects]
   (mapv #(dissoc % :id) objects))
 
-(expect-let [{:keys [id] :as dash}   (create-test-dashboard)
-             {card-id :id, :as card} (create-test-card)]
+(expect-with-temp [Dashboard [{:keys [id] :as dash}]
+                   Card      [{card-id :id, :as card}]]
   [{:is_reversion true
     :is_creation  false
     :message      nil
@@ -163,6 +142,6 @@
     (->> (get-revisions :dashboard id)
          (mapv (fn [rev]
                  (if-not (:diff rev) rev
-                                     (if (get-in rev [:diff :before :cards])
-                                       (update-in rev [:diff :before :cards] strip-ids)
-                                       (update-in rev [:diff :after :cards] strip-ids))))))))
+                         (if (get-in rev [:diff :before :cards])
+                           (update-in rev [:diff :before :cards] strip-ids)
+                           (update-in rev [:diff :after :cards] strip-ids))))))))

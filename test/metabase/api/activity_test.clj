@@ -10,7 +10,7 @@
                              [view-log :refer [ViewLog]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name]]
+            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name expect-with-temp]]
             [metabase.util :as u]))
 
 ;; GET /
@@ -112,25 +112,22 @@
 ;  3. `:model_object` is hydrated in each result
 ;  4. we filter out entries where `:model_object` is nil (object doesn't exist)
 
-(defn- create-card []
-  (db/ins Card
-    :name                   "rand-name"
-    :creator_id             (user->id :crowberto)
-    :public_perms           2
-    :display                "table"
-    :dataset_query          {}
-    :visualization_settings {}))
-
-(defn- create-dash []
-  (db/ins Dashboard
-    :name         "rand-name"
-    :description  "rand-name"
-    :creator_id   (user->id :crowberto)
-    :public_perms 2))
-
-(expect-let [card1 (create-card)
-             dash1 (create-dash)
-             card2 (create-card)]
+(expect-with-temp [Card      [card1 {:name                   "rand-name"
+                                     :creator_id             (user->id :crowberto)
+                                     :public_perms           2
+                                     :display                "table"
+                                     :dataset_query          {}
+                                     :visualization_settings {}}]
+                   Dashboard [dash1 {:name         "rand-name"
+                                     :description  "rand-name"
+                                     :creator_id   (user->id :crowberto)
+                                     :public_perms 2}]
+                   Card      [card2 {:name                   "rand-name"
+                                     :creator_id             (user->id :crowberto)
+                                     :public_perms           2
+                                     :display                "table"
+                                     :dataset_query          {}
+                                     :visualization_settings {}}]]
   [{:cnt      1
     :user_id  (user->id :crowberto)
     :model    "card"

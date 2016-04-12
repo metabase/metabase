@@ -1,7 +1,6 @@
 (ns metabase.api.dashboard-test
   "Tests for /api/dashboard endpoints."
   (:require [expectations :refer :all]
-            [metabase.api.card-test :refer [post-card]]
             [metabase.db :as db]
             [metabase.http-client :as http]
             [metabase.middleware :as middleware]
@@ -116,7 +115,8 @@
                                      :display                "table"
                                      :query_type             nil
                                      :dataset_query          {}
-                                     :visualization_settings {} }
+                                     :visualization_settings {}
+                                     :archived               false}
                       :series       []}]
    :organization_id nil}
   ;; fetch a dashboard WITH a dashboard card on it

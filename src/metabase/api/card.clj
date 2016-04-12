@@ -14,7 +14,8 @@
                              [label :refer [Label]]
                              [table :refer [Table]]
                              [view-log :refer [ViewLog]])
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.util.korma-extensions :as kx]))
 
 (defn- hydrate-labels
   "Efficiently hydrate the `Labels` for a large collection of `Cards`."
@@ -66,19 +67,20 @@
   "Return `Cards` with CARD-IDS.
    Make sure cards are returned in the same order as CARD-IDS`; `[in card-ids]` won't preserve the order."
   [card-ids]
+  {:pre [(every? integer? card-ids)]}
   (let [card-id->card (sel :many :field->obj [Card :id], :id [in card-ids])]
     (filter identity (map card-id->card card-ids))))
 
 (defn- cards:recent
-  "Return the 10 `Cards` most recently viewed by the current user, sorted by how recently they were viewed.0"
+  "Return the 10 `Cards` most recently viewed by the current user, sorted by how recently they were viewed."
   []
-  (cards-with-ids (k/select (k/subselect ViewLog
-                              (k/fields :model_id)
-                              (k/where {:model "card", :user_id *current-user-id*})
-                              (k/order :timestamp :DESC))
-                    (k/modifier "DISTINCT")
-                    (k/fields :model_id)
-                    (k/limit 10))))
+  (cards-with-ids (map :model_id (k/select ViewLog
+                                   (k/aggregate (max :timestamp) :max)
+                                   (k/group :model_id)
+                                   (k/fields :model_id)
+                                   (k/where {:model (kx/literal "card"), :user_id *current-user-id*})
+                                   (k/order :max :DESC)
+                                   (k/limit 10)))))
 
 (defn- cards:popular
   "All `Cards`, sorted by popularity (the total number of times they are viewed in `ViewLogs`).
@@ -86,9 +88,9 @@
   []
   (cards-with-ids (map :model_id (k/select ViewLog
                                    (k/aggregate (count (k/raw "*")) :count)
-                                   (k/fields :model_id)
-                                   (k/where {:model "card"})
                                    (k/group :model_id)
+                                   (k/fields :model_id)
+                                   (k/where {:model (kx/literal "card")})
                                    (k/order :count :DESC)))))
 
 (defn- cards:archived
@@ -110,11 +112,18 @@
    :popular  (u/drop-first-arg cards:popular)
    :archived (u/drop-first-arg cards:archived)})
 
-(defn- cards-for-filter-option [filter-option model-id]
-  (-> ((filter-option->fn (or filter-option :all)) model-id)
-      (hydrate :creator)
-      hydrate-labels
-      hydrate-favorites))
+(defn- card-has-label? [label card]
+  (contains? (set (map :slug (:labels card))) label))
+
+(defn- cards-for-filter-option [filter-option model-id label]
+  (let [cards (-> ((filter-option->fn (or filter-option :all)) model-id)
+                  (hydrate :creator)
+                  hydrate-labels
+                  hydrate-favorites)]
+    ;; Since labels are hydrated in Clojure-land we need to wait until this point to apply label filtering if applicable
+    (if-not (seq label)
+      cards
+      (filter (partial card-has-label? label) cards))))
 
 (defannotation CardFilterOption
   "Option must be a valid card filter option."
@@ -126,15 +135,15 @@
    but other options include `mine`, `fav`, `database`, `table`, `recent`, `popular`, and `archived`. See corresponding implementation
    functions above for the specific behavior of each filter option.
 
-   All returned cards must be either created by current user or are publicly visible."
-  [f model_id]
-  {f CardFilterOption, model_id Integer}
+   Optionally filter cards by LABEL slug."
+  [f model_id label]
+  {f CardFilterOption, model_id Integer, label NonEmptyString}
   (when (contains? #{:database :table} f)
     (checkp (integer? model_id) "id" (format "id is required parameter when filter mode is '%s'" (name f)))
     (case f
       :database (read-check Database model_id)
       :table    (read-check Database (:db_id (sel :one :fields [Table :db_id] :id model_id)))))
-  (cards-for-filter-option f model_id))
+  (cards-for-filter-option f model_id label))
 
 (defendpoint POST "/"
   "Create a new `Card`."
@@ -164,18 +173,21 @@
 
 (defendpoint PUT "/:id"
   "Update a `Card`."
-  [id :as {{:keys [dataset_query description display name public_perms visualization_settings]} :body}]
-  {name         NonEmptyString
-   public_perms PublicPerms
-   display      NonEmptyString}
+  [id :as {{:keys [dataset_query description display name public_perms visualization_settings archived]} :body}]
+  {name                   NonEmptyString
+   public_perms           PublicPerms
+   display                NonEmptyString
+   visualization_settings Dict
+   archived               Boolean}
   (write-check Card id)
   (upd-non-nil-keys Card id
-                    :dataset_query dataset_query
-                    :description description
-                    :display display
-                    :name name
-                    :public_perms public_perms
-                    :visualization_settings visualization_settings)
+    :dataset_query          dataset_query
+    :description            description
+    :display                display
+    :name                   name
+    :public_perms           public_perms
+    :visualization_settings visualization_settings
+    :archived               archived)
   (events/publish-event :card-update (assoc (Card id) :actor_id *current-user-id*)))
 
 (defendpoint DELETE "/:id"
