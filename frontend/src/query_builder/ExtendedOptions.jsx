@@ -1,15 +1,15 @@
 import React, { Component, PropTypes } from "react";
 import _ from "underscore";
+import cx from "classnames";
 
 import AddClauseButton from "./AddClauseButton.jsx";
-import Expressions from './Expressions.jsx';
+import Expressions from "./Expressions.jsx";
 import ExpressionWidget from './ExpressionWidget.jsx';
 import LimitWidget from "./LimitWidget.jsx";
-import SortWidget from './SortWidget.jsx';
+import SortWidget from "./SortWidget.jsx";
 import Popover from "metabase/components/Popover.jsx";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 
-import MetabaseAnalytics from 'metabase/lib/analytics';
+import MetabaseAnalytics from "metabase/lib/analytics";
 import Query from "metabase/lib/query";
 
 
@@ -19,12 +19,13 @@ export default class ExtendedOptions extends Component {
         super(props, context);
 
         this.state = {
+            isOpen: false,
             editExpression: null
         };
 
         _.bindAll(
             this,
-            "addSort", "updateSort", "removeSort"
+            "setLimit", "addSort", "updateSort", "removeSort"
         );
     }
 
@@ -32,14 +33,25 @@ export default class ExtendedOptions extends Component {
         features: PropTypes.object.isRequired,
         query: PropTypes.object.isRequired,
         tableMetadata: PropTypes.object,
-        setQuery: PropTypes.func.isRequired,
-        onEditExpression: PropTypes.func.isRequired
+        setQuery: PropTypes.func.isRequired
     };
 
     static defaultProps = {
         expressions: {}
     };
 
+
+    setLimit(limit) {
+        if (limit) {
+            Query.updateLimit(this.props.query.query, limit);
+            MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Limit');
+        } else {
+            Query.removeLimit(this.props.query.query);
+            MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Limit');
+        }
+        this.props.setQuery(this.props.query);
+        this.setState({isOpen: false});
+    }
 
     addSort() {
         Query.addSort(this.props.query.query);
@@ -121,11 +133,7 @@ export default class ExtendedOptions extends Component {
             name = _.isString(this.state.editExpression) ?  this.state.editExpression : "";
 
         return (
-            <Popover
-                ref="expressionPopover"
-                className="FilterPopover"
-                onClose={() => this.setState({editExpression: null})}
-            >
+            <Popover onClose={() => this.setState({editExpression: null})}>
                 <ExpressionWidget
                     tableMetadata={this.props.tableMetadata}
                     onSetExpression={(newName, newExpression) => {
@@ -159,54 +167,43 @@ export default class ExtendedOptions extends Component {
         );
     }
 
-    render() {
-        const { features, query } = this.props;
-        if (!features.sort && !features.limit) {
-            return;
-        }
+    renderPopover() {
+        if (!this.state.isOpen) return null;
 
-        const triggerElement = (<span className="EllipsisButton no-decoration text-grey-1 px1">…</span>);
+        const { features, query } = this.props;
 
         return (
-            <div className="GuiBuilder-section GuiBuilder-sort-limit flex align-center" ref="sortLimitSection">
+            <Popover onClose={() => this.setState({isOpen: false})}>
+                <div className="px3 py1">
+                    {this.renderSort()}
 
-                <PopoverWithTrigger ref="limitSortPopover"
-                                    triggerElement={triggerElement}
-                                    triggerClasses="flex align-center">
-                    <div className="px3 py1">
-                        {this.renderSort()}
+                    <Expressions
+                        expressions={query.query.expressions}
+                        onAddExpression={() => this.setState({isOpen: false, editExpression: true})}
+                        onEditExpression={(name) => this.setState({isOpen: false, editExpression: name})}
+                    />
 
-                        <Expressions
-                            expressions={query.query.expressions}
-                            onAddExpression={() => {
-                                this.setState({editExpression: true});
-                                this.refs.limitSortPopover.toggle();
-                            }}
-                            onEditExpression={(name) => {
-                                this.setState({editExpression: name});
-                                this.refs.limitSortPopover.toggle();
-                            }}
-                        />
+                    { features.limit &&
+                        <div className="py1">
+                            <div className="Query-label mb1">Row limit</div>
+                            <LimitWidget limit={query.query.limit} onChange={this.setLimit} />
+                        </div>
+                    }
+                </div>
+            </Popover>
+        );
+    }
 
-                        { features.limit &&
-                            <div className="py1">
-                                <div className="Query-label mb1">Row limit</div>
-                                <LimitWidget limit={query.query.limit} onChange={(limit) => {
-                                    if (limit) {
-                                        Query.updateLimit(this.props.query.query, limit);
-                                        MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Limit');
-                                    } else {
-                                        Query.removeLimit(this.props.query.query);
-                                        MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Limit');
-                                    }
-                                    this.props.setQuery(this.props.query);
-                                    this.refs.limitSortPopover.toggle();
-                                }} />
-                            </div>
-                        }
-                    </div>
-                </PopoverWithTrigger>
+    render() {
+        const { features } = this.props;
+        if (!features.sort && !features.limit) return;
 
+        const onClick = this.props.tableMetadata ? () => this.setState({isOpen: true}) : null;
+
+        return (
+            <div className="GuiBuilder-section GuiBuilder-sort-limit flex align-center">
+                <span className={cx("EllipsisButton no-decoration text-grey-1 px1", {"cursor-pointer": onClick})} onClick={onClick}>…</span>
+                {this.renderPopover()}
                 {this.renderExpressionWidget()}
             </div>
         );
