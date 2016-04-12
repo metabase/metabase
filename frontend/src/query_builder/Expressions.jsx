@@ -22,18 +22,18 @@ export default class Expressions extends Component {
 
         let sortedNames = _.sortBy(_.keys(expressions), _.identity);
         return (
-            <div className="py2 border-bottom">
-                <div className="Query-label">Custom fields</div>
+            <div className="pb3">
+                <div className="pb1 h6 text-uppercase text-grey-3 text-bold">Custom fields</div>
 
                 { sortedNames && sortedNames.map(name =>
-                    <div key={name} className="pt1 text-brand text-bold cursor-pointer" onClick={() => onEditExpression(name)}>{name}</div>
+                    <div key={name} className="pb1 text-brand text-bold cursor-pointer" onClick={() => onEditExpression(name)}>{name}</div>
                 )}
 
-                <a className="mt2 text-grey-2 text-bold flex align-center text-grey-4-hover cursor-pointer no-decoration transition-color" onClick={() => onAddExpression()}>
+                <a className="text-grey-2 text-bold flex align-center text-grey-4-hover cursor-pointer no-decoration transition-color" onClick={() => onAddExpression()}>
                     <IconBorder borderRadius="3px">
                         <Icon name="add" width="14px" height="14px" />
                     </IconBorder>
-                    <span className="ml1">Add a <span className="text-grey-4">custom</span> field</span>
+                    <span className="ml1">Add a custom field</span>
                 </a>
             </div>
         );
