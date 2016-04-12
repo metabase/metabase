@@ -26,6 +26,10 @@ const Item = ({ id, name, created, by, selected, favorite, archived, icon, label
         </div>
         <ItemBody id={id} name={name} labels={labels} created={created} by={by} />
         <div className={S.rightIcons}>
+            <LabelPopover
+                triggerElement={<Icon className={S.tagIcon} name="grid" width={20} height={20} />}
+                item={{ id, labels }}
+            />
             <Icon className={S.favoriteIcon} name="star" width={20} height={20} onClick={() => setFavorited(id, !favorite) }/>
         </div>
         <div className={S.extraIcons}>
@@ -38,10 +42,6 @@ const ItemBody = pure(({ id, name, labels, created, by }) =>
         <div className={S.itemTitle}>
             <span className={S.itemName}>{name}</span>
             <Labels labels={labels} />
-            <LabelPopover
-                triggerElement={<Icon className={S.tagIcon} name="grid" />}
-                item={{ id, labels }}
-            />
         </div>
         <div className={S.itemSubtitle}>
             {"Created "}

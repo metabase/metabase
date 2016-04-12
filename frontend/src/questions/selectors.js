@@ -1,6 +1,7 @@
 
 import { createSelector } from 'reselect';
 import moment from "moment";
+import _ from "underscore";
 
 import visualizations from "metabase/visualizations";
 
@@ -91,10 +92,6 @@ export const getAllAreSelected = createSelector(
         selectedCount === visibleCount && visibleCount > 0
 )
 
-// FIXME:
-export const getSectionName = (state, props) =>
-    sections[0].name;
-
 const sections = [
     { id: "all",       name: "All questions",   icon: "star" },
     { id: "favorites", name: "Favorites",       icon: "star" },
@@ -106,11 +103,13 @@ const sections = [
 export const getSections    = (state) => sections;
 export const getTopics      = (state) => [];
 
+export const getEditingLabelId = (state) => state.labels.editing;
+
 export const getLabels = createSelector(
     [(state) => state.labels.entities.labels, (state) => state.labels.labels],
     (labelEntities, labelIds) =>
         labelIds.map(id => labelEntities[id])
-)
+);
 
 const getLabelCountsForSelectedEntities = createSelector(
     [getSelectedEntities],
@@ -123,7 +122,7 @@ const getLabelCountsForSelectedEntities = createSelector(
         }
         return counts;
     }
-)
+);
 
 export const getLabelsWithSelectedState = createSelector(
     [getLabels, getSelectedCount, getLabelCountsForSelectedEntities],
@@ -138,4 +137,15 @@ export const getLabelsWithSelectedState = createSelector(
         }))
 )
 
-export const getEditingLabelId = (state) => state.labels.editing;
+export const getSectionName = createSelector(
+    [getSection, getSlug, getSections, getLabels],
+    (sectionId, slug, sections, labels) => {
+        if (sectionId === "label") {
+            let label = _.findWhere(labels, { slug: slug });
+            return label && label.name
+        } else {
+            let section = _.findWhere(sections, { id: sectionId });
+            return section && section.name
+        }
+    }
+);
