@@ -18,7 +18,7 @@ export const getItemsBySectionId    = (state) => state.questions.itemsBySectionI
 
 // export const getQuestions = (state) => state.questions.questions;
 export const getSearchText          = (state) => state.questions.searchText;
-export const getSelectedIds       = (state) => state.questions.selectedIds;
+export const getSelectedIds         = (state) => state.questions.selectedIds;
 export const getAllSelected         = (state) => state.questions.allSelected
 
 export const getEntityIds = createSelector(
@@ -69,7 +69,7 @@ const getVisibleEntities = createSelector(
         allEntities.filter(entity => caseInsensitiveSearch(entity.name, searchText))
 );
 
-const getSelectedEntities = createSelector(
+export const getSelectedEntities = createSelector(
     [getVisibleEntities, getSelectedIds, getAllSelected],
     (visibleEntities, selectedIds, allSelected) =>
         visibleEntities.filter(entity => allSelected || selectedIds[entity.id])
@@ -84,6 +84,12 @@ export const getSelectedCount = createSelector(
     [getSelectedEntities],
     (selectedEntities) => selectedEntities.length
 );
+
+export const getAllAreSelected = createSelector(
+    [getSelectedCount, getVisibleCount],
+    (selectedCount, visibleCount) =>
+        selectedCount === visibleCount && visibleCount > 0
+)
 
 // FIXME:
 export const getSectionName = (state, props) =>
@@ -104,6 +110,32 @@ export const getLabels = createSelector(
     [(state) => state.labels.entities.labels, (state) => state.labels.labels],
     (labelEntities, labelIds) =>
         labelIds.map(id => labelEntities[id])
+)
+
+const getLabelCountsForSelectedEntities = createSelector(
+    [getSelectedEntities],
+    (entities) => {
+        let counts = {};
+        for (let entity of entities) {
+            for (let labelId of entity.labels) {
+                counts[labelId] = (counts[labelId] || 0) + 1;
+            }
+        }
+        return counts;
+    }
+)
+
+export const getLabelsWithSelectedState = createSelector(
+    [getLabels, getSelectedCount, getLabelCountsForSelectedEntities],
+    (labels, selectedCount, counts) =>
+        labels.map(label => ({
+            ...label,
+            count: counts[label.id],
+            selected:
+                counts[label.id] === 0 || counts[label.id] == null ? false :
+                counts[label.id] === selectedCount ? true :
+                null
+        }))
 )
 
 export const getEditingLabelId = (state) => state.labels.editing;

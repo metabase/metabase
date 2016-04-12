@@ -7,8 +7,8 @@ import List from "../components/List.jsx";
 import SearchHeader from "../components/SearchHeader.jsx";
 import ActionHeader from "../components/ActionHeader.jsx";
 
-import { setSearchText, setItemSelected, setAllSelected } from "../questions";
-import { getSearchText, getEntityType, getEntityIds, getSectionName, getSelectedCount, getVisibleCount } from "../selectors";
+import { setSearchText, setItemSelected, setAllSelected, setArchived } from "../questions";
+import { getSearchText, getEntityType, getEntityIds, getSectionName, getSelectedCount, getAllAreSelected, getLabelsWithSelectedState } from "../selectors";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -19,20 +19,23 @@ const mapStateToProps = (state, props) => {
 
       name:             getSectionName(state),
       selectedCount:    getSelectedCount(state),
-      visibleCount:     getVisibleCount(state)
+      allAreSelected:   getAllAreSelected(state),
+
+      labels:           getLabelsWithSelectedState(state)
   }
 }
 
 const mapDispatchToProps = {
     setItemSelected,
     setAllSelected,
-    setSearchText
+    setSearchText,
+    setArchived
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class EntityList extends Component {
     render() {
-        const { style, name, selectedCount, visibleCount, searchText, setSearchText, entityType, entityIds, setItemSelected, setAllSelected } = this.props;
+        const { style, name, selectedCount, allAreSelected, labels, searchText, setSearchText, entityType, entityIds, setItemSelected, setAllSelected, setArchived } = this.props;
         return (
             <div style={style} className={S.list}>
                 <div className={S.header}>
@@ -41,8 +44,10 @@ export default class EntityList extends Component {
                 { selectedCount > 0 ?
                     <ActionHeader
                         selectedCount={selectedCount}
-                        allSelected={selectedCount === visibleCount && visibleCount > 0}
+                        allAreSelected={allAreSelected}
                         setAllSelected={setAllSelected}
+                        setArchived={setArchived}
+                        labels={labels}
                     />
                 :
                     <SearchHeader searchText={searchText} setSearchText={setSearchText} />

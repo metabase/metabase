@@ -9,7 +9,7 @@ import { getLabels } from "../selectors";
 
 const mapStateToProps = (state, props) => {
   return {
-      labels: getLabels(state)
+      labels: props.labels || getLabels(state)
   }
 }
 

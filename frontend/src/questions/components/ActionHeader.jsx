@@ -6,10 +6,10 @@ import Icon from "metabase/components/Icon.jsx";
 
 import LabelPopover from "../containers/LabelPopover.jsx";
 
-const ActionHeader = ({ selectedCount, allSelected, setAllSelected, archiveSelected }) =>
+const ActionHeader = ({ selectedCount, allAreSelected, setAllSelected, setArchived, labels }) =>
     <div className={S.actionHeader}>
         <StackedCheckBox
-            checked={allSelected}
+            checked={allAreSelected}
             onChange={(e) => setAllSelected(e.target.checked)}
             className={S.allCheckbox}
             size={20} padding={3} borderColor="currentColor"
@@ -27,8 +27,9 @@ const ActionHeader = ({ selectedCount, allSelected, setAllSelected, archiveSelec
                         <Icon name="chevrondown" width={12} height={12} />
                     </span>
                 }
+                labels={labels}
             />
-            <span className={S.archiveButton} onClick={archiveSelected}>
+            <span className={S.archiveButton} onClick={() => setArchived()}>
                 <Icon name="grid" />
                 Archive
             </span>

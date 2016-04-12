@@ -5,6 +5,8 @@ import { normalize, Schema, arrayOf } from 'normalizr';
 import i from "icepick";
 import _ from "underscore";
 
+import { getSelectedEntities } from "./selectors";
+
 const card = new Schema('cards');
 const label = new Schema('labels');
 card.define({
@@ -67,24 +69,38 @@ export const setFavorited = createThunkAction(SET_FAVORITED, (cardId, favorited)
 
 export const setArchived = createThunkAction(SET_ARCHIVED, (cardId, archived) => {
     return async (dispatch, getState) => {
-        let card = {
-            ...getState().questions.entities.cards[cardId],
-            archived: archived
-        };
-        return await CardApi.update(card);
+        if (cardId == null) {
+            // bulk archive
+            let selected = getSelectedEntities(getState());
+            selected.map(item => dispatch(setArchived(item.id, !selected[0].archived)));
+            // TODO: errors
+        } else {
+            let card = {
+                ...getState().questions.entities.cards[cardId],
+                archived: archived
+            };
+            return await CardApi.update(card);
+        }
     }
 });
 
 export const setLabeled = createThunkAction(SET_LABELED, (cardId, labelId, labeled) => {
     return async (dispatch, getState) => {
-        const labels = getState().questions.entities.cards[cardId].labels;
-        const newLabels = labels.filter(id => id !== labelId);
-        if (labeled) {
-            newLabels.push(labelId);
-        }
-        if (labels.length !== newLabels.length) {
-            await CardApi.updateLabels({ cardId, label_ids: newLabels });
-            return { id: cardId, labels: newLabels };
+        if (cardId == null) {
+            // bulk label
+            let selected = getSelectedEntities(getState());
+            selected.map(item => dispatch(setLabeled(item.id, labelId, labeled)));
+            // TODO: errors
+        } else {
+            const labels = getState().questions.entities.cards[cardId].labels;
+            const newLabels = labels.filter(id => id !== labelId);
+            if (labeled) {
+                newLabels.push(labelId);
+            }
+            if (labels.length !== newLabels.length) {
+                await CardApi.updateLabels({ cardId, label_ids: newLabels });
+                return { id: cardId, labels: newLabels };
+            }
         }
     }
 });
