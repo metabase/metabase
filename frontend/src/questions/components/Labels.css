@@ -1,4 +1,8 @@
-:local(.labels) {
+:local(.list) {
+    display: inline;
+}
+
+:local(.listItem) {
     display: inline;
 }
 

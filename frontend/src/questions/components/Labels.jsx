@@ -1,21 +1,27 @@
 import React, { Component, PropTypes } from "react";
+import { Link } from "react-router";
 import S from "./Labels.css";
 
 import cx from "classnames";
 
 const Labels = ({ labels }) =>
-    <ul className={S.labels}>
+    <ul className={S.list}>
         { labels.map(label =>
-            <Label key={label.id} {...label} />
+            <li className={S.listItem} key={label.id}>
+                <Label {...label} />
+            </li>
         )}
     </ul>
 
-const Label = ({ name, icon }) =>
-    icon.charAt(0) === ":" ?
-        <li className={cx(S.label, S.emojiLabel)}>{icon}{name}</li>
-    : icon.charAt(0) === "#" ?
-        <li className={S.label} style={{ backgroundColor: icon }}>{name}</li>
-    :
-        <li className={S.label}>{name}</li>
+const Label = ({ name, icon, slug }) =>
+    <Link to={"/questions/label/"+slug}>
+        { icon.charAt(0) === ":" ?
+            <span className={cx(S.label, S.emojiLabel)}>{icon}{name}</span>
+        : icon.charAt(0) === "#" ?
+            <span className={S.label} style={{ backgroundColor: icon }}>{name}</span>
+        :
+            <span className={S.label}>{name}</span>
+        }
+    </Link>
 
 export default Labels;

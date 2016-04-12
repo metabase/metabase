@@ -6,6 +6,7 @@ import { normalize, Schema, arrayOf } from 'normalizr';
 const label = new Schema('labels');
 const LabelApi = new AngularResourceProxy("Label", ["list", "create", "update", "delete"]);
 
+import i from "icepick";
 import _ from "underscore";
 
 const LOAD_LABELS = 'metabase/labels/LOAD_LABELS';
@@ -64,20 +65,10 @@ const initialState = {
 
 export default function(state = initialState, { type, payload, error }) {
     if (payload && payload.entities) {
-        // FIXME: deep merge
-        state = {
-            ...state,
-            entities: {
-                ...state.entities,
-                ...payload.entities
-            }
-        };
+        state = i.assoc(state, "entities", i.merge(state.entities, payload.entities));
     }
     if (payload && payload.message) {
-        state = {
-            ...state,
-            message: payload.message
-        };
+        state = i.assoc(state, "message", payload.message);
     }
 
     switch (type) {

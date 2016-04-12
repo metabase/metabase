@@ -107,13 +107,7 @@ const initialState = {
 export default function(state = initialState, { type, payload, error }) {
     if (payload && payload.entities) {
         // FIXME: deep merge
-        state = {
-            ...state,
-            entities: {
-                ...state.entities,
-                ...payload.entities
-            }
-        };
+        state = i.assoc(state, "entities", i.merge(state.entities, payload.entities));
     }
 
     switch (type) {
