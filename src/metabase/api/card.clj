@@ -31,19 +31,19 @@
 (defn- hydrate-favorites
   "Efficiently add `favorite` status for a large collection of `Cards`."
   [cards]
-  (let [favorite-card-ids (set (sel :many :field [CardFavorite :card_id], :owner_id *current-user-id*, :id [in (map :id cards)]))]
+  (let [favorite-card-ids (set (sel :many :field [CardFavorite :card_id], :owner_id *current-user-id*, :card_id [in (map :id cards)]))]
     (for [card cards]
       (assoc card :favorite (contains? favorite-card-ids (:id card))))))
 
 (defn- cards:all
   "Return all `Cards`."
   []
-  (sel :many Card, (k/order :name :ASC)))
+  (sel :many Card, :archived false, (k/order :name :ASC)))
 
 (defn- cards:mine
   "Return all `Cards` created by current user."
   []
-  (sel :many Card, :creator_id *current-user-id*, (k/order :name :ASC)))
+  (sel :many Card, :creator_id *current-user-id*, :archived false, (k/order :name :ASC)))
 
 (defn- cards:fav
   "Return all `Cards` favorited by the current user."
@@ -51,24 +51,25 @@
   (->> (hydrate (sel :many [CardFavorite :card_id], :owner_id *current-user-id*)
                 :card)
        (map :card)
+       (filter (complement :archived))
        (sort-by :name)))
 
 (defn- cards:database
   "Return all `Cards` belonging to `Database` with DATABASE-ID."
   [database-id]
-  (sel :many Card (k/order :name :ASC), :database_id database-id))
+  (sel :many Card (k/order :name :ASC), :database_id database-id, :archived false))
 
 (defn- cards:table
   "Return all `Cards` belonging to `Table` with TABLE-ID."
   [table-id]
-  (sel :many Card (k/order :name :ASC), :table_id table-id))
+  (sel :many Card (k/order :name :ASC), :table_id table-id, :archived false))
 
 (defn- cards-with-ids
-  "Return `Cards` with CARD-IDS.
+  "Return unarchived `Cards` with CARD-IDS.
    Make sure cards are returned in the same order as CARD-IDS`; `[in card-ids]` won't preserve the order."
   [card-ids]
   {:pre [(every? integer? card-ids)]}
-  (let [card-id->card (sel :many :field->obj [Card :id], :id [in card-ids])]
+  (let [card-id->card (sel :many :field->obj [Card :id], :id [in card-ids], :archived false)]
     (filter identity (map card-id->card card-ids))))
 
 (defn- cards:recent
@@ -112,8 +113,8 @@
    :popular  (u/drop-first-arg cards:popular)
    :archived (u/drop-first-arg cards:archived)})
 
-(defn- card-has-label? [label card]
-  (contains? (set (map :slug (:labels card))) label))
+(defn- card-has-label? [label-slug card]
+  (contains? (set (map :slug (:labels card))) label-slug))
 
 (defn- cards-for-filter-option [filter-option model-id label]
   (let [cards (-> ((filter-option->fn (or filter-option :all)) model-id)
@@ -173,7 +174,7 @@
 
 (defendpoint PUT "/:id"
   "Update a `Card`."
-  [id :as {{:keys [dataset_query description display name public_perms visualization_settings archived]} :body}]
+  [id :as {{:keys [dataset_query description display name public_perms visualization_settings archived], :as body} :body}]
   {name                   NonEmptyString
    public_perms           PublicPerms
    display                NonEmptyString

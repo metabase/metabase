@@ -5,6 +5,7 @@
             [metabase.http-client :refer :all]
             [metabase.driver.query-processor.expand :as ql]
             (metabase.models [card :refer [Card]]
+                             [card-favorite :refer [CardFavorite]]
                              [card-label :refer [CardLabel]]
                              [common :as common]
                              [database :refer [Database]]
@@ -100,6 +101,16 @@
   #{card-2-id card-3-id}
   (set (map :id ((user->client :rasta) :get 200 "card", :f :archived))))
 
+;;; Filter by `fav`
+(expect-with-temp [Card         [{card-id-1 :id}]
+                   Card         [{card-id-2 :id}]
+                   Card         [{card-id-3 :id}]
+                   CardFavorite [_ {:card_id card-id-1, :owner_id (user->id :rasta)}]
+                   CardFavorite [_ {:card_id card-id-2, :owner_id (user->id :crowberto)}]]
+  [{:id card-id-1, :favorite true}]
+  (for [card ((user->client :rasta) :get 200 "card", :f :fav)]
+    (select-keys card [:id :favorite])))
+
 ;;; Filter by labels
 (expect-with-temp [Card      [{card-1-id :id}]
                    Card      [{card-2-id :id}]
@@ -122,8 +133,8 @@
      :name                   card-name
      :creator_id             (user->id :rasta)
      :dataset_query          {:database database-id
-                              :type     :query
-                              :query    {:source-table table-id, :aggregation {:aggregation-type :count}}}
+                              :type     "query"
+                              :query    {:source-table table-id, :aggregation {:aggregation-type "count"}}}
      :display                "scalar"
      :visualization_settings {:global {:title nil}}
      :public_perms           0
@@ -192,13 +203,21 @@
          (sel :one :field [Card :name] :id card-id))]))
 
 
-;; TODO - can we update a card's `archived` status?
-
-
-
 (defmacro ^:private with-temp-card {:style/indent 1} [binding & body]
   `(with-temp Card ~binding
      ~@body))
+
+;; Can we update a Card's archived status?
+(expect
+  [false true false]
+  (with-temp-card [{:keys [id]}]
+    (let [archived?     (fn [] (:archived (Card id)))
+          set-archived! (fn [archived]
+                          ((user->client :rasta) :put 200 (str "card/" id) {:archived archived})
+                          (archived?))]
+      [(archived?)
+       (set-archived! true)
+       (set-archived! false)])))
 
 
 ;; ## DELETE /api/card/:id
@@ -258,7 +277,6 @@
 
 ;;; POST /api/card/:id/labels
 ;; Check that we can update card labels
-
 (expect-with-temp [Card  [{card-id :id}]
                    Label [{label-1-id :id} {:name "Toucan-Friendly"}]
                    Label [{label-2-id :id} {:name "Toucan-Unfriendly"}]]
