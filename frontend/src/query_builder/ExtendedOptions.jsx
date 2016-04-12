@@ -98,6 +98,7 @@ export default class ExtendedOptions extends Component {
                         tableMetadata={this.props.tableMetadata}
                         sort={order_by}
                         fieldOptions={sortFieldOptions}
+                        customFieldOptions={Query.getExpressions(this.props.query.query)}
                         removeSort={this.removeSort.bind(null, index)}
                         updateSort={this.updateSort.bind(null, index)}
                     />
