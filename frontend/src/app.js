@@ -94,18 +94,18 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
                     var newParams = $route.current.params;
                     var oldParams = route.params;
 
-                    if ($route.current.$$route.controller === route.controller) {
-                        $route.current = route;
-
-                        angular.forEach(oldParams, function(value, key) {
-                            delete $route.current.params[key];
-                            delete $routeParams[key];
-                        });
-                        angular.forEach(newParams, function(value, key) {
-                            $route.current.params[key] = value;
-                            $routeParams[key] = value;
-                        });
-                    }
+                    // if ($route.current.$$route.controller === route.controller) {
+                    //     $route.current = route;
+                    //
+                    //     angular.forEach(oldParams, function(value, key) {
+                    //         delete $route.current.params[key];
+                    //         delete $routeParams[key];
+                    //     });
+                    //     angular.forEach(newParams, function(value, key) {
+                    //         $route.current.params[key] = value;
+                    //         $routeParams[key] = value;
+                    //     });
+                    // }
                 });
             }
         ],
