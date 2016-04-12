@@ -3,7 +3,9 @@
   (:require [environ.core :refer [env]]
             metabase.driver.crate
             (metabase.test.data [generic-sql :as generic]
-                                [interface :as i]))
+                                [interface :as i])
+            [metabase.driver.generic-sql :as sql]
+            [clojure.java.jdbc :as jdbc])
   (:import metabase.driver.crate.CrateDriver))
 
 (def ^:private ^:const field-base-type->sql-type
@@ -18,6 +20,28 @@
    :TextField       "string"
    :TimeField       "timestamp"})
 
+(defn- escape-field-names
+  "Escape the field-name keys in ROW-OR-ROWS."
+  [row-or-rows]
+  (if (sequential? row-or-rows)
+    (map escape-field-names row-or-rows)
+    (into {} (for [[k v] row-or-rows]
+               {(sql/escape-field-name k) v}))))
+
+(defn- make-load-data-fn
+  "Create a `load-data!` function. This creates a function to actually insert a row or rows, wraps it with any WRAP-INSERT-FNS,
+   the calls the resulting function with the rows to insert."
+  [& wrap-insert-fns]
+  (fn [driver dbdef tabledef]
+    (let [insert! (fn [row-or-rows]
+                    (apply jdbc/insert!
+                           (generic/database->spec driver :db dbdef)
+                           (keyword (get tabledef :table-name))
+                           :transaction? false
+                           (escape-field-names row-or-rows)))
+          rows      (apply list (generic/load-data-get-rows driver dbdef tabledef))]
+      (insert! rows))))
+
 (defn- database->connection-details [_ _ {:keys [_ _]}]
   (merge {:host         "localhost"
           :port         4300}))
@@ -31,7 +55,8 @@
           :pk-sql-type               (constantly "integer primary key")
           :create-db-sql             (constantly nil)
           :add-fk-sql                (constantly nil)
-          :drop-db-if-exists-sql     (constantly nil)})
+          :drop-db-if-exists-sql     (constantly nil)
+          :load-data!                (make-load-data-fn)})
   i/IDatasetLoader
   (merge generic/IDatasetLoaderMixin
          {:database->connection-details database->connection-details
