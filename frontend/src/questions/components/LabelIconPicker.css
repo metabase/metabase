@@ -1,24 +1,35 @@
-:local(.picker) {
-    composes: p2 from "style/spacing";
+
+:local(.sectionHeader) {
+    composes: p1 px3 from "style/spacing";
+    composes: flex align-center from "style/flex";
+    display: flex;
+    align-items: center;
+    position: absolute;
+    bottom: 0px;
+}
+
+:local(.list) {
+    composes: flex align-center from "style/flex";
+    composes: px2 from "style/spacing";
+}
+
+:local(.sectionList) {
+    composes: list;
+    composes: border-top from "style/bordered";
 }
 
 :local(.option) {
     composes: p1 from "style/spacing";
+    composes: flex layout-centered from "style/flex";
     border: 1px solid transparent;
+    width: 50px;
+    height: 50px;
 }
 
 :local(.option):hover {
     border: 1px solid rgb(235,235,235);
     border-radius: 3px;
     background-color: rgb(248,248,248);
-}
-
-:local(.list) {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-    width: 255px;
 }
 
 :local(.dropdownButton) {

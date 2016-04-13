@@ -21,3 +21,7 @@
     border: 1px solid #DEEAF1;
     box-shadow: 1px 1px 0 0 #BFD5E1;
 }
+
+:local(.emojiIcon) {
+    margin-right: 0.5em;
+}

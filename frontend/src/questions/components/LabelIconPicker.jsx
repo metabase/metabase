@@ -5,39 +5,106 @@ import S from "./LabelIconPicker.css";
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 
+import { VirtualScroll } from "react-virtualized";
+import "react-virtualized/styles.css";
+
 import * as colors from "metabase/lib/colors";
+import { categories } from "metabase/lib/emoji";
 
 import LabelIcon from "./LabelIcon.jsx";
 
-const ALL_COLORS = [].concat(...[colors.saturated, colors.normal, colors.desaturated].map(o => Object.values(o)));
+const ROW_HEIGHT = 45;
+const VISIBLE_ROWS = 6;
+const HEIGHT = VISIBLE_ROWS * ROW_HEIGHT;
+const WIDTH = 330;
 
+const ICONS_PER_ROW = 6;
+
+const ROWS = [];
+const CATEGORY_ROW_MAP = {};
+
+function pushHeader(title) {
+    ROWS.push({ type: "header", title: title });
+}
+function pushIcons(icons) {
+    for (let icon of icons) {
+        let current = ROWS[ROWS.length - 1];
+        if (current.type !== "icons" || current.icons.length === ICONS_PER_ROW) {
+            current = { type: "icons", icons: [] };
+            ROWS.push(current);
+        }
+        current.icons.push(icon);
+    }
+}
+
+// Colors
+const ALL_COLORS = [].concat(...[colors.saturated, colors.normal, colors.desaturated].map(o => Object.values(o)));
+pushHeader("Colors");
+pushIcons(ALL_COLORS);
+
+// Emoji
+categories.map(category => {
+    CATEGORY_ROW_MAP[category.id] = ROWS.length;
+    pushHeader(category.name);
+    pushIcons(category.emoji);
+});
 
 export default class LabelIconPicker extends Component {
     constructor(props, context) {
         super(props, context);
-        this.state = {};
+        this.state = {
+            topIndex: 0,
+            scrollToIndex: 0
+        };
     }
 
     static propTypes = {};
     static defaultProps = {};
 
+    scrollToCategory(id) {
+        let categoryIndex = CATEGORY_ROW_MAP[id];
+        if (categoryIndex > this.state.topIndex) {
+            this.setState({ scrollToIndex: categoryIndex + VISIBLE_ROWS - 1 });
+        } else {
+            this.setState({ scrollToIndex: categoryIndex });
+        }
+    }
+
     render() {
         const { value, onChange } = this.props;
+        console.log("this.state.scrollToIndex", this.state.scrollToIndex)
         return (
             <PopoverWithTrigger
                 triggerElement={<LabelIconButton value={value} />}
                 ref="popover"
             >
-                <div className={S.picker}>
-                    <div>Colors</div>
-                    <ul className={S.list}>
-                    { ALL_COLORS.map(color =>
-                        <li key={color} className={S.option} onClick={() => { onChange(color); this.refs.popover.close() }}>
-                            <LabelIcon icon={color} size={28} />
+                <VirtualScroll
+                  width={WIDTH}
+                  height={HEIGHT}
+                  rowsCount={ROWS.length}
+                  rowHeight={ROW_HEIGHT}
+                  rowRenderer={ (index) =>
+                      ROWS[index].type === "header" ?
+                          <div className={S.sectionHeader}>{ROWS[index].title}</div>
+                      :
+                          <ul className={S.list}>
+                              { ROWS[index].icons.map(icon =>
+                                  <li key={icon} className={S.option} onClick={() => { onChange(icon); this.refs.popover.close() }}>
+                                      <LabelIcon icon={icon} size={28} />
+                                  </li>
+                              )}
+                          </ul>
+                  }
+                  scrollToIndex={this.state.scrollToIndex}
+                  onRowsRendered={({ overscanStartIndex, overscanStopIndex, startIndex, stopIndex }) => this.setState({ topIndex: startIndex })}
+                />
+                <ul className={S.sectionList} style={{ width: WIDTH }}>
+                    { categories.map(category =>
+                        <li className={S.option} onClick={() => this.scrollToCategory(category.id) }>
+                            <Icon name="star" />
                         </li>
                     )}
-                    </ul>
-                </div>
+                </ul>
             </PopoverWithTrigger>
         );
     }

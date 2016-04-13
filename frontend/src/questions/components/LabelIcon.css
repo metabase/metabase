@@ -6,6 +6,11 @@
     border-radius: 3px;
 }
 
+:local(.emojiIcon) {
+    text-align: center;
+    font-size: 20px;
+}
+
 :local(.icon) {
     color: #CFE4F5;
 }

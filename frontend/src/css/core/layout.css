@@ -33,7 +33,7 @@
   height: 100vh;
 }
 
-.scroll-y { overflow-y: auto; }
+.scroll-y, :local(.scroll-y) { overflow-y: auto; }
 .scroll-x { overflow-x: auto; }
 
 /* display utilities */
