@@ -109,9 +109,9 @@
                                                                    :day                        ; give :unit a default value so we can simplify the schema a bit and require a :unit
                                                                    (normalize-token unit))})))
 
-(s/defn ^:ql ^:always-validate custom-field :- ExpressionRef
-  [custom-field-name]
-  (i/strict-map->ExpressionRef {:expression-name (name custom-field-name)}))
+(s/defn ^:ql ^:always-validate expression :- ExpressionRef
+  [expression-name :- s/Str]
+  (i/strict-map->ExpressionRef {:expression-name expression-name}))
 
 
 ;;; ## aggregation
@@ -372,17 +372,17 @@
   (assoc query :expressions (for [[expression-name [expression]] m]
                               (assoc expression :expression-name (name expression-name)))))
 
-(s/defn ^:private ^:always-validate expression :- Expression
+(s/defn ^:private ^:always-validate expression-fn :- Expression
   [k :- s/Keyword, & args]
   (i/strict-map->Expression {:operator k, :expression-name nil, :args (for [arg args]
                                                                         (if (number? arg)
                                                                           (float arg)     ; convert args to floats so things like 5 / 10 -> 0.5 instead of 0
                                                                           arg))}))
 
-(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} + "Arithmetic addition function."       (partial expression :+))
-(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} - "Arithmetic subtraction function."    (partial expression :-))
-(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} * "Arithmetic multiplication function." (partial expression :*))
-(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} / "Arithmetic division function."       (partial expression :/))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} + "Arithmetic addition function."       (partial expression-fn :+))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} - "Arithmetic subtraction function."    (partial expression-fn :-))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} * "Arithmetic multiplication function." (partial expression-fn :*))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} / "Arithmetic division function."       (partial expression-fn :/))
 
 ;;; EXPRESSION PARSING
 

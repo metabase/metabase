@@ -113,7 +113,11 @@
   clojure.lang.Named
   (getName [_] (name field)))
 
-(s/defrecord ExpressionRef [expression-name :- s/Str]
+(def NonEmptyString
+  "Schema for a non-empty string."
+  (s/constrained s/Str seq "non-empty string")) ; TODO - should this be used elsewhere as well, for things like `Field`?
+
+(s/defrecord ExpressionRef [expression-name :- NonEmptyString]
   ;; is this right?
   clojure.lang.Named
   (getName [_] expression-name))

@@ -52,7 +52,7 @@ export default class FieldList extends Component {
         if (customFieldOptions) {
             specialOptions = Object.keys(customFieldOptions).map(name => ({
                 name: name,
-                value: ["custom_field", name],
+                value: ["expression", name],
                 customField: customFieldOptions[name]
             }));
         }
@@ -99,26 +99,26 @@ export default class FieldList extends Component {
         return (
             <div className="flex align-center">
                 { item.segment &&
-                    this.renderSegmentTooltip(item.segment)
+                  this.renderSegmentTooltip(item.segment)
                 }
                 { item.field && enableTimeGrouping && isDate(item.field) &&
-                    <PopoverWithTrigger
-                        className={this.props.className}
-                        hasArrow={false}
-                        triggerElement={this.renderTimeGroupingTrigger(field)}
-                        tetherOptions={{
-                            attachment: 'top left',
-                            targetAttachment: 'top right',
-                            targetOffset: '0 0',
-                            constraints: [{ to: 'window', attachment: 'together', pin: ['left', 'right']}]
-                        }}
-                    >
-                        <TimeGroupingPopover
-                            field={field}
-                            value={item.value}
-                            onFieldChange={this.props.onFieldChange}
-                        />
-                    </PopoverWithTrigger>
+                  <PopoverWithTrigger
+                      className={this.props.className}
+                      hasArrow={false}
+                      triggerElement={this.renderTimeGroupingTrigger(field)}
+                      tetherOptions={{
+                              attachment: 'top left',
+                              targetAttachment: 'top right',
+                              targetOffset: '0 0',
+                              constraints: [{ to: 'window', attachment: 'together', pin: ['left', 'right']}]
+                          }}
+                  >
+                      <TimeGroupingPopover
+                          field={field}
+                          value={item.value}
+                          onFieldChange={this.props.onFieldChange}
+                      />
+                  </PopoverWithTrigger>
                 }
             </div>
         );
