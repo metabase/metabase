@@ -409,7 +409,7 @@ export default class ExpressionEditorTextfield extends Component {
                 />
                 {this.state.suggestions.length ?
                     <Popover 
-                        className="p1 not-rounded border-dark"
+                        className="p2 not-rounded border-dark"
                         hasArrow={false}
                         tetherOptions={{
                             attachment: 'top left',
@@ -417,8 +417,8 @@ export default class ExpressionEditorTextfield extends Component {
                             targetOffset: '0 '+((this.state.expressionString.length / 2) * 6)
                         }}
                     >
-                        <div style={{minWidth: "150px"}}>
-                            <h5 style={{marginBottom: "2px"}} className="h6 text-grey-2">{this.state.suggestionsTitle}</h5>
+                        <div style={{minWidth: 150}}>
+                            <h5 style={{marginBottom: 2}} className="h6 text-grey-2">{this.state.suggestionsTitle}</h5>
                             <ul>
                                 {this.state.suggestions.map((suggestion, i) =>
                                     <li style={{paddingTop: "2px", paddingBottom: "2px"}} className={cx({"text-bold text-brand": i == this.state.highlightedSuggestion})}>{suggestion.name}</li>

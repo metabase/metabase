@@ -50,7 +50,7 @@ export default class ExpressionWidget extends Component {
                             tableMetadata={this.props.tableMetadata}
                             onChange={(parsedExpression, expressionString) => this.setState({expression: [parsedExpression, expressionString]})}
                         />
-                        <p className="h5 text-grey-3">
+                        <p className="h5 text-grey-2">
                             Think of this as being kind of like writing a forumla in a spreadsheet program: you can use numbers, fields in this table,
                             mathematic symbols like +, and some functions.  So you could type, Subtotal - Cost.  <a className="link" href="">Learn more</a>
                         </p>
@@ -66,21 +66,21 @@ export default class ExpressionWidget extends Component {
                             onChange={(event) => this.setState({name: event.target.value})}
                         />
                     </div>
-
-                    {expression && expression[0] && false && // this is a bit dangerous because it could mess up the query
-                        <div className="mt3">
-                            <div className="h5 text-uppercase text-grey-3 text-bold">Danger zone</div>
-                            <a className="link text-warning">Delete this field</a>
-                        </div>
-                    }
                 </div>
 
-                <div className="mt2 p2 border-top">
-                    <button
-                        className={cx("Button", {"Button--primary": this.isValid()})}
-                        onClick={() => this.props.onSetExpression(this.state.name, this.state.expression)}
-                        disabled={!this.isValid()}>{this.props.expression[0] ? "Save changes" : "Done"}</button>
-                    <span className="pl1">or</span> <a className="link" onClick={() => this.props.onCancel()}>Cancel</a>
+                <div className="mt2 p2 border-top flex flex-row align-center justify-between">
+                    <div>
+                        <button
+                            className={cx("Button", {"Button--primary": this.isValid()})}
+                            onClick={() => this.props.onSetExpression(this.state.name, this.state.expression)}
+                            disabled={!this.isValid()}>{this.props.expression[0] ? "Save changes" : "Done"}</button>
+                        <span className="pl1">or</span> <a className="link" onClick={() => this.props.onCancel()}>Cancel</a>
+                    </div>
+                    <div>
+                        {this.props.expression[0] ?
+                            <a className="pr2 text-warning link" onClick={() => this.props.onRemoveExpression(this.props.name)}>Remove</a>
+                        : null }
+                    </div>
                 </div>
             </div>
         );

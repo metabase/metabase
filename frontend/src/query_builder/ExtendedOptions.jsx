@@ -3,8 +3,8 @@ import _ from "underscore";
 import cx from "classnames";
 
 import AddClauseButton from "./AddClauseButton.jsx";
-import Expressions from "./Expressions.jsx";
-import ExpressionWidget from './ExpressionWidget.jsx';
+import Expressions from "./expressions/Expressions.jsx";
+import ExpressionWidget from './expressions/ExpressionWidget.jsx';
 import LimitWidget from "./LimitWidget.jsx";
 import SortWidget from "./SortWidget.jsx";
 import Popover from "metabase/components/Popover.jsx";
@@ -74,6 +74,31 @@ export default class ExtendedOptions extends Component {
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Sort');
     }
 
+    setExpression(name, expression, previousName) {
+        let query = this.props.query.query;
+
+        if (!_.isEmpty(previousName)) {
+            // remove old expression using original name.  this accounts for case where expression is renamed.
+            Query.removeExpression(query, previousName);
+        }
+
+        // now add the new expression to the query
+        Query.setExpression(query, name, expression);
+        this.props.setQuery(this.props.query);
+        this.setState({editExpression: null});
+
+        MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Expression', !_.isEmpty(previousName));
+    }
+
+    removeExpression(name) {
+        // TODO: this needs to scrub the query for any references to the custom field
+        Query.removeExpression(this.props.query.query, name);
+        this.props.setQuery(this.props.query);
+        this.setState({editExpression: null});
+
+        MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Expression');
+    }
+
     renderSort() {
         if (!this.props.features.limit) {
             return;
@@ -128,9 +153,9 @@ export default class ExtendedOptions extends Component {
         if (!this.state.editExpression || !this.props.tableMetadata) return null;
 
         const query = this.props.query.query,
-              expressions = Query.getExpressions(query);
-        let expression = expressions && expressions[this.state.editExpression],
-            name = _.isString(this.state.editExpression) ?  this.state.editExpression : "";
+              expressions = Query.getExpressions(query),
+              expression = expressions && expressions[this.state.editExpression],
+              name = _.isString(this.state.editExpression) ? this.state.editExpression : "";
 
         return (
             <Popover onClose={() => this.setState({editExpression: null})}>
@@ -138,26 +163,8 @@ export default class ExtendedOptions extends Component {
                     name={name}
                     expression={expression}
                     tableMetadata={this.props.tableMetadata}
-                    onSetExpression={(newName, newExpression) => {
-                        if (expression) {
-                            // remove old expression using original name.  this accounts for case where expression is renamed.
-                            Query.removeExpression(query, name);
-                        }
-
-                        // TODO: analytics
-
-                        // now add the new expression to the query
-                        Query.setExpression(query, newName, newExpression);
-                        this.props.setQuery(this.props.query);
-                        this.setState({editExpression: null});
-                    }}
-                    onRemoveExpression={(removeName) => {
-                        // TODO: analytics
-
-                        Query.removeExpression(query, removeName);
-                        this.props.setQuery(this.props.query);
-                        this.setState({editExpression: null});
-                    }}
+                    onSetExpression={(newName, newExpression) => this.setExpression(newName, newExpression, name)}
+                    onRemoveExpression={(name) => this.removeExpression(name)}
                     onCancel={() => this.setState({editExpression: null})}
                 />
             </Popover>
