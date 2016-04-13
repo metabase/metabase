@@ -26,10 +26,10 @@ export default class Expressions extends Component {
                 <div className="pb1 h6 text-uppercase text-grey-3 text-bold">Custom fields</div>
 
                 { sortedNames && sortedNames.map(name =>
-                    <div key={name} className="pb1 text-brand text-bold cursor-pointer" onClick={() => onEditExpression(name)}>{name}</div>
+                    <div data-metabase-event={"QueryBuilder;Show Edit Custom Field"} key={name} className="pb1 text-brand text-bold cursor-pointer" onClick={() => onEditExpression(name)}>{name}</div>
                 )}
 
-                <a className="text-grey-2 text-bold flex align-center text-grey-4-hover cursor-pointer no-decoration transition-color" onClick={() => onAddExpression()}>
+                <a data-metabase-event={"QueryBuilder;Show Add Custom Field"} className="text-grey-2 text-bold flex align-center text-grey-4-hover cursor-pointer no-decoration transition-color" onClick={() => onAddExpression()}>
                     <IconBorder borderRadius="3px">
                         <Icon name="add" width="14px" height="14px" />
                     </IconBorder>
