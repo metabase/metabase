@@ -436,7 +436,7 @@ var Query = {
     },
 
     isCustomField(field) {
-        return Array.isArray(field) && field.length === 2 && field[0] === "custom_field";
+        return Array.isArray(field) && field.length === 2 && field[0] === "expression";
     },
 
     isAggregateField(field) {

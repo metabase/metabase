@@ -153,7 +153,8 @@
      *  `:foreign-keys`
      *  `:nested-fields`
      *  `:set-timezone`
-     *  `:standard-deviation-aggregations`")
+     *  `:standard-deviation-aggregations`
+     *  `:expressions`")
 
   (field-values-lazy-seq ^clojure.lang.Sequential [this, ^FieldInstance field]
     "Return a lazy sequence of all values of FIELD.

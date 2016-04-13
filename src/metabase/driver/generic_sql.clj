@@ -216,7 +216,8 @@
   [driver]
   (cond-> #{:standard-deviation-aggregations
             :foreign-keys
-            :custom-fields}
+            :custom-fields
+            :expressions}
     (set-timezone-sql driver) (conj :set-timezone)))
 
 

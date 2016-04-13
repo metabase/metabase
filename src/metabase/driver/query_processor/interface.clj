@@ -113,10 +113,16 @@
   clojure.lang.Named
   (getName [_] (name field)))
 
-(s/defrecord ExpressionRef [expression-name :- s/Str]
-  ;; is this right?
+(def NonEmptyString
+  "Schema for a non-empty string."
+  (s/constrained s/Str seq "non-empty string")) ; TODO - should this be used elsewhere as well, for things like `Field`?
+
+(s/defrecord ExpressionRef [expression-name :- NonEmptyString]
   clojure.lang.Named
-  (getName [_] expression-name))
+  (getName [_] expression-name)
+  IField
+  (qualified-name-components [_]
+    [nil expression-name]))
 
 
 ;; Value is the expansion of a value within a QL clause
