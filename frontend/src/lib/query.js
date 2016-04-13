@@ -435,7 +435,7 @@ var Query = {
         return Array.isArray(field) && field[0] === "datetime_field";
     },
 
-    isCustomField(field) {
+    isExpressionField(field) {
         return Array.isArray(field) && field.length === 2 && field[0] === "expression";
     },
 
@@ -448,7 +448,7 @@ var Query = {
             (Query.isRegularField(field)) ||
             (Query.isForeignKeyField(field) && Query.isRegularField(field[1]) && Query.isRegularField(field[2])) ||
             (Query.isDatetimeField(field)   && Query.isValidField(field[1]) && field[2] === "as" && typeof field[3] === "string") ||
-            (Query.isCustomField(field)     && _.isString(field[1])) ||
+            (Query.isExpressionField(field) && _.isString(field[1])) ||
             (Query.isAggregateField(field)  && typeof field[1] === "number")
         );
     },
@@ -483,7 +483,7 @@ var Query = {
             return Query.getFieldTarget(field[2], targetTableDef);
         } else if (Query.isDatetimeField(field)) {
             return Query.getFieldTarget(field[1], tableDef);
-        } else if (Query.isCustomField(field)) {
+        } else if (Query.isExpressionField(field)) {
             // hmmm, since this is a dynamic field we'll need to build this here
             let fieldDef = {
                 display_name: field[1],

@@ -40,7 +40,7 @@ export default class FieldName extends Component {
                     fkIcon = (<span className="px1"><Icon name="connections" width="10" height="10" /></span>);
                 }
             }
-        } else if (Query.isCustomField(field)) {
+        } else if (Query.isExpressionField(field)) {
             fieldDef = {
                 display_name: field[1]
             };
