@@ -189,12 +189,6 @@
   clojure.lang.Named
   (getName [_] expression-name))
 
-(def RValue
-  "Schema for anything that can be an [RValue](https://github.com/metabase/metabase/wiki/Query-Language-'98#rvalues) -
-   a `Field`, `Value`, or `Expression`."
-  (s/named (s/cond-pre AnyValue FieldPlaceholderOrExpressionRef Expression)
-           "RValue"))
-
 (def AnyField
   "Schema for a `FieldPlaceholder`, `AgRef`, or `Expression`."
   (s/named (s/cond-pre ExpressionRef Expression FieldPlaceholderOrAgRef)
@@ -240,6 +234,12 @@
 
 ;; (def FieldOrOrderableValue (s/named (s/cond-pre FieldPlaceholder OrderableValuePlaceholder) "Field or orderable value (number or datetime)"))
 ;; (def FieldOrStringValue    (s/named (s/cond-pre FieldPlaceholder StringValuePlaceholder)    "Field or string literal"))
+
+(def RValue
+  "Schema for anything that can be an [RValue](https://github.com/metabase/metabase/wiki/Query-Language-'98#rvalues) -
+   a `Field`, `Value`, or `Expression`."
+  (s/named (s/cond-pre AnyValue FieldPlaceholderOrExpressionRef Expression)
+           "RValue"))
 
 
 ;;; # ------------------------------------------------------------ CLAUSE SCHEMAS ------------------------------------------------------------
