@@ -1,5 +1,6 @@
-import React, { Component, PropTypes } from 'react';
-import _ from 'underscore';
+import React, { Component, PropTypes } from "react";
+import _ from "underscore";
+import cx from "classnames";
 
 import Popover from "metabase/components/Popover.jsx";
 
@@ -408,19 +409,22 @@ export default class ExpressionEditorTextfield extends Component {
                 />
                 {this.state.suggestions.length ?
                     <Popover 
-                        className="p1"
+                        className="p1 not-rounded border-dark"
+                        hasArrow={false}
                         tetherOptions={{
-                            attachment: 'top center',
-                            targetAttachment: 'bottom center',
-                            targetOffset: '-20 45'
+                            attachment: 'top left',
+                            targetAttachment: 'bottom left',
+                            targetOffset: '0 '+((this.state.expressionString.length / 2) * 6)
                         }}
                     >
-                        <h5 className="text-grey-1">{this.state.suggestionsTitle}</h5>
-                        <ul className="my1">
-                            {this.state.suggestions.map((suggestion, i) => 
-                                <li className={i == this.state.highlightedSuggestion ? 'text-bold text-brand' : null}>{suggestion.name}</li>
-                            )}
-                        </ul>
+                        <div style={{minWidth: "150px"}}>
+                            <h5 style={{marginBottom: "2px"}} className="h6 text-grey-2">{this.state.suggestionsTitle}</h5>
+                            <ul>
+                                {this.state.suggestions.map((suggestion, i) =>
+                                    <li style={{paddingTop: "2px", paddingBottom: "2px"}} className={cx({"text-bold text-brand": i == this.state.highlightedSuggestion})}>{suggestion.name}</li>
+                                )}
+                            </ul>
+                        </div>
                     </Popover>
                 : null}
             </div>
