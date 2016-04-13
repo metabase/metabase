@@ -23,12 +23,12 @@ import cx from "classnames";
 })
 export default class LabelEditorForm extends Component {
     render() {
-        const { fields: { icon, name }, handleSubmit, invalid, className } = this.props;
+        const { fields: { icon, name }, handleSubmit, invalid, className, submitButtonText } = this.props;
         return (
             <form className={cx(className, S.form)} onSubmit={handleSubmit}>
                 <LabelIconPicker {...icon} />
                 <input className={S.nameInput+ " input"} type="text" placeholder="Name" {...name}/>
-                <button className={cx("Button", { "disabled": invalid })} type="submit">Submit</button>
+                <button className={cx("Button", { "disabled": invalid, "Button--primary": !invalid })} type="submit">{submitButtonText}</button>
             </form>
         );
     }

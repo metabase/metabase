@@ -44,12 +44,12 @@ export default class EditLabels extends Component {
         return (
             <div className={S.editor} style={style}>
                 <div className={S.header}>Labels</div>
-                <LabelEditorForm onSubmit={saveLabel} initialValues={{ icon: colors.normal.blue, name: "" }}/>
+                <LabelEditorForm onSubmit={saveLabel} initialValues={{ icon: colors.normal.blue, name: "" }} submitButtonText={"Create Label"}/>
                 <ul className={S.list}>
                 { this.props.labels && this.props.labels.map(label =>
                     editingLabelId === label.id ?
                         <li key={label.id} className={S.labelEditing}>
-                            <LabelEditorForm formKey={String(label.id)} className="flex-full" onSubmit={saveLabel} initialValues={label}/>
+                            <LabelEditorForm formKey={String(label.id)} className="flex-full" onSubmit={saveLabel} initialValues={label} submitButtonText={"Update Label"}/>
                             <a className={" text-grey-1 text-grey-4-hover"} onClick={() => editLabel(null)}>Cancel</a>
                         </li>
                     :

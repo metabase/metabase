@@ -5,4 +5,8 @@
 :local(.nameInput) {
     composes: flex-full from "style/flex";
     composes: mx1 from "style/spacing";
+
+    font-size: 18px;
+    padding-top: 8px;
+    padding-bottom: 8px;
 }
