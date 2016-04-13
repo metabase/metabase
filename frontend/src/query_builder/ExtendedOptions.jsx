@@ -181,7 +181,7 @@ export default class ExtendedOptions extends Component {
                 <div className="p3">
                     {this.renderSort()}
 
-                    {_.contains(tableMetadata.db.features, "custom-fields") ?
+                    {_.contains(tableMetadata.db.features, "expressions") ?
                         <Expressions
                             expressions={query.query.expressions}
                             onAddExpression={() => this.setState({isOpen: false, editExpression: true})}
