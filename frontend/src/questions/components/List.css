@@ -30,6 +30,10 @@
     composes: mr1 from "style/spacing";
 }
 
+:local(.itemTitle):hover {
+    color: var(--blue-color);
+}
+
 :local(.itemSubtitle) {
     composes: mt1 from "style/spacing";
     color: var(--subtitle-color);

@@ -6,12 +6,14 @@ import Icon from "metabase/components/Icon.jsx";
 
 import LabelPopover from "../containers/LabelPopover.jsx";
 
+import cx from "classnames";
+
 const ActionHeader = ({ selectedCount, allAreSelected, setAllSelected, setArchived, labels }) =>
     <div className={S.actionHeader}>
         <StackedCheckBox
             checked={allAreSelected}
             onChange={(e) => setAllSelected(e.target.checked)}
-            className={S.allCheckbox}
+            className={cx(S.allCheckbox, { [S.selected]: allAreSelected })}
             size={20} padding={3} borderColor="currentColor"
             invertChecked
         />

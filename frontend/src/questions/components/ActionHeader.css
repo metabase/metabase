@@ -17,6 +17,10 @@
     visibility: visible !important;
 }
 
+:local(.selected) {
+    color: var(--blue-color) !important;
+}
+
 :local(.labelButton) {
     composes: px1 from "style/spacing";
     composes: cursor-pointer from "style/cursor";
