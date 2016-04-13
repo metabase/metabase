@@ -489,7 +489,7 @@ var Query = {
                 display_name: field[1],
                 name: field[1],
                 // TODO: we need to do something better here because filtering depends on knowing a sensible type for the field
-                base_type: "UnknownField",
+                base_type: "IntegerField",
                 operators_lookup: {},
                 valid_operators: [],
                 active: true,
