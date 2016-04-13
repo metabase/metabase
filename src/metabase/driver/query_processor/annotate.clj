@@ -41,6 +41,7 @@
   [this & [keep-date-time-fields?]]
   {:post [(every? (fn [f]
                     (or (instance? metabase.driver.query_processor.interface.Field f)
+                        (instance? metabase.driver.query_processor.interface.ExpressionRef f)
                         (when keep-date-time-fields?
                           (instance? metabase.driver.query_processor.interface.DateTimeField f)))) %)]}
   (condp instance? this
@@ -58,6 +59,9 @@
     (if-let [parent (:parent this)]
       [this parent]
       [this])
+
+    metabase.driver.query_processor.interface.ExpressionRef
+    [(assoc this :field-display-name (:expression-name this))]
 
     clojure.lang.IPersistentMap
     (for [[k v] (seq this)
@@ -97,7 +101,7 @@
                                  {:field-name         ag-type
                                   :field-display-name ag-type}))))))
 
-(defn- add-unknown-fields-if-needed
+(defn- add-unknown-fields-if-needed`
   "When create info maps for any fields we didn't expect to come back from the query.
    Ideally, this should never happen, but on the off chance it does we still want to return it in the results."
   [actual-keys fields]
@@ -222,7 +226,7 @@
   [query result-keys]
   {:pre [(set? result-keys)]}
   (when (seq result-keys)
-    (->> (collect-fields query)
+    (->> (collect-fields (dissoc query :expressions))
          (map qualify-field-name)
          (add-aggregate-field-if-needed query)
          (map (u/rpartial update :field-name keyword))

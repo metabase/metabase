@@ -118,9 +118,11 @@
   (s/constrained s/Str seq "non-empty string")) ; TODO - should this be used elsewhere as well, for things like `Field`?
 
 (s/defrecord ExpressionRef [expression-name :- NonEmptyString]
-  ;; is this right?
   clojure.lang.Named
-  (getName [_] expression-name))
+  (getName [_] expression-name)
+  IField
+  (qualified-name-components [_]
+    [nil expression-name]))
 
 
 ;; Value is the expansion of a value within a QL clause
