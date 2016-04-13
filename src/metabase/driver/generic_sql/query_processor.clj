@@ -46,11 +46,12 @@
 (defn- expression-with-name
   "Return the `Expression` referenced by a given EXPRESSION-NAME."
   [expression-name]
-  (some (fn [expression]
-          (when (= (name (:expression-name expression))
-                   (name expression-name))
-            expression))
-        (:expressions (:query *query*))))
+  (or (some (fn [expression]
+              (when (= (name (:expression-name expression))
+                       (name expression-name))
+                expression))
+            (:expressions (:query *query*)))
+      (throw (Exception. (format "No expression named '%s'." (name expression-name))))))
 
 (defprotocol ^:private IGenericSQLFormattable
   (formatted [this]
