@@ -178,6 +178,29 @@
 (s/defrecord RelativeDatetime [amount :- s/Int
                                unit   :- DatetimeValueUnit])
 
+
+(declare RValue)
+
+(def ^:private ExpressionOperator (s/named (s/enum :+ :- :* :/) "Valid expression operator"))
+
+(s/defrecord Expression [operator        :- ExpressionOperator
+                         args            :- [(s/recursive #'RValue)]
+                         expression-name :- (s/maybe s/Str)]
+  clojure.lang.Named
+  (getName [_] expression-name))
+
+(def RValue
+  "Schema for anything that can be an [RValue](https://github.com/metabase/metabase/wiki/Query-Language-'98#rvalues) -
+   a `Field`, `Value`, or `Expression`."
+  (s/named (s/cond-pre AnyValue FieldPlaceholderOrExpressionRef Expression)
+           "RValue"))
+
+(def AnyField
+  "Schema for a `FieldPlaceholder`, `AgRef`, or `Expression`."
+  (s/named (s/cond-pre ExpressionRef Expression FieldPlaceholderOrAgRef)
+           "Valid field, ag field reference, or expression reference."))
+
+
 (def LiteralDatetimeString
   "Schema for an MBQL datetime string literal, in ISO-8601 format."
   (s/constrained s/Str u/date-string? "Valid ISO-8601 datetime string literal"))
@@ -286,28 +309,6 @@
   (s/named {:page  IntGreaterThanZero
             :items IntGreaterThanZero}
            "Valid page clause"))
-
-(declare RValue)
-
-(def ^:private ExpressionOperator (s/named (s/enum :+ :- :* :/) "Valid expression operator"))
-
-(s/defrecord Expression [operator        :- ExpressionOperator
-                         args            :- [(s/recursive #'RValue)]
-                         expression-name :- (s/maybe s/Str)]
-  clojure.lang.Named
-  (getName [_] expression-name))
-
-(def RValue
-  "Schema for anything that can be an [RValue](https://github.com/metabase/metabase/wiki/Query-Language-'98#rvalues) -
-   a `Field`, `Value`, or `Expression`."
-  (s/named (s/cond-pre AnyValue FieldPlaceholderOrExpressionRef Expression)
-           "RValue"))
-
-(def AnyField
-  "Schema for a `FieldPlaceholder`, `AgRef`, or `Expression`."
-  (s/named (s/cond-pre ExpressionRef Expression FieldPlaceholderOrAgRef)
-           "Valid field, ag field reference, or expression reference."))
-
 
 (def Query
   "Schema for an MBQL query."
