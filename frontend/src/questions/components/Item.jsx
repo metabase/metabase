@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import { Link } from "react-router";
 import S from "./List.css";
 
 import Labels from "./Labels.jsx";
@@ -6,6 +7,8 @@ import LabelPopover from "../containers/LabelPopover.jsx";
 
 import Icon from "metabase/components/Icon.jsx";
 import CheckBox from "metabase/components/CheckBox.jsx";
+
+import Urls from "metabase/lib/urls";
 
 import cx from "classnames";
 import pure from "recompose/pure";
@@ -40,7 +43,7 @@ const Item = ({ id, name, created, by, selected, favorite, archived, icon, label
 const ItemBody = pure(({ id, name, labels, created, by }) =>
     <div className={S.itemBody}>
         <div className={S.itemTitle}>
-            <span className={S.itemName}>{name}</span>
+            <Link to={Urls.card(id)} className={S.itemName}>{name}</Link>
             <Labels labels={labels} />
         </div>
         <div className={S.itemSubtitle}>
