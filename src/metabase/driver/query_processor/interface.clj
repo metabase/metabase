@@ -41,7 +41,7 @@
                  "Integer greater than zero"))
 
 (s/defrecord JoinTableField [field-id   :- IntGreaterThanZero
-                             expression-name :- s/Str])
+                             field-name :- s/Str])
 
 (s/defrecord JoinTable [source-field :- JoinTableField
                         pk-field     :- JoinTableField
@@ -53,14 +53,14 @@
 (defprotocol IField
   "Methods specific to the Query Expander `Field` record type."
   (qualified-name-components [this]
-    "Return a vector of name components of the form `[table-name parent-names... expression-name]`"))
+    "Return a vector of name components of the form `[table-name parent-names... field-name]`"))
 
 
 ;;; # ------------------------------------------------------------ "RESOLVED" TYPES: FIELD + VALUE ------------------------------------------------------------
 
 ;; Field is the expansion of a Field ID in the standard QL
 (s/defrecord Field [field-id           :- IntGreaterThanZero
-                    expression-name         :- s/Str
+                    field-name         :- s/Str
                     field-display-name :- s/Str
                     base-type          :- (apply s/enum field/base-types)
                     special-type       :- (s/maybe (apply s/enum field/special-types))
@@ -74,14 +74,14 @@
                     ;; Field once its resolved; FieldPlaceholder before that
                     parent             :- s/Any]
   clojure.lang.Named
-  (getName [_] expression-name) ; (name <field>) returns the *unqualified* name of the field, #obvi
+  (getName [_] field-name) ; (name <field>) returns the *unqualified* name of the field, #obvi
 
   IField
   (qualified-name-components [this]
     (conj (if parent
             (qualified-name-components parent)
             [table-name])
-          expression-name)))
+          field-name)))
 
 
 (def ^:const datetime-field-units

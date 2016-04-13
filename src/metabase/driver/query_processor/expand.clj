@@ -84,7 +84,6 @@
 (s/defn ^:private ^:always-validate value :- ValuePlaceholder
   "Literal value. F is the `Field` it relates to, and V is `nil`, or a boolean, string, numerical, or datetime value."
   [f v]
-  (println "F:" f "\n(field f):" (field f))
   (cond
     (instance? ValuePlaceholder v) v
     :else                          (i/map->ValuePlaceholder {:field-placeholder (field f), :value v})))
