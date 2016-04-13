@@ -52,7 +52,12 @@ export const selectSection = createThunkAction(SELECT_SECTION, (section = "all",
                 console.warn("unknown section " + section);
                 response = [];
         }
-        return { type, section, slug, ...normalize(response, arrayOf(card)) };
+
+        if (slug) {
+            section += "-" + slug;
+        }
+
+        return { type, section, ...normalize(response, arrayOf(card)) };
     }
 });
 
@@ -92,14 +97,16 @@ export const setLabeled = createThunkAction(SET_LABELED, (cardId, labelId, label
             selected.map(item => dispatch(setLabeled(item.id, labelId, labeled)));
             // TODO: errors
         } else {
-            const labels = getState().questions.entities.cards[cardId].labels;
+            const state = getState();
+            const labelSlug = i.getIn(state.questions, ["entities", "labels", labelId, "slug"]);
+            const labels = i.getIn(state.questions, ["entities", "cards", cardId, "labels"]);
             const newLabels = labels.filter(id => id !== labelId);
             if (labeled) {
                 newLabels.push(labelId);
             }
             if (labels.length !== newLabels.length) {
                 await CardApi.updateLabels({ cardId, label_ids: newLabels });
-                return { id: cardId, labels: newLabels };
+                return { id: cardId, labels: newLabels, _changedLabelSlug: labelSlug, _changedLabeled: labeled };
             }
         }
     }
@@ -113,8 +120,7 @@ const initialState = {
     entities: {},
     type: "cards",
     section: null,
-    slug: null,
-    itemsBySectionId: {},
+    itemsBySection: {},
     searchText: "",
     selectedIds: {},
     allSelected: false
@@ -134,16 +140,11 @@ export default function(state = initialState, { type, payload, error }) {
         case SET_ALL_SELECTED:
             return { ...state, selectedIds: {}, allSelected: payload };
         case SELECT_SECTION:
-            let sectionId = [payload.type, payload.section, payload.slug].join(",");
             return {
                 ...state,
                 type: payload.type,
                 section: payload.section,
-                slug: payload.slug,
-                itemsBySectionId: {
-                    ...state.itemsBySectionId,
-                    [sectionId]: payload.result
-                }
+                itemsBySection: i.assocIn(state.itemsBySection, [payload.type, payload.section], payload.result)
             };
         case SET_FAVORITED:
             if (error) {
@@ -153,14 +154,10 @@ export default function(state = initialState, { type, payload, error }) {
                     ...state.entities.cards[payload.id],
                     ...payload
                 });
-                let items = i.getIn(state, ["itemsBySectionId", "card,favorite,"]);
-                if (items) {
-                    if (payload.favorite && !_.contains(items, payload.id)) {
-                        state = i.setIn(state, ["itemsBySectionId", "card,favorite,"], items.concat(payload.id));
-                    }
-                    if (!payload.favorite && _.contains(items, payload.id)) {
-                        state = i.setIn(state, ["itemsBySectionId", "card,favorite,"], items.filter(id => id !== payload.id));
-                    }
+                if (payload.favorite) {
+                    state = addToSection(state, "cards", "favorites", payload.id);
+                } else {
+                    state = removeFromSection(state, "cards", "favorites", payload.id);
                 }
                 return state;
             }
@@ -172,13 +169,11 @@ export default function(state = initialState, { type, payload, error }) {
                     ...state.entities.cards[payload.id],
                     ...payload
                 });
-                let items = i.getIn(state, ["itemsBySectionId", "card,archived,"]);
-                if (items) {
-                    if (payload.archived && !_.contains(items, payload.id)) {
-                        state = i.setIn(state, ["itemsBySectionId", "card,archived,"], items.concat(payload.id));
-                    }
-                    if (!payload.archived && _.contains(items, payload.id)) {
-                        state = i.setIn(state, ["itemsBySectionId", "card,archived,"], items.filter(id => id !== payload.id));
+                for (let section in state.itemsBySection.cards) {
+                    if (payload.archived ? section === "archived" : section !== "archived") {
+                        state = addToSection(state, "cards", section, payload.id);
+                    } else {
+                        state = removeFromSection(state, "cards", section, payload.id);
                     }
                 }
                 return state;
@@ -194,9 +189,30 @@ export default function(state = initialState, { type, payload, error }) {
                     ...state.entities.cards[payload.id],
                     ...payload
                 });
-                return state;
+                console.log("payload", payload, state)
+                if (payload._changedLabeled) {
+                    state = addToSection(state, "cards", "label-" + payload._changedLabelSlug, payload.id);
+                } else {
+                    state = removeFromSection(state, "cards", "label-" + payload._changedLabelSlug, payload.id);
+                }
             }
         default:
             return state;
     }
+}
+
+function addToSection(state, type, section, id) {
+    let items = i.getIn(state, ["itemsBySection", type, section]);
+    if (items && !_.contains(items, id)) {
+        return i.setIn(state, ["itemsBySection", type, section], items.concat(id));
+    }
+    return state;
+}
+
+function removeFromSection(state, type, section, id) {
+    let items = i.getIn(state, ["itemsBySection", type, section]);
+    if (items && _.contains(items, id)) {
+        return i.setIn(state, ["itemsBySection", type, section], items.filter(i => i !== id));
+    }
+    return state;
 }

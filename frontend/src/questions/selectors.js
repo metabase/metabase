@@ -1,6 +1,7 @@
 
 import { createSelector } from 'reselect';
 import moment from "moment";
+import i from "icepick";
 import _ from "underscore";
 
 import visualizations from "metabase/visualizations";
@@ -11,21 +12,17 @@ function caseInsensitiveSearch(haystack, needle) {
 
 export const getEntityType          = (state) => state.questions.type
 export const getSection             = (state) => state.questions.section
-export const getSlug                = (state) => state.questions.slug
-
-export const getSectionId           = (state) => [getEntityType(state), getSection(state), getSlug(state)].join(",")
 export const getEntities            = (state) => state.questions.entities
-export const getItemsBySectionId    = (state) => state.questions.itemsBySectionId
+export const getItemsBySection      = (state) => state.questions.itemsBySection
 
-// export const getQuestions = (state) => state.questions.questions;
 export const getSearchText          = (state) => state.questions.searchText;
 export const getSelectedIds         = (state) => state.questions.selectedIds;
 export const getAllSelected         = (state) => state.questions.allSelected
 
 export const getEntityIds = createSelector(
-    [getSectionId, getItemsBySectionId],
-    (sectionId, itemsBySectionId) =>
-        itemsBySectionId[sectionId] || []
+    [getItemsBySection, getEntityType, getSection],
+    (itemsBySection, type, section) =>
+        i.getIn(itemsBySection, [type, section]) || []
 );
 
 const getEntity = (state, props) =>
@@ -138,10 +135,12 @@ export const getLabelsWithSelectedState = createSelector(
 )
 
 export const getSectionName = createSelector(
-    [getSection, getSlug, getSections, getLabels],
-    (sectionId, slug, sections, labels) => {
-        if (sectionId === "label") {
-            let label = _.findWhere(labels, { slug: slug });
+    [getSection, getSections, getLabels],
+    (sectionId, sections, labels) => {
+        console.log("sectionId", sectionId)
+        let match = sectionId && sectionId.match(/^section-(.*)/);
+        if (match) {
+            let label = _.findWhere(labels, { slug: match[1] });
             return label && label.name
         } else {
             let section = _.findWhere(sections, { id: sectionId });
