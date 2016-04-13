@@ -135,11 +135,12 @@ export default class ExtendedOptions extends Component {
         return (
             <Popover onClose={() => this.setState({editExpression: null})}>
                 <ExpressionWidget
+                    name={name}
+                    expression={expression}
                     tableMetadata={this.props.tableMetadata}
                     onSetExpression={(newName, newExpression) => {
                         if (expression) {
                             // remove old expression using original name.  this accounts for case where expression is renamed.
-                            console.log("removing original expression", name, expression);
                             Query.removeExpression(query, name);
                         }
 
@@ -149,7 +150,6 @@ export default class ExtendedOptions extends Component {
                         Query.setExpression(query, newName, newExpression);
                         this.props.setQuery(this.props.query);
                         this.setState({editExpression: null});
-                        console.log("set expression", newName, newExpression, this.props.query);
                     }}
                     onRemoveExpression={(removeName) => {
                         // TODO: analytics
@@ -157,11 +157,8 @@ export default class ExtendedOptions extends Component {
                         Query.removeExpression(query, removeName);
                         this.props.setQuery(this.props.query);
                         this.setState({editExpression: null});
-                        console.log("removed expression", removeName, this.props.query);
                     }}
                     onCancel={() => this.setState({editExpression: null})}
-                    name={name}
-                    expression={expression}
                 />
             </Popover>
         );
@@ -172,7 +169,6 @@ export default class ExtendedOptions extends Component {
 
         const { features, query, tableMetadata } = this.props;
 
-        console.log(this.props);
         return (
             <Popover onClose={() => this.setState({isOpen: false})}>
                 <div className="p3">
