@@ -82,7 +82,7 @@
 }
 
 /* fully fit the parent element - use as a base for app-y pages like QB or settings */
-.spread {
+.spread, :local(.spread) {
   position: absolute;
   top: 0;
   left: 0;

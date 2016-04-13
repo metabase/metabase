@@ -16,18 +16,32 @@
 }
 
 :local(.option) {
+    composes: cursor-pointer from "style/cursor";
+    position: relative;
+}
+
+:local(.optionContent) {
     composes: px3 py1 from "style/spacing";
     composes: flex align-center from "style/flex";
     font-size: 18px;
+    color: var(--title-color);
 }
 
-:local(.option):hover,
-:local(.option.selected) {
-    background-color: rgba(132,187,76, 0.1);
+:local(.optionBackground) {
+    composes: spread from "style/layout";
+    opacity: 0.1;
+    background-color: currentColor;
+    visibility: hidden;
 }
 
-:local(.option.selected) {
-    color: rgb(132,187,76);
+:local(.option.selected) :local(.optionContent),
+:local(.option):hover :local(.optionContent) {
+    color: inherit;
+}
+
+:local(.option.selected) :local(.optionBackground),
+:local(.option):hover :local(.optionBackground) {
+    visibility: visible;
 }
 
 :local(.mainIcon) {
@@ -38,6 +52,6 @@
     composes: flex-align-right from "style/flex";
     visibility: hidden;
 }
-:local(.option.selected):hover :local(.removeIcon) {
+:local(.option):hover :local(.removeIcon) {
     visibility: visible;
 }

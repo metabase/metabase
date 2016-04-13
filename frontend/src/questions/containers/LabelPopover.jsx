@@ -2,7 +2,7 @@ import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import LabelPopoverContent from "../components/LabelPopoverContent.jsx";
+import LabelPicker from "../components/LabelPicker.jsx";
 
 import { setLabeled } from "../questions";
 import { getLabels } from "../selectors";
@@ -26,7 +26,7 @@ export default class LabelPopover extends Component {
                 triggerElement={triggerElement}
             >
                 { () =>
-                    <LabelPopoverContent labels={labels} setLabeled={setLabeled} item={item} count={count} />
+                    <LabelPicker labels={labels} setLabeled={setLabeled} item={item} count={count} />
                 }
             </PopoverWithTrigger>
         );
