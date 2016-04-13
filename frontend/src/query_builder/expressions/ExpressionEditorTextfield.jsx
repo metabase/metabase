@@ -9,6 +9,7 @@ import { parseExpressionString, tokenAtPosition, tokensToExpression } from "meta
 
 const VALID_OPERATORS = new Set(['+', '-', '*', '/']);
 
+const KEYCODE_TAB   =  9;
 const KEYCODE_ENTER = 13;
 const KEYCODE_UP    = 38;
 const KEYCODE_DOWN  = 40;
@@ -78,7 +79,7 @@ export default class ExpressionEditorTextfield extends Component {
     onInputKeyDown(event) {
         if (!this.state.suggestions.length) return;
 
-        if (event.keyCode === KEYCODE_ENTER) {
+        if (event.keyCode === KEYCODE_ENTER || event.keyCode === KEYCODE_TAB) {
             let suggestion = this.state.suggestions[this.state.highlightedSuggestion].name;
             let tokenAtPoint = tokenAtPosition(this.state.tokens, event.target.selectionStart);
 
@@ -86,8 +87,9 @@ export default class ExpressionEditorTextfield extends Component {
 
             let expression = this.state.expressionString.substring(0, tokenAtPoint.start) + suggestion + this.state.expressionString.substring(tokenAtPoint.end, this.state.expressionString.length);
 
+            // hand off to the code that deals with text change events which will trigger parsing and new autocomplete suggestions
             event.target.value = expression + ' ';
-            this.onExpressionInputChange(event); // add a blank space after end of token
+            this.onInputChange(event); // add a blank space after end of token
 
             this.setState({
                 highlightedSuggestion: 0

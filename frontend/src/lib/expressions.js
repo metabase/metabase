@@ -231,9 +231,9 @@ export function tokensToExpression(tokens) {
     if (operator.error) throw operator.error;
     if (rhs.error)      throw rhs.error;
 
-     operator = operator.parsedValue;
-     lhs = lhs.isParent ? tokensToExpression(lhs.value) : lhs.parsedValue;
-     rhs = rhs.isParent ? tokensToExpression(rhs.value) : rhs.parsedValue;
+    operator = operator.parsedValue;
+    lhs = lhs.isParent ? tokensToExpression(lhs.value) : lhs.parsedValue;
+    rhs = rhs.isParent ? tokensToExpression(rhs.value) : rhs.parsedValue;
 
     if (!operator) throw 'invalid operator!';
     if (!lhs)      throw 'invalid lhs!';
