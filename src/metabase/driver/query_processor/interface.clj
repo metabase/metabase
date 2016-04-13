@@ -276,7 +276,7 @@
 
 (def OrderBy
   "Schema for top-level `order-by` clause in an MBQL query."
-  (s/named {:field     FieldPlaceholderOrAgRef
+  (s/named {:field     AnyField
             :direction (s/named (s/enum :ascending :descending) "Valid order-by direction")}
            "Valid order-by subclause"))
 
