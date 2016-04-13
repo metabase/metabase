@@ -1,8 +1,8 @@
 (ns metabase.driver.query-processor.expand-resolve-test
   "Tests query expansion/resolution"
   (:require [expectations :refer :all]
-            [metabase.driver.query-processor.expand :as expand]
-            [metabase.driver.query-processor.resolve :as resolve]
+            (metabase.driver.query-processor [expand :as ql]
+                                             [resolve :as resolve])
             [metabase.test.data :refer :all]
             [metabase.util :as u]))
 
@@ -11,82 +11,79 @@
 ;; below has objects for the various place holders in the expanded/resolved query
 (defn- obj->map [o]
   (cond
-    (sequential? o)   (vec (for [v o]
-                             (obj->map v)))
-    (set? o)          (set (for [v o]
-                             (obj->map v)))
-    (map? o)          (into {} (for [[k v] o]
-                                 {k (obj->map v)}))
-    :else o))
+    (sequential? o) (vec (for [v o]
+                           (obj->map v)))
+    (set? o)        (set (for [v o]
+                           (obj->map v)))
+    (map? o)        (into {} (for [[k v] o]
+                               {k (obj->map v)}))
+    :else           o))
 
 
 ;; basic rows query w/ filter
 (expect
-  [;; expanded form
+  [ ;; expanded form
    {:database (id)
     :type     :query
     :query    {:source-table (id :venues)
                :filter       {:filter-type :>
-                              :field {:field-id (id :venues :price)
-                                      :fk-field-id nil
-                                      :datetime-unit nil}
-                              :value {:field-placeholder {:field-id (id :venues :price)
-                                                          :fk-field-id nil
-                                                          :datetime-unit nil}
-                                      :value 1}}}}
+                              :field       {:field-id      (id :venues :price)
+                                            :fk-field-id   nil
+                                            :datetime-unit nil}
+                              :value       {:field-placeholder {:field-id      (id :venues :price)
+                                                                :fk-field-id   nil
+                                                                :datetime-unit nil}
+                                            :value             1}}}}
    ;; resolved form
-   {:database {:name "test-data"
-              :details {:short-lived? nil
-                        :db "mem:test-data;USER=GUEST;PASSWORD=guest"}
-              :id (id)
-              :engine :h2}
-   :type :query
-   :query {:source-table {:schema "PUBLIC"
-                          :name "VENUES"
-                          :id (id :venues)}
-           :filter {:filter-type :>
-                    :field {:field-id (id :venues :price)
-                            :field-name "PRICE"
-                            :field-display-name "Price"
-                            :base-type :IntegerField
-                            :special-type :category
-                            :visibility-type :normal
-                            :table-id (id :venues)
-                            :schema-name "PUBLIC"
-                            :table-name "VENUES"
-                            :position nil
-                            :description nil
-                            :parent-id nil
-                            :parent nil}
-                    :value {:value 1
-                            :field {:field-id (id :venues :price)
-                                    :field-name "PRICE"
-                                    :field-display-name "Price"
-                                    :base-type :IntegerField
-                                    :special-type :category
-                                    :visibility-type :normal
-                                    :table-id (id :venues)
-                                    :schema-name "PUBLIC"
-                                    :table-name "VENUES"
-                                    :position nil
-                                    :description nil
-                                    :parent-id nil
-                                    :parent nil}}}
-           :join-tables nil}
-   :fk-field-ids #{}
-   :table-ids #{(id :venues)}}]
-  (let [expanded-form (expand/expand {:database (id)
-                                      :type     :query
-                                      :query    {:source-table (id :venues)
-                                                 :aggregation  ["rows"]
-                                                 :filter       ["AND" [">" ["field-id" (id :venues :price)] 1]]}})]
+   {:database     {:name    "test-data"
+                   :details {:short-lived? nil
+                             :db           "mem:test-data;USER=GUEST;PASSWORD=guest"}
+                   :id      (id)
+                   :engine  :h2}
+    :type         :query
+    :query        {:source-table {:schema "PUBLIC"
+                                  :name   "VENUES"
+                                  :id     (id :venues)}
+                   :filter       {:filter-type :>
+                                  :field       {:field-id           (id :venues :price)
+                                                :field-name         "PRICE"
+                                                :field-display-name "Price"
+                                                :base-type          :IntegerField
+                                                :special-type       :category
+                                                :visibility-type    :normal
+                                                :table-id           (id :venues)
+                                                :schema-name        "PUBLIC"
+                                                :table-name         "VENUES"
+                                                :position           nil
+                                                :description        nil
+                                                :parent-id          nil
+                                                :parent             nil}
+                                  :value       {:value 1
+                                                :field {:field-id           (id :venues :price)
+                                                        :field-name         "PRICE"
+                                                        :field-display-name "Price"
+                                                        :base-type          :IntegerField
+                                                        :special-type       :category
+                                                        :visibility-type    :normal
+                                                        :table-id           (id :venues)
+                                                        :schema-name        "PUBLIC"
+                                                        :table-name         "VENUES"
+                                                        :position           nil
+                                                        :description        nil
+                                                        :parent-id          nil
+                                                        :parent             nil}}}
+                   :join-tables  nil}
+    :fk-field-ids #{}
+    :table-ids    #{(id :venues)}}]
+  (let [expanded-form (ql/expand (ql/wrap-inner-query (query venues
+                                                        (ql/filter (ql/and (ql/> $price 1))))))]
     (mapv obj->map [expanded-form
                     (resolve/resolve expanded-form)])))
 
 
 ;; basic rows query w/ FK filter
 (expect
-  [;; expanded form
+  [ ;; expanded form
    {:database (id)
     :type     :query
     :query    {:source-table (id :venues)
@@ -101,13 +98,13 @@
    ;; resolved form
    {:database     {:name    "test-data"
                    :details {:short-lived? nil
-                             :db "mem:test-data;USER=GUEST;PASSWORD=guest"}
+                             :db           "mem:test-data;USER=GUEST;PASSWORD=guest"}
                    :id      (id)
                    :engine  :h2}
     :type         :query
     :query        {:source-table {:schema "PUBLIC"
-                                  :name "VENUES"
-                                  :id (id :venues)}
+                                  :name   "VENUES"
+                                  :id     (id :venues)}
                    :filter       {:filter-type :=
                                   :field       {:field-id           (id :categories :name)
                                                 :field-name         "NAME"
@@ -145,18 +142,16 @@
                                    :schema       "PUBLIC"}]}
     :fk-field-ids #{(id :venues :category_id)}
     :table-ids    #{(id :categories)}}]
-  (let [expanded-form (expand/expand {:database (id)
-                                      :type     :query
-                                      :query    {:source-table (id :venues)
-                                                 :aggregation  ["rows"]
-                                                 :filter       ["AND" ["=" ["fk->" (id :venues :category_id) (id :categories :name)] "abc"]]}})]
+  (let [expanded-form (ql/expand (ql/wrap-inner-query (query venues
+                                                        (ql/filter (ql/= $category_id->categories.name
+                                                                         "abc")))))]
     (mapv obj->map [expanded-form
                     (resolve/resolve expanded-form)])))
 
 
 ;; basic rows query w/ FK filter on datetime
 (expect
-  [;; expanded form
+  [ ;; expanded form
    {:database (id)
     :type     :query
     :query    {:source-table (id :checkins)
@@ -167,17 +162,17 @@
                               :value       {:field-placeholder {:field-id      (id :users :last_login)
                                                                 :fk-field-id   (id :checkins :user_id)
                                                                 :datetime-unit :year}
-                                            :value "1980-01-01"}}}}
+                                            :value             "1980-01-01"}}}}
    ;; resolved form
    {:database     {:name    "test-data"
                    :details {:short-lived? nil
-                             :db "mem:test-data;USER=GUEST;PASSWORD=guest"}
+                             :db           "mem:test-data;USER=GUEST;PASSWORD=guest"}
                    :id      (id)
                    :engine  :h2}
     :type         :query
     :query        {:source-table {:schema "PUBLIC"
-                                  :name "CHECKINS"
-                                  :id (id :checkins)}
+                                  :name   "CHECKINS"
+                                  :id     (id :checkins)}
                    :filter       {:filter-type :>
                                   :field       {:field {:field-id           (id :users :last_login)
                                                         :field-name         "LAST_LOGIN"
@@ -217,18 +212,16 @@
                                    :schema       "PUBLIC"}]}
     :fk-field-ids #{(id :checkins :user_id)}
     :table-ids    #{(id :users)}}]
-  (let [expanded-form (expand/expand {:database (id)
-                                      :type     :query
-                                      :query    {:source-table (id :checkins)
-                                                 :aggregation  ["rows"]
-                                                 :filter       ["AND" [">" ["datetime-field" ["fk->" (id :checkins :user_id) (id :users :last_login)] "year"] "1980-01-01"]]}})]
+  (let [expanded-form (ql/expand (ql/wrap-inner-query (query checkins
+                                                        (ql/filter (ql/> (ql/datetime-field $user_id->users.last_login :year)
+                                                                         "1980-01-01")))))]
     (mapv obj->map [expanded-form
                     (resolve/resolve expanded-form)])))
 
 
 ;; sum aggregation w/ datetime breakout
 (expect
-  [;; expanded form
+  [ ;; expanded form
    {:database (id)
     :type     :query
     :query    {:source-table (id :checkins)
@@ -242,13 +235,13 @@
    ;; resolved form
    {:database     {:name    "test-data"
                    :details {:short-lived? nil
-                             :db "mem:test-data;USER=GUEST;PASSWORD=guest"}
+                             :db           "mem:test-data;USER=GUEST;PASSWORD=guest"}
                    :id      (id)
                    :engine  :h2}
     :type         :query
     :query        {:source-table {:schema "PUBLIC"
-                                  :name "CHECKINS"
-                                  :id (id :checkins)}
+                                  :name   "CHECKINS"
+                                  :id     (id :checkins)}
                    :aggregation  {:aggregation-type :sum
                                   :field            {:description        nil
                                                      :base-type          :IntegerField
@@ -286,11 +279,8 @@
                                    :schema       "PUBLIC"}]}
     :fk-field-ids #{(id :checkins :venue_id)}
     :table-ids    #{(id :venues) (id :checkins)}}]
-  (let [expanded-form (expand/expand {:database (id)
-                                      :type     :query
-                                      :query    {:source-table (id :checkins)
-                                                 :aggregation  ["sum" ["fk->" (id :checkins :venue_id) (id :venues :price)]]
-                                                 :breakout     [["datetime-field" (id :checkins :date) "day-of-week"]]
-                                                 :filter       []}})]
+  (let [expanded-form (ql/expand (ql/wrap-inner-query (query checkins
+                                                        (ql/aggregation (ql/sum $venue_id->venues.price))
+                                                        (ql/breakout (ql/datetime-field $checkins.date :day-of-week)))))]
     (mapv obj->map [expanded-form
                     (resolve/resolve expanded-form)])))

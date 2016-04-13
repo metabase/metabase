@@ -21,7 +21,8 @@
                                                       DateTimeField
                                                       DateTimeValue
                                                       Field
-                                                      Function
+                                                      Expression
+                                                      ExpressionRef
                                                       RelativeDateTimeValue
                                                       Value)))
 
@@ -41,6 +42,15 @@
     [form alias]
     form))
 
+;; TODO - Put this somewhere more generic like QP interface
+(defn- expression-with-name
+  "Return the `Expression` referenced by a given EXPRESSION-NAME."
+  [expression-name]
+  (some (fn [expression]
+          (when (= (name (:expression-name expression))
+                   (name expression-name))
+            expression))
+        (:expressions (:query *query*))))
 
 (defprotocol ^:private IGenericSQLFormattable
   (formatted [this]
@@ -51,7 +61,7 @@
   Number (formatted [this] this)
   String (formatted [this] this)
 
-  Function
+  Expression
   (formatted [{:keys [operator args]}]
     (apply (case    operator
              :+     kx/+
@@ -60,6 +70,11 @@
              :/     kx//
              :lower (partial k/sqlfn* :LOWER))
            (map formatted args)))
+
+  ExpressionRef
+  (formatted [{:keys [expression-name]}]
+    ;; Unfortunately you can't just refer to the expression by name in other clauses like filter, but have to use the original formuala.
+    (formatted (expression-with-name expression-name)))
 
   Field
   (formatted [{:keys [schema-name table-name special-type field-name]}]
