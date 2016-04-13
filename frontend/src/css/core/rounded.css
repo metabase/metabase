@@ -1,6 +1,7 @@
 :root {
   --default-border-radius: 4px;
 }
+
 .rounded {
   border-radius: var(--default-border-radius);
 }
@@ -27,4 +28,8 @@
 
 .circular {
     border-radius: 99px !important;
+}
+
+.not-rounded {
+  border-radius: 0;
 }

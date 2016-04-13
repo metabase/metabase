@@ -115,8 +115,8 @@ export default class ExtendedOptions extends Component {
 
         if (content) {
             return (
-                <div className="py2 border-bottom">
-                    <div className="Query-label mb1">Sort</div>
+                <div className="pb3">
+                    <div className="pb1 h6 text-uppercase text-grey-3 text-bold">Sort</div>
                     {content}
                 </div>
             );
@@ -135,11 +135,12 @@ export default class ExtendedOptions extends Component {
         return (
             <Popover onClose={() => this.setState({editExpression: null})}>
                 <ExpressionWidget
+                    name={name}
+                    expression={expression}
                     tableMetadata={this.props.tableMetadata}
                     onSetExpression={(newName, newExpression) => {
                         if (expression) {
                             // remove old expression using original name.  this accounts for case where expression is renamed.
-                            console.log("removing original expression", name, expression);
                             Query.removeExpression(query, name);
                         }
 
@@ -149,7 +150,6 @@ export default class ExtendedOptions extends Component {
                         Query.setExpression(query, newName, newExpression);
                         this.props.setQuery(this.props.query);
                         this.setState({editExpression: null});
-                        console.log("set expression", newName, newExpression, this.props.query);
                     }}
                     onRemoveExpression={(removeName) => {
                         // TODO: analytics
@@ -157,11 +157,8 @@ export default class ExtendedOptions extends Component {
                         Query.removeExpression(query, removeName);
                         this.props.setQuery(this.props.query);
                         this.setState({editExpression: null});
-                        console.log("removed expression", removeName, this.props.query);
                     }}
                     onCancel={() => this.setState({editExpression: null})}
-                    name={name}
-                    expression={expression}
                 />
             </Popover>
         );
@@ -170,22 +167,24 @@ export default class ExtendedOptions extends Component {
     renderPopover() {
         if (!this.state.isOpen) return null;
 
-        const { features, query } = this.props;
+        const { features, query, tableMetadata } = this.props;
 
         return (
             <Popover onClose={() => this.setState({isOpen: false})}>
-                <div className="px3 py1">
+                <div className="p3">
                     {this.renderSort()}
 
-                    <Expressions
-                        expressions={query.query.expressions}
-                        onAddExpression={() => this.setState({isOpen: false, editExpression: true})}
-                        onEditExpression={(name) => this.setState({isOpen: false, editExpression: name})}
-                    />
+                    {_.contains(tableMetadata.db.features, "custom-fields") ?
+                        <Expressions
+                            expressions={query.query.expressions}
+                            onAddExpression={() => this.setState({isOpen: false, editExpression: true})}
+                            onEditExpression={(name) => this.setState({isOpen: false, editExpression: name})}
+                        />
+                    : null}
 
                     { features.limit &&
-                        <div className="py1">
-                            <div className="Query-label mb1">Row limit</div>
+                        <div>
+                            <div className="mb1 h6 text-uppercase text-grey-3 text-bold">Row limit</div>
                             <LimitWidget limit={query.query.limit} onChange={this.setLimit} />
                         </div>
                     }
