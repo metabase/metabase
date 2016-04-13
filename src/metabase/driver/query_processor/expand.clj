@@ -1,7 +1,7 @@
 (ns metabase.driver.query-processor.expand
   "Converts a Query Dict as received by the API into an *expanded* one that contains extra information that will be needed to
    construct the appropriate native Query, and perform various post-processing steps such as Field ordering."
-  (:refer-clojure :exclude [< <= > >= = != and or not filter count distinct sum min max + - / * fn])
+  (:refer-clojure :exclude [< <= > >= = != and or not filter count distinct sum min max + - / *])
   (:require (clojure [core :as core]
                      [edn :as edn]
                      [string :as str])
@@ -373,19 +373,17 @@
   (assoc query :expressions (for [[expression-name [expression]] m]
                               (assoc expression :expression-name (name expression-name)))))
 
-(s/defn ^:private ^:always-validate fn :- Expression
+(s/defn ^:private ^:always-validate expression :- Expression
   [k :- s/Keyword, & args]
-  (i/strict-map->Expression {:operator k, :args args, :expression-name nil}))
+  (i/strict-map->Expression {:operator k, :expression-name nil, :args (for [arg args]
+                                                                        (if (number? arg)
+                                                                          (float arg)     ; convert args to floats so things like 5 / 10 -> 0.5 instead of 0
+                                                                          arg))}))
 
-(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} + "Arithmetic addition function."       (partial fn :+))
-(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} - "Arithmetic subtraction function."    (partial fn :-))
-(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} * "Arithmetic multiplication function." (partial fn :*))
-(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} / "Arithmetic division function."       (partial fn :/))
-
-(s/defn ^:ql ^:always-validate lower :- Expression
-  "An example of a non-arithmetic function."
-  [field-or-str]
-  (fn :lower field-or-str))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} + "Arithmetic addition function."       (partial expression :+))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} - "Arithmetic subtraction function."    (partial expression :-))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} * "Arithmetic multiplication function." (partial expression :*))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} / "Arithmetic division function."       (partial expression :/))
 
 ;;; EXPRESSION PARSING
 

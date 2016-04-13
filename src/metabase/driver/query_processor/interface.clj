@@ -289,9 +289,9 @@
 
 (declare RValue)
 
-(def ^:private ValidExpressionKeyword (s/named (s/enum :+ :- :* :/ :lower) "Valid function"))
+(def ^:private ExpressionOperator (s/named (s/enum :+ :- :* :/) "Valid expression operator"))
 
-(s/defrecord Expression [operator        :- ValidExpressionKeyword
+(s/defrecord Expression [operator        :- ExpressionOperator
                          args            :- [(s/recursive #'RValue)]
                          expression-name :- (s/maybe s/Str)]
   clojure.lang.Named
