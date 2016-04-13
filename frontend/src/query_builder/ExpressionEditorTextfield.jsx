@@ -16,6 +16,7 @@ const OPERATOR_SUGGESTIONS = [
 
 const ERROR_MESSAGE_EMPTY_EXPRESSION = 'enter an expression';
 
+const KEYCODE_TAB   =  9;
 const KEYCODE_ENTER = 13;
 const KEYCODE_UP    = 38;
 const KEYCODE_DOWN  = 40;
@@ -140,9 +141,9 @@ function getParsedExpression(tokens) {
     if (operator.error) throw operator.error;
     if (rhs.error)      throw rhs.error;
 
-     operator = operator.parsedValue;
-     lhs = lhs.isParent ? getParsedExpression(lhs.value) : lhs.parsedValue;
-     rhs = rhs.isParent ? getParsedExpression(rhs.value) : rhs.parsedValue;
+    operator = operator.parsedValue;
+    lhs = lhs.isParent ? getParsedExpression(lhs.value) : lhs.parsedValue;
+    rhs = rhs.isParent ? getParsedExpression(rhs.value) : rhs.parsedValue;
 
     if (!operator) throw 'invalid operator!';
     if (!lhs)      throw 'invalid lhs!';
@@ -191,7 +192,7 @@ export default class ExpressionEditorTextfield extends Component {
     onInputKeyDown(event) {
         if (!this.state.suggestions.length) return;
 
-        if (event.keyCode === KEYCODE_ENTER) {
+        if (event.keyCode === KEYCODE_ENTER || event.keyCode === KEYCODE_TAB) {
             let suggestion = this.state.suggestions[this.state.highlightedSuggestion].name;
             let tokenAtPoint = tokenAtPosition(this.state.tokens, event.target.selectionStart);
 
@@ -199,8 +200,9 @@ export default class ExpressionEditorTextfield extends Component {
 
             let expression = this.state.expressionString.substring(0, tokenAtPoint.start) + suggestion + this.state.expressionString.substring(tokenAtPoint.end, this.state.expressionString.length);
 
+            // hand off to the code that deals with text change events which will trigger parsing and new autocomplete suggestions
             event.target.value = expression + ' ';
-            this.onExpressionInputChange(event); // add a blank space after end of token
+            this.onInputChange(event); // add a blank space after end of token
 
             this.setState({
                 highlightedSuggestion: 0
@@ -408,25 +410,25 @@ export default class ExpressionEditorTextfield extends Component {
                     focus={true}
                 />
                 {this.state.suggestions.length ?
-                    <Popover 
-                        className="p1 not-rounded border-dark"
-                        hasArrow={false}
-                        tetherOptions={{
-                            attachment: 'top left',
-                            targetAttachment: 'bottom left',
-                            targetOffset: '0 '+((this.state.expressionString.length / 2) * 6)
-                        }}
-                    >
-                        <div style={{minWidth: "150px"}}>
-                            <h5 style={{marginBottom: "2px"}} className="h6 text-grey-2">{this.state.suggestionsTitle}</h5>
-                            <ul>
-                                {this.state.suggestions.map((suggestion, i) =>
-                                    <li style={{paddingTop: "2px", paddingBottom: "2px"}} className={cx({"text-bold text-brand": i == this.state.highlightedSuggestion})}>{suggestion.name}</li>
-                                )}
-                            </ul>
-                        </div>
-                    </Popover>
-                : null}
+                 <Popover
+                     className="p1 not-rounded border-dark"
+                     hasArrow={false}
+                     tetherOptions={{
+                             attachment: 'top left',
+                             targetAttachment: 'bottom left',
+                             targetOffset: '0 '+((this.state.expressionString.length / 2) * 6)
+                         }}
+                 >
+                     <div style={{minWidth: "150px"}}>
+                         <h5 style={{marginBottom: "2px"}} className="h6 text-grey-2">{this.state.suggestionsTitle}</h5>
+                         <ul>
+                             {this.state.suggestions.map((suggestion, i) =>
+                                 <li style={{paddingTop: "2px", paddingBottom: "2px"}} className={cx({"text-bold text-brand": i == this.state.highlightedSuggestion})}>{suggestion.name}</li>
+                              )}
+                         </ul>
+                     </div>
+                 </Popover>
+                 : null}
             </div>
         );
     }
