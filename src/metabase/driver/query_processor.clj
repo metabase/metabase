@@ -215,7 +215,7 @@
                     map->Field
                     (resolve/resolve-table {source-table-id source-table}))]
       (if (datetime-field? field)
-        (map->DateTimeField {:field field, :unit :day})
+        (map->DateTimeField {:field field, :unit :default})
         field))))
 
 (defn- pre-add-implicit-fields

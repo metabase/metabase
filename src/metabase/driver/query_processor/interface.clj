@@ -41,7 +41,7 @@
                  "Integer greater than zero"))
 
 (s/defrecord JoinTableField [field-id   :- IntGreaterThanZero
-                             field-name :- s/Str])
+                             expression-name :- s/Str])
 
 (s/defrecord JoinTable [source-field :- JoinTableField
                         pk-field     :- JoinTableField
@@ -53,14 +53,14 @@
 (defprotocol IField
   "Methods specific to the Query Expander `Field` record type."
   (qualified-name-components [this]
-    "Return a vector of name components of the form `[table-name parent-names... field-name]`"))
+    "Return a vector of name components of the form `[table-name parent-names... expression-name]`"))
 
 
 ;;; # ------------------------------------------------------------ "RESOLVED" TYPES: FIELD + VALUE ------------------------------------------------------------
 
 ;; Field is the expansion of a Field ID in the standard QL
 (s/defrecord Field [field-id           :- IntGreaterThanZero
-                    field-name         :- s/Str
+                    expression-name         :- s/Str
                     field-display-name :- s/Str
                     base-type          :- (apply s/enum field/base-types)
                     special-type       :- (s/maybe (apply s/enum field/special-types))
@@ -74,14 +74,14 @@
                     ;; Field once its resolved; FieldPlaceholder before that
                     parent             :- s/Any]
   clojure.lang.Named
-  (getName [_] field-name) ; (name <field>) returns the *unqualified* name of the field, #obvi
+  (getName [_] expression-name) ; (name <field>) returns the *unqualified* name of the field, #obvi
 
   IField
   (qualified-name-components [this]
     (conj (if parent
             (qualified-name-components parent)
             [table-name])
-          field-name)))
+          expression-name)))
 
 
 (def ^:const datetime-field-units
@@ -113,10 +113,17 @@
   clojure.lang.Named
   (getName [_] (name field)))
 
+(s/defrecord ExpressionRef [expression-name :- s/Str]
+  ;; is this right?
+  clojure.lang.Named
+  (getName [_] expression-name))
+
+
 ;; Value is the expansion of a value within a QL clause
 ;; Information about the associated Field is included for convenience
 (s/defrecord Value [value   :- (s/maybe (s/cond-pre s/Bool s/Num s/Str))
-                    field   :- Field]) ;; TODO - Value doesn't need the whole field, just the relevant type info / units
+                    field   :- (s/named (s/cond-pre Field ExpressionRef)   ; TODO - Value doesn't need the whole field, just the relevant type info / units
+                                        "field or expression reference")])
 
 ;; e.g. an absolute point in time (literal)
 (s/defrecord DateTimeValue [value :- Timestamp
@@ -156,9 +163,16 @@
                                                  zero?
                                                  "Ag field index should be 0 -- MBQL currently only supports a single aggregation")])
 
+;; TODO - add a method to get matching expression from the query?
+
 (def FieldPlaceholderOrAgRef
   "Schema for either a `FieldPlaceholder` or `AgFieldRef`."
   (s/named (s/cond-pre FieldPlaceholder AgFieldRef) "Valid field (not a field ID or aggregate field reference)"))
+
+(def FieldPlaceholderOrExpressionRef
+  "Schema for either a `FieldPlaceholder` or `ExpressionRef`."
+  (s/named (s/cond-pre FieldPlaceholder ExpressionRef)
+           "Valid field or expression reference."))
 
 
 (s/defrecord RelativeDatetime [amount :- s/Int
@@ -186,7 +200,7 @@
 
 ;; Replace values with these during first pass over Query.
 ;; Include associated Field ID so appropriate the info can be found during Field resolution
-(s/defrecord ValuePlaceholder [field-placeholder :- FieldPlaceholder
+(s/defrecord ValuePlaceholder [field-placeholder :- FieldPlaceholderOrExpressionRef
                                value             :- AnyValue])
 
 (def OrderableValuePlaceholder
@@ -211,7 +225,7 @@
 
 (s/defrecord AggregationWithField [aggregation-type :- (s/named (s/enum :avg :count :cumulative-sum :distinct :max :min :stddev :sum)
                                                                 "Valid aggregation type")
-                                   field            :- FieldPlaceholder])
+                                   field            :- FieldPlaceholderOrExpressionRef])
 
 (def Aggregation
   "Schema for a top-level `aggregation` clause in an MBQL query."
@@ -225,20 +239,20 @@
 
 
 (s/defrecord EqualityFilter [filter-type :- (s/enum := :!=)
-                             field       :- FieldPlaceholder
+                             field       :- FieldPlaceholderOrExpressionRef
                              value       :- FieldOrAnyValue])
 
 (s/defrecord ComparisonFilter [filter-type :- (s/enum :< :<= :> :>=)
-                               field       :- FieldPlaceholder
+                               field       :- FieldPlaceholderOrExpressionRef
                                value       :- OrderableValuePlaceholder])
 
 (s/defrecord BetweenFilter [filter-type  :- (s/eq :between)
                             min-val      :- OrderableValuePlaceholder
-                            field        :- FieldPlaceholder
+                            field        :- FieldPlaceholderOrExpressionRef
                             max-val      :- OrderableValuePlaceholder])
 
 (s/defrecord StringFilter [filter-type :- (s/enum :starts-with :contains :ends-with)
-                           field       :- FieldPlaceholder
+                           field       :- FieldPlaceholderOrExpressionRef
                            value       :- StringValuePlaceholder])
 
 (def SimpleFilterClause
@@ -275,34 +289,34 @@
 
 (declare RValue)
 
-(def ^:private ValidFunctionKeyword (s/named (s/enum :+ :- :* :/ :lower) "Valid function"))
+(def ^:private ValidExpressionKeyword (s/named (s/enum :+ :- :* :/ :lower) "Valid function"))
 
-(s/defrecord Function [operator   :- ValidFunctionKeyword
-                       args       :- [(s/recursive #'RValue)]
-                       field-name :- (s/maybe s/Str)]
+(s/defrecord Expression [operator        :- ValidExpressionKeyword
+                         args            :- [(s/recursive #'RValue)]
+                         expression-name :- (s/maybe s/Str)]
   clojure.lang.Named
-  (getName [_] field-name))
+  (getName [_] expression-name))
 
 (def RValue
   "Schema for anything that can be an [RValue](https://github.com/metabase/metabase/wiki/Query-Language-'98#rvalues) -
-   a `Field`, `Value`, or `Function`."
-  (s/named (s/cond-pre AnyValue FieldPlaceholder Function)
+   a `Field`, `Value`, or `Expression`."
+  (s/named (s/cond-pre AnyValue FieldPlaceholderOrExpressionRef Expression)
            "RValue"))
 
-(def FieldAgRefOrFunction
-  "Schema for a `FieldPlaceholder`, `AgRef`, or `Function`."
-  (s/named (s/cond-pre Function FieldPlaceholderOrAgRef)
-           "Valid field, ag field reference, or calculated field."))
+(def AnyField
+  "Schema for a `FieldPlaceholder`, `AgRef`, or `Expression`."
+  (s/named (s/cond-pre ExpressionRef Expression FieldPlaceholderOrAgRef)
+           "Valid field, ag field reference, or expression reference."))
 
 
 (def Query
   "Schema for an MBQL query."
   {(s/optional-key :aggregation) Aggregation
-   (s/optional-key :breakout)    [FieldPlaceholder]
-   (s/optional-key :fields)      [FieldAgRefOrFunction]
+   (s/optional-key :breakout)    [FieldPlaceholderOrExpressionRef]
+   (s/optional-key :fields)      [AnyField]
    (s/optional-key :filter)      Filter
    (s/optional-key :limit)       IntGreaterThanZero
    (s/optional-key :order-by)    [OrderBy]
    (s/optional-key :page)        Page
-   (s/optional-key :expressions) [Function] ; TODO - should this be a map of name -> Function instead?
+   (s/optional-key :expressions) [Expression] ; TODO - should this be a map of name -> Expression instead?
    :source-table                 IntGreaterThanZero})
