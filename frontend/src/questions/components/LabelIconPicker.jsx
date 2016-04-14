@@ -72,7 +72,6 @@ export default class LabelIconPicker extends Component {
 
     render() {
         const { value, onChange } = this.props;
-        console.log("this.state.scrollToIndex", this.state.scrollToIndex)
         return (
             <PopoverWithTrigger
                 triggerElement={<LabelIconButton value={value} />}

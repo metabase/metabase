@@ -22,7 +22,6 @@ export const dismissUndo = createAction(DISMISS_UNDO);
 export const performUndo = createThunkAction(PERFORM_UNDO, (undoId) => {
     return (dispatch, getState) => {
         let undo = _.findWhere(getState().undo, { id: undoId });
-        console.log("undo", undo)
         if (undo) {
             undo.actions.map(action =>
                 dispatch(action)

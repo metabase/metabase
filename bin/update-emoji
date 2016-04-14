@@ -3,7 +3,6 @@
 var fs = require("fs");
 
 var emoji = require("emojione/emoji.json");
-// console.log(source);
 
 var results = {
     emoji: {},
