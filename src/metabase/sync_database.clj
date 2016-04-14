@@ -85,18 +85,18 @@
 
     (binding [qp/*disable-qp-logging*  true
               db/*sel-disable-logging* true]
+      ;; if the Table has a RawTable backing it then do an introspection and sync
       (when-let [raw-tbl (db/sel :one raw-table/RawTable :id (:raw_table_id table))]
-        ;; introspect
         (introspect/introspect-raw-table-and-update! driver database raw-tbl)
+        (sync/update-data-models-for-table! table))
 
-        ;; sync
-        (if (driver/driver-supports? driver :dynamic-schema)
-          (sync-dynamic/scan-table-and-update-data-model! driver database table)
-          (sync/update-data-models-for-table! table))
+      ;; if this table comes from a dynamic schema db then run that sync process now
+      (when (driver/driver-supports? driver :dynamic-schema)
+        (sync-dynamic/scan-table-and-update-data-model! driver database table))
 
-        ;; analyze
-        (when full-sync?
-          (analyze/analyze-table-data-shape! driver table))))
+      ;; analyze if we are supposed to
+      (when full-sync?
+        (analyze/analyze-table-data-shape! driver table)))
 
     (events/publish-event :table-sync {:table_id (:id table)})
     (log/info (u/format-color 'magenta "Finished syncing table '%s' from %s database '%s'. (%s)" (:display_name table) (name driver) (:name database)
