@@ -34,7 +34,7 @@ const ActionHeader = ({ selectedCount, allAreSelected, sectionIsArchive, setAllS
                 }
                 labels={labels}
             />
-            <span className={S.archiveButton} onClick={() => setArchived(undefined, !sectionIsArchive)}>
+            <span className={S.archiveButton} onClick={() => setArchived(undefined, !sectionIsArchive, true)}>
                 <Icon name="grid" />
                 { sectionIsArchive ? "Unarchive" : "Archive" }
             </span>

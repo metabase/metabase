@@ -42,7 +42,7 @@ const Item = ({ id, name, created, by, selected, favorite, archived, icon, label
         </div>
         <div className={S.extraIcons}>
             <Tooltip tooltip={archived ? "Unarchive" : "Archive"}>
-                <Icon className={S.archiveIcon} name="grid" width={20} height={20} onClick={() => setArchived(id, !archived)} />
+                <Icon className={S.archiveIcon} name="grid" width={20} height={20} onClick={() => setArchived(id, !archived, true)} />
             </Tooltip>
         </div>
     </div>

@@ -23,7 +23,7 @@ const LabelPicker = ({ labels, count, item, setLabeled }) =>
                 return (
                     <li
                         key={label.id}
-                        onClick={() => setLabeled(item && item.id, label.id, !selected)}
+                        onClick={() => setLabeled(item && item.id, label.id, !selected, !item)}
                         className={cx(S.option, { [S.selected]: selected })}
                         style={{ color: color }}
                     >
