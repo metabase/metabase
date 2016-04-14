@@ -91,6 +91,9 @@ export default class BreakoutWidget extends Component {
                     {this.renderPopover()}
                 </div>
             );
+        } else {
+            // this needs to be here to prevent React error (#2304)
+            return null;
         }
     }
 }
