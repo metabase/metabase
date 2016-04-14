@@ -13,8 +13,8 @@
 
 (def DescribeDatabase
   "Schema for the expected output of `describe-database`."
-  {:tables #{{:name                         schema/Str
-              (schema/optional-key :schema) (schema/maybe schema/Str)}}})
+  {:tables #{{:name   schema/Str
+              :schema (schema/maybe schema/Str)}}})
 
 (def DescribeTableField
   "Schema for a given Field as provided in `describe-table` or `analyze-table`."
@@ -28,13 +28,13 @@
 
 (def DescribeTable
   "Schema for the expected output of `describe-table`."
-  {:name                         schema/Str
-   (schema/optional-key :schema) (schema/maybe schema/Str)
-   :fields                       #{DescribeTableField}})
+  {:name   schema/Str
+   :schema (schema/maybe schema/Str)
+   :fields #{DescribeTableField}})
 
 (def DescribeTableFKs
   "Schema for the expected output of `describe-table-fks`."
   #{{:fk-column-name   schema/Str
-     :dest-table       {:name                         schema/Str
-                        (schema/optional-key :schema) (schema/maybe schema/Str)}
+     :dest-table       {:name   schema/Str
+                        :schema (schema/maybe schema/Str)}
      :dest-column-name schema/Str}})
