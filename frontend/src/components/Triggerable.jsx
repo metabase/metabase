@@ -35,9 +35,9 @@ export default ComposedComponent => class extends Component {
         this.close();
     }
 
-    getTarget() {
-        if (this.props.getTarget) {
-            return this.props.getTarget();
+    target() {
+        if (this.props.target) {
+            return this.props.target();
         } else {
             return this.refs.trigger;
         }
@@ -51,7 +51,7 @@ export default ComposedComponent => class extends Component {
                     {...this.props}
                     isOpen={this.state.isOpen}
                     onClose={this.onClose.bind(this)}
-                    getTarget={() => this.getTarget()}
+                    target={() => this.target()}
                 />
             </a>
         );

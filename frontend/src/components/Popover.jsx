@@ -16,7 +16,7 @@ export default class Popover extends Component {
     static propTypes = {
         isOpen: PropTypes.bool,
         hasArrow: PropTypes.bool,
-        getTarget: PropTypes.func,
+        // target: PropTypes.oneOfType([PropTypes.func, PropTypes.node]),
         tetherOptions: PropTypes.object
     };
 
@@ -152,9 +152,11 @@ export default class Popover extends Component {
                 tetherOptions.target.style.left = (this.props.targetEvent.clientX - 3) + "px";
                 tetherOptions.target.style.top = (this.props.targetEvent.clientY - 3) + "px";
             } else if (this.props.target) {
-                tetherOptions.target = ReactDOM.findDOMNode(this.props.target);
-            } else if (this.props.getTarget) {
-                tetherOptions.target = ReactDOM.findDOMNode(this.props.getTarget());
+                if (typeof this.props.target === "function") {
+                    tetherOptions.target = ReactDOM.findDOMNode(this.props.target());
+                } else {
+                    tetherOptions.target = ReactDOM.findDOMNode(this.props.target);
+                }
             }
             if (tetherOptions.target == null) {
                 tetherOptions.target = ReactDOM.findDOMNode(this).parentNode;

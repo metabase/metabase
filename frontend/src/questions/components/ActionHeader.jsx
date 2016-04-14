@@ -3,6 +3,7 @@ import S from "./ActionHeader.css";
 
 import StackedCheckBox from "metabase/components/StackedCheckBox.jsx";
 import Icon from "metabase/components/Icon.jsx";
+import Tooltip from "metabase/components/Tooltip.jsx";
 
 import LabelPopover from "../containers/LabelPopover.jsx";
 
@@ -10,13 +11,15 @@ import cx from "classnames";
 
 const ActionHeader = ({ selectedCount, allAreSelected, setAllSelected, setArchived, labels }) =>
     <div className={S.actionHeader}>
-        <StackedCheckBox
-            checked={allAreSelected}
-            onChange={(e) => setAllSelected(e.target.checked)}
-            className={cx(S.allCheckbox, { [S.selected]: allAreSelected })}
-            size={20} padding={3} borderColor="currentColor"
-            invertChecked
-        />
+        <Tooltip tooltip="Select all" isEnabled={!allAreSelected}>
+            <StackedCheckBox
+                checked={allAreSelected}
+                onChange={(e) => setAllSelected(e.target.checked)}
+                className={cx(S.allCheckbox, { [S.selected]: allAreSelected })}
+                size={20} padding={3} borderColor="currentColor"
+                invertChecked
+            />
+        </Tooltip>
         <span className={S.selectedCount}>
             {selectedCount} selected
         </span>

@@ -7,6 +7,7 @@ import LabelPopover from "../containers/LabelPopover.jsx";
 
 import Icon from "metabase/components/Icon.jsx";
 import CheckBox from "metabase/components/CheckBox.jsx";
+import Tooltip from "metabase/components/Tooltip.jsx";
 
 import Urls from "metabase/lib/urls";
 
@@ -36,7 +37,9 @@ const Item = ({ id, name, created, by, selected, favorite, archived, icon, label
             <Icon className={S.favoriteIcon} name="star" width={20} height={20} onClick={() => setFavorited(id, !favorite) }/>
         </div>
         <div className={S.extraIcons}>
-            <Icon className={S.archiveIcon} name="grid" width={20} height={20} onClick={() => setArchived(id, !archived)} />
+            <Tooltip tooltip="Archive">
+                <Icon className={S.archiveIcon} name="grid" width={20} height={20} onClick={() => setArchived(id, !archived)} />
+            </Tooltip>
         </div>
     </div>
 
