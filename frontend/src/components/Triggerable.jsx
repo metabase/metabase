@@ -44,12 +44,14 @@ export default ComposedComponent => class extends Component {
     }
 
     render() {
+        const { triggerElement, triggerClasses, triggerClassesOpen } = this.props;
+        const { isOpen } = this.state;
         return (
-            <a ref="trigger" onClick={() => this.toggle()} className={cx("no-decoration", this.props.triggerClasses)}>
-                {this.props.triggerElement}
+            <a ref="trigger" onClick={() => this.toggle()} className={cx("no-decoration", triggerClasses, isOpen ? triggerClassesOpen : null)}>
+                {triggerElement}
                 <ComposedComponent
                     {...this.props}
-                    isOpen={this.state.isOpen}
+                    isOpen={isOpen}
                     onClose={this.onClose.bind(this)}
                     target={() => this.target()}
                 />

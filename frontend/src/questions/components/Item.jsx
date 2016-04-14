@@ -32,9 +32,12 @@ const Item = ({ id, name, created, by, selected, favorite, archived, icon, label
         <div className={S.rightIcons}>
             <LabelPopover
                 triggerElement={<Icon className={S.tagIcon} name="grid" width={20} height={20} />}
+                triggerClassesOpen={S.open}
                 item={{ id, labels }}
             />
-            <Icon className={S.favoriteIcon} name="star" width={20} height={20} onClick={() => setFavorited(id, !favorite) }/>
+            <Tooltip tooltip="Favorite">
+                <Icon className={S.favoriteIcon} name="star" width={20} height={20} onClick={() => setFavorited(id, !favorite) }/>
+            </Tooltip>
         </div>
         <div className={S.extraIcons}>
             <Tooltip tooltip="Archive">

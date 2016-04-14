@@ -20,11 +20,9 @@ const mapDispatchToProps = {
 @connect(mapStateToProps, mapDispatchToProps)
 export default class LabelPopover extends Component {
     render() {
-        const { triggerElement, labels, setLabeled, item, count } = this.props;
+        const { labels, setLabeled, item, count } = this.props;
         return (
-            <PopoverWithTrigger
-                triggerElement={triggerElement}
-            >
+            <PopoverWithTrigger {...this.props}>
                 { () =>
                     <LabelPicker labels={labels} setLabeled={setLabeled} item={item} count={count} />
                 }

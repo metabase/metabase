@@ -108,6 +108,10 @@
     composes: icon;
     composes: mx1 from "style/spacing";
 }
+:local(.open) :local(.tagIcon) {
+    visibility: visible;
+    color: var(--blue-color);
+}
 
 /* FAVORITE */
 :local(.favoriteIcon) {
