@@ -25,7 +25,7 @@ export default ComposedComponent => class extends Component {
     }
 
     _render() {
-        this._element.className = this.props.className;
+        this._element.className = this.props.className || "";
         ReactDOM.render(<ComposedComponent {...this.props} className={undefined} />, this._element);
     }
 

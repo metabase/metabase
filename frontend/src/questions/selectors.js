@@ -76,7 +76,7 @@ export const getSelectedEntities = createSelector(
 export const getVisibleCount = createSelector(
     [getVisibleEntities],
     (visibleEntities) => visibleEntities.length
-)
+);
 
 export const getSelectedCount = createSelector(
     [getSelectedEntities],
@@ -87,7 +87,13 @@ export const getAllAreSelected = createSelector(
     [getSelectedCount, getVisibleCount],
     (selectedCount, visibleCount) =>
         selectedCount === visibleCount && visibleCount > 0
-)
+);
+
+export const getSectionIsArchive = createSelector(
+    [getSection],
+    (section) =>
+        section === "archived"
+);
 
 const sections = [
     { id: "all",       name: "All questions",   icon: "star" },
@@ -137,14 +143,22 @@ export const getLabelsWithSelectedState = createSelector(
 export const getSectionName = createSelector(
     [getSection, getSections, getLabels],
     (sectionId, sections, labels) => {
-        console.log("sectionId", sectionId)
-        let match = sectionId && sectionId.match(/^section-(.*)/);
+        let match = sectionId && sectionId.match(/^(.*)-(.*)/);
         if (match) {
-            let label = _.findWhere(labels, { slug: match[1] });
-            return label && label.name
+            if (match[1] === "label") {
+                let label = _.findWhere(labels, { slug: match[2] });
+                if (label && label.name) {
+                    return label.name;
+                }
+            }
         } else {
             let section = _.findWhere(sections, { id: sectionId });
-            return section && section.name
+            if (section && section.name) {
+                return section.name;
+            }
         }
+        return "";
     }
 );
+
+export const getUndos = (state) => state.questions.undos;

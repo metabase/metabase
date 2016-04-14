@@ -3,6 +3,10 @@
   --brand-light-color: #CDE3F8;
 
   --base-grey: #f8f8f8;
+  --grey-1: color(var(--base-grey) shade(10%));
+  --grey-2: color(var(--base-grey) shade(20%));
+  --grey-3: color(var(--base-grey) shade(30%));
+  --grey-4: color(var(--base-grey) shade(40%));
 
   --grey-text-color: #797979;
   --alt-color: #F5F7F9;
@@ -130,22 +134,22 @@
 
 /* grey */
 .text-grey-1,
-.text-grey-1-hover:hover { color: color(var(--base-grey) shade(10%)) }
+.text-grey-1-hover:hover { color: var(--grey-1) }
 
 .text-grey-2,
-.text-grey-2-hover:hover { color: color(var(--base-grey) shade(20%)) }
+.text-grey-2-hover:hover { color: var(--grey-2)) }
 
 .text-grey-3,
-.text-grey-3-hover:hover { color: color(var(--base-grey) shade(30%)) }
+.text-grey-3-hover:hover { color: cvar(--grey-3) }
 
 .text-grey-4,
-.text-grey-4-hover:hover { color: color(var(--base-grey) shade(40%)) }
+.text-grey-4-hover:hover { color: var(--grey-4) }
 
 .bg-grey-0 { background-color: var(--base-grey) }
-.bg-grey-1 { background-color: color(var(--base-grey) shade(10%)) }
-.bg-grey-2 { background-color: color(var(--base-grey) shade(20%)) }
-.bg-grey-3 { background-color: color(var(--base-grey) shade(30%)) }
-.bg-grey-4 { background-color: color(var(--base-grey) shade(40%)) }
+.bg-grey-1 { background-color: var(--grey-1) }
+.bg-grey-2 { background-color: var(--grey-2) }
+.bg-grey-3 { background-color: var(--grey-3) }
+.bg-grey-4 { background-color: var(--grey-4) }
 
 .text-dark { color: var(--dark-color); }
 

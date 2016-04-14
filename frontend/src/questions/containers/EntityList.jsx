@@ -6,9 +6,10 @@ import S from "../components/List.css";
 import List from "../components/List.jsx";
 import SearchHeader from "../components/SearchHeader.jsx";
 import ActionHeader from "../components/ActionHeader.jsx";
+import UndoListing from "./UndoListing.jsx";
 
 import { setSearchText, setItemSelected, setAllSelected, setArchived } from "../questions";
-import { getSearchText, getEntityType, getEntityIds, getSectionName, getSelectedCount, getAllAreSelected, getLabelsWithSelectedState } from "../selectors";
+import { getSearchText, getEntityType, getEntityIds, getSectionName, getVisibleCount, getSelectedCount, getAllAreSelected, getSectionIsArchive, getLabelsWithSelectedState } from "../selectors";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -18,8 +19,10 @@ const mapStateToProps = (state, props) => {
       searchText:       getSearchText(state),
 
       name:             getSectionName(state),
+      visibleCount:     getVisibleCount(state),
       selectedCount:    getSelectedCount(state),
       allAreSelected:   getAllAreSelected(state),
+      sectionIsArchive:        getSectionIsArchive(state),
 
       labels:           getLabelsWithSelectedState(state)
   }
@@ -35,7 +38,7 @@ const mapDispatchToProps = {
 @connect(mapStateToProps, mapDispatchToProps)
 export default class EntityList extends Component {
     render() {
-        const { style, name, selectedCount, allAreSelected, labels, searchText, setSearchText, entityType, entityIds, setItemSelected, setAllSelected, setArchived } = this.props;
+        const { style, name, visibleCount, selectedCount, allAreSelected, sectionIsArchive, labels, searchText, setSearchText, entityType, entityIds, setItemSelected, setAllSelected, setArchived } = this.props;
         return (
             <div style={style} className={S.list}>
                 <div className={S.header}>
@@ -43,8 +46,10 @@ export default class EntityList extends Component {
                 </div>
                 { selectedCount > 0 ?
                     <ActionHeader
+                        visibleCount={visibleCount}
                         selectedCount={selectedCount}
                         allAreSelected={allAreSelected}
+                        sectionIsArchive={sectionIsArchive}
                         setAllSelected={setAllSelected}
                         setArchived={setArchived}
                         labels={labels}
@@ -53,6 +58,7 @@ export default class EntityList extends Component {
                     <SearchHeader searchText={searchText} setSearchText={setSearchText} />
                 }
                 <List entityType={entityType} entityIds={entityIds} setItemSelected={setItemSelected} />
+                <UndoListing />
             </div>
         );
     }

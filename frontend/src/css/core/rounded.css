@@ -1,7 +1,7 @@
 :root {
   --default-border-radius: 4px;
 }
-.rounded {
+.rounded, :local(.rounded) {
   border-radius: var(--default-border-radius);
 }
 

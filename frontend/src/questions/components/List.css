@@ -116,7 +116,7 @@
 /* FAVORITE */
 :local(.favoriteIcon) {
     composes: icon;
-    composes: mr1 from "style/spacing";
+    composes: mx1 from "style/spacing";
 }
 :local(.item.favorite) :local(.favoriteIcon) {
     visibility: visible;
@@ -130,4 +130,8 @@
 }
 :local(.item.archived) :local(.archiveIcon) {
     color: var(--blue-color);
+}
+
+:local(.trigger) {
+    line-height: 0;
 }

@@ -9,7 +9,7 @@ import LabelPopover from "../containers/LabelPopover.jsx";
 
 import cx from "classnames";
 
-const ActionHeader = ({ selectedCount, allAreSelected, setAllSelected, setArchived, labels }) =>
+const ActionHeader = ({ selectedCount, allAreSelected, sectionIsArchive, setAllSelected, setArchived, labels }) =>
     <div className={S.actionHeader}>
         <Tooltip tooltip="Select all" isEnabled={!allAreSelected}>
             <StackedCheckBox
@@ -34,9 +34,9 @@ const ActionHeader = ({ selectedCount, allAreSelected, setAllSelected, setArchiv
                 }
                 labels={labels}
             />
-            <span className={S.archiveButton} onClick={() => setArchived()}>
+            <span className={S.archiveButton} onClick={() => setArchived(undefined, !sectionIsArchive)}>
                 <Icon name="grid" />
-                Archive
+                { sectionIsArchive ? "Unarchive" : "Archive" }
             </span>
         </span>
     </div>
