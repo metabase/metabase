@@ -6,6 +6,7 @@ import i from "icepick";
 import _ from "underscore";
 
 import { getSelectedEntities } from "./selectors";
+import { addUndo } from "./undo";
 
 const card = new Schema('cards');
 const label = new Schema('labels');
@@ -22,9 +23,6 @@ const SET_ALL_SELECTED = 'metabase/questions/SET_ALL_SELECTED';
 const SET_FAVORITED = 'metabase/questions/SET_FAVORITED';
 const SET_ARCHIVED = 'metabase/questions/SET_ARCHIVED';
 const SET_LABELED = 'metabase/questions/SET_LABELED';
-const ADD_UNDO = 'metabase/questions/ADD_UNDO';
-const DISMISS_UNDO = 'metabase/questions/DISMISS_UNDO';
-const PERFORM_UNDO = 'metabase/questions/PERFORM_UNDO';
 
 export const selectSection = createThunkAction(SELECT_SECTION, (section = "all", slug = null, type = "cards") => {
     return async (dispatch, getState) => {
@@ -75,24 +73,26 @@ export const setFavorited = createThunkAction(SET_FAVORITED, (cardId, favorited)
     }
 });
 
-export const setArchived = createThunkAction(SET_ARCHIVED, (cardId, archived, showUndo = true) => {
+export const setArchived = createThunkAction(SET_ARCHIVED, (cardId, archived, undoable = true) => {
     return async (dispatch, getState) => {
         if (cardId == null) {
             // bulk archive
             let selected = getSelectedEntities(getState()).filter(item => item.archived !== archived);
             selected.map(item => dispatch(setArchived(item.id, archived, false)));
             // TODO: errors
-            dispatch(addUndo(
-                selected.length + " question were " + (archived ? "archived" : "unarchived"),
-                selected.map(item => setArchived(cardId, !archived, false))
-            ));
+            if (undoable) {
+                dispatch(addUndo(
+                    selected.length + " question were " + (archived ? "archived" : "unarchived"),
+                    selected.map(item => setArchived(item.id, !archived, false))
+                ));
+            }
         } else {
             let card = {
                 ...getState().questions.entities.cards[cardId],
                 archived: archived
             };
             let response = await CardApi.update(card);
-            if (showUndo) {
+            if (undoable) {
                 dispatch(addUndo("Question was " + (archived ? "archived" : "unarchived"), [
                     setArchived(cardId, !archived, false)
                 ]));
@@ -129,30 +129,6 @@ export const setSearchText = createAction(SET_SEARCH_TEXT);
 export const setItemSelected = createAction(SET_ITEM_SELECTED);
 export const setAllSelected = createAction(SET_ALL_SELECTED);
 
-let nextUndoId = 0;
-
-export const addUndo = createThunkAction(ADD_UNDO, (message, actions) => {
-    return (dispatch, getState) => {
-        let id = nextUndoId++;
-        setTimeout(() => dispatch(dismissUndo(id)), 5000);
-        return { id, message, actions };
-    };
-});
-
-export const dismissUndo = createAction(DISMISS_UNDO);
-
-export const performUndo = createThunkAction(PERFORM_UNDO, (undoId) => {
-    return (dispatch, getState) => {
-        let undo = _.findWhere(getState().questions.undos, { id: undoId });
-        if (undo) {
-            undo.actions.map(action =>
-                dispatch(action)
-            );
-            dispatch(dismissUndo(undoId));
-        }
-    };
-});
-
 const initialState = {
     entities: {},
     type: "cards",
@@ -187,7 +163,7 @@ export default function(state = initialState, { type, payload, error }) {
         case SET_FAVORITED:
             if (error) {
                 return state;
-            } else {
+            } else if (payload && payload.id != null) {
                 state = i.assocIn(state, ["entities", "cards", payload.id], {
                     ...state.entities.cards[payload.id],
                     ...payload
@@ -199,10 +175,11 @@ export default function(state = initialState, { type, payload, error }) {
                 }
                 return state;
             }
+            return state;
         case SET_ARCHIVED:
             if (error) {
                 return state;
-            } else {
+            } else if (payload && payload.id != null) {
                 state = i.assocIn(state, ["entities", "cards", payload.id], {
                     ...state.entities.cards[payload.id],
                     ...payload
@@ -216,13 +193,11 @@ export default function(state = initialState, { type, payload, error }) {
                 }
                 return state;
             }
+            return state;
         case SET_LABELED:
             if (error) {
                 return state;
-            } else {
-                if (payload.id == null) {
-                    return state;
-                }
+            } else if (payload && payload.id != null) {
                 state = i.assocIn(state, ["entities", "cards", payload.id], {
                     ...state.entities.cards[payload.id],
                     ...payload
@@ -234,10 +209,7 @@ export default function(state = initialState, { type, payload, error }) {
                 }
                 return state;
             }
-        case ADD_UNDO:
-            return { ...state, undos: state.undos.concat(payload) };
-        case DISMISS_UNDO:
-            return { ...state, undos: state.undos.filter(undo => undo.id !== payload) };
+            return state;
         default:
             return state;
     }

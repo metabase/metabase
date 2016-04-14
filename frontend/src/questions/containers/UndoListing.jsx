@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 
 import S from "./UndoListing.css";
 
-import { dismissUndo, performUndo } from "../questions";
+import { dismissUndo, performUndo } from "../undo";
 import { getUndos } from "../selectors";
 
 import Icon from "metabase/components/Icon";

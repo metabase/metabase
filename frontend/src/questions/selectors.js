@@ -161,4 +161,4 @@ export const getSectionName = createSelector(
     }
 );
 
-export const getUndos = (state) => state.questions.undos;
+export const getUndos = (state) => state.undo;
