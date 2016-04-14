@@ -6,6 +6,9 @@ import _ from "underscore";
 // if field is in an FK table, use dot notation
 // if field is nested, use arrow notation
 // fields are quoted?
+export function formatExpression(expression, fields) {
+    return "TODO";
+}
 
 
 // str -> tokens

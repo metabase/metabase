@@ -3,12 +3,16 @@ import _ from "underscore";
 
 import Icon from "metabase/components/Icon.jsx";
 import IconBorder from "metabase/components/IconBorder.jsx";
+import Tooltip from "metabase/components/Tooltip.jsx";
+
+import { formatExpression } from "metabase/lib/expressions";
 
 
 export default class Expressions extends Component {
 
     static propTypes = {
         expressions: PropTypes.object,
+        tableMetadata: PropTypes.object,
         onAddExpression: PropTypes.func.isRequired,
         onEditExpression: PropTypes.func.isRequired
     };
@@ -26,7 +30,12 @@ export default class Expressions extends Component {
                 <div className="pb1 h6 text-uppercase text-grey-3 text-bold">Custom fields</div>
 
                 { sortedNames && sortedNames.map(name =>
-                    <div data-metabase-event={"QueryBuilder;Show Edit Custom Field"} key={name} className="pb1 text-brand text-bold cursor-pointer" onClick={() => onEditExpression(name)}>{name}</div>
+                    <div key={name} className="pb1 text-brand text-bold cursor-pointer flex flex-row align-center justify-between" onClick={() => onEditExpression(name)}>
+                        <span>{name}</span>
+                        <Tooltip tooltip={formatExpression(expressions[name])}>
+                            <span className="QuestionTooltipTarget" />
+                        </Tooltip>
+                    </div>
                 )}
 
                 <a data-metabase-event={"QueryBuilder;Show Add Custom Field"} className="text-grey-2 text-bold flex align-center text-grey-4-hover cursor-pointer no-decoration transition-color" onClick={() => onAddExpression()}>

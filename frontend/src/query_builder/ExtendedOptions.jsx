@@ -184,8 +184,12 @@ export default class ExtendedOptions extends Component {
                     {_.contains(tableMetadata.db.features, "expressions") ?
                         <Expressions
                             expressions={query.query.expressions}
+                            tableMetadata={tableMetadata}
                             onAddExpression={() => this.setState({isOpen: false, editExpression: true})}
-                            onEditExpression={(name) => this.setState({isOpen: false, editExpression: name})}
+                            onEditExpression={(name) => {
+                                this.setState({isOpen: false, editExpression: name});
+                                MetabaseAnalytics.trackEvent("QueryBuilder", "Show Edit Custom Field");
+                            }}
                         />
                     : null}
 
