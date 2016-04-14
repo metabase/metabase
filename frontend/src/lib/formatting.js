@@ -78,6 +78,8 @@ function formatTimeWithUnit(value, unit, options = {}) {
             return moment().week(value).format("wo");
         case "month-of-year": // January
             return moment().month(value - 1).format("MMMM");
+        case "quarter-of-year": // January
+            return moment().quarter(value).format("[Q]Q");
         default:
             return m.format("LLLL");
     }
