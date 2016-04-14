@@ -16,6 +16,7 @@ import SavedQuestionsApp from './containers/SavedQuestionsApp.jsx';
 import { createStore, combineReducers } from "metabase/lib/redux";
 import _ from "underscore";
 import i from "icepick";
+import moment from "moment";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import DataGrid from "metabase/lib/data_grid";
@@ -244,6 +245,7 @@ CardControllers.controller('CardDetail', [
                     // run it
                     setCard(newCard);
 
+                    MetabaseAnalytics.trackEvent("QueryBuilder", "Table Cell Click", "PK");
                 } else if (coldef.special_type === "fk") {
                     // action is on an FK column
                     let newCard = startNewCard("query", card.dataset_query.database);
@@ -255,13 +257,34 @@ CardControllers.controller('CardDetail', [
                     // run it
                     setCard(newCard);
 
+                    MetabaseAnalytics.trackEvent("QueryBuilder", "Table Cell Click", "FK");
                 } else {
                     // this is applying a filter by clicking on a cell value
                     let dataset_query = angular.copy(card.dataset_query);
                     Query.addFilter(dataset_query.query);
-                    Query.updateFilter(dataset_query.query, dataset_query.query.filter.length - 1, [filter, coldef.id, value]);
+
+                    if (coldef.unit) {
+                        // this is someone using quick filters on a datetime value
+                        let start = moment(value).format("YYYY-MM-DD");
+                        let end = start;
+                        switch(coldef.unit) {
+                            case "week": end = moment(value).add(1, "weeks").subtract(1, "days").format("YYYY-MM-DD"); break;
+                            case "month": end = moment(value).add(1, "months").subtract(1, "days").format("YYYY-MM-DD"); break;
+                            case "quarter": end = moment(value).add(1, "quarters").subtract(1, "days").format("YYYY-MM-DD"); break;
+                            case "year": start = moment(value, "YYYY").format("YYYY-MM-DD");
+                                         end = moment(value, "YYYY").add(1, "years").subtract(1, "days").format("YYYY-MM-DD"); break;
+                        }
+                        Query.updateFilter(dataset_query.query, dataset_query.query.filter.length - 1, ["BETWEEN", coldef.id, start, end]);
+
+                    } else {
+                        // quick filtering on a normal value (string/number)
+                        Query.updateFilter(dataset_query.query, dataset_query.query.filter.length - 1, [filter, coldef.id, value]);
+                    }
+
                     onQueryChanged(dataset_query);
                     runQuery();
+
+                    MetabaseAnalytics.trackEvent("QueryBuilder", "Table Cell Click", "Quick Filter");
                  }
             },
             followForeignKeyFn: function(fk) {
