@@ -5,7 +5,8 @@
             (metabase.test.data [generic-sql :as generic]
                                 [interface :as i])
             [metabase.driver.generic-sql :as sql]
-            [clojure.java.jdbc :as jdbc])
+            [clojure.java.jdbc :as jdbc]
+            [metabase.util :as u])
   (:import metabase.driver.crate.CrateDriver))
 
 (def ^:private ^:const field-base-type->sql-type
@@ -20,25 +21,32 @@
    :TextField       "string"
    :TimeField       "timestamp"})
 
+
+(defn- timestamp->CrateDateTime
+  [value]
+  (if (= (instance? java.sql.Timestamp value) true)
+    (.getTime (u/->Timestamp value))
+    value))
+
 (defn- escape-field-names
   "Escape the field-name keys in ROW-OR-ROWS."
   [row-or-rows]
   (if (sequential? row-or-rows)
     (map escape-field-names row-or-rows)
     (into {} (for [[k v] row-or-rows]
-               {(sql/escape-field-name k) v}))))
+               {(sql/escape-field-name k) (timestamp->CrateDateTime v)}))))
 
 (defn- make-load-data-fn
   "Create a `load-data!` function. This creates a function to actually insert a row or rows, wraps it with any WRAP-INSERT-FNS,
    the calls the resulting function with the rows to insert."
   [& wrap-insert-fns]
   (fn [driver dbdef tabledef]
-    (let [insert! (fn [row-or-rows]
-                    (apply jdbc/insert!
-                           (generic/database->spec driver :db dbdef)
-                           (keyword (get tabledef :table-name))
-                           :transaction? false
-                           (escape-field-names row-or-rows)))
+    (let [insert!   ((apply comp wrap-insert-fns) (fn [row-or-rows]
+                                                    (apply jdbc/insert!
+                                                           (generic/database->spec driver :db dbdef)
+                                                           (keyword (get tabledef :table-name))
+                                                           :transaction? false
+                                                           (escape-field-names row-or-rows))))
           rows      (apply list (generic/load-data-get-rows driver dbdef tabledef))]
       (insert! rows))))
 
@@ -56,7 +64,7 @@
           :create-db-sql             (constantly nil)
           :add-fk-sql                (constantly nil)
           :drop-db-if-exists-sql     (constantly nil)
-          :load-data!                (make-load-data-fn)})
+          :load-data!                (make-load-data-fn generic/load-data-add-ids)})
   i/IDatasetLoader
   (merge generic/IDatasetLoaderMixin
          {:database->connection-details database->connection-details
