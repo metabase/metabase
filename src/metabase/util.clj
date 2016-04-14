@@ -114,10 +114,6 @@
   (^String [date-format date]
    (time/unparse (->DateTimeFormatter date-format) (coerce/from-long (.getTime (->Timestamp date))))))
 
-(def ^{:arglists '([] [date])} date->yyyy-mm-dd
-  "Format DATE as a `YYYY-MM-DD` string."
-  (partial format-date "yyyy-MM-dd"))
-
 (def ^{:arglists '([] [date])} date->iso-8601
   "Format DATE a an ISO-8601 string."
   (partial format-date :date-time))
@@ -250,35 +246,6 @@
 
 ;;; ## Etc
 
-(defmacro assoc<>
-  "Like `assoc`, but associations happen sequentially; i.e. each successive binding can build
-   upon the result of the previous one using `<>`.
-
-    (assoc<> {}
-       :a 100
-       :b (+ 100 (:a <>)) ; -> {:a 100 :b 200}"
-  {:style/indent 1}
-  [object & kvs]
-  ;; wrap in a `fn` so this can be used in `->`/`->>` forms
-  `((fn [~'<>]
-      (let [~@(apply concat (for [[k v] (partition 2 kvs)]
-                              ['<> `(assoc ~'<> ~k ~v)]))]
-        ~'<>))
-    ~object))
-
-(defn format-num
-  "format a number into a more human readable form."
-  [number]
-  {:pre [(number? number)]}
-  (let [decimal-type? #(or (float? %) (decimal? %))]
-    (cond
-      ;; looks like this is a decimal number, format with precision of 2
-      (and (decimal-type? number) (not (zero? (mod number 1)))) (format "%,.2f" number)
-      ;; this is a decimal type number with no actual decimal value, so treat it as a whole number
-      (decimal-type? number) (format "%,d" (long number))
-      ;; otherwise this is a whole number
-      :else (format "%,d" number))))
-
 (defprotocol ^:private IClobToStr
   (jdbc-clob->str ^String [this]
    "Convert a Postgres/H2/SQLServer JDBC Clob to a string."))
@@ -337,19 +304,6 @@
   (if (pred? (first args)) [(first args) (next args)]
       [default args]))
 
-;; provided courtesy of Jay Fields http://blog.jayfields.com/2011/08/clojure-apply-function-to-each-value-of.html
-(defn update-values
-  "Update the values of a map by applying the given function.
-   Function expects the map value as an arg and optionally accepts additional args as passed."
-  [m f & args]
-  (reduce (fn [r [k v]] (assoc r k (apply f v args))) {} m))
-
-(defn filter-nil-values
-  "Remove any keys from a MAP when the value is `nil`."
-  [m]
-  (into {} (for [[k v] m
-                 :when (not (nil? v))]
-             {k v})))
 
 (defn is-email?
   "Is STRING a valid email address?"
@@ -477,13 +431,6 @@
   ([color-symb x]
    ((ns-resolve 'colorize.core color-symb) (pprint-to-str x))))
 
-(defmacro cond-let
-  "Like `if-let` or `when-let`, but for `cond`."
-  [binding-form then-form & more]
-  `(if-let ~binding-form ~then-form
-           ~(when (seq more)
-              `(cond-let ~@more))))
-
 (defn filtered-stacktrace
   "Get the stack trace associated with E and return it as a vector with non-metabase frames filtered out."
   [^Throwable e]
@@ -537,42 +484,6 @@
   "Simple macro which wraps the given expression in a try/catch block and ignores the exception if caught."
   [& body]
   `(try ~@body (catch Throwable ~'_)))
-
-
-(defn wrap-try-catch!
-  "Re-intern FN-SYMB as a new fn that wraps the original with a `try-catch`. Intended for debugging.
-
-     (defn z [] (throw (Exception. \"!\")))
-     (z) ; -> exception
-
-     (wrap-try-catch! 'z)
-     (z) ; -> nil; exception logged with log/error"
-  [fn-symb]
-  {:pre [(symbol? fn-symb)
-         (fn? @(resolve fn-symb))]}
-  (let [varr                    (resolve fn-symb)
-        {nmspc :ns, symb :name} (meta varr)]
-    (println (format "wrap-try-catch! %s/%s" nmspc symb))
-    (intern nmspc symb (wrap-try-catch @varr fn-symb))))
-
-(defn ns-wrap-try-catch!
-  "Re-intern all functions in NAMESPACE as ones that wrap the originals with a `try-catch`.
-   Defaults to the current namespace. You may optionally exclude a set of symbols using the kwarg `:exclude`.
-
-     (ns-wrap-try-catch!)
-     (ns-wrap-try-catch! 'metabase.driver)
-     (ns-wrap-try-catch! 'metabase.driver :exclude 'query-complete)
-
-   Intended for debugging."
-  {:arglists '([namespace? :exclude & excluded-symbs])}
-  [& args]
-  (let [[nmspc args] (optional #(try-apply the-ns [%]) args *ns*)
-        excluded     (when (= (first args) :exclude)
-                       (set (rest args)))]
-    (doseq [[symb varr] (ns-interns nmspc)]
-      (when (fn? @varr)
-        (when-not (contains? excluded symb)
-          (wrap-try-catch! (symbol (str (ns-name nmspc) \/ symb))))))))
 
 (defn deref-with-timeout
   "Call `deref` on a FUTURE and throw an exception if it takes more than TIMEOUT-MS."

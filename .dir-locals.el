@@ -15,8 +15,6 @@
                               (check 1)
                               (checkp 1)
                               (cond-as-> 2)
-                              (cond-let 0)
-                              (conda 0)
                               (context 2)
                               (create-database-definition 1)
                               (engine-case 0)
