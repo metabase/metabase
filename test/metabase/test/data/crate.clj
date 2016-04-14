@@ -52,7 +52,7 @@
          {:execute-sql!              generic/sequentially-execute-sql!
           :field-base-type->sql-type (fn [_ base-type]
                                        (field-base-type->sql-type base-type))
-          :pk-sql-type               (constantly "integer primary key")
+          :pk-sql-type               (constantly "integer")
           :create-db-sql             (constantly nil)
           :add-fk-sql                (constantly nil)
           :drop-db-if-exists-sql     (constantly nil)
@@ -60,4 +60,4 @@
   i/IDatasetLoader
   (merge generic/IDatasetLoaderMixin
          {:database->connection-details database->connection-details
-          :engine                       (constantly :crate)}))
+          :engine                     (constantly :crate)}))
