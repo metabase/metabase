@@ -21,6 +21,8 @@
                              [pulse-channel :refer [PulseChannel]]
                              [pulse-channel-recipient :refer [PulseChannelRecipient]]
                              [query-execution :refer [QueryExecution]]
+                             [raw-table :refer [RawTable]]
+                             [raw-column :refer [RawColumn]]
                              [revision :refer [Revision]]
                              [segment :refer [Segment]]
                              [session :refer [Session]]
@@ -35,6 +37,8 @@
    This is done so we make sure that we load load instances of entities before others
    that might depend on them, e.g. `Databases` before `Tables` before `Fields`."
   [Database
+   RawTable
+   RawColumn
    User
    Setting
    Dependency
