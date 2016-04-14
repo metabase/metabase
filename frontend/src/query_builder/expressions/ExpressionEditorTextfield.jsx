@@ -30,7 +30,7 @@ function getErrorToken(tokens) {
 export default class ExpressionEditorTextfield extends Component {
     constructor(props, context) {
         super(props, context);
-        _.bindAll(this, 'onInputChange', 'onInputKeyDown', 'onInputBlur');
+        _.bindAll(this, 'onInputChange', 'onInputKeyDown', 'onInputBlur', 'onSuggestionAccepted', 'onSuggestionMouseDown');
     }
 
     static propTypes = {
@@ -76,24 +76,38 @@ export default class ExpressionEditorTextfield extends Component {
         }
     }
 
+    onSuggestionAccepted() {
+        let inputElement = document.getElementById('react_qb_expression_input'),
+            suggestion   = this.state.suggestions[this.state.highlightedSuggestion].name,
+            tokenAtPoint = tokenAtPosition(this.state.tokens, inputElement.selectionStart);
+
+        console.log('replacing:', tokenAtPoint, 'with:', suggestion);
+
+        let expression = this.state.expressionString.substring(0, tokenAtPoint.start) + suggestion + this.state.expressionString.substring(tokenAtPoint.end, this.state.expressionString.length);
+
+        // hand off to the code that deals with text change events which will trigger parsing and new autocomplete suggestions
+        inputElement.value = expression + ' ';
+        this.onInputChange(); // add a blank space after end of token
+
+        this.setState({
+            highlightedSuggestion: 0
+        });
+    }
+
+    onSuggestionMouseDown(event) {
+        // when a suggestion is clicked, we'll highlight the clicked suggestion and then hand off to the same code that deals with ENTER / TAB keydowns
+        event.preventDefault();
+
+        this.setState({
+            highlightedSuggestion: parseInt(event.target.getAttribute('data-i'))
+        }, this.onSuggestionAccepted);
+    }
+
     onInputKeyDown(event) {
         if (!this.state.suggestions.length) return;
 
         if (event.keyCode === KEYCODE_ENTER || event.keyCode === KEYCODE_TAB) {
-            let suggestion = this.state.suggestions[this.state.highlightedSuggestion].name;
-            let tokenAtPoint = tokenAtPosition(this.state.tokens, event.target.selectionStart);
-
-            console.log('replacing:', tokenAtPoint, 'with:', suggestion);
-
-            let expression = this.state.expressionString.substring(0, tokenAtPoint.start) + suggestion + this.state.expressionString.substring(tokenAtPoint.end, this.state.expressionString.length);
-
-            // hand off to the code that deals with text change events which will trigger parsing and new autocomplete suggestions
-            event.target.value = expression + ' ';
-            this.onInputChange(event); // add a blank space after end of token
-
-            this.setState({
-                highlightedSuggestion: 0
-            });
+            this.onSuggestionAccepted();
 
         } else if (event.keyCode === KEYCODE_UP) {
             this.setState({
@@ -120,8 +134,10 @@ export default class ExpressionEditorTextfield extends Component {
         this.props.onChange(this.state.parsedExpression, this.state.expressionString);
     }
 
-    onInputChange(event) {
-        let expression = event.target.value;
+    onInputChange() {
+        let inputElement = document.getElementById('react_qb_expression_input');
+
+        let expression = inputElement.value;
 
         var errorMessage = null,
             tokens = [],
@@ -142,7 +158,7 @@ export default class ExpressionEditorTextfield extends Component {
 
             console.log('errorMessage: ', errorMessage);
 
-            let cursorPosition = event.target.selectionStart;
+            let cursorPosition = inputElement.selectionStart;
             let tokenAtPoint = tokenAtPosition(tokens, cursorPosition);
             console.log('tokenAtPoint:', tokenAtPoint);
 
@@ -184,6 +200,7 @@ export default class ExpressionEditorTextfield extends Component {
         return (
             <div>
                 <input
+                    id="react_qb_expression_input"
                     className="my1 p1 input block full h4 text-dark"
                     type="text"
                     placeholder={placeholder}
@@ -195,25 +212,31 @@ export default class ExpressionEditorTextfield extends Component {
                     focus={true}
                 />
                 {this.state.suggestions.length ?
-                    <Popover 
-                        className="p2 not-rounded border-dark"
-                        hasArrow={false}
-                        tetherOptions={{
-                            attachment: 'top left',
-                            targetAttachment: 'bottom left',
-                            targetOffset: '0 '+((this.state.expressionString.length / 2) * 6)
-                        }}
-                    >
-                        <div style={{minWidth: 150}}>
-                            <h5 style={{marginBottom: 2}} className="h6 text-grey-2">{this.state.suggestionsTitle}</h5>
-                            <ul>
-                                {this.state.suggestions.map((suggestion, i) =>
-                                    <li style={{paddingTop: "2px", paddingBottom: "2px"}} className={cx({"text-bold text-brand": i == this.state.highlightedSuggestion})}>{suggestion.name}</li>
-                                )}
-                            </ul>
-                        </div>
-                    </Popover>
-                : null}
+                 <Popover
+                     className="p2 not-rounded border-dark"
+                     hasArrow={false}
+                     tetherOptions={{
+                             attachment: 'top left',
+                             targetAttachment: 'bottom left',
+                             targetOffset: '0 '+((this.state.expressionString.length / 2) * 6)
+                         }}
+                 >
+                     <div style={{minWidth: 150}}>
+                         <h5 style={{marginBottom: 2}} className="h6 text-grey-2">{this.state.suggestionsTitle}</h5>
+                         <ul>
+                             {this.state.suggestions.map((suggestion, i) =>
+                                 <li style={{paddingTop: "2px", paddingBottom: "2px", cursor: "pointer"}}
+                                     className={cx({"text-bold text-brand": i === this.state.highlightedSuggestion})}
+                                     data-i={i}
+                                     onMouseDown={this.onSuggestionMouseDown}
+                                 >
+                                     {suggestion.name}
+                                 </li>
+                              )}
+                         </ul>
+                     </div>
+                 </Popover>
+                 : null}
             </div>
         );
     }
