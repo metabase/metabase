@@ -9,6 +9,7 @@
             [metabase.driver :as driver]
             [metabase.models.raw-column :as raw-column]
             [metabase.models.raw-table :as raw-table]
+            [metabase.sync-database.interface :as i]
             [metabase.util :as u]))
 
 (defn- named-table
@@ -130,17 +131,18 @@
                     (assoc table-def :columns [])
                     ;; static schema databases get introspected now
                     (u/prog1 (driver/describe-table driver database table-def)
-                      (schema/validate driver/DescribeTable <>)))
+                      (schema/validate i/DescribeTable <>)))
         ;; TODO: we should update drivers to return :columns instead of :fields
         table-def (set/rename-keys table-def {:fields :columns})]
 
     ;; save the latest updates from the introspection
+    ;; TODO: need to account for case where table may be removed
     (update-raw-table! raw-tbl table-def)
 
     ;; if we support FKs then try updating those as well
     (when (contains? (driver/features driver) :foreign-keys)
       (when-let [table-fks (u/prog1 (driver/describe-table-fks driver database table-def)
-                             (schema/validate driver/DescribeTableFKs <>))]
+                             (schema/validate i/DescribeTableFKs <>))]
         (save-all-table-fks! raw-tbl table-fks)))))
 
 
@@ -150,7 +152,7 @@
   [driver {database-id :id, :as database}]
   (log/info (u/format-color 'magenta "Introspecting schema on %s database '%s' ..." (name driver) (:name database)))
   (let [{:keys [tables]} (u/prog1 (driver/describe-database driver database)
-                           (schema/validate driver/DescribeDatabase <>))
+                           (schema/validate i/DescribeDatabase <>))
         ;; This is a protection against cases where the returned table-def has no :schema key
         ;; TODO: may be better to just enforce this in the output from describe-database
         tables           (map #(update % :schema identity) tables)
@@ -167,7 +169,7 @@
                             (assoc table-def :columns [])
                             ;; static schema databases get introspected now
                             (u/prog1 (driver/describe-table driver database table-def)
-                              (schema/validate driver/DescribeTable <>)))
+                              (schema/validate i/DescribeTable <>)))
                 ;; TODO: we should update drivers to return :columns instead of :fields
                 table-def (set/rename-keys table-def {:fields :columns})]
             (if-let [raw-tbl (get existing-tables (select-keys table-def [:schema :name]))]
@@ -181,11 +183,11 @@
             (log/info (u/format-color 'magenta "%s Synced table '%s'." (u/emoji-progress-bar @finished-tables-count tables-count) (named-table table-schema table-name)))))))
 
     ;; any tables/columns that previously existed but aren't included any more get disabled
-    (let [removed-tables (set/difference (set (keys existing-tables))
-                                         (set (mapv #(select-keys % [:schema :name]) tables)))]
+    (when-let [removed-tables (not-empty (set/difference (set (keys existing-tables))
+                                                         (set (mapv #(select-keys % [:schema :name]) tables))))]
       (log/info (u/format-color 'cyan "Disabled tables: %s" (mapv #(named-table (:schema %) (:name %)) removed-tables)))
       (disable-raw-tables! (for [removed-table removed-tables]
-                                      (:id (get existing-tables removed-table)))))
+                             (:id (get existing-tables removed-table)))))
 
     ;; handle any FK syncing
     ;; NOTE: this takes place after basic schemas are in place because we need those in place for references
@@ -193,7 +195,7 @@
       (doseq [{table-schema :schema, table-name :name, :as table-def} tables]
         (try
           (when-let [table-fks (u/prog1 (driver/describe-table-fks driver database table-def)
-                                 (schema/validate driver/DescribeTableFKs <>))]
+                                 (schema/validate i/DescribeTableFKs <>))]
             (when-let [raw-tbl (db/sel :one raw-table/RawTable :database_id database-id, :schema table-schema, :name table-name)]
               (save-all-table-fks! raw-tbl table-fks)))
           (catch Throwable t

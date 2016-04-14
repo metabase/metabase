@@ -1,5 +1,6 @@
 (ns metabase.sync-database.sync
-  (:require [clojure.string :as s]
+  (:require [clojure.set :as set]
+            [clojure.string :as s]
             [clojure.tools.logging :as log]
             [korma.core :as k]
             [metabase.db :as db]
@@ -8,8 +9,7 @@
             [metabase.models.raw-column :as raw-column]
             [metabase.models.raw-table :as raw-table]
             [metabase.models.table :as table]
-            [metabase.util :as u]
-            [clojure.set :as set]))
+            [metabase.util :as u]))
 
 
 (def ^:private ^:dynamic *sync-dynamic* false)

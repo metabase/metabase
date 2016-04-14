@@ -12,6 +12,7 @@
             [metabase.models.field :as field]
             [metabase.models.field-values :as field-values]
             [metabase.models.table :as table]
+            [metabase.sync-database.interface :as i]
             [metabase.util :as u]))
 
 (def ^:private ^:const percent-valid-url-threshold
@@ -171,7 +172,7 @@
     ;; TODO: this call should include the database
     (when-let [table-stats (u/prog1 (driver/analyze-table driver tbl new-field-ids)
                              (when <>
-                               (schema/validate driver/AnalyzeTable <>)))]
+                               (schema/validate i/AnalyzeTable <>)))]
       ;; update table row count
       (when (:row_count table-stats)
         (db/upd table/Table table-id :rows (:row_count table-stats)))
@@ -200,8 +201,6 @@
    This is dependent on what each database driver supports, but includes things like cardinality testing and table row counting.
    The bulk of the work is done by the `(analyze-table ...)` function on the IDriver protocol."
   [driver {database-id :id, :as database}]
-  ;; TODO: how do we track which field ids are NEW so that we can pass that into our analyze function?
-  ;;       but eventually this will need to change and expand so that we are effectively running this on virtual tables
   (log/info (u/format-color 'blue "Analyzing data in %s database '%s' (this may take a while) ..." (name driver) (:name database)))
 
   (let [tables                (db/sel :many table/Table :db_id database-id, :active true)
@@ -214,6 +213,6 @@
           (log/error "Unexpected error analyzing table" t))
         (finally
           (swap! finished-tables-count inc)
-          (log/debug (u/format-color 'blue "%s Analyzed table '%s'." (u/emoji-progress-bar @finished-tables-count tables-count) table-name))))))
+          (log/info (u/format-color 'blue "%s Analyzed table '%s'." (u/emoji-progress-bar @finished-tables-count tables-count) table-name))))))
 
   (log/info (u/format-color 'blue "Analysis of %s database '%s' completed." (name driver) (:name database))))

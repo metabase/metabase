@@ -9,6 +9,7 @@
             [metabase.models.raw-table :as raw-table]
             [metabase.models.table :as table]
             [metabase.sync-database.sync :as sync]
+            [metabase.sync-database.interface :as i]
             [metabase.util :as u]))
 
 
@@ -66,7 +67,7 @@
   (when-let [raw-tbl (db/sel :one raw-table/RawTable :id raw-table-id)]
     (try
       (let [table-def (u/prog1 (driver/describe-table driver database (select-keys existing-table [:name :schema]))
-                        (schema/validate driver/DescribeTable <>))]
+                        (schema/validate i/DescribeTable <>))]
         (-> (table/update-table existing-table raw-tbl)
             (save-table-fields! (:fields table-def))))
       ;; NOTE: dynamic schemas don't have FKs
@@ -94,7 +95,7 @@
     (doseq [{raw-table-id :id, :as raw-tbl} (filter #(not= "_metabase_metadata" (s/lower-case (:name %))) raw-tables)]
       (try
         (let [table-def (u/prog1 (driver/describe-table driver database (select-keys raw-tbl [:name :schema]))
-                          (schema/validate driver/DescribeTable <>))]
+                          (schema/validate i/DescribeTable <>))]
           (if-let [existing-table (get existing-tables raw-table-id)]
             ;; table already exists, update it
             (->> (table/update-table existing-table raw-tbl)
