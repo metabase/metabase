@@ -316,11 +316,16 @@
 
 (defn- render:sparkline
   [_ {:keys [rows cols]}]
-  (let [xs     (for [row  rows
+  (let [ft-row (if (datetime-field? (first cols))
+                 #(.getTime ^Date (u/->Timestamp %))
+                 identity)
+        rows   (if (> (ft-row (first (first rows)))
+                      (ft-row (first (last rows))))
+                 (reverse rows)
+                 rows)
+        xs     (for [row  rows
                      :let [x (first row)]]
-                 (if (datetime-field? (first cols))
-                   (.getTime ^Date (u/->Timestamp x))
-                   x))
+                 (ft-row x))
         xmin   (apply min xs)
         xmax   (apply max xs)
         xrange (- xmax xmin)
