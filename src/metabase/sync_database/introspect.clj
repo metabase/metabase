@@ -115,10 +115,10 @@
       (k/update raw-table/RawTable
         (k/where {:id [in table-ids]})
         (k/set-fields {:active false}))
-      ;; whenever a table is disabled we need to disable all of its fields too
+      ;; whenever a table is disabled we need to disable all of its fields too (and remove fk references)
       (k/update raw-column/RawColumn
         (k/where {:raw_table_id [in table-ids]})
-        (k/set-fields {:active false})))))
+        (k/set-fields {:active false, :fk_target_column_id nil})))))
 
 
 (defn introspect-raw-table-and-update!
@@ -154,12 +154,11 @@
   (let [{:keys [tables]} (u/prog1 (driver/describe-database driver database)
                            (schema/validate i/DescribeDatabase <>))
         ;; This is a protection against cases where the returned table-def has no :schema key
-        ;; TODO: may be better to just enforce this in the output from describe-database
         tables           (map #(update % :schema identity) tables)
         existing-tables  (into {} (for [{:keys [name schema] :as table} (db/sel :many :fields [raw-table/RawTable :id :schema :name] :database_id database-id)]
                                     {{:name name, :schema schema} table}))]
 
-    ;; introspect each table and save off the schema details we find, including fks
+    ;; introspect each table and save off the schema details we find
     (let [tables-count          (count tables)
           finished-tables-count (atom 0)]
       (doseq [{table-schema :schema, table-name :name, :as table-def} tables]
@@ -176,7 +175,6 @@
               (update-raw-table! raw-tbl table-def)
               (create-raw-table! (:id database) table-def)))
           (catch Throwable t
-            ;; TODO: we should capture this and save it on the RawTable
             (log/error (u/format-color 'red "Unexpected error introspecting table schema: %s" (named-table table-schema table-name)) t))
           (finally
             (swap! finished-tables-count inc)
@@ -190,7 +188,7 @@
                              (:id (get existing-tables removed-table)))))
 
     ;; handle any FK syncing
-    ;; NOTE: this takes place after basic schemas are in place because we need those in place for references
+    ;; NOTE: this takes place after tables/fields are in place because we need the ids of the tables/fields to do FK references
     (when (contains? (driver/features driver) :foreign-keys)
       (doseq [{table-schema :schema, table-name :name, :as table-def} tables]
         (try

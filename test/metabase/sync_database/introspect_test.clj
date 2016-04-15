@@ -5,7 +5,10 @@
             [metabase.models.hydrate :as hydrate]
             [metabase.models.raw-column :refer [RawColumn], :as raw-column]
             [metabase.models.raw-table :refer [RawTable], :as raw-table]
-            [metabase.test.util :as tu]))
+            [metabase.sync-database.introspect :as introspect]
+            [metabase.sync-database.utils :as sync-test]
+            [metabase.test.util :as tu])
+  (:import (metabase.sync_database.utils SyncTestDriver)))
 
 (tu/resolve-private-fns metabase.sync-database.introspect
   save-all-table-columns! save-all-table-fks! create-raw-table! update-raw-table! disable-raw-tables!)
@@ -17,85 +20,85 @@
 ;; save-all-table-fks
 ;; test case of multi schema with repeating table names
 (expect
-  [[{:id                  true,
-     :raw_table_id        true,
-     :name                "id",
-     :active              true,
+  [[{:id                  true
+     :raw_table_id        true
+     :name                "id"
+     :active              true
      :base_type           :IntegerField
-     :is_pk               false,
-     :fk_target_column_id false,
-     :details             {},
-     :created_at          true,
+     :is_pk               false
+     :fk_target_column_id false
+     :details             {}
+     :created_at          true
      :updated_at          true}
-    {:id                  true,
-     :raw_table_id        true,
-     :name                "user_id",
-     :active              true,
+    {:id                  true
+     :raw_table_id        true
+     :name                "user_id"
+     :active              true
      :base_type           :IntegerField
-     :is_pk               false,
-     :fk_target_column_id false,
-     :details             {},
-     :created_at          true,
+     :is_pk               false
+     :fk_target_column_id false
+     :details             {}
+     :created_at          true
      :updated_at          true}]
-   [{:id                  true,
-     :raw_table_id        true,
-     :name                "id",
-     :active              true,
+   [{:id                  true
+     :raw_table_id        true
+     :name                "id"
+     :active              true
      :base_type           :IntegerField
-     :is_pk               false,
-     :fk_target_column_id false,
-     :details             {},
-     :created_at          true,
+     :is_pk               false
+     :fk_target_column_id false
+     :details             {}
+     :created_at          true
      :updated_at          true}
-    {:id                  true,
-     :raw_table_id        true,
-     :name                "user_id",
-     :active              true,
+    {:id                  true
+     :raw_table_id        true
+     :name                "user_id"
+     :active              true
      :base_type           :IntegerField
-     :is_pk               false,
-     :fk_target_column_id true,
-     :details             {},
-     :created_at          true,
+     :is_pk               false
+     :fk_target_column_id true
+     :details             {}
+     :created_at          true
      :updated_at          true}]
-   [{:id                  true,
-     :raw_table_id        true,
-     :name                "id",
-     :active              true,
+   [{:id                  true
+     :raw_table_id        true
+     :name                "id"
+     :active              true
      :base_type           :IntegerField
-     :is_pk               false,
-     :fk_target_column_id false,
-     :details             {},
-     :created_at          true,
+     :is_pk               false
+     :fk_target_column_id false
+     :details             {}
+     :created_at          true
      :updated_at          true}
-    {:id                  true,
-     :raw_table_id        true,
-     :name                "user_id",
-     :active              true,
+    {:id                  true
+     :raw_table_id        true
+     :name                "user_id"
+     :active              true
      :base_type           :IntegerField
-     :is_pk               false,
-     :fk_target_column_id false,
-     :details             {},
-     :created_at          true,
+     :is_pk               false
+     :fk_target_column_id false
+     :details             {}
+     :created_at          true
      :updated_at          true}]
-   [{:id                  true,
-     :raw_table_id        true,
-     :name                "id",
-     :active              true,
+   [{:id                  true
+     :raw_table_id        true
+     :name                "id"
+     :active              true
      :base_type           :IntegerField
-     :is_pk               false,
-     :fk_target_column_id false,
-     :details             {},
-     :created_at          true,
+     :is_pk               false
+     :fk_target_column_id false
+     :details             {}
+     :created_at          true
      :updated_at          true}
-    {:id                  true,
-     :raw_table_id        true,
-     :name                "user_id",
-     :active              true,
+    {:id                  true
+     :raw_table_id        true
+     :name                "user_id"
+     :active              true
      :base_type           :IntegerField
-     :is_pk               false,
-     :fk_target_column_id true,
-     :details             {},
-     :created_at          true,
+     :is_pk               false
+     :fk_target_column_id true
+     :details             {}
+     :created_at          true
      :updated_at          true}]]
   (tu/with-temp* [database/Database  [{database-id :id}]
                   raw-table/RawTable  [{raw-table-id1 :id, :as table} {:database_id database-id, :schema "customer1", :name "photos"}]
@@ -130,75 +133,75 @@
 ;; save-all-table-columns
 (expect
   [[]
-   [{:id           true,
-     :raw_table_id true,
-     :active       true,
-     :name         "beak_size",
+   [{:id           true
+     :raw_table_id true
+     :active       true
+     :name         "beak_size"
      :base_type    :IntegerField
      :is_pk        true
      :fk_target_column_id false
-     :details      {:inches 7, :special-type "category"},
-     :created_at   true,
+     :details      {:inches 7, :special-type "category"}
+     :created_at   true
      :updated_at   true}]
-   [{:id           true,
-     :raw_table_id true,
-     :active       true,
-     :name         "beak_size",
+   [{:id           true
+     :raw_table_id true
+     :active       true
+     :name         "beak_size"
      :base_type    :IntegerField
      :is_pk        false
      :fk_target_column_id false
-     :details      {:inches 8},
-     :created_at   true,
+     :details      {:inches 8}
+     :created_at   true
      :updated_at   true}
-    {:id           true,
-     :raw_table_id true,
-     :active       true,
-     :name         "num_feathers",
+    {:id           true
+     :raw_table_id true
+     :active       true
+     :name         "num_feathers"
      :base_type    :IntegerField
      :is_pk        false
      :fk_target_column_id false
-     :details      {:count 10000},
-     :created_at   true,
+     :details      {:count 10000}
+     :created_at   true
      :updated_at   true}]
-   [{:id           true,
-     :raw_table_id true,
-     :active       false,
-     :name         "beak_size",
+   [{:id           true
+     :raw_table_id true
+     :active       false
+     :name         "beak_size"
      :base_type    :IntegerField
      :is_pk        false
      :fk_target_column_id false
-     :details      {:inches 8},
-     :created_at   true,
+     :details      {:inches 8}
+     :created_at   true
      :updated_at   true}
-    {:id           true,
-     :raw_table_id true,
-     :active       true,
-     :name         "num_feathers",
+    {:id           true
+     :raw_table_id true
+     :active       true
+     :name         "num_feathers"
      :base_type    :IntegerField
      :is_pk        false
      :fk_target_column_id false
-     :details      {:count 12000},
-     :created_at   true,
+     :details      {:count 12000}
+     :created_at   true
      :updated_at   true}]
-   [{:id           true,
-     :raw_table_id true,
-     :active       true,
-     :name         "beak_size",
+   [{:id           true
+     :raw_table_id true
+     :active       true
+     :name         "beak_size"
      :base_type    :IntegerField
      :is_pk        false
      :fk_target_column_id false
-     :details      {:inches 8},
-     :created_at   true,
+     :details      {:inches 8}
+     :created_at   true
      :updated_at   true}
-    {:id           true,
-     :raw_table_id true,
-     :active       true,
-     :name         "num_feathers",
+    {:id           true
+     :raw_table_id true
+     :active       true
+     :name         "num_feathers"
      :base_type    :IntegerField
      :is_pk        false
      :fk_target_column_id false
-     :details      {:count 12000},
-     :created_at   true,
+     :details      {:count 12000}
+     :created_at   true
      :updated_at   true}]]
   (tu/with-temp* [database/Database  [{database-id :id}]
                   raw-table/RawTable [{raw-table-id :id, :as table} {:database_id database-id}]]
@@ -268,18 +271,18 @@
     [(get-tables database-id)
      ;; now add a table
      (do
-       (create-raw-table! database-id {:schema nil,
-                                       :name "users",
+       (create-raw-table! database-id {:schema nil
+                                       :name "users"
                                        :details {:a "b"}
                                        :columns []})
        (get-tables database-id))
      ;; now add another table, this time with a couple columns and some fks
      (do
-       (create-raw-table! database-id {:schema "aviary",
-                                       :name "toucanery",
+       (create-raw-table! database-id {:schema "aviary"
+                                       :name "toucanery"
                                        :details {:owner "Cam"}
-                                       :columns [{:name      "beak_size",
-                                                  :base-type :IntegerField,
+                                       :columns [{:name      "beak_size"
+                                                  :base-type :IntegerField
                                                   :pk?       true
                                                   :details   {:inches 7}}]})
        (get-tables database-id))]))
@@ -316,18 +319,18 @@
      :updated_at  true}]]
   (tu/with-temp* [database/Database  [{database-id :id, :as db}]
                   raw-table/RawTable [table {:database_id database-id
-                                             :schema      "aviary",
-                                             :name        "toucanery",
+                                             :schema      "aviary"
+                                             :name        "toucanery"
                                              :details     {:owner "Cam"}}]]
     [(get-tables database-id)
      ;; now update the table
      (do
-       (update-raw-table! table {:schema  "aviary",
-                                 :name    "toucanery",
+       (update-raw-table! table {:schema  "aviary"
+                                 :name    "toucanery"
                                  :details {:owner "Cam", :sqft 10000}
-                                 :columns [{:name      "beak_size",
-                                            :base-type :IntegerField,
-                                            :pk?       true,
+                                 :columns [{:name      "beak_size"
+                                            :base-type :IntegerField
+                                            :pk?       true
                                             :details   {:inches 7}}]})
        (get-tables database-id))]))
 
@@ -340,7 +343,16 @@
      :schema      "a"
      :name        "1"
      :details     {}
-     :columns     []
+     :columns     [{:raw_table_id true
+                    :name "size"
+                    :fk_target_column_id false
+                    :updated_at true
+                    :details {}
+                    :active true
+                    :id true
+                    :is_pk false
+                    :created_at true
+                    :base_type :IntegerField}]
      :created_at  true
      :updated_at  true}
     {:id          true
@@ -355,7 +367,7 @@
                     :name         "beak_size"
                     :base_type    :IntegerField
                     :is_pk        false
-                    :fk_target_column_id false
+                    :fk_target_column_id true
                     :details      {}
                     :created_at   true
                     :updated_at   true}]
@@ -367,7 +379,16 @@
      :schema      "a"
      :name        "1"
      :details     {}
-     :columns     []
+     :columns     [{:raw_table_id true
+                    :name "size"
+                    :fk_target_column_id false
+                    :updated_at true
+                    :details {}
+                    :active false
+                    :id true
+                    :is_pk false
+                    :created_at true
+                    :base_type :IntegerField}]
      :created_at  true
      :updated_at  true}
     {:id          true
@@ -390,8 +411,9 @@
      :updated_at  true}]]
   (tu/with-temp* [database/Database    [{database-id :id, :as db}]
                   raw-table/RawTable   [t1 {:database_id database-id, :schema "a", :name "1"}]
+                  raw-column/RawColumn [c1 {:raw_table_id (:id t1), :name "size", :base_type :IntegerField}]
                   raw-table/RawTable   [t2 {:database_id database-id, :schema "a", :name "2"}]
-                  raw-column/RawColumn [c1 {:raw_table_id (:id t2), :name "beak_size", :base_type :IntegerField}]]
+                  raw-column/RawColumn [c2 {:raw_table_id (:id t2), :name "beak_size", :base_type :IntegerField, :fk_target_column_id (:id c1)}]]
     [(get-tables database-id)
      (do
        (disable-raw-tables! [(:id t1) (:id t2)])
@@ -399,5 +421,31 @@
 
 
 ;; TODO: introspect-raw-table-and-update!
-;; TODO: introspect-database-and-update-raw-tables!
-;; make sure to test case where FK relationship tables are out of order
+;; TODO: test case where table being synced has been removed
+
+;; introspect-database-and-update-raw-tables!
+(expect
+  [[]
+   sync-test/sync-test-raw-tables
+   sync-test/sync-test-raw-tables
+   (conj (vec (drop-last sync-test/sync-test-raw-tables))
+         (-> (last sync-test/sync-test-raw-tables)
+             (assoc :active false)
+             (update :columns #(map (fn [col]
+                                      (assoc col
+                                        :active              false
+                                        :fk_target_column_id false)) %))))]
+  (tu/with-temp* [database/Database [{database-id :id, :as db} {:engine :sync-test}]]
+    [(get-tables database-id)
+     ;; first sync should add all the tables, fields, etc
+     (do
+       (introspect/introspect-database-and-update-raw-tables! (SyncTestDriver.) db)
+       (get-tables database-id))
+     ;; run the sync a second time to see how we respond to repeat syncing
+     (do
+       (introspect/introspect-database-and-update-raw-tables! (SyncTestDriver.) db)
+       (get-tables database-id))
+     ;; one more time, but this time we'll remove a table and make sure that's handled properly
+     (do
+       (introspect/introspect-database-and-update-raw-tables! (SyncTestDriver.) (assoc db :exclude-tables #{"roles"}))
+       (get-tables database-id))]))
