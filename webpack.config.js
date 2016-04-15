@@ -64,7 +64,8 @@ var CSS_CONFIG = {
         "[name]__[local]___[hash:base64:5]" :
         "[hash:base64:5]",
     restructuring: false,
-    compatibility: true
+    compatibility: true,
+    importLoaders: 1
 }
 
 var config = module.exports = {
@@ -121,7 +122,7 @@ var config = module.exports = {
         extensions: ["", ".webpack.js", ".web.js", ".js", ".jsx", ".css"],
         alias: {
             'metabase':             SRC_PATH,
-            'style':                SRC_PATH + '/css/core',
+            'style':                SRC_PATH + '/css/core/index.css',
 
             // angular
             'angular':              __dirname + '/node_modules/angular/angular.min.js',

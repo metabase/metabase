@@ -1,7 +1,7 @@
 @import '../Questions.css';
 
 :local(.searchHeader) {
-    composes: flex align-center from "style/flex";
+    composes: flex align-center from "style";
 }
 
 :local(.searchIcon) {
@@ -9,7 +9,7 @@
 }
 
 :local(.searchBox) {
-    composes: borderless from "style/bordered";
+    composes: borderless from "style";
     color: var(--title-color);
     font-size: 20px;
 }

@@ -6,11 +6,7 @@
 }
 
 :local(.header) {
-    composes: mt4 mb2 from "style/spacing";
+    composes: mt4 mb2 from "style";
     color: var(--title-color);
     font-size: 24px;
-}
-
-a {
-    text-decoration: none;
 }

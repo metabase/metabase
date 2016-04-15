@@ -1,7 +1,7 @@
 @import '../Questions.css';
 
 :local(.listing) {
-    composes: m2 from "style/spacing";
+    composes: m2 from "style";
     position: fixed;
     left: 0;
     bottom: 0;
@@ -9,17 +9,17 @@
 }
 
 :local(.undo) {
-    composes: mx2 mt2 p2 from "style/spacing";
-    composes: bordered from "style/bordered";
-    composes: rounded from "style/rounded";
-    composes: shadowed from "style/shadow";
+    composes: mx2 mt2 p2 from "style";
+    composes: bordered from "style";
+    composes: rounded from "style";
+    composes: shadowed from "style";
     position: relative;
     background-color: white;
     width: 300px;
 }
 
 :local(.actions) {
-    composes: flex align-center from "style/flex";
+    composes: flex align-center from "style";
     float: right;
 }
 
@@ -27,12 +27,12 @@
 
 }
 :local(.undoButton) {
-    composes: mx2 from "style/spacing";
+    composes: mx2 from "style";
     color: var(--blue-color);
     text-transform: uppercase;
 }
 :local(.dismissButton) {
-    composes: cursor-pointer from "style/cursor";
+    composes: cursor-pointer from "style";
     color: var(--grey-1);
 }
 :local(.dismissButton):hover {

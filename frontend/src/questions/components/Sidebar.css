@@ -1,20 +1,22 @@
-@import '../../css/core/colors.css';
-
 :root {
     --item-padding: 60px;
 }
 
 :local(.sidebar) {
-    composes: pt2 pb4 from "style/spacing";
+    composes: py2 from "style";
     width: 345px;
     background-color: rgb(248, 252, 253);
     border-right: 1px solid rgb(223, 238, 245);
     color: #606E7B;
 }
 
+:local(.sidebar) a {
+    text-decoration: none;
+}
+
 :local(.item),
 :local(.sectionTitle) {
-    composes: flex align-center from "style/flex";
+    composes: flex align-center from "style";
     height: 48px;
     padding-left: var(--item-padding);
     padding-right: var(--item-padding);
@@ -25,7 +27,7 @@
 }
 
 :local(.sectionTitle) {
-    composes: my1 from "style/spacing";
+    composes: my1 from "style";
     font-size: 16px;
 }
 
@@ -41,12 +43,19 @@
 }
 
 :local(.divider) {
-    composes: my2 from "style/spacing";
-    composes: border-bottom from "style/bordered";
+    composes: my2 from "style";
+    composes: border-bottom from "style";
     margin-left: var(--item-padding);
     margin-right: var(--item-padding);
 }
 
 :local(.name) {
-    composes: ml2 from "style/spacing";
+    composes: ml2 from "style";
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow-x: hidden;
+}
+
+:local(.icon) {
+    composes: flex-no-shrink from "style";
 }

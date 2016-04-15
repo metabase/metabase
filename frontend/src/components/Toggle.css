@@ -1,5 +1,3 @@
-@import '../css/core/colors.css';
-
 :local(.toggle) {
     position: relative;
     display: inline-block;

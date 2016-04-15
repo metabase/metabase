@@ -1,14 +1,14 @@
 @import '../Questions.css';
 
 :local(.actionHeader) {
-    composes: flex align-center from "style/flex";
-    composes: my3 from "style/spacing";
+    composes: flex align-center from "style";
+    composes: my3 from "style";
     font-size: 14px;
     color: var(--blue-color);
 }
 
 :local(.selectedCount) {
-    composes: mx4 from "style/spacing";
+    composes: mx4 from "style";
 }
 
 /* ALL CHECKBOX */
@@ -22,13 +22,13 @@
 }
 
 :local(.labelButton) {
-    composes: px1 from "style/spacing";
-    composes: cursor-pointer from "style/cursor";
+    composes: px1 from "style";
+    composes: cursor-pointer from "style";
 }
 
 :local(.archiveButton) {
-    composes: px1 from "style/spacing";
-    composes: cursor-pointer from "style/cursor";
+    composes: px1 from "style";
+    composes: cursor-pointer from "style";
 }
 
 :local(.labelButton) .Icon,

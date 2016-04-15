@@ -1,10 +1,10 @@
 :local(.form) {
-    composes: flex align-center from "style/flex";
+    composes: flex align-center from "style";
 }
 
 :local(.nameInput) {
-    composes: flex-full from "style/flex";
-    composes: mx1 from "style/spacing";
+    composes: flex-full from "style";
+    composes: mx1 from "style";
 
     font-size: 18px;
     padding-top: 8px;

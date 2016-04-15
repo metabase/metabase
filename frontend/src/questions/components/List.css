@@ -5,20 +5,24 @@
     padding-right: 75px;
 }
 
+:local(.list) a {
+    text-decoration: none;
+}
+
 :local(.header) {
     composes: header from "../Questions.css";
 }
 
 :local(.item) {
-    composes: border-top from "style/bordered";
-    composes: flex align-center from "style/flex";
+    composes: border-top from "style";
+    composes: flex align-center from "style";
     padding-top: 30px;
     padding-bottom: 30px;
     position: relative;
 }
 
 :local(.itemBody) {
-    composes: flex-full from "style/flex";
+    composes: flex-full from "style";
 }
 
 :local(.itemTitle) {
@@ -27,7 +31,7 @@
 }
 
 :local(.itemName) {
-    composes: mr1 from "style/spacing";
+    composes: mr1 from "style";
 }
 
 :local(.itemTitle):hover {
@@ -35,7 +39,7 @@
 }
 
 :local(.itemSubtitle) {
-    composes: mt1 from "style/spacing";
+    composes: mt1 from "style";
     color: var(--subtitle-color);
     font-size: 14px;
 }
@@ -45,7 +49,7 @@
 }
 
 :local(.icons) {
-    composes: flex flex-row align-center from "style/flex";
+    composes: flex flex-row align-center from "style";
 }
 :local(.leftIcons) {
     composes: icons;
@@ -63,7 +67,7 @@
 }
 
 :local(.icon) {
-    composes: cursor-pointer from "style/cursor";
+    composes: cursor-pointer from "style";
     color: var(--muted-color);
 }
 
@@ -106,7 +110,7 @@
 /* TAG */
 :local(.tagIcon) {
     composes: icon;
-    composes: mx1 from "style/spacing";
+    composes: mx1 from "style";
 }
 :local(.open) :local(.tagIcon) {
     visibility: visible;
@@ -116,7 +120,7 @@
 /* FAVORITE */
 :local(.favoriteIcon) {
     composes: icon;
-    composes: mx1 from "style/spacing";
+    composes: mx1 from "style";
 }
 :local(.item.favorite) :local(.favoriteIcon) {
     visibility: visible;
@@ -126,7 +130,7 @@
 /* ARCHIVE */
 :local(.archiveIcon) {
     composes: icon;
-    composes: ml1 from "style/spacing";
+    composes: ml1 from "style";
 }
 :local(.item.archived) :local(.archiveIcon) {
     color: var(--blue-color);

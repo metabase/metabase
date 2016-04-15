@@ -6,29 +6,29 @@
 }
 
 :local(.heading) {
-    composes: p2 from "style/spacing";
-    composes: border-bottom from "style/bordered";
+    composes: p2 from "style";
+    composes: border-bottom from "style";
     font-size: 14px;
 }
 
 :local(.options) {
-    composes: py1 from "style/spacing";
+    composes: py1 from "style";
 }
 
 :local(.option) {
-    composes: cursor-pointer from "style/cursor";
+    composes: cursor-pointer from "style";
     position: relative;
 }
 
 :local(.optionContent) {
-    composes: px3 py1 from "style/spacing";
-    composes: flex align-center from "style/flex";
+    composes: px3 py1 from "style";
+    composes: flex align-center from "style";
     font-size: 18px;
     color: var(--title-color);
 }
 
 :local(.optionBackground) {
-    composes: spread from "style/layout";
+    composes: spread from "style";
     opacity: 0.1;
     background-color: currentColor;
     visibility: hidden;
@@ -45,11 +45,11 @@
 }
 
 :local(.mainIcon) {
-    composes: mr1 from "style/spacing";
+    composes: mr1 from "style";
 }
 
 :local(.removeIcon) {
-    composes: flex-align-right from "style/flex";
+    composes: flex-align-right from "style";
     visibility: hidden;
 }
 :local(.option):hover :local(.removeIcon) {

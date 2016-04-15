@@ -12,7 +12,7 @@
     flex: 0.5;
 }
 
-.flex-no-shrink {
+.flex-no-shrink, :local(.flex-no-shrink) {
     flex-shrink: 0;
 }
 
