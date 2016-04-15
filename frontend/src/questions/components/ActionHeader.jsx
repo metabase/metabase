@@ -9,9 +9,9 @@ import LabelPopover from "../containers/LabelPopover.jsx";
 
 import cx from "classnames";
 
-const ActionHeader = ({ selectedCount, allAreSelected, sectionIsArchive, setAllSelected, setArchived, labels }) =>
+const ActionHeader = ({ visibleCount, selectedCount, allAreSelected, sectionIsArchive, setAllSelected, setArchived, labels }) =>
     <div className={S.actionHeader}>
-        <Tooltip tooltip="Select all" isEnabled={!allAreSelected}>
+        <Tooltip tooltip={"Select all " + visibleCount} isEnabled={!allAreSelected}>
             <StackedCheckBox
                 checked={allAreSelected}
                 onChange={(e) => setAllSelected(e.target.checked)}

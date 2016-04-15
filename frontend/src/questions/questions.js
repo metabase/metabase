@@ -155,7 +155,6 @@ const initialState = {
 
 export default function(state = initialState, { type, payload, error }) {
     if (payload && payload.entities) {
-        // FIXME: deep merge
         state = i.assoc(state, "entities", i.merge(state.entities, payload.entities));
     }
 
@@ -167,12 +166,16 @@ export default function(state = initialState, { type, payload, error }) {
         case SET_ALL_SELECTED:
             return { ...state, selectedIds: {}, allSelected: payload };
         case SELECT_SECTION:
-            return {
-                ...state,
-                type: payload.type,
-                section: payload.section,
-                itemsBySection: i.assocIn(state.itemsBySection, [payload.type, payload.section], payload.result)
-            };
+            if (error) {
+                return i.assoc(state, "sectionError", payload);
+            } else {
+                return (i.chain(state)
+                    .assoc("type", payload.type)
+                    .assoc("section", payload.section)
+                    .assoc("sectionError", null)
+                    .assocIn(["itemsBySection", payload.type, payload.section, "items"], payload.result)
+                    .value());
+            }
         case SET_FAVORITED:
             if (error) {
                 return state;
@@ -229,17 +232,17 @@ export default function(state = initialState, { type, payload, error }) {
 }
 
 function addToSection(state, type, section, id) {
-    let items = i.getIn(state, ["itemsBySection", type, section]);
+    let items = i.getIn(state, ["itemsBySection", type, section, "items"]);
     if (items && !_.contains(items, id)) {
-        return i.setIn(state, ["itemsBySection", type, section], items.concat(id));
+        return i.setIn(state, ["itemsBySection", type, section, "items"], items.concat(id));
     }
     return state;
 }
 
 function removeFromSection(state, type, section, id) {
-    let items = i.getIn(state, ["itemsBySection", type, section]);
+    let items = i.getIn(state, ["itemsBySection", type, section, "items"]);
     if (items && _.contains(items, id)) {
-        return i.setIn(state, ["itemsBySection", type, section], items.filter(i => i !== id));
+        return i.setIn(state, ["itemsBySection", type, section, "items"], items.filter(i => i !== id));
     }
     return state;
 }

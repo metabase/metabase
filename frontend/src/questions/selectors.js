@@ -19,10 +19,25 @@ export const getSearchText          = (state) => state.questions.searchText;
 export const getSelectedIds         = (state) => state.questions.selectedIds;
 export const getAllSelected         = (state) => state.questions.allSelected
 
-export const getEntityIds = createSelector(
+const getSectionData = createSelector(
     [getItemsBySection, getEntityType, getSection],
     (itemsBySection, type, section) =>
-        i.getIn(itemsBySection, [type, section]) || []
+        i.getIn(itemsBySection, [type, section])
+);
+
+export const getSectionLoading = createSelector(
+    [getSectionData],
+    (sectionData) =>
+        !(sectionData && sectionData.items)
+);
+
+export const getSectionError = (state) =>
+    !!state.questions.sectionError;
+
+export const getEntityIds = createSelector(
+    [getSectionData],
+    (sectionData) =>
+        sectionData && sectionData.items || []
 );
 
 const getEntity = (state, props) =>
