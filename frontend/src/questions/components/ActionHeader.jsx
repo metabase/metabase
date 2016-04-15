@@ -27,7 +27,7 @@ const ActionHeader = ({ visibleCount, selectedCount, allAreSelected, sectionIsAr
             <LabelPopover
                 triggerElement={
                     <span className={S.labelButton}>
-                        <Icon name="grid" />
+                        <Icon name="label" />
                         Labels
                         <Icon name="chevrondown" width={12} height={12} />
                     </span>
@@ -35,7 +35,7 @@ const ActionHeader = ({ visibleCount, selectedCount, allAreSelected, sectionIsAr
                 labels={labels}
             />
             <span className={S.archiveButton} onClick={() => setArchived(undefined, !sectionIsArchive, true)}>
-                <Icon name="grid" />
+                <Icon name="archive" />
                 { sectionIsArchive ? "Unarchive" : "Archive" }
             </span>
         </span>

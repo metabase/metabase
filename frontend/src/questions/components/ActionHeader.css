@@ -31,7 +31,6 @@
     composes: cursor-pointer from "style/cursor";
 }
 
-
 :local(.labelButton) .Icon,
 :local(.archiveButton) .Icon {
     padding-left: 0.25em;

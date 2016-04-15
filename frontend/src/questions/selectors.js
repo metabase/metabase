@@ -111,11 +111,11 @@ export const getSectionIsArchive = createSelector(
 );
 
 const sections = [
-    { id: "all",       name: "All questions",   icon: "star" },
+    { id: "all",       name: "All questions",   icon: "all" },
     { id: "favorites", name: "Favorites",       icon: "star" },
-    { id: "recent",    name: "Recently viewed", icon: "star" },
-    { id: "saved",     name: "Saved by me",     icon: "star" },
-    { id: "popular",   name: "Most popular",    icon: "star" }
+    { id: "recent",    name: "Recently viewed", icon: "recents" },
+    { id: "saved",     name: "Saved by me",     icon: "mine" },
+    { id: "popular",   name: "Most popular",    icon: "popular" }
 ];
 
 export const getSections    = (state) => sections;

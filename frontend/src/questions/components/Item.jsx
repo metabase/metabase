@@ -31,7 +31,7 @@ const Item = ({ id, name, created, by, selected, favorite, archived, icon, label
         <ItemBody id={id} name={name} labels={labels} created={created} by={by} />
         <div className={S.rightIcons}>
             <LabelPopover
-                triggerElement={<Icon className={S.tagIcon} name="grid" width={20} height={20} />}
+                triggerElement={<Icon className={S.tagIcon} name="label" width={20} height={20} />}
                 triggerClasses={S.trigger}
                 triggerClassesOpen={S.open}
                 item={{ id, labels }}
@@ -42,7 +42,7 @@ const Item = ({ id, name, created, by, selected, favorite, archived, icon, label
         </div>
         <div className={S.extraIcons}>
             <Tooltip tooltip={archived ? "Unarchive" : "Archive"}>
-                <Icon className={S.archiveIcon} name="grid" width={20} height={20} onClick={() => setArchived(id, !archived, true)} />
+                <Icon className={S.archiveIcon} name="archive" width={20} height={20} onClick={() => setArchived(id, !archived, true)} />
             </Tooltip>
         </div>
     </div>
