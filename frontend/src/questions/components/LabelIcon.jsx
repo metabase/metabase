@@ -6,9 +6,9 @@ import Icon from "metabase/components/Icon.jsx";
 import EmojiIcon from "./EmojiIcon.jsx";
 import cx from "classnames";
 
-const LabelIcon = ({ icon = "", size = 18, className }) =>
+const LabelIcon = ({ icon = "", size = 18, className, style }) =>
     icon.charAt(0) === ":" ?
-        <EmojiIcon className={cx(S.icon, S.emojiIcon, className)} name={icon} size={size} />
+        <EmojiIcon className={cx(S.icon, S.emojiIcon, className)} name={icon} size={size} style={style} />
     : icon.charAt(0) === "#" ?
         <span className={cx(S.icon, S.colorIcon, className)} style={{ backgroundColor: icon, width: size, height: size }}></span>
     :

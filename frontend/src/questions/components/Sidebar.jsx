@@ -36,7 +36,7 @@ const QuestionSidebarSectionTitle = ({ name, href }) =>
 const QuestionSidebarItem = ({ name, icon, href }) =>
     <li>
         <Link to={href} className={S.item} activeClassName={S.selected}>
-            <LabelIcon className={S.icon} icon={icon} />
+            <LabelIcon className={S.icon} icon={icon}/>
             <span className={S.name}>{name}</span>
         </Link>
     </li>

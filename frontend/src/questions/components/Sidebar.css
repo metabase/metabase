@@ -58,4 +58,5 @@
 
 :local(.icon) {
     composes: flex-no-shrink from "style";
+    line-height: 1;
 }
