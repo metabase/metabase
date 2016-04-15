@@ -29,17 +29,19 @@ const Item = ({ id, name, created, by, selected, favorite, archived, icon, label
             />
         </div>
         <ItemBody id={id} name={name} labels={labels} created={created} by={by} />
-        <div className={S.rightIcons}>
-            <LabelPopover
-                triggerElement={<Icon className={S.tagIcon} name="label" width={20} height={20} />}
-                triggerClasses={S.trigger}
-                triggerClassesOpen={S.open}
-                item={{ id, labels }}
-            />
-            <Tooltip tooltip={favorite ? "Unfavorite" : "Favorite"}>
-                <Icon className={S.favoriteIcon} name="star" width={20} height={20} onClick={() => setFavorited(id, !favorite) }/>
-            </Tooltip>
-        </div>
+        { !archived ?
+            <div className={S.rightIcons}>
+                <LabelPopover
+                    triggerElement={<Icon className={S.tagIcon} name="label" width={20} height={20} />}
+                    triggerClasses={S.trigger}
+                    triggerClassesOpen={S.open}
+                    item={{ id, labels }}
+                />
+                <Tooltip tooltip={favorite ? "Unfavorite" : "Favorite"}>
+                    <Icon className={S.favoriteIcon} name="star" width={20} height={20} onClick={() => setFavorited(id, !favorite) }/>
+                </Tooltip>
+            </div>
+        : null }
         <div className={S.extraIcons}>
             <Tooltip tooltip={archived ? "Unarchive" : "Archive"}>
                 <Icon className={S.archiveIcon} name="archive" width={20} height={20} onClick={() => setArchived(id, !archived, true)} />
