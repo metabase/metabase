@@ -35,7 +35,7 @@ const LabelPicker = ({ labels, count, item, setLabeled }) =>
                             :
                                 <LabelIcon className={S.mainIcon} icon={label.icon} />
                             }
-                            {label.name}
+                            <span className={S.name}>{label.name}</span>
                             { selected && <Icon className={S.removeIcon} name="close" /> }
                         </div>
                         <div className={S.optionBackground}></div>

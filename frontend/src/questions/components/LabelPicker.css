@@ -44,12 +44,19 @@
     visibility: visible;
 }
 
+:local(.name) {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow-x: hidden;
+}
+
 :local(.mainIcon) {
     composes: mr1 from "style";
+    composes: flex-no-shrink from "style";
 }
 
 :local(.removeIcon) {
-    composes: flex-align-right from "style";
+    composes: flex-align-right flex-no-shrink from "style";
     visibility: hidden;
 }
 :local(.option):hover :local(.removeIcon) {

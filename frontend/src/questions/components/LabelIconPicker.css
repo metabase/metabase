@@ -16,6 +16,7 @@
 :local(.sectionList) {
     composes: list;
     composes: border-top from "style";
+    composes: py1 from "style";
 }
 
 :local(.option) {
