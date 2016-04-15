@@ -70,6 +70,11 @@ export default class MetadataTableList extends Component {
             queryableTablesHeader = <li className="AdminList-section">0 Tables</li>;
         }
 
+        let virtualTableLink = "/admin/datamodel/database/"+this.props.tables[0].db_id+"/virtualtable";
+        if (this.props.schema) {
+            virtualTableLink += "?schema="+this.props.schema.id;
+        }
+
         return (
             <div className="MetadataEditor-table-list AdminList">
                 <div className="AdminList-search">
@@ -90,6 +95,12 @@ export default class MetadataTableList extends Component {
                         { this.props.onBack && this.props.schema && <span className="mx1">-</span>}
                         { this.props.schema && <span> {this.props.schema.name}</span>}
                     </h4>
+                }
+
+                { this.props.tables && this.props.tables.length > 0 &&
+                    <div className="px2 pt2">
+                        <a className="link text-bold" href={virtualTableLink}>+ Add a virtual table</a>
+                    </div>
                 }
 
                 <ul className="AdminList-items">

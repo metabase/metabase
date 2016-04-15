@@ -485,3 +485,46 @@ export function foreignKeyCountsByOriginTable(fks) {
         return prev;
     }, {});
 }
+
+// This presumes table2 is being joined to table1
+export function guessJoinFields(table1, table2) {
+    // first check if table1 has an FK defined that targets table2 (NOTE: if multiple exist we are just taking the first we find)
+    for(let x=0; x < table1.fields.length; x++) {
+        let field = table1.fields[x];
+        if (field.special_type === "fk" && field.target && field.target.table_id === table2.id) {
+            return {
+                sourceFieldId: field.id,
+                targetFieldId: field.target.id
+            };
+        }
+    }
+
+    // now check the inverse direction and see if table2 has an FK defined that targets table1
+    for(let x=0; x < table2.fields.length; x++) {
+        let field = table2.fields[x];
+        if (field.special_type === "fk" && field.target && field.target.table_id === table1.id) {
+            return {
+                targetFieldId: field.id,
+                sourceFieldId: field.target.id
+            };
+        }
+    }
+
+    // next, check if table2 has an ID column of some sort and if so, see if we can find an appropriate source column from table1
+
+    // lastly, just resort to a basic field name matching attempt
+    let nameMatches = _.intersection(table1.fields.map((f) => f.name), table2.fields.map((f) => f.name));
+    if (nameMatches && nameMatches.length > 0) {
+        // prioritize matches with "id" in them above other matches, EXCEPT if the value is exacltly "id"
+        // we exclude an exact "id" match because we assume that User.ID and Product.ID won't actually match values in many cases
+        nameMatches = _.sortBy(nameMatches, (name) => name.toLowerCase().indexOf("id"));
+        for (var i=0; i < nameMatches.length; i++) {
+            if (nameMatches[i].toLowerCase() !== "id") {
+                return {
+                    sourceFieldId: table1.fields.filter((f) => f.name === nameMatches[i])[0].id,
+                    targetFieldId: table2.fields.filter((f) => f.name === nameMatches[i])[0].id
+                };
+            }
+        }
+    }
+}

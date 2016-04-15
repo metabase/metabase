@@ -1,9 +1,16 @@
 import _ from "underscore";
+import { createStore, combineReducers } from "metabase/lib/redux";
 
+// Database Metadata
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetadataEditor from './components/database/MetadataEditor.jsx';
-
 import { augmentTable } from "metabase/lib/table";
+
+// Virtual Tables
+import VirtualTableApp from './virtualtable/containers/VirtualTableApp.jsx';
+import * as virtualTableReducers from './virtualtable/reducers';
+const virtualTableReducer = combineReducers(virtualTableReducers);
+
 
 angular
 .module('metabase.admin.datamodel.controllers', [
@@ -169,4 +176,13 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
         MetabaseAnalytics.trackEvent("Data Model", "Retire Metric");
         loadDatabaseMetadata();
     };
+}])
+.controller('VirtualTable', ['$scope', '$location', '$route', '$routeParams', 'database', function($scope, $location, $route, $routeParams, database) {
+    $scope.Component = VirtualTableApp;
+    $scope.props = {
+        onChangeLocation: function(url) {
+            $scope.$apply(() => $location.url(url));
+        }
+    };
+    $scope.store = createStore(virtualTableReducer, {database: database, schema: $routeParams.schema });
 }]);
