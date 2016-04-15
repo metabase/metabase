@@ -5,7 +5,7 @@
 }
 
 :local(.sidebar) {
-    composes: py2 from "style/spacing";
+    composes: pt2 pb4 from "style/spacing";
     width: 345px;
     background-color: rgb(248, 252, 253);
     border-right: 1px solid rgb(223, 238, 245);
