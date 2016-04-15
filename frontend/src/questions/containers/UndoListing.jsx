@@ -43,8 +43,8 @@ export default class UndoListing extends Component {
                     transitionLeaveTimeout={300}
                 >
                 { undos.map(undo =>
-                    <li key={undo.id} className={S.undo}>
-                        <span className={S.message}>{undo.message}</span>
+                    <li key={undo._domId} className={S.undo}>
+                        <span className={S.message}>{typeof undo.message === "function" ? undo.message(undo) : undo.message}</span>
                         <span className={S.actions}>
                             <a className={S.undoButton} onClick={() => performUndo(undo.id)}>Undo</a>
                             <Icon className={S.dismissButton} name="close" onClick={() => dismissUndo(undo.id)} />

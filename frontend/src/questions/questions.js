@@ -5,6 +5,8 @@ import { normalize, Schema, arrayOf } from 'normalizr';
 import i from "icepick";
 import _ from "underscore";
 
+import { inflect } from "metabase/lib/formatting";
+
 import { getSelectedEntities } from "./selectors";
 import { addUndo } from "./undo";
 
@@ -73,6 +75,15 @@ export const setFavorited = createThunkAction(SET_FAVORITED, (cardId, favorited)
     }
 });
 
+function createUndo(type, actions) {
+    return {
+        type: type,
+        count: actions.length,
+        message: (undo) => undo.count + " " + inflect(null, undo.count, "question was", "question were") + " " + type,
+        actions: actions
+    };
+}
+
 export const setArchived = createThunkAction(SET_ARCHIVED, (cardId, archived, undoable = false) => {
     return async (dispatch, getState) => {
         if (cardId == null) {
@@ -81,10 +92,10 @@ export const setArchived = createThunkAction(SET_ARCHIVED, (cardId, archived, un
             selected.map(item => dispatch(setArchived(item.id, archived)));
             // TODO: errors
             if (undoable) {
-                dispatch(addUndo(
-                    selected.length + " question were " + (archived ? "archived" : "unarchived"),
+                dispatch(addUndo(createUndo(
+                    archived ? "archived" : "unarchived",
                     selected.map(item => setArchived(item.id, !archived))
-                ));
+                )));
             }
         } else {
             let card = {
@@ -93,10 +104,10 @@ export const setArchived = createThunkAction(SET_ARCHIVED, (cardId, archived, un
             };
             let response = await CardApi.update(card);
             if (undoable) {
-                dispatch(addUndo(
-                    "Question was " + (archived ? "archived" : "unarchived"),
+                dispatch(addUndo(createUndo(
+                    archived ? "archived" : "unarchived",
                     [setArchived(cardId, !archived)]
-                ));
+                )));
             }
             return response;
         }
@@ -111,10 +122,10 @@ export const setLabeled = createThunkAction(SET_LABELED, (cardId, labelId, label
             selected.map(item => dispatch(setLabeled(item.id, labelId, labeled)));
             // TODO: errors
             if (undoable) {
-                dispatch(addUndo(
-                    "Label was " + (labeled ? "added to" : "removed from") + " " + selected.length + " questions",
+                dispatch(addUndo(createUndo(
+                    labeled ? "labeled" : "unlabeled",
                     selected.map(item => setLabeled(item.id, labelId, !labeled))
-                ));
+                )));
             }
         } else {
             const state = getState();
@@ -127,10 +138,10 @@ export const setLabeled = createThunkAction(SET_LABELED, (cardId, labelId, label
             if (labels.length !== newLabels.length) {
                 await CardApi.updateLabels({ cardId, label_ids: newLabels });
                 if (undoable) {
-                    dispatch(addUndo(
-                        "Label was " + (labeled ? "added" : "removed"),
+                    dispatch(addUndo(createUndo(
+                        labeled ? "labeled" : "unlabeled",
                         [setLabeled(cardId, labelId, !labeled)]
-                    ));
+                    )));
                 }
                 return { id: cardId, labels: newLabels, _changedLabelSlug: labelSlug, _changedLabeled: labeled };
             }
