@@ -131,7 +131,7 @@
       (-> (table/update-table existing-table raw-tbl)
           save-table-fields!)
 
-      ;; TODO: handle setting any fk relationships
+      ;; handle setting any fk relationships
       (when-let [table-fks (k/select raw-column/RawColumn
                              (k/fields [:id :source-column]
                                        [:fk_target_column_id :target-column])
