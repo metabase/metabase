@@ -136,11 +136,14 @@
         table-def (set/rename-keys table-def {:fields :columns})]
 
     ;; save the latest updates from the introspection
-    ;; TODO: need to account for case where table may be removed
-    (update-raw-table! raw-tbl table-def)
+    (if table-def
+      (update-raw-table! raw-tbl table-def)
+      ;; if we didn't get back a table-def then this table must not exist anymore
+      (disable-raw-tables! [(:id raw-tbl)]))
 
     ;; if we support FKs then try updating those as well
-    (when (contains? (driver/features driver) :foreign-keys)
+    (when (and table-def
+               (contains? (driver/features driver) :foreign-keys))
       (when-let [table-fks (u/prog1 (driver/describe-table-fks driver database table-def)
                              (schema/validate i/DescribeTableFKs <>))]
         (save-all-table-fks! raw-tbl table-fks)))))

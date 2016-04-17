@@ -17,6 +17,10 @@
   (->> (hydrate/hydrate (db/sel :many RawTable :database_id database-id) :columns)
        (mapv tu/boolean-ids-and-timestamps)))
 
+(defn get-table [table-id]
+  (->> (hydrate/hydrate (db/sel :one RawTable :raw_table_id table-id) :columns)
+       (mapv tu/boolean-ids-and-timestamps)))
+
 ;; save-all-table-fks
 ;; test case of multi schema with repeating table names
 (expect
@@ -421,9 +425,13 @@
 
 
 ;; TODO: introspect-raw-table-and-update!
+;; TODO: test that table details get updated, and fks update if defined
 ;; TODO: test case where table being synced has been removed
+;; TODO: test that dynamic-schema dbs skip the table sync
+
 
 ;; introspect-database-and-update-raw-tables!
+;; TODO: test that dynamic-schema dbs skip the table sync
 (expect
   [[]
    sync-test/sync-test-raw-tables
