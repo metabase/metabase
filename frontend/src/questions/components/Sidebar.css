@@ -1,5 +1,15 @@
 :root {
-    --item-padding: 60px;
+    --item-padding: 45px;
+}
+
+:local(.sidebar-padding) {
+  padding-left: var(--item-padding);
+  padding-right: var(--item-padding);
+}
+
+:local(.sidebar-margin) {
+  margin-left: var(--item-padding);
+  margin-right: var(--item-padding);
 }
 
 :local(.sidebar) {
@@ -17,17 +27,20 @@
 :local(.item),
 :local(.sectionTitle) {
     composes: flex align-center from "style";
-    height: 48px;
-    padding-left: var(--item-padding);
-    padding-right: var(--item-padding);
+    composes: py2 from "style";
+    composes: sidebar-padding;
 }
 
 :local(.item) {
-    font-size: 18px;
+    composes: transition-color from "style";
+    composes: transition-background from "style";
+    font-size: 1em;
+    color: #CFE4F5;
 }
 
 :local(.sectionTitle) {
     composes: my1 from "style";
+    composes: text-bold from "style";
     font-size: 16px;
 }
 
@@ -45,18 +58,24 @@
 :local(.divider) {
     composes: my2 from "style";
     composes: border-bottom from "style";
-    margin-left: var(--item-padding);
-    margin-right: var(--item-padding);
+    composes: sidebar-margin;
 }
 
 :local(.name) {
     composes: ml2 from "style";
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    overflow-x: hidden;
+    composes: text-bold from "style";
+    color: #9CAEBE;
 }
 
-:local(.icon) {
-    composes: flex-no-shrink from "style";
-    line-height: 1;
+:local(.item):hover :local(.name),
+:local(.item.selected) :local(.name) {
+    color: #2D86D4;
+}
+
+:local(.noLabelsMessage) {
+  composes: relative from "style";
+  composes: text-centered from "style";
+  composes: p2 my3 from "style";
+  composes: text-brand-light from "style";
+  composes: sidebar-margin;
 }

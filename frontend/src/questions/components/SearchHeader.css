@@ -14,5 +14,5 @@
     font-size: 20px;
 }
 :local(.searchBox)::-webkit-input-placeholder {
-    color: var(--muted-color);
+    color: var(--subtitle-color);
 }

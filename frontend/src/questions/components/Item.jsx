@@ -18,7 +18,7 @@ import pure from "recompose/pure";
 const Item = ({ id, name, created, by, selected, favorite, archived, icon, labels, setItemSelected, setFavorited, setArchived }) =>
     <div className={cx(S.item, { [S.selected]: selected, [S.favorite]: favorite, [S.archived]: archived })}>
         <div className={S.leftIcons}>
-            { icon && <Icon className={S.chartIcon} name={icon} width={32} height={32} /> }
+            { icon && <Icon className={S.chartIcon} name={icon} width={40} height={40} /> }
             <CheckBox
                 checked={selected}
                 onChange={(e) => setItemSelected({ [id]: e.target.checked })}
@@ -72,10 +72,7 @@ const ItemBody = pure(({ id, name, labels, created, by }) =>
             <Labels labels={labels} />
         </div>
         <div className={S.itemSubtitle}>
-            {"Created "}
-            <span className={S.itemSubtitleBold}>{created}</span>
-            {" by "}
-            <span className={S.itemSubtitleBold}>{by}</span>
+          {`Created ${created} by ${by}`}
         </div>
     </div>
 );

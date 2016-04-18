@@ -2,9 +2,7 @@
 
 :local(.listing) {
     composes: m2 from "style";
-    position: fixed;
-    left: 0;
-    bottom: 0;
+    composes: fixed left bottom from "style";
     z-index: 99;
 }
 
@@ -13,23 +11,20 @@
     composes: bordered from "style";
     composes: rounded from "style";
     composes: shadowed from "style";
-    position: relative;
-    background-color: white;
+    composes: relative from "style";
+    composes: bg-white from "style";
     width: 300px;
 }
 
 :local(.actions) {
     composes: flex align-center from "style";
-    float: right;
+    composes: float-right from "style";
 }
 
-:local(.message) {
-
-}
 :local(.undoButton) {
     composes: mx2 from "style";
+    composes: text-uppercase text-bold from "style";
     color: var(--blue-color);
-    text-transform: uppercase;
 }
 :local(.dismissButton) {
     composes: cursor-pointer from "style";

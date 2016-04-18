@@ -1,5 +1,6 @@
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
+import ReactCSSTransitionGroup from "react-addons-css-transition-group";
 
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper.jsx";
 import Tether from "tether";
@@ -134,7 +135,18 @@ export default class Popover extends Component {
         if (this.props.isOpen) {
             // popover is open, lets do this!
             const popoverElement = this._getPopoverElement();
-            ReactDOM.render(this._popoverComponent(), popoverElement);
+            ReactDOM.render(
+              <ReactCSSTransitionGroup
+                transitionName="Modal"
+                transitionAppear={true}
+                transitionAppearTimeout={250}
+                transitionEnterTimeout={250}
+                transitionLeaveTimeout={250}
+              >
+                {this._popoverComponent()}
+              </ReactCSSTransitionGroup>
+              , popoverElement
+            );
 
             var tetherOptions = {};
 

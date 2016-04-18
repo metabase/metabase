@@ -28,7 +28,15 @@ const Label = ({ name, icon, slug }) =>
                 <span>{name}</span>
             </span>
         : icon.charAt(0) === "#" ?
-            <span className={S.label} style={{ backgroundColor: icon }}>{name}</span>
+            <span
+              className={S.label}
+              style={{
+                backgroundColor: icon,
+                boxShadow: `1px 1px 0 ${icon}`
+              }}
+            >
+              {name}
+            </span>
         :
             <span className={S.label}>{name}</span>
         }

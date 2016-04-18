@@ -1,23 +1,22 @@
-:local(.list) {
-    display: inline;
-}
-
+:local(.list),
 :local(.listItem) {
-    display: inline;
+    composes: inline from "style";
 }
 
 :local(.label) {
-    display: inline;
-    color: white;
+    composes: inline from "style";
+    composes: text-white from "style";
+    composes: text-bold from "style";
     font-size: 14px;
     border-radius: 2px;
     padding: 0.25em 0.5em;
     margin: 0 0.25em;
+    line-height: 1;
 }
 
 :local(.emojiLabel) {
     color: rgba(0,0,0,0.54);
-    background-color: white;
+    composes: bg-white from "style";
     border: 1px solid #DEEAF1;
     box-shadow: 1px 1px 0 0 #BFD5E1;
 }
