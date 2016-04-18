@@ -12,9 +12,7 @@
                              [table :refer [Table] :as table])
             [metabase.sync-database :refer :all]
             (metabase.test [data :refer :all]
-                           [util :refer [resolve-private-fns] :as tu])
-            (metabase.test.data [datasets :as datasets]
-                                [interface :refer [create-database-definition]])))
+                           [util :refer [resolve-private-fns] :as tu])))
 
 (def ^:private ^:const sync-test-tables
   {"movie"  {:name "movie"
@@ -384,14 +382,3 @@
      ;; 3. Now re-sync the table and make sure the value is back
      (do (sync-table! @venues-table)
          (get-field-values))]))
-
-
-(datasets/expect-with-engine :postgres
-  :json
-  (with-temp-db
-    [_
-     (create-database-definition "Postgres with a JSON Field"
-                                 ["venues"
-                                  [{:field-name "address", :base-type {:native "json"}}]
-                                  [[(k/raw "to_json('{\"street\": \"431 Natoma\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": 94103}'::text)")]]])]
-    (db/sel :one :field [Field :special_type] :id (id :venues :address))))
