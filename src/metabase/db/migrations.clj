@@ -188,33 +188,34 @@
 ;; NOTE: we only handle active Tables/Fields and we skip any FK relationships (they can safely populate later)
 (defmigration create-raw-tables
   (when (= 0 (:cnt (first (k/select RawTable (k/aggregate (count :*) :cnt)))))
-    (doseq [{database-id :id, :keys [name engine]} (db/sel :many Database)]
-      (when-let [tables (not-empty (db/sel :many Table :db_id database-id, :active true))]
-        (log/info (format "Migrating schema information for %s database '%s'" engine name))
-        (doseq [{table-id :id, table-schema :schema, table-name :name} tables]
-          ;; create the RawTable
-          (let [{raw-table-id :id} (db/ins RawTable
-                                     :database_id  database-id
-                                     :schema       table-schema
-                                     :name         table-name
-                                     :details      {}
-                                     :active       true)]
-            ;; update the Table and link it with the RawTable
-            (k/update Table
-              (k/set-fields {:raw_table_id raw-table-id})
-              (k/where      {:id table-id}))
-            ;; migrate all Fields in the Table (skipping :dynamic-schema dbs)
-            (when-not (driver/driver-supports? (driver/engine->driver engine) :dynamic-schema)
-              (doseq [{field-id :id, column-name :name, :as field} (db/sel :many Field :table_id table-id, :visibility_type [not= "retired"])]
-                (let [{raw-column-id :id} (db/ins RawColumn
-                                            :raw_table_id  raw-table-id
-                                            :name          column-name
-                                            :base_type     (:base_type field)
-                                            :is_pk         (= :id (:special_type field))
-                                            :details       {}
-                                            :active        true)]
-                  ;; update the Field and link it with the RawColumn
-                  (k/update Field
-                    (k/set-fields {:raw_column_id raw-column-id
-                                   :last_analyzed (u/new-sql-timestamp)})
-                    (k/where      {:id field-id})))))))))))
+    (binding [db/*sel-disable-logging* true]
+      (doseq [{database-id :id, :keys [name engine]} (db/sel :many Database)]
+        (when-let [tables (not-empty (db/sel :many Table :db_id database-id, :active true))]
+          (log/info (format "Migrating raw schema information for %s database '%s'" engine name))
+          (doseq [{table-id :id, table-schema :schema, table-name :name} tables]
+            ;; create the RawTable
+            (let [{raw-table-id :id} (db/ins RawTable
+                                       :database_id  database-id
+                                       :schema       table-schema
+                                       :name         table-name
+                                       :details      {}
+                                       :active       true)]
+              ;; update the Table and link it with the RawTable
+              (k/update Table
+                (k/set-fields {:raw_table_id raw-table-id})
+                (k/where      {:id table-id}))
+              ;; migrate all Fields in the Table (skipping :dynamic-schema dbs)
+              (when-not (driver/driver-supports? (driver/engine->driver engine) :dynamic-schema)
+                (doseq [{field-id :id, column-name :name, :as field} (db/sel :many Field :table_id table-id, :visibility_type [not= "retired"])]
+                  (let [{raw-column-id :id} (db/ins RawColumn
+                                              :raw_table_id  raw-table-id
+                                              :name          column-name
+                                              :base_type     (:base_type field)
+                                              :is_pk         (= :id (:special_type field))
+                                              :details       {}
+                                              :active        true)]
+                    ;; update the Field and link it with the RawColumn
+                    (k/update Field
+                      (k/set-fields {:raw_column_id raw-column-id
+                                     :last_analyzed (u/new-sql-timestamp)})
+                      (k/where      {:id field-id}))))))))))))
