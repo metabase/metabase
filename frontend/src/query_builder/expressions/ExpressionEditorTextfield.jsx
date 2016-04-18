@@ -80,12 +80,16 @@ export default class ExpressionEditorTextfield extends Component {
         let inputElement = document.getElementById('react_qb_expression_input'),
             displayName  = this.state.suggestions[this.state.highlightedSuggestion].display_name,
             // wrap field names with spaces in them in quotes
-            suggestion   = displayName.indexOf(' ') > -1 ? ('"' + displayName + '"') : displayName,
+            needsQuotes  = displayName.indexOf(' ') > -1,
+            suggestion   = needsQuotes ? ('"' + displayName + '"') : displayName,
             tokenAtPoint = tokenAtPosition(this.state.tokens, inputElement.selectionStart);
 
         console.log('replacing:', tokenAtPoint, 'with:', suggestion);
 
         let expression = this.state.expressionString.substring(0, tokenAtPoint.start) + suggestion + this.state.expressionString.substring(tokenAtPoint.end, this.state.expressionString.length);
+
+        // Remove extra quotation marks in case we accidentally inserted duplicates when accepting a suggestion already inside some
+        expression = expression.replace(/"+/, '"');
 
         // hand off to the code that deals with text change events which will trigger parsing and new autocomplete suggestions
         inputElement.value = expression + ' ';

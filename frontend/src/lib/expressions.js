@@ -136,7 +136,7 @@ function tokenizeExpression(expression, i = 0, level = 0) {
                 start = i + 1;
             }
         }
-        else if (c === '(') {
+        else if (c === '(' && !insideQuotes) {
             // TODO - this is probably actually ok, we should accept it as a token separate from the parens
             if (currentToken) throw 'invalid token: ' + currentToken + '(';
 
@@ -158,7 +158,7 @@ function tokenizeExpression(expression, i = 0, level = 0) {
                 isParent: true
             });
         }
-        else if (c === ')') {
+        else if (c === ')' && !insideQuotes) {
             if (level === 0) throw 'expression is missing an opening paren';
             if (currentToken) tokens.push({
                 value: currentToken,
