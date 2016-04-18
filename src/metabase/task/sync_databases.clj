@@ -1,10 +1,12 @@
 (ns metabase.task.sync-databases
-  (:require [clojure.tools.logging :as log]
+  (:require [clj-time.core :as t]
+            [clojure.tools.logging :as log]
             (clojurewerkz.quartzite [jobs :as jobs]
                                     [triggers :as triggers])
             [clojurewerkz.quartzite.schedule.cron :as cron]
             (metabase [db :as db]
                       [task :as task])
+            [metabase.driver :as driver]
             [metabase.models.database :refer [Database]]
             [metabase.sync-database :as sync-database]))
 
@@ -18,10 +20,15 @@
 (jobs/defjob SyncDatabases
   [ctx]
   (dorun
-    (for [database (db/sel :many Database :is_sample false)] ; skip Sample Dataset DB
+    (for [database (db/sel :many Database :is_sample true)] ; skip Sample Dataset DB
       (try
         ;; NOTE: this happens synchronously for now to avoid excessive load if there are lots of databases
-        (sync-database/sync-database! database)
+        (if-not (and (= 0 (t/hour (t/now)))
+                     (driver/driver-supports? (:engine database) :dynamic-schema))
+          ;; most of the time we do a quick sync and avoid the lengthy analysis process
+          (sync-database/sync-database! database :full-sync? false)
+          ;; at midnight we run the full sync
+          (sync-database/sync-database! database :full-sync? true))
         (catch Throwable e
           (log/error "Error syncing database: " (:id database) e))))))
 
@@ -37,7 +44,7 @@
                                    (triggers/with-identity (triggers/key sync-databases-trigger-key))
                                    (triggers/start-now)
                                    (triggers/with-schedule
-                                     ;; run at midnight daily
-                                     (cron/cron-schedule "0 0 0 * * ? *"))))
+                                     ;; run at the end of every hour
+                                     (cron/cron-schedule "0 50 * * * ? *"))))
   ;; submit ourselves to the scheduler
   (task/schedule-task! @sync-databases-job @sync-databases-trigger))
