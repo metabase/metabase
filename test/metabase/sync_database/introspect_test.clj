@@ -278,14 +278,14 @@
        (create-raw-table! database-id {:schema nil
                                        :name "users"
                                        :details {:a "b"}
-                                       :columns []})
+                                       :fields []})
        (get-tables database-id))
      ;; now add another table, this time with a couple columns and some fks
      (do
        (create-raw-table! database-id {:schema "aviary"
                                        :name "toucanery"
                                        :details {:owner "Cam"}
-                                       :columns [{:name      "beak_size"
+                                       :fields [{:name      "beak_size"
                                                   :base-type :IntegerField
                                                   :pk?       true
                                                   :details   {:inches 7}}]})
@@ -332,7 +332,7 @@
        (update-raw-table! table {:schema  "aviary"
                                  :name    "toucanery"
                                  :details {:owner "Cam", :sqft 10000}
-                                 :columns [{:name      "beak_size"
+                                 :fields [{:name      "beak_size"
                                             :base-type :IntegerField
                                             :pk?       true
                                             :details   {:inches 7}}]})

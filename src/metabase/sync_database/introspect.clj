@@ -80,7 +80,7 @@
 
 (defn- create-raw-table!
   "Create a new `RawTable`, includes saving all specified `:columns`."
-  [database-id {table-name :name, table-schema :schema, :keys [details columns]}]
+  [database-id {table-name :name, table-schema :schema, :keys [details fields]}]
   {:pre [(integer? database-id)
          (string? table-name)]}
   (log/debug (u/format-color 'cyan "Found new table: %s" (named-table table-schema table-name)))
@@ -91,18 +91,18 @@
                 :details      (or details {})
                 :active       true)]
     ;; save columns
-    (save-all-table-columns! table columns)))
+    (save-all-table-columns! table fields)))
 
 (defn- update-raw-table!
   "Update an existing `RawTable`, includes saving all specified `:columns`."
-  [{table-id :id, :as table} {:keys [details columns]}]
+  [{table-id :id, :as table} {:keys [details fields]}]
   ;; NOTE: the schema+name of a table makes up the natural key and cannot be modified on update
   ;;       if they were to be different we'd simply assume that's a new table instead
   (db/upd raw-table/RawTable table-id
     :details  (or details {})
     :active   true)
   ;; save columns
-  (save-all-table-columns! table columns))
+  (save-all-table-columns! table fields))
 
 (defn- disable-raw-tables!
   "Disable a list of `RawTable` ids, including all `RawColumns` associated with those tables."
@@ -128,12 +128,10 @@
   (let [table-def (select-keys raw-tbl [:schema :name])
         table-def (if (contains? (driver/features driver) :dynamic-schema)
                     ;; dynamic schemas are handled differently, we'll handle them elsewhere
-                    (assoc table-def :columns [])
+                    (assoc table-def :fields [])
                     ;; static schema databases get introspected now
                     (u/prog1 (driver/describe-table driver database table-def)
-                      (schema/validate i/DescribeTable <>)))
-        ;; TODO: we should update drivers to return :columns instead of :fields
-        table-def (set/rename-keys table-def {:fields :columns})]
+                      (schema/validate i/DescribeTable <>)))]
 
     ;; save the latest updates from the introspection
     (if table-def
@@ -168,12 +166,10 @@
         (try
           (let [table-def (if (contains? (driver/features driver) :dynamic-schema)
                             ;; dynamic schemas are handled differently, we'll handle them elsewhere
-                            (assoc table-def :columns [])
+                            (assoc table-def :fields [])
                             ;; static schema databases get introspected now
                             (u/prog1 (driver/describe-table driver database table-def)
-                              (schema/validate i/DescribeTable <>)))
-                ;; TODO: we should update drivers to return :columns instead of :fields
-                table-def (set/rename-keys table-def {:fields :columns})]
+                              (schema/validate i/DescribeTable <>)))]
             (if-let [raw-tbl (get existing-tables (select-keys table-def [:schema :name]))]
               (update-raw-table! raw-tbl table-def)
               (create-raw-table! (:id database) table-def)))
