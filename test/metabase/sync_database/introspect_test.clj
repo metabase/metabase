@@ -1,14 +1,13 @@
 (ns metabase.sync-database.introspect-test
   (:require [expectations :refer :all]
             [metabase.db :as db]
+            [metabase.mock.moviedb :as moviedb]
             [metabase.models.database :as database]
             [metabase.models.hydrate :as hydrate]
             [metabase.models.raw-column :refer [RawColumn], :as raw-column]
             [metabase.models.raw-table :refer [RawTable], :as raw-table]
             [metabase.sync-database.introspect :as introspect]
-            [metabase.sync-database.utils :as sync-test]
-            [metabase.test.util :as tu])
-  (:import (metabase.sync_database.utils SyncTestDriver)))
+            [metabase.test.util :as tu]))
 
 (tu/resolve-private-fns metabase.sync-database.introspect
   save-all-table-columns! save-all-table-fks! create-raw-table! update-raw-table! disable-raw-tables!)
@@ -434,26 +433,26 @@
 ;; TODO: test that dynamic-schema dbs skip the table sync
 (expect
   [[]
-   sync-test/sync-test-raw-tables
-   sync-test/sync-test-raw-tables
-   (conj (vec (drop-last sync-test/sync-test-raw-tables))
-         (-> (last sync-test/sync-test-raw-tables)
+   moviedb/moviedb-raw-tables
+   moviedb/moviedb-raw-tables
+   (conj (vec (drop-last moviedb/moviedb-raw-tables))
+         (-> (last moviedb/moviedb-raw-tables)
              (assoc :active false)
              (update :columns #(map (fn [col]
                                       (assoc col
                                         :active              false
                                         :fk_target_column_id false)) %))))]
-  (tu/with-temp* [database/Database [{database-id :id, :as db} {:engine :sync-test}]]
+  (tu/with-temp* [database/Database [{database-id :id, :as db} {:engine :moviedb}]]
     [(get-tables database-id)
      ;; first sync should add all the tables, fields, etc
      (do
-       (introspect/introspect-database-and-update-raw-tables! (SyncTestDriver.) db)
+       (introspect/introspect-database-and-update-raw-tables! (moviedb/->MovieDbDriver) db)
        (get-tables database-id))
      ;; run the sync a second time to see how we respond to repeat syncing
      (do
-       (introspect/introspect-database-and-update-raw-tables! (SyncTestDriver.) db)
+       (introspect/introspect-database-and-update-raw-tables! (moviedb/->MovieDbDriver) db)
        (get-tables database-id))
      ;; one more time, but this time we'll remove a table and make sure that's handled properly
      (do
-       (introspect/introspect-database-and-update-raw-tables! (SyncTestDriver.) (assoc db :exclude-tables #{"roles"}))
+       (introspect/introspect-database-and-update-raw-tables! (moviedb/->MovieDbDriver) (assoc db :exclude-tables #{"roles"}))
        (get-tables database-id))]))

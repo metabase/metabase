@@ -78,7 +78,7 @@
 (driver/register-driver! :moviedb (MovieDbDriver.))
 
 
-(def ^:const sync-test-raw-tables
+(def ^:const moviedb-raw-tables
   [{:schema nil
     :database_id true
     :columns [{:raw_table_id true
