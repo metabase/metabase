@@ -21,7 +21,7 @@ const BUCKETINGS = [
     // "day-of-year",
     "week-of-year",
     "month-of-year",
-    // "quarter-of-year",
+    "quarter-of-year",
 ];
 
 export default class TimeGroupingPopover extends Component {
