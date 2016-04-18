@@ -4,6 +4,15 @@
             [metabase.test.util :as tu]))
 
 
+;; test:cardinality-and-extract-field-values
+;; (#2332) check that if field values are long we skip over them
+(expect
+  {:values nil}
+  (with-redefs-fn {#'metabase.db.metadata-queries/field-distinct-values (fn [_ _]
+                                                                          [(clojure.string/join (repeat 5000 "A"))])}
+    #(test:cardinality-and-extract-field-values {} {})))
+
+
 ;;; ## mark-json-field!
 
 (tu/resolve-private-fns metabase.sync-database.analyze values-are-valid-json?)

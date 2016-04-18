@@ -24,6 +24,10 @@
   "Fields with less than this many distinct values should automatically be marked with `special_type = :category`."
   40)
 
+(def ^:private ^:const field-values-entry-max-length
+  "The maximum character length for a stored `FieldValues` entry."
+  100)
+
 
 (def ^:private ^:const average-length-no-preview-threshold
   "Fields whose values' average length is greater than this amount should be marked as `preview_display = false`."
@@ -59,8 +63,11 @@
   ;; TODO: we need some way of marking a field as not allowing field-values so that we can skip this work if it's not appropriate
   ;;       for example, :category fields with more than MAX values don't need to be rescanned all the time
   (let [non-nil-values  (filter identity (queries/field-distinct-values field (inc low-cardinality-threshold)))
-        ;; only return the list if we didn't exceed our MAX values
-        distinct-values (when-not (< low-cardinality-threshold (count non-nil-values))
+        ;; only return the list if we didn't exceed our MAX values and if the the total character count of our values is reasable (#2332)
+        distinct-values (when-not (or (< low-cardinality-threshold (count non-nil-values))
+                                      ;; very simple check to see if total length of field-values exceeds (total values * max per value)
+                                      (< (* low-cardinality-threshold
+                                            field-values-entry-max-length) (reduce + (map count non-nil-values))))
                           non-nil-values)]
     ;; TODO: eventually we can check for :nullable? based on the original values above
     (cond-> (assoc field-stats :values distinct-values)
