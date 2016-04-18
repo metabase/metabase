@@ -24,7 +24,7 @@
     align-items: baseline;
 }
 
-.justify-center {
+.justify-center, :local(.justify-center) {
     justify-content: center;
 }
 

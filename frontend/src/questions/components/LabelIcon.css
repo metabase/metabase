@@ -1,16 +1,17 @@
 
 :local(.colorIcon) {
-    display: inline-block;
+    composes: inline-block from "style";
     width: 18px;
     height: 18px;
     border-radius: 3px;
 }
 
 :local(.emojiIcon) {
-    text-align: center;
+    composes: text-centered from "style";
     font-size: 20px;
 }
 
 :local(.icon) {
-    color: #CFE4F5;
+    composes: transition-color from "style";
+    color: currentColor;
 }

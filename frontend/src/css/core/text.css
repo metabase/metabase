@@ -3,7 +3,7 @@
 }
 
 /* center */
-.text-centered { text-align: center; }
+.text-centered, :local(.text-centered) { text-align: center; }
 
 @media screen and (--breakpoint-min-sm) {
     .sm-text-centered { text-align: center; }
@@ -61,25 +61,18 @@
     .xl-text-right { text-align: right; }
 }
 
-.text-uppercase {
-  text-transform: uppercase;
-}
-
-.text-lowercase {
-  text-transform: lowercase;
-}
+.text-uppercase, :local(.text-uppercase) { text-transform: uppercase; }
+.text-lowercase { text-transform: lowercase; }
 
 /* text weight */
 .text-light  { font-weight: 300; }
 .text-normal { font-weight: 400; }
 .text-strong { font-weight: 570; }
-.text-bold   { font-weight: 700; }
+.text-bold, :local(.text-bold)   { font-weight: 700; }
 
 /* text style */
 
-.text-italic {
-  font-style: italic;
-}
+.text-italic { font-style: italic; }
 
 /* larger text size used for descriptions  */
 .text-body {

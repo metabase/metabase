@@ -2,6 +2,7 @@ import React, { PropTypes } from "react";
 import { Link } from "react-router";
 import S from "./Sidebar.css";
 import cx from 'classnames';
+import Icon from "metabase/components/Icon.jsx";
 
 import LabelIcon from "./LabelIcon.jsx";
 
@@ -20,9 +21,18 @@ const Sidebar = ({ sections, topics, labels, style, className }) =>
             )}
             */}
             <QuestionSidebarSectionTitle name="Labels" href="/questions/edit/labels" />
-            {labels.map(label =>
-                <QuestionSidebarItem key={label.id} href={"/questions/label/"+label.slug} {...label} />
-            )}
+            {
+              labels.length > 0 ? (
+                labels.map(label =>
+                  <QuestionSidebarItem key={label.id} href={"/questions/label/"+label.slug} {...label} />
+                )
+              ) : (
+                  <div className={S.noLabelsMessage}>
+                    <Icon name="label" />
+                    Create labels to group and manage questions.
+                  </div>
+                )
+            }
             <li className={S.divider} />
             <QuestionSidebarItem name="Archive" href="/questions/archived" icon="archive" />
         </ul>

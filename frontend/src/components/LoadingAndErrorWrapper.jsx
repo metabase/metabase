@@ -39,7 +39,7 @@ export default class LoadingAndErrorWrapper extends Component {
             "bg-white": !this.props.noBackground
         });
         return (
-            <div {...this.props}>
+            <div {...this.props} className="flex flex-full">
                 { this.props.error ?
                     <div className={contentClassName}>
                         <h2 className="text-normal text-grey-2">{this.getErrorMessage()}</h2>

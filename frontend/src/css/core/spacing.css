@@ -10,13 +10,13 @@
   --margin-4: 2rem;
 }
 
-.ml-auto { margin-left: auto; }
-.mr-auto { margin-right: auto; }
+.ml-auto, :local(.ml-auto) { margin-left: auto; }
+.mr-auto, :local(.mr-auto) { margin-right: auto; }
 
 /* padding */
 
 /* 0 */
-.p0, :local(.p0)  { padding: 0; }
+.p0, :local(.p0)   { padding: 0; }
 .pt0, :local(.pt0) { padding-top: 0; }
 .pb0, :local(.pb0) { padding-bottom: 0; }
 .pl0, :local(.pl0) { padding-left: 0; }

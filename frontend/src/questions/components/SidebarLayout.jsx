@@ -11,7 +11,7 @@ const SidebarLayout = ({ className, style, sidebar, children }) =>
         )}
         { children && React.cloneElement(
             React.Children.only(children),
-            { style: { flex: 1, overflowY: 'scroll' }},
+            { style: { flex: 1, overflowY: 'scroll', display: 'flex', flexDirection: 'column', height: '100%' }},
             React.Children.only(children).props.children
         )}
     </div>

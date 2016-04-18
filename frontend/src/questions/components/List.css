@@ -1,8 +1,13 @@
 @import '../Questions.css';
 
 :local(.list) {
-    padding-left: 75px;
-    padding-right: 75px;
+  max-width: var(--md-width);
+  composes: ml-auto mr-auto from "style";
+}
+
+:local(.list-wrapper) {
+  max-width: var(--md-width);
+  composes: ml-auto mr-auto from "style";
 }
 
 :local(.list) a {
@@ -13,12 +18,18 @@
     composes: header from "../Questions.css";
 }
 
+:local(.empty) {
+    composes:  flex align-center justify-center from "style";
+    composes: full from "style";
+}
+
 :local(.item) {
     composes: border-top from "style";
     composes: flex align-center from "style";
-    padding-top: 30px;
-    padding-bottom: 30px;
-    position: relative;
+    composes: relative from "style";
+    padding-top: 20px;
+    padding-bottom: 20px;
+    border-color: #EDF5FB;
 }
 
 :local(.itemBody) {
@@ -26,12 +37,15 @@
 }
 
 :local(.itemTitle) {
+    composes: text-bold from "style";
+    composes: inline-block from "style";
     color: var(--title-color);
-    font-size: 22px;
+    font-size: 18px;
 }
 
 :local(.itemName) {
     composes: mr1 from "style";
+    composes: inline-block from "style";
 }
 
 :local(.itemTitle):hover {
@@ -60,10 +74,8 @@
 }
 :local(.extraIcons) {
     composes: icons;
-    position: absolute;
+    composes: absolute top full-height from "style";
     left: 100%;
-    height: 100%;
-    top: 0;
 }
 
 :local(.icon) {
@@ -79,6 +91,7 @@
 }
 :local(.icon):hover {
     color: var(--blue-color);
+    transition: color .3s linear;
 }
 
 /* ITEM CHECKBOX */
@@ -99,7 +112,7 @@
 :local(.chartIcon) {
     composes: icon;
     visibility: visible !important;
-    position: relative;
+    composes: relative from "style";
     left: -6px;
 }
 :local(.item):hover :local(.chartIcon),
@@ -107,31 +120,27 @@
     display: none;
 }
 
-/* TAG */
-:local(.tagIcon) {
+/* ACTION ICONS */
+:local(.tagIcon),
+:local(.favoriteIcon),
+:local(.archiveIcon) {
     composes: icon;
     composes: mx1 from "style";
 }
+
+/* TAG */
 :local(.open) :local(.tagIcon) {
     visibility: visible;
     color: var(--blue-color);
 }
 
 /* FAVORITE */
-:local(.favoriteIcon) {
-    composes: icon;
-    composes: mx1 from "style";
-}
 :local(.item.favorite) :local(.favoriteIcon) {
     visibility: visible;
     color: var(--blue-color);
 }
 
 /* ARCHIVE */
-:local(.archiveIcon) {
-    composes: icon;
-    composes: ml1 from "style";
-}
 :local(.item.archived) :local(.archiveIcon) {
     color: var(--blue-color);
 }
