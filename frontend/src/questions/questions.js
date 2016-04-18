@@ -79,7 +79,7 @@ function createUndo(type, actions) {
     return {
         type: type,
         count: actions.length,
-        message: (undo) => undo.count + " " + inflect(null, undo.count, "question was", "question were") + " " + type,
+        message: (undo) => undo.count + " " + inflect(null, undo.count, "question was", "questions were") + " " + type,
         actions: actions
     };
 }
