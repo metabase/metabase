@@ -126,7 +126,7 @@ export const getEditingLabelId = (state) => state.labels.editing;
 export const getLabels = createSelector(
     [(state) => state.labels.entities.labels, (state) => state.labels.labels],
     (labelEntities, labelIds) =>
-        labelIds.map(id => labelEntities[id])
+        labelIds ? labelIds.map(id => labelEntities[id]).sort((a, b) => a.name.localeCompare(b.name)) : []
 );
 
 const getLabelCountsForSelectedEntities = createSelector(
