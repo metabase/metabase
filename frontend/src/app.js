@@ -33,7 +33,7 @@ import "./admin/datamodel/datamodel.module";
 
 import Routes from "./Routes.jsx";
 
-import { createStore, createStoreWithAngularScope, combineReducers } from "metabase/lib/redux";
+import { createStoreWithAngularScope, combineReducers } from "metabase/lib/redux";
 
 import { routerStateReducer as router } from 'redux-router';
 import { reducer as form } from "redux-form";
