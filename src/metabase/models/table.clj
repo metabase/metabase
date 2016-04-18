@@ -86,6 +86,7 @@
 (defn update-table
   "Update `Table` with the data from TABLE-DEF."
   [{:keys [id display_name], :as existing-table} {table-name :name}]
+  {:pre [(integer? id)]}
   (let [updated-table (assoc existing-table
                         :display_name (or display_name (common/name->human-readable-name table-name)))]
     ;; the only thing we need to update on a table is the :display_name, if it never got set

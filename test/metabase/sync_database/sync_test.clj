@@ -1,11 +1,14 @@
 (ns metabase.sync-database.sync-test
   (:require [expectations :refer :all]
             [metabase.db :as db]
+            [metabase.mock.moviedb :as moviedb]
             [metabase.models.database :as database]
             [metabase.models.field :as field]
+            [metabase.models.hydrate :as hydrate]
             [metabase.models.raw-column :as raw-column]
             [metabase.models.raw-table :as raw-table]
             [metabase.models.table :as table]
+            [metabase.sync-database.introspect :as introspect]
             [metabase.sync-database.sync :refer :all]
             [metabase.test.util :as tu]))
 
@@ -49,7 +52,43 @@
          (get-fields t1))])))
 
 
-;; TODO: sync-metabase-metadata-table!
+;; sync-metabase-metadata-table!
+(expect
+  [{:name "movies"
+    :description nil
+    :id true
+    :fields [{:name "filming"
+              :description nil}]}
+   {:name "movies"
+    :description "A cinematic adventure."
+    :id true
+    :fields [{:name "filming"
+              :description "If the movie is currently being filmed."}]}]
+  (tu/with-temp* [database/Database [{database-id :id, :as db} {:engine :moviedb}]]
+    ;; setup a couple things we'll use in the test
+    (introspect/introspect-database-and-update-raw-tables! (moviedb/->MovieDbDriver) db)
+    (let [raw-table-id (db/sel :one :field [raw-table/RawTable :id] :database_id database-id, :name "movies")
+          table        (db/ins table/Table
+                         :db_id        database-id
+                         :raw_table_id raw-table-id
+                         :name         "movies"
+                         :active       true)
+          get-table    #(-> (db/sel :one :fields [table/Table :id :name :description] :id (:id table))
+                            (hydrate/hydrate :fields)
+                            (update :fields (fn [fields]
+                                              (for [f fields
+                                                    :when (= "filming" (:name f))]
+                                                (select-keys f [:name :description]))))
+                            tu/boolean-ids-and-timestamps)]
+
+      (try (update-data-models-for-table! table)
+           (catch Throwable t
+             (.printStackTrace t)))
+      ;; here we go
+      [(get-table)
+       (do
+         (sync-metabase-metadata-table! (moviedb/->MovieDbDriver) db {})
+         (get-table))])))
 
 
 ;; save-table-fields!
