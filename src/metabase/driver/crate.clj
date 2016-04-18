@@ -49,13 +49,13 @@
   (getName [_] "Crate"))
 
 (defn- crate-spec
-  [{:keys [host port]
-    :or {host "localhost", port 4300}
+  [{:keys [hosts]
+    :or {hosts "//localhost:4300"}
     :as opts}]
   (merge {:classname "io.crate.client.jdbc.CrateDriver" ; must be in classpath
           :subprotocol "crate"
-          :subname (str "//" host ":" port)}
-         (dissoc opts :host :port)))
+          :subname (str hosts)}
+         (dissoc opts :hosts)))
 
 (defn- connection-details->spec [_ details]
   (-> details crate-spec))
@@ -81,13 +81,9 @@
 (extend CrateDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:details-fields (constantly [{:name         "host"
-                                        :display-name "Host"
-                                        :default      "localhost"}
-                                       {:name         "port"
-                                        :display-name "Port"
-                                        :type         :integer
-                                        :default      4300}])
+         {:details-fields (constantly [{:name         "hosts"
+                                        :display-name "Hosts"
+                                        :default      "//localhost:4300"}])
           :can-connect?       can-connect
           :date-interval      u/date-interval
           :analyze-table      gs/analyze-table
