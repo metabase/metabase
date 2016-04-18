@@ -14,41 +14,39 @@
 
 
 ;; save-fks!
-;; test case of fk across schemas
-;; fks are always added and override other metadata
-;; fks are never cleared if the disappear from the raw schema
-;; test case where we have retired fields from older syncs which create duplication
-;(expect
-;  []
-;  (tu/with-temp* [database/Database  [{database-id :id}]
-;                  raw-table/RawTable  [{raw-table-id1 :id, :as table} {:database_id database-id, :schema "customer1", :name "photos"}]
-;                  raw-column/RawColumn [_ {:raw_table_id raw-table-id1, :name "id"}]
-;                  raw-column/RawColumn [_ {:raw_table_id raw-table-id1, :name "user_id"}]
-;                  raw-table/RawTable  [{raw-table-id2 :id, :as table1} {:database_id database-id, :schema "customer2", :name "photos"}]
-;                  raw-column/RawColumn [_ {:raw_table_id raw-table-id2, :name "id"}]
-;                  raw-column/RawColumn [_ {:raw_table_id raw-table-id2, :name "user_id"}]
-;                  raw-table/RawTable  [{raw-table-id3 :id, :as table2} {:database_id database-id, :schema nil, :name "users"}]
-;                  raw-column/RawColumn [_ {:raw_table_id raw-table-id3, :name "id"}]]
-;    (let [get-columns #(->> (db/sel :many raw-column/RawColumn :raw_table_id raw-table-id1)
-;                            (mapv tu/boolean-ids-and-timestamps))]
-;      ;; original list should not have any fks
-;      [(get-columns)
-;       ;; now add a fk
-;       (do
-;         (save-all-fks! table [{:fk-column-name   "user_id"
-;                                      :dest-table       {:schema nil, :name "users"}
-;                                      :dest-column-name "id"}])
-;         (get-columns))
-;       ;; now remove the fk
-;       (do
-;         (save-all-fks! table [])
-;         (get-columns))
-;       ;; now add back a different fk
-;       (do
-;         (save-all-fks! table [{:fk-column-name   "user_id"
-;                                      :dest-table       {:schema "customer1", :name "photos"}
-;                                      :dest-column-name "id"}])
-;         (get-columns))])))
+(expect
+  [[{:special_type nil, :name "fk1", :fk_target_field_id false}]
+   [{:special_type :fk, :name "fk1", :fk_target_field_id true}]
+   [{:special_type :fk, :name "fk1", :fk_target_field_id true}]
+   [{:special_type :fk, :name "fk1", :fk_target_field_id true}]]
+  (tu/with-temp* [database/Database    [{database-id :id}]
+                  raw-table/RawTable   [{raw-table-id1 :id, :as table} {:database_id database-id, :name "fk_source"}]
+                  raw-column/RawColumn [{raw-fk1 :id} {:raw_table_id raw-table-id1, :name "fk1"}]
+                  table/Table          [{t1 :id} {:db_id database-id, :raw_table_id raw-table-id1, :name "fk_source"}]
+                  field/Field          [{fk1 :id} {:table_id t1, :raw_column_id raw-fk1, :name "fk1"}]
+                  raw-table/RawTable   [{raw-table-id2 :id, :as table1} {:database_id database-id, :name "fk_target"}]
+                  raw-column/RawColumn [{raw-target1 :id} {:raw_table_id raw-table-id2, :name "target1"}]
+                  raw-column/RawColumn [{raw-target2 :id} {:raw_table_id raw-table-id2, :name "target2"}]
+                  table/Table          [{t2 :id} {:db_id database-id, :raw_table_id raw-table-id2, :name "fk_target"}]
+                  field/Field          [{target1 :id} {:table_id t2, :raw_column_id raw-target1, :name "target1"}]
+                  field/Field          [{target2 :id} {:table_id t2, :raw_column_id raw-target2, :name "target2"}]]
+    (let [get-fields #(->> (db/sel :many :fields [field/Field :name :special_type :fk_target_field_id] :table_id %)
+                           (mapv tu/boolean-ids-and-timestamps))]
+      [;; original list should not have any fks
+       (get-fields t1)
+       ;; now add a fk
+       (do
+         (save-fks! [{:source-column raw-fk1, :target-column raw-target1}])
+         (get-fields t1))
+       ;; if the source/target is wack nothing bad happens
+       (do
+         (save-fks! [{:source-column raw-fk1, :target-column 87893243}
+                     {:source-column 987234, :target-column raw-target1}])
+         (get-fields t1))
+       ;; replacing an existing fk
+       (do
+         (save-fks! [{:source-column raw-fk1, :target-column raw-target2}])
+         (get-fields t1))])))
 
 
 ;; TODO: sync-metabase-metadata-table!
@@ -59,161 +57,161 @@
 (expect
   [[]
    ;; initial sync
-   [{:id                 true,
-     :table_id           true,
-     :raw_column_id      true,
-     :name               "First",
-     :display_name       "First",
-     :description        nil,
+   [{:id                 true
+     :table_id           true
+     :raw_column_id      true
+     :name               "First"
+     :display_name       "First"
+     :description        nil
      :base_type          :IntegerField
-     :visibility_type    :normal,
-     :special_type       :id,
-     :parent_id          false,
-     :fk_target_field_id false,
+     :visibility_type    :normal
+     :special_type       :id
+     :parent_id          false
+     :fk_target_field_id false
      :last_analyzed      false
-     :created_at         true,
+     :created_at         true
      :updated_at         true}
-    {:id                 true,
-     :table_id           true,
-     :raw_column_id      true,
-     :name               "Second",
-     :display_name       "Second",
-     :description        nil,
+    {:id                 true
+     :table_id           true
+     :raw_column_id      true
+     :name               "Second"
+     :display_name       "Second"
+     :description        nil
      :base_type          :TextField
-     :visibility_type    :normal,
-     :special_type       :category,
-     :parent_id          false,
-     :fk_target_field_id false,
+     :visibility_type    :normal
+     :special_type       :category
+     :parent_id          false
+     :fk_target_field_id false
      :last_analyzed      false
-     :created_at         true,
+     :created_at         true
      :updated_at         true}
-    {:id                 true,
-     :table_id           true,
-     :raw_column_id      true,
-     :name               "Third",
-     :display_name       "Third",
-     :description        nil,
+    {:id                 true
+     :table_id           true
+     :raw_column_id      true
+     :name               "Third"
+     :display_name       "Third"
+     :description        nil
      :base_type          :BooleanField
-     :visibility_type    :normal,
-     :special_type       nil,
-     :parent_id          false,
-     :fk_target_field_id false,
+     :visibility_type    :normal
+     :special_type       nil
+     :parent_id          false
+     :fk_target_field_id false
      :last_analyzed      false
-     :created_at         true,
+     :created_at         true
      :updated_at         true}]
    ;; add column, modify first column
-   [{:id                 true,
-     :table_id           true,
-     :raw_column_id      true,
-     :name               "First",
-     :display_name       "First",
-     :description        nil,
+   [{:id                 true
+     :table_id           true
+     :raw_column_id      true
+     :name               "First"
+     :display_name       "First"
+     :description        nil
      :base_type          :DecimalField
-     :visibility_type    :normal,
+     :visibility_type    :normal
      :special_type       :id,                 ; existing special types are NOT modified
-     :parent_id          false,
-     :fk_target_field_id false,
+     :parent_id          false
+     :fk_target_field_id false
      :last_analyzed      false
-     :created_at         true,
+     :created_at         true
      :updated_at         true}
-    {:id                 true,
-     :table_id           true,
-     :raw_column_id      true,
-     :name               "Second",
-     :display_name       "Second",
-     :description        nil,
+    {:id                 true
+     :table_id           true
+     :raw_column_id      true
+     :name               "Second"
+     :display_name       "Second"
+     :description        nil
      :base_type          :TextField
-     :visibility_type    :normal,
-     :special_type       :category,
-     :parent_id          false,
-     :fk_target_field_id false,
+     :visibility_type    :normal
+     :special_type       :category
+     :parent_id          false
+     :fk_target_field_id false
      :last_analyzed      false
-     :created_at         true,
+     :created_at         true
      :updated_at         true}
-    {:id                 true,
-     :table_id           true,
-     :raw_column_id      true,
-     :name               "Third",
-     :display_name       "Third",
-     :description        nil,
+    {:id                 true
+     :table_id           true
+     :raw_column_id      true
+     :name               "Third"
+     :display_name       "Third"
+     :description        nil
      :base_type          :BooleanField
-     :visibility_type    :normal,
-     :special_type       nil,
-     :parent_id          false,
-     :fk_target_field_id false,
+     :visibility_type    :normal
+     :special_type       nil
+     :parent_id          false
+     :fk_target_field_id false
      :last_analyzed      false
-     :created_at         true,
+     :created_at         true
      :updated_at         true}
-    {:id                 true,
-     :table_id           true,
-     :raw_column_id      true,
-     :name               "rating",
-     :display_name       "Rating",
-     :description        nil,
+    {:id                 true
+     :table_id           true
+     :raw_column_id      true
+     :name               "rating"
+     :display_name       "Rating"
+     :description        nil
      :base_type          :IntegerField
-     :visibility_type    :normal,
+     :visibility_type    :normal
      :special_type       :category,            ; should be infered from name
-     :parent_id          false,
-     :fk_target_field_id false,
+     :parent_id          false
+     :fk_target_field_id false
      :last_analyzed      false
-     :created_at         true,
+     :created_at         true
      :updated_at         true}]
    ;; first column retired, 3rd column now a pk
-   [{:id                 true,
-     :table_id           true,
-     :raw_column_id      true,
-     :name               "First",
-     :display_name       "First",
-     :description        nil,
+   [{:id                 true
+     :table_id           true
+     :raw_column_id      true
+     :name               "First"
+     :display_name       "First"
+     :description        nil
      :base_type          :DecimalField
      :visibility_type    :retired,            ; field retired when RawColumn disabled
-     :special_type       :id,
-     :parent_id          false,
-     :fk_target_field_id false,
+     :special_type       :id
+     :parent_id          false
+     :fk_target_field_id false
      :last_analyzed      false
-     :created_at         true,
+     :created_at         true
      :updated_at         true}
-    {:id                 true,
-     :table_id           true,
-     :raw_column_id      true,
-     :name               "Second",
-     :display_name       "Second",
-     :description        nil,
+    {:id                 true
+     :table_id           true
+     :raw_column_id      true
+     :name               "Second"
+     :display_name       "Second"
+     :description        nil
      :base_type          :TextField
-     :visibility_type    :normal,
-     :special_type       :category,
-     :parent_id          false,
-     :fk_target_field_id false,
+     :visibility_type    :normal
+     :special_type       :category
+     :parent_id          false
+     :fk_target_field_id false
      :last_analyzed      false
-     :created_at         true,
+     :created_at         true
      :updated_at         true}
-    {:id                 true,
-     :table_id           true,
-     :raw_column_id      true,
-     :name               "Third",
-     :display_name       "Third",
-     :description        nil,
+    {:id                 true
+     :table_id           true
+     :raw_column_id      true
+     :name               "Third"
+     :display_name       "Third"
+     :description        nil
      :base_type          :BooleanField
-     :visibility_type    :normal,
+     :visibility_type    :normal
      :special_type       :id,                  ; special type can be set if it was nil before
-     :parent_id          false,
-     :fk_target_field_id false,
+     :parent_id          false
+     :fk_target_field_id false
      :last_analyzed      false
-     :created_at         true,
+     :created_at         true
      :updated_at         true}
-    {:id                 true,
-     :table_id           true,
-     :raw_column_id      true,
-     :name               "rating",
-     :display_name       "Rating",
-     :description        nil,
+    {:id                 true
+     :table_id           true
+     :raw_column_id      true
+     :name               "rating"
+     :display_name       "Rating"
+     :description        nil
      :base_type          :IntegerField
-     :visibility_type    :normal,
+     :visibility_type    :normal
      :special_type       :category,            ; should be infered from name
-     :parent_id          false,
-     :fk_target_field_id false,
+     :parent_id          false
+     :fk_target_field_id false
      :last_analyzed      false
-     :created_at         true,
+     :created_at         true
      :updated_at         true}]]
   (tu/with-temp* [database/Database    [{database-id :id}]
                   raw-table/RawTable   [{raw-table-id :id, :as table} {:database_id database-id}]

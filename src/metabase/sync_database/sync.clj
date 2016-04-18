@@ -23,7 +23,7 @@
   {:pre [(coll? fk-sources)
          (every? map? fk-sources)]}
   (doseq [{fk-source-id :source-column, fk-target-id :target-column} fk-sources]
-    ;; TODO: it's possible there are multiple fields here with the same source/target column ids
+    ;; TODO: eventually limit this to just "core" schema tables
     (when-let [source-field-id (db/sel :one :field [field/Field :id] :raw_column_id fk-source-id, :visibility_type [not= "retired"])]
       (when-let [target-field-id (db/sel :one :field [field/Field :id] :raw_column_id fk-target-id, :visibility_type [not= "retired"])]
         (db/upd field/Field source-field-id
@@ -48,13 +48,15 @@
    This functionality is currently only used by the Sample Dataset. In order to use this functionality, drivers must implement optional fn `:table-rows-seq`."
   [driver database _metabase_metadata]
   (doseq [{:keys [keypath value]} (driver/table-rows-seq driver database _metabase_metadata)]
+    ;; TODO: this does not support schemas in dbs :(
     (let [[_ table-name field-name k] (re-matches #"^([^.]+)\.(?:([^.]+)\.)?([^.]+)$" keypath)]
       (try (when (not= 1 (if field-name
                            (k/update field/Field
-                             ;; TODO: need to handle issue where subselect could return multiple values
                              (k/where {:name field-name, :table_id (k/subselect table/Table
                                                                                 (k/fields :id)
-                                                                                (k/where {:db_id (:id database), :name table-name}))})
+                                                                                ;; TODO: this needs to support schemas
+                                                                                ;; TODO: eventually limit this to "core" schema tables
+                                                                                (k/where {:db_id (:id database), :name table-name, :active true}))})
                              (k/set-fields {(keyword k) value}))
                            (k/update table/Table
                              (k/where {:name table-name, :db_id (:id database)})
