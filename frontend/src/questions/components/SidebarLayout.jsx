@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 
 const SidebarLayout = ({ className, style, sidebar, children }) =>
@@ -15,5 +16,12 @@ const SidebarLayout = ({ className, style, sidebar, children }) =>
             React.Children.only(children).props.children
         )}
     </div>
+
+SidebarLayout.propTypes = {
+    className:  PropTypes.string,
+    style:      PropTypes.object,
+    sidebar:    PropTypes.element.isRequired,
+    children:   PropTypes.element.isRequired,
+};
 
 export default SidebarLayout;

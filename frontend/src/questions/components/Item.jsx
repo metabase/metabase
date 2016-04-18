@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import { Link } from "react-router";
 import S from "./List.css";
@@ -14,7 +15,7 @@ import Urls from "metabase/lib/urls";
 import cx from "classnames";
 import pure from "recompose/pure";
 
-const Item = ({ id, name, created, by, selected, favorite, archived, icon, labels, allLabels, setItemSelected, setFavorited, setArchived }) =>
+const Item = ({ id, name, created, by, selected, favorite, archived, icon, labels, setItemSelected, setFavorited, setArchived }) =>
     <div className={cx(S.item, { [S.selected]: selected, [S.favorite]: favorite, [S.archived]: archived })}>
         <div className={S.leftIcons}>
             { icon && <Icon className={S.chartIcon} name={icon} width={32} height={32} /> }
@@ -49,6 +50,21 @@ const Item = ({ id, name, created, by, selected, favorite, archived, icon, label
         </div>
     </div>
 
+Item.propTypes = {
+    id:                 PropTypes.number.isRequired,
+    name:               PropTypes.string.isRequired,
+    created:            PropTypes.string.isRequired,
+    by:                 PropTypes.string.isRequired,
+    selected:           PropTypes.bool.isRequired,
+    favorite:           PropTypes.bool.isRequired,
+    archived:           PropTypes.bool.isRequired,
+    icon:               PropTypes.string.isRequired,
+    labels:             PropTypes.array.isRequired,
+    setItemSelected:    PropTypes.func.isRequired,
+    setFavorited:       PropTypes.func.isRequired,
+    setArchived:        PropTypes.func.isRequired,
+};
+
 const ItemBody = pure(({ id, name, labels, created, by }) =>
     <div className={S.itemBody}>
         <div className={S.itemTitle}>
@@ -62,6 +78,14 @@ const ItemBody = pure(({ id, name, labels, created, by }) =>
             <span className={S.itemSubtitleBold}>{by}</span>
         </div>
     </div>
-)
+);
+
+ItemBody.propTypes = {
+    id:                 PropTypes.number.isRequired,
+    name:               PropTypes.string.isRequired,
+    created:            PropTypes.string.isRequired,
+    by:                 PropTypes.string.isRequired,
+    labels:             PropTypes.array.isRequired,
+};
 
 export default pure(Item);

@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import S from "./ActionHeader.css";
 
@@ -34,6 +35,7 @@ const ActionHeader = ({ visibleCount, selectedCount, allAreSelected, sectionIsAr
                         </span>
                     }
                     labels={labels}
+                    count={selectedCount}
                 />
             : null }
             <span className={S.archiveButton} onClick={() => setArchived(undefined, !sectionIsArchive, true)}>
@@ -43,6 +45,14 @@ const ActionHeader = ({ visibleCount, selectedCount, allAreSelected, sectionIsAr
         </span>
     </div>
 
-
+ActionHeader.propTypes = {
+    labels:             PropTypes.array.isRequired,
+    visibleCount:       PropTypes.number.isRequired,
+    selectedCount:      PropTypes.number.isRequired,
+    allAreSelected:     PropTypes.bool.isRequired,
+    sectionIsArchive:   PropTypes.bool.isRequired,
+    setAllSelected:     PropTypes.func.isRequired,
+    setArchived:        PropTypes.func.isRequired,
+};
 
 export default ActionHeader;

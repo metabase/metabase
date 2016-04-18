@@ -10,7 +10,6 @@ import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHist
 import EntityBrowser from "metabase/questions/containers/EntityBrowser.jsx";
 import EntityList from "metabase/questions/containers/EntityList.jsx";
 import EditLabels from "metabase/questions/containers/EditLabels.jsx";
-import EditTopics from "metabase/questions/containers/EditTopics.jsx";
 
 export default class Routes extends Component {
     render() {
@@ -29,7 +28,6 @@ export default class Routes extends Component {
                 </Route>
                 <Route path="/questions" component={EntityBrowser}>
                     <Route path="edit/labels" component={EditLabels} />
-                    <Route path="edit/topics" component={EditTopics} />
                     <Route path=":section" component={EntityList} />
                     <Route path=":section/:slug" component={EntityList} />
                 </Route>

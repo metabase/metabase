@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 
 import S from "./LabelIconPicker.css";
@@ -58,8 +59,10 @@ export default class LabelIconPicker extends Component {
         };
     }
 
-    static propTypes = {};
-    static defaultProps = {};
+    static propTypes = {
+        value:      PropTypes.string,
+        onChange:   PropTypes.func.isRequired,
+    };
 
     scrollToCategory(id) {
         let categoryIndex = CATEGORY_ROW_MAP[id];
@@ -99,7 +102,7 @@ export default class LabelIconPicker extends Component {
                 />
                 <ul className={S.sectionList} style={{ width: WIDTH }}>
                     { categories.map(category =>
-                        <li className={S.option} onClick={() => this.scrollToCategory(category.id) }>
+                        <li key={category.id} className={S.option} onClick={() => this.scrollToCategory(category.id) }>
                             <Icon name="star" />
                         </li>
                     )}
@@ -109,8 +112,12 @@ export default class LabelIconPicker extends Component {
     }
 }
 
-const LabelIconButton = ({ value = "#eee", onChange }) =>
+const LabelIconButton = ({ value = "#eee" }) =>
     <span className={S.dropdownButton}>
         <LabelIcon icon={value} size={28} />
         <Icon className={S.chevron} name="chevrondown" width={14} height={14} />
     </span>
+
+LabelIconButton.propTypes = {
+    value:      PropTypes.string
+};

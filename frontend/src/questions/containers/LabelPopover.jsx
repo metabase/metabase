@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
 
@@ -19,6 +20,13 @@ const mapDispatchToProps = {
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class LabelPopover extends Component {
+    static propTypes = {
+        labels:     PropTypes.array.isRequired,
+        item:       PropTypes.object,
+        count:      PropTypes.number,
+        setLabeled: PropTypes.func.isRequired,
+    };
+
     render() {
         const { labels, setLabeled, item, count } = this.props;
         return (

@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import { Link } from "react-router";
 import S from "./Labels.css";
@@ -15,6 +16,10 @@ const Labels = ({ labels }) =>
         )}
     </ul>
 
+Labels.propTypes = {
+    labels:  PropTypes.array.isRequired,
+};
+
 const Label = ({ name, icon, slug }) =>
     <Link to={"/questions/label/"+slug}>
         { icon.charAt(0) === ":" ?
@@ -28,5 +33,11 @@ const Label = ({ name, icon, slug }) =>
             <span className={S.label}>{name}</span>
         }
     </Link>
+
+Label.propTypes = {
+    name:   PropTypes.string.isRequired,
+    icon:   PropTypes.string.isRequired,
+    slug:   PropTypes.string.isRequired,
+};
 
 export default Labels;

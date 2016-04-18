@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
 
@@ -47,6 +48,25 @@ const mapDispatchToProps = {
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class EntityList extends Component {
+    static propTypes = {
+        style:              PropTypes.object.isRequired,
+        name:               PropTypes.string.isRequired,
+        loading:            PropTypes.bool.isRequired,
+        error:              PropTypes.any,
+        entityType:         PropTypes.string.isRequired,
+        entityIds:          PropTypes.array.isRequired,
+        searchText:         PropTypes.string.isRequired,
+        setSearchText:      PropTypes.func.isRequired,
+        visibleCount:       PropTypes.number.isRequired,
+        selectedCount:      PropTypes.number.isRequired,
+        allAreSelected:     PropTypes.bool.isRequired,
+        sectionIsArchive:   PropTypes.bool.isRequired,
+        labels:             PropTypes.array.isRequired,
+        setItemSelected:    PropTypes.func.isRequired,
+        setAllSelected:     PropTypes.func.isRequired,
+        setArchived:        PropTypes.func.isRequired
+    };
+
     render() {
         const {
             style,

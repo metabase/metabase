@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
 
@@ -24,13 +25,12 @@ const mapDispatchToProps = {
 
 @connect(makeMapStateToProps, mapDispatchToProps)
 export default class EntityItem extends Component {
-    constructor(props, context) {
-        super(props, context);
-        this.state = {};
-    }
-
-    static propTypes = {};
-    static defaultProps = {};
+    static propTypes = {
+        item:               PropTypes.object.isRequired,
+        setItemSelected:    PropTypes.func.isRequired,
+        setFavorited:       PropTypes.func.isRequired,
+        setArchived:        PropTypes.func.isRequired
+    };
 
     render() {
         let { item, setItemSelected, setFavorited, setArchived } = this.props;

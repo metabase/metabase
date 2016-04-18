@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 
 import S from "./LabelIcon.css";
@@ -13,5 +14,12 @@ const LabelIcon = ({ icon = "", size = 18, className, style }) =>
         <span className={cx(S.icon, S.colorIcon, className)} style={{ backgroundColor: icon, width: size, height: size }}></span>
     :
         <Icon className={cx(S.icon, className)} name={icon} />
+
+LabelIcon.propTypes = {
+    className:  PropTypes.string,
+    style:      PropTypes.object,
+    icon:       PropTypes.string,
+    size:       PropTypes.number,
+};
 
 export default LabelIcon;

@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import S from "./SearchHeader.css";
 
@@ -16,5 +17,10 @@ const SearchHeader = ({ searchText, setSearchText }) =>
             onChange={(e) => setSearchText(e.target.value)}
         />
     </div>
+
+SearchHeader.propTypes = {
+    searchText: PropTypes.string.isRequired,
+    setSearchText: PropTypes.func.isRequired,
+};
 
 export default SearchHeader;

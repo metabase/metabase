@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import S from "./LabelPicker.css";
 
@@ -44,5 +45,12 @@ const LabelPicker = ({ labels, count, item, setLabeled }) =>
             }) }
         </ul>
     </div>
+
+LabelPicker.propTypes = {
+    labels:     PropTypes.array.isRequired,
+    count:      PropTypes.number,
+    item:       PropTypes.object,
+    setLabeled: PropTypes.func.isRequired,
+};
 
 export default LabelPicker;

@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import S from "./LabelEditorForm.css";
 
@@ -22,6 +23,14 @@ import cx from "classnames";
     }
 })
 export default class LabelEditorForm extends Component {
+    static propTypes = {
+        className:          PropTypes.string,
+        fields:             PropTypes.object.isRequired,
+        invalid:            PropTypes.bool.isRequired,
+        submitButtonText:   PropTypes.string.isRequired,
+        handleSubmit:       PropTypes.func.isRequired,
+    };
+
     render() {
         const { fields: { icon, name }, handleSubmit, invalid, className, submitButtonText } = this.props;
         return (

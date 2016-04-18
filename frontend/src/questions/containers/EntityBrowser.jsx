@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
@@ -26,13 +27,11 @@ const mapDispatchToProps = {
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class EntityBrowser extends Component {
-    constructor(props, context) {
-        super(props, context);
-        this.state = {};
-    }
-
-    static propTypes = {};
-    static defaultProps = {
+    static propTypes = {
+        params:         PropTypes.object.isRequired,
+        selectSection:  PropTypes.func.isRequired,
+        loadLabels:     PropTypes.func.isRequired,
+        children:       PropTypes.any.isRequired
     };
 
     componentWillMount() {

@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
 
@@ -25,13 +26,11 @@ const mapDispatchToProps = {
 @connect(mapStateToProps, mapDispatchToProps)
 @BodyComponent
 export default class UndoListing extends Component {
-    constructor(props, context) {
-        super(props, context);
-        this.state = {};
-    }
-
-    static propTypes = {};
-    static defaultProps = {};
+    static propTypes = {
+        undos:          PropTypes.array.isRequired,
+        performUndo:    PropTypes.func.isRequired,
+        dismissUndo:    PropTypes.func.isRequired,
+    };
 
     render() {
         const { undos, performUndo, dismissUndo } = this.props;
