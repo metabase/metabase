@@ -7,6 +7,8 @@ import thunk from "redux-thunk";
 import createLogger from "redux-logger";
 
 import { createHistory } from 'history';
+import { createAngularHistory } from "./createAngularHistory";
+
 import { reduxReactRouter } from 'redux-router';
 
 // convienence
@@ -20,6 +22,13 @@ export const createStore = compose(
   applyMiddleware(thunk, promise, logger),
   reduxReactRouter({ createHistory })
 )(originalCreateStore);
+
+export const createStoreWithAngularScope = ($scope, $location, ...args) => {
+    return compose(
+        applyMiddleware(thunk, promise, logger),
+        reduxReactRouter({ createHistory: createAngularHistory.bind(null, $scope, $location) })
+    )(originalCreateStore)(...args);
+}
 
 // HACK: just use our Angular resources for now
 export function AngularResourceProxy(serviceName, methods) {

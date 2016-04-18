@@ -33,7 +33,7 @@ import "./admin/datamodel/datamodel.module";
 
 import Routes from "./Routes.jsx";
 
-import { createStore, combineReducers } from "metabase/lib/redux";
+import { createStore, createStoreWithAngularScope, combineReducers } from "metabase/lib/redux";
 
 import { routerStateReducer as router } from 'redux-router';
 import { reducer as form } from "redux-form";
@@ -77,7 +77,7 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
             function($scope, $location, $route, $routeParams, AppState) {
                 $scope.Component = Routes;
                 $scope.props = {};
-                $scope.store = createStore(combineReducers({
+                $scope.store = createStoreWithAngularScope($scope, $location, combineReducers({
                     // admin: {
                     //     datamodel
                     // },
@@ -96,18 +96,18 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
                     var newParams = $route.current.params;
                     var oldParams = route.params;
 
-                    // if ($route.current.$$route.controller === route.controller) {
-                    //     $route.current = route;
-                    //
-                    //     angular.forEach(oldParams, function(value, key) {
-                    //         delete $route.current.params[key];
-                    //         delete $routeParams[key];
-                    //     });
-                    //     angular.forEach(newParams, function(value, key) {
-                    //         $route.current.params[key] = value;
-                    //         $routeParams[key] = value;
-                    //     });
-                    // }
+                    if ($route.current.$$route.controller === route.controller) {
+                        $route.current = route;
+
+                        angular.forEach(oldParams, function(value, key) {
+                            delete $route.current.params[key];
+                            delete $routeParams[key];
+                        });
+                        angular.forEach(newParams, function(value, key) {
+                            $route.current.params[key] = value;
+                            $routeParams[key] = value;
+                        });
+                    }
                 });
             }
         ],
