@@ -17,15 +17,14 @@ function getSuggestions(fieldName, fields) {
     if (!fieldName) fieldName = '';
 
     let suggestions = _.filter(fields, function(field) {
-        // return field.name.indexOf(fieldName) > 1;
-        return field.name.toLowerCase().indexOf(fieldName.toLowerCase()) > -1;
+        return field.display_name.toLowerCase().indexOf(fieldName.toLowerCase()) > -1;
     });
 
     // don't suggest anything if the only suggestion is for the token we already have
-    if (suggestions.length === 1 && suggestions[0].name === fieldName) suggestions = [];
+    if (suggestions.length === 1 && suggestions[0].display_name === fieldName) suggestions = [];
 
     return _.sortBy(suggestions, function(field) {
-        return field.name.toLowerCase();
+        return field.display_name.toLowerCase();
     });
 }
 
@@ -50,12 +49,13 @@ function parseToken(token, fields, operators) {
     }
 
     // if not, it is a field name
-    token.suggestions = getSuggestions(token.value, fields);
+    let fieldName = token.value.replace(/^"?(.*)"?$/, '$1'); // strip off any quotes around the field name
+    token.suggestions = getSuggestions(fieldName, fields);
 
-    let field = _.findWhere(fields, {name: token.value});
-    if (!field) token.error = 'no field named "' + token.value + '"';
+    let field = _.findWhere(fields, {display_name: fieldName});
 
-    if (field) token.parsedValue = ['field-id', field.id];
+    if (field) token.parsedValue = ['field-id', field.id]
+    else       token.error = 'no field named "' + fieldName + '"';
 
     return token;
 }
@@ -78,14 +78,14 @@ function parseExpression(tokens, fields, operators) {
 
     if (operator && operator.value && operator.value.length) {
         if (!operators.has(operator.value)) operator.error       = 'invalid operator: ' + operator.value;
-        else                                      operator.parsedValue = operator.value;
+        else                                operator.parsedValue = operator.value;
     } else {
         operator = {
             token: '',
             start: lhs.end + 1,
             end: lhs.end + 1,
             error: 'missing operator',
-            suggestions: Array.from(operators).map((operator) => ({name: operator})),
+            suggestions: Array.from(operators).map((operator) => ({display_name: operator})),
             suggestionsTitle: 'OPERATORS'
         };
     }
@@ -114,14 +114,18 @@ function parseExpression(tokens, fields, operators) {
 
 function tokenizeExpression(expression, i = 0, level = 0) {
     console.log('tokenizeExpression(', expression, ', i =', i, ', level =', level, ')');
-    var tokens = [],
+    var tokens       = [],
         currentToken = null,
-        start = i;
+        start        = i,
+        insideQuotes = false;
 
     for (; i < expression.length; i++) {
         let c = expression.charAt(i);
 
-        if (c === ' ' || c === '\n') {
+        if (c === '"') {
+            insideQuotes = !insideQuotes;
+        }
+        else if ((c === ' ' || c === '\n') && !insideQuotes) {
             if (currentToken) {
                 tokens.push({
                     value: currentToken,
@@ -177,7 +181,7 @@ function tokenizeExpression(expression, i = 0, level = 0) {
             tokens.push({
                 value: currentToken,
                 start: start,
-                end: i,
+                end: i
             });
         }
         if (tokens.length) tokens[tokens.length - 1].error = 'expression is missing a closing paren';
@@ -221,7 +225,7 @@ export function tokenAtPosition(tokens, position) {
 }
 
 
-// Takes an array of tokens representing a parsed string based expression 
+// Takes an array of tokens representing a parsed string based expression
 // and restructures them into a valid MBQL expression clause
 export function tokensToExpression(tokens) {
     console.log('getParsedExpression(', tokens, ')');

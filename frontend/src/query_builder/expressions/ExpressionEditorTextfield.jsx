@@ -78,7 +78,9 @@ export default class ExpressionEditorTextfield extends Component {
 
     onSuggestionAccepted() {
         let inputElement = document.getElementById('react_qb_expression_input'),
-            suggestion   = this.state.suggestions[this.state.highlightedSuggestion].name,
+            displayName  = this.state.suggestions[this.state.highlightedSuggestion].display_name,
+            // wrap field names with spaces in them in quotes
+            suggestion   = displayName.indexOf(' ') > -1 ? ('"' + displayName + '"') : displayName,
             tokenAtPoint = tokenAtPosition(this.state.tokens, inputElement.selectionStart);
 
         console.log('replacing:', tokenAtPoint, 'with:', suggestion);
@@ -135,14 +137,13 @@ export default class ExpressionEditorTextfield extends Component {
     }
 
     onInputChange() {
-        let inputElement = document.getElementById('react_qb_expression_input');
+        let inputElement = document.getElementById('react_qb_expression_input'),
+            expression   = inputElement.value;
 
-        let expression = inputElement.value;
-
-        var errorMessage = null,
-            tokens = [],
-            suggestions = [],
-            suggestionsTitle = null,
+        var errorMessage          = null,
+            tokens                = [],
+            suggestions           = [],
+            suggestionsTitle      = null,
             highlightedSuggestion = this.state.highlightedSuggestion,
             parsedExpression;
 
@@ -218,7 +219,7 @@ export default class ExpressionEditorTextfield extends Component {
                      tetherOptions={{
                              attachment: 'top left',
                              targetAttachment: 'bottom left',
-                             targetOffset: '0 '+((this.state.expressionString.length / 2) * 6)
+                             targetOffset: '0 ' + ((this.state.expressionString.length / 2) * 6)
                          }}
                  >
                      <div style={{minWidth: 150}}>
@@ -230,7 +231,7 @@ export default class ExpressionEditorTextfield extends Component {
                                      data-i={i}
                                      onMouseDown={this.onSuggestionMouseDown}
                                  >
-                                     {suggestion.name}
+                                     {suggestion.display_name}
                                  </li>
                               )}
                          </ul>
