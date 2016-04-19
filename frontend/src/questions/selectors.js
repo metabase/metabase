@@ -168,8 +168,10 @@ export const getSectionName = createSelector(
             }
         } else {
             let section = _.findWhere(sections, { id: sectionId });
-            if (section && section.name) {
-                return section.name;
+            if (section) {
+                return section.name || "";
+            } else if (sectionId === "archived") {
+                return "Archive";
             }
         }
         return "";
