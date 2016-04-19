@@ -1,20 +1,6 @@
-:local(.form) {
-    composes: flex flex-no-shrink from "style";
-}
-
-:local(.nameContainer) {
-    composes: flex-full from "style";
-    composes: mx1 from "style";
-}
-
 :local(.nameInput) {
-    composes: flex-full from "style";
-    display: block;
-    width: 100%;
-
+    composes: flex-full ml1 from "style";
     font-size: 18px;
-    padding-top: 8px;
-    padding-bottom: 8px;
 }
 
 :local(.invalid) {

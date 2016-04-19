@@ -38,13 +38,17 @@ export default class LabelEditorForm extends Component {
         const nameInvalid = name.invalid && ((name.active && name.value) || (!name.active && name.visited));
         const errorMessage = name.error || error;
         return (
-            <form className={cx(className, S.form)} onSubmit={handleSubmit}>
-                <LabelIconPicker {...icon} />
-                <div className={S.nameContainer}>
-                    <input className={cx(S.nameInput, "input", { [S.invalid]: nameInvalid })} type="text" placeholder="Name" {...name}/>
-                    { errorMessage && <div className={S.errorMessage}>{errorMessage}</div> }
+            <form className={className} onSubmit={handleSubmit}>
+                <div className="flex">
+                    <LabelIconPicker {...icon} />
+                    <div className="full">
+                        <div className="flex">
+                          <input className={cx(S.nameInput, "input", { [S.invalid]: nameInvalid })} type="text" placeholder="Name" {...name}/>
+                          <button className={cx("Button", "ml1", { "disabled": invalid, "Button--primary": !invalid })} type="submit">{submitButtonText}</button>
+                        </div>
+                        { nameInvalid && name.error && <div className={S.errorMessage}>{name.error}</div> }
+                    </div>
                 </div>
-                <button className={cx("Button", { "disabled": invalid, "Button--primary": !invalid })} type="submit">{submitButtonText}</button>
             </form>
         );
     }

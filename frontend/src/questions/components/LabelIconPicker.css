@@ -36,11 +36,9 @@
 }
 
 :local(.dropdownButton) {
-    composes: flex layout-centered from "style";
-    composes: px1 from "style";
+    composes: flex rounded px1 layout-centered from "style";
     border: 1px solid #d9d9d9;
-    border-radius: 4px;
-    height: 40px;
+    padding: 10px;
 }
 
 :local(.dropdownButton):hover {
