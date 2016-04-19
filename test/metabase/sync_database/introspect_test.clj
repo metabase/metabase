@@ -1,5 +1,6 @@
 (ns metabase.sync-database.introspect-test
   (:require [expectations :refer :all]
+            [korma.core :as k]
             [metabase.db :as db]
             [metabase.mock.moviedb :as moviedb]
             [metabase.models.database :as database]
@@ -13,7 +14,7 @@
   save-all-table-columns! save-all-table-fks! create-raw-table! update-raw-table! disable-raw-tables!)
 
 (defn get-tables [database-id]
-  (->> (hydrate/hydrate (db/sel :many RawTable :database_id database-id) :columns)
+  (->> (hydrate/hydrate (db/sel :many RawTable :database_id database-id (k/order :id)) :columns)
        (mapv tu/boolean-ids-and-timestamps)))
 
 (defn get-table [table-id]
@@ -112,7 +113,7 @@
                   raw-column/RawColumn [_ {:raw_table_id raw-table-id2, :name "user_id"}]
                   raw-table/RawTable  [{raw-table-id3 :id, :as table2} {:database_id database-id, :schema nil, :name "users"}]
                   raw-column/RawColumn [_ {:raw_table_id raw-table-id3, :name "id"}]]
-    (let [get-columns #(->> (db/sel :many RawColumn :raw_table_id raw-table-id1)
+    (let [get-columns #(->> (db/sel :many RawColumn :raw_table_id raw-table-id1 (k/order :id))
                             (mapv tu/boolean-ids-and-timestamps))]
       ;; original list should not have any fks
       [(get-columns)

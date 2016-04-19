@@ -1,5 +1,6 @@
 (ns metabase.sync-database.sync-test
   (:require [expectations :refer :all]
+            [korma.core :as k]
             [metabase.db :as db]
             [metabase.mock.moviedb :as moviedb]
             [metabase.models.database :as database]
@@ -258,7 +259,7 @@
                   raw-column/RawColumn [{raw-column-id2 :id} {:raw_table_id raw-table-id, :name "Second", :details {:special-type :category, :base-type "TextField"}}]
                   raw-column/RawColumn [{raw-column-id3 :id} {:raw_table_id raw-table-id, :name "Third", :details {:base-type "BooleanField"}}]
                   table/Table          [{table-id :id, :as tbl} {:db_id database-id, :raw_table_id raw-table-id}]]
-    (let [get-fields #(->> (db/sel :many field/Field :table_id table-id)
+    (let [get-fields #(->> (db/sel :many field/Field :table_id table-id (k/order :id))
                            (mapv tu/boolean-ids-and-timestamps)
                            (mapv (fn [m]
                                    (dissoc m :active :field_type :position :preview_display))))

@@ -1,5 +1,6 @@
 (ns metabase.sync-database.sync-dynamic-test
   (:require [expectations :refer :all]
+            [korma.core :as k]
             [metabase.db :as db]
             [metabase.models.database :as database]
             [metabase.models.field :as field]
@@ -244,7 +245,7 @@
   (tu/with-temp* [database/Database   [{database-id :id}]
                   raw-table/RawTable  [{raw-table-id :id, :as table} {:database_id database-id}]
                   table/Table         [{table-id :id, :as tbl} {:db_id database-id, :raw_table_id raw-table-id}]]
-    (let [get-fields #(->> (db/sel :many field/Field :table_id table-id)
+    (let [get-fields #(->> (db/sel :many field/Field :table_id table-id (k/order :id))
                            (mapv tu/boolean-ids-and-timestamps)
                            (mapv (fn [m]
                                    (dissoc m :active :field_type :position :preview_display))))]
