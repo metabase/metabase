@@ -65,12 +65,21 @@
     composes: ml2 from "style";
     composes: text-bold from "style";
     color: #9CAEBE;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow-x: hidden;
 }
 
 :local(.item):hover :local(.name),
 :local(.item.selected) :local(.name) {
     color: #2D86D4;
 }
+
+:local(.icon) {
+    composes: flex-no-shrink from "style";
+}
+
 
 :local(.noLabelsMessage) {
   composes: relative from "style";
