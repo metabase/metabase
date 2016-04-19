@@ -80,7 +80,7 @@
   "See also the [jTDS SQL <-> Java types table](http://jtds.sourceforge.net/typemap.html)"
   [unit expr]
   (case unit
-    :default         (kx/->datetime expr)
+    :default         expr
     :minute          (kx/cast :SMALLDATETIME expr)
     :minute-of-hour  (date-part :minute expr)
     :hour            (kx/->datetime (kx/format "yyyy-MM-dd HH:00:00" expr))
