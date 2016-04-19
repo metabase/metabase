@@ -62,8 +62,6 @@ export default class ExpressionEditorTextfield extends Component {
                 errorMessage = e;
             }
 
-            console.log(parsedExpression, expression, tokens);
-
             this.setState({
                 parsedExpression:       parsedExpression,
                 expressionString:       expression,

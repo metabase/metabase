@@ -201,12 +201,10 @@ function tokenizeExpression(expression, i = 0, level = 0) {
 
 // Takes a string representation of an expression and parses it into an array of structured tokens
 export function parseExpressionString(expression, fields, operators) {
-	if (_.isEmpty(expression)) {
-		return [];
-	} else {
-		let tokens = tokenizeExpression(expression);
-		return parseExpression(tokens, fields, operators);
-	}
+    if (_.isEmpty(expression)) return [];
+
+    let tokens = tokenizeExpression(expression);
+    return parseExpression(tokens, fields, operators);
 }
 
 
@@ -248,6 +246,3 @@ export function tokensToExpression(tokens) {
 
     return [operator, lhs, rhs];
 }
-
-window.mb_parseExpressionString = parseExpressionString;
-window.mb_tokensToExpression = tokensToExpression;

@@ -3,8 +3,8 @@
 import { parseExpressionString, tokenAtPosition, tokensToExpression } from "metabase/lib/expressions";
 
 const mockFields = [
-    {id: 1, name: "A"},
-    {id: 2, name: "B"}
+    {id: 1, display_name: "A"},
+    {id: 2, display_name: "B"}
 ];
 
 const parsedMockFields = {

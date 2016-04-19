@@ -34,7 +34,7 @@ export default class ExpressionWidget extends Component {
 
     isValid() {
         const { name, expression } = this.state;
-        return (!_.isEmpty(name) && expression[0] && expression[0][0] && expression[1]);
+        return (!_.isEmpty(name) && expression[0] && expression[0][0] && expression[1]); // huh?
     }
 
     render() {
@@ -78,8 +78,8 @@ export default class ExpressionWidget extends Component {
                     </div>
                     <div>
                         {this.props.expression[0] ?
-                            <a className="pr2 text-warning link" onClick={() => this.props.onRemoveExpression(this.props.name)}>Remove</a>
-                        : null }
+                         <a className="pr2 text-warning link" onClick={() => this.props.onRemoveExpression(this.props.name)}>Remove</a>
+                         : null }
                     </div>
                 </div>
             </div>
