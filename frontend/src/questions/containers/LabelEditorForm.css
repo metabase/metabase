@@ -1,5 +1,5 @@
 :local(.form) {
-    composes: flex align-center from "style";
+    composes: flex align-center flex-no-shrink from "style";
 }
 
 :local(.nameInput) {
