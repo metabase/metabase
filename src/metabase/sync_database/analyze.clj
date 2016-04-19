@@ -67,7 +67,7 @@
         distinct-values (when-not (or (< low-cardinality-threshold (count non-nil-values))
                                       ;; very simple check to see if total length of field-values exceeds (total values * max per value)
                                       (< (* low-cardinality-threshold
-                                            field-values-entry-max-length) (reduce + (map count non-nil-values))))
+                                            field-values-entry-max-length) (reduce + (map (comp count str) non-nil-values))))
                           non-nil-values)]
     ;; TODO: eventually we can check for :nullable? based on the original values above
     (cond-> (assoc field-stats :values distinct-values)

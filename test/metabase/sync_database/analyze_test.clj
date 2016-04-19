@@ -12,6 +12,13 @@
                                                                           [(clojure.string/join (repeat 5000 "A"))])}
     #(test:cardinality-and-extract-field-values {} {})))
 
+(expect
+  {:values       [1 2 3 4]
+   :special-type :category}
+  (with-redefs-fn {#'metabase.db.metadata-queries/field-distinct-values (fn [_ _]
+                                                                          [1 2 3 4])}
+    #(test:cardinality-and-extract-field-values {} {})))
+
 
 ;;; ## mark-json-field!
 
