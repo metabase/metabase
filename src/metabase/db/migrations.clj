@@ -210,9 +210,8 @@
                   (let [{raw-column-id :id} (db/ins RawColumn
                                               :raw_table_id  raw-table-id
                                               :name          column-name
-                                              :base_type     (:base_type field)
                                               :is_pk         (= :id (:special_type field))
-                                              :details       {}
+                                              :details       {:base-type (:base_type field)}
                                               :active        true)]
                     ;; update the Field and link it with the RawColumn
                     (k/update Field
