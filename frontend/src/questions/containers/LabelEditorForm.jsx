@@ -45,7 +45,7 @@ export default class LabelEditorForm extends Component {
                           <input className={cx(S.nameInput, "input", { [S.invalid]: nameInvalid })} type="text" placeholder="Name" {...name}/>
                           <button className={cx("Button", "ml1", { "disabled": invalid, "Button--primary": !invalid })} type="submit">{submitButtonText}</button>
                         </div>
-                        { nameInvalid && name.error && <div className={S.errorMessage}>{name.error}</div> }
+                        { nameInvalid && errorMessage && <div className={S.errorMessage}>{errorMessage}</div> }
                     </div>
                 </div>
             </form>
