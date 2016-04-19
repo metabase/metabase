@@ -99,6 +99,7 @@
     composes: icon;
     display: none;
     visibility: visible !important;
+    margin-left: 10px;
 }
 :local(.item):hover :local(.itemCheckbox),
 :local(.item.selected) :local(.itemCheckbox) {
@@ -113,7 +114,6 @@
     composes: icon;
     visibility: visible !important;
     composes: relative from "style";
-    left: -6px;
 }
 :local(.item):hover :local(.chartIcon),
 :local(.item.selected) :local(.chartIcon) {
