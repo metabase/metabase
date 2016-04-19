@@ -37,7 +37,7 @@ export const getSectionError = (state) =>
 export const getEntityIds = createSelector(
     [getSectionData],
     (sectionData) =>
-        sectionData && sectionData.items || []
+        sectionData ? _.sortBy(sectionData.items, id => sectionData.sortIndex[id] != null ? sectionData.sortIndex[id] : Infinity) : []
 );
 
 const getEntity = (state, props) =>

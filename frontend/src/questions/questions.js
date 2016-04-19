@@ -185,6 +185,8 @@ export default function(state = initialState, { type, payload, error }) {
                     .assoc("section", payload.section)
                     .assoc("sectionError", null)
                     .assocIn(["itemsBySection", payload.type, payload.section, "items"], payload.result)
+                    // store the initial sort order so if we remove and undo an item it can be put back in it's original location
+                    .assocIn(["itemsBySection", payload.type, payload.section, "sortIndex"], payload.result.reduce((o, id, i) => { o[id] = i; return o; }, {}))
                     .value());
             }
         case SET_FAVORITED:
