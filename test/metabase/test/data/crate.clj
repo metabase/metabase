@@ -67,5 +67,6 @@
           :load-data!                (make-load-data-fn generic/load-data-add-ids)})
   i/IDatasetLoader
   (merge generic/IDatasetLoaderMixin
-         {:database->connection-details database->connection-details
-          :engine                     (constantly :crate)}))
+         {:database->connection-details   database->connection-details
+          :engine                         (constantly :crate)
+          :default-schema                 (constantly "doc")}))
