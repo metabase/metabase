@@ -48,7 +48,7 @@
     composes: inline-block from "style";
 }
 
-:local(.itemTitle):hover {
+:local(.itemName):hover {
     color: var(--blue-color);
 }
 

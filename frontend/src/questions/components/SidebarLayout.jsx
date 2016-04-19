@@ -6,7 +6,7 @@ const SidebarLayout = ({ className, style, sidebar, children }) =>
         { React.cloneElement(
             sidebar,
             { style: { flexShrink: 0, overflowY: 'scroll' },
-              className: 'scroll-show'
+              className: 'scroll-show scroll--light scroll-show--hover'
             },
             sidebar.props.children
         )}

@@ -30,9 +30,6 @@
 /* set height to that of the viewport */
 .viewport-height { height: 100vh; }
 
-.scroll-y, :local(.scroll-y) { overflow-y: auto; }
-.scroll-x { overflow-x: auto; }
-
 /* display utilities */
 .block,
 :local(.block)        { display: block; }
