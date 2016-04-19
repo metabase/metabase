@@ -1,4 +1,5 @@
 (ns metabase.sync-database.sync-dynamic
+  "Functions for syncing drivers with `:dynamic-schema` which have no fixed definition of their data."
   (:require [clojure.set :as set]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
@@ -12,10 +13,6 @@
             [metabase.sync-database.interface :as i]
             [metabase.util :as u]))
 
-
-(declare save-nested-fields!)
-
-;; TODO: we need to handle reactivation of a retired field
 
 (defn- save-nested-fields!
   "Save any nested `Fields` for a given parent `Field`.
@@ -98,11 +95,11 @@
                           (schema/validate i/DescribeTable <>))]
           (if-let [existing-table (get existing-tables raw-table-id)]
             ;; table already exists, update it
-            (->> (table/update-table existing-table raw-tbl)
-                 (save-table-fields! (:fields table-def)))
+            (-> (table/update-table existing-table raw-tbl)
+                (save-table-fields! (:fields table-def)))
             ;; must be a new table, insert it
-            (->> (table/create-table database-id (assoc raw-tbl :raw-table-id raw-table-id))
-                 (save-table-fields! (:fields table-def)))))
+            (-> (table/create-table database-id (assoc raw-tbl :raw-table-id raw-table-id))
+                (save-table-fields! (:fields table-def)))))
         (catch Throwable t
           (log/error (u/format-color 'red "Unexpected error scanning table") t))))
 

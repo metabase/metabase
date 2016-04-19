@@ -71,15 +71,16 @@
 
 ;; DESCRIBE-DATABASE
 (expect-when-testing-mongo
-    {:tables #{{:name "checkins"}
-               {:name "categories"}
-               {:name "users"}
-               {:name "venues"}}}
+    {:tables #{{:schema nil, :name "checkins"}
+               {:schema nil, :name "categories"}
+               {:schema nil, :name "users"}
+               {:schema nil, :name "venues"}}}
     (driver/describe-database (MongoDriver.) (mongo-db)))
 
 ;; DESCRIBE-TABLE
 (expect-when-testing-mongo
-  {:name   "venues"
+  {:schema nil
+   :name   "venues"
    :fields #{{:name "name",
               :base-type :TextField}
              {:name "latitude",
