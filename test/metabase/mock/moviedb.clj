@@ -3,6 +3,7 @@
 
 
 (def ^:const moviedb-tables
+  "Docstring"
   {"movies"  {:name   "movies"
               :schema nil
               :fields #{{:name      "id"
@@ -79,6 +80,7 @@
 
 
 (def ^:const moviedb-raw-tables
+  "Docstring"
   [{:schema nil
     :database_id true
     :columns [{:raw_table_id true
