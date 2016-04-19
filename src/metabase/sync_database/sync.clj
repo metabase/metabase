@@ -12,9 +12,6 @@
             [metabase.util :as u]))
 
 
-(def ^:private ^:dynamic *sync-dynamic* false)
-
-
 (defn- save-fks!
   "Update all of the FK relationships present in DATABASE based on what's captured in the raw schema.
    This will set :special_type :fk and :fk_target_field_id <field-id> for each found FK relationship.
