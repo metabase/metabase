@@ -12,6 +12,7 @@ export default class LoadingAndErrorWrapper extends Component {
         loading:        PropTypes.any,
         noBackground:   PropTypes.bool,
         noWrapper:      PropTypes.bool,
+        children:       PropTypes.any,
     };
 
     static defaultProps = {
@@ -46,9 +47,9 @@ export default class LoadingAndErrorWrapper extends Component {
     }
 
     render() {
-        let { className, loading, error, noBackground, noWrapper } = this.props;
-        let contentClassName = cx("wrapper py4 text-brand text-centered flex-full flex flex-column layout-centered", {
-            "bg-white": !this.props.noBackground
+        const { loading, error, noBackground, noWrapper } = this.props;
+        const contentClassName = cx("wrapper py4 text-brand text-centered flex-full flex flex-column layout-centered", {
+            "bg-white": !noBackground
         });
         if (noWrapper && !error && !loading) {
             return React.Children.only(this.getChildren());

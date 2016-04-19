@@ -20,7 +20,7 @@ const Sidebar = ({ sections, labels, labelsLoading, labelsError, style, classNam
             <QuestionSidebarSectionTitle name="Labels" href="/questions/edit/labels" />
         </ul>
         <LoadingAndErrorWrapper loading={labelsLoading} error={labelsError} noBackground noWrapper>
-        { () => labels.length > 0 ?
+        { () => labels.length > 0 ? // eslint-disable-line
             <ul>
             { labels.map(label =>
                 <QuestionSidebarItem key={label.id} href={"/questions/label/"+label.slug} {...label} />
