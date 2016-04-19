@@ -51,25 +51,29 @@ export default class EditLabels extends Component {
         const { style, labels, editingLabelId, saveLabel, editLabel, deleteLabel } = this.props;
         return (
             <div className={S.editor} style={style}>
-                <div className={S.header}>Labels</div>
-                <LabelEditorForm onSubmit={saveLabel} initialValues={{ icon: colors.normal.blue, name: "" }} submitButtonText={"Create Label"} labels={labels} />
+                <div className="wrapper wrapper--trim">
+                    <div className={S.header}>Labels</div>
+                </div>
+                <LabelEditorForm onSubmit={saveLabel} initialValues={{ icon: colors.normal.blue, name: "" }} submitButtonText={"Create Label"} className="wrapper wrapper--trim"/>
                 { labels.length > 0 ?
-                    <ul className={S.list}>
-                    { labels.map(label =>
-                        editingLabelId === label.id ?
-                            <li key={label.id} className={S.labelEditing}>
-                                <LabelEditorForm formKey={String(label.id)} className="flex-full" onSubmit={saveLabel} initialValues={label} submitButtonText={"Update Label"}/>
-                                <a className={" text-grey-1 text-grey-4-hover"} onClick={() => editLabel(null)}>Cancel</a>
-                            </li>
-                        :
-                            <li key={label.id} className={S.label}>
-                                <LabelIcon icon={label.icon} size={28} />
-                                <span className={S.name}>{label.name}</span>
-                                <a className={S.edit} onClick={() => editLabel(label.id)}>Edit</a>
-                                <Icon className={S.delete + " text-grey-1 text-grey-4-hover"} name="close" width={14} height={14} onClick={() => deleteLabel(label.id)} />
-                            </li>
-                    )}
-                    </ul>
+                    <div className="wrapper wrapper--trim">
+                        <ul className={S.list}>
+                        { labels.map(label =>
+                            editingLabelId === label.id ?
+                                <li key={label.id} className={S.labelEditing}>
+                                    <LabelEditorForm formKey={String(label.id)} className="flex-full" onSubmit={saveLabel} initialValues={label} submitButtonText={"Update Label"}/>
+                                    <a className={" text-grey-1 text-grey-4-hover ml2"} onClick={() => editLabel(null)}>Cancel</a>
+                                </li>
+                            :
+                                <li key={label.id} className={S.label}>
+                                    <LabelIcon icon={label.icon} size={28} />
+                                    <span className={S.name}>{label.name}</span>
+                                    <a className={S.edit} onClick={() => editLabel(label.id)}>Edit</a>
+                                    <Icon className={S.delete + " text-grey-1 text-grey-4-hover"} name="close" width={14} height={14} onClick={() => deleteLabel(label.id)} />
+                                </li>
+                        )}
+                        </ul>
+                    </div>
                 :
                     <div className="full-height full flex-full flex align-center justify-center">
                         <EmptyState message="Create labels to group and manage questions." icon="label" />
