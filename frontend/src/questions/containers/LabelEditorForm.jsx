@@ -6,20 +6,16 @@ import LabelIconPicker from "../components/LabelIconPicker.jsx";
 
 import { reduxForm } from "redux-form";
 
-import { slugify } from "metabase/lib/formatting";
-
 import cx from "classnames";
 import _ from "underscore";
 
 @reduxForm({
     form: 'label',
     fields: ['icon', 'name', 'id'],
-    validate: (values, props) => {
+    validate: (values) => {
         const errors = {};
         if (!values.name) {
-            errors.name = "A label name is required";
-        } else if (_.findWhere(props.labels, { slug: slugify(values.name) })) {
-            errors.name = "A label with this name already exists";
+            errors.name = true;
         }
         if (!values.icon) {
             errors.icon = "Icon is required";
@@ -32,20 +28,21 @@ export default class LabelEditorForm extends Component {
         className:          PropTypes.string,
         fields:             PropTypes.object.isRequired,
         invalid:            PropTypes.bool.isRequired,
+        error:              PropTypes.any,
         submitButtonText:   PropTypes.string.isRequired,
         handleSubmit:       PropTypes.func.isRequired,
-        labels:             PropTypes.array.isRequired,
     };
 
     render() {
-        const { fields: { icon, name }, handleSubmit, invalid, className, submitButtonText } = this.props;
+        const { fields: { icon, name }, error, handleSubmit, invalid, className, submitButtonText } = this.props;
         const nameInvalid = name.invalid && ((name.active && name.value) || (!name.active && name.visited));
+        const errorMessage = name.error || error;
         return (
             <form className={cx(className, S.form)} onSubmit={handleSubmit}>
                 <LabelIconPicker {...icon} />
                 <div className={S.nameContainer}>
                     <input className={cx(S.nameInput, "input", { [S.invalid]: nameInvalid })} type="text" placeholder="Name" {...name}/>
-                    { nameInvalid && name.error && <div className={S.errorMessage}>{name.error}</div> }
+                    { errorMessage && <div className={S.errorMessage}>{errorMessage}</div> }
                 </div>
                 <button className={cx("Button", { "disabled": invalid, "Button--primary": !invalid })} type="submit">{submitButtonText}</button>
             </form>

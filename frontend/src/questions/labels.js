@@ -35,8 +35,15 @@ export const saveLabel = createThunkAction(SAVE_LABEL, (values) => {
             }
             return response;
         } catch (e) {
-            // TODO: handle error
-            return null;
+            // redux-form expects an object with either { field: error } or { _error: error }
+            if (e.data && e.data.message) {
+                if (e.data.message.indexOf("Unique index or primary key violation") === 0) {
+                    throw { name: "A label with this name already exists" };
+                } else {
+                    throw { _error: e.data.message };
+                }
+            }
+            throw { _error: "An unknown error occured" };
         }
     }
 });
@@ -80,7 +87,7 @@ export default function(state = initialState, { type, payload, error }) {
                 return { ...state, labelIds: payload.result, error: null };
             }
         case SAVE_LABEL:
-            if (payload == null) {
+            if (error || payload == null) {
                 return state;
             }
             return {
