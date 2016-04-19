@@ -10,13 +10,14 @@ import cx from "classnames";
 
 import * as questionsActions from "../questions";
 import * as labelsActions from "../labels";
-import { getSections, getTopics, getLabels } from "../selectors";
+import { getSections, getLabels, getLabelsLoading, getLabelsError } from "../selectors";
 
 const mapStateToProps = (state, props) => {
   return {
-      sections: getSections(state),
-      topics:  getTopics(state),
-      labels: getLabels(state)
+      sections:         getSections(state),
+      labels:           getLabels(state),
+      labelsLoading:    getLabelsLoading(state),
+      labelsError:      getLabelsError(state),
   }
 }
 
@@ -31,7 +32,12 @@ export default class EntityBrowser extends Component {
         params:         PropTypes.object.isRequired,
         selectSection:  PropTypes.func.isRequired,
         loadLabels:     PropTypes.func.isRequired,
-        children:       PropTypes.any.isRequired
+        children:       PropTypes.any.isRequired,
+
+        sections:       PropTypes.array.isRequired,
+        labels:         PropTypes.array.isRequired,
+        labelsLoading:  PropTypes.bool.isRequired,
+        labelsError:    PropTypes.any,
     };
 
     componentWillMount() {

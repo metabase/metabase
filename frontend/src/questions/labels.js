@@ -59,7 +59,8 @@ const initialState = {
     entities: {
         labels: {}
     },
-    labels: [],
+    labelIds: null,
+    error: null,
     editing: null
 };
 
@@ -73,7 +74,7 @@ export default function(state = initialState, { type, payload, error }) {
 
     switch (type) {
         case LOAD_LABELS:
-            return { ...state, labels: payload.result };
+            return { ...state, labelIds: payload.result };
         case SAVE_LABEL:
             if (payload == null) {
                 return state;
@@ -84,7 +85,7 @@ export default function(state = initialState, { type, payload, error }) {
                     ...state.entities,
                     labels: { ...state.entities.labels, [payload.id]: payload }
                 },
-                labels: _.uniq([...state.labels, payload.id]),
+                labelIds: _.uniq([...state.labelIds, payload.id]),
                 editing: state.editing === payload.id ? null : state.editing
             };
         case EDIT_LABEL:
@@ -99,7 +100,7 @@ export default function(state = initialState, { type, payload, error }) {
                     ...state.entities,
                     labels: { ...state.entities.labels, [payload]: undefined }
                 },
-                labels: state.labels.filter(id => id !== payload)
+                labelIds: state.labelIds.filter(id => id !== payload)
             };
         default:
             return state;

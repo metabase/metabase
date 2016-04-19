@@ -118,15 +118,17 @@ const sections = [
 ];
 
 export const getSections    = (state) => sections;
-export const getTopics      = (state) => [];
 
 export const getEditingLabelId = (state) => state.labels.editing;
 
 export const getLabels = createSelector(
-    [(state) => state.labels.entities.labels, (state) => state.labels.labels],
+    [(state) => state.labels.entities.labels, (state) => state.labels.labelIds],
     (labelEntities, labelIds) =>
         labelIds ? labelIds.map(id => labelEntities[id]).sort((a, b) => a.name.localeCompare(b.name)) : []
 );
+
+export const getLabelsLoading = (state) => !state.labels.labelIds;
+export const getLabelsError = (state) => state.labels.error;
 
 const getLabelCountsForSelectedEntities = createSelector(
     [getSelectedEntities],

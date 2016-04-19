@@ -5,14 +5,16 @@ import { connect } from "react-redux";
 import S from "./EditLabels.css";
 
 import * as labelsActions from "../labels";
-import { getLabels, getEditingLabelId } from "../selectors";
+import { getLabels, getLabelsLoading, getLabelsError, getEditingLabelId } from "../selectors";
 
 import * as colors from "metabase/lib/colors";
 
 const mapStateToProps = (state, props) => {
   return {
-      labels: getLabels(state),
-      editingLabelId: getEditingLabelId(state)
+      labels:           getLabels(state),
+      loading:          getLabelsLoading(state),
+      error:            getLabelsError(state),
+      editingLabelId:   getEditingLabelId(state)
   }
 }
 
@@ -32,6 +34,8 @@ export default class EditLabels extends Component {
     static propTypes = {
         style:          PropTypes.object,
         labels:         PropTypes.array.isRequired,
+        loading:        PropTypes.bool.isRequired,
+        error:          PropTypes.any,
         editingLabelId: PropTypes.number,
         saveLabel:      PropTypes.func.isRequired,
         editLabel:      PropTypes.func.isRequired,
