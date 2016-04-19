@@ -62,7 +62,7 @@
     border-color: var(--purple-color) !important;
 }
 
-.border-error {
+.border-error, :local(.border-error) {
     border-color: var(--error-color) !important;
 }
 

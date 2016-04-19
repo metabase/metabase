@@ -10,3 +10,7 @@
     padding-top: 8px;
     padding-bottom: 8px;
 }
+
+:local(.invalid) {
+    composes: border-error from "style";
+}

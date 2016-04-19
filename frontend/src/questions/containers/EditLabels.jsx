@@ -48,7 +48,7 @@ export default class EditLabels extends Component {
         return (
             <div className={S.editor} style={style}>
                 <div className={S.header}>Labels</div>
-                <LabelEditorForm onSubmit={saveLabel} initialValues={{ icon: colors.normal.blue, name: "" }} submitButtonText={"Create Label"}/>
+                <LabelEditorForm onSubmit={saveLabel} initialValues={{ icon: colors.normal.blue, name: "" }} submitButtonText={"Create Label"} labels={labels} />
                 { labels.length > 0 ?
                     <ul className={S.list}>
                     { labels.map(label =>
