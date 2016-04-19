@@ -96,7 +96,8 @@
   (let [details                      (:details database)
         {:keys [dimensions metrics]} (GET (details->url details "/druid/v2/datasources/" (:name table) "?interval=-5000/5000"))]
     (clojure.pprint/pprint dimensions)
-    {:name   (:name table)
+    {:schema nil
+     :name   (:name table)
      :fields (set (concat
                     ;; every Druid table is an event stream w/ a timestamp field
                     [{:name       "timestamp"
@@ -111,7 +112,7 @@
   (let [details           (:details database)
         druid-datasources (GET (details->url details "/druid/v2/datasources"))]
     {:tables (set (for [table-name druid-datasources]
-                    {:name table-name}))}))
+                    {:schema nil, :name table-name}))}))
 
 
 ;;; ### field-values-lazy-seq

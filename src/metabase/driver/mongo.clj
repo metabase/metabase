@@ -114,7 +114,7 @@
 (defn- describe-database [database]
   (with-mongo-connection [^com.mongodb.DB conn database]
     {:tables (set (for [collection (set/difference (mdb/get-collection-names conn) #{"system.indexes"})]
-                    {:name collection}))}))
+                    {:schema nil, :name collection}))}))
 
 (defn- describe-table [database table]
   (with-mongo-connection [^com.mongodb.DB conn database]
@@ -132,7 +132,8 @@
                                {}))
                         (catch Throwable t
                           (log/error (format "Error introspecting collection: %s" (:name table)) t)))]
-      {:name   (:name table)
+      {:schema nil
+       :name   (:name table)
        :fields (set (for [field (keys parsed-rows)]
                       (describe-table-field field (field parsed-rows))))})))
 

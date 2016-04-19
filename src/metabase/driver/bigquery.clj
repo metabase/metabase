@@ -99,7 +99,7 @@
   {:pre [(map? database)]}
   {:tables (set (for [^TableList$Tables table (.getTables (list-tables database))
                       :let [^TableReference tableref (.getTableReference table)]]
-                  {:name (.getTableId tableref)}))})
+                  {:schema nil, :name (.getTableId tableref)}))})
 
 (defn- can-connect? [details-map]
   {:pre [(map? details-map)]}
@@ -128,7 +128,8 @@
      :base-type       (bigquery-type->base-type (.getType field))}))
 
 (defn- describe-table [database {table-name :name}]
-  {:name   table-name
+  {:schema nil
+   :name   table-name
    :fields (set (table-schema->metabase-field-info (.getSchema (get-table database table-name))))})
 
 
