@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 
 import S from "./EditLabels.css";
 
+import Confirm from "metabase/components/Confirm.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
 import * as labelsActions from "../labels";
@@ -72,7 +73,9 @@ export default class EditLabels extends Component {
                                     <LabelIcon icon={label.icon} size={28} />
                                     <span className={S.name}>{label.name}</span>
                                     <a className={S.edit} onClick={() => editLabel(label.id)}>Edit</a>
-                                    <Icon className={S.delete + " text-grey-1 text-grey-4-hover"} name="close" width={14} height={14} onClick={() => deleteLabel(label.id)} />
+                                    <Confirm title={`Delete label "${label.name}"`} action={() => deleteLabel(label.id)}>
+                                        <Icon className={S.delete + " text-grey-1 text-grey-4-hover"} name="close" width={14} height={14} />
+                                    </Confirm>
                                 </li>
                         )}
                         </ul>

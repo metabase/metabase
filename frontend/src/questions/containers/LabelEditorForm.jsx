@@ -7,7 +7,6 @@ import LabelIconPicker from "../components/LabelIconPicker.jsx";
 import { reduxForm } from "redux-form";
 
 import cx from "classnames";
-import _ from "underscore";
 
 @reduxForm({
     form: 'label',
