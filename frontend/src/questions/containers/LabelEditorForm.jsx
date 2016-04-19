@@ -17,9 +17,9 @@ import _ from "underscore";
     validate: (values, props) => {
         const errors = {};
         if (!values.name) {
-            errors.name = "Name is required";
+            errors.name = "A label name is required";
         } else if (_.findWhere(props.labels, { slug: slugify(values.name) })) {
-            errors.name = "Name must be unique";
+            errors.name = "A label with this name already exists";
         }
         if (!values.icon) {
             errors.icon = "Icon is required";
@@ -43,7 +43,10 @@ export default class LabelEditorForm extends Component {
         return (
             <form className={cx(className, S.form)} onSubmit={handleSubmit}>
                 <LabelIconPicker {...icon} />
-                <input className={cx(S.nameInput, "input", { [S.invalid]: nameInvalid })} type="text" placeholder="Name" {...name}/>
+                <div className={S.nameContainer}>
+                    <input className={cx(S.nameInput, "input", { [S.invalid]: nameInvalid })} type="text" placeholder="Name" {...name}/>
+                    { nameInvalid && name.error && <div className={S.errorMessage}>{name.error}</div> }
+                </div>
                 <button className={cx("Button", { "disabled": invalid, "Button--primary": !invalid })} type="submit">{submitButtonText}</button>
             </form>
         );

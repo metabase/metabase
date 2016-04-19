@@ -58,7 +58,7 @@
 
 /* error */
 
-.text-error,
+.text-error, :local(.text-error),
 .text-error-hover:hover {
   color: var(--error-color);
 }

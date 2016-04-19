@@ -54,14 +54,14 @@ export default class EditLabels extends Component {
                 <div className="wrapper wrapper--trim">
                     <div className={S.header}>Labels</div>
                 </div>
-                <LabelEditorForm onSubmit={saveLabel} initialValues={{ icon: colors.normal.blue, name: "" }} submitButtonText={"Create Label"} className="wrapper wrapper--trim"/>
+                <LabelEditorForm labels={labels} onSubmit={saveLabel} initialValues={{ icon: colors.normal.blue, name: "" }} submitButtonText={"Create Label"} className="wrapper wrapper--trim"/>
                 { labels.length > 0 ?
                     <div className="wrapper wrapper--trim">
                         <ul className={S.list}>
                         { labels.map(label =>
                             editingLabelId === label.id ?
                                 <li key={label.id} className={S.labelEditing}>
-                                    <LabelEditorForm formKey={String(label.id)} className="flex-full" onSubmit={saveLabel} initialValues={label} submitButtonText={"Update Label"}/>
+                                    <LabelEditorForm labels={labels} formKey={String(label.id)} className="flex-full" onSubmit={saveLabel} initialValues={label} submitButtonText={"Update Label"}/>
                                     <a className={" text-grey-1 text-grey-4-hover ml2"} onClick={() => editLabel(null)}>Cancel</a>
                                 </li>
                             :

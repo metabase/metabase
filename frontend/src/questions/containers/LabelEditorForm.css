@@ -1,10 +1,16 @@
 :local(.form) {
-    composes: flex align-center flex-no-shrink from "style";
+    composes: flex flex-no-shrink from "style";
+}
+
+:local(.nameContainer) {
+    composes: flex-full from "style";
+    composes: mx1 from "style";
 }
 
 :local(.nameInput) {
     composes: flex-full from "style";
-    composes: mx1 from "style";
+    display: block;
+    width: 100%;
 
     font-size: 18px;
     padding-top: 8px;
@@ -13,4 +19,8 @@
 
 :local(.invalid) {
     composes: border-error from "style";
+}
+
+:local(.errorMessage) {
+    composes: px1 pt1 text-bold text-error from "style";
 }
