@@ -276,6 +276,42 @@
     (table-details (db/sel :one Table, :id (:id fake-table)))))
 
 
+;; test that we prevent running simultaneous syncs on the same database
+
+(defonce ^:private sync-count (atom 0))
+
+(defrecord ConcurrentSyncTestDriver []
+  clojure.lang.Named
+  (getName [_] "ConcurrentSyncTestDriver"))
+
+(extend ConcurrentSyncTestDriver
+  driver/IDriver
+  (merge driver/IDriverDefaultsMixin
+         {:analyze-table       (constantly nil)
+          :describe-database   (fn [_ _]
+                                 (swap! sync-count inc)
+                                 (Thread/sleep 500)
+                                 {:tables []})
+          :describe-table      (constantly nil)
+          :details-fields      (constantly [])}))
+
+(driver/register-driver! :concurrent-sync-test (ConcurrentSyncTestDriver.))
+
+(expect
+  [0 1]
+  (tu/with-temp* [Database [fake-db {:engine :concurrent-sync-test}]]
+    (reset! sync-count 0)
+    (let [future-sleep-then-run (fn [f]
+                                  (Thread/sleep 100)
+                                  (future (f)))
+          concurrent-sync       #(sync-database! fake-db)]
+    [@sync-count
+     (do
+       (future-sleep-then-run concurrent-sync)
+       (future-sleep-then-run concurrent-sync)
+       (concurrent-sync)
+       @sync-count)])))
+
 ;; ## Test that we will remove field-values when they aren't appropriate
 
 (expect
