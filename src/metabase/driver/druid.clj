@@ -94,7 +94,7 @@
 
 (defn- describe-table [table]
   (let [details                      (:details (table/database table))
-        {:keys [dimensions metrics]} (GET (details->url details "/druid/v2/datasources/" (:name table) "?interval=-5000/5000"))]
+        {:keys [dimensions metrics]} (GET (details->url details "/druid/v2/datasources/" (:name table) "?interval=1900-01-01/2100-01-01"))]
     (clojure.pprint/pprint dimensions)
     {:name   (:name table)
      :fields (set (concat
@@ -120,7 +120,7 @@
   {:pre [(map? details) (or (string? table-name) (keyword? table-name)) (or (string? field-name) (keyword? field-name)) (or (nil? paging-identifiers) (map? paging-identifiers))]}
   (let [[{{:keys [pagingIdentifiers events]} :result}] (do-query details {:queryType   :select
                                                                           :dataSource  table-name
-                                                                          :intervals   ["-5000/5000"]
+                                                                          :intervals   ["1900-01-01/2100-01-01"]
                                                                           :granularity :all
                                                                           :dimensions  [field-name]
                                                                           :metrics     []
