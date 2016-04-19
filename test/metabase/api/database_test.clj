@@ -171,19 +171,19 @@
 ;; GET /api/databases (include tables)
 (let [db-name (str "A" (random-name))] ; make sure this name comes before "test-data"
   (expect-eval-actual-first
-    (conj [(match-$ (sel :one Database :name db-name)
-            {:created_at      $
-             :engine          "postgres"
-             :id              $
-             :updated_at      $
-             :name            $
-             :is_sample       false
-             :is_full_sync    true
-             :organization_id nil
-             :description     nil
-             :tables          []
-             :features        (mapv name (driver/features (driver/engine->driver :postgres)))})]
-          (first (filter identity (for [engine datasets/all-valid-engines]
+    (set (concat [(match-$ (sel :one Database :name db-name)
+                    {:created_at      $
+                     :engine          "postgres"
+                     :id              $
+                     :updated_at      $
+                     :name            $
+                     :is_sample       false
+                     :is_full_sync    true
+                     :organization_id nil
+                     :description     nil
+                     :tables          []
+                     :features        (mapv name (driver/features (driver/engine->driver :postgres)))})]
+                 (filter identity (for [engine datasets/all-valid-engines]
                                     (datasets/when-testing-engine engine
                                                                   (let [database (get-or-create-test-data-db! (driver/engine->driver engine))]
                                                                     (match-$ database
@@ -209,7 +209,7 @@
       ;; Add an extra DB so we have something to fetch besides the Test DB
       (create-db db-name)
       ;; Now hit the endpoint
-      ((user->client :rasta) :get 200 "database" :include_tables true))))
+      (set ((user->client :rasta) :get 200 "database" :include_tables true)))))
 
 ;; ## GET /api/meta/table/:id/query_metadata
 ;; TODO - add in example with Field :values
