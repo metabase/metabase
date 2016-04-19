@@ -74,7 +74,11 @@ export default function(state = initialState, { type, payload, error }) {
 
     switch (type) {
         case LOAD_LABELS:
-            return { ...state, labelIds: payload.result };
+            if (error) {
+                return { ...state, error: payload };
+            } else {
+                return { ...state, labelIds: payload.result, error: null };
+            }
         case SAVE_LABEL:
             if (payload == null) {
                 return state;
