@@ -95,9 +95,8 @@
   ([]
    "Show which card? Give me a part of a card name or its ID and I can show it to you. If you don't know which card you want, try `metabot list`.")
   ([card-id-or-name & _]
-   (let-404 [{card-id :id, card-name :name} (id-or-name->card card-id-or-name)]
-     (do-async (pulses/send-pulse! {:name     card-name
-                                    :cards    [{:id card-id}]
+   (let-404 [{card-id :id} (id-or-name->card card-id-or-name)]
+     (do-async (pulses/send-pulse! {:cards    [{:id card-id}]
                                     :channels [{:channel_type   "slack"
                                                 :recipients     []
                                                 :details        {:channel *channel-id*}
