@@ -4,6 +4,8 @@ import { connect } from "react-redux";
 
 import S from "./EditLabels.css";
 
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+
 import * as labelsActions from "../labels";
 import { getLabels, getLabelsLoading, getLabelsError, getEditingLabelId } from "../selectors";
 
@@ -12,8 +14,8 @@ import * as colors from "metabase/lib/colors";
 const mapStateToProps = (state, props) => {
   return {
       labels:           getLabels(state),
-      loading:          getLabelsLoading(state),
-      error:            getLabelsError(state),
+      labelsLoading:    getLabelsLoading(state),
+      labelsError:      getLabelsError(state),
       editingLabelId:   getEditingLabelId(state)
   }
 }
@@ -34,8 +36,8 @@ export default class EditLabels extends Component {
     static propTypes = {
         style:          PropTypes.object,
         labels:         PropTypes.array.isRequired,
-        loading:        PropTypes.bool.isRequired,
-        error:          PropTypes.any,
+        labelsLoading:  PropTypes.bool.isRequired,
+        labelsError:    PropTypes.any,
         editingLabelId: PropTypes.number,
         saveLabel:      PropTypes.func.isRequired,
         editLabel:      PropTypes.func.isRequired,
@@ -48,14 +50,15 @@ export default class EditLabels extends Component {
     }
 
     render() {
-        const { style, labels, editingLabelId, saveLabel, editLabel, deleteLabel } = this.props;
+        const { style, labels, labelsLoading, labelsError, editingLabelId, saveLabel, editLabel, deleteLabel } = this.props;
         return (
             <div className={S.editor} style={style}>
                 <div className="wrapper wrapper--trim">
                     <div className={S.header}>Labels</div>
                 </div>
                 <LabelEditorForm labels={labels} onSubmit={saveLabel} initialValues={{ icon: colors.normal.blue, name: "" }} submitButtonText={"Create Label"} className="wrapper wrapper--trim"/>
-                { labels.length > 0 ?
+                <LoadingAndErrorWrapper loading={labelsLoading} error={labelsError} noBackground noWrapper>
+                { () => labels.length > 0 ?
                     <div className="wrapper wrapper--trim">
                         <ul className={S.list}>
                         { labels.map(label =>
@@ -79,6 +82,7 @@ export default class EditLabels extends Component {
                         <EmptyState message="Create labels to group and manage questions." icon="label" />
                     </div>
                 }
+                </LoadingAndErrorWrapper>
             </div>
         );
     }
