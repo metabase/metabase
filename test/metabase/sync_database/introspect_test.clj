@@ -27,7 +27,7 @@
      :raw_table_id        true
      :name                "id"
      :active              true
-     :base_type           :IntegerField
+     :column_type         nil
      :is_pk               false
      :fk_target_column_id false
      :details             {}
@@ -37,7 +37,7 @@
      :raw_table_id        true
      :name                "user_id"
      :active              true
-     :base_type           :IntegerField
+     :column_type         nil
      :is_pk               false
      :fk_target_column_id false
      :details             {}
@@ -47,7 +47,7 @@
      :raw_table_id        true
      :name                "id"
      :active              true
-     :base_type           :IntegerField
+     :column_type         nil
      :is_pk               false
      :fk_target_column_id false
      :details             {}
@@ -57,7 +57,7 @@
      :raw_table_id        true
      :name                "user_id"
      :active              true
-     :base_type           :IntegerField
+     :column_type         nil
      :is_pk               false
      :fk_target_column_id true
      :details             {}
@@ -67,7 +67,7 @@
      :raw_table_id        true
      :name                "id"
      :active              true
-     :base_type           :IntegerField
+     :column_type         nil
      :is_pk               false
      :fk_target_column_id false
      :details             {}
@@ -77,7 +77,7 @@
      :raw_table_id        true
      :name                "user_id"
      :active              true
-     :base_type           :IntegerField
+     :column_type         nil
      :is_pk               false
      :fk_target_column_id false
      :details             {}
@@ -87,7 +87,7 @@
      :raw_table_id        true
      :name                "id"
      :active              true
-     :base_type           :IntegerField
+     :column_type         nil
      :is_pk               false
      :fk_target_column_id false
      :details             {}
@@ -97,7 +97,7 @@
      :raw_table_id        true
      :name                "user_id"
      :active              true
-     :base_type           :IntegerField
+     :column_type         nil
      :is_pk               false
      :fk_target_column_id true
      :details             {}
@@ -140,70 +140,70 @@
      :raw_table_id true
      :active       true
      :name         "beak_size"
-     :base_type    :IntegerField
+     :column_type  nil
      :is_pk        true
      :fk_target_column_id false
-     :details      {:inches 7, :special-type "category"}
+     :details      {:inches 7, :special-type "category", :base-type "IntegerField"}
      :created_at   true
      :updated_at   true}]
    [{:id           true
      :raw_table_id true
      :active       true
      :name         "beak_size"
-     :base_type    :IntegerField
+     :column_type  nil
      :is_pk        false
      :fk_target_column_id false
-     :details      {:inches 8}
+     :details      {:inches 8, :base-type "IntegerField"}
      :created_at   true
      :updated_at   true}
     {:id           true
      :raw_table_id true
      :active       true
      :name         "num_feathers"
-     :base_type    :IntegerField
+     :column_type  nil
      :is_pk        false
      :fk_target_column_id false
-     :details      {:count 10000}
+     :details      {:count 10000, :base-type "IntegerField"}
      :created_at   true
      :updated_at   true}]
    [{:id           true
      :raw_table_id true
      :active       false
      :name         "beak_size"
-     :base_type    :IntegerField
+     :column_type  nil
      :is_pk        false
      :fk_target_column_id false
-     :details      {:inches 8}
+     :details      {:inches 8, :base-type "IntegerField"}
      :created_at   true
      :updated_at   true}
     {:id           true
      :raw_table_id true
      :active       true
      :name         "num_feathers"
-     :base_type    :IntegerField
+     :column_type  nil
      :is_pk        false
      :fk_target_column_id false
-     :details      {:count 12000}
+     :details      {:count 12000, :base-type "IntegerField"}
      :created_at   true
      :updated_at   true}]
    [{:id           true
      :raw_table_id true
      :active       true
      :name         "beak_size"
-     :base_type    :IntegerField
+     :column_type  nil
      :is_pk        false
      :fk_target_column_id false
-     :details      {:inches 8}
+     :details      {:inches 8, :base-type "IntegerField"}
      :created_at   true
      :updated_at   true}
     {:id           true
      :raw_table_id true
      :active       true
      :name         "num_feathers"
-     :base_type    :IntegerField
+     :column_type  nil
      :is_pk        false
      :fk_target_column_id false
-     :details      {:count 12000}
+     :details      {:count 12000, :base-type "IntegerField"}
      :created_at   true
      :updated_at   true}]]
   (tu/with-temp* [database/Database  [{database-id :id}]
@@ -262,10 +262,10 @@
                     :raw_table_id true
                     :active       true
                     :name         "beak_size"
-                    :base_type    :IntegerField
+                    :column_type  nil
                     :is_pk        true
                     :fk_target_column_id false
-                    :details      {:inches 7}
+                    :details      {:inches 7, :base-type "IntegerField"}
                     :created_at   true
                     :updated_at   true}]
      :created_at  true
@@ -312,10 +312,10 @@
                     :raw_table_id true
                     :active       true
                     :name         "beak_size"
-                    :base_type    :IntegerField
+                    :column_type  nil
                     :is_pk        true
                     :fk_target_column_id false
-                    :details      {:inches 7}
+                    :details      {:inches 7, :base-type "IntegerField"}
                     :created_at   true
                     :updated_at   true}]
      :created_at  true
@@ -355,7 +355,7 @@
                     :id true
                     :is_pk false
                     :created_at true
-                    :base_type :IntegerField}]
+                    :column_type nil}]
      :created_at  true
      :updated_at  true}
     {:id          true
@@ -368,7 +368,7 @@
                     :raw_table_id true
                     :active       true
                     :name         "beak_size"
-                    :base_type    :IntegerField
+                    :column_type  nil
                     :is_pk        false
                     :fk_target_column_id true
                     :details      {}
@@ -391,7 +391,7 @@
                     :id true
                     :is_pk false
                     :created_at true
-                    :base_type :IntegerField}]
+                    :column_type nil}]
      :created_at  true
      :updated_at  true}
     {:id          true
@@ -404,7 +404,7 @@
                     :raw_table_id true
                     :active       false
                     :name         "beak_size"
-                    :base_type    :IntegerField
+                    :column_type  nil
                     :is_pk        false
                     :fk_target_column_id false
                     :details      {}
@@ -414,9 +414,9 @@
      :updated_at  true}]]
   (tu/with-temp* [database/Database    [{database-id :id, :as db}]
                   raw-table/RawTable   [t1 {:database_id database-id, :schema "a", :name "1"}]
-                  raw-column/RawColumn [c1 {:raw_table_id (:id t1), :name "size", :base_type :IntegerField}]
+                  raw-column/RawColumn [c1 {:raw_table_id (:id t1), :name "size"}]
                   raw-table/RawTable   [t2 {:database_id database-id, :schema "a", :name "2"}]
-                  raw-column/RawColumn [c2 {:raw_table_id (:id t2), :name "beak_size", :base_type :IntegerField, :fk_target_column_id (:id c1)}]]
+                  raw-column/RawColumn [c2 {:raw_table_id (:id t2), :name "beak_size", :fk_target_column_id (:id c1)}]]
     [(get-tables database-id)
      (do
        (disable-raw-tables! [(:id t1) (:id t2)])

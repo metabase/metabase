@@ -92,10 +92,10 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: base_type
-                  type: varchar(32)
+                  name: column_type
+                  type: varchar(128)
                   constraints:
-                    nullable: false
+                    nullable: true
               - column:
                   name: is_pk
                   type: boolean

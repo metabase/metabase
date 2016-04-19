@@ -85,22 +85,22 @@
                :name "id"
                :fk_target_column_id false
                :updated_at true
-               :details {}
+               :details {:base-type "IntegerField"}
                :active true
                :id true
                :is_pk false
                :created_at true
-               :base_type :IntegerField}
+               :column_type nil}
               {:raw_table_id true
                :name "name"
                :fk_target_column_id false
                :updated_at true
-               :details {}
+               :details {:base-type "TextField"}
                :active true
                :id true
                :is_pk false
                :created_at true
-               :base_type :TextField}]
+               :column_type nil}]
     :name "actors"
     :updated_at true
     :details {}
@@ -113,32 +113,32 @@
                :name "filming"
                :fk_target_column_id false
                :updated_at true
-               :details {}
+               :details {:base-type "BooleanField"}
                :active true
                :id true
                :is_pk false
                :created_at true
-               :base_type :BooleanField}
+               :column_type nil}
               {:raw_table_id true
                :name "id"
                :fk_target_column_id false
                :updated_at true
-               :details {}
+               :details {:base-type "IntegerField"}
                :active true
                :id true
                :is_pk false
                :created_at true
-               :base_type :IntegerField}
+               :column_type nil}
               {:raw_table_id true
                :name "title"
                :fk_target_column_id false
                :updated_at true
-               :details {}
+               :details {:base-type "TextField"}
                :active true
                :id true
                :is_pk false
                :created_at true
-               :base_type :TextField}]
+               :column_type nil}]
     :name "movies"
     :updated_at true
     :details {}
@@ -151,32 +151,32 @@
                :name "id"
                :fk_target_column_id false
                :updated_at true
-               :details {}
+               :details {:base-type "IntegerField"}
                :active true
                :id true
                :is_pk false
                :created_at true
-               :base_type :IntegerField}
+               :column_type nil}
               {:raw_table_id true
                :name "movie_id"
                :fk_target_column_id true
                :updated_at true
-               :details {}
+               :details {:base-type "IntegerField"}
                :active true
                :id true
                :is_pk false
                :created_at true
-               :base_type :IntegerField}
+               :column_type nil}
               {:raw_table_id true
                :name "stars"
                :fk_target_column_id false
                :updated_at true
-               :details {}
+               :details {:base-type "IntegerField"}
                :active true
                :id true
                :is_pk false
                :created_at true
-               :base_type :IntegerField}]
+               :column_type nil}]
     :name "reviews"
     :updated_at true
     :details {}
@@ -189,52 +189,52 @@
                :name "actor_id"
                :fk_target_column_id true
                :updated_at true
-               :details {}
+               :details {:base-type "IntegerField"}
                :active true
                :id true
                :is_pk false
                :created_at true
-               :base_type :IntegerField}
+               :column_type nil}
               {:raw_table_id true
                :name "character"
                :fk_target_column_id false
                :updated_at true
-               :details {}
+               :details {:base-type "TextField"}
                :active true
                :id true
                :is_pk false
                :created_at true
-               :base_type :TextField}
+               :column_type nil}
               {:raw_table_id true
                :name "id"
                :fk_target_column_id false
                :updated_at true
-               :details {}
+               :details {:base-type "IntegerField"}
                :active true
                :id true
                :is_pk false
                :created_at true
-               :base_type :IntegerField}
+               :column_type nil}
               {:raw_table_id true
                :name "movie_id"
                :fk_target_column_id true
                :updated_at true
-               :details {}
+               :details {:base-type "IntegerField"}
                :active true
                :id true
                :is_pk false
                :created_at true
-               :base_type :IntegerField}
+               :column_type nil}
               {:raw_table_id true
                :name "salary"
                :fk_target_column_id false
                :updated_at true
-               :details {}
+               :details {:base-type "DecimalField"}
                :active true
                :id true
                :is_pk false
                :created_at true
-               :base_type :DecimalField}]
+               :column_type nil}]
     :name "roles"
     :updated_at true
     :details {}

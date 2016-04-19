@@ -88,10 +88,10 @@
     ;; create/update the active columns
     (doseq [{raw-column-id :id, :keys [details], :as column} active-raw-columns]
       ;; do a little bit of key renaming to match what's expected for a call to update/create-field
-      (let [column (-> (set/rename-keys column {:base_type :base-type
-                                                :is_pk     :pk?
-                                                :id        :raw-column-id})
-                       (assoc :special-type (:special-type details)))]
+      (let [column (-> (set/rename-keys column {:id    :raw-column-id
+                                                :is_pk :pk?})
+                       (assoc :base-type    (keyword (:base-type details))
+                              :special-type (keyword (:special-type details))))]
         (if-let [existing-field (get existing-fields raw-column-id)]
           ;; field already exists, so we UPDATE it
           (field/update-field existing-field column)

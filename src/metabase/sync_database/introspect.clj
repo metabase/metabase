@@ -59,13 +59,13 @@
       ;; insert or update the remaining columns
       (doseq [{column-name :name, :keys [base-type pk? special-type details]} (sort-by :name columns)]
         (let [details (merge (or details {})
+                             {:base-type base-type}
                              (when special-type {:special-type special-type}))
               is_pk   (true? pk?)]
           (if-let [{column-id :id} (get existing-columns column-name)]
             ;; column already exists, update it
             (db/upd raw-column/RawColumn column-id
               :name      column-name
-              :base_type base-type
               :is_pk     is_pk
               :details   details
               :active    true)
@@ -73,7 +73,6 @@
             (db/ins raw-column/RawColumn
               :raw_table_id  id
               :name          column-name
-              :base_type     base-type
               :is_pk         is_pk
               :details       details
               :active        true)))))))

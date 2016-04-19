@@ -139,8 +139,7 @@
                                                                                          :schedule_type :daily
                                                                                          :schedule_hour 15})})
 (u/strict-extend (class RawColumn)    WithTempDefaults {:with-temp-defaults (fn [_] {:active true
-                                                                                     :name   (random-name)
-                                                                                     :base_type :IntegerField})})
+                                                                                     :name   (random-name)})})
 (u/strict-extend (class RawTable)     WithTempDefaults {:with-temp-defaults (fn [_] {:active true
                                                                                      :name   (random-name)})})
 (u/strict-extend (class Revision)     WithTempDefaults {:with-temp-defaults (fn [_] {:user_id      ((resolve 'metabase.test.data.users/user->id) :rasta)

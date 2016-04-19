@@ -254,9 +254,9 @@
      :updated_at         true}]]
   (tu/with-temp* [database/Database    [{database-id :id}]
                   raw-table/RawTable   [{raw-table-id :id, :as table} {:database_id database-id}]
-                  raw-column/RawColumn [{raw-column-id1 :id} {:raw_table_id raw-table-id, :name "First", :base_type "IntegerField", :is_pk true}]
-                  raw-column/RawColumn [{raw-column-id2 :id} {:raw_table_id raw-table-id, :name "Second", :base_type "TextField", :details {:special-type :category}}]
-                  raw-column/RawColumn [{raw-column-id3 :id} {:raw_table_id raw-table-id, :name "Third", :base_type "BooleanField"}]
+                  raw-column/RawColumn [{raw-column-id1 :id} {:raw_table_id raw-table-id, :name "First", :is_pk true, :details {:base-type "IntegerField"}}]
+                  raw-column/RawColumn [{raw-column-id2 :id} {:raw_table_id raw-table-id, :name "Second", :details {:special-type :category, :base-type "TextField"}}]
+                  raw-column/RawColumn [{raw-column-id3 :id} {:raw_table_id raw-table-id, :name "Third", :details {:base-type "BooleanField"}}]
                   table/Table          [{table-id :id, :as tbl} {:db_id database-id, :raw_table_id raw-table-id}]]
     (let [get-fields #(->> (db/sel :many field/Field :table_id table-id)
                            (mapv tu/boolean-ids-and-timestamps)
@@ -266,14 +266,14 @@
           first-sync     (do
                            (save-table-fields! tbl)
                            (get-fields))]
-      (tu/with-temp* [raw-column/RawColumn [_ {:raw_table_id raw-table-id, :name "rating", :base_type "IntegerField"}]]
+      (tu/with-temp* [raw-column/RawColumn [_ {:raw_table_id raw-table-id, :name "rating", :details {:base-type "IntegerField"}}]]
         ;; start with no fields
         [initial-fields
          ;; first sync will add all the fields
          first-sync
          ;; now add another column and modify the first
          (do
-           (db/upd raw-column/RawColumn raw-column-id1 :is_pk false, :base_type "DecimalField")
+           (db/upd raw-column/RawColumn raw-column-id1 :is_pk false, :details {:base-type "DecimalField"})
            (save-table-fields! tbl)
            (get-fields))
          ;; now disable the first column
