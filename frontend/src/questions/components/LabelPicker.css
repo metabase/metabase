@@ -3,27 +3,26 @@
 :local(.picker) {
     width: 290px;
     color: var(--title-color);
+    overflow: hidden;
 }
 
 :local(.heading) {
-    composes: p2 from "style";
-    composes: border-bottom from "style";
+    composes: p2 border-bottom from "style";
     font-size: 14px;
 }
 
 :local(.options) {
-    composes: py1 from "style";
+    composes: full-height py1 scroll-y from "style";
+    max-height: 300px;
 }
 
 :local(.option) {
-    composes: cursor-pointer from "style";
-    position: relative;
+    composes: cursor-pointer relative from "style";
 }
 
 :local(.optionContent) {
-    composes: px3 py1 from "style";
-    composes: flex align-center from "style";
-    font-size: 18px;
+    composes: px3 py1 flex align-center text-bold from "style";
+    font-size: 1em;
     color: var(--title-color);
 }
 
@@ -51,8 +50,7 @@
 }
 
 :local(.mainIcon) {
-    composes: mr1 from "style";
-    composes: flex-no-shrink from "style";
+    composes: mr1 flex-no-shrink from "style";
 }
 
 :local(.removeIcon) {

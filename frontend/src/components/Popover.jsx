@@ -137,7 +137,7 @@ export default class Popover extends Component {
             const popoverElement = this._getPopoverElement();
             ReactDOM.render(
               <ReactCSSTransitionGroup
-                transitionName="Modal"
+                transitionName="Popover"
                 transitionAppear={true}
                 transitionAppearTimeout={250}
                 transitionEnterTimeout={250}

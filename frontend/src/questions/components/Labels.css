@@ -15,8 +15,8 @@
 }
 
 :local(.emojiLabel) {
-    color: rgba(0,0,0,0.54);
     composes: bg-white from "style";
+    color: rgba(0,0,0,0.54);
     border: 1px solid #DEEAF1;
     box-shadow: 1px 1px 0 0 #BFD5E1;
 }
