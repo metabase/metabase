@@ -368,9 +368,10 @@
 
 (s/defn ^:ql ^:always-validate expressions
   "Top-level clause. Add additional calculated fields to a query."
-  [query, m :- (s/pred map?)]
-  (assoc query :expressions (for [[expression-name [expression]] m]
-                              (assoc expression :expression-name (name expression-name)))))
+  [query, m :- (s/pred map?) #_{s/Str [Expression]}]
+  (assoc query :expressions (vec (for [[expression-name [expression]] m]
+                                   (do (println "expression-name=" expression-name, "EXPRESSION = " expression)
+                                       (assoc expression :expression-name (name expression-name)))))))
 
 (s/defn ^:private ^:always-validate expression-fn :- Expression
   [k :- s/Keyword, & args]

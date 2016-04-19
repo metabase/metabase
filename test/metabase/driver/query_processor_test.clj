@@ -1687,3 +1687,11 @@
     (rows (run-query venues
             (ql/aggregation (ql/max $latitude))
             (ql/breakout $price)))))
+
+
+;;; ------------------------------------------------------------ EXPRESSIONS ------------------------------------------------------------
+
+(defn x []
+  (datasets/with-engine :postgres
+    (query venues
+      (ql/expressions {"My Cool New Field" [(ql/* $price 2)]}))))
