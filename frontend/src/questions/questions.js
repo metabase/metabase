@@ -7,7 +7,7 @@ import _ from "underscore";
 
 import { inflect } from "metabase/lib/formatting";
 
-import { getSelectedEntities } from "./selectors";
+import { getVisibleEntities, getSelectedEntities } from "./selectors";
 import { addUndo } from "./undo";
 
 const card = new Schema('cards');
@@ -151,7 +151,18 @@ export const setLabeled = createThunkAction(SET_LABELED, (cardId, labelId, label
 
 export const setSearchText = createAction(SET_SEARCH_TEXT);
 export const setItemSelected = createAction(SET_ITEM_SELECTED);
-export const setAllSelected = createAction(SET_ALL_SELECTED);
+
+export const setAllSelected = createThunkAction(SET_ALL_SELECTED, (selected) => {
+    return async (dispatch, getState) => {
+        let selectedIds = {}
+        if (selected) {
+            for (let entity of getVisibleEntities(getState())) {
+                selectedIds[entity.id] = true;
+            }
+        }
+        return selectedIds;
+    }
+});
 
 const initialState = {
     entities: {},
@@ -160,7 +171,6 @@ const initialState = {
     itemsBySection: {},
     searchText: "",
     selectedIds: {},
-    allSelected: false,
     undos: []
 };
 
@@ -175,7 +185,7 @@ export default function(state = initialState, { type, payload, error }) {
         case SET_ITEM_SELECTED:
             return { ...state, selectedIds: { ...state.selectedIds, ...payload } };
         case SET_ALL_SELECTED:
-            return { ...state, selectedIds: {}, allSelected: payload };
+            return { ...state, selectedIds: payload };
         case SELECT_SECTION:
             if (error) {
                 return i.assoc(state, "sectionError", payload);

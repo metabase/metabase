@@ -17,7 +17,6 @@ export const getItemsBySection      = (state) => state.questions.itemsBySection
 
 export const getSearchText          = (state) => state.questions.searchText;
 export const getSelectedIds         = (state) => state.questions.selectedIds;
-export const getAllSelected         = (state) => state.questions.allSelected
 
 const getSectionData = createSelector(
     [getItemsBySection, getEntityType, getSection],
@@ -44,7 +43,7 @@ const getEntity = (state, props) =>
     getEntities(state)[props.entityType][props.entityId];
 
 const getEntitySelected = (state, props) =>
-    getAllSelected(state) || getSelectedIds(state)[props.entityId] || false;
+    getSelectedIds(state)[props.entityId] || false;
 
 const getEntityVisible = (state, props) =>
     caseInsensitiveSearch(getEntity(state, props).name, getSearchText(state));
@@ -76,16 +75,16 @@ const getAllEntities = createSelector(
         entityIds.map(entityId => entities[entityType][entityId])
 );
 
-const getVisibleEntities = createSelector(
+export const getVisibleEntities = createSelector(
     [getAllEntities, getSearchText],
     (allEntities, searchText) =>
         allEntities.filter(entity => caseInsensitiveSearch(entity.name, searchText))
 );
 
 export const getSelectedEntities = createSelector(
-    [getVisibleEntities, getSelectedIds, getAllSelected],
-    (visibleEntities, selectedIds, allSelected) =>
-        visibleEntities.filter(entity => allSelected || selectedIds[entity.id])
+    [getVisibleEntities, getSelectedIds],
+    (visibleEntities, selectedIds) =>
+        visibleEntities.filter(entity => selectedIds[entity.id])
 );
 
 export const getVisibleCount = createSelector(
