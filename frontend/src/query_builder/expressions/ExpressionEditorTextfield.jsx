@@ -7,8 +7,6 @@ import Popover from "metabase/components/Popover.jsx";
 import { parseExpressionString, tokenAtPosition, tokensToExpression } from "metabase/lib/expressions";
 
 
-const VALID_OPERATORS = new Set(['+', '-', '*', '/']);
-
 const KEYCODE_TAB   =  9;
 const KEYCODE_ENTER = 13;
 const KEYCODE_UP    = 38;
@@ -57,7 +55,7 @@ export default class ExpressionEditorTextfield extends Component {
 
             let errorMessage = null;
             try {
-                tokens = expression && expression.length ? tokensToExpression(parseExpressionString(expression, newProps.tableMetadata.fields, VALID_OPERATORS)) : [];
+                tokens = expression && expression.length ? tokensToExpression(parseExpressionString(expression, newProps.tableMetadata.fields)) : [];
             } catch (e) {
                 errorMessage = e;
             }
@@ -153,7 +151,7 @@ export default class ExpressionEditorTextfield extends Component {
             //tokens = tokenizeExpressionString(expression);
             //console.log('tokens (before parse)', tokens);
 
-            tokens = parseExpressionString(expression, this.props.tableMetadata.fields, VALID_OPERATORS);
+            tokens = parseExpressionString(expression, this.props.tableMetadata.fields);
             console.log('tokens (after parse):', tokens);
 
             let errorToken = getErrorToken(tokens);

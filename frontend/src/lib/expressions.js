@@ -1,13 +1,52 @@
 
 import _ from "underscore";
 
-// expression -> str
-// if field is in the source table, use name only
-// if field is in an FK table, use dot notation
-// if field is nested, use arrow notation
-// fields are quoted?
+const VALID_OPERATORS = new Set(['+', '-', '*', '/']);
+
+function isField(arg) {
+    return arg && arg.constructor === Array && arg.length === 2 && arg[0] === 'field-id' && typeof arg[1] === 'number';
+}
+
+function isExpression(arg) {
+    return arg && arg.constructor === Array && arg.length === 3 && VALID_OPERATORS.has(arg[0]);
+}
+
+// a wrapped expression like [expression original-string]. TODO - This is DEPRECATED (!)
+function isWrappedExpression(arg) {
+    return arg && arg.constructor === Array && arg.length === 2 && isExpression(arg[0]);
+}
+
+function formatField(fieldRef, fields) {
+    let fieldID = fieldRef[1],
+        field   = _.findWhere(fields, {id: fieldID});
+
+    if (!field) throw 'field with ID does not exist: ' + fieldID;
+
+    let displayName = field.display_name;
+    return displayName.indexOf(' ') === -1 ? displayName : ('"' + displayName + '"');
+}
+
+function formatNestedExpression(expression, fields) {
+    return '(' + formatExpression(expression, fields) + ')';
+}
+
+function formatArg(arg, fields) {
+    if      (isField(arg))      return formatField(arg, fields);
+    else if (isExpression(arg)) return formatNestedExpression(arg, fields);
+    else                        throw 'Invalid expression argument:' + arg;
+}
+
 export function formatExpression(expression, fields) {
-    return "TODO";
+    console.log('formatExpression(expression =', expression, ", fields =", fields, ')');
+
+    if (!expression)                     return null;
+    if (isWrappedExpression(expression)) return formatExpression(expression[0], fields);
+    if (!isExpression(expression))       throw 'Invalid expression: ' + expression;
+
+    let [operator, arg1, arg2] = expression;
+    let output = formatArg(arg1, fields) + ' ' + operator + ' ' + formatArg(arg2, fields);
+    console.log('formatted:', output);
+    return output;
 }
 
 
@@ -200,11 +239,11 @@ function tokenizeExpression(expression, i = 0, level = 0) {
 }
 
 // Takes a string representation of an expression and parses it into an array of structured tokens
-export function parseExpressionString(expression, fields, operators) {
+export function parseExpressionString(expression, fields) {
     if (_.isEmpty(expression)) return [];
 
     let tokens = tokenizeExpression(expression);
-    return parseExpression(tokens, fields, operators);
+    return parseExpression(tokens, fields, VALID_OPERATORS);
 }
 
 
