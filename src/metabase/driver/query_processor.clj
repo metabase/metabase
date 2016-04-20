@@ -224,7 +224,8 @@
                   query
                   ;; this is a structured `:rows` query, so lets add a `:fields` clause with all fields from the source table + expressions
                   (let [fields      (fields-for-source-table source-table)
-                        expressions (get-in query [:query :expressions])]
+                        expressions (for [[expression-name] (get-in query [:query :expressions])]
+                                      (strict-map->ExpressionRef {:expression-name (name expression-name)}))]
                     (when-not (seq fields)
                       (log/warn (format "Table '%s' has no Fields associated with it." (:name source-table))))
                     (-> query
