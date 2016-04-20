@@ -33,12 +33,15 @@ import "./admin/datamodel/datamodel.module";
 
 import Routes from "./Routes.jsx";
 
-import { createStore, combineReducers } from "metabase/lib/redux";
+import { createStoreWithAngularScope, combineReducers } from "metabase/lib/redux";
 
 import { routerStateReducer as router } from 'redux-router';
 import { reducer as form } from "redux-form";
 
 import * as datamodel from 'metabase/admin/datamodel/reducers';
+import questions from 'metabase/questions/questions';
+import labels from 'metabase/questions/labels';
+import undo from 'metabase/questions/undo';
 
 import { registerAnalyticsClickListener } from "metabase/lib/analytics";
 
@@ -69,16 +72,19 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
     });
 
     const route = {
-        template: '<div mb-redux-component class="flex flex-column flex-full" />',
+        template: '<div mb-redux-component class="flex flex-column spread" />',
         controller: ['$scope', '$location', '$route', '$routeParams', 'AppState',
             function($scope, $location, $route, $routeParams, AppState) {
                 $scope.Component = Routes;
                 $scope.props = {};
-                $scope.store = createStore(combineReducers({
+                $scope.store = createStoreWithAngularScope($scope, $location, combineReducers({
                     // admin: {
                     //     datamodel
                     // },
                     datamodel: combineReducers(datamodel),
+                    questions,
+                    labels,
+                    undo,
                     form,
                     router,
                     user: (state = null) => state
@@ -111,6 +117,11 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
             }]
         }
     };
+
+    $routeProvider.when('/questions', route);
+    $routeProvider.when('/questions/edit/:section', route);
+    $routeProvider.when('/questions/:section', route);
+    $routeProvider.when('/questions/:section/:slug', route);
 
     $routeProvider.when('/admin/datamodel/metric', route);
     $routeProvider.when('/admin/datamodel/metric/:segmentId', route);

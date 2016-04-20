@@ -39,6 +39,7 @@
 	border-right: 10px solid transparent;
 	border-top: 10px solid transparent;
 	border-bottom: 10px solid transparent;
+	pointer-events: none;
 }
 
 .PopoverBody .Form-input {

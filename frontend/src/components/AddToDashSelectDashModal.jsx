@@ -28,9 +28,7 @@ export default class AddToDashSelectDashModal extends Component {
     };
 
     async loadDashboardList() {
-        var dashboards = await this.props.dashboardApi.list({
-            'filterMode': 'all'
-        }).$promise;
+        var dashboards = await this.props.dashboardApi.list({ f: "all" }).$promise;
         for (var dashboard of dashboards) {
             dashboard.updated_at = moment(dashboard.updated_at);
         }

@@ -73,7 +73,7 @@ export default class DatabaseStep extends Component {
 
         // now that they are good, store them
         this.props.dispatch(setDatabaseDetails({
-            'nextStep': ++this.props.stepNumber,
+            'nextStep': this.props.stepNumber + 1,
             'details': details
         }));
 
@@ -86,7 +86,7 @@ export default class DatabaseStep extends Component {
         });
 
         this.props.dispatch(setDatabaseDetails({
-            'nextStep': ++this.props.stepNumber,
+            'nextStep': this.props.stepNumber + 1,
             'details': null
         }));
 

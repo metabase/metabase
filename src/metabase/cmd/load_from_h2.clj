@@ -7,6 +7,7 @@
             (metabase.models [activity :refer [Activity]]
                              [card :refer [Card]]
                              [card-favorite :refer [CardFavorite]]
+                             [card-label :refer [CardLabel]]
                              [dashboard :refer [Dashboard]]
                              [dashboard-card :refer [DashboardCard]]
                              [dashboard-card-series :refer [DashboardCardSeries]]
@@ -15,6 +16,7 @@
                              [field :refer [Field]]
                              [field-values :refer [FieldValues]]
                              [foreign-key :refer [ForeignKey]]
+                             [label :refer [Label]]
                              [metric :refer [Metric]]
                              [pulse :refer [Pulse]]
                              [pulse-card :refer [PulseCard]]
@@ -61,7 +63,9 @@
    Pulse
    PulseCard
    PulseChannel
-   PulseChannelRecipient])
+   PulseChannelRecipient
+   Label
+   CardLabel])
 
 (defn load-from-h2
   "Transfer data from existing H2 database to the newly created (presumably MySQL or Postgres) DB specified by env vars.

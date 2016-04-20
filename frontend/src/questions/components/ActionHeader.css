@@ -1,0 +1,42 @@
+@import '../Questions.css';
+
+:local(.actionHeader) {
+    composes: flex align-center from "style";
+    composes: my3 from "style";
+    font-size: 14px;
+    color: var(--blue-color);
+}
+
+:local(.selectedCount) {
+    composes: mx4 from "style";
+}
+
+/* ALL CHECKBOX */
+:local(.allCheckbox) {
+    composes: icon from "./List.css";
+    visibility: visible !important;
+}
+
+:local(.selected) {
+    color: var(--blue-color) !important;
+}
+
+:local(.labelButton) {
+    composes: px1 from "style";
+    composes: cursor-pointer from "style";
+}
+
+:local(.archiveButton) {
+    composes: px1 from "style";
+    composes: cursor-pointer from "style";
+}
+
+:local(.labelButton) .Icon,
+:local(.archiveButton) .Icon {
+    padding-left: 0.25em;
+    padding-right: 0.25em;
+}
+
+:local(.labelButton) .Icon-chevrondown {
+    color: #DEEAF1;
+}

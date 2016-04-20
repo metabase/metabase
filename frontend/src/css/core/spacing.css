@@ -10,180 +10,180 @@
   --margin-4: 2rem;
 }
 
-.ml-auto { margin-left: auto; }
-.mr-auto { margin-right: auto; }
+.ml-auto, :local(.ml-auto) { margin-left: auto; }
+.mr-auto, :local(.mr-auto) { margin-right: auto; }
 
 /* padding */
 
 /* 0 */
-.p0  { padding: 0; }
-.pt0 { padding-top: 0; }
-.pb0 { padding-bottom: 0; }
-.pl0 { padding-left: 0; }
-.pr0 { padding-right: 0; }
+.p0, :local(.p0)   { padding: 0; }
+.pt0, :local(.pt0) { padding-top: 0; }
+.pb0, :local(.pb0) { padding-bottom: 0; }
+.pl0, :local(.pl0) { padding-left: 0; }
+.pr0, :local(.pr0) { padding-right: 0; }
 
 /* 1 */
-.p1 {
+.p1, :local(.p1) {
   padding: var(--padding-1);
 }
 
-.px1 {
+.px1, :local(.px1) {
   padding-left:  var(--padding-1);
   padding-right: var(--padding-1);
 }
 
-.py1 {
+.py1, :local(.py1) {
   padding-top:    var(--padding-1);
   padding-bottom: var(--padding-1);
 }
 
-.pt1 { padding-top:    var(--padding-1); }
-.pb1 { padding-bottom: var(--padding-1); }
-.pl1 { padding-left:   var(--padding-1); }
-.pr1 { padding-right:  var(--padding-1); }
+.pt1, :local(.pt1) { padding-top:    var(--padding-1); }
+.pb1, :local(.pb1) { padding-bottom: var(--padding-1); }
+.pl1, :local(.pl1) { padding-left:   var(--padding-1); }
+.pr1, :local(.pr1) { padding-right:  var(--padding-1); }
 
 /* 2 */
 
-.p2 { padding: var(--padding-2); }
+.p2, :local(.p2) { padding: var(--padding-2); }
 
-.px2 {
+.px2, :local(.px2) {
   padding-left:  var(--padding-2);
   padding-right: var(--padding-2);
 }
 
-.py2 {
+.py2, :local(.py2) {
   padding-top:    var(--padding-2);
   padding-bottom: var(--padding-2);
 }
 
-.pt2 { padding-top:    var(--padding-2); }
-.pb2 { padding-bottom: var(--padding-2); }
-.pl2 { padding-left:   var(--padding-2); }
-.pr2 { padding-right:  var(--padding-2); }
+.pt2, :local(.pt2) { padding-top:    var(--padding-2); }
+.pb2, :local(.pb2) { padding-bottom: var(--padding-2); }
+.pl2, :local(.pl2) { padding-left:   var(--padding-2); }
+.pr2, :local(.pr2) { padding-right:  var(--padding-2); }
 
 /* 3 */
 
-.p3 { padding: var(--padding-3); }
+.p3, :local(.p3) { padding: var(--padding-3); }
 
-.px3 {
+.px3, :local(.px3) {
   padding-left:  var(--padding-3);
   padding-right: var(--padding-3);
 }
 
-.py3 {
+.py3, :local(.py3) {
   padding-top:    var(--padding-3);
   padding-bottom: var(--padding-3);
 }
 
-.pt3 { padding-top:    var(--padding-3); }
-.pb3 { padding-bottom: var(--padding-3); }
-.pl3 { padding-left:   var(--padding-3); }
-.pr3 { padding-right:  var(--padding-3); }
+.pt3, :local(.pt3) { padding-top:    var(--padding-3); }
+.pb3, :local(.pb3) { padding-bottom: var(--padding-3); }
+.pl3, :local(.pl3) { padding-left:   var(--padding-3); }
+.pr3, :local(.pr3) { padding-right:  var(--padding-3); }
 
 
 /* 4 */
 
-.p4 { padding: var(--padding-4); }
+.p4, :local(.p4) { padding: var(--padding-4); }
 
-.px4 {
+.px4, :local(.px4) {
   padding-left:  var(--padding-4);
   padding-right: var(--padding-4);
 }
 
-.py4 {
+.py4, :local(.py4) {
   padding-top:    var(--padding-4);
   padding-bottom: var(--padding-4);
 }
 
-.pt4 { padding-top:    var(--padding-4); }
-.pb4 { padding-bottom: var(--padding-4); }
-.pl4 { padding-left:   var(--padding-4); }
-.pr4 { padding-right:  var(--padding-4); }
+.pt4, :local(.pt4) { padding-top:    var(--padding-4); }
+.pb4, :local(.pb4) { padding-bottom: var(--padding-4); }
+.pl4, :local(.pl4) { padding-left:   var(--padding-4); }
+.pr4, :local(.pr4) { padding-right:  var(--padding-4); }
 
 
 /* margin */
 
  /* 0 */
-.m0  { margin: 0; }
-.mt0 { margin-top: 0; }
-.mb0 { margin-bottom: 0; }
-.ml0 { margin-left: 0; }
-.mr0 { margin-right: 0; }
+.m0, :local(.m0)  { margin: 0; }
+.mt0, :local(.mt0) { margin-top: 0; }
+.mb0, :local(.mb0) { margin-bottom: 0; }
+.ml0, :local(.ml0) { margin-left: 0; }
+.mr0, :local(.mr0) { margin-right: 0; }
 
 /* 1 */
-.m1 { margin: var(--margin-1); }
+.m1, :local(.m1) { margin: var(--margin-1); }
 
-.mx1 {
+.mx1, :local(.mx1) {
   margin-left:  var(--margin-1);
   margin-right: var(--margin-1);
 }
 
-.my1 {
+.my1, :local(.my1) {
   margin-top:    var(--margin-1);
   margin-bottom: var(--margin-1);
 }
 
-.mt1 { margin-top:    var(--margin-1); }
-.mb1 { margin-bottom: var(--margin-1); }
-.ml1 { margin-left:   var(--margin-1); }
-.mr1 { margin-right:  var(--margin-1); }
+.mt1, :local(.mt1) { margin-top:    var(--margin-1); }
+.mb1, :local(.mb1) { margin-bottom: var(--margin-1); }
+.ml1, :local(.ml1) { margin-left:   var(--margin-1); }
+.mr1, :local(.mr1) { margin-right:  var(--margin-1); }
 
 /* 2 */
 
-.m2 { margin: var(--margin-2); }
+.m2, :local(.m2) { margin: var(--margin-2); }
 
-.mx2 {
+.mx2, :local(.mx2) {
   margin-left:  var(--margin-2);
   margin-right: var(--margin-2);
 }
 
-.my2 {
+.my2, :local(.my2) {
   margin-top:    var(--margin-2);
   margin-bottom: var(--margin-2);
 }
 
-.mt2 { margin-top:    var(--margin-2); }
-.mb2 { margin-bottom: var(--margin-2); }
-.ml2 { margin-left:   var(--margin-2); }
-.mr2 { margin-right:  var(--margin-2); }
+.mt2, :local(.mt2) { margin-top:    var(--margin-2); }
+.mb2, :local(.mb2) { margin-bottom: var(--margin-2); }
+.ml2, :local(.ml2) { margin-left:   var(--margin-2); }
+.mr2, :local(.mr2) { margin-right:  var(--margin-2); }
 
 /* 3 */
 
-.m3 { margin: var(--margin-3); }
+.m3, :local(.m3) { margin: var(--margin-3); }
 
-.mx3 {
+.mx3, :local(.mx3) {
   margin-left:  var(--margin-3);
   margin-right: var(--margin-3);
 }
 
-.my3 {
+.my3, :local(.my3) {
   margin-top:    var(--padding-3);
   margin-bottom: var(--padding-3);
 }
 
-.mt3 { margin-top:    var(--margin-3); }
-.mb3 { margin-bottom: var(--margin-3); }
-.ml3 { margin-left:   var(--margin-3); }
-.mr3 { margin-right:  var(--margin-3); }
+.mt3, :local(.mt3) { margin-top:    var(--margin-3); }
+.mb3, :local(.mb3) { margin-bottom: var(--margin-3); }
+.ml3, :local(.ml3) { margin-left:   var(--margin-3); }
+.mr3, :local(.mr3) { margin-right:  var(--margin-3); }
 
 /* 4 */
 
-.m4 { margin: var(--margin-4); }
+.m4, :local(.m4) { margin: var(--margin-4); }
 
-.mx4 {
+.mx4, :local(.mx4) {
   margin-left:  var(--margin-4);
   margin-right: var(--margin-4);
 }
 
-.my4 {
+.my4, :local(.my4) {
   margin-top:    var(--margin-4);
   margin-bottom: var(--margin-4);
 }
 
-.mt4 { margin-top:    var(--margin-4); }
-.mb4 { margin-bottom: var(--margin-4); }
-.ml4 { margin-left:   var(--margin-4); }
-.mr4 { margin-right:  var(--margin-4); }
+.mt4, :local(.mt4) { margin-top:    var(--margin-4); }
+.mb4, :local(.mb4) { margin-bottom: var(--margin-4); }
+.ml4, :local(.ml4) { margin-left:   var(--margin-4); }
+.mr4, :local(.mr4) { margin-right:  var(--margin-4); }
 
 
 /* responsive spacing */

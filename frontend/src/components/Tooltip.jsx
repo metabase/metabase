@@ -1,13 +1,18 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import TooltipPopover from "./TooltipPopover.jsx";
 
 export default class Tooltip extends Component {
     constructor(props, context) {
         super(props, context);
+
         this.state = {
             isOpen: false
         };
+
+        this._onMouseEnter = this._onMouseEnter.bind(this);
+        this._onMouseLeave = this._onMouseLeave.bind(this);
     }
 
     static propTypes = {
@@ -22,16 +27,43 @@ export default class Tooltip extends Component {
         verticalAttachments: ["top", "bottom"]
     };
 
-    render() {
-        const { isEnabled, onMouseEnter, onMouseLeave, children } = this.props;
+    componentDidMount() {
+        let elem = ReactDOM.findDOMNode(this);
+        elem.addEventListener("mouseenter", this._onMouseEnter, false);
+        elem.addEventListener("mouseleave", this._onMouseLeave, false);
+        this._element = document.createElement('div');
+        this.componentDidUpdate();
+    }
+
+    componentDidUpdate() {
+        const { isEnabled } = this.props;
         const { isOpen } = this.state;
-        const child = React.Children.only(children);
-        return React.cloneElement(child, {
-            onMouseEnter: (...args) => { this.setState({ isOpen: true }); onMouseEnter && onMouseEnter(...args); },
-            onMouseLeave: (...args) => { this.setState({ isOpen: false }); onMouseLeave && onMouseLeave(...args); },
-            children: React.Children.toArray(child.props.children).concat(
-                isEnabled ? [<TooltipPopover isOpen={isOpen} {...this.props} children={this.props.tooltip} />] : []
-            )
-        });
+        if (isEnabled && isOpen) {
+            ReactDOM.render(
+                <TooltipPopover isOpen={true} target={this} {...this.props} children={this.props.tooltip} />,
+                this._element
+            );
+        } else {
+            ReactDOM.unmountComponentAtNode(this._element);
+        }
+    }
+
+    componentWillUnmount() {
+        let elem = ReactDOM.findDOMNode(this);
+        elem.removeEventListener("mouseenter", this._onMouseEnter, false);
+        elem.removeEventListener("mouseleave", this._onMouseLeave, false);
+        ReactDOM.unmountComponentAtNode(this._element);
+    }
+
+    _onMouseEnter(e) {
+        this.setState({ isOpen: true });
+    }
+
+    _onMouseLeave(e) {
+        this.setState({ isOpen: false });
+    }
+
+    render() {
+        return React.Children.only(this.props.children);
     }
 }

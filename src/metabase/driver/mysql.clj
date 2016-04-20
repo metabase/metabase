@@ -27,37 +27,37 @@
 
 ;;; # IMPLEMENTATION
 
-(def ^:private ^:const column->base-type
-  {:BIGINT     :BigIntegerField
-   :BINARY     :UnknownField
-   :BIT        :BooleanField
-   :BLOB       :UnknownField
-   :CHAR       :CharField
-   :DATE       :DateField
-   :DATETIME   :DateTimeField
-   :DECIMAL    :DecimalField
-   :DOUBLE     :FloatField
-   :ENUM       :UnknownField
-   :FLOAT      :FloatField
-   :INT        :IntegerField
-   :INTEGER    :IntegerField
-   :LONGBLOB   :UnknownField
-   :LONGTEXT   :TextField
-   :MEDIUMBLOB :UnknownField
-   :MEDIUMINT  :IntegerField
-   :MEDIUMTEXT :TextField
-   :NUMERIC    :DecimalField
-   :REAL       :FloatField
-   :SET        :UnknownField
-   :TEXT       :TextField
-   :TIME       :TimeField
-   :TIMESTAMP  :DateTimeField
-   :TINYBLOB   :UnknownField
-   :TINYINT    :IntegerField
-   :TINYTEXT   :TextField
-   :VARBINARY  :UnknownField
-   :VARCHAR    :TextField
-   :YEAR       :IntegerField})
+(defn- column->base-type [column-type]
+  ({:BIGINT     :BigIntegerField
+    :BINARY     :UnknownField
+    :BIT        :BooleanField
+    :BLOB       :UnknownField
+    :CHAR       :CharField
+    :DATE       :DateField
+    :DATETIME   :DateTimeField
+    :DECIMAL    :DecimalField
+    :DOUBLE     :FloatField
+    :ENUM       :UnknownField
+    :FLOAT      :FloatField
+    :INT        :IntegerField
+    :INTEGER    :IntegerField
+    :LONGBLOB   :UnknownField
+    :LONGTEXT   :TextField
+    :MEDIUMBLOB :UnknownField
+    :MEDIUMINT  :IntegerField
+    :MEDIUMTEXT :TextField
+    :NUMERIC    :DecimalField
+    :REAL       :FloatField
+    :SET        :UnknownField
+    :TEXT       :TextField
+    :TIME       :TimeField
+    :TIMESTAMP  :DateTimeField
+    :TINYBLOB   :UnknownField
+    :TINYINT    :IntegerField
+    :TINYTEXT   :TextField
+    :VARBINARY  :UnknownField
+    :VARCHAR    :TextField
+    :YEAR       :IntegerField} (keyword (s/replace (name column-type) #"\sUNSIGNED$" "")))) ; strip off " UNSIGNED" from end if present
 
 (defn- connection-details->spec [_ details]
   (-> details
@@ -83,7 +83,7 @@
 
 (defn- date [_ unit expr]
   (case unit
-    :default         (k/sqlfn :TIMESTAMP expr)
+    :default         expr
     :minute          (trunc-with-format "%Y-%m-%d %H:%i" expr)
     :minute-of-hour  (kx/minute expr)
     :hour            (trunc-with-format "%Y-%m-%d %H" expr)

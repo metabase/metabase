@@ -80,11 +80,11 @@
 
 
 ;; ## random-name
-(defn random-name
-  "Generate a random string of 20 uppercase letters."
-  []
-  (->> (repeatedly 20 #(-> (rand-int 26) (+ (int \A)) char))
-       (apply str)))
+(let [random-uppercase-letter (partial rand-nth (mapv char (range (int \A) (inc (int \Z)))))]
+  (defn random-name
+    "Generate a random string of 20 uppercase letters."
+    []
+    (apply str (repeatedly 20 random-uppercase-letter))))
 
 
 (defn boolean-ids-and-timestamps
@@ -108,49 +108,87 @@
 (defprotocol ^:private WithTempDefaults
   (^:private with-temp-defaults [this]))
 
-(u/strict-extend Object               WithTempDefaults {:with-temp-defaults (constantly nil)})
-(u/strict-extend (class Card)         WithTempDefaults {:with-temp-defaults (fn [_] {:creator_id             ((resolve 'metabase.test.data.users/user->id) :rasta)
-                                                                                     :dataset_query          {}
-                                                                                     :display                :table
-                                                                                     :name                   (random-name)
-                                                                                     :public_perms           common/perms-none
-                                                                                     :visualization_settings {}})})
-(u/strict-extend (class Dashboard)    WithTempDefaults {:with-temp-defaults (fn [_] {:creator_id   ((resolve 'metabase.test.data.users/user->id) :rasta)
-                                                                                     :name         (random-name)
-                                                                                     :public_perms 0})})
-(u/strict-extend (class Database)     WithTempDefaults {:with-temp-defaults (fn [_] {:details   {}
-                                                                                     :engine    :yeehaw
-                                                                                     :is_sample false
-                                                                                     :name      (random-name)})})
-(u/strict-extend (class Field)        WithTempDefaults {:with-temp-defaults (fn [_] {:active          true
-                                                                                     :base_type       :TextField
-                                                                                     :field_type      :info
-                                                                                     :name            (random-name)
-                                                                                     :position        1
-                                                                                     :preview_display true})})
-(u/strict-extend (class Metric)       WithTempDefaults {:with-temp-defaults (fn [_] {:creator_id  ((resolve 'metabase.test.data.users/user->id) :rasta)
-                                                                                     :definition  {}
-                                                                                     :description "Lookin' for a blueberry"
-                                                                                     :name        "Toucans in the rainforest"})})
-(u/strict-extend (class Pulse)        WithTempDefaults {:with-temp-defaults (fn [_] {:creator_id ((resolve 'metabase.test.data.users/user->id) :rasta)
-                                                                                     :name       (random-name)})})
-(u/strict-extend (class PulseChannel) WithTempDefaults {:with-temp-defaults (constantly {:channel_type  :email
-                                                                                         :details       {}
-                                                                                         :schedule_type :daily
-                                                                                         :schedule_hour 15})})
-(u/strict-extend (class RawColumn)    WithTempDefaults {:with-temp-defaults (fn [_] {:active true
-                                                                                     :name   (random-name)})})
-(u/strict-extend (class RawTable)     WithTempDefaults {:with-temp-defaults (fn [_] {:active true
-                                                                                     :name   (random-name)})})
-(u/strict-extend (class Revision)     WithTempDefaults {:with-temp-defaults (fn [_] {:user_id      ((resolve 'metabase.test.data.users/user->id) :rasta)
-                                                                                     :is_creation  false
-                                                                                     :is_reversion false})})
-(u/strict-extend (class Segment)      WithTempDefaults {:with-temp-defaults (fn [_] {:creator_id ((resolve 'metabase.test.data.users/user->id) :rasta)
-                                                                                     :definition  {}
-                                                                                     :description "Lookin' for a blueberry"
-                                                                                     :name        "Toucans in the rainforest"})})
-(u/strict-extend (class Table)        WithTempDefaults {:with-temp-defaults (fn [_] {:active true
-                                                                                     :name   (random-name)})})
+(u/strict-extend Object
+  WithTempDefaults
+  {:with-temp-defaults (constantly nil)})
+
+(u/strict-extend (class Card)
+  WithTempDefaults
+  {:with-temp-defaults (fn [_] {:creator_id             ((resolve 'metabase.test.data.users/user->id) :rasta)
+                                :dataset_query          {}
+                                :display                :table
+                                :name                   (random-name)
+                                :public_perms           common/perms-none
+                                :visualization_settings {}})})
+
+(u/strict-extend (class Dashboard)
+  WithTempDefaults
+  {:with-temp-defaults (fn [_] {:creator_id   ((resolve 'metabase.test.data.users/user->id) :rasta)
+                                :name         (random-name)
+                                :public_perms 0})})
+
+(u/strict-extend (class Database)
+  WithTempDefaults
+  {:with-temp-defaults (fn [_] {:details   {}
+                                :engine    :yeehaw
+                                :is_sample false
+                                :name      (random-name)})})
+
+(u/strict-extend (class Field)
+  WithTempDefaults
+  {:with-temp-defaults (fn [_] {:active          true
+                                :base_type       :TextField
+                                :field_type      :info
+                                :name            (random-name)
+                                :position        1
+                                :preview_display true})})
+
+(u/strict-extend (class Metric)
+  WithTempDefaults
+  {:with-temp-defaults (fn [_] {:creator_id  ((resolve 'metabase.test.data.users/user->id) :rasta)
+                                :definition  {}
+                                :description "Lookin' for a blueberry"
+                                :name        "Toucans in the rainforest"})})
+
+(u/strict-extend (class Pulse)
+  WithTempDefaults
+  {:with-temp-defaults (fn [_] {:creator_id ((resolve 'metabase.test.data.users/user->id) :rasta)
+                                :name       (random-name)})})
+
+(u/strict-extend (class PulseChannel)
+  WithTempDefaults
+  {:with-temp-defaults (constantly {:channel_type  :email
+                                    :details       {}
+                                    :schedule_type :daily
+                                    :schedule_hour 15})})
+
+(u/strict-extend (class RawColumn)
+  WithTempDefaults
+  {:with-temp-defaults (fn [_] {:active true
+                                :name   (random-name)})})
+
+(u/strict-extend (class RawTable)
+  WithTempDefaults
+  {:with-temp-defaults (fn [_] {:active true
+                                :name   (random-name)})})
+
+(u/strict-extend (class Revision)
+  WithTempDefaults
+  {:with-temp-defaults (fn [_] {:user_id      ((resolve 'metabase.test.data.users/user->id) :rasta)
+                                :is_creation  false
+                                :is_reversion false})})
+
+(u/strict-extend (class Segment)
+  WithTempDefaults
+  {:with-temp-defaults (fn [_] {:creator_id ((resolve 'metabase.test.data.users/user->id) :rasta)
+                                :definition  {}
+                                :description "Lookin' for a blueberry"
+                                :name        "Toucans in the rainforest"})})
+
+(u/strict-extend (class Table)
+  WithTempDefaults
+  {:with-temp-defaults (fn [_] {:active true
+                                :name   (random-name)})})
 
 
 (defn do-with-temp
@@ -199,6 +237,22 @@
         (recur more body)
         body))))
 
+(defmacro expect-with-temp
+  "Combines `expect` with a `with-temp*` form. The temporary objects established by `with-temp*` are available to both EXPECTED and ACTUAL.
+
+     (expect-with-temp [Database [{database-id :id}]]
+        database-id
+        (get-most-recent-database-id))"
+  {:style/indent 1}
+  [with-temp*-form expected actual]
+  ;; use `gensym` instead of auto gensym here so we can be sure it's a unique symbol every time. Otherwise since expectations hashes its body
+  ;; to generate function names it will treat every usage of `expect-with-temp` as the same test and only a single one will end up being ran
+  (let [with-temp-form (gensym "with-temp-")]
+    `(let [~with-temp-form (delay (with-temp* ~with-temp*-form
+                                    [~expected ~actual]))]
+       (expect
+         (first  @~with-temp-form)
+         (second @~with-temp-form)))))
 
 ;; ## resolve-private-fns
 
