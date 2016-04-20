@@ -54,7 +54,7 @@ function parseToken(token, fields, operators) {
 
     let field = _.findWhere(fields, {display_name: fieldName});
 
-    if (field) token.parsedValue = ['field-id', field.id]
+    if (field) token.parsedValue = ['field-id', field.id];
     else       token.error = 'no field named "' + fieldName + '"';
 
     return token;
