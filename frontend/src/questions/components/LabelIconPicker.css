@@ -1,3 +1,4 @@
+@import '../Questions.css';
 
 :local(.sectionHeader) {
     composes: p1 px3 from "style";
@@ -17,6 +18,7 @@
     composes: list;
     composes: border-top from "style";
     composes: py1 from "style";
+    justify-content: space-around;
 }
 
 :local(.option) {
@@ -48,4 +50,14 @@
 :local(.chevron) {
     composes: ml1 from "style";
     color: #d9d9d9;
+}
+
+:local(.category) {
+    justify-content: space-between;
+    composes: p1 cursor-pointer transition-color from "style";
+    color: #CFE4F5;
+}
+
+:local(.category):hover {
+    color: var(--blue-color);
 }

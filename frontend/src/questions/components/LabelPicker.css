@@ -7,7 +7,7 @@
 }
 
 :local(.heading) {
-    composes: p2 border-bottom from "style";
+    composes: text-bold p2 border-bottom from "style";
     font-size: 14px;
 }
 
