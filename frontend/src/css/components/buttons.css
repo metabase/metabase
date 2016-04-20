@@ -179,6 +179,11 @@
     color: #fff;
 }
 
+.Button--danger:hover {
+    background-color: color(var(--danger-button-bg-color) shade(10%));
+    border-color: color(var(--danger-button-bg-color) shade(10%));
+}
+
 .Button--success {
     background-color: var(--success-button-color);
     border-color: var(--success-button-color);
