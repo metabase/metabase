@@ -1,5 +1,7 @@
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
+import S from "./ExpressionEditorTextfield.css";
+
 import _ from "underscore";
 import cx from "classnames";
 
@@ -42,7 +44,7 @@ export default class ExpressionEditorTextfield extends Component {
 
     static defaultProps = {
         expression: [null, ""],
-        placeholder: "= write some math!"
+        placeholder: "write some math!"
     }
 
     componentWillMount() {
@@ -202,10 +204,10 @@ export default class ExpressionEditorTextfield extends Component {
         const { placeholder } = this.props;
 
         return (
-            <div>
+            <div className={cx(S.editor, "relative")}>
                 <input
                     ref="input"
-                    className="my1 p1 input block full h4 text-dark"
+                    className={cx(S.input, "my1 p1 input block full h4 text-dark")}
                     type="text"
                     placeholder={placeholder}
                     value={this.state.expressionString}
@@ -215,6 +217,7 @@ export default class ExpressionEditorTextfield extends Component {
                     onFocus={this.onInputChange}
                     focus={true}
                 />
+                <div className={cx(S.equalSign, "spread flex align-center h4 text-dark", { [S.placeholder]: !this.state.expressionString })}>=</div>
                 {this.state.suggestions.length ?
                  <Popover
                      className="p2 not-rounded border-dark"
