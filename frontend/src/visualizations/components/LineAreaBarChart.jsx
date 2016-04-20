@@ -105,17 +105,22 @@ export default class LineAreaBarChart extends Component {
                 let dataset = crossfilter(s.data.rows);
                 let groups = [0,1].map(i => dataset.dimension(d => d[i]).group());
                 let cardinalities = groups.map(group => group.size())
-                // only if the smaller dimension has cardinality < 10
-                if (cardinalities[0] < 10 || cardinalities[1] < 10) {
-                    let dimensionIndex = (cardinalities[0] > cardinalities[1]) ? 1 : 0;
-                    nextState.series = groups[dimensionIndex].reduce(
-                        (p, v) => p.concat([[...v.slice(0, dimensionIndex), ...v.slice(dimensionIndex+1)]]),
+                // initiall select the smaller cardinality dimension as the series dimension
+                let [seriesDimensionIndex, axisDimensionIndex] = (cardinalities[0] > cardinalities[1]) ? [1,0] : [0,1];
+                // if the series dimension is a date but the axis dimension is not then swap them
+                if (isDate(s.data.cols[seriesDimensionIndex]) && !isDate(s.data.cols[axisDimensionIndex])) {
+                    [seriesDimensionIndex, axisDimensionIndex] = [axisDimensionIndex, seriesDimensionIndex];
+                }
+                // only if the selected dimension has cardinality < 10
+                if (cardinalities[seriesDimensionIndex] < 10) {
+                    nextState.series = groups[seriesDimensionIndex].reduce(
+                        (p, v) => p.concat([[...v.slice(0, seriesDimensionIndex), ...v.slice(seriesDimensionIndex+1)]]),
                         (p, v) => null, () => []
                     ).all().map(o => ({
                         card: { ...s.card, name: o.key, id: null },
                         data: {
                             rows: o.value,
-                            cols: [...s.data.cols.slice(0,dimensionIndex), ...s.data.cols.slice(dimensionIndex+1)]
+                            cols: [...s.data.cols.slice(0,seriesDimensionIndex), ...s.data.cols.slice(seriesDimensionIndex+1)]
                         }
                     }));
                     nextState.isMultiseries = true;
