@@ -32,18 +32,18 @@ export default class Expressions extends Component {
                 { sortedNames && sortedNames.map(name =>
                     <div key={name} className="pb1 text-brand text-bold cursor-pointer flex flex-row align-center justify-between" onClick={() => onEditExpression(name)}>
                         <span>{name}</span>
-                        <Tooltip tooltip={formatExpression(expressions[name])}>
+                        <Tooltip tooltip={formatExpression(expressions[name], this.props.tableMetadata.fields)}>
                             <span className="QuestionTooltipTarget" />
                         </Tooltip>
                     </div>
-                )}
+                  )}
 
-                <a data-metabase-event={"QueryBuilder;Show Add Custom Field"} className="text-grey-2 text-bold flex align-center text-grey-4-hover cursor-pointer no-decoration transition-color" onClick={() => onAddExpression()}>
-                    <IconBorder borderRadius="3px">
-                        <Icon name="add" width="14px" height="14px" />
-                    </IconBorder>
-                    <span className="ml1">Add a custom field</span>
-                </a>
+                    <a data-metabase-event={"QueryBuilder;Show Add Custom Field"} className="text-grey-2 text-bold flex align-center text-grey-4-hover cursor-pointer no-decoration transition-color" onClick={() => onAddExpression()}>
+                        <IconBorder borderRadius="3px">
+                            <Icon name="add" width="14px" height="14px" />
+                        </IconBorder>
+                        <span className="ml1">Add a custom field</span>
+                    </a>
             </div>
         );
     }

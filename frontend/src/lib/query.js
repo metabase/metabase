@@ -268,7 +268,7 @@ var Query = {
             // simply make sure that there are no null values in the last filter
             for (var i=0; i < lastFilter.length; i++) {
                 if (lastFilter[i] === null) {
-                    return false
+                    return false;
                 }
             }
         }
@@ -412,7 +412,7 @@ var Query = {
     },
 
     removeExpression(query, name) {
-        if (!query.expressions) return;
+        if (!query.expressions) return query;
 
         delete query.expressions[name];
 

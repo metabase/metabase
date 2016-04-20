@@ -1,13 +1,14 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
+import S from "./ExpressionEditorTextfield.css";
+
 import _ from "underscore";
 import cx from "classnames";
 
 import Popover from "metabase/components/Popover.jsx";
 
-import { parseExpressionString, tokenAtPosition, tokensToExpression } from "metabase/lib/expressions";
+import { parseExpressionString, tokenAtPosition, tokensToExpression, formatExpression, isExpression } from "metabase/lib/expressions";
 
-
-const VALID_OPERATORS = new Set(['+', '-', '*', '/']);
 
 const KEYCODE_TAB   =  9;
 const KEYCODE_ENTER = 13;
@@ -24,6 +25,7 @@ function getErrorToken(tokens) {
         let childError = getErrorToken(token.value);
         if (childError) return childError;
     }
+    return null;
 }
 
 
@@ -36,12 +38,13 @@ export default class ExpressionEditorTextfield extends Component {
     static propTypes = {
         expression: PropTypes.array,      // should be an array like [parsedExpressionObj, expressionString]
         tableMetadata: PropTypes.object.isRequired,
-        onSetExpression: PropTypes.func.isRequired
+        onChange: PropTypes.func.isRequired,
+        onError: PropTypes.func.isRequired
     };
 
     static defaultProps = {
         expression: [null, ""],
-        placeholder: "= write some math!"
+        placeholder: "write some math!"
     }
 
     componentWillMount() {
@@ -51,13 +54,13 @@ export default class ExpressionEditorTextfield extends Component {
     componentWillReceiveProps(newProps) {
         // we only refresh our state if we had no previous state OR if our expression or table has changed
         if (!this.state || this.props.expression != newProps.expression || this.props.tableMetadata != newProps.tableMetadata) {
-            let parsedExpression = newProps.expression[0],
-                expression       = newProps.expression[1],
+            let parsedExpression = newProps.expression,
+                expression       = formatExpression(newProps.expression, this.props.tableMetadata.fields),
                 tokens           = [];
 
             let errorMessage = null;
             try {
-                tokens = expression && expression.length ? tokensToExpression(parseExpressionString(expression, newProps.tableMetadata.fields, VALID_OPERATORS)) : [];
+                tokens = expression && expression.length ? tokensToExpression(parseExpressionString(expression, newProps.tableMetadata.fields)) : [];
             } catch (e) {
                 errorMessage = e;
             }
@@ -75,7 +78,7 @@ export default class ExpressionEditorTextfield extends Component {
     }
 
     onSuggestionAccepted() {
-        let inputElement = document.getElementById('react_qb_expression_input'),
+        let inputElement = ReactDOM.findDOMNode(this.refs.input),
             displayName  = this.state.suggestions[this.state.highlightedSuggestion].display_name,
             // wrap field names with spaces in them in quotes
             needsQuotes  = displayName.indexOf(' ') > -1,
@@ -133,13 +136,13 @@ export default class ExpressionEditorTextfield extends Component {
             suggestionsTitle: null
         });
 
-        // whenever our input blurs we push the updated expression to our parent
-        // TODO: only push if we are in a valid state!
-        this.props.onChange(this.state.parsedExpression, this.state.expressionString);
+        // whenever our input blurs we push the updated expression to our parent if valid
+        if (isExpression(this.state.parsedExpression)) this.props.onChange(this.state.parsedExpression)
+        else if (this.state.expressionErrorMessage)    this.props.onError(this.state.expressionErrorMessage);
     }
 
     onInputChange() {
-        let inputElement = document.getElementById('react_qb_expression_input'),
+        let inputElement = ReactDOM.findDOMNode(this.refs.input),
             expression   = inputElement.value;
 
         var errorMessage          = null,
@@ -153,7 +156,7 @@ export default class ExpressionEditorTextfield extends Component {
             //tokens = tokenizeExpressionString(expression);
             //console.log('tokens (before parse)', tokens);
 
-            tokens = parseExpressionString(expression, this.props.tableMetadata.fields, VALID_OPERATORS);
+            tokens = parseExpressionString(expression, this.props.tableMetadata.fields);
             console.log('tokens (after parse):', tokens);
 
             let errorToken = getErrorToken(tokens);
@@ -201,10 +204,10 @@ export default class ExpressionEditorTextfield extends Component {
         const { placeholder } = this.props;
 
         return (
-            <div>
+            <div className={cx(S.editor, "relative")}>
                 <input
-                    id="react_qb_expression_input"
-                    className="my1 p1 input block full h4 text-dark"
+                    ref="input"
+                    className={cx(S.input, "my1 p1 input block full h4 text-dark")}
                     type="text"
                     placeholder={placeholder}
                     value={this.state.expressionString}
@@ -214,6 +217,7 @@ export default class ExpressionEditorTextfield extends Component {
                     onFocus={this.onInputChange}
                     focus={true}
                 />
+                <div className={cx(S.equalSign, "spread flex align-center h4 text-dark", { [S.placeholder]: !this.state.expressionString })}>=</div>
                 {this.state.suggestions.length ?
                  <Popover
                      className="p2 not-rounded border-dark"
