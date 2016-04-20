@@ -11,7 +11,9 @@
             [metabase.models.table :as table]
             [metabase.sync-database.introspect :as introspect]
             [metabase.sync-database.sync :refer :all]
-            [metabase.test.util :as tu]))
+            [metabase.test.util :as tu]
+            [metabase.sync-database.sync :as sync]
+            [clojure.tools.logging :as log]))
 
 (tu/resolve-private-fns metabase.sync-database.sync
   save-fks! save-table-fields!)
@@ -82,9 +84,7 @@
                                                 (select-keys f [:name :description]))))
                             tu/boolean-ids-and-timestamps)]
 
-      (try (update-data-models-for-table! table)
-           (catch Throwable t
-             (.printStackTrace t)))
+      (update-data-models-for-table! table)
       ;; here we go
       [(get-table)
        (do
@@ -285,7 +285,33 @@
            (get-fields))]))))
 
 
-;; TODO: retire-tables!
+;; retire-tables!
+(expect
+  (let [disabled-movies-table (fn [tbl]
+                               (if-not (= "movies" (:name tbl))
+                                 tbl
+                                 (assoc tbl :active false
+                                            :fields [])))]
+    [moviedb/moviedb-tables-and-fields
+     (mapv disabled-movies-table moviedb/moviedb-tables-and-fields)])
+  (tu/with-temp* [database/Database [{database-id :id, :as db} {:engine :moviedb}]]
+    ;; setup a couple things we'll use in the test
+    (introspect/introspect-database-and-update-raw-tables! (moviedb/->MovieDbDriver) db)
+    (sync/update-data-models-from-raw-tables! db)
+    (let [get-tables #(->> (hydrate/hydrate (db/sel :many table/Table :db_id database-id) :fields)
+                           (mapv tu/boolean-ids-and-timestamps))]
+      ;; here we go
+      [(get-tables)
+       (do
+         ;; disable the table
+         (k/update raw-table/RawTable
+           (k/set-fields {:active false})
+           (k/where {:database_id database-id, :name "movies"}))
+         ;; run our retires function
+         (sync/retire-tables! db)
+         ;; now we should see the table and its fields disabled
+         (get-tables))])))
+
 
 ;; TODO: update-data-models-for-table!
 
