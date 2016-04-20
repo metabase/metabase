@@ -1,10 +1,10 @@
 /* provide flex utilities in lieu of float based layouts */
 
-.flex {
+.flex, :local(.flex) {
     display: flex;
 }
 
-.flex-full {
+.flex-full, :local(.flex-full) {
     flex: 1;
 }
 
@@ -12,11 +12,11 @@
     flex: 0.5;
 }
 
-.flex-no-shrink {
+.flex-no-shrink, :local(.flex-no-shrink) {
     flex-shrink: 0;
 }
 
-.align-center {
+.align-center, :local(.align-center) {
     align-items: center;
 }
 
@@ -24,7 +24,7 @@
     align-items: baseline;
 }
 
-.justify-center {
+.justify-center, :local(.justify-center) {
     justify-content: center;
 }
 
@@ -40,7 +40,7 @@
     align-self: flex-end;
 }
 
-.flex-align-right {
+.flex-align-right, :local(.flex-align-right) {
     margin-left: auto;
 }
 
@@ -56,7 +56,7 @@
     .lg-flex-align-right { margin-left: auto; }
 }
 
-.layout-centered {
+.layout-centered, :local(.layout-centered) {
   align-items: center;
   justify-content: center;
 }
@@ -92,7 +92,7 @@
     .md-flex-column { flex-direction: column; }
 }
 
-.flex-row {
+.flex-row, :local(.flex-row) {
   flex-direction: row;
 }
 

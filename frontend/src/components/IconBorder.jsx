@@ -20,7 +20,7 @@ export default class IconBorder extends Component {
         borderColor: PropTypes.string,
         borderRadius: PropTypes.string,
         style: PropTypes.object,
-        children: PropTypes.instanceOf(Icon)
+        children: PropTypes.any.isRequired
     };
 
     static defaultProps = {

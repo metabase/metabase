@@ -101,14 +101,14 @@
 (defn post-chat-message!
   "Calls Slack api `chat.postMessage` function and posts a message to a given channel.
    ATTACHMENTS should be serialized JSON."
-  [channel-id text & [attachments]]
-  {:pre [(string? channel-id) (string? text)]}
+  [channel-id text-or-nil & [attachments]]
+  {:pre [(string? channel-id)]}
   ;; TODO: it would be nice to have an emoji or icon image to use here
   (POST :chat.postMessage
     :channel     channel-id
     :username    "MetaBot"
     :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
-    :text        text
+    :text        text-or-nil
     :attachments (when (seq attachments)
                    (json/generate-string attachments))))
 

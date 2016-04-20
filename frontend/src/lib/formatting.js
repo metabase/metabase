@@ -78,6 +78,8 @@ function formatTimeWithUnit(value, unit, options = {}) {
             return moment().week(value).format("wo");
         case "month-of-year": // January
             return moment().month(value - 1).format("MMMM");
+        case "quarter-of-year": // January
+            return moment().quarter(value).format("[Q]Q");
         default:
             return m.format("LLLL");
     }
@@ -139,6 +141,10 @@ export function humanize(...args) {
 // Removes trailing "id" from field names
 export function stripId(name) {
     return name && name.replace(/ id$/i, "");
+}
+
+export function slugify(name) {
+    return name && name.toLowerCase().replace(/[^a-z0-9_]/g, "_");
 }
 
 export function assignUserColors(userIds, currentUserId, colorClasses = ['bg-brand', 'bg-purple', 'bg-error', 'bg-green', 'bg-gold', 'bg-grey-2']) {

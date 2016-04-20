@@ -48,7 +48,7 @@ export const setCardsFilter = createThunkAction(SET_CARDS_FILTER, function(filte
 
 export const fetchCards = createThunkAction(FETCH_CARDS, function(filterMode, filterModelId) {
     return async function(dispatch, getState) {
-        let cards = await CardApi.list({'filterMode' : filterMode, 'model_id' : filterModelId });
+        let cards = await CardApi.list({ f: filterMode, model_id: filterModelId });
         for (var c of cards) {
             c.created_at = moment(c.created_at);
             c.updated_at = moment(c.updated_at);

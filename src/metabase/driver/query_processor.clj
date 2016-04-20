@@ -122,9 +122,7 @@
                                        (let [report-tz (driver/report-timezone)]
                                          (when-not (empty? report-tz)
                                            report-tz)))}]
-      (->> (u/filter-nil-values settings)
-           (assoc query :settings)
-           qp))))
+      (qp (assoc query :settings (m/filter-vals (complement nil?) settings))))))
 
 
 (defn- pre-expand-macros

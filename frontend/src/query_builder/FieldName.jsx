@@ -3,8 +3,8 @@ import React, { Component, PropTypes } from "react";
 import Icon from "metabase/components/Icon.jsx";
 
 import Query from "metabase/lib/query";
-import { parseFieldTarget } from "metabase/lib/query_time";
-
+import { formatBucketing, parseFieldBucketing, parseFieldTarget } from "metabase/lib/query_time";
+import { isDate } from "metabase/lib/schema_metadata";
 import { stripId } from "metabase/lib/formatting";
 
 import _ from "underscore";
@@ -28,6 +28,7 @@ export default class FieldName extends Component {
         let targetTitle, fkTitle, fkIcon, bucketingTitle;
         let { field, fieldOptions } = this.props;
 
+        let bucketing = parseFieldBucketing(field);
         field = parseFieldTarget(field);
 
         let fieldDef;
@@ -50,6 +51,11 @@ export default class FieldName extends Component {
 
         if (fieldDef) {
             targetTitle = (<span>{fieldDef.display_name}</span>);
+        }
+
+        // if this is a datetime field then add an extra bit of labeling about the time bucket
+        if (fieldDef && isDate(fieldDef)) {
+            bucketingTitle = ": " + formatBucketing(bucketing);
         }
 
         var titleElement;

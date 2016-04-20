@@ -1,5 +1,5 @@
-import React, { Component, PropTypes } from 'react';
-import Icon from 'metabase/components/Icon.jsx';
+import React, { Component, PropTypes } from "react";
+import Icon from "metabase/components/Icon.jsx";
 
 import cx from "classnames";
 
@@ -11,6 +11,7 @@ export default class CheckBox extends Component {
 
     static defaultProps = {
         size: 16,
+        padding: 2,
         borderColor: "#ddd",
         checkColor: "currentColor"
     };
@@ -23,20 +24,22 @@ export default class CheckBox extends Component {
     }
 
     render() {
-        const { checked, size, borderColor, checkColor, className } = this.props;
-        const style = {
-            width: size+'px',
-            height: size+'px',
-            color: checkColor,
-            border: '2px solid ' + borderColor,
-            borderRadius: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+        const { checked, size, padding, borderColor, checkColor, className, invertChecked, style } = this.props;
+        const checkboxStyle = {
+            width:              size,
+            height:             size,
+            backgroundColor:    (invertChecked && checked) ? checkColor : "white",
+            border:             (invertChecked && checked) ? ("2px solid " + checkColor) : ("2px solid " + borderColor),
+            borderRadius:       4,
+            display:            "flex",
+            alignItems:         "center",
+            justifyContent:     "center",
         };
         return (
-            <div className={cx("cursor-pointer", className)} style={style} onClick={() => this.onClick()}>
-                { checked ? <Icon name='check'  width={size - 4} height={size - 4} /> : null }
+            <div style={style} className={cx("cursor-pointer", className)} onClick={() => this.onClick()}>
+                <div style={checkboxStyle}>
+                    { checked ? <Icon style={{ color: invertChecked ? "white" : checkColor }} name="check"  width={size - padding * 2} height={size - padding * 2} /> : null }
+                </div>
             </div>
         )
     }

@@ -279,7 +279,7 @@ CoreServices.factory('Activity', ['$resource', '$cookies', function($resource, $
 CoreServices.factory('Card', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/card/:cardId', {}, {
         list: {
-            url: '/api/card/?f=:filterMode',
+            url: '/api/card',
             method: 'GET',
             isArray: true
         },
@@ -325,6 +325,14 @@ CoreServices.factory('Card', ['$resource', '$cookies', function($resource, $cook
             params: {
                 cardId: '@cardId'
             }
+        },
+        updateLabels: {
+            url: '/api/card/:cardId/labels',
+            method: 'POST',
+            params: {
+                cardId: '@cardId',
+                label_ids: '@label_ids'
+            }
         }
     });
 }]);
@@ -332,7 +340,7 @@ CoreServices.factory('Card', ['$resource', '$cookies', function($resource, $cook
 CoreServices.factory('Dashboard', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/dashboard/:dashId', {}, {
         list: {
-            url:'/api/dashboard?f=:filterMode',
+            url:'/api/dashboard',
             method:'GET',
             isArray:true
         },
@@ -692,6 +700,32 @@ CoreServices.factory('Revisions', ['$resource', function($resource) {
             params: {
                 'entity': '@entity',
                 'id': '@id'
+            }
+        }
+    });
+}]);
+
+CoreServices.factory('Label', ['$resource', function($resource) {
+    return $resource('/api/label/:id', {}, {
+        list: {
+            url: '/api/label',
+            method: 'GET',
+            isArray: true
+        },
+        create: {
+            url: '/api/label',
+            method: 'POST'
+        },
+        update: {
+            method: 'PUT',
+            params: {
+                id: '@id'
+            }
+        },
+        delete: {
+            method: 'DELETE',
+            params: {
+                id: '@id'
             }
         }
     });

@@ -99,7 +99,7 @@ export default class UserStep extends Component {
         }
 
         this.props.dispatch(setUserDetails({
-            'nextStep': ++this.props.stepNumber,
+            'nextStep': this.props.stepNumber + 1,
             'details': {
                 'first_name': ReactDOM.findDOMNode(this.refs.firstName).value,
                 'last_name': ReactDOM.findDOMNode(this.refs.lastName).value,
