@@ -1,7 +1,7 @@
 /*eslint-env jasmine */
 
 import _ from "underscore";
-import { parseExpressionString, tokenAtPosition, tokensToExpression } from "metabase/lib/expressions";
+import { formatExpression, parseExpressionString, tokenAtPosition, tokensToExpression } from "metabase/lib/expressions";
 
 const mockFields = [
     {id: 1, display_name: "A"},
@@ -76,4 +76,22 @@ describe("parseExpressionString", () => {
 
     // fks
     // multiple tables with the same field name resolution
+});
+
+
+describe("formatExpression", () => {
+    it("should return empty array for null or empty string", () => {
+        expect(parseExpressionString()).toEqual([]);
+        expect(parseExpressionString(null)).toEqual([]);
+        expect(parseExpressionString("")).toEqual([]);
+    });
+
+    it("can format simple expressions", () => {
+        expect(formatExpression(["+", ["field-id", 1], ["field-id", 2]], mockFields)).toEqual("A + B");
+    });
+
+    it("can format expressions with parentheses", () => {
+        expect(formatExpression(["+", ["/", ["field-id", 1], ["field-id", 2]], ["field-id", 3]], mockFields)).toEqual("(A / B) + C");
+        expect(formatExpression(["+", ["/", ["field-id", 1], ["*", ["field-id", 2], ["field-id", 2]]], ["field-id", 3]], mockFields)).toEqual("(A / (B * B)) + C");
+    });
 });
