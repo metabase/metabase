@@ -1,0 +1,7 @@
+localhost:2020
+
+log
+
+proxy /mb localhost:3000 {
+    without /mb
+}
