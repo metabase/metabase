@@ -549,6 +549,8 @@ var Query = {
                 return [Query.getFieldName(tableMetadata, field[1], options), " → ", Query.getFieldName(targetTableDef, field[2], options)];
             } else if (Query.isDatetimeField(field)) {
                 return [Query.getFieldName(tableMetadata, field[1], options), " (" + field[3] + ")"];
+            } else if (Query.isExpressionField(field)) {
+                return field[1];
             }
         } catch (e) {
             console.warn("Couldn't format field name for field", field, "in table", tableMetadata);
