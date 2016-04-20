@@ -838,14 +838,15 @@
 
 ;;; order_by aggregate ["stddev" field-id]
 ;; MySQL has a nasty tendency to return different results on different systems so just round everything to the nearest int.
+;; Crate has the behavior like MySQL and returns different results on several calculations
 ;; It also seems to give slightly different results than less-sucky DBs as evidenced below
 (datasets/expect-with-engines (engines-that-support :standard-deviation-aggregations)
   {:columns [(format-name "price")
              "stddev"]
-   :rows    [[3 (if (= *engine* :mysql) 25 26)]
+   :rows    [[3 (if (or (= *engine* :mysql) (= *engine* :crate)) 25 26)]
              [1 24]
              [2 21]
-             [4 (if (= *engine* :mysql) 14 15)]]
+             [4 (if (or (= *engine* :mysql) (= *engine* :crate)) 14 15)]]
    :cols    [(venues-col :price)
              (aggregate-col :stddev (venues-col :category_id))]}
   (->> (run-query venues

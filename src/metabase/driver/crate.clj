@@ -1,6 +1,7 @@
 (ns metabase.driver.crate
   (:require [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
+            [clojure.set :as set]
             (korma [core :as k])
             (metabase.driver.crate [query-processor :as qp]
                                    [util :as u]
@@ -84,10 +85,13 @@
          {:details-fields (constantly [{:name         "hosts"
                                         :display-name "Hosts"
                                         :default      "//localhost:4300"}])
-          :can-connect?       can-connect
-          :date-interval      u/date-interval
-          :analyze-table      gs/analyze-table
-          :process-native     n/process-and-run})
+          :can-connect?   can-connect
+          :date-interval  u/date-interval
+          :analyze-table  gs/analyze-table
+          :process-native n/process-and-run
+          :features       (fn [this]
+                            (set/difference (sql/features this)
+                                            #{:foreign-keys}))})
   sql/ISQLDriver CrateISQLDriverMixin)
 
 (driver/register-driver! :crate (CrateDriver.))
