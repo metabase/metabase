@@ -35,13 +35,13 @@ export default class GuiQueryEditor extends Component {
     }
 
     static propTypes = {
-        databases: PropTypes.array.isRequired,
+        databases: PropTypes.array,
         query: PropTypes.object.isRequired,
         tableMetadata: PropTypes.object, // can't be required, sometimes null
         isShowingDataReference: PropTypes.bool.isRequired,
         setQueryFn: PropTypes.func.isRequired,
-        setDatabaseFn: PropTypes.func.isRequired,
-        setSourceTableFn: PropTypes.func.isRequired,
+        setDatabaseFn: PropTypes.func,
+        setSourceTableFn: PropTypes.func,
         features: PropTypes.object
     };
 

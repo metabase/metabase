@@ -206,7 +206,7 @@ export default class ExtendedOptions extends Component {
 
     render() {
         const { features } = this.props;
-        if (!features.sort && !features.limit) return;
+        if (!features.sort && !features.limit) return null;
 
         const onClick = this.props.tableMetadata ? () => this.setState({isOpen: true}) : null;
 
