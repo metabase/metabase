@@ -76,7 +76,7 @@ export default class ExpressionWidget extends Component {
                         <button
                             className={cx("Button", {"Button--primary": this.isValid()})}
                             onClick={() => this.props.onSetExpression(this.state.name, this.state.expression)}
-                            disabled={!this.isValid()}>{this.props.expression ? "Save changes" : "Done"}</button>
+                            disabled={!this.isValid()}>{this.props.expression ? "Update" : "Done"}</button>
                         <span className="pl1">or</span> <a className="link" onClick={() => this.props.onCancel()}>Cancel</a>
                     </div>
                     <div>
