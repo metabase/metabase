@@ -1,3 +1,5 @@
+.scroll-y, :local(.scroll-y) { overflow-y: auto; }
+.scroll-x { overflow-x: auto; }
 
 .scroll-show::-webkit-scrollbar {
     width: 15px;
@@ -42,4 +44,17 @@
 .scroll-show::-webkit-scrollbar-thumb:horizontal:active,
 .scroll-show::-webkit-scrollbar-thumb:vertical:active {
     background-color: #7d7d7d;
+}
+
+/* scroll light */
+.scroll-show.scroll--light::-webkit-scrollbar-thumb {
+    border-radius: 0;
+    background-color: #CFE4F5;
+}
+
+.scroll-show.scroll--light::-webkit-scrollbar-thumb:horizontal:hover,
+.scroll-show.scroll--light::-webkit-scrollbar-thumb:vertical:hover,
+.scroll-show.scroll--light::-webkit-scrollbar-thumb:horizontal:active,
+.scroll-show.scroll--light::-webkit-scrollbar-thumb:vertical:active {
+    background-color: #C7D9E4;
 }

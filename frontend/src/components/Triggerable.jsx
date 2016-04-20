@@ -1,6 +1,8 @@
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
+import { isObscured } from "metabase/lib/dom";
+
 import cx from "classnames";
 
 // higher order component that takes a component which takes props "isOpen" and optionally "onClose"
@@ -10,10 +12,18 @@ export default ComposedComponent => class extends Component {
 
     constructor(props, context) {
         super(props, context);
+
         this.state = {
             isOpen: props.isInitiallyOpen || false
         }
+
+        this._startCheckObscured = this._startCheckObscured.bind(this);
+        this._stopCheckObscured = this._stopCheckObscured.bind(this);
     }
+
+    static defaultProps = {
+        closeOnObscuredTrigger: false
+    };
 
     open() {
         this.toggle(true);
@@ -35,23 +45,58 @@ export default ComposedComponent => class extends Component {
         this.close();
     }
 
-    getTarget() {
-        if (this.props.getTarget) {
-            return this.props.getTarget();
+    target() {
+        if (this.props.target) {
+            return this.props.target();
         } else {
             return this.refs.trigger;
         }
     }
 
+    componentDidMount() {
+        this.componentDidUpdate();
+    }
+
+    componentDidUpdate() {
+        if (this.state.isOpen && this.props.closeOnObscuredTrigger) {
+            this._startCheckObscured();
+        } else {
+            this._stopCheckObscured();
+        }
+    }
+
+    componentWillUnmount() {
+        this._stopCheckObscured();
+    }
+
+    _startCheckObscured() {
+        if (this._offscreenTimer == null) {
+            this._offscreenTimer = setInterval(() => {
+                let trigger = ReactDOM.findDOMNode(this.refs.trigger);
+                if (isObscured(trigger)) {
+                    this.close();
+                }
+            }, 250);
+        }
+    }
+    _stopCheckObscured() {
+        if (this._offscreenTimer != null) {
+            clearInterval(this._offscreenTimer);
+            this._offscreenTimer = null;
+        }
+    }
+
     render() {
+        const { triggerElement, triggerClasses, triggerClassesOpen } = this.props;
+        const { isOpen } = this.state;
         return (
-            <a ref="trigger" onClick={() => this.toggle()} className={cx("no-decoration", this.props.triggerClasses)}>
-                {this.props.triggerElement}
+            <a ref="trigger" onClick={() => this.toggle()} className={cx("no-decoration", triggerClasses, isOpen ? triggerClassesOpen : null)}>
+                {triggerElement}
                 <ComposedComponent
                     {...this.props}
-                    isOpen={this.state.isOpen}
+                    isOpen={isOpen}
                     onClose={this.onClose.bind(this)}
-                    getTarget={() => this.getTarget()}
+                    target={() => this.target()}
                 />
             </a>
         );

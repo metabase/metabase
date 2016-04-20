@@ -65,7 +65,7 @@ export default class PulseList extends Component {
                         )}
                     </ul>
                 :
-                    <div className="mt4">
+                    <div className="mt4 ml-auto mr-auto">
                         <WhatsAPulse
                             button={<a onClick={this.create} className="Button Button--primary">Create a pulse</a>}
                         />

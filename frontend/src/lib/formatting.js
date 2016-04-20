@@ -143,6 +143,10 @@ export function stripId(name) {
     return name && name.replace(/ id$/i, "");
 }
 
+export function slugify(name) {
+    return name && name.toLowerCase().replace(/[^a-z0-9_]/g, "_");
+}
+
 export function assignUserColors(userIds, currentUserId, colorClasses = ['bg-brand', 'bg-purple', 'bg-error', 'bg-green', 'bg-gold', 'bg-grey-2']) {
     let assignments = {};
 

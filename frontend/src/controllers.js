@@ -53,9 +53,7 @@ MetabaseControllers.controller('Nav', ['$scope', '$routeParams', '$location', '$
 
         function refreshDashboards() {
             if (AppState.model.currentUser) {
-                Dashboard.list({
-                    'filterMode': 'all'
-                }, function (dashes) {
+                Dashboard.list({ f: "all" }, function (dashes) {
                     $scope.dashboards = dashes;
                 }, function (error) {
                     console.log('error getting dahsboards list', error);

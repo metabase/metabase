@@ -102,9 +102,7 @@ export default class Visualization extends Component {
                 { error ?
                     <div className="flex-full px1 pb1 text-centered text-slate-light flex flex-column layout-centered">
                         <Tooltip tooltip={isDashboard ? ERROR_MESSAGE_GENERIC : error} isEnabled={small}>
-                            <div className="mb2">
-                                <Icon name="warning" width={50} height={50} />
-                            </div>
+                            <Icon className="mb2" name="warning" width={50} height={50} />
                         </Tooltip>
                         { !small &&
                             <span className="h4 text-bold">
