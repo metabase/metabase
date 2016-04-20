@@ -1,4 +1,7 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
+import S from "./ExpressionEditorTextfield.css";
+
 import _ from "underscore";
 import cx from "classnames";
 
@@ -41,7 +44,7 @@ export default class ExpressionEditorTextfield extends Component {
 
     static defaultProps = {
         expression: [null, ""],
-        placeholder: "= write some math!"
+        placeholder: "write some math!"
     }
 
     componentWillMount() {
@@ -75,7 +78,7 @@ export default class ExpressionEditorTextfield extends Component {
     }
 
     onSuggestionAccepted() {
-        let inputElement = document.getElementById('react_qb_expression_input'),
+        let inputElement = ReactDOM.findDOMNode(this.refs.input),
             displayName  = this.state.suggestions[this.state.highlightedSuggestion].display_name,
             // wrap field names with spaces in them in quotes
             needsQuotes  = displayName.indexOf(' ') > -1,
@@ -139,7 +142,7 @@ export default class ExpressionEditorTextfield extends Component {
     }
 
     onInputChange() {
-        let inputElement = document.getElementById('react_qb_expression_input'),
+        let inputElement = ReactDOM.findDOMNode(this.refs.input),
             expression   = inputElement.value;
 
         var errorMessage          = null,
@@ -201,10 +204,10 @@ export default class ExpressionEditorTextfield extends Component {
         const { placeholder } = this.props;
 
         return (
-            <div>
+            <div className={cx(S.editor, "relative")}>
                 <input
-                    id="react_qb_expression_input"
-                    className="my1 p1 input block full h4 text-dark"
+                    ref="input"
+                    className={cx(S.input, "my1 p1 input block full h4 text-dark")}
                     type="text"
                     placeholder={placeholder}
                     value={this.state.expressionString}
@@ -214,6 +217,7 @@ export default class ExpressionEditorTextfield extends Component {
                     onFocus={this.onInputChange}
                     focus={true}
                 />
+                <div className={cx(S.equalSign, "spread flex align-center h4 text-dark", { [S.placeholder]: !this.state.expressionString })}>=</div>
                 {this.state.suggestions.length ?
                  <Popover
                      className="p2 not-rounded border-dark"
@@ -224,7 +228,7 @@ export default class ExpressionEditorTextfield extends Component {
                              targetOffset: '0 ' + ((this.state.expressionString.length / 2) * 6)
                          }}
                  >
-                     <div style={{minWidth: 150}}>
+                     <div style={{minWidth: 150, maxHeight: 342, overflow: "hidden"}}>
                          <h5 style={{marginBottom: 2}} className="h6 text-grey-2">{this.state.suggestionsTitle}</h5>
                          <ul>
                              {this.state.suggestions.map((suggestion, i) =>
