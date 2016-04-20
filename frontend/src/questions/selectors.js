@@ -48,7 +48,7 @@ const getEntitySelected = (state, props) =>
 const getEntityVisible = (state, props) =>
     caseInsensitiveSearch(getEntity(state, props).name, getSearchText(state));
 
-const getLabelEntities = (state) => state.questions.entities.labels
+const getLabelEntities = (state) => state.labels.entities.labels
 
 export const makeGetItem = () => {
     const getItem = createSelector(
@@ -61,7 +61,7 @@ export const makeGetItem = () => {
             icon: (visualizations.get(entity.display)||{}).iconName,
             favorite: entity.favorite,
             archived: entity.archived,
-            labels: entity.labels.map(labelId => labelEntities[labelId]),
+            labels: entity.labels.map(labelId => labelEntities[labelId]).filter(l => l),
             selected,
             visible
         })
