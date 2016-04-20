@@ -132,7 +132,7 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
     $routeProvider.when('/admin/datamodel/:objectType/:objectId/revisions', route);
 
     $routeProvider.when('/unauthorized/', {
-        templateUrl: '/app/unauthorized.html',
+        templateUrl: 'app/unauthorized.html',
         controller: 'Unauthorized'
     });
 
@@ -150,7 +150,7 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
 
     // TODO: we need an appropriate homepage or something to show in this situation
     $routeProvider.otherwise({
-        templateUrl: '/app/not_found.html',
+        templateUrl: 'app/not_found.html',
         controller: 'NotFound'
     });
 }]);
