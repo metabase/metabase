@@ -110,8 +110,8 @@
                                                                    (normalize-token unit))})))
 
 (s/defn ^:ql ^:always-validate expression :- ExpressionRef
-  [expression-name :- s/Str]
-  (i/strict-map->ExpressionRef {:expression-name expression-name}))
+  [expression-name :- (s/cond-pre s/Str s/Keyword)]
+  (i/strict-map->ExpressionRef {:expression-name (name expression-name)}))
 
 
 ;;; ## aggregation
@@ -368,17 +368,19 @@
 
 (s/defn ^:ql ^:always-validate expressions
   "Top-level clause. Add additional calculated fields to a query."
-  [query, m :- (s/pred map?) #_{s/Str [Expression]}]
-  (assoc query :expressions (vec (for [[expression-name [expression]] m]
-                                   (do (println "expression-name=" expression-name, "EXPRESSION = " expression)
-                                       (assoc expression :expression-name (name expression-name)))))))
+  [query, m :- {s/Keyword (s/cond-pre Expression
+                                      [(s/one Expression "expression") s/Any])}]     ; TODO - THIS FORM IS DEPRECATED (SEE BELOW)
+  (assoc query :expressions (into {} (for [[expression-name expression] m]
+                                       {expression-name (if (sequential? expression) ; unnest expressions when they come in wrapped in vectors to include extra info
+                                                          (first expression)         ; like the original string. Since this should be removed in the near future we can
+                                                          expression)}))))           ; eliminate this extra check shortly.
 
 (s/defn ^:private ^:always-validate expression-fn :- Expression
   [k :- s/Keyword, & args]
-  (i/strict-map->Expression {:operator k, :expression-name nil, :args (for [arg args]
-                                                                        (if (number? arg)
-                                                                          (float arg)     ; convert args to floats so things like 5 / 10 -> 0.5 instead of 0
-                                                                          arg))}))
+  (i/strict-map->Expression {:operator k, :args (vec (for [arg args]
+                                                       (if (number? arg)
+                                                         (float arg) ; convert args to floats so things like 5 / 10 -> 0.5 instead of 0
+                                                         arg)))}))
 
 (def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} + "Arithmetic addition function."       (partial expression-fn :+))
 (def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} - "Arithmetic subtraction function."    (partial expression-fn :-))

@@ -190,10 +190,7 @@
 (def ^:private ExpressionOperator (s/named (s/enum :+ :- :* :/) "Valid expression operator"))
 
 (s/defrecord Expression [operator        :- ExpressionOperator
-                         args            :- [(s/recursive #'RValue)]
-                         expression-name :- (s/maybe s/Str)]
-  clojure.lang.Named
-  (getName [_] expression-name))
+                         args            :- [(s/recursive #'RValue)]])
 
 (def AnyField
   "Schema for a `FieldPlaceholder`, `AgRef`, or `Expression`."
@@ -325,5 +322,5 @@
    (s/optional-key :limit)       IntGreaterThanZero
    (s/optional-key :order-by)    [OrderBy]
    (s/optional-key :page)        Page
-   (s/optional-key :expressions) [Expression] ; TODO - should this be a map of name -> Expression instead?
+   (s/optional-key :expressions) {s/Keyword Expression}
    :source-table                 IntGreaterThanZero})

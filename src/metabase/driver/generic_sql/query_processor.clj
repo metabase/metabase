@@ -42,15 +42,11 @@
     [form alias]
     form))
 
-;; TODO - Put this somewhere more generic like QP interface
+;; TODO - Consider moving this into query processor interface and making it a method on `ExpressionRef` instead ?
 (defn- expression-with-name
-  "Return the `Expression` referenced by a given EXPRESSION-NAME."
+  "Return the `Expression` referenced by a given (keyword or string) EXPRESSION-NAME."
   [expression-name]
-  (or (some (fn [expression]
-              (when (= (name (:expression-name expression))
-                       (name expression-name))
-                expression))
-            (:expressions (:query *query*)))
+  (or (get-in *query* [:query :expressions (keyword expression-name)]) (:expressions (:query *query*))
       (throw (Exception. (format "No expression named '%s'." (name expression-name))))))
 
 (defprotocol ^:private IGenericSQLFormattable
