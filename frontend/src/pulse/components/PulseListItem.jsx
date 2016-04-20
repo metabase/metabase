@@ -31,7 +31,7 @@ export default class PulseListItem extends Component {
                         <span>Pulse by <span className="text-bold">{pulse.creator && pulse.creator.common_name}</span></span>
                     </div>
                     <div className="flex-align-right">
-                        <a className="PulseEditButton PulseButton Button no-decoration text-bold" href={"/pulse/" + pulse.id}>Edit</a>
+                        <a className="PulseEditButton PulseButton Button no-decoration text-bold" href={Urls.pulse(pulse.id)}>Edit</a>
                     </div>
                 </div>
                 <ol className="mb2 px4 flex flex-wrap">

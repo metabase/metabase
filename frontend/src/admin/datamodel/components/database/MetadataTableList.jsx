@@ -43,7 +43,7 @@ export default class MetadataTableList extends Component {
             _.each(tables, (table) => {
                 var row = (
                     <li key={table.id}>
-                        <a href="#" className={cx("AdminList-item flex align-center no-decoration", { selected: this.props.tableId === table.id })} onClick={this.props.selectTable.bind(null, table)}>
+                        <a className={cx("AdminList-item flex align-center no-decoration", { selected: this.props.tableId === table.id })} onClick={this.props.selectTable.bind(null, table)}>
                             {table.display_name}
                             <ProgressBar className="ProgressBar ProgressBar--mini flex-align-right" percentage={table.metadataStrength} />
                         </a>

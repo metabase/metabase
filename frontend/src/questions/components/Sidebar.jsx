@@ -15,15 +15,15 @@ const Sidebar = ({ sections, labels, labelsLoading, labelsError, style, classNam
     <div className={cx(S.sidebar, className)} style={style}>
         <ul>
             {sections.map(section =>
-                <QuestionSidebarItem key={section.id} href={"/questions/" + section.id} {...section} />
+                <QuestionSidebarItem key={section.id} href={"questions/" + section.id} {...section} />
             )}
-            <QuestionSidebarSectionTitle name="Labels" href="/questions/edit/labels" />
+            <QuestionSidebarSectionTitle name="Labels" href="questions/edit/labels" />
         </ul>
         <LoadingAndErrorWrapper loading={labelsLoading} error={labelsError} noBackground noWrapper>
         { () => labels.length > 0 ? // eslint-disable-line
             <ul>
             { labels.map(label =>
-                <QuestionSidebarItem key={label.id} href={"/questions/label/"+label.slug} {...label} />
+                <QuestionSidebarItem key={label.id} href={"questions/label/"+label.slug} {...label} />
             )}
             </ul>
         :
@@ -37,7 +37,7 @@ const Sidebar = ({ sections, labels, labelsLoading, labelsError, style, classNam
         </LoadingAndErrorWrapper>
         <ul>
             <li className={S.divider} />
-            <QuestionSidebarItem name="Archive" href="/questions/archived" icon="archive" />
+            <QuestionSidebarItem name="Archive" href="questions/archived" icon="archive" />
         </ul>
     </div>
 

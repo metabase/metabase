@@ -96,7 +96,7 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
             // This function performs whatever state cleanup and next steps are required when a user tries to access
             // something they are not allowed to.
             invalidAccess: function(user, url, message) {
-                $location.path('/unauthorized/');
+                $location.path('unauthorized/');
             },
 
             setAppContext: function(appContext) {
@@ -108,11 +108,11 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
                 // establish our application context based on the route (URI)
                 // valid app contexts are: 'setup', 'auth', 'main', 'admin', or 'unknown'
                 var routeContext;
-                if ($location.path().indexOf('/auth/') === 0) {
+                if ($location.path().indexOf('/auth/') >= 0) {
                     routeContext = 'auth';
-                } else if ($location.path().indexOf('/setup/') === 0) {
+                } else if ($location.path().indexOf('/setup/') >= 0) {
                     routeContext = 'setup';
-                } else if ($location.path().indexOf('/admin/') === 0) {
+                } else if ($location.path().indexOf('/admin/') >= 0) {
                     routeContext = 'admin';
                 } else if ($location.path() === '/') {
                     routeContext = 'home';
@@ -144,11 +144,11 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
                 // handle routing protections for /setup/
                 if ($location.path().indexOf('/setup') === 0 && !MetabaseSettings.hasSetupToken()) {
                     // someone trying to access setup process without having a setup token, so block that.
-                    $location.path('/');
+                    $location.path('');
                     return;
                 } else if ($location.path().indexOf('/setup') !== 0 && MetabaseSettings.hasSetupToken()) {
                     // someone who has a setup token but isn't routing to setup yet, so send them there!
-                    $location.path('/setup/');
+                    $location.path('setup/');
                     return;
                 }
 
@@ -161,7 +161,7 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
                         // if the user is asking for a url outside of /auth/* then record the url then send them
                         // to login page, otherwise we will let the user continue on to their requested page
                         service.model.requestedUrl = $location.path();
-                        $location.path('/auth/login');
+                        $location.path('auth/login');
                     }
 
                     return;
@@ -182,7 +182,7 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
                     $location.path(service.model.requestedUrl);
                     delete service.model.requestedUrl;
                 } else {
-                    $location.path('/');
+                    $location.path('');
                 }
             }
         };
@@ -237,13 +237,13 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
 
             // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
             $timeout(function() {
-                $location.path('/auth/login');
+                $location.path('auth/login');
             }, 300);
         });
 
         // $http interceptor received a 403 response
         $rootScope.$on("event:auth-forbidden", function() {
-            $location.path("/unauthorized");
+            $location.path("unauthorized");
         });
 
         return service;

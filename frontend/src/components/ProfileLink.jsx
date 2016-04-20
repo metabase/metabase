@@ -70,14 +70,14 @@ export default class ProfileLink extends Component {
                         <div className="NavDropdown-content right">
                             <ul className="NavDropdown-content-layer">
                                 <li>
-                                    <a data-metabase-event={"Navbar;Profile Dropdown;Edit Profile"} onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration" href="/user/edit_current">
+                                    <a data-metabase-event={"Navbar;Profile Dropdown;Edit Profile"} onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration" href="user/edit_current">
                                         Account Settings
                                     </a>
                                 </li>
 
                                 { user.is_superuser && context !== 'admin' ?
                                     <li>
-                                        <a data-metabase-event={"Navbar;Profile Dropdown;Enter Admin"} onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration" href="/admin/">
+                                        <a data-metabase-event={"Navbar;Profile Dropdown;Enter Admin"} onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration" href="admin/">
                                             Admin Panel
                                         </a>
                                     </li>
@@ -85,7 +85,7 @@ export default class ProfileLink extends Component {
 
                                 { user.is_superuser && context === 'admin' ?
                                     <li>
-                                        <a data-metabase-event={"Navbar;Profile Dropdown;Exit Admin"} onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration" href="/">
+                                        <a data-metabase-event={"Navbar;Profile Dropdown;Exit Admin"} onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration" href="">
                                             Exit Admin
                                         </a>
                                     </li>
@@ -104,7 +104,7 @@ export default class ProfileLink extends Component {
                                 </li>
 
                                 <li className="border-top border-light">
-                                    <a data-metabase-event={"Navbar;Profile Dropdown;Logout"} className="Dropdown-item block text-white no-decoration" href="/auth/logout">Logout</a>
+                                    <a data-metabase-event={"Navbar;Profile Dropdown;Logout"} className="Dropdown-item block text-white no-decoration" href="auth/logout">Logout</a>
                                 </li>
                             </ul>
                         </div>

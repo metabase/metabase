@@ -72,7 +72,7 @@ MetabaseControllers.controller('Nav', ['$scope', '$routeParams', '$location', '$
         $scope.createDashboardFn = async function(newDashboard) {
             var dashboard = await Dashboard.create(newDashboard).$promise;
             $rootScope.$broadcast("dashboard:create", dashboard.id);
-            $location.path("/dash/" + dashboard.id);
+            $location.path("dash/" + dashboard.id);
 
             // this is important because it allows our caller to perform any of their own actions after the promis resolves
             return dashboard;

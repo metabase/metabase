@@ -85,11 +85,11 @@ function($scope, $route, $routeParams, $location, $q, $timeout, databases, Metab
     }
 
     $scope.selectDatabase = function(db) {
-        $location.path('/admin/datamodel/database/'+db.id);
+        $location.path('admin/datamodel/database/'+db.id);
     };
 
     $scope.selectTable = function(table) {
-        $location.path('/admin/datamodel/database/'+table.db_id+'/table/'+table.id);
+        $location.path('admin/datamodel/database/'+table.db_id+'/table/'+table.id);
     };
 
     $scope.updateTable = function(table) {

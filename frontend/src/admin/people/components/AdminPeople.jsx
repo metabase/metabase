@@ -181,7 +181,7 @@ export default class AdminPeople extends Component {
 
                             <PasswordReveal password={user.password} />
 
-                            <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pt4 text-centered">If you want to be able to send email invites, just go to the <a className="link text-bold" href="/admin/settings/?section=Email">Email Settings</a> page.</div>
+                            <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pt4 text-centered">If you want to be able to send email invites, just go to the <a className="link text-bold" href="admin/settings/?section=Email">Email Settings</a> page.</div>
                         </div>
 
                         <div className="Form-actions">

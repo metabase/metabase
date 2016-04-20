@@ -33,7 +33,7 @@ export default class PulseList extends Component {
     create() {
         let hasConfiguredChannel = !this.props.formInput.channels || _.some(Object.values(this.props.formInput.channels), (c) => c.configured);
         if (hasConfiguredChannel) {
-            this.props.onChangeLocation("/pulse/create");
+            this.props.onChangeLocation("pulse/create");
         } else {
             this.setState({ showSetupModal: true });
         }

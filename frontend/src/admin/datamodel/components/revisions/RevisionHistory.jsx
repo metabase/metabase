@@ -27,7 +27,7 @@ export default class RevisionHistory extends Component {
             {() =>
                 <div className="wrapper">
                     <Breadcrumbs crumbs={[
-                        ["Datamodel", "/admin/datamodel/database/" + tableMetadata.db_id + "/table/" + tableMetadata.id],
+                        ["Datamodel", "admin/datamodel/database/" + tableMetadata.db_id + "/table/" + tableMetadata.id],
                         [this.props.objectType + " History"]
                     ]}/>
                     <div className="wrapper py4" style={{maxWidth: 950}}>

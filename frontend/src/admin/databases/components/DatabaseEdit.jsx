@@ -21,7 +21,7 @@ export default class DatabaseEdit extends Component {
         return (
             <div className="wrapper">
                 <Breadcrumbs crumbs={[
-                    ["Databases", "/admin/databases/"],
+                    ["Databases", "admin/databases/"],
                     [database && database.id != null ? database.name : "Add Database"]
                 ]} />
                 <section className="Grid Grid--gutters Grid--2-of-3">

@@ -66,7 +66,7 @@ export default class Dashboard extends Component {
         } catch (error) {
             console.error(error)
             if (error.status === 404) {
-                this.props.onChangeLocation("/404");
+                this.props.onChangeLocation("404");
             } else {
                 this.setState({ error });
             }

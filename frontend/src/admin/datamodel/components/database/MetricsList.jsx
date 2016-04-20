@@ -18,7 +18,7 @@ export default class MetricsList extends Component {
             <div className="my3">
                 <div className="flex mb1">
                     <h2 className="px1 text-green">Metrics</h2>
-                    <a data-metabase-event="Data Model;Add Metric Page" className="flex-align-right float-right text-bold text-brand no-decoration" href={"/admin/datamodel/metric/create?table="+tableMetadata.id}>+ Add a Metric</a>
+                    <a data-metabase-event="Data Model;Add Metric Page" className="flex-align-right float-right text-bold text-brand no-decoration" href={"admin/datamodel/metric/create?table="+tableMetadata.id}>+ Add a Metric</a>
                 </div>
                 <table className="AdminTable">
                     <thead>

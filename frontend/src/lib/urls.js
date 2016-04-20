@@ -19,7 +19,7 @@ var Urls = {
     },
 
     pulse: function(pulse_id) {
-        return "pulse/#"+pulse_id;
+        return "pulse/"+pulse_id;
     },
 
     tableRowsQuery: function(database_id, table_id, metric_id, segment_id) {

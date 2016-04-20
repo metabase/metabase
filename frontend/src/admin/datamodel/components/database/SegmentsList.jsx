@@ -18,7 +18,7 @@ export default class SegmentsList extends Component {
             <div className="my3">
                 <div className="flex mb1">
                     <h2 className="px1 text-purple">Segments</h2>
-                    <a data-metabase-event="Data Model;Add Segment Page" className="flex-align-right float-right text-bold text-brand no-decoration" href={"/admin/datamodel/segment/create?table="+tableMetadata.id}>+ Add a Segment</a>
+                    <a data-metabase-event="Data Model;Add Segment Page" className="flex-align-right float-right text-bold text-brand no-decoration" href={"admin/datamodel/segment/create?table="+tableMetadata.id}>+ Add a Segment</a>
                 </div>
                 <table className="AdminTable">
                     <thead>

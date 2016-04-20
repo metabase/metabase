@@ -229,7 +229,7 @@ export default class QueryVisualization extends Component {
             viz = (
                 <div className="flex full layout-centered text-grey-1 flex-column">
                     <h1>If you give me some data I can show you something cool. Run a Query!</h1>
-                    { hasSampleDataset && <a className="link cursor-pointer my2" href="/q?tutorial">How do I use this thing?</a> }
+                    { hasSampleDataset && <a className="link cursor-pointer my2" href="q?tutorial">How do I use this thing?</a> }
                 </div>
             );
         } else {

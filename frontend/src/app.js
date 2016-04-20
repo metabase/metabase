@@ -144,7 +144,7 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
 
     $routeProvider.when('/admin/', {
         redirectTo: function(routeParams, path, search) {
-            return '/admin/settings';
+            return 'admin/settings';
         }
     });
 
