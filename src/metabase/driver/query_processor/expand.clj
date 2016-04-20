@@ -368,12 +368,8 @@
 
 (s/defn ^:ql ^:always-validate expressions
   "Top-level clause. Add additional calculated fields to a query."
-  [query, m :- {s/Keyword (s/cond-pre Expression
-                                      [(s/one Expression "expression") s/Any])}]     ; TODO - THIS FORM IS DEPRECATED (SEE BELOW)
-  (assoc query :expressions (into {} (for [[expression-name expression] m]
-                                       {expression-name (if (sequential? expression) ; unnest expressions when they come in wrapped in vectors to include extra info
-                                                          (first expression)         ; like the original string. Since this should be removed in the near future we can
-                                                          expression)}))))           ; eliminate this extra check shortly.
+  [query, m :- {s/Keyword Expression}]
+  (assoc query :expressions m))
 
 (s/defn ^:private ^:always-validate expression-fn :- Expression
   [k :- s/Keyword, & args]

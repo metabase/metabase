@@ -1692,13 +1692,6 @@
 
 ;;; ------------------------------------------------------------ EXPRESSIONS ------------------------------------------------------------
 
-;; Test the expansion of the expressions clause (TODO - THIS FORM IS DEPRECATED)
-(expect
-  {:expressions {:my-cool-new-field (qpi/map->Expression {:operator :*
-                                                          :args [{:field-id 10, :fk-field-id nil, :datetime-unit nil}
-                                                                 20.0]})}}                                            ; 20 should be converted to a FLOAT
-  (ql/expressions {} {:my-cool-new-field [(ql/* (ql/field-id 10) 20)]}))
-
 ;; Test the expansion of the expressions clause
 (expect
   {:expressions {:my-cool-new-field (qpi/map->Expression {:operator :*
