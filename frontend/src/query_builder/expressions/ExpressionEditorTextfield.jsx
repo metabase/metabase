@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 import _ from "underscore";
 import cx from "classnames";
 
@@ -75,7 +76,7 @@ export default class ExpressionEditorTextfield extends Component {
     }
 
     onSuggestionAccepted() {
-        let inputElement = document.getElementById('react_qb_expression_input'),
+        let inputElement = ReactDOM.findDOMNode(this.refs.input),
             displayName  = this.state.suggestions[this.state.highlightedSuggestion].display_name,
             // wrap field names with spaces in them in quotes
             needsQuotes  = displayName.indexOf(' ') > -1,
@@ -139,7 +140,7 @@ export default class ExpressionEditorTextfield extends Component {
     }
 
     onInputChange() {
-        let inputElement = document.getElementById('react_qb_expression_input'),
+        let inputElement = ReactDOM.findDOMNode(this.refs.input),
             expression   = inputElement.value;
 
         var errorMessage          = null,
@@ -203,7 +204,7 @@ export default class ExpressionEditorTextfield extends Component {
         return (
             <div>
                 <input
-                    id="react_qb_expression_input"
+                    ref="input"
                     className="my1 p1 input block full h4 text-dark"
                     type="text"
                     placeholder={placeholder}
