@@ -28,7 +28,9 @@ const Sidebar = ({ sections, labels, labelsLoading, labelsError, style, classNam
             </ul>
         :
             <div className={S.noLabelsMessage}>
-                <Icon name="label" />
+                <div>
+                  <Icon name="label" />
+                </div>
                 Create labels to group and manage questions.
             </div>
         }
