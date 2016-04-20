@@ -75,9 +75,7 @@ export default class LegendVertical extends Component {
                 {overflowCount > 0 ?
                     <li key="extra">
                         <Tooltip tooltip={<LegendVertical className="p2" titles={extraItems} colors={extraColors} />}>
-                            <span className="inline-block">
-                                <LegendItem title={(overflowCount + 1) + " more"} color="gray" showTooltip={false} />
-                            </span>
+                            <LegendItem className="inline-block" title={(overflowCount + 1) + " more"} color="gray" showTooltip={false} />
                         </Tooltip>
                     </li>
                 : null }

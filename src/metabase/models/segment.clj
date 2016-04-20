@@ -1,5 +1,6 @@
 (ns metabase.models.segment
   (:require [korma.core :as k]
+            [medley.core :as m]
             [metabase.db :as db]
             [metabase.events :as events]
             (metabase.models [hydrate :refer [hydrate]]
@@ -29,14 +30,14 @@
 (defn- diff-segments [this segment1 segment2]
   (if-not segment1
     ;; this is the first version of the segment
-    (u/update-values (select-keys segment2 [:name :description :definition]) (fn [v] {:after v}))
+    (m/map-vals (fn [v] {:after v}) (select-keys segment2 [:name :description :definition]))
     ;; do our diff logic
     (let [base-diff (revision/default-diff-map this
                                                (select-keys segment1 [:name :description :definition])
                                                (select-keys segment2 [:name :description :definition]))]
       (cond-> (merge-with merge
-                          (u/update-values (:after base-diff) (fn [v] {:after v}))
-                          (u/update-values (:before base-diff) (fn [v] {:before v})))
+                          (m/map-vals (fn [v] {:after v}) (:after base-diff))
+                          (m/map-vals (fn [v] {:before v}) (:before base-diff)))
               (or (get-in base-diff [:after :definition])
                   (get-in base-diff [:before :definition])) (assoc :definition {:before (get-in segment1 [:definition])
                                                                                 :after  (get-in segment2 [:definition])})))))

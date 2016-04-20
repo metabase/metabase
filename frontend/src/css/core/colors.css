@@ -3,6 +3,10 @@
   --brand-light-color: #CDE3F8;
 
   --base-grey: #f8f8f8;
+  --grey-1: color(var(--base-grey) shade(10%));
+  --grey-2: color(var(--base-grey) shade(20%));
+  --grey-3: color(var(--base-grey) shade(30%));
+  --grey-4: color(var(--base-grey) shade(40%));
 
   --grey-text-color: #797979;
   --alt-color: #F5F7F9;
@@ -38,8 +42,8 @@
     color: color(var(--brand-color) shade(20%));
 }
 
-.text-brand-light,
-.text-brand-light-hover:hover {
+.text-brand-light, :local(.text-brand-light),
+.text-brand-light-hover:hover, :local(.text-brand-light-hover):hover {
     color: var(--brand-light-color);
 }
 
@@ -54,7 +58,7 @@
 
 /* error */
 
-.text-error,
+.text-error, :local(.text-error),
 .text-error-hover:hover {
   color: var(--error-color);
 }
@@ -129,28 +133,28 @@
 .bg-alt { background-color: var(--alt-color); }
 
 /* grey */
-.text-grey-1,
-.text-grey-1-hover:hover { color: color(var(--base-grey) shade(10%)) }
+.text-grey-1, :local(.text-grey-1),
+.text-grey-1-hover:hover { color: var(--grey-1) }
 
 .text-grey-2,
-.text-grey-2-hover:hover { color: color(var(--base-grey) shade(20%)) }
+.text-grey-2-hover:hover { color: var(--grey-2) }
 
-.text-grey-3,
-.text-grey-3-hover:hover { color: color(var(--base-grey) shade(30%)) }
+.text-grey-3, :local(.text-grey-3),
+.text-grey-3-hover:hover { color: var(--grey-3) }
 
 .text-grey-4,
-.text-grey-4-hover:hover { color: color(var(--base-grey) shade(40%)) }
+.text-grey-4-hover:hover { color: var(--grey-4) }
 
 .bg-grey-0 { background-color: var(--base-grey) }
-.bg-grey-1 { background-color: color(var(--base-grey) shade(10%)) }
-.bg-grey-2 { background-color: color(var(--base-grey) shade(20%)) }
-.bg-grey-3 { background-color: color(var(--base-grey) shade(30%)) }
-.bg-grey-4 { background-color: color(var(--base-grey) shade(40%)) }
+.bg-grey-1 { background-color: var(--grey-1) }
+.bg-grey-2 { background-color: var(--grey-2) }
+.bg-grey-3 { background-color: var(--grey-3) }
+.bg-grey-4 { background-color: var(--grey-4) }
 
 .text-dark { color: var(--dark-color); }
 
 /* white  - move to bottom for specificity since its often used on hovers, etc */
-.text-white,
+.text-white, :local(.text-white),
 .text-white-hover:hover { color: #fff; }
 
-.bg-white { background-color: #fff; }
+.bg-white, :local(.bg-white) { background-color: #fff; }

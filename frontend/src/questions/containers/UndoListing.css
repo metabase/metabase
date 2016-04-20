@@ -1,0 +1,47 @@
+@import '../Questions.css';
+
+:local(.listing) {
+    composes: m2 from "style";
+    composes: fixed left bottom from "style";
+    z-index: 99;
+}
+
+:local(.undo) {
+    composes: mx2 mt2 p2 from "style";
+    composes: bordered from "style";
+    composes: rounded from "style";
+    composes: shadowed from "style";
+    composes: relative from "style";
+    composes: bg-white from "style";
+    width: 300px;
+}
+
+:local(.actions) {
+    composes: flex align-center from "style";
+    composes: float-right from "style";
+}
+
+:local(.undoButton) {
+    composes: mx2 from "style";
+    composes: text-uppercase text-bold from "style";
+    color: var(--blue-color);
+}
+:local(.dismissButton) {
+    composes: cursor-pointer from "style";
+    color: var(--grey-1);
+}
+:local(.dismissButton):hover {
+    color: var(--grey-3);
+}
+
+.UndoListing-enter {
+}
+.UndoListing-enter.UndoListing-enter-active {
+}
+.UndoListing-leave {
+    opacity: 1;
+}
+.UndoListing-leave.UndoListing-leave-active {
+    opacity: 0.01;
+    transition: opacity 300ms ease-in;
+}

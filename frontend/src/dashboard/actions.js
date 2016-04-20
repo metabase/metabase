@@ -65,7 +65,7 @@ export const setDashCardAttributes = createAction(SET_DASHCARD_ATTRIBUTES);
 
 export const fetchCards = createThunkAction(FETCH_CARDS, function(filterMode = "all") {
     return async function(dispatch, getState) {
-        let cards = await CardApi.list({ filterMode });
+        let cards = await CardApi.list({ f: filterMode });
         for (var c of cards) {
             c.updated_at = moment(c.updated_at);
         }

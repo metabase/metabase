@@ -8,6 +8,7 @@
                           [dataset :as dataset]
                           [email :as email]
                           [field :as field]
+                          [label :as label]
                           [metric :as metric]
                           [notify :as notify]
                           [pulse :as pulse]
@@ -42,6 +43,7 @@
   (GET     "/health"       [] (if ((resolve 'metabase.core/initialized?))
                                 {:status 200 :body {:status "ok"}}
                                 {:status 503 :body {:status "initializing" :progress ((resolve 'metabase.core/initialization-progress))}}))
+  (context "/label"        [] (+auth label/routes))
   (context "/metric"       [] (+auth metric/routes))
   (context "/notify"       [] (+apikey notify/routes))
   (context "/pulse"        [] (+auth pulse/routes))
