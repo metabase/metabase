@@ -7,7 +7,7 @@
   "license": "private",
   "engines": {
     "node": "4.4.3",
-    "npm": "2.15.1"
+    "npm": "2.15.3"
   },
   "dependencies": {
     "ace-builds": "^1.2.2",

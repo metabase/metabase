@@ -18,6 +18,7 @@ dependencies:
     - sudo service mongod restart
     - lein deps
     - pip install awscli==1.7.3
+    - npm install -g npm@2.15.3
 database:
   post:
     # MySQL doesn't load named timezone information automatically, you have to run this command to load it
