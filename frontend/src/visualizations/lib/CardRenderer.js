@@ -101,7 +101,11 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues) {
             dimensionColumn = { ...dimensionColumn, unit: dataInterval.interval };
         }
 
-        chart.xAxis().tickFormat(d => formatValue(d, { column: dimensionColumn }));
+        chart.xAxis().tickFormat(timestamp => {
+            // these dates are in the browser's timezone, change to UTC
+            let timestampUTC = moment(timestamp).format().replace(/[+-]\d+:\d+$/, "Z");
+            return formatValue(timestampUTC, { column: dimensionColumn })
+        });
 
         // Compute a sane interval to display based on the data granularity, domain, and chart width
         tickInterval = computeTimeseriesTicksInterval(xValues, unit, chart.width(), MIN_PIXELS_PER_TICK.x);
