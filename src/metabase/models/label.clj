@@ -6,13 +6,19 @@
 
 (i/defentity Label :label)
 
+(defn- assert-unique-slug [slug]
+  (when (db/exists? Label :slug slug)
+    (throw (ex-info "Name already taken" {:status-code 400, :errors {:name "A label with this name already exists"}}))))
+
 (defn- pre-insert [{label-name :name, :as label}]
-  (assoc label :slug (u/slugify label-name)))
+  (assoc label :slug (u/prog1 (u/slugify label-name)
+                       (assert-unique-slug <>))))
 
 (defn- pre-update [{label-name :name, :as label}]
   (if-not label-name
     label
-    (assoc label :slug (u/slugify label-name))))
+    (assoc label :slug (u/prog1 (u/slugify label-name)
+                         (assert-unique-slug <>)))))
 
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete 'CardLabel :label_id id))
