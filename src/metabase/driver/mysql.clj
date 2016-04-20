@@ -83,7 +83,7 @@
 
 (defn- date [_ unit expr]
   (case unit
-    :default         (k/sqlfn :TIMESTAMP expr)
+    :default         expr
     :minute          (trunc-with-format "%Y-%m-%d %H:%i" expr)
     :minute-of-hour  (kx/minute expr)
     :hour            (trunc-with-format "%Y-%m-%d %H" expr)

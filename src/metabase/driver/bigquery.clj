@@ -255,7 +255,7 @@
 (defn- date [unit expr]
   {:pre [expr]}
   (case unit
-    :default         (kx/->timestamp expr)
+    :default         expr
     :minute          (trunc-with-format "%Y-%m-%d %H:%M:00" expr)
     :minute-of-hour  (kx/minute expr)
     :hour            (trunc-with-format "%Y-%m-%d %H:00:00" expr)
