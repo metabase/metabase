@@ -36,14 +36,13 @@ export const saveLabel = createThunkAction(SAVE_LABEL, (values) => {
             return response;
         } catch (e) {
             // redux-form expects an object with either { field: error } or { _error: error }
-            if (e.data && e.data.message) {
-                if (e.data.message.indexOf("Unique index or primary key violation") === 0) {
-                    throw { name: "A label with this name already exists" };
-                } else {
-                    throw { _error: e.data.message };
-                }
+            if (e.data && e.data.errors) {
+                throw e.data.errors;
+            } else if (e.data && e.data.message) {
+                throw { _error: e.data.message };
+            } else {
+                throw { _error: "An unknown error occured" };
             }
-            throw { _error: "An unknown error occured" };
         }
     }
 });
