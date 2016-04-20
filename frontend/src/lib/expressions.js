@@ -7,13 +7,12 @@ function isField(arg) {
     return arg && arg.constructor === Array && arg.length === 2 && arg[0] === 'field-id' && typeof arg[1] === 'number';
 }
 
-function isExpression(arg) {
-    return arg && arg.constructor === Array && arg.length === 3 && VALID_OPERATORS.has(arg[0]);
+export function isExpression(arg) {
+    return arg && arg.constructor === Array && arg.length === 3 && VALID_OPERATORS.has(arg[0]) && isValidArg(arg[1]) && isValidArg(arg[2]);
 }
 
-// a wrapped expression like [expression original-string]. TODO - This is DEPRECATED (!)
-function isWrappedExpression(arg) {
-    return arg && arg.constructor === Array && arg.length === 2 && isExpression(arg[0]);
+function isValidArg(arg) {
+    return isExpression(arg) || isField(arg) || typeof arg === 'number';
 }
 
 function formatField(fieldRef, fields) {
@@ -31,17 +30,20 @@ function formatNestedExpression(expression, fields) {
 }
 
 function formatArg(arg, fields) {
-    if      (isField(arg))      return formatField(arg, fields);
-    else if (isExpression(arg)) return formatNestedExpression(arg, fields);
-    else                        throw 'Invalid expression argument:' + arg;
+    if (!isValidArg(arg)) throw 'Invalid expression argument:' + arg;
+
+    return isField(arg)            ? formatField(arg, fields)            :
+           isExpression(arg)       ? formatNestedExpression(arg, fields) :
+           typeof arg === 'number' ? arg                                 :
+                                     null;
 }
 
+/// convert a parsed expression back into an expression string
 export function formatExpression(expression, fields) {
     console.log('formatExpression(expression =', expression, ", fields =", fields, ')');
 
-    if (!expression)                     return null;
-    if (isWrappedExpression(expression)) return formatExpression(expression[0], fields);
-    if (!isExpression(expression))       throw 'Invalid expression: ' + expression;
+    if (!expression)               return null;
+    if (!isExpression(expression)) throw 'Invalid expression: ' + expression;
 
     let [operator, arg1, arg2] = expression;
     let output = formatArg(arg1, fields) + ' ' + operator + ' ' + formatArg(arg2, fields);
@@ -91,7 +93,9 @@ function parseToken(token, fields, operators) {
     let fieldName = token.value.replace(/^"?(.*)"?$/, '$1'); // strip off any quotes around the field name
     token.suggestions = getSuggestions(fieldName, fields);
 
-    let field = _.findWhere(fields, {display_name: fieldName});
+    let field = _.find(fields, function(field) {
+        return field.display_name.toLowerCase() === fieldName.toLowerCase();
+    });
 
     if (field) token.parsedValue = ['field-id', field.id];
     else       token.error = 'no field named "' + fieldName + '"';

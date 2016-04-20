@@ -4,7 +4,7 @@ import cx from "classnames";
 
 import Popover from "metabase/components/Popover.jsx";
 
-import { parseExpressionString, tokenAtPosition, tokensToExpression } from "metabase/lib/expressions";
+import { parseExpressionString, tokenAtPosition, tokensToExpression, formatExpression, isExpression } from "metabase/lib/expressions";
 
 
 const KEYCODE_TAB   =  9;
@@ -22,6 +22,7 @@ function getErrorToken(tokens) {
         let childError = getErrorToken(token.value);
         if (childError) return childError;
     }
+    return null;
 }
 
 
@@ -34,7 +35,8 @@ export default class ExpressionEditorTextfield extends Component {
     static propTypes = {
         expression: PropTypes.array,      // should be an array like [parsedExpressionObj, expressionString]
         tableMetadata: PropTypes.object.isRequired,
-        onSetExpression: PropTypes.func.isRequired
+        onChange: PropTypes.func.isRequired,
+        onError: PropTypes.func.isRequired
     };
 
     static defaultProps = {
@@ -49,8 +51,8 @@ export default class ExpressionEditorTextfield extends Component {
     componentWillReceiveProps(newProps) {
         // we only refresh our state if we had no previous state OR if our expression or table has changed
         if (!this.state || this.props.expression != newProps.expression || this.props.tableMetadata != newProps.tableMetadata) {
-            let parsedExpression = newProps.expression[0],
-                expression       = newProps.expression[1],
+            let parsedExpression = newProps.expression,
+                expression       = formatExpression(newProps.expression, this.props.tableMetadata.fields),
                 tokens           = [];
 
             let errorMessage = null;
@@ -131,9 +133,9 @@ export default class ExpressionEditorTextfield extends Component {
             suggestionsTitle: null
         });
 
-        // whenever our input blurs we push the updated expression to our parent
-        // TODO: only push if we are in a valid state!
-        this.props.onChange(this.state.parsedExpression, this.state.expressionString);
+        // whenever our input blurs we push the updated expression to our parent if valid
+        if (isExpression(this.state.parsedExpression)) this.props.onChange(this.state.parsedExpression)
+        else if (this.state.expressionErrorMessage)    this.props.onError(this.state.expressionErrorMessage);
     }
 
     onInputChange() {

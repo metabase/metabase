@@ -3,6 +3,7 @@ import cx from "classnames";
 import _ from 'underscore';
 
 import ExpressionEditorTextfield from "./ExpressionEditorTextfield.jsx";
+import { isExpression } from "metabase/lib/expressions";
 
 
 export default class ExpressionWidget extends Component {
@@ -17,7 +18,7 @@ export default class ExpressionWidget extends Component {
     };
 
     static defaultProps = {
-        expression: [null, ""],
+        expression: null,
         name: ""
     }
 
@@ -33,8 +34,8 @@ export default class ExpressionWidget extends Component {
     }
 
     isValid() {
-        const { name, expression } = this.state;
-        return (!_.isEmpty(name) && expression[0] && expression[0][0] && expression[1]); // huh?
+        const { name, expression, error } = this.state;
+        return (!_.isEmpty(name) && !error && isExpression(expression));
     }
 
     render() {
@@ -48,11 +49,13 @@ export default class ExpressionWidget extends Component {
                         <ExpressionEditorTextfield
                             expression={expression}
                             tableMetadata={this.props.tableMetadata}
-                            onChange={(parsedExpression, expressionString) => this.setState({expression: [parsedExpression, expressionString]})}
+                            onChange={(parsedExpression) => this.setState({expression: parsedExpression, error: null})}
+                            onError={(errorMessage) => this.setState({error: errorMessage})}
                         />
                         <p className="h5 text-grey-2">
                             Think of this as being kind of like writing a forumla in a spreadsheet program: you can use numbers, fields in this table,
-                            mathematic symbols like +, and some functions.  So you could type, Subtotal - Cost.  <a className="link" href="">Learn more</a>
+                            mathematic symbols like +, and some functions.  So you could type, Subtotal - Cost.
+                            <a className="link" href="http://www.metabase.com/docs/latest/users-guide/11-calculated-columns.html">Learn more</a>
                         </p>
                     </div>
 
@@ -73,11 +76,11 @@ export default class ExpressionWidget extends Component {
                         <button
                             className={cx("Button", {"Button--primary": this.isValid()})}
                             onClick={() => this.props.onSetExpression(this.state.name, this.state.expression)}
-                            disabled={!this.isValid()}>{this.props.expression[0] ? "Save changes" : "Done"}</button>
+                            disabled={!this.isValid()}>{this.props.expression ? "Save changes" : "Done"}</button>
                         <span className="pl1">or</span> <a className="link" onClick={() => this.props.onCancel()}>Cancel</a>
                     </div>
                     <div>
-                        {this.props.expression[0] ?
+                        {this.props.expression ?
                          <a className="pr2 text-warning link" onClick={() => this.props.onRemoveExpression(this.props.name)}>Remove</a>
                          : null }
                     </div>
