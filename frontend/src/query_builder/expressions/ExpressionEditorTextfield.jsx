@@ -224,7 +224,7 @@ export default class ExpressionEditorTextfield extends Component {
                              targetOffset: '0 ' + ((this.state.expressionString.length / 2) * 6)
                          }}
                  >
-                     <div style={{minWidth: 150}}>
+                     <div style={{minWidth: 150, maxHeight: 342, overflow: "hidden"}}>
                          <h5 style={{marginBottom: 2}} className="h6 text-grey-2">{this.state.suggestionsTitle}</h5>
                          <ul>
                              {this.state.suggestions.map((suggestion, i) =>
