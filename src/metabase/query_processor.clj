@@ -420,3 +420,9 @@
             pre-log-query
             wrap-guard-multiple-calls
             driver-process-query) (assoc query :driver driver)))))
+
+
+(defn process-query
+  "Process an MBQL structured or native query, and return the result."
+  [query]
+  (process (driver/database-id->driver (:database query)) query))

@@ -351,13 +351,6 @@
         false))))
 
 
-(defn process-query
-  "Process a structured or native query, and return the result."
-  [query]
-  (require 'metabase.query-processor)
-  ((resolve 'metabase.query-processor/process) (database-id->driver (:database query)) query))
-
-
 ;; ## Query Execution Stuff
 
 (defn dataset-query
@@ -394,7 +387,7 @@
                          :additional_info   ""
                          :start_time_millis (System/currentTimeMillis)}]
     (try
-      (let [query-result (process-query query)]
+      (let [query-result ((resolve 'metabase.query-processor/process-query) query)]
         (when-not (contains? query-result :status)
           (throw (Exception. "invalid response from database driver. no :status provided")))
         (when (= :failed (:status query-result))

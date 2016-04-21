@@ -476,7 +476,7 @@
 
      (run-query* (query (source-table 5) ...))"
   [query :- i/Query]
-  (driver/process-query (wrap-inner-query query)))
+  ((resolve 'metabase.query-processor/process-query) (wrap-inner-query query)))
 
 (defmacro run-query
   "Build and run a query.

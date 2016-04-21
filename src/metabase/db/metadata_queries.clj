@@ -1,11 +1,11 @@
 (ns metabase.db.metadata-queries
   "Predefined MBQL queries for getting metadata about an external database."
-  (:require [metabase.driver :as driver]
-            [metabase.models.field :as field]
+  (:require [metabase.models.field :as field]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.expand :as ql]))
 
 (defn- qp-query [db-id query]
-  (-> (driver/process-query
+  (-> (qp/process-query
        {:type     :query
         :database db-id
         :query    query})
