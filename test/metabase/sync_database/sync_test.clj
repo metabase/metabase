@@ -3,6 +3,7 @@
             [korma.core :as k]
             [metabase.db :as db]
             [metabase.mock.moviedb :as moviedb]
+            [metabase.mock.schema-per-customer :as schema-per-customer]
             [metabase.models.database :as database]
             [metabase.models.field :as field]
             [metabase.models.hydrate :as hydrate]
@@ -391,3 +392,53 @@
            (k/where {:database_id database-id, :name "roles"}))
          (update-data-models-from-raw-tables! db)
          (get-tables database-id))])))
+
+
+(defn resolve-fk-targets
+  "Convert :fk_target_[column|field]_id into more testable information with table/schema names."
+  [m]
+  (let [resolve-raw-column (fn [column-id]
+                             (when-let [{col-name :name, table :raw_table_id} (db/sel :one :fields [raw-column/RawColumn :raw_table_id :name] :id column-id)]
+                               (-> (db/sel :one :fields [raw-table/RawTable :schema :name] :id table)
+                                   (assoc :col-name col-name))))
+        resolve-field      (fn [field-id]
+                             (when-let [{col-name :name, table :table_id} (db/sel :one :fields [field/Field :table_id :name] :id field-id)]
+                               (-> (db/sel :one :fields [table/Table :schema :name] :id table)
+                                   (assoc :col-name col-name))))
+        resolve-fk         (fn [m]
+                             (cond
+                               (:fk_target_column_id m)
+                               (assoc m :fk_target_column (resolve-raw-column (:fk_target_column_id m)))
+
+                               (:fk_target_field_id m)
+                               (assoc m :fk_target_field (resolve-field (:fk_target_field_id m)))
+
+                               :else
+                               m))]
+    (update m (if (:database_id m) :columns :fields) #(mapv resolve-fk %))))
+
+;; special test case which validates a fairly complex multi-schema setup with lots of FKs
+(expect
+  [schema-per-customer/schema-per-customer-raw-tables
+   schema-per-customer/schema-per-customer-tables-and-fields
+   schema-per-customer/schema-per-customer-tables-and-fields]
+  (tu/with-temp* [database/Database [{database-id :id, :as db} {:engine :schema-per-customer}]]
+    (let [driver     (schema-per-customer/->SchemaPerCustomerDriver)
+          db-tables  #(->> (hydrate/hydrate (db/sel :many table/Table :db_id % (k/order :id)) :fields)
+                           (mapv resolve-fk-targets)
+                           (mapv tu/boolean-ids-and-timestamps))]
+      ;; do a quick introspection to add the RawTables to the db
+      (introspect/introspect-database-and-update-raw-tables! driver db)
+
+      [;; first check that the raw tables stack up as expected
+       (->> (hydrate/hydrate (db/sel :many raw-table/RawTable :database_id database-id (k/order :id)) :columns)
+            (mapv resolve-fk-targets)
+            (mapv tu/boolean-ids-and-timestamps))
+       ;; now lets run a sync and check what we got
+       (do
+         (update-data-models-from-raw-tables! db)
+         (db-tables database-id))
+       ;; run the sync a second time to see how we respond to repeat syncing (should be same since nothing changed)
+       (do
+         (update-data-models-from-raw-tables! db)
+         (db-tables database-id))])))
