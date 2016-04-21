@@ -182,23 +182,23 @@ export default class ExtendedOptions extends Component {
                     {this.renderSort()}
 
                     {_.contains(tableMetadata.db.features, "expressions") ?
-                     <Expressions
-                         expressions={query.query.expressions}
-                         tableMetadata={tableMetadata}
-                         onAddExpression={() => this.setState({isOpen: false, editExpression: true})}
-                         onEditExpression={(name) => {
-                                 this.setState({isOpen: false, editExpression: name});
-                                 MetabaseAnalytics.trackEvent("QueryBuilder", "Show Edit Custom Field");
-                             }}
-                     />
-                     : null}
+                        <Expressions
+                            expressions={query.query.expressions}
+                            tableMetadata={tableMetadata}
+                            onAddExpression={() => this.setState({isOpen: false, editExpression: true})}
+                            onEditExpression={(name) => {
+                                this.setState({isOpen: false, editExpression: name});
+                                MetabaseAnalytics.trackEvent("QueryBuilder", "Show Edit Custom Field");
+                            }}
+                        />
+                    : null}
 
-                     { features.limit &&
-                       <div>
-                           <div className="mb1 h6 text-uppercase text-grey-3 text-bold">Row limit</div>
-                           <LimitWidget limit={query.query.limit} onChange={this.setLimit} />
-                       </div>
-                     }
+                    { features.limit &&
+                        <div>
+                            <div className="mb1 h6 text-uppercase text-grey-3 text-bold">Row limit</div>
+                            <LimitWidget limit={query.query.limit} onChange={this.setLimit} />
+                        </div>
+                    }
                 </div>
             </Popover>
         );
