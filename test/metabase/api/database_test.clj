@@ -1,5 +1,6 @@
 (ns metabase.api.database-test
   (:require [expectations :refer :all]
+            [korma.core :as k]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             (metabase.models [database :refer [Database]]
@@ -8,7 +9,8 @@
             [metabase.test.data :refer :all]
             (metabase.test.data [datasets :as datasets]
                                 [users :refer :all])
-            [metabase.test.util :refer [match-$ random-name expect-eval-actual-first]]))
+            [metabase.test.util :refer [match-$ random-name expect-eval-actual-first]]
+            [metabase.util :as u]))
 
 ;; HELPER FNS
 
@@ -56,6 +58,7 @@
      :active          $
      :id              $
      :db_id           $
+     :raw_table_id    $
      :created_at      $}))
 
 
@@ -168,36 +171,35 @@
 ;; GET /api/databases (include tables)
 (let [db-name (str "A" (random-name))] ; make sure this name comes before "test-data"
   (expect-eval-actual-first
-    (set (filter identity (conj (for [engine datasets/all-valid-engines]
-                                  (datasets/when-testing-engine engine
-                                                                (let [database (get-or-create-test-data-db! (driver/engine->driver engine))]
-                                                                  (match-$ database
-                                                                    {:created_at      $
-                                                                     :engine          (name $engine)
-                                                                     :id              $
-                                                                     :updated_at      $
-                                                                     :name            "test-data"
-                                                                     :is_sample       false
-                                                                     :is_full_sync    true
-                                                                     :organization_id nil
-                                                                     :description     nil
-                                                                     :tables          (->> (sel :many Table :db_id (:id database))
-                                                                                           (mapv table-details)
-                                                                                           (sort-by :name))
-                                                                     :features        (mapv name (driver/features (driver/engine->driver engine)))}))))
-                                ;; (?) I don't remember why we have to do this for postgres but not any other of the bonus drivers
-                                (match-$ (sel :one Database :name db-name)
-                                  {:created_at      $
-                                   :engine          "postgres"
-                                   :id              $
-                                   :updated_at      $
-                                   :name            $
-                                   :is_sample       false
-                                   :is_full_sync    true
-                                   :organization_id nil
-                                   :description     nil
-                                   :tables          []
-                                   :features        (mapv name (driver/features (driver/engine->driver :postgres)))}))))
+    (set (concat [(match-$ (sel :one Database :name db-name)
+                    {:created_at      $
+                     :engine          "postgres"
+                     :id              $
+                     :updated_at      $
+                     :name            $
+                     :is_sample       false
+                     :is_full_sync    true
+                     :organization_id nil
+                     :description     nil
+                     :tables          []
+                     :features        (mapv name (driver/features (driver/engine->driver :postgres)))})]
+                 (filter identity (for [engine datasets/all-valid-engines]
+                                    (datasets/when-testing-engine engine
+                                                                  (let [database (get-or-create-test-data-db! (driver/engine->driver engine))]
+                                                                    (match-$ database
+                                                                      {:created_at      $
+                                                                       :engine          (name $engine)
+                                                                       :id              $
+                                                                       :updated_at      $
+                                                                       :name            "test-data"
+                                                                       :is_sample       false
+                                                                       :is_full_sync    true
+                                                                       :organization_id nil
+                                                                       :description     nil
+                                                                       :tables          (->> (sel :many Table :db_id (:id database))
+                                                                                             (mapv table-details)
+                                                                                             (sort-by :name))
+                                                                       :features        (mapv name (driver/features (driver/engine->driver engine)))})))))))
     (do
       ;; Delete all the randomly created Databases we've made so far
       (cascade-delete Database :id [not-in (set (filter identity
@@ -223,60 +225,65 @@
        :organization_id nil
        :description     nil
        :features        (mapv name (driver/features (driver/engine->driver :h2)))
-       :tables [(match-$ (Table (id :categories))
-                  {:description     nil
-                   :entity_type     nil
-                   :visibility_type nil
-                   :schema          "PUBLIC"
-                   :name            "CATEGORIES"
-                   :display_name    "Categories"
-                   :fields          [(match-$ (Field (id :categories :id))
-                                       {:description     nil
-                                        :table_id        (id :categories)
-                                        :special_type    "id"
-                                        :name            "ID"
-                                        :display_name    "Id"
-                                        :updated_at      $
-                                        :active          true
-                                        :id              $
-                                        :field_type      "info"
-                                        :position        0
-                                        :target          nil
-                                        :preview_display true
-                                        :created_at      $
-                                        :base_type       "BigIntegerField"
-                                        :visibility_type "normal"
-                                        :fk_target_field_id $
-                                        :parent_id       nil
-                                        :values          []})
-                                     (match-$ (Field (id :categories :name))
-                                       {:description     nil
-                                        :table_id        (id :categories)
-                                        :special_type    "name"
-                                        :name            "NAME"
-                                        :display_name    "Name"
-                                        :updated_at      $
-                                        :active          true
-                                        :id              $
-                                        :field_type      "info"
-                                        :position        0
-                                        :target          nil
-                                        :preview_display true
-                                        :created_at      $
-                                        :base_type       "TextField"
-                                        :visibility_type "normal"
-                                        :fk_target_field_id $
-                                        :parent_id       nil
-                                        :values          []})]
-                   :segments        []
-                   :metrics         []
-                   :rows            75
-                   :updated_at      $
-                   :entity_name     nil
-                   :active          true
-                   :id              (id :categories)
-                   :db_id           (id)
-                   :created_at      $})]})
+       :tables          [(match-$ (Table (id :categories))
+                           {:description     nil
+                            :entity_type     nil
+                            :visibility_type nil
+                            :schema          "PUBLIC"
+                            :name            "CATEGORIES"
+                            :display_name    "Categories"
+                            :fields          [(match-$ (Field (id :categories :id))
+                                                {:description        nil
+                                                 :table_id           (id :categories)
+                                                 :special_type       "id"
+                                                 :name               "ID"
+                                                 :display_name       "Id"
+                                                 :updated_at         $
+                                                 :active             true
+                                                 :id                 $
+                                                 :raw_column_id      $
+                                                 :field_type         "info"
+                                                 :position           0
+                                                 :target             nil
+                                                 :preview_display    true
+                                                 :created_at         $
+                                                 :last_analyzed      $
+                                                 :base_type          "BigIntegerField"
+                                                 :visibility_type    "normal"
+                                                 :fk_target_field_id $
+                                                 :parent_id          nil
+                                                 :values             []})
+                                              (match-$ (Field (id :categories :name))
+                                                {:description        nil
+                                                 :table_id           (id :categories)
+                                                 :special_type       "name"
+                                                 :name               "NAME"
+                                                 :display_name       "Name"
+                                                 :updated_at         $
+                                                 :active             true
+                                                 :id                 $
+                                                 :raw_column_id      $
+                                                 :field_type         "info"
+                                                 :position           0
+                                                 :target             nil
+                                                 :preview_display    true
+                                                 :created_at         $
+                                                 :last_analyzed      $
+                                                 :base_type          "TextField"
+                                                 :visibility_type    "normal"
+                                                 :fk_target_field_id $
+                                                 :parent_id          nil
+                                                 :values             []})]
+                            :segments        []
+                            :metrics         []
+                            :rows            75
+                            :updated_at      $
+                            :entity_name     nil
+                            :active          true
+                            :id              (id :categories)
+                            :raw_table_id    $
+                            :db_id           (id)
+                            :created_at      $})]})
     (let [resp ((user->client :rasta) :get 200 (format "database/%d/metadata" (id)))]
       (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp)))))
 
@@ -288,11 +295,63 @@
 (expect
     (let [db-id (id)]
       [(match-$ (Table (id :categories))
-         {:description nil, :entity_type nil, :visibility_type nil, :schema "PUBLIC", :name "CATEGORIES", :rows 75, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Categories"})
+         {:description nil
+          :entity_type nil
+          :visibility_type nil
+          :schema "PUBLIC"
+          :name "CATEGORIES"
+          :rows 75
+          :updated_at $
+          :entity_name nil
+          :active true
+          :id $
+          :db_id db-id
+          :created_at $
+          :display_name "Categories"
+          :raw_table_id $})
        (match-$ (Table (id :checkins))
-         {:description nil, :entity_type nil, :visibility_type nil, :schema "PUBLIC", :name "CHECKINS", :rows 1000, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Checkins"})
+         {:description nil
+          :entity_type nil
+          :visibility_type nil
+          :schema "PUBLIC"
+          :name "CHECKINS"
+          :rows 1000
+          :updated_at $
+          :entity_name nil
+          :active true
+          :id $
+          :db_id db-id
+          :created_at $
+          :display_name "Checkins"
+          :raw_table_id $})
        (match-$ (Table (id :users))
-         {:description nil, :entity_type nil, :visibility_type nil, :schema "PUBLIC", :name "USERS", :rows 15, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Users"})
+         {:description nil
+          :entity_type nil
+          :visibility_type nil
+          :schema "PUBLIC"
+          :name "USERS"
+          :rows 15
+          :updated_at $
+          :entity_name nil
+          :active true
+          :id $
+          :db_id db-id
+          :created_at $
+          :display_name "Users"
+          :raw_table_id $})
        (match-$ (Table (id :venues))
-         {:description nil, :entity_type nil, :visibility_type nil, :schema "PUBLIC", :name "VENUES", :rows 100, :updated_at $, :entity_name nil, :active true, :id $, :db_id db-id, :created_at $, :display_name "Venues"})])
+         {:description nil
+          :entity_type nil
+          :visibility_type nil
+          :schema "PUBLIC"
+          :name "VENUES"
+          :rows 100
+          :updated_at $
+          :entity_name nil
+          :active true
+          :id $
+          :db_id db-id
+          :created_at $
+          :display_name "Venues"
+          :raw_table_id $})])
   ((user->client :rasta) :get 200 (format "database/%d/tables" (id))))

@@ -30,6 +30,7 @@
     (tu/match-$ (Field (id :users :name))
       {:description     nil
        :table_id        (id :users)
+       :raw_column_id   $
        :table           (tu/match-$ (Table (id :users))
                           {:description     nil
                            :entity_type     nil
@@ -44,11 +45,13 @@
                            :active          true
                            :id              (id :users)
                            :db_id           (id)
+                           :raw_table_id    $
                            :created_at      $})
        :special_type    "name"
        :name            "NAME"
        :display_name    "Name"
        :updated_at      $
+       :last_analyzed   $
        :active          true
        :id              (id :users :name)
        :field_type      "info"

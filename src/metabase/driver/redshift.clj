@@ -27,8 +27,8 @@
 ;; so we'll have to use this custom query instead
 ;; See also: [Related Postgres JDBC driver issue on GitHub](https://github.com/pgjdbc/pgjdbc/issues/79)
 ;;           [How to access the equivalent of information_schema.constraint_column_usage in Redshift](https://forums.aws.amazon.com/thread.jspa?threadID=133514)
-(defn- describe-table-fks [_ table]
-  (set (for [fk (jdbc/query (sql/db->jdbc-connection-spec @(:db table))
+(defn- describe-table-fks [_ database table]
+  (set (for [fk (jdbc/query (sql/db->jdbc-connection-spec database)
                             ["SELECT source_column.attname AS \"fk-column-name\",
                                      dest_table.relname    AS \"dest-table-name\",
                                      dest_table_ns.nspname AS \"dest-table-schema\",

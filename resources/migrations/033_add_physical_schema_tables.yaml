@@ -1,0 +1,172 @@
+databaseChangeLog:
+  - changeSet:
+      id: 32
+      author: agilliland
+      changes:
+        - createTable:
+            tableName: raw_table
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: database_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: metabase_database(id)
+                    foreignKeyName: fk_rawtable_ref_database
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: active
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: schema
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: details
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: raw_table
+            indexName: idx_rawtable_database_id
+            columns:
+              column:
+                name: database_id
+        - addUniqueConstraint:
+            tableName: raw_table
+            columnNames: database_id, schema, name
+            constraintName: uniq_raw_table_db_schema_name
+        - createTable:
+            tableName: raw_column
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: raw_table_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: raw_table(id)
+                    foreignKeyName: fk_rawcolumn_tableid_ref_rawtable
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: active
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: column_type
+                  type: varchar(128)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: is_pk
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fk_target_column_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    references: raw_column(id)
+                    foreignKeyName: fk_rawcolumn_fktarget_ref_rawcolumn
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: details
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: raw_column
+            indexName: idx_rawcolumn_raw_table_id
+            columns:
+              column:
+                name: raw_table_id
+        - addUniqueConstraint:
+            tableName: raw_column
+            columnNames: raw_table_id, name
+            constraintName: uniq_raw_column_table_name
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: raw_table_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    deferrable: false
+                    initiallyDeferred: false
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: raw_column_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    deferrable: false
+                    initiallyDeferred: false
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: last_analyzed
+                  type: DATETIME
+                  constraints:
+                    nullable: true
+                    deferrable: false
+                    initiallyDeferred: false
+        - modifySql:
+            dbms: postgresql
+            replace:
+              replace: WITHOUT
+              with: WITH
