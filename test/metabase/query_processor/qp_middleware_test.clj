@@ -1,4 +1,4 @@
-(ns metabase.driver.query_processor.qp-middleware-test
+(ns metabase.query_processor.qp-middleware-test
   (:require [expectations :refer :all]
             [clj-time.coerce :as tc]
             [metabase.driver :as driver]

@@ -2,7 +2,7 @@
   "Query processor tests for DBs that are event-based, like Druid.
    There architecture is different enough that we can't test them along with our 'normal' DBs in `query-procesor-test`."
   (:require [expectations :refer :all]
-            [metabase.driver.query-processor.expand :as ql]
+            [metabase.query-processor.expand :as ql]
             [metabase.query-processor-test :refer [format-rows-by rows first-row]]
             [metabase.test.data :as data]
             (metabase.test.data [dataset-definitions :as defs]

@@ -8,12 +8,12 @@
             [swiss.arrows :refer [<<-]]
             [metabase.db :as db]
             [metabase.driver :as driver]
-            (metabase.driver.query-processor [annotate :as annotate]
-                                             [expand :as expand]
-                                             [interface :refer :all]
-                                             [macros :as macros]
-                                             [resolve :as resolve])
             [metabase.models.field :refer [Field]]
+            (metabase.query-processor [annotate :as annotate]
+                                      [expand :as expand]
+                                      [interface :refer :all]
+                                      [macros :as macros]
+                                      [resolve :as resolve])
             [metabase.util :as u])
   (:import (schema.utils NamedError ValidationError)))
 

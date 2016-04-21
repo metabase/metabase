@@ -6,11 +6,11 @@
             [expectations :refer :all]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
-            [metabase.query-processor :refer :all]
-            (metabase.driver.query-processor [expand :as ql]
-                                             [interface :as qpi])
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
+            [metabase.query-processor :refer :all]
+            (metabase.query-processor [expand :as ql]
+                                      [interface :as qpi])
             (metabase.test.data [dataset-definitions :as defs]
                                 [datasets :as datasets :refer [*data-loader* *engine*]]
                                 [interface :refer [create-database-definition], :as i])

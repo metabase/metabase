@@ -3,9 +3,9 @@
   (:require [expectations :refer :all]
             [metabase.api.dataset :refer [dataset-query-api-constraints]]
             [metabase.db :refer :all]
-            [metabase.driver.query-processor.expand :as ql]
             [metabase.models.card :refer [Card]]
             [metabase.models.query-execution :refer [QueryExecution]]
+            [metabase.query-processor.expand :as ql]
             [metabase.test.data.users :refer :all]
             [metabase.test.data :refer :all]
             [metabase.test.util :as tu]))

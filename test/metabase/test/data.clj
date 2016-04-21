@@ -5,10 +5,10 @@
             [clojure.tools.logging :as log]
             (metabase [db :refer :all]
                       [driver :as driver])
-            [metabase.driver.query-processor.expand :as ql]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field] :as field]
                              [table :refer [Table]])
+            [metabase.query-processor.expand :as ql]
             [metabase.sync-database :as sync-database]
             (metabase.test.data [datasets :refer [*data-loader*]]
                                 [dataset-definitions :as defs]

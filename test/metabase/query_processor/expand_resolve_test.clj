@@ -1,8 +1,8 @@
-(ns metabase.driver.query-processor.expand-resolve-test
+(ns metabase.query-processor.expand-resolve-test
   "Tests query expansion/resolution"
   (:require [expectations :refer :all]
-            (metabase.driver.query-processor [expand :as ql]
-                                             [resolve :as resolve])
+            (metabase.query-processor [expand :as ql]
+                                      [resolve :as resolve])
             [metabase.test.data :refer :all]
             [metabase.util :as u]))
 

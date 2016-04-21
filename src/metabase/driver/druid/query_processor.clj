@@ -4,15 +4,15 @@
             [clojure.tools.logging]
             [clojure.tools.logging :as log]
             [metabase.query-processor :as qp]
-            [metabase.driver.query-processor.interface :as i]
+            [metabase.query-processor.interface :as i]
             [metabase.util :as u])
   (:import clojure.lang.Keyword
-           (metabase.driver.query_processor.interface AgFieldRef
-                                                      DateTimeField
-                                                      DateTimeValue
-                                                      Field
-                                                      RelativeDateTimeValue
-                                                      Value)))
+           (metabase.query_processor.interface AgFieldRef
+                                               DateTimeField
+                                               DateTimeValue
+                                               Field
+                                               RelativeDateTimeValue
+                                               Value)))
 
 ;;             +-----> ::select
 ;; ::query ----|                     +----> ::timeseries
