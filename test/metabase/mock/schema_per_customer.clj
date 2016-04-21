@@ -80,6 +80,7 @@
 
 
 (def ^:const schema-per-customer-raw-tables
+  "Docstring"
   [{:schema "s3"
     :database_id true
     :columns [{:column_type nil
@@ -461,6 +462,7 @@
     :created_at true}])
 
 (def ^:const schema-per-customer-tables-and-fields
+  "Docstring"
   [{:description nil
     :entity_type nil
     :schema "common"

@@ -63,6 +63,7 @@
 
 
 (def ^:const toucanery-raw-tables-and-columns
+  "Docstring"
   [{:schema nil
     :database_id true
     :columns []
@@ -83,6 +84,7 @@
     :created_at true}])
 
 (def ^:const toucanery-tables-and-fields
+  "Docstring"
   [{:description nil
     :entity_type nil
     :schema nil
