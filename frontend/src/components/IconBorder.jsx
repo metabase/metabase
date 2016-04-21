@@ -1,16 +1,15 @@
 import React, { Component, PropTypes } from "react";
 import cx from "classnames";
-import Icon from 'metabase/components/Icon.jsx'
 
 /*
-Creates a bordered container for an <Icon /> component
-based on the <Icon /> component's size.
+   Creates a bordered container for an <Icon /> component
+   based on the <Icon /> component's size.
 
-usage:
-    <IconBorder {...props} >
-        <Icon name={chevrondown} width={12} height={12} />
-    </IconBorder>
-*/
+   usage:
+   <IconBorder {...props} >
+   <Icon name={chevrondown} width={12} height={12} />
+   </IconBorder>
+ */
 
 export default class IconBorder extends Component {
 
@@ -20,7 +19,7 @@ export default class IconBorder extends Component {
         borderColor: PropTypes.string,
         borderRadius: PropTypes.string,
         style: PropTypes.object,
-        children: PropTypes.instanceOf(Icon)
+        children: PropTypes.any.isRequired
     };
 
     static defaultProps = {
@@ -46,7 +45,7 @@ export default class IconBorder extends Component {
 
         return (
             <div className={cx('flex layout-centered', className)} style={styles}>
-              {children}
+                {children}
             </div>
         );
     }

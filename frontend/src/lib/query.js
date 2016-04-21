@@ -3,6 +3,9 @@ import React from "react";
 import inflection from "inflection";
 import _ from "underscore";
 
+import { getOperators } from "metabase/lib/schema_metadata";
+import { createLookupByProperty } from "metabase/lib/table";
+
 
 export const NEW_QUERY_TEMPLATES = {
     query: {
@@ -138,6 +141,8 @@ var Query = {
             delete query.limit;
         }
 
+        if (query.expressions) delete query.expressions['']; // delete any empty expressions
+
         return query;
     },
 
@@ -230,6 +235,7 @@ var Query = {
     },
 
     getFilters(query) {
+        if (!query) throw 'query is null!';
         // Special handling for accessing query filters because it's been fairly complex to deal with their structure.
         // This method provide a unified and consistent view of the filter definition for the rest of the tool to use.
 
@@ -262,7 +268,7 @@ var Query = {
             // simply make sure that there are no null values in the last filter
             for (var i=0; i < lastFilter.length; i++) {
                 if (lastFilter[i] === null) {
-                    return false
+                    return false;
                 }
             }
         }
@@ -390,6 +396,43 @@ var Query = {
         }
     },
 
+    getExpressions(query) {
+        return query.expressions;
+    },
+
+    setExpression(query, name, expression) {
+        if (name && expression) {
+            let expressions = query.expressions || {};
+            expressions[name] = expression;
+            query.expressions = expressions;
+        }
+
+        return query;
+    },
+
+    // remove an expression with NAME. Returns scrubbed QUERY with all references to expression removed.
+    removeExpression(query, name) {
+        if (!query.expressions) return query;
+
+        delete query.expressions[name];
+
+        if (_.isEmpty(query.expressions)) delete query.expressions;
+
+        // ok, now "scrub" the query to remove any references to the expression
+        function isExpressionReference(obj) {
+            return obj && obj.constructor === Array && obj.length === 2 && obj[0] === 'expression' && obj[1] === name;
+        }
+
+        function removeExpressionReferences(obj) {
+            return isExpressionReference(obj) ? null                                         :
+                   obj.constructor === Array  ? _.map(obj, removeExpressionReferences)       :
+                   typeof obj === 'object'    ? _.mapObject(obj, removeExpressionReferences) :
+                                                obj;
+        }
+
+        return this.cleanQuery(removeExpressionReferences(query));
+    },
+
     isRegularField(field) {
         return typeof field === "number";
     },
@@ -402,6 +445,10 @@ var Query = {
         return Array.isArray(field) && field[0] === "datetime_field";
     },
 
+    isExpressionField(field) {
+        return Array.isArray(field) && field.length === 2 && field[0] === "expression";
+    },
+
     isAggregateField(field) {
         return Array.isArray(field) && field[0] === "aggregation";
     },
@@ -411,6 +458,7 @@ var Query = {
             (Query.isRegularField(field)) ||
             (Query.isForeignKeyField(field) && Query.isRegularField(field[1]) && Query.isRegularField(field[2])) ||
             (Query.isDatetimeField(field)   && Query.isValidField(field[1]) && field[2] === "as" && typeof field[3] === "string") ||
+            (Query.isExpressionField(field) && _.isString(field[1])) ||
             (Query.isAggregateField(field)  && typeof field[1] === "number")
         );
     },
@@ -445,7 +493,33 @@ var Query = {
             return Query.getFieldTarget(field[2], targetTableDef);
         } else if (Query.isDatetimeField(field)) {
             return Query.getFieldTarget(field[1], tableDef);
+        } else if (Query.isExpressionField(field)) {
+            // hmmm, since this is a dynamic field we'll need to build this here
+            let fieldDef = {
+                display_name: field[1],
+                name: field[1],
+                // TODO: we need to do something better here because filtering depends on knowing a sensible type for the field
+                base_type: "IntegerField",
+                operators_lookup: {},
+                valid_operators: [],
+                active: true,
+                field_type: "info",
+                fk_target_field_id: null,
+                parent_id: null,
+                preview_display: true,
+                special_type: null,
+                target: null,
+                visibility_type: "normal"
+            };
+            fieldDef.valid_operators = getOperators(fieldDef, tableDef);
+            fieldDef.operators_lookup = createLookupByProperty(fieldDef.valid_operators, "name");
+
+            return {
+                table: tableDef,
+                field: fieldDef
+            }
         }
+
         console.warn("Unknown field type: ", field);
     },
 
@@ -465,9 +539,10 @@ var Query = {
                 return {
                     field: joinField,
                     fields: targetFields
-                }
+                };
             }).filter((r) => r.fields.length > 0);
         }
+
         return results;
     },
 
@@ -484,6 +559,8 @@ var Query = {
                 return [Query.getFieldName(tableMetadata, field[1], options), " → ", Query.getFieldName(targetTableDef, field[2], options)];
             } else if (Query.isDatetimeField(field)) {
                 return [Query.getFieldName(tableMetadata, field[1], options), " (" + field[3] + ")"];
+            } else if (Query.isExpressionField(field)) {
+                return field[1];
             }
         } catch (e) {
             console.warn("Couldn't format field name for field", field, "in table", tableMetadata);

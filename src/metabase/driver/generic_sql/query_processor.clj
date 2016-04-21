@@ -21,6 +21,8 @@
                                                       DateTimeField
                                                       DateTimeValue
                                                       Field
+                                                      Expression
+                                                      ExpressionRef
                                                       RelativeDateTimeValue
                                                       Value)))
 
@@ -40,13 +42,36 @@
     [form alias]
     form))
 
+;; TODO - Consider moving this into query processor interface and making it a method on `ExpressionRef` instead ?
+(defn- expression-with-name
+  "Return the `Expression` referenced by a given (keyword or string) EXPRESSION-NAME."
+  [expression-name]
+  (or (get-in *query* [:query :expressions (keyword expression-name)]) (:expressions (:query *query*))
+      (throw (Exception. (format "No expression named '%s'." (name expression-name))))))
 
 (defprotocol ^:private IGenericSQLFormattable
   (formatted [this]
     "Return an appropriate korma form for an object."))
 
 (extend-protocol IGenericSQLFormattable
-  nil (formatted [_] nil)
+  nil    (formatted [_] nil)
+  Number (formatted [this] this)
+  String (formatted [this] this)
+
+  Expression
+  (formatted [{:keys [operator args]}]
+    (apply (case    operator
+             :+     kx/+
+             :-     kx/-
+             :*     kx/*
+             :/     kx//
+             :lower (partial k/sqlfn* :LOWER))
+           (map formatted args)))
+
+  ExpressionRef
+  (formatted [{:keys [expression-name]}]
+    ;; Unfortunately you can't just refer to the expression by name in other clauses like filter, but have to use the original formuala.
+    (formatted (expression-with-name expression-name)))
 
   Field
   (formatted [{:keys [schema-name table-name special-type field-name]}]

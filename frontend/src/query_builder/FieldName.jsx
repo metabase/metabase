@@ -14,6 +14,7 @@ export default class FieldName extends Component {
     static propTypes = {
         field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
         fieldOptions: PropTypes.object.isRequired,
+        customFieldOptions: PropTypes.object,
         onClick: PropTypes.func,
         removeField: PropTypes.func,
         tableMetadata: PropTypes.object.isRequired
@@ -40,6 +41,10 @@ export default class FieldName extends Component {
                     fkIcon = (<span className="px1"><Icon name="connections" width="10" height="10" /></span>);
                 }
             }
+        } else if (Query.isExpressionField(field)) {
+            fieldDef = {
+                display_name: field[1]
+            };
         } else {
             fieldDef = _.find(fieldOptions.fields, (f) => _.isEqual(f.id, field));
         }

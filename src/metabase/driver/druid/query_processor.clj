@@ -371,7 +371,7 @@
 (defmulti ^:private handle-order-by query-type-dispatch-fn)
 
 (defmethod handle-order-by ::query [_ _ _]
-  (log/warn (u/format-color 'red "Sorting with Druid is only allowed in queries that have one or more breakout columns. Ignoring :order_by clause.")))
+  (log/warn (u/format-color 'red "Sorting with Druid is only allowed in queries that have one or more breakout columns. Ignoring :order-by clause.")))
 
 (defmethod handle-order-by ::topN [_ {{ag-type :aggregation-type} :aggregation, [breakout-field] :breakout, [{field :field, direction :direction}] :order-by} druid-query]
   (let [field             (->rvalue field)

@@ -171,7 +171,7 @@ sub edit_release_notes {
     remove_tree($release_notes);
 
     copy(get_file_or_die('bin/templates/release-notes.html.template'), $release_notes) or die $!;
-    system('emacs', get_file_or_die($release_notes)) == 0 or die $!;
+    system('emacs', '-nw', get_file_or_die($release_notes)) == 0 or die $!;
 }
 
 
