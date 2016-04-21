@@ -24,6 +24,7 @@ export function qsWithContent(selector, content) {
 }
 
 const STEP_WARNING_TIMEOUT = 10 * 1000; // 10 seconds
+const STEP_SKIP_TIMEOUT = 500; // 500 ms
 
 export default class Tutorial extends Component {
     constructor(props, context) {
@@ -128,9 +129,19 @@ export default class Tutorial extends Component {
         if (this.state.stepTimeout != null) {
             clearTimeout(this.state.stepTimeout);
         }
+        if (this.state.skipTimeout != null) {
+            clearTimeout(this.state.skipTimeout);
+        }
         this.setState({
             step,
-            stepTimeout: setTimeout(() => this.setState({ stepTimeout: null }), STEP_WARNING_TIMEOUT)
+            stepTimeout: setTimeout(() => {
+                this.setState({ stepTimeout: null })
+            }, STEP_WARNING_TIMEOUT),
+            skipTimeout: setTimeout(() => {
+                if (this.props.steps[step].optional && this.getTargets(this.props.steps[step]).missingTarget) {
+                    this.next();
+                }
+            }, STEP_SKIP_TIMEOUT)
         });
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Tutorial Step', step);
     }
@@ -139,13 +150,7 @@ export default class Tutorial extends Component {
         this.props.onClose();
     }
 
-    render() {
-        let step = this.props.steps[this.state.step];
-
-        if (!step) {
-            return <span />;
-        }
-
+    getTargets(step) {
         let missingTarget = false;
 
         let pageFlagTarget;
@@ -171,6 +176,23 @@ export default class Tutorial extends Component {
                 missingTarget = missingTarget || true;
             }
         }
+
+        return {
+            missingTarget,
+            pageFlagTarget,
+            portalTarget,
+            modalTarget
+        };
+    }
+
+    render() {
+        let step = this.props.steps[this.state.step];
+
+        if (!step) {
+            return <span />;
+        }
+
+        const { missingTarget, pageFlagTarget, portalTarget, modalTarget } = this.getTargets(step);
 
         if (missingTarget && this.state.stepTimeout === null) {
             return (
