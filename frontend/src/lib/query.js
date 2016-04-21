@@ -405,7 +405,6 @@ var Query = {
             let expressions = query.expressions || {};
             expressions[name] = expression;
             query.expressions = expressions;
-            console.log('set expression. expressions =', query.expressions);
         }
 
         return query;
@@ -417,8 +416,6 @@ var Query = {
         delete query.expressions[name];
 
         if (_.isEmpty(query.expressions)) delete query.expressions;
-
-        console.log('removed expression. expressions =', query.expressions);
 
         return query;
     },

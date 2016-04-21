@@ -85,8 +85,6 @@ export default class ExpressionEditorTextfield extends Component {
             suggestion   = needsQuotes ? ('"' + displayName + '"') : displayName,
             tokenAtPoint = tokenAtPosition(this.state.tokens, inputElement.selectionStart);
 
-        console.log('replacing:', tokenAtPoint, 'with:', suggestion);
-
         let expression = this.state.expressionString.substring(0, tokenAtPoint.start) + suggestion + this.state.expressionString.substring(tokenAtPoint.end, this.state.expressionString.length);
 
         // Remove extra quotation marks in case we accidentally inserted duplicates when accepting a suggestion already inside some
@@ -138,7 +136,7 @@ export default class ExpressionEditorTextfield extends Component {
 
         // whenever our input blurs we push the updated expression to our parent if valid
         if (isExpression(this.state.parsedExpression)) this.props.onChange(this.state.parsedExpression)
-        else if (this.state.expressionErrorMessage)    this.props.onError(this.state.expressionErrorMessage);
+            else if (this.state.expressionErrorMessage)    this.props.onError(this.state.expressionErrorMessage);
     }
 
     onInputChange() {
@@ -153,20 +151,13 @@ export default class ExpressionEditorTextfield extends Component {
             parsedExpression;
 
         try {
-            //tokens = tokenizeExpressionString(expression);
-            //console.log('tokens (before parse)', tokens);
-
             tokens = parseExpressionString(expression, this.props.tableMetadata.fields);
-            console.log('tokens (after parse):', tokens);
 
             let errorToken = getErrorToken(tokens);
             if (errorToken) errorMessage = errorToken.error;
 
-            console.log('errorMessage: ', errorMessage);
-
             let cursorPosition = inputElement.selectionStart;
             let tokenAtPoint = tokenAtPosition(tokens, cursorPosition);
-            console.log('tokenAtPoint:', tokenAtPoint);
 
             if (tokenAtPoint && tokenAtPoint.suggestions) {
                 suggestions = tokenAtPoint.suggestions;
@@ -198,8 +189,6 @@ export default class ExpressionEditorTextfield extends Component {
     render() {
         let errorMessage = this.state.expressionErrorMessage;
         if (errorMessage && !errorMessage.length) errorMessage = 'unknown error';
-
-        console.log('suggestions:', this.state.suggestions, 'highlightedSuggestion:', this.state.highlightedSuggestion, 'title:', this.state.suggestionsTitle);
 
         const { placeholder } = this.props;
 

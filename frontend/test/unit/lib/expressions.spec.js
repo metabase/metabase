@@ -67,10 +67,12 @@ describe("parseExpressionString", () => {
             { value: 'Toucan Sam', suggestions: [], parsedValue: [ 'field-id', 10 ] },
             { value: '+', parsedValue: '+' },
             { value: [{ value: 'A', suggestions: [mockFields[0], mockFields[3]], parsedValue: [ 'field-id', 1 ] },
-                      { value: '+', parsedValue: '*' },
+                      { value: '*', parsedValue: '*' },
                       { value: [{ value: 'B', suggestions: [], parsedValue: [ 'field-id', 2 ] },
-                                { value: '+', parsedValue: '/' },
-                                { value: 'C', suggestions: [mockFields[2], mockFields[3]], parsedValue: [ 'field-id', 3 ] }], isParent: true}], isParent: true }
+                                { value: '/', parsedValue: '/' },
+                                { value: 'C', suggestions: [mockFields[2], mockFields[3]], parsedValue: [ 'field-id', 3 ] }],
+                        isParent: true}],
+              isParent: true }
         ]);
     });
 

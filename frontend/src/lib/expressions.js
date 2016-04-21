@@ -1,6 +1,10 @@
 
 import _ from "underscore";
 
+// +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+// |                                                                      PREDICATE FUNCTIONS                                                                       |
+// +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
 const VALID_OPERATORS = new Set(['+', '-', '*', '/']);
 
 function isField(arg) {
@@ -14,6 +18,11 @@ export function isExpression(arg) {
 function isValidArg(arg) {
     return isExpression(arg) || isField(arg) || typeof arg === 'number';
 }
+
+
+// +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+// |                                                                   MBQL EXPRESSION -> STRING                                                                    |
+// +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
 function formatField(fieldRef, fields) {
     let fieldID = fieldRef[1],
@@ -40,37 +49,125 @@ function formatArg(arg, fields) {
 
 /// convert a parsed expression back into an expression string
 export function formatExpression(expression, fields) {
-    console.log('formatExpression(expression =', expression, ", fields =", fields, ')');
-
     if (!expression)               return null;
     if (!isExpression(expression)) throw 'Invalid expression: ' + expression;
 
     let [operator, arg1, arg2] = expression;
     let output = formatArg(arg1, fields) + ' ' + operator + ' ' + formatArg(arg2, fields);
-    console.log('formatted:', output);
+
     return output;
 }
 
 
-// str -> tokens
-/// update suggestions with ones for fieldName
-function getSuggestions(fieldName, fields) {
-    if (!fieldName) fieldName = '';
 
-    let suggestions = _.filter(fields, function(field) {
-        return field.display_name.toLowerCase().indexOf(fieldName.toLowerCase()) > -1;
-    });
+// +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+// |                                                                        STRING -> TOKENS                                                                        |
+// +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
-    // don't suggest anything if the only suggestion is for the token we already have
-    if (suggestions.length === 1 && suggestions[0].display_name === fieldName) suggestions = [];
+// takes the results of tokenizeExpression() and handles nesting the parentheses
+// e.g. ['(', {value: '"PRODUCT ID"', start: 0, end: 11}, {value: '+', start: 13, end: 14}, ')']
+// becomes [{isParent: true, value: [...], start: 0, end: 11}]
+function groupTokens(tokens) {
+    var groupsStack = [[]];
 
-    return _.sortBy(suggestions, function(field) {
-        return field.display_name.toLowerCase();
-    });
+    function push(item) {
+        _.last(groupsStack).push(item);
+    }
+
+    function pushNewGroup() {
+        groupsStack.push([]);
+    }
+
+    function closeGroup() {
+        if (groupsStack.length === 1) {
+            _.last(groupsStack)[0].error = 'Missing opening paren'; // set error on first element of topmost group
+        }
+
+        let group = _.last(groupsStack);
+        groupsStack.splice(-1); // pop the last group from the groups stack
+
+        push({
+            value: group,
+            start: group[0].start,
+            end: _.last(group).end,
+            isParent: true
+        });
+    }
+
+    for (var i = 0; i < tokens.length; i++) {
+        let token = tokens[i];
+
+        if      (token === '(') pushNewGroup();
+        else if (token === ')') closeGroup();
+        else                    push(token);
+    }
+
+    if (groupsStack.length > 1) {
+        closeGroup();
+        _.last(groupsStack[0]).error = 'Missing closing paren'; // set error on last element of top-level group
+    }
+
+    return groupsStack[0];
 }
 
-function parseToken(token, fields, operators) {
-    console.log('parseToken(', token, ')');
+// take a string like '"PRODUCT ID" + (ID * 2)"'
+// and return tokens like [{value: '"PRODUCT ID"', start: 0, end: 11}, {value: '+', start: 13, end: 14}, '(', ...]
+function tokenizeExpression(expressionString) {
+    var i            = 0,
+        tokens       = [],
+        currentToken = null,
+        insideString = false;
+
+    function pushCurrentTokenIfExists() {
+        if (currentToken) {
+            currentToken.end = i;
+            tokens.push(currentToken);
+            currentToken = null;
+        }
+    }
+
+    function appendCharToCurrentToken(c) {
+        if (!currentToken) currentToken = {
+            start: i,
+            value: ''
+        };
+        currentToken.value += c;
+    }
+
+    for (; i < expressionString.length; i++) {
+        let c = expressionString.charAt(i);
+
+        if (c === '"') {
+            pushCurrentTokenIfExists();
+            insideString = !insideString;
+        }
+        else if (insideString) {
+            appendCharToCurrentToken(c);
+        }
+        else if (c === '(' || c === ')') {
+            pushCurrentTokenIfExists();
+            tokens.push(c);
+        }
+        else if (c === ' ' || c === '\n') {
+            pushCurrentTokenIfExists();
+        }
+        else {
+            appendCharToCurrentToken(c);
+        }
+    }
+
+    pushCurrentTokenIfExists();
+
+    return tokens;
+}
+
+
+// +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+// |                                                                   TOKENS -> MBQL EXPRESSION                                                                    |
+// +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+// takes a token and returns the appropriate MBQL form, e.g. a field name becomnes [field-id <id>]
+function tokenToMBQL(token, fields, operators) {
     if (!token || typeof token !== 'object' || !token.value || !token.value.length) {
         console.error('tokenization error: invalid token: ', token);
         return null;
@@ -78,7 +175,7 @@ function parseToken(token, fields, operators) {
 
     // check if token is a nested expression
     if (token.isParent) {
-        token.value = parseExpression(token.value, fields, operators);
+        token.value = annotateTokens(token.value, fields, operators);
         return token;
     }
 
@@ -91,7 +188,7 @@ function parseToken(token, fields, operators) {
 
     // if not, it is a field name
     let fieldName = token.value.replace(/^"?(.*)"?$/, '$1'); // strip off any quotes around the field name
-    token.suggestions = getSuggestions(fieldName, fields);
+    token.suggestions = getFieldSuggestions(fieldName, fields);
 
     let field = _.find(fields, function(field) {
         return field.display_name.toLowerCase() === fieldName.toLowerCase();
@@ -103,19 +200,19 @@ function parseToken(token, fields, operators) {
     return token;
 }
 
-function parseExpression(tokens, fields, operators) {
-    console.log('parseExpression(', tokens, ')');
+// Add extra info about the tokens, like errors + suggestions
+function annotateTokens(tokens, fields, operators) {
     // unnest excess parens
-    if (tokens.length === 1 && tokens[0].isParent) return parseExpression(tokens[0].value, fields, operators);
+    if (tokens.length === 1 && tokens[0].isParent) return annotateTokens(tokens[0].value, fields, operators);
 
     let [lhs, operator, rhs] = tokens;
 
-    lhs = lhs ? parseToken(lhs, fields, operators) : {
+    lhs = lhs ? tokenToMBQL(lhs, fields, operators) : {
         token: '',
         start: 0,
         end: 0,
         error: 'expression is empty',
-        suggestions: getSuggestions('', fields),
+        suggestions: getFieldSuggestions('', fields),
         suggestionsTitle: 'FIELDS'
     };
 
@@ -126,7 +223,7 @@ function parseExpression(tokens, fields, operators) {
         operator = {
             token: '',
             start: lhs.end + 1,
-            end: lhs.end + 1,
+            end: lhs.end + 2,
             error: 'missing operator',
             suggestions: Array.from(operators).map((operator) => ({display_name: operator})),
             suggestionsTitle: 'OPERATORS'
@@ -134,143 +231,40 @@ function parseExpression(tokens, fields, operators) {
     }
 
     // if we have > 3 tokens group the rest
+    // TODO - this should be moved into groupTokens
     if (tokens.length > 3) {
         tokens = tokens.slice(2);
         rhs = {
-            value: parseExpression(tokens, fields, operators),
+            value: annotateTokens(tokens, fields, operators),
             isParent: true,
             start: tokens[0].start,
             end: tokens[tokens.length - 1].end
         };
     }
-    else rhs = rhs ? parseToken(rhs, fields, operators) : {
+    else rhs = rhs ? tokenToMBQL(rhs, fields, operators) : {
         token: '',
         start: operator.end + 1,
-        end: operator.end + 1,
+        end: operator.end + 2,
         error: 'add something to the right of ' + operator.value,
-        suggestions: getSuggestions('', fields),
+        suggestions: getFieldSuggestions('', fields),
         suggestionsTitle: 'FIELDS'
     };
 
     return [lhs, operator, rhs];
 }
 
-function tokenizeExpression(expression, i = 0, level = 0) {
-    console.log('tokenizeExpression(', expression, ', i =', i, ', level =', level, ')');
-    var tokens       = [],
-        currentToken = null,
-        start        = i,
-        insideQuotes = false;
-
-    for (; i < expression.length; i++) {
-        let c = expression.charAt(i);
-
-        if (c === '"') {
-            insideQuotes = !insideQuotes;
-        }
-        else if ((c === ' ' || c === '\n') && !insideQuotes) {
-            if (currentToken) {
-                tokens.push({
-                    value: currentToken,
-                    start: start,
-                    end: i
-                });
-                currentToken = null;
-                start = i + 1;
-            }
-        }
-        else if (c === '(' && !insideQuotes) {
-            // TODO - this is probably actually ok, we should accept it as a token separate from the parens
-            if (currentToken) throw 'invalid token: ' + currentToken + '(';
-
-            let nestedResults = tokenizeExpression(expression, i + 1, level + 1); // parse recursively starting at point immediately after opening paren
-            console.log('nestedResults = ', nestedResults);
-
-            if (nestedResults.constructor !== Array) {
-                console.error('not an array: ', nestedResults);
-                throw 'expected array, got ' + typeof nestedResults;
-            }
-
-            var token;
-            [token, i] = nestedResults;
-
-            tokens.push({
-                value: token,
-                start: start,
-                end: i,
-                isParent: true
-            });
-        }
-        else if (c === ')' && !insideQuotes) {
-            if (level === 0) throw 'expression is missing an opening paren';
-            if (currentToken) tokens.push({
-                value: currentToken,
-                start: start,
-                end: i - 1
-            });
-            return [tokens, i + 1];
-        }
-        else {
-            if (!currentToken) {
-                currentToken = '';
-                start = i;
-            }
-            currentToken += c;
-        }
-    }
-
-    if (level !== 0) {
-        if (currentToken) {
-            tokens.push({
-                value: currentToken,
-                start: start,
-                end: i
-            });
-        }
-        if (tokens.length) tokens[tokens.length - 1].error = 'expression is missing a closing paren';
-        else               throw 'expression is missing a closing paren';
-
-        return [tokens, i];
-    }
-
-    if (currentToken) tokens.push({
-        value: currentToken,
-        start: start,
-        end: i
-    });
-
-    return tokens;
-}
 
 // Takes a string representation of an expression and parses it into an array of structured tokens
+// the results still need to go through tokensToExpression to be converted to MBQL
 export function parseExpressionString(expression, fields) {
     if (_.isEmpty(expression)) return [];
 
-    let tokens = tokenizeExpression(expression);
-    return parseExpression(tokens, fields, VALID_OPERATORS);
+    return annotateTokens(groupTokens(tokenizeExpression(expression)), fields, VALID_OPERATORS);
 }
-
-
-// return the token underneath a cursor position
-export function tokenAtPosition(tokens, position) {
-    if (!tokens || !tokens.length) return null;
-
-    console.log('tokenAtPosition(', tokens, position, ')');
-    for (var i = 0; i < tokens.length; i++) {
-        let token = tokens[i];
-
-        if (token.start <= position && token.end >= position) {
-            return token.isParent ? tokenAtPosition(token.value, position) : token;
-        }
-    }
-}
-
 
 // Takes an array of tokens representing a parsed string based expression
 // and restructures them into a valid MBQL expression clause
 export function tokensToExpression(tokens) {
-    console.log('getParsedExpression(', tokens, ')');
-
     if (!tokens || tokens.constructor !== Array || tokens.length !== 3) return null;
 
     var [lhs, operator, rhs] = tokens;
@@ -288,4 +282,39 @@ export function tokensToExpression(tokens) {
     if (!rhs)      throw 'invalid rhs!';
 
     return [operator, lhs, rhs];
+}
+
+
+// +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+// |                                                                              MISC                                                                              |
+// +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+/// update suggestions with ones for fieldName
+function getFieldSuggestions(fieldName, fields) {
+    if (!fieldName) fieldName = '';
+
+    let suggestions = _.filter(fields, function(field) {
+        return field.display_name.toLowerCase().indexOf(fieldName.toLowerCase()) > -1;
+    });
+
+    // don't suggest anything if the only suggestion is for the token we already have
+    if (suggestions.length === 1 && suggestions[0].display_name === fieldName) suggestions = [];
+
+    return _.sortBy(suggestions, function(field) {
+        return field.display_name.toLowerCase();
+    });
+}
+
+
+// return the token underneath a cursor position
+export function tokenAtPosition(tokens, position) {
+    if (!tokens || !tokens.length) return null;
+
+    for (var i = 0; i < tokens.length; i++) {
+        let token = tokens[i];
+
+        if (token.start <= position && token.end >= position) {
+            return token.isParent ? tokenAtPosition(token.value, position) : token;
+        }
+    }
 }
