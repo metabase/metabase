@@ -1,14 +1,17 @@
 (ns metabase.test.data
   "Code related to creating and deleting test databases + datasets."
-  (:require (clojure [string :as s]
+  (:require (clojure [string :as str]
                      [walk :as walk])
             [clojure.tools.logging :as log]
-            (metabase [db :refer :all]
+            [schema.core :as s]
+            (metabase [db :refer :all, :as db]
                       [driver :as driver])
             (metabase.models [database :refer [Database]]
                              [field :refer [Field] :as field]
                              [table :refer [Table]])
+            [metabase.query-processor :as qp]
             [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.interface :as qi]
             [metabase.sync-database :as sync-database]
             (metabase.test.data [datasets :refer [*data-loader*]]
                                 [dataset-definitions :as defs]
@@ -59,7 +62,7 @@
     $cities.id -> (id :cities :id)          ; specify non-default Table"
   [table-name body]
   (let [->id (fn [s]
-               (let [parts (s/split s #"\.")]
+               (let [parts (str/split s #"\.")]
                  (if (= (count parts) 1)
                    `(id ~table-name ~(keyword (first parts)))
                    `(id ~@(map keyword parts)))))]
@@ -90,11 +93,26 @@
   `(ql/query (ql/source-table (id ~(keyword table)))
              ~@(map (partial $->id (keyword table)) forms)))
 
+(s/defn ^:always-validate wrap-inner-query
+  "Wrap inner QUERY with `:database` ID and other 'outer query' kvs. DB ID is fetched by looking up the Database for the query's `:source-table`."
+  {:style/indent 0}
+  [query :- qi/Query]
+  {:database (db/sel :one :field [Table :db_id], :id (:source-table query))
+   :type     :query
+   :query    query})
+
+(s/defn ^:always-validate run-query*
+  "Call `driver/process-query` on expanded inner QUERY, looking up the `Database` ID for the `source-table.`
+
+     (run-query* (query (source-table 5) ...))"
+  [query :- qi/Query]
+  (qp/process-query (wrap-inner-query query)))
+
 (defmacro run-query
   "Like `query`, but runs the query as well."
   {:style/indent 1}
   [table & forms]
-  `(ql/run-query* (query ~table ~@forms)))
+  `(run-query* (query ~table ~@forms)))
 
 
 (defn format-name [nm]

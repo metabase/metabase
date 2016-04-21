@@ -55,7 +55,7 @@
     :status       "completed"
     :id           true
     :uuid         true
-    :json_query   (-> (ql/wrap-inner-query
+    :json_query   (-> (wrap-inner-query
                         (query checkins
                                (ql/aggregation (ql/count))))
                       (assoc :type "query")
@@ -71,7 +71,7 @@
     :id           true
     :uuid         true
     :raw_query    ""
-    :json_query   (-> (ql/wrap-inner-query
+    :json_query   (-> (wrap-inner-query
                         (query checkins
                                (ql/aggregation (ql/count))))
                       (assoc :type "query")
@@ -81,7 +81,7 @@
     :finished_at  true
     :running_time true
     :version      0}]
-  (let [result ((user->client :rasta) :post 200 "dataset" (ql/wrap-inner-query
+  (let [result ((user->client :rasta) :post 200 "dataset" (wrap-inner-query
                                                             (query checkins
                                                                    (ql/aggregation (ql/count)))))]
     [(format-response result)
@@ -130,7 +130,7 @@
              :creator                (user-details (fetch-user :rasta))
              :display                "table"
              :query_type             "query"
-             :dataset_query          (-> (ql/wrap-inner-query
+             :dataset_query          (-> (wrap-inner-query
                                            (query checkins
                                              (ql/aggregation (ql/count))))
                                          (assoc :type "query")
@@ -147,7 +147,7 @@
              :status       "completed"
              :id           true
              :uuid         true
-             :json_query   (-> (ql/wrap-inner-query
+             :json_query   (-> (wrap-inner-query
                                  (query checkins
                                    (ql/aggregation (ql/count))))
                                (assoc :type "query")
@@ -163,7 +163,7 @@
     :id           true
     :uuid         true
     :raw_query    ""
-    :json_query   (-> (ql/wrap-inner-query
+    :json_query   (-> (wrap-inner-query
                         (query checkins
                           (ql/aggregation (ql/count))))
                       (assoc :type "query")
@@ -174,7 +174,7 @@
     :running_time true
     :version      0}]
   (tu/with-temp Card [{card-id :id} {:name          "Dataset Test Card"
-                                     :dataset_query (ql/wrap-inner-query
+                                     :dataset_query (wrap-inner-query
                                                       (query checkins
                                                         (ql/aggregation (ql/count))))}]
     (let [result ((user->client :rasta) :get 200 (format "dataset/card/%d" card-id))]
