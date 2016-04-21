@@ -2,11 +2,11 @@
   (:require [expectations :refer :all]
             [clj-time.coerce :as tc]
             [metabase.driver :as driver]
-            [metabase.driver.query-processor :refer :all]
+            [metabase.query-processor :refer :all]
             [metabase.models.setting :as setting]
             [metabase.test.util :refer [resolve-private-fns]]))
 
-(resolve-private-fns metabase.driver.query-processor
+(resolve-private-fns metabase.query-processor
   wrap-catch-exceptions post-add-row-count-and-status post-format-rows pre-add-settings)
 
 

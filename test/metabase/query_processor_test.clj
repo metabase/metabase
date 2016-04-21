@@ -1,14 +1,12 @@
-(ns metabase.driver.query-processor-test
+(ns metabase.query-processor-test
   "Query processing tests that can be ran between any of the available non-event-based DB drivers, and should give the same results.
    Event-based DBs such as Druid are tested in `metabase.driver.event-query-processor-test`."
   (:require [clojure.math.numeric-tower :as math]
-            (clojure [set :as set]
-                     [string :as s])
+            [clojure.set :as set]
             [expectations :refer :all]
-            [korma.core :as k]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
-            [metabase.driver.query-processor :refer :all]
+            [metabase.query-processor :refer :all]
             (metabase.driver.query-processor [expand :as ql]
                                              [interface :as qpi])
             (metabase.models [field :refer [Field]]
@@ -17,8 +15,7 @@
                                 [datasets :as datasets :refer [*data-loader* *engine*]]
                                 [interface :refer [create-database-definition], :as i])
             [metabase.test.data :refer :all]
-            [metabase.util :as u]
-            [metabase.util.quotation :as q]))
+            [metabase.util :as u]))
 
 
 ;; ## Dataset-Independent QP Tests
@@ -611,13 +608,13 @@
 ;; ## LIMIT-MAX-RESULT-ROWS
 ;; Apply limit-max-result-rows to an infinite sequence and make sure it gets capped at `absolute-max-results`
 (expect absolute-max-results
-  (->> (((resolve 'metabase.driver.query-processor/limit) identity) {:rows (repeat [:ok])})
+  (->> (((resolve 'metabase.query-processor/limit) identity) {:rows (repeat [:ok])})
        :rows
        count))
 
 ;; Apply an arbitrary max-results on the query and ensure our results size is appropriately constrained
 (expect 1234
-  (->> (((resolve 'metabase.driver.query-processor/limit) identity) {:constraints {:max-results 1234}
+  (->> (((resolve 'metabase.query-processor/limit) identity) {:constraints {:max-results 1234}
                                                                      :query       {:aggregation {:aggregation-type :count}}
                                                                      :rows        (repeat [:ok])})
        :rows
@@ -625,7 +622,7 @@
 
 ;; Apply a max-results-bare-rows limit specifically on :rows type query
 (expect [46 46]
-  (let [res (((resolve 'metabase.driver.query-processor/limit) identity) {:constraints {:max-results 46}
+  (let [res (((resolve 'metabase.query-processor/limit) identity) {:constraints {:max-results 46}
                                                                           :query       {:aggregation {:aggregation-type :rows}}
                                                                           :rows        (repeat [:ok])})]
     [(->> res :rows count)

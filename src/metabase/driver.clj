@@ -354,8 +354,8 @@
 (defn process-query
   "Process a structured or native query, and return the result."
   [query]
-  (require 'metabase.driver.query-processor)
-  ((resolve 'metabase.driver.query-processor/process) (database-id->driver (:database query)) query))
+  (require 'metabase.query-processor)
+  ((resolve 'metabase.query-processor/process) (database-id->driver (:database query)) query))
 
 
 ;; ## Query Execution Stuff

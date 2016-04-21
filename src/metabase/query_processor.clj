@@ -1,4 +1,4 @@
-(ns metabase.driver.query-processor
+(ns metabase.query-processor
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific implementations."
   (:require [clojure.walk :as walk]
             [clojure.tools.logging :as log]

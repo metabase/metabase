@@ -11,7 +11,7 @@
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
-            [metabase.driver.query-processor :as qp]
+            [metabase.query-processor :as qp]
             metabase.driver.query-processor.interface
             [metabase.util :as u]
             [metabase.util.korma-extensions :as kx])

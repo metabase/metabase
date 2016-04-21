@@ -6,7 +6,7 @@
             [clojure.walk :as walk]
             (monger [collection :as mc]
                     [operators :refer :all])
-            [metabase.driver.query-processor :as qp]
+            [metabase.query-processor :as qp]
             (metabase.driver.query-processor [annotate :as annotate]
                                              [interface :refer [qualified-name-components map->DateTimeField map->DateTimeValue]])
             [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
