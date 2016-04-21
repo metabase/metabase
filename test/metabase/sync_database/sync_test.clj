@@ -11,12 +11,14 @@
             [metabase.models.table :as table]
             [metabase.sync-database.introspect :as introspect]
             [metabase.sync-database.sync :refer :all]
-            [metabase.test.util :as tu]
-            [metabase.sync-database.sync :as sync]
-            [clojure.tools.logging :as log]))
+            [metabase.test.util :as tu]))
 
 (tu/resolve-private-fns metabase.sync-database.sync
   save-fks! save-table-fields!)
+
+(defn- get-tables [database-id]
+  (->> (hydrate/hydrate (db/sel :many table/Table :db_id database-id (k/order :id)) :fields)
+       (mapv tu/boolean-ids-and-timestamps)))
 
 
 ;; save-fks!
@@ -297,7 +299,7 @@
   (tu/with-temp* [database/Database [{database-id :id, :as db} {:engine :moviedb}]]
     ;; setup a couple things we'll use in the test
     (introspect/introspect-database-and-update-raw-tables! (moviedb/->MovieDbDriver) db)
-    (sync/update-data-models-from-raw-tables! db)
+    (update-data-models-from-raw-tables! db)
     (let [get-tables #(->> (hydrate/hydrate (db/sel :many table/Table :db_id database-id) :fields)
                            (mapv tu/boolean-ids-and-timestamps))]
       ;; here we go
@@ -308,12 +310,84 @@
            (k/set-fields {:active false})
            (k/where {:database_id database-id, :name "movies"}))
          ;; run our retires function
-         (sync/retire-tables! db)
+         (retire-tables! db)
          ;; now we should see the table and its fields disabled
          (get-tables))])))
 
 
-;; TODO: update-data-models-for-table!
+;; update-data-models-for-table!
+(expect
+  (let [disable-fks #(map (fn [fld]
+                            (if (= :fk (:special_type fld))
+                              (assoc fld
+                                :special_type       nil
+                                :fk_target_field_id false)
+                              fld)) %)]
+    [[(-> (last moviedb/moviedb-tables-and-fields)
+          (update :fields disable-fks))]
+     [(-> (last moviedb/moviedb-tables-and-fields)
+          (update :fields disable-fks))]
+     [(-> (last moviedb/moviedb-tables-and-fields)
+          (assoc :active false
+                 :fields []))]])
+  (tu/with-temp* [database/Database [{database-id :id, :as db} {:engine :moviedb}]]
+    (let [driver (moviedb/->MovieDbDriver)]
+      ;; do a quick introspection to add the RawTables to the db
+      (introspect/introspect-database-and-update-raw-tables! driver db)
 
-;; TODO: update-data-models-from-raw-tables!
-;; make sure to test case where FK relationship tables are out of order
+      ;; stub out the Table we are going to sync for real below
+      (let [raw-table-id (db/sel :one :field [raw-table/RawTable :id] :database_id database-id, :name "roles")
+            tbl          (db/ins table/Table
+                           :db_id        database-id
+                           :raw_table_id raw-table-id
+                           :name         "roles"
+                           :active       true)]
+        [;; now lets run a sync and check what we got
+         (do
+           (update-data-models-for-table! tbl)
+           (get-tables database-id))
+         ;; run the sync a second time to see how we respond to repeat syncing (should be same since nothing changed)
+         (do
+           (update-data-models-for-table! tbl)
+           (get-tables database-id))
+         ;; one more time, but lets disable the table this time and ensure that's handled properly
+         (do
+           (k/update raw-table/RawTable
+             (k/set-fields {:active false})
+             (k/where {:database_id database-id, :name "roles"}))
+           (update-data-models-for-table! tbl)
+           (get-tables database-id))]))))
+
+
+;; update-data-models-from-raw-tables!
+(expect
+  [moviedb/moviedb-raw-tables
+   moviedb/moviedb-tables-and-fields
+   moviedb/moviedb-tables-and-fields
+   (conj (vec (drop-last moviedb/moviedb-tables-and-fields))
+         (-> (last moviedb/moviedb-tables-and-fields)
+             (assoc :active false
+                    :fields [])))]
+  (tu/with-temp* [database/Database [{database-id :id, :as db} {:engine :moviedb}]]
+    (let [driver (moviedb/->MovieDbDriver)]
+      ;; do a quick introspection to add the RawTables to the db
+      (introspect/introspect-database-and-update-raw-tables! driver db)
+
+      [;; first check that the raw tables stack up as expected
+       (->> (hydrate/hydrate (db/sel :many raw-table/RawTable :database_id database-id (k/order :id)) :columns)
+            (mapv tu/boolean-ids-and-timestamps))
+       ;; now lets run a sync and check what we got
+       (do
+         (update-data-models-from-raw-tables! db)
+         (get-tables database-id))
+       ;; run the sync a second time to see how we respond to repeat syncing (should be same since nothing changed)
+       (do
+         (update-data-models-from-raw-tables! db)
+         (get-tables database-id))
+       ;; one more time, but lets disable a table this time and ensure that's handled properly
+       (do
+         (k/update raw-table/RawTable
+           (k/set-fields {:active false})
+           (k/where {:database_id database-id, :name "roles"}))
+         (update-data-models-from-raw-tables! db)
+         (get-tables database-id))])))

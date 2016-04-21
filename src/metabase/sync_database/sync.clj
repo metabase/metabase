@@ -117,24 +117,29 @@
 (defn update-data-models-for-table!
   "Update the working `Table` and `Field` metadata for a given `Table` based on the latest raw schema information.
    This function uses the data in `RawTable` and `RawColumn` to update the working data models as needed."
-  [{raw-table-id :raw_table_id, :as existing-table}]
+  [{raw-table-id :raw_table_id, table-id :id, :as existing-table}]
   (when-let [{database-id :database_id, :as raw-tbl} (db/sel :one raw-table/RawTable :id raw-table-id)]
     (try
-      (-> (table/update-table existing-table raw-tbl)
-          save-table-fields!)
+      (if-not (:active raw-tbl)
+        ;; looks like the table has been deactivated, so lets retire this Table and its fields
+        (table/retire-tables #{table-id})
+        ;; otherwise update based on the RawTable/RawColumn information
+        (do
+          (-> (table/update-table existing-table raw-tbl)
+              save-table-fields!)
 
-      ;; handle setting any fk relationships
-      (when-let [table-fks (k/select raw-column/RawColumn
-                             (k/fields [:id :source-column]
-                                       [:fk_target_column_id :target-column])
-                             ;; NOTE: something really wrong happening with SQLKorma here which requires us
-                             ;;       to be explicit about :metabase_table.raw_table_id in the join condition
-                             ;;       without this it seems to want to join against metabase_field !?
-                             (k/join raw-table/RawTable (= :raw_table.id :raw_column.raw_table_id))
-                             (k/where {:raw_table.database_id database-id
-                                       :raw_table.id raw-table-id})
-                             (k/where (not= :raw_column.fk_target_column_id nil)))]
-        (save-fks! table-fks))
+          ;; handle setting any fk relationships
+          (when-let [table-fks (k/select raw-column/RawColumn
+                                 (k/fields [:id :source-column]
+                                           [:fk_target_column_id :target-column])
+                                 ;; NOTE: something really wrong happening with SQLKorma here which requires us
+                                 ;;       to be explicit about :metabase_table.raw_table_id in the join condition
+                                 ;;       without this it seems to want to join against metabase_field !?
+                                 (k/join raw-table/RawTable (= :raw_table.id :raw_column.raw_table_id))
+                                 (k/where {:raw_table.database_id database-id
+                                           :raw_table.id raw-table-id})
+                                 (k/where (not= :raw_column.fk_target_column_id nil)))]
+            (save-fks! table-fks))))
 
       (catch Throwable t
         (log/error (u/format-color 'red "Unexpected error syncing table") t)))))
