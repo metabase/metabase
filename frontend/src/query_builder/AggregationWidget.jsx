@@ -7,7 +7,7 @@ import Popover from "metabase/components/Popover.jsx";
 
 import Query from "metabase/lib/query";
 import { AggregationClause } from "metabase/lib/query";
-import { getAggregator, getAggregators } from "metabase/lib/schema_metadata";
+import { getAggregator, getAggregatorsWithFields } from "metabase/lib/schema_metadata";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -36,11 +36,8 @@ export default class AggregationWidget extends Component {
     }
 
     componentWillReceiveProps(newProps) {
-        // NOTE: previously this list was being filtered using this conditional, but it's unclear why that is needed so it was removed.
-        //       leaving this here for a bit as reference until we are sure it's not needed.
-        //       .filter(o => (o.fields && (o.fields.length === 0 || (o.fields.length > 0 && o.fields[0])))
         this.setState({
-            availableAggregations: getAggregators(newProps.tableMetadata)
+            availableAggregations: getAggregatorsWithFields(newProps.tableMetadata)
         });
     }
 
