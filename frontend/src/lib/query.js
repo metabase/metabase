@@ -410,6 +410,7 @@ var Query = {
         return query;
     },
 
+    // remove an expression with NAME. Returns scrubbed QUERY with all references to expression removed.
     removeExpression(query, name) {
         if (!query.expressions) return query;
 
@@ -417,7 +418,19 @@ var Query = {
 
         if (_.isEmpty(query.expressions)) delete query.expressions;
 
-        return query;
+        // ok, now "scrub" the query to remove any references to the expression
+        function isExpressionReference(obj) {
+            return obj && obj.constructor === Array && obj.length === 2 && obj[0] === 'expression' && obj[1] === name;
+        }
+
+        function removeExpressionReferences(obj) {
+            return isExpressionReference(obj) ? null                                         :
+                   obj.constructor === Array  ? _.map(obj, removeExpressionReferences)       :
+                   typeof obj === 'object'    ? _.mapObject(obj, removeExpressionReferences) :
+                                                obj;
+        }
+
+        return this.cleanQuery(removeExpressionReferences(query));
     },
 
     isRegularField(field) {
