@@ -147,7 +147,7 @@
   (log/info (u/format-color 'cyan "Verifying Database Connection ..."))
   (assert (binding [*allow-potentailly-unsafe-connections* true]
             (require 'metabase.driver)
-            (@(resolve 'metabase.driver/can-connect-with-details?) engine details))
+            ((resolve 'metabase.driver/can-connect-with-details?) engine details))
     "Unable to connect to Metabase DB.")
   (log/info (str "Verify Database Connection ... ✅")))
 
@@ -182,7 +182,7 @@
   ;; Do any custom code-based migrations now that the db structure is up to date
   ;; NOTE: we use dynamic resolution to prevent circular dependencies
   (require 'metabase.db.migrations)
-  (@(resolve 'metabase.db.migrations/run-all)))
+  ((resolve 'metabase.db.migrations/run-all)))
 
 (defn setup-db-if-needed
   "Call `setup-db` if DB is not already setup; otherwise no-op."

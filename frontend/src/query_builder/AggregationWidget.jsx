@@ -27,6 +27,7 @@ export default class AggregationWidget extends Component {
     static propTypes = {
         aggregation: PropTypes.array.isRequired,
         tableMetadata: PropTypes.object.isRequired,
+        customFields: PropTypes.object,
         updateAggregation: PropTypes.func.isRequired
     };
 
@@ -72,6 +73,7 @@ export default class AggregationWidget extends Component {
                             tableMetadata={tableMetadata}
                             field={fieldId}
                             fieldOptions={Query.getFieldOptions(tableMetadata.fields, true)}
+                            customFieldOptions={this.props.customFields}
                         />
                     </div>
                 }
@@ -106,6 +108,7 @@ export default class AggregationWidget extends Component {
                         aggregation={aggregation}
                         availableAggregations={this.state.availableAggregations}
                         tableMetadata={tableMetadata}
+                        customFields={this.props.customFields}
                         onCommitAggregation={this.setAggregation}
                         onClose={this.close}
                     />

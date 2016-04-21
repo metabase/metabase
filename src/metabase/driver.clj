@@ -114,7 +114,8 @@
      *  `:foreign-keys`
      *  `:nested-fields`
      *  `:set-timezone`
-     *  `:standard-deviation-aggregations`")
+     *  `:standard-deviation-aggregations`
+     *  `:expressions`")
 
   (field-values-lazy-seq ^clojure.lang.Sequential [this, ^FieldInstance field]
     "Return a lazy sequence of all values of FIELD.
@@ -354,7 +355,7 @@
   "Process a structured or native query, and return the result."
   [query]
   (require 'metabase.driver.query-processor)
-  (@(resolve 'metabase.driver.query-processor/process) (database-id->driver (:database query)) query))
+  ((resolve 'metabase.driver.query-processor/process) (database-id->driver (:database query)) query))
 
 
 ;; ## Query Execution Stuff

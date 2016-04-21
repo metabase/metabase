@@ -113,10 +113,23 @@
   clojure.lang.Named
   (getName [_] (name field)))
 
+(def NonEmptyString
+  "Schema for a non-empty string."
+  (s/constrained s/Str seq "non-empty string")) ; TODO - should this be used elsewhere as well, for things like `Field`?
+
+(s/defrecord ExpressionRef [expression-name :- NonEmptyString]
+  clojure.lang.Named
+  (getName [_] expression-name)
+  IField
+  (qualified-name-components [_]
+    [nil expression-name]))
+
+
 ;; Value is the expansion of a value within a QL clause
 ;; Information about the associated Field is included for convenience
 (s/defrecord Value [value   :- (s/maybe (s/cond-pre s/Bool s/Num s/Str))
-                    field   :- Field]) ;; TODO - Value doesn't need the whole field, just the relevant type info / units
+                    field   :- (s/named (s/cond-pre Field ExpressionRef)   ; TODO - Value doesn't need the whole field, just the relevant type info / units
+                                        "field or expression reference")])
 
 ;; e.g. an absolute point in time (literal)
 (s/defrecord DateTimeValue [value :- Timestamp
@@ -156,13 +169,34 @@
                                                  zero?
                                                  "Ag field index should be 0 -- MBQL currently only supports a single aggregation")])
 
+;; TODO - add a method to get matching expression from the query?
+
 (def FieldPlaceholderOrAgRef
   "Schema for either a `FieldPlaceholder` or `AgFieldRef`."
   (s/named (s/cond-pre FieldPlaceholder AgFieldRef) "Valid field (not a field ID or aggregate field reference)"))
 
+(def FieldPlaceholderOrExpressionRef
+  "Schema for either a `FieldPlaceholder` or `ExpressionRef`."
+  (s/named (s/cond-pre FieldPlaceholder ExpressionRef)
+           "Valid field or expression reference."))
+
 
 (s/defrecord RelativeDatetime [amount :- s/Int
                                unit   :- DatetimeValueUnit])
+
+
+(declare RValue)
+
+(def ^:private ExpressionOperator (s/named (s/enum :+ :- :* :/) "Valid expression operator"))
+
+(s/defrecord Expression [operator        :- ExpressionOperator
+                         args            :- [(s/recursive #'RValue)]])
+
+(def AnyField
+  "Schema for a `FieldPlaceholder`, `AgRef`, or `Expression`."
+  (s/named (s/cond-pre ExpressionRef Expression FieldPlaceholderOrAgRef)
+           "Valid field, ag field reference, or expression reference."))
+
 
 (def LiteralDatetimeString
   "Schema for an MBQL datetime string literal, in ISO-8601 format."
@@ -186,7 +220,7 @@
 
 ;; Replace values with these during first pass over Query.
 ;; Include associated Field ID so appropriate the info can be found during Field resolution
-(s/defrecord ValuePlaceholder [field-placeholder :- FieldPlaceholder
+(s/defrecord ValuePlaceholder [field-placeholder :- FieldPlaceholderOrExpressionRef
                                value             :- AnyValue])
 
 (def OrderableValuePlaceholder
@@ -204,6 +238,12 @@
 ;; (def FieldOrOrderableValue (s/named (s/cond-pre FieldPlaceholder OrderableValuePlaceholder) "Field or orderable value (number or datetime)"))
 ;; (def FieldOrStringValue    (s/named (s/cond-pre FieldPlaceholder StringValuePlaceholder)    "Field or string literal"))
 
+(def RValue
+  "Schema for anything that can be an [RValue](https://github.com/metabase/metabase/wiki/Query-Language-'98#rvalues) -
+   a `Field`, `Value`, or `Expression`."
+  (s/named (s/cond-pre AnyValue FieldPlaceholderOrExpressionRef Expression)
+           "RValue"))
+
 
 ;;; # ------------------------------------------------------------ CLAUSE SCHEMAS ------------------------------------------------------------
 
@@ -211,7 +251,7 @@
 
 (s/defrecord AggregationWithField [aggregation-type :- (s/named (s/enum :avg :count :cumulative-sum :distinct :max :min :stddev :sum)
                                                                 "Valid aggregation type")
-                                   field            :- FieldPlaceholder])
+                                   field            :- FieldPlaceholderOrExpressionRef])
 
 (def Aggregation
   "Schema for a top-level `aggregation` clause in an MBQL query."
@@ -225,20 +265,20 @@
 
 
 (s/defrecord EqualityFilter [filter-type :- (s/enum := :!=)
-                             field       :- FieldPlaceholder
+                             field       :- FieldPlaceholderOrExpressionRef
                              value       :- FieldOrAnyValue])
 
 (s/defrecord ComparisonFilter [filter-type :- (s/enum :< :<= :> :>=)
-                               field       :- FieldPlaceholder
+                               field       :- FieldPlaceholderOrExpressionRef
                                value       :- OrderableValuePlaceholder])
 
 (s/defrecord BetweenFilter [filter-type  :- (s/eq :between)
                             min-val      :- OrderableValuePlaceholder
-                            field        :- FieldPlaceholder
+                            field        :- FieldPlaceholderOrExpressionRef
                             max-val      :- OrderableValuePlaceholder])
 
 (s/defrecord StringFilter [filter-type :- (s/enum :starts-with :contains :ends-with)
-                           field       :- FieldPlaceholder
+                           field       :- FieldPlaceholderOrExpressionRef
                            value       :- StringValuePlaceholder])
 
 (def SimpleFilterClause
@@ -262,7 +302,7 @@
 
 (def OrderBy
   "Schema for top-level `order-by` clause in an MBQL query."
-  (s/named {:field     FieldPlaceholderOrAgRef
+  (s/named {:field     AnyField
             :direction (s/named (s/enum :ascending :descending) "Valid order-by direction")}
            "Valid order-by subclause"))
 
@@ -273,14 +313,14 @@
             :items IntGreaterThanZero}
            "Valid page clause"))
 
-
 (def Query
   "Schema for an MBQL query."
   {(s/optional-key :aggregation) Aggregation
-   (s/optional-key :breakout)    [FieldPlaceholder]
-   (s/optional-key :fields)      [FieldPlaceholderOrAgRef]
+   (s/optional-key :breakout)    [FieldPlaceholderOrExpressionRef]
+   (s/optional-key :fields)      [AnyField]
    (s/optional-key :filter)      Filter
    (s/optional-key :limit)       IntGreaterThanZero
    (s/optional-key :order-by)    [OrderBy]
    (s/optional-key :page)        Page
+   (s/optional-key :expressions) {s/Keyword Expression}
    :source-table                 IntGreaterThanZero})

@@ -130,15 +130,8 @@ export default class TableInteractive extends Component {
     }
 
     setSort(column) {
-        if (column.id == null) {
-            // ICK.  this is hacky for dealing with aggregations.  need something better
-            this.props.setSortFn(["aggregation", 0]);
-        } else if (column.unit != null) {
-            this.props.setSortFn(["datetime_field", column.id, "as", column.unit]);
-        } else {
-            this.props.setSortFn(column.id);
-        }
-
+        // lets completely delegate this to someone else up the stack :)
+        this.props.setSortFn(column);
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Sort', 'table column');
     }
 

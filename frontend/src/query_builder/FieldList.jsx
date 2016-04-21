@@ -31,6 +31,7 @@ export default class FieldList extends Component {
     static propTypes = {
         field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
         fieldOptions: PropTypes.object.isRequired,
+        customFieldOptions: PropTypes.object,
         segmentOptions: PropTypes.array,
         tableName: PropTypes.string,
         onFieldChange: PropTypes.func.isRequired,
@@ -44,16 +45,24 @@ export default class FieldList extends Component {
     }
 
     componentWillReceiveProps(newProps) {
-        let { tableMetadata, field, fieldOptions, segmentOptions } = newProps;
+        let { tableMetadata, field, fieldOptions, customFieldOptions, segmentOptions } = newProps;
         let tableName = tableMetadata.display_name;
 
         let specialOptions = [];
+        if (customFieldOptions) {
+            specialOptions = Object.keys(customFieldOptions).map(name => ({
+                name: name,
+                value: ["expression", name],
+                customField: customFieldOptions[name]
+            }));
+        }
+
         if (segmentOptions) {
-            specialOptions = segmentOptions.map(segment => ({
+            specialOptions = specialOptions.concat(segmentOptions.map(segment => ({
                 name: segment.name,
                 value: ["SEGMENT", segment.id],
                 segment: segment
-            }));
+            })));
         }
 
         let mainSection = {
@@ -147,7 +156,9 @@ export default class FieldList extends Component {
 
     getItemClasses(item, itemIndex) {
         if (item.segment) {
-            return "List-item--segment"
+            return "List-item--segment";
+        } else if (item.customField) {
+            return "List-item--customfield";
         } else {
             return null;
         }

@@ -1,10 +1,12 @@
 (ns metabase.driver.query-processor.expand
   "Converts a Query Dict as received by the API into an *expanded* one that contains extra information that will be needed to
    construct the appropriate native Query, and perform various post-processing steps such as Field ordering."
-  (:refer-clojure :exclude [< <= > >= = != and or not filter count distinct sum min max])
+  (:refer-clojure :exclude [< <= > >= = != and or not filter count distinct sum min max + - / *])
   (:require (clojure [core :as core]
+                     [edn :as edn]
                      [string :as str])
             [clojure.tools.logging :as log]
+            [korma.core :as k]
             [schema.core :as s]
             [metabase.db :as db]
             [metabase.driver :as driver]
@@ -17,7 +19,9 @@
                                                       ComparisonFilter
                                                       CompoundFilter
                                                       EqualityFilter
+                                                      ExpressionRef
                                                       FieldPlaceholder
+                                                      Expression
                                                       NotFilter
                                                       RelativeDatetime
                                                       StringFilter
@@ -50,7 +54,7 @@
   [id :- i/IntGreaterThanZero]
   (i/map->FieldPlaceholder {:field-id id}))
 
-(s/defn ^:private ^:always-validate field :- i/FieldPlaceholderOrAgRef
+(s/defn ^:private ^:always-validate field :- i/AnyField
   "Generic reference to a `Field`. F can be an integer Field ID, or various other forms like `fk->` or `aggregation`."
   [f]
   (if (integer? f)
@@ -87,7 +91,8 @@
 (s/defn ^:private ^:always-validate field-or-value
   "Use instead of `value` when something may be either a field or a value."
   [f v]
-  (if (instance? FieldPlaceholder v)
+  (if (core/or (instance? FieldPlaceholder v)
+               (instance? ExpressionRef v))
     v
     (value f v)))
 
@@ -103,6 +108,10 @@
   ([n :- s/Int, unit] (i/map->RelativeDatetime {:amount n, :unit (if (zero? n)
                                                                    :day                        ; give :unit a default value so we can simplify the schema a bit and require a :unit
                                                                    (normalize-token unit))})))
+
+(s/defn ^:ql ^:always-validate expression :- ExpressionRef
+  [expression-name :- (s/cond-pre s/Str s/Keyword)]
+  (i/strict-map->ExpressionRef {:expression-name (name expression-name)}))
 
 
 ;;; ## aggregation
@@ -353,6 +362,28 @@
   [query, table-id :- s/Int]
   (assoc query :source-table table-id))
 
+
+
+;;; ## calculated columns
+
+(s/defn ^:ql ^:always-validate expressions
+  "Top-level clause. Add additional calculated fields to a query."
+  [query, m :- {s/Keyword Expression}]
+  (assoc query :expressions m))
+
+(s/defn ^:private ^:always-validate expression-fn :- Expression
+  [k :- s/Keyword, & args]
+  (i/strict-map->Expression {:operator k, :args (vec (for [arg args]
+                                                       (if (number? arg)
+                                                         (float arg) ; convert args to floats so things like 5 / 10 -> 0.5 instead of 0
+                                                         arg)))}))
+
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} + "Arithmetic addition function."       (partial expression-fn :+))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} - "Arithmetic subtraction function."    (partial expression-fn :-))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} * "Arithmetic multiplication function." (partial expression-fn :*))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} / "Arithmetic division function."       (partial expression-fn :/))
+
+;;; EXPRESSION PARSING
 
 ;;; # ------------------------------------------------------------ Expansion ------------------------------------------------------------
 

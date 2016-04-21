@@ -71,6 +71,9 @@ export default class PartialQueryBuilder extends Component {
                     features={features}
                     tableMetadata={tableMetadata}
                     setQueryFn={this.setQuery}
+                    isShowingDataReference={false}
+                    setDatabaseFn={null}
+                    setSourceTableFn={null}
                 >
                     <div className="flex align-center mx2 my2">
                         <span className="text-bold px3">{previewSummary}</span>

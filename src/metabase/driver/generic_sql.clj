@@ -214,7 +214,8 @@
   "Default implementation of `IDriver` `features` for SQL drivers."
   [driver]
   (cond-> #{:standard-deviation-aggregations
-            :foreign-keys}
+            :foreign-keys
+            :expressions}
     (set-timezone-sql driver) (conj :set-timezone)))
 
 
