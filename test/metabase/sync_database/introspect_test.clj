@@ -209,7 +209,7 @@
      :updated_at   true}]]
   (tu/with-temp* [database/Database  [{database-id :id}]
                   raw-table/RawTable [{raw-table-id :id, :as table} {:database_id database-id}]]
-    (let [get-columns #(->> (db/sel :many RawColumn :raw_table_id raw-table-id)
+    (let [get-columns #(->> (db/sel :many RawColumn :raw_table_id raw-table-id (k/order :id))
                             (mapv tu/boolean-ids-and-timestamps))]
       ;; original list should be empty
       [(get-columns)

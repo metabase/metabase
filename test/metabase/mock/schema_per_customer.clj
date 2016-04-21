@@ -6,6 +6,7 @@
 
 ;; NOTE: we throw in a "common" schema which shares an FK across all other schemas just to get tricky
 (def ^:const schema-per-customer-tables
+  "Docstring"
   {nil      {"city"   {:name   "city"
                        :fields #{{:name         "id"
                                   :base-type    :IntegerField

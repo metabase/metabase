@@ -301,7 +301,7 @@
     ;; setup a couple things we'll use in the test
     (introspect/introspect-database-and-update-raw-tables! (moviedb/->MovieDbDriver) db)
     (update-data-models-from-raw-tables! db)
-    (let [get-tables #(->> (hydrate/hydrate (db/sel :many table/Table :db_id database-id) :fields)
+    (let [get-tables #(->> (hydrate/hydrate (db/sel :many table/Table :db_id database-id (k/order :id)) :fields)
                            (mapv tu/boolean-ids-and-timestamps))]
       ;; here we go
       [(get-tables)
