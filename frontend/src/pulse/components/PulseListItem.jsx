@@ -44,8 +44,8 @@ export default class PulseListItem extends Component {
                     )}
                 </ol>
                 <ul className="border-top px4 bg-grey-0">
-                    {pulse.channels.map(channel =>
-                        <li className="border-row-divider">
+                    {pulse.channels.filter(channel => channel.enabled).map(channel =>
+                        <li key={channel.id} className="border-row-divider">
                             <PulseListChannel
                                 pulse={pulse}
                                 channel={channel}
