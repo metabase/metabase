@@ -2,15 +2,23 @@
   (:require [expectations :refer :all]
             [korma.core :as k]
             [metabase.db :as db]
+            [metabase.mock.toucanery :as toucanery]
             [metabase.models.database :as database]
             [metabase.models.field :as field]
+            [metabase.models.hydrate :as hydrate]
             [metabase.models.raw-table :as raw-table]
             [metabase.models.table :as table]
+            [metabase.sync-database.introspect :as introspect]
             [metabase.sync-database.sync-dynamic :refer :all]
             [metabase.test.util :as tu]))
 
 (tu/resolve-private-fns metabase.sync-database.sync-dynamic
   save-table-fields!)
+
+(defn- get-tables [database-id]
+  (->> (hydrate/hydrate (db/sel :many table/Table :db_id database-id (k/order :id)) :fields)
+       (mapv tu/boolean-ids-and-timestamps)))
+
 
 ;; save-table-fields!  (also covers save-nested-fields!)
 (expect
@@ -273,7 +281,70 @@
          (get-fields))])))
 
 
-;; TODO: update-data-models-for-table!
+;; scan-table-and-update-data-model!
+(expect
+  [[(last toucanery/toucanery-tables-and-fields)]
+   [(last toucanery/toucanery-tables-and-fields)]
+   [(-> (last toucanery/toucanery-tables-and-fields)
+       (assoc :active false
+              :fields []))]]
+  (tu/with-temp* [database/Database [{database-id :id, :as db} {:engine :toucanery}]]
+    (let [driver (toucanery/->ToucaneryDriver)]
+      ;; do a quick introspection to add the RawTables to the db
+      (introspect/introspect-database-and-update-raw-tables! driver db)
+      ;; stub out the Table we are going to sync for real below
+      (let [raw-table-id (db/sel :one :field [raw-table/RawTable :id] :database_id database-id, :name "transactions")
+            tbl          (db/ins table/Table
+                           :db_id        database-id
+                           :raw_table_id raw-table-id
+                           :name         "transactions"
+                           :active       true)]
+        [;; now lets run a sync and check what we got
+         (do
+           (scan-table-and-update-data-model! driver db tbl)
+           (get-tables database-id))
+         ;; run the sync a second time to see how we respond to repeat syncing (should be same since nothing changed)
+         (do
+           (scan-table-and-update-data-model! driver db tbl)
+           (get-tables database-id))
+         ;; one more time, but lets disable the table this time and ensure that's handled properly
+         (do
+           (k/update raw-table/RawTable
+             (k/set-fields {:active false})
+             (k/where {:database_id database-id, :name "transactions"}))
+           (scan-table-and-update-data-model! driver db tbl)
+           (get-tables database-id))]))))
 
-;; TODO: update-data-models-from-raw-tables!
-;; make sure to test case where FK relationship tables are out of order
+
+;; scan-database-and-update-data-model!
+(expect
+  [toucanery/toucanery-raw-tables-and-columns
+   toucanery/toucanery-tables-and-fields
+   toucanery/toucanery-tables-and-fields
+   (conj (vec (drop-last toucanery/toucanery-tables-and-fields))
+         (-> (last toucanery/toucanery-tables-and-fields)
+             (assoc :active false
+                    :fields [])))]
+  (tu/with-temp* [database/Database [{database-id :id, :as db} {:engine :toucanery}]]
+    (let [driver (toucanery/->ToucaneryDriver)]
+      ;; do a quick introspection to add the RawTables to the db
+      (introspect/introspect-database-and-update-raw-tables! driver db)
+
+      [;; first check that the raw tables stack up as expected, especially that fields were skipped because this is a :dynamic-schema db
+       (->> (hydrate/hydrate (db/sel :many raw-table/RawTable :database_id database-id (k/order :id)) :columns)
+            (mapv tu/boolean-ids-and-timestamps))
+       ;; now lets run a sync and check what we got
+       (do
+         (scan-database-and-update-data-model! driver db)
+         (get-tables database-id))
+       ;; run the sync a second time to see how we respond to repeat syncing (should be same since nothing changed)
+       (do
+         (scan-database-and-update-data-model! driver db)
+         (get-tables database-id))
+       ;; one more time, but lets disable a table this time and ensure that's handled properly
+       (do
+         (k/update raw-table/RawTable
+           (k/set-fields {:active false})
+           (k/where {:database_id database-id, :name "transactions"}))
+         (scan-database-and-update-data-model! driver db)
+         (get-tables database-id))])))

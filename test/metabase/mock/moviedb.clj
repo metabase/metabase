@@ -1,4 +1,5 @@
 (ns metabase.mock.moviedb
+  "A simple relational schema based mocked for testing.  4 tables w/ some FKs."
   (:require [metabase.driver :as driver]))
 
 

@@ -111,14 +111,7 @@
                                          (k/where {:db_id database-id
                                                    :active true
                                                    :raw_table.active false}))))]
-    ;; retire the tables
-    (k/update table/Table
-      (k/where {:id [in tables-to-remove]})
-      (k/set-fields {:active false}))
-    ;; retire the fields of retired tables
-    (k/update field/Field
-      (k/where {:table_id [in tables-to-remove]})
-      (k/set-fields {:visibility_type "retired"}))))
+    (table/retire-tables tables-to-remove)))
 
 
 (defn update-data-models-for-table!

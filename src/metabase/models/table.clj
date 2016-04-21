@@ -83,6 +83,20 @@
   (db/sel :one :field [Table :db_id] :id table-id))
 
 
+(defn retire-tables
+  "Retire all `Tables` in the list of TABLE-IDs along with all of each tables `Fields`."
+  [table-ids]
+  {:pre [(set? table-ids)
+         (every? integer? table-ids)]}
+  ;; retire the tables
+  (k/update Table
+    (k/where {:id [in table-ids]})
+    (k/set-fields {:active false}))
+  ;; retire the fields of retired tables
+  (k/update Field
+    (k/where {:table_id [in table-ids]})
+    (k/set-fields {:visibility_type "retired"})))
+
 (defn update-table
   "Update `Table` with the data from TABLE-DEF."
   [{:keys [id display_name], :as existing-table} {table-name :name}]

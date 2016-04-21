@@ -60,13 +60,17 @@
 
 (defn scan-table-and-update-data-model!
   "Update the working `Table` and `Field` metadata for the given `Table`."
-  [driver database {raw-table-id :raw_table_id, :as existing-table}]
+  [driver database {raw-table-id :raw_table_id, table-id :id, :as existing-table}]
   (when-let [raw-tbl (db/sel :one raw-table/RawTable :id raw-table-id)]
     (try
-      (let [table-def (u/prog1 (driver/describe-table driver database (select-keys existing-table [:name :schema]))
-                        (schema/validate i/DescribeTable <>))]
-        (-> (table/update-table existing-table raw-tbl)
-            (save-table-fields! (:fields table-def))))
+      (if-not (:active raw-tbl)
+        ;; looks like table was deactivated, so lets retire this Table
+        (table/retire-tables #{table-id})
+        ;; otherwise we ask the driver for an updated table description and save that info
+        (let [table-def (u/prog1 (driver/describe-table driver database (select-keys existing-table [:name :schema]))
+                          (schema/validate i/DescribeTable <>))]
+          (-> (table/update-table existing-table raw-tbl)
+              (save-table-fields! (:fields table-def)))))
       ;; NOTE: dynamic schemas don't have FKs
       (catch Throwable t
         (log/error (u/format-color 'red "Unexpected error scanning table") t)))))
