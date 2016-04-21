@@ -97,7 +97,8 @@
   ([card-id-or-name & _]
    (let-404 [{card-id :id} (id-or-name->card card-id-or-name)]
      (do-async (pulses/send-pulse! {:cards    [{:id card-id}]
-                                    :channels [{:channel_type   "slack"
+                                    :channels [{:enabled        true
+                                                :channel_type   "slack"
                                                 :recipients     []
                                                 :details        {:channel *channel-id*}
                                                 :schedule_type  "hourly"
