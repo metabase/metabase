@@ -31,7 +31,8 @@ export default class AggregationPopover extends Component {
         availableAggregations: PropTypes.array.isRequired,
         onCommitAggregation: PropTypes.func.isRequired,
         onClose: PropTypes.func.isRequired,
-        tableMetadata: PropTypes.object.isRequired
+        tableMetadata: PropTypes.object.isRequired,
+        customFields: PropTypes.object
     };
 
 
@@ -169,6 +170,7 @@ export default class AggregationPopover extends Component {
                         tableMetadata={tableMetadata}
                         field={fieldId}
                         fieldOptions={this.getAggregationFieldOptions(agg)}
+                        customFieldOptions={this.props.customFields}
                         onFieldChange={this.onPickField}
                         enableTimeGrouping={false}
                     />

@@ -4,17 +4,16 @@
             [clojure.tools.logging :as log]
             (korma [core :as k]
                    [db :as kdb])
-            [korma.sql.utils :as kutils]
             (metabase [config :as config]
                       [db :as db]
                       [driver :as driver])
-            (metabase.driver [generic-sql :as sql]
-                             [sync :as sync])
+            [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
             metabase.driver.query-processor.interface
             (metabase.models [database :refer [Database]]
                              [field :as field]
                              [table :as table])
+            [metabase.sync-database.analyze :as analyze]
             [metabase.util :as u]
             [metabase.util.korma-extensions :as kx])
   (:import (java.util Collections Date)
@@ -100,7 +99,7 @@
   {:pre [(map? database)]}
   {:tables (set (for [^TableList$Tables table (.getTables (list-tables database))
                       :let [^TableReference tableref (.getTableReference table)]]
-                  {:name (.getTableId tableref)}))})
+                  {:schema nil, :name (.getTableId tableref)}))})
 
 (defn- can-connect? [details-map]
   {:pre [(map? details-map)]}
@@ -128,12 +127,10 @@
     {:name            (.getName field)
      :base-type       (bigquery-type->base-type (.getType field))}))
 
-(defn- describe-table
-  ([table]
-   (describe-table (table/database table) (:name table)))
-  ([database table-name]
-   {:name   table-name
-    :fields (set (table-schema->metabase-field-info (.getSchema (get-table database table-name))))}))
+(defn- describe-table [database {table-name :name}]
+  {:schema nil
+   :name   table-name
+   :fields (set (table-schema->metabase-field-info (.getSchema (get-table database table-name))))})
 
 
 (defn- ^QueryResponse execute-query
@@ -255,7 +252,7 @@
 (defn- date [unit expr]
   {:pre [expr]}
   (case unit
-    :default         (kx/->timestamp expr)
+    :default         expr
     :minute          (trunc-with-format "%Y-%m-%d %H:%M:00" expr)
     :minute-of-hour  (kx/minute expr)
     :hour            (trunc-with-format "%Y-%m-%d %H:00:00" expr)
@@ -407,7 +404,7 @@
 
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table         sync/generic-analyze-table
+         {:analyze-table         analyze/generic-analyze-table
           :can-connect?          (u/drop-first-arg can-connect?)
           :date-interval         (u/drop-first-arg (comp prepare-value u/relative-date))
           :describe-database     (u/drop-first-arg describe-database)

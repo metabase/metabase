@@ -13,6 +13,7 @@
             [metabase.util :as u])
   (:import (metabase.driver.query_processor.interface DateTimeField
                                                       DateTimeValue
+                                                      ExpressionRef
                                                       Field
                                                       FieldPlaceholder
                                                       RelativeDatetime
@@ -121,6 +122,10 @@
 
 (extend-protocol IParseValueForField
   Field
+  (parse-value [this value]
+    (s/validate Value (map->Value {:field this, :value value})))
+
+  ExpressionRef
   (parse-value [this value]
     (s/validate Value (map->Value {:field this, :value value})))
 

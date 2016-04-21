@@ -140,4 +140,5 @@
 ;;; Load metabase.test.data.* namespaces for all available drivers
 (doseq [[engine _] (driver/available-drivers)]
   (let [driver-test-namespace (symbol (str "metabase.test.data." (name engine)))]
-    (require driver-test-namespace)))
+    (when (find-ns driver-test-namespace)
+      (require driver-test-namespace))))

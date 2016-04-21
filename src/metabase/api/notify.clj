@@ -5,7 +5,8 @@
             [metabase.db :refer :all]
             [metabase.driver :as driver]
             (metabase.models [database :refer [Database]]
-                             [table :refer [Table]])))
+                             [table :refer [Table]])
+            [metabase.sync-database :as sync-database]))
 
 
 (defendpoint POST "/db/:id"
@@ -15,10 +16,10 @@
   (let-404 [database (Database id)]
     (cond
       table_id (when-let [table (sel :one Table :db_id id :id (int table_id))]
-                 (future (driver/sync-table! table)))
+                 (future (sync-database/sync-table! table)))
       table_name (when-let [table (sel :one Table :db_id id :name table_name)]
-                   (future (driver/sync-table! table)))
-      :else (future (driver/sync-database! database))))
+                   (future (sync-database/sync-table! table)))
+      :else (future (sync-database/sync-database! database))))
   {:success true})
 
 

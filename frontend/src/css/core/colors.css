@@ -84,7 +84,7 @@
 /* warning */
 
 .text-warning {
-  color: var(--warning-color);
+  color: var(--warning-color) !important;
 }
 
 .bg-warning {

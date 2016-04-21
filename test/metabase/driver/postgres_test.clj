@@ -1,10 +1,13 @@
 (ns metabase.driver.postgres-test
   (:require [expectations :refer :all]
+            [korma.core :as k]
+            [metabase.db :as db]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.query-processor.expand :as ql]
+            [metabase.models.field :refer [Field]]
             [metabase.test.data :as data]
             (metabase.test.data [datasets :refer [expect-with-engine]]
-                                [interface :refer [def-database-definition]])
+                                [interface :refer [create-database-definition def-database-definition]])
             [metabase.util :as u])
   (:import metabase.driver.postgres.PostgresDriver))
 
@@ -38,6 +41,19 @@
                                                    :port   5432
                                                    :dbname "bird_sightings"
                                                    :user   "camsaul"}))
+
+;; Verify that we identify JSON columns and mark metadata properly during sync
+(expect-with-engine :postgres
+  :json
+  (data/with-temp-db
+    [_
+     (create-database-definition "Postgres with a JSON Field"
+                                 ["venues"
+                                  [{:field-name "address", :base-type {:native "json"}}]
+                                  [[(k/raw "to_json('{\"street\": \"431 Natoma\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": 94103}'::text)")]]])]
+    (db/sel :one :field [Field :special_type] :id (data/id :venues :address))))
+
+
 ;;; # UUID Support
 (def-database-definition ^:const ^:private with-uuid
   ["users"

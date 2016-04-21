@@ -1,6 +1,9 @@
 (ns metabase.models.field
-  (:require [korma.core :as k]
-            [metabase.db :refer :all]
+  (:require [clojure.data :as d]
+            [clojure.string :as s]
+            [korma.core :as k]
+            [medley.core :as m]
+            [metabase.db :as db]
             (metabase.models [common :as common]
                              [field-values :refer [FieldValues]]
                              [foreign-key :refer [ForeignKey]]
@@ -85,22 +88,22 @@
     (merge defaults field)))
 
 (defn- pre-cascade-delete [{:keys [id]}]
-  (cascade-delete Field :parent_id id)
-  (cascade-delete ForeignKey (k/where (or (= :origin_id id)
+  (db/cascade-delete Field :parent_id id)
+  (db/cascade-delete ForeignKey (k/where (or (= :origin_id id)
                                           (= :destination_id id))))
-  (cascade-delete 'FieldValues :field_id id))
+  (db/cascade-delete 'FieldValues :field_id id))
 
 (defn ^:hydrate values
   "Return the `FieldValues` associated with this FIELD."
   [{:keys [id]}]
-  (sel :many [FieldValues :field_id :values], :field_id id))
+  (db/sel :many [FieldValues :field_id :values], :field_id id))
 
 (defn qualified-name-components
   "Return the pieces that represent a path to FIELD, of the form `[table-name parent-fields-name* field-name]`."
   [{field-name :name, table-id :table_id, parent-id :parent_id}]
   (conj (if-let [parent (Field parent-id)]
           (qualified-name-components parent)
-          [(sel :one :field ['Table :name], :id table-id)])
+          [(db/sel :one :field ['Table :name], :id table-id)])
         field-name))
 
 (defn qualified-name
@@ -112,7 +115,7 @@
   "Return the `Table` associated with this `Field`."
   {:arglists '([field])}
   [{:keys [table_id]}]
-  (sel :one 'Table, :id table_id))
+  (db/sel :one 'Table, :id table_id))
 
 (defn field->fk-field
   "Attempts to follow a `ForeignKey` from the the given FIELD to a destination `Field`.
@@ -121,7 +124,7 @@
   {:hydrate :target}
   [{:keys [id special_type]}]
   (when (= :fk special_type)
-    (let [dest-id (sel :one :field [ForeignKey :destination_id] :origin_id id)]
+    (let [dest-id (db/sel :one :field [ForeignKey :destination_id] :origin_id id)]
       (Field dest-id))))
 
 (u/strict-extend (class Field)
@@ -137,3 +140,110 @@
                     :can-write?         i/superuser?
                     :pre-insert         pre-insert
                     :pre-cascade-delete pre-cascade-delete}))
+
+
+(def ^{:arglists '([field-name base-type])} infer-field-special-type
+  "If `name` and `base-type` matches a known pattern, return the `special_type` we should assign to it."
+  (let [bool-or-int #{:BooleanField :BigIntegerField :IntegerField}
+        float       #{:DecimalField :FloatField}
+        int-or-text #{:BigIntegerField :IntegerField :CharField :TextField}
+        text        #{:CharField :TextField}
+        ;; tuples of [pattern set-of-valid-base-types special-type
+        ;; * Convert field name to lowercase before matching against a pattern
+        ;; * consider a nil set-of-valid-base-types to mean "match any base type"
+        pattern+base-types+special-type [[#"^.*_lat$"       float       :latitude]
+                                         [#"^.*_lon$"       float       :longitude]
+                                         [#"^.*_lng$"       float       :longitude]
+                                         [#"^.*_long$"      float       :longitude]
+                                         [#"^.*_longitude$" float       :longitude]
+                                         [#"^.*_rating$"    int-or-text :category]
+                                         [#"^.*_type$"      int-or-text :category]
+                                         [#"^.*_url$"       text        :url]
+                                         [#"^_latitude$"    float       :latitude]
+                                         [#"^active$"       bool-or-int :category]
+                                         [#"^city$"         text        :city]
+                                         [#"^country$"      text        :country]
+                                         [#"^countryCode$"  text        :country]
+                                         [#"^currency$"     int-or-text :category]
+                                         [#"^first_name$"   text        :name]
+                                         [#"^full_name$"    text        :name]
+                                         [#"^gender$"       int-or-text :category]
+                                         [#"^last_name$"    text        :name]
+                                         [#"^lat$"          float       :latitude]
+                                         [#"^latitude$"     float       :latitude]
+                                         [#"^lon$"          float       :longitude]
+                                         [#"^lng$"          float       :longitude]
+                                         [#"^long$"         float       :longitude]
+                                         [#"^longitude$"    float       :longitude]
+                                         [#"^name$"         text        :name]
+                                         [#"^postalCode$"   int-or-text :zip_code]
+                                         [#"^postal_code$"  int-or-text :zip_code]
+                                         [#"^rating$"       int-or-text :category]
+                                         [#"^role$"         int-or-text :category]
+                                         [#"^sex$"          int-or-text :category]
+                                         [#"^state$"        text        :state]
+                                         [#"^status$"       int-or-text :category]
+                                         [#"^type$"         int-or-text :category]
+                                         [#"^url$"          text        :url]
+                                         [#"^zip_code$"     int-or-text :zip_code]
+                                         [#"^zipcode$"      int-or-text :zip_code]]]
+    ;; Check that all the pattern tuples are valid
+    (doseq [[name-pattern base-types special-type] pattern+base-types+special-type]
+      (assert (= (type name-pattern) java.util.regex.Pattern))
+      (assert (every? (partial contains? base-types) base-types))
+      (assert (contains? special-types special-type)))
+
+    (fn [field-name base_type]
+      (when (and (string? field-name)
+                 (keyword? base_type))
+        (or (when (= "id" (s/lower-case field-name)) :id)
+            (when-let [matching-pattern (m/find-first (fn [[name-pattern valid-base-types _]]
+                                                        (and (or (nil? valid-base-types)
+                                                                 (contains? valid-base-types base_type))
+                                                             (re-matches name-pattern (s/lower-case field-name))))
+                                                      pattern+base-types+special-type)]
+              ;; the actual special-type is the last element of the pattern
+              (last matching-pattern)))))))
+
+
+(defn update-field
+  "Update an existing `Field` from the given FIELD-DEF."
+  [{:keys [id], :as existing-field} {field-name :name, :keys [base-type special-type pk? parent-id]}]
+  (let [updated-field (assoc existing-field
+                        :base_type    base-type
+                        :display_name (or (:display_name existing-field)
+                                          (common/name->human-readable-name field-name))
+                        :special_type (or (:special_type existing-field)
+                                          special-type
+                                          (when pk? :id)
+                                          (infer-field-special-type field-name base-type))
+
+                        :parent_id    parent-id)
+        [is-diff? _ _] (d/diff updated-field existing-field)]
+    ;; if we have a different base-type or special-type, then update
+    (when is-diff?
+      (db/upd Field id
+              :display_name (:display_name updated-field)
+              :base_type    base-type
+              :special_type (:special_type updated-field)
+              :parent_id    parent-id))
+    ;; return the updated field when we are done
+    updated-field))
+
+
+(defn create-field
+  "Create a new `Field` from the given FIELD-DEF."
+  [table-id {field-name :name, :keys [base-type special-type pk? parent-id raw-column-id]}]
+  {:pre [(integer? table-id)
+         (string? field-name)
+         (contains? base-types base-type)]}
+  (db/ins Field
+          :table_id       table-id
+          :raw_column_id  raw-column-id
+          :name           field-name
+          :display_name   (common/name->human-readable-name field-name)
+          :base_type      base-type
+          :special_type   (or special-type
+                              (when pk? :id)
+                              (infer-field-special-type field-name base-type))
+          :parent_id      parent-id))

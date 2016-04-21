@@ -45,7 +45,7 @@
   (log/debug (format "Creating FieldValues for Field %s..." (or field-name field-id))) ; use field name if available
   (ins FieldValues
     :field_id              field-id
-    :values                (@(resolve 'metabase.db.metadata-queries/field-distinct-values) field)
+    :values                ((resolve 'metabase.db.metadata-queries/field-distinct-values) field)
     :human_readable_values human-readable-values))
 
 (defn update-field-values!
@@ -55,7 +55,7 @@
          (field-should-have-field-values? field)]}
   (if-let [field-values (sel :one FieldValues :field_id field-id)]
     (upd FieldValues (:id field-values)
-      :values (@(resolve 'metabase.db.metadata-queries/field-distinct-values) field))
+      :values ((resolve 'metabase.db.metadata-queries/field-distinct-values) field))
     (create-field-values field)))
 
 (defn create-field-values-if-needed

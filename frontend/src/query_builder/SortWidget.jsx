@@ -16,6 +16,7 @@ export default class SortWidget extends Component {
     static propTypes = {
         sort: PropTypes.array.isRequired,
         fieldOptions: PropTypes.object.isRequired,
+        customFieldOptions: PropTypes.object,
         tableName: PropTypes.string,
         updateSort: PropTypes.func.isRequired,
         removeSort: PropTypes.func.isRequired,
@@ -69,6 +70,7 @@ export default class SortWidget extends Component {
                     tableMetadata={this.props.tableMetadata}
                     field={this.state.field}
                     fieldOptions={this.props.fieldOptions}
+                    customFieldOptions={this.props.customFieldOptions}
                     setField={this.setField}
                     isInitiallyOpen={this.state.field === null}
                     enableTimeGrouping={false}

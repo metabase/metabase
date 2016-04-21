@@ -118,7 +118,7 @@
 
 (defn- date [_ unit expr]
   (case unit
-    :default         (kx/->timestamp expr)
+    :default         expr
     :minute          (date-trunc :minute expr)
     :minute-of-hour  (extract-integer :minute expr)
     :hour            (date-trunc :hour expr)

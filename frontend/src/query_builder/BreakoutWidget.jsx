@@ -22,6 +22,7 @@ export default class BreakoutWidget extends Component {
         addButton: PropTypes.object,
         field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
         fieldOptions: PropTypes.object.isRequired,
+        customFieldOptions: PropTypes.object,
         setField: PropTypes.func.isRequired,
         isInitiallyOpen: PropTypes.bool,
         tableMetadata: PropTypes.object.isRequired,
@@ -58,6 +59,7 @@ export default class BreakoutWidget extends Component {
                         tableMetadata={this.props.tableMetadata}
                         field={this.props.field}
                         fieldOptions={this.props.fieldOptions}
+                        customFieldOptions={this.props.customFieldOptions}
                         onFieldChange={this.setBreakout}
                         enableTimeGrouping={this.props.enableTimeGrouping}
                     />
@@ -78,6 +80,7 @@ export default class BreakoutWidget extends Component {
                         tableMetadata={this.props.tableMetadata}
                         field={field}
                         fieldOptions={this.props.fieldOptions}
+                        customFieldOptions={this.props.customFieldOptions}
                         removeField={() => this.setBreakout(null)}
                         onClick={this.open}
                     />
