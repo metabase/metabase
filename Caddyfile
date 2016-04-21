@@ -2,6 +2,6 @@ localhost:2020
 
 log
 
-proxy /mb localhost:3000 {
-    without /mb
+proxy /metabase localhost:3000 {
+    without /metabase
 }

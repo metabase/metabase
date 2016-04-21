@@ -243,6 +243,11 @@
    :timezone_short        (short-timezone-name (get :report-timezone))
    :has_sample_dataset    (exists? 'Database, :is_sample true)})
 
+(defn base-href
+  "Return the base-href setting to be used in the <base href=\"...\" /> tag of index.html"
+  []
+  (let [href (get* :base-href)]
+    (if (s/blank? href) "/" href)))
 
 ;;; # IMPLEMENTATION
 
