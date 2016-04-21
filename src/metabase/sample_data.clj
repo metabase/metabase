@@ -2,9 +2,9 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
-            (metabase [db :as db]
-                      [driver :as driver])
+            [metabase.db :as db]
             [metabase.models.database :refer [Database]]
+            [metabase.sync-database :as sync-database]
             [metabase.util :as u]))
 
 
@@ -27,7 +27,7 @@
                                 :details   {:db h2-file}
                                 :engine    :h2
                                 :is_sample true)]
-            (driver/sync-database! db))))
+            (sync-database/sync-database! db))))
       (catch Throwable e
         (log/error (u/format-color 'red "Failed to load sample dataset: %s" (.getMessage e)))))))
 
@@ -35,6 +35,6 @@
   ;; TODO - it would be a bit nicer if we skipped this when the data hasn't changed
   (when-let [db (db/sel :one Database :is_sample true)]
     (try
-      (driver/sync-database! db)
+      (sync-database/sync-database! db)
       (catch Throwable e
         (log/error (u/format-color 'red "Failed to update sample dataset: %s" (.getMessage e)))))))

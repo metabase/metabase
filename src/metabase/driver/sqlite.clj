@@ -43,7 +43,7 @@
             (kx/literal (u/date->iso-8601 expr))
             expr)]
     (case unit
-      :default         (->datetime v)
+      :default         v
       :second          (->datetime (strftime "%Y-%m-%d %H:%M:%S" v))
       :minute          (->datetime (strftime "%Y-%m-%d %H:%M" v))
       :minute-of-hour  (kx/->integer (strftime "%M" v))

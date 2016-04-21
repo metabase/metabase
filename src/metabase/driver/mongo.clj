@@ -12,9 +12,9 @@
                                    [util :refer [*mongo-connection* with-mongo-connection values->base-type]])
             [metabase.models.field :as field]
             [metabase.models.table :as table]
+            [metabase.sync-database.analyze :as analyze]
             [metabase.util :as u]
-            [cheshire.core :as json]
-            [metabase.driver.sync :as sync])
+            [cheshire.core :as json])
   (:import com.mongodb.DB))
 
 (declare field-values-lazy-seq)
@@ -114,10 +114,10 @@
 (defn- describe-database [database]
   (with-mongo-connection [^com.mongodb.DB conn database]
     {:tables (set (for [collection (set/difference (mdb/get-collection-names conn) #{"system.indexes"})]
-                    {:name collection}))}))
+                    {:schema nil, :name collection}))}))
 
-(defn- describe-table [table]
-  (with-mongo-connection [^com.mongodb.DB conn (table/database table)]
+(defn- describe-table [database table]
+  (with-mongo-connection [^com.mongodb.DB conn database]
     ;; TODO: ideally this would take the LAST set of rows added to the table so we could ensure this data changes on reruns
     (let [parsed-rows (try
                         (->> (mc/find-maps conn (:name table))
@@ -132,16 +132,17 @@
                                {}))
                         (catch Throwable t
                           (log/error (format "Error introspecting collection: %s" (:name table)) t)))]
-      {:name   (:name table)
+      {:schema nil
+       :name   (:name table)
        :fields (set (for [field (keys parsed-rows)]
                       (describe-table-field field (field parsed-rows))))})))
 
 (defn- analyze-table [_ table new-field-ids]
   ;; We only care about 1) table counts and 2) field values
-  {:row_count (sync/table-row-count table)
+  {:row_count (analyze/table-row-count table)
    :fields    (for [{:keys [id] :as field} (table/fields table)
-                    :when (sync/test-for-cardinality? field (contains? new-field-ids (:id field)))]
-                (sync/test:cardinality-and-extract-field-values field {:id id}))})
+                    :when (analyze/test-for-cardinality? field (contains? new-field-ids (:id field)))]
+                (analyze/test:cardinality-and-extract-field-values field {:id id}))})
 
 (defn- field-values-lazy-seq [_ {:keys [qualified-name-components table], :as field}]
   (assert (and (map? field)
@@ -192,7 +193,7 @@
                                                            :display-name "Use a secure connection (SSL)?"
                                                            :type         :boolean
                                                            :default      false}])
-          :features                          (constantly #{:nested-fields})
+          :features                          (constantly #{:dynamic-schema :nested-fields})
           :field-values-lazy-seq             field-values-lazy-seq
           :humanize-connection-error-message humanize-connection-error-message
           :process-native                    qp/process-and-run-native

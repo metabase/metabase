@@ -31,6 +31,7 @@
       {"include": {"file": "migrations/030_add_field_visibility_type.yaml"}},
       {"include": {"file": "migrations/031_add_field_fk_target.yaml"}},
       {"include": {"file": "migrations/032_add_label_and_card_label_tables.yaml"}},
-      {"include": {"file": "migrations/033_add_pulse_channel_enabled_field.yaml"}}
+      {"include": {"file": "migrations/033_add_physical_schema_tables.yaml"}},
+      {"include": {"file": "migrations/034_add_pulse_channel_enabled_field.yaml"}}
   ]
 }

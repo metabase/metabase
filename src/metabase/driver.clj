@@ -3,12 +3,9 @@
             [clojure.math.numeric-tower :as math]
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
-            [korma.core :as k]
             [medley.core :as m]
-            [schema.core :as schema]
             [metabase.db :refer [ins sel upd]]
             (metabase.models [database :refer [Database]]
-                             [field :as field]
                              [query-execution :refer [QueryExecution]])
             [metabase.models.setting :refer [defsetting]]
             [metabase.util :as u])
@@ -42,42 +39,6 @@
    :username-incorrect                 "Looks like your username is incorrect."
    :username-or-password-incorrect     "Looks like the username or password is incorrect."})
 
-(def AnalyzeTable
-  "Schema for the expected output of `analyze-table`."
-  {(schema/optional-key :row_count) (schema/maybe schema/Int)
-   (schema/optional-key :fields)    [{:id                                    schema/Int
-                                      (schema/optional-key :special-type)    (apply schema/enum field/special-types)
-                                      (schema/optional-key :preview-display) schema/Bool
-                                      (schema/optional-key :values)          [schema/Any]}]})
-
-(def DescribeDatabase
-  "Schema for the expected output of `describe-database`."
-  {:tables #{{:name                         schema/Str
-              (schema/optional-key :schema) (schema/maybe schema/Str)}}})
-
-(def DescribeTableField
-  "Schema for a given Field as provided in `describe-table` or `analyze-table`."
-  {:name                                  schema/Str
-   :base-type                             (apply schema/enum field/base-types)
-   (schema/optional-key :field-type)      (apply schema/enum field/field-types)
-   (schema/optional-key :special-type)    (apply schema/enum field/special-types)
-   (schema/optional-key :pk?)             schema/Bool
-   (schema/optional-key :nested-fields)   #{(schema/recursive #'DescribeTableField)}
-   (schema/optional-key :custom)          {schema/Any schema/Any}})
-
-(def DescribeTable
-  "Schema for the expected output of `describe-table`."
-  {:name                         schema/Str
-   (schema/optional-key :schema) (schema/maybe schema/Str)
-   :fields                       #{DescribeTableField}})
-
-(def DescribeTableFKs
-  "Schema for the expected output of `describe-table-fks`."
-  #{{:fk-column-name   schema/Str
-     :dest-table       {:name                         schema/Str
-                        (schema/optional-key :schema) (schema/maybe schema/Str)}
-     :dest-column-name schema/Str}})
-
 (defprotocol IDriver
   "Methods that Metabase drivers must implement. Methods marked *OPTIONAL* have default implementations in `IDriverDefaultsMixin`.
    Drivers should also implement `getName` form `clojure.lang.Named`, so we can call `name` on them:
@@ -106,12 +67,12 @@
      It is expected that this function will be peformant and avoid draining meaningful resources of the database.
      Results should match the `DescribeDatabase` schema.")
 
-  (describe-table ^java.util.Map [this, ^TableInstance table]
+  (describe-table ^java.util.Map [this, ^DatabaseInstance database, ^java.util.Map table]
     "Return a map containing information that describes the physical schema of TABLE.
      It is expected that this function will be peformant and avoid draining meaningful resources of the database.
      Results should match the `DescribeTable` schema.")
 
-  (describe-table-fks ^java.util.Set [this, ^TableInstance table]
+  (describe-table-fks ^java.util.Set [this, ^DatabaseInstance database, ^java.util.Map table]
     "*OPTIONAL*, BUT REQUIRED FOR DRIVERS THAT SUPPORT `:foreign-keys`*
      Results should match the `DescribeTableFKs` schema.")
 
@@ -153,7 +114,8 @@
      *  `:foreign-keys`
      *  `:nested-fields`
      *  `:set-timezone`
-     *  `:standard-deviation-aggregations`")
+     *  `:standard-deviation-aggregations`
+     *  `:expressions`")
 
   (field-values-lazy-seq ^clojure.lang.Sequential [this, ^FieldInstance field]
     "Return a lazy sequence of all values of FIELD.
@@ -388,29 +350,12 @@
           (throw (Exception. (humanize-connection-error-message driver (.getMessage e)))))
         false))))
 
-(defn sync-database!
-  "Sync a `Database`, its `Tables`, and `Fields`.
-
-   Takes an optional kwarg `:full-sync?` (default = `true`).  A full sync includes more in depth table analysis work."
-  [database & {:keys [full-sync?]}]
-  {:pre [(map? database)]}
-  (require 'metabase.driver.sync)
-  (@(resolve 'metabase.driver.sync/sync-database!) (engine->driver (:engine database)) database :full-sync? full-sync?))
-
-(defn sync-table!
-  "Sync a `Table` and its `Fields`.
-
-   Takes an optional kwarg `:full-sync?` (default = `true`).  A full sync includes more in depth table analysis work."
-  [table & {:keys [full-sync?]}]
-  {:pre [(map? table)]}
-  (require 'metabase.driver.sync)
-  (@(resolve 'metabase.driver.sync/sync-table!) (database-id->driver (:db_id table)) table :full-sync? full-sync?))
 
 (defn process-query
   "Process a structured or native query, and return the result."
   [query]
   (require 'metabase.driver.query-processor)
-  (@(resolve 'metabase.driver.query-processor/process) (database-id->driver (:database query)) query))
+  ((resolve 'metabase.driver.query-processor/process) (database-id->driver (:database query)) query))
 
 
 ;; ## Query Execution Stuff

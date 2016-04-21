@@ -83,3 +83,20 @@
 (expect true (field-should-have-field-values? {:base_type    :TextField
                                                :special_type :name
                                                :visibility_type :normal}))
+
+
+;; infer-field-special-type
+(expect nil (infer-field-special-type nil nil))
+(expect nil (infer-field-special-type "id" nil))
+(expect nil (infer-field-special-type nil :IntegerField))
+;; name of "id" should be :id
+(expect :id (infer-field-special-type "id" :IntegerField))
+;; other pattern matches based on type/regex (remember, base_type matters in matching!)
+(expect :category (infer-field-special-type "rating" :IntegerField))
+(expect nil (infer-field-special-type "rating" :BooleanField))
+(expect :country (infer-field-special-type "country" :TextField))
+(expect nil (infer-field-special-type "country" :IntegerField))
+
+
+;; TODO: update-field
+;; TODO: create-field

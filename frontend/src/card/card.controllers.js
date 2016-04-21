@@ -188,19 +188,34 @@ CardControllers.controller('CardDetail', [
             onUpdateVisualizationSettings: function(settings) {
                 onVisualizationSettingsChanged(card.display, settings);
             },
-            setSortFn: function(fieldId) {
+            setSortFn: function(column) {
                 // NOTE: we only allow this for structured type queries & we only allow sorting by a single column
                 if (card.dataset_query.type === "query") {
+                    let field = null;
+                    if (column.id == null) {
+                        // ICK.  this is hacky for dealing with aggregations.  need something better
+                        // DOUBLE ICK.  we also need to deal with custom fields now as well
+                        if (_.contains(_.keys(Query.getExpressions(card.dataset_query.query)), column.display_name)) {
+                            field = ["expression", column.display_name];
+                        } else {
+                            field = ["aggregation", 0];
+                        }
+                    } else if (column.unit != null) {
+                        field = ["datetime_field", column.id, "as", column.unit];
+                    } else {
+                        field = ["field-id", column.id];
+                    }
+
                     let dataset_query = card.dataset_query,
-                        sortClause = [fieldId, "ascending"];
+                        sortClause = [field, "ascending"];
 
                     if (card.dataset_query.query.order_by &&
                         card.dataset_query.query.order_by.length > 0 &&
                         card.dataset_query.query.order_by[0].length > 0 &&
                         card.dataset_query.query.order_by[0][1] === "ascending" &&
-                        Query.isSameField(card.dataset_query.query.order_by[0][0], fieldId)) {
+                        Query.isSameField(card.dataset_query.query.order_by[0][0], field)) {
                         // someone triggered another sort on the same column, so flip the sort direction
-                        sortClause = [fieldId, "descending"];
+                        sortClause = [field, "descending"];
                     }
 
                     // set clause

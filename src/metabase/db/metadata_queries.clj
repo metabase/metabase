@@ -31,7 +31,7 @@
   "Return the distinct values of FIELD.
    This is used to create a `FieldValues` object for `:category` Fields."
   ([field]
-    (field-distinct-values field @(resolve 'metabase.driver.sync/low-cardinality-threshold)))
+    (field-distinct-values field @(resolve 'metabase.sync-database.analyze/low-cardinality-threshold)))
   ([{field-id :id :as field} max-results]
    {:pre [(integer? max-results)]}
    (mapv first (field-query field (-> {}

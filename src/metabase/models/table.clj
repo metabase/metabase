@@ -81,3 +81,43 @@
   [table-id]
   {:pre [(integer? table-id)]}
   (db/sel :one :field [Table :db_id] :id table-id))
+
+
+(defn retire-tables
+  "Retire all `Tables` in the list of TABLE-IDs along with all of each tables `Fields`."
+  [table-ids]
+  {:pre [(set? table-ids)
+         (every? integer? table-ids)]}
+  ;; retire the tables
+  (k/update Table
+    (k/where {:id [in table-ids]})
+    (k/set-fields {:active false}))
+  ;; retire the fields of retired tables
+  (k/update Field
+    (k/where {:table_id [in table-ids]})
+    (k/set-fields {:visibility_type "retired"})))
+
+(defn update-table
+  "Update `Table` with the data from TABLE-DEF."
+  [{:keys [id display_name], :as existing-table} {table-name :name}]
+  {:pre [(integer? id)]}
+  (let [updated-table (assoc existing-table
+                        :display_name (or display_name (common/name->human-readable-name table-name)))]
+    ;; the only thing we need to update on a table is the :display_name, if it never got set
+    (when (nil? display_name)
+      (db/upd Table id
+        :display_name (:display_name updated-table)))
+    ;; always return the table when we are done
+    updated-table))
+
+
+(defn create-table
+  "Create `Table` with the data from TABLE-DEF."
+  [database-id {schema-name :schema, table-name :name, raw-table-id :raw-table-id}]
+  (db/ins Table
+    :db_id        database-id
+    :raw_table_id raw-table-id
+    :schema       schema-name
+    :name         table-name
+    :display_name (common/name->human-readable-name table-name)
+    :active       true))

@@ -54,7 +54,7 @@
               :custom {:column-type "BIGINT"},
               :base-type :BigIntegerField,
               :pk? true}}}
-  (driver/describe-table (H2Driver.) @venues-table))
+  (driver/describe-table (H2Driver.) (db) @venues-table))
 
 ;; DESCRIBE-TABLE-FKS
 (expect
@@ -62,7 +62,7 @@
      :dest-table       {:name   "CATEGORIES"
                         :schema "PUBLIC"}
      :dest-column-name "ID"}}
-  (driver/describe-table-fks (H2Driver.) @venues-table))
+  (driver/describe-table-fks (H2Driver.) (db) @venues-table))
 
 
 ;; ANALYZE-TABLE

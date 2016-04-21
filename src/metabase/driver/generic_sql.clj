@@ -1,12 +1,11 @@
 (ns metabase.driver.generic-sql
-  (:require [clojure.core.memoize :as memoize]
-            [clojure.java.jdbc :as jdbc]
+  (:require [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
             [clojure.tools.logging :as log]
             (korma [core :as k]
                    [db :as kdb])
             [metabase.driver :as driver]
-            [metabase.driver.sync :as sync]
+            [metabase.sync-database.analyze :as analyze]
             metabase.driver.query-processor.interface
             (metabase.models [field :as field]
                              [table :as table])
@@ -215,7 +214,8 @@
   "Default implementation of `IDriver` `features` for SQL drivers."
   [driver]
   (cond-> #{:standard-deviation-aggregations
-            :foreign-keys}
+            :foreign-keys
+            :expressions}
     (set-timezone-sql driver) (conj :set-timezone)))
 
 
@@ -277,14 +277,14 @@
   (with-metadata [metadata driver database]
     {:tables (active-tables driver, ^DatabaseMetaData metadata)}))
 
-(defn- describe-table [driver table]
-  (with-metadata [metadata driver (table/database table)]
+(defn- describe-table [driver database table]
+  (with-metadata [metadata driver database]
     (->> (assoc (select-keys table [:name :schema]) :fields (describe-table-fields metadata driver table))
          ;; find PKs and mark them
          (add-table-pks metadata))))
 
-(defn- describe-table-fks [driver table]
-  (with-metadata [metadata driver (table/database table)]
+(defn- describe-table-fks [driver database table]
+  (with-metadata [metadata driver database]
     (set (->> (.getImportedKeys metadata nil (:schema table) (:name table))
               jdbc/result-set-seq
               (mapv (fn [result]
@@ -297,7 +297,7 @@
 (defn analyze-table
   "Default implementation of `analyze-table` for SQL drivers."
   [driver table new-table-ids]
-  ((sync/make-analyze-table driver
+  ((analyze/make-analyze-table driver
                             :field-avg-length-fn   (partial field-avg-length driver)
                             :field-percent-urls-fn (partial field-percent-urls driver))
    driver

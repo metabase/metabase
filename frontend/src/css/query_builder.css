@@ -679,6 +679,11 @@
   color: var(--purple-color);
 }
 
+.List-item--customfield .Icon,
+.List-item--customfield .List-item-title {
+  color: var(--brand-color);
+}
+
 .List-item:hover,
 .List-item--selected {
     background-color: currentColor;
