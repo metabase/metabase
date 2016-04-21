@@ -74,6 +74,7 @@
 
                                    :else
                                    #{}))
+          :details-fields       (constantly [])
           :features             (constantly #{:foreign-keys})}))
 
 (driver/register-driver! :schema-per-customer (SchemaPerCustomerDriver.))
