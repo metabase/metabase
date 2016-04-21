@@ -7,8 +7,7 @@
             (clj-time [core :as time]
                       [predicates :as timepr])
             [metabase.api.common :refer [let-404]]
-            (metabase [driver :as driver]
-                      [email :as email])
+            [metabase.email :as email]
             [metabase.email.messages :as messages]
             [metabase.integrations.slack :as slack]
             (metabase.models [card :refer [Card]]
@@ -18,6 +17,7 @@
             (metabase [pulse :as p]
                       [task :as task]
                       [util :as u])
+            [metabase.query-processor :as qp]
             [metabase.util.urls :as urls]))
 
 
@@ -90,7 +90,7 @@
   (let-404 [card (Card card-id)]
     (let [{:keys [creator_id dataset_query]} card]
       (try
-        {:card card :result (driver/dataset-query dataset_query {:executed_by creator_id})}
+        {:card card :result (qp/dataset-query dataset_query {:executed_by creator_id})}
         (catch Throwable t
           (log/warn (format "Error running card query (%n)" card-id) t))))))
 
