@@ -396,37 +396,33 @@
 ;;
 ;; Post-processing then happens in order from bottom-to-top; i.e. POST-ANNOTATE gets to modify the results, then LIMIT, then CUMULATIVE-SUM, etc.
 
-(defn process
-  "Process a QUERY and return the results."
-  [driver query]
-  (when-not *disable-qp-logging*
-    (log/debug (u/format-color 'blue "\nQUERY: 😎\n%s"  (u/pprint-to-str query))))
-  (binding [*driver* driver]
-    (let [driver-process-in-context (partial driver/process-query-in-context driver)
-          driver-process-query      (partial (if (structured-query? query)
-                                               driver/process-structured
-                                               driver/process-native) driver)]
-      ((<<- wrap-catch-exceptions
-            pre-add-settings
-            pre-expand-macros
-            pre-expand-resolve
-            driver-process-in-context
-            post-add-row-count-and-status
-            post-format-rows
-            pre-add-implicit-fields
-            pre-add-implicit-breakout-order-by
-            cumulative-sum
-            limit
-            post-annotate
-            pre-log-query
-            wrap-guard-multiple-calls
-            driver-process-query) (assoc query :driver driver)))))
-
-
 (defn process-query
   "Process an MBQL structured or native query, and return the result."
   [query]
-  (process (driver/database-id->driver (:database query)) query))
+  (when-not *disable-qp-logging*
+    (log/debug (u/format-color 'blue "\nQUERY: 😎\n%s"  (u/pprint-to-str query))))
+  ;; TODO: it probably makes sense to throw an error or return a failure response here if we can't get a driver
+  (let [driver (driver/database-id->driver (:database query))]
+    (binding [*driver* driver]
+      (let [driver-process-in-context (partial driver/process-query-in-context driver)
+            driver-process-query      (partial (if (structured-query? query)
+                                                 driver/process-structured
+                                                 driver/process-native) driver)]
+        ((<<- wrap-catch-exceptions
+              pre-add-settings
+              pre-expand-macros
+              pre-expand-resolve
+              driver-process-in-context
+              post-add-row-count-and-status
+              post-format-rows
+              pre-add-implicit-fields
+              pre-add-implicit-breakout-order-by
+              cumulative-sum
+              limit
+              post-annotate
+              pre-log-query
+              wrap-guard-multiple-calls
+              driver-process-query) (assoc query :driver driver))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------+
