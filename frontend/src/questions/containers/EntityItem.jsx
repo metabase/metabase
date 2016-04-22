@@ -35,7 +35,7 @@ export default class EntityItem extends Component {
     render() {
         let { item, setItemSelected, setFavorited, setArchived } = this.props;
         return (
-            <li style={{ display: item.visible ? undefined : "none" }}>
+            <li className="relative" style={{ display: item.visible ? undefined : "none" }}>
                 <Item
                     id={item.id}
                     name={item.name}
