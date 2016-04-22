@@ -10,7 +10,6 @@
             (manifold [bus :as bus]
                       [deferred :as d]
                       [stream :as s])
-            [metabase.api.common :refer [let-404]]
             [metabase.db :refer [sel]]
             [metabase.integrations.slack :as slack]
             [metabase.models.setting :as setting]
@@ -95,12 +94,14 @@
   ([]
    "Show which card? Give me a part of a card name or its ID and I can show it to you. If you don't know which card you want, try `metabot list`.")
   ([card-id-or-name & _]
-   (when-let [{card-id :id} (id-or-name->card card-id-or-name)]
-     (do-async (let [attachments (pulse/create-and-upload-slack-attachments! [(pulse/execute-card card-id)])]
-                 (slack/post-chat-message! *channel-id*
-                                           nil
-                                           attachments))))
-   "Ok, just a second..."))
+   (if-let [{card-id :id} (id-or-name->card card-id-or-name)]
+     (do
+       (do-async (let [attachments (pulse/create-and-upload-slack-attachments! [(pulse/execute-card card-id)])]
+                   (slack/post-chat-message! *channel-id*
+                                             nil
+                                             attachments)))
+       "Ok, just a second...")
+     (throw (Exception. "Not Found")))))
 
 
 (defn meme:up-and-to-the-right
@@ -182,7 +183,11 @@
     (when (and (human-message? event)
                (> (event-timestamp-ms event) start-time))
       (binding [*channel-id* (:channel event)]
-        (do-async (handle-slack-message event))))))
+        (do (future (try
+                      (handle-slack-message event)
+                      (catch Throwable t
+                        (slack/post-chat-message! *channel-id* (format-exception t)))))
+            nil)))))
 
 
 ;;; # ------------------------------------------------------------ Websocket Connection Stuff ------------------------------------------------------------

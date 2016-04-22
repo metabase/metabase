@@ -55,13 +55,12 @@
 
 (defn- send-slack-pulse!
   "Post a `Pulse` to a slack channel given a list of card results to render and details about the slack destination."
-  [{pulse-name :name, :as pulse} results channel-id]
+  [pulse results channel-id]
   {:pre [(string? channel-id)]}
   (log/debug (u/format-color 'cyan "Sending Pulse (%d: %s) via Slack" (:id pulse) (:name pulse)))
   (let [attachments (create-and-upload-slack-attachments! results)]
     (slack/post-chat-message! channel-id
-                              (when (seq pulse-name)
-                                (str "Pulse: " pulse-name)) ; if `:name` is specified pass it as the `:text` part of the Slack message
+                              (str "Pulse: " (:name pulse))
                               attachments)))
 
 (defn send-pulse!
