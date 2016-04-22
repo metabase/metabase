@@ -150,22 +150,22 @@
          (contains? #{:first :last :mid :other} monthday)
          (contains? #{:first :last :other} monthweek)]}
   (let [schedule-frame              (cond
-                                      (= :mid monthday)    (name :mid)
-                                      (= :first monthweek) (name :first)
-                                      (= :last monthweek)  (name :last)
+                                      (= :mid monthday)    "mid"
+                                      (= :first monthweek) "first"
+                                      (= :last monthweek)  "last"
                                       :else                "invalid")
         monthly-schedule-day-or-nil (when (= :other monthday)
                                       weekday)]
     (k/select PulseChannel
       (k/fields :id :pulse_id :schedule_type :channel_type)
       (k/where (and (= :enabled true)
-                    (or (= :schedule_type (name :hourly))
-                        (and (= :schedule_type (name :daily))
+                    (or (= :schedule_type "hourly")
+                        (and (= :schedule_type "daily")
                              (= :schedule_hour hour))
-                        (and (= :schedule_type (name :weekly))
+                        (and (= :schedule_type "weekly")
                              (= :schedule_hour hour)
                              (= :schedule_day weekday))
-                        (and (= :schedule_type (name :monthly))
+                        (and (= :schedule_type "monthly")
                              (= :schedule_hour hour)
                              (= :schedule_frame schedule-frame)
                              (or (= :schedule_day weekday)
