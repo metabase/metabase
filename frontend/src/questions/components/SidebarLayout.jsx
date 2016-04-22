@@ -2,7 +2,7 @@
 import React, { Component, PropTypes } from "react";
 
 const SidebarLayout = ({ className, style, sidebar, children }) =>
-    <div className={className} style={{ ...style, display: "flex", flexDirection: "row", overflow: "hidden" }}>
+    <div className={className} style={{ ...style, display: "flex", flexDirection: "row"}}>
         { React.cloneElement(
             sidebar,
             { style: { flexShrink: 0, overflowY: 'scroll' },
