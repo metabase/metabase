@@ -37,6 +37,9 @@ export default class DataSelector extends Component {
 
     componentWillMount() {
         this.componentWillReceiveProps(this.props);
+        if (this.props.databases.length === 1) {
+            setTimeout(() => this.onChangeDatabase(0));
+        }
     }
 
     componentWillReceiveProps(newProps) {

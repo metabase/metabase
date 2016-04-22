@@ -433,6 +433,12 @@ export function getAggregators(table) {
     });
 }
 
+export function getAggregatorsWithFields(table) {
+    return getAggregators(table).filter(aggregation =>
+        !aggregation.requiresField || aggregation.fields.reduce((ok, fields) => ok && fields.length > 0, true)
+    );
+}
+
 // TODO: unit test
 export function getAggregator(short) {
     return _.findWhere(Aggregators, { short: short });

@@ -1,5 +1,7 @@
 const path = require('path');
 
+const WEBPACK_CONFIG = require("../webpack.config");
+
 var SRC_PATH = path.resolve(__dirname, '../frontend/src');
 
 var CSS_CONFIG = {
@@ -12,6 +14,10 @@ module.exports = {
   module: {
     loaders: [
       {
+        test: /\.json$/,
+        loader: "json-loader"
+      },
+      {
         test: /\.css?$/,
         loaders: [ "style", "css-loader?" + JSON.stringify(CSS_CONFIG), "postcss-loader" ]
       }
@@ -23,5 +29,6 @@ module.exports = {
       'metabase': SRC_PATH,
       'style':    SRC_PATH + '/css/core'
     }
-  }
-}
+  },
+  postcss: WEBPACK_CONFIG.postcss
+};

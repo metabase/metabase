@@ -17,5 +17,5 @@ export const Centered = ({ children }) =>
 //
 //     import { React, Centered, storiesOf, action } from ".";
 //
-export { storiesOf, action } from "@kadira/storybook";
+export { storiesOf, action, linkTo } from "@kadira/storybook";
 export React from "react";
