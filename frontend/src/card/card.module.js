@@ -46,12 +46,8 @@ Card.config(['$routeProvider', function($routeProvider) {
     });
 
     $routeProvider.when('/card/', {
-        template:   '<div mb-redux-component class="flex flex-column flex-full" />',
-        controller: 'CardList',
-        resolve: {
-            appState: ["AppState", function(AppState) {
-                return AppState.init();
-            }]
+        redirectTo: function (routeParams, path, search) {
+            return "/questions/all";
         }
     });
 }]);

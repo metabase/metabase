@@ -11,9 +11,6 @@ import QueryVisualization from '../query_builder/QueryVisualization.jsx';
 import QueryBuilderTutorial from '../tutorial/QueryBuilderTutorial.jsx';
 import SavedQuestionIntroModal from "../query_builder/SavedQuestionIntroModal.jsx";
 
-import SavedQuestionsApp from './containers/SavedQuestionsApp.jsx';
-
-import { createStore, combineReducers } from "metabase/lib/redux";
 import _ from "underscore";
 import i from "icepick";
 import moment from "moment";
@@ -27,23 +24,8 @@ import { loadTable } from "metabase/lib/table";
 
 import NotFound from "metabase/components/NotFound.jsx";
 
-import * as reducers from './reducers';
-
-const reducer = combineReducers(reducers);
-
 //  Card Controllers
 var CardControllers = angular.module('metabase.card.controllers', []);
-
-CardControllers.controller('CardList', ['$scope', '$location', function($scope, $location) {
-    $scope.Component = SavedQuestionsApp;
-    $scope.props = {
-        user: $scope.user,
-        onChangeLocation: function(url) {
-            $scope.$apply(() => $location.url(url));
-        }
-    };
-    $scope.store = createStore(reducer, {});
-}]);
 
 CardControllers.controller('CardDetail', [
     '$rootScope', '$scope', '$route', '$routeParams', '$location', '$q', '$window', '$timeout', 'Card', 'Dashboard', 'Metabase', 'Revision', 'User',
