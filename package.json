@@ -62,6 +62,7 @@
     "z-index": "0.0.1"
   },
   "devDependencies": {
+    "@kadira/storybook": "^1.16.0",
     "angular-mocks": "1.2.28",
     "babel-eslint": "^6.0.0-beta.6",
     "babel-loader": "^6.2.4",
