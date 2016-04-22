@@ -836,10 +836,9 @@
          (ql/order-by (ql/asc (ql/aggregate-field 0))))
        :data (format-rows-by [int int])))
 
-;;; order_by aggregate ["stddev" field-id]
-;; MySQL has a nasty tendency to return different results on different systems so just round everything to the nearest int.
-;; Crate has the behavior like MySQL and returns different results on several calculations
-;; It also seems to give slightly different results than less-sucky DBs as evidenced below
+;;; ### order_by aggregate ["stddev" field-id]
+;; SQRT calculations are always NOT EXACT (normal behavior) so round everything to the nearest int.
+;; Databases might use different versions of SQRT implementations
 (datasets/expect-with-engines (engines-that-support :standard-deviation-aggregations)
   {:columns [(format-name "price")
              "stddev"]

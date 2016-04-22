@@ -4,7 +4,8 @@
             [korma.core :as k]
             [clj-time.core :as t]
             [clj-time.coerce :as c]
-            [clj-time.format :as f])
+            [clj-time.format :as f]
+            [metabase.util :as u])
   (:import (java.sql Timestamp)))
 
 (defn unix-timestamp->timestamp [_ expr seconds-or-milliseconds]
@@ -56,6 +57,9 @@
 (def ^:private MONTH  (constantly 2628000000))
 (def ^:private WEEK   (constantly 604800000))
 (def ^:private DAY    (constantly 86400000))
+(def ^:private HOUR   (constantly 3600000))
+(def ^:private MINUTE (constantly 60000))
+(def ^:private SECOND (constantly 1000))
 
 (defn- sql-interval [unit amount]
   (format "CURRENT_TIMESTAMP + %d" (* (unit) amount)))
@@ -63,8 +67,12 @@
 (defn date-interval [_ unit amount]
   "defines the sql command required for date-interval calculation"
   (case unit
-    :quarter  (recur nil :month (kx/* amount 3))
-    :year     (k/raw (sql-interval YEAR amount))
-    :month    (k/raw (sql-interval MONTH amount))
-    :week     (k/raw (sql-interval WEEK amount))
-    :day      (k/raw (sql-interval DAY amount))))
+    :quarter (recur nil :month (kx/* amount 3))
+    :year (k/raw (sql-interval YEAR amount))
+    :month (k/raw (sql-interval MONTH amount))
+    :week (k/raw (sql-interval WEEK amount))
+    :day (k/raw (sql-interval DAY amount))
+    :hour (k/raw (sql-interval HOUR amount))
+    :minute (k/raw (sql-interval MINUTE amount))
+    :second (k/raw (sql-interval SECOND amount))
+    ))

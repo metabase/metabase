@@ -6,7 +6,8 @@
                                 [interface :as i])
             [metabase.driver.generic-sql :as sql]
             [clojure.java.jdbc :as jdbc]
-            [metabase.util :as u])
+            [metabase.util :as u]
+            [clojure.string :as s])
   (:import metabase.driver.crate.CrateDriver))
 
 (def ^:private ^:const field-base-type->sql-type
@@ -26,7 +27,9 @@
   [value]
   (if (= (instance? java.sql.Timestamp value) true)
     (.getTime (u/->Timestamp value))
-    value))
+    (if (= (and (= (instance? clojure.lang.PersistentArrayMap value) true) (contains? value :korma.sql.utils/generated)) true)
+      (+ (read-string (s/replace (:korma.sql.utils/generated value) #"CURRENT_TIMESTAMP \+" "")) (.getTime (u/new-sql-timestamp)))
+      value)))
 
 (defn- escape-field-names
   "Escape the field-name keys in ROW-OR-ROWS."
