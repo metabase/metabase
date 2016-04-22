@@ -90,8 +90,15 @@
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete Field :parent_id id)
   (db/cascade-delete ForeignKey (k/where (or (= :origin_id id)
-                                          (= :destination_id id))))
+                                             (= :destination_id id))))
   (db/cascade-delete 'FieldValues :field_id id))
+
+(defn ^:hydrate target
+  "Return the FK target `Field` that this `Field` points to."
+  [{:keys [special_type fk_target_field_id]}]
+  (when (and (= :fk special_type)
+             fk_target_field_id)
+    (Field fk_target_field_id)))
 
 (defn ^:hydrate values
   "Return the `FieldValues` associated with this FIELD."
@@ -116,16 +123,6 @@
   {:arglists '([field])}
   [{:keys [table_id]}]
   (db/sel :one 'Table, :id table_id))
-
-(defn field->fk-field
-  "Attempts to follow a `ForeignKey` from the the given FIELD to a destination `Field`.
-
-   Only evaluates if the given field has :special_type `fk`, otherwise does nothing."
-  {:hydrate :target}
-  [{:keys [id special_type]}]
-  (when (= :fk special_type)
-    (let [dest-id (db/sel :one :field [ForeignKey :destination_id] :origin_id id)]
-      (Field dest-id))))
 
 (u/strict-extend (class Field)
   i/IEntity (merge i/IEntityDefaults
