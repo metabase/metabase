@@ -1,4 +1,4 @@
-(ns metabase.driver.query-processor.macros
+(ns metabase.query-processor.macros
   (:require [clojure.core.match :refer [match]]
             [metabase.db :as db]))
 

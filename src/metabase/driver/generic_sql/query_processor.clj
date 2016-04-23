@@ -11,20 +11,20 @@
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
-            [metabase.driver.query-processor :as qp]
-            metabase.driver.query-processor.interface
+            [metabase.query-processor :as qp]
+            metabase.query-processor.interface
             [metabase.util :as u]
             [metabase.util.korma-extensions :as kx])
   (:import java.sql.Timestamp
            java.util.Date
-           (metabase.driver.query_processor.interface AgFieldRef
-                                                      DateTimeField
-                                                      DateTimeValue
-                                                      Field
-                                                      Expression
-                                                      ExpressionRef
-                                                      RelativeDateTimeValue
-                                                      Value)))
+           (metabase.query_processor.interface AgFieldRef
+                                               DateTimeField
+                                               DateTimeValue
+                                               Field
+                                               Expression
+                                               ExpressionRef
+                                               RelativeDateTimeValue
+                                               Value)))
 
 (def ^:dynamic *query*
   "The outer query currently being processed."

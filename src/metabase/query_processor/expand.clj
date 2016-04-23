@@ -1,31 +1,28 @@
-(ns metabase.driver.query-processor.expand
+(ns metabase.query-processor.expand
   "Converts a Query Dict as received by the API into an *expanded* one that contains extra information that will be needed to
    construct the appropriate native Query, and perform various post-processing steps such as Field ordering."
   (:refer-clojure :exclude [< <= > >= = != and or not filter count distinct sum min max + - / *])
   (:require (clojure [core :as core]
-                     [edn :as edn]
                      [string :as str])
             [clojure.tools.logging :as log]
-            [korma.core :as k]
             [schema.core :as s]
             [metabase.db :as db]
-            [metabase.driver :as driver]
-            [metabase.driver.query-processor.interface :refer [*driver*], :as i]
             [metabase.models.table :refer [Table]]
+            [metabase.query-processor.interface :refer [*driver*], :as i]
             [metabase.util :as u])
 
-  (:import (metabase.driver.query_processor.interface AgFieldRef
-                                                      BetweenFilter
-                                                      ComparisonFilter
-                                                      CompoundFilter
-                                                      EqualityFilter
-                                                      ExpressionRef
-                                                      FieldPlaceholder
-                                                      Expression
-                                                      NotFilter
-                                                      RelativeDatetime
-                                                      StringFilter
-                                                      ValuePlaceholder)))
+  (:import (metabase.query_processor.interface AgFieldRef
+                                               BetweenFilter
+                                               ComparisonFilter
+                                               CompoundFilter
+                                               EqualityFilter
+                                               ExpressionRef
+                                               FieldPlaceholder
+                                               Expression
+                                               NotFilter
+                                               RelativeDatetime
+                                               StringFilter
+                                               ValuePlaceholder)))
 
 
 ;;; # ------------------------------------------------------------ Token dispatch ------------------------------------------------------------
@@ -451,7 +448,7 @@
                                   :value       {:field-placeholder {:field-id 100}
                                                 :value 200}}}}
 
-   The \"placeholder\" objects above are fetched from the DB and replaced in the next QP step, in `metabase.driver.query-processor.resolve`."
+   The \"placeholder\" objects above are fetched from the DB and replaced in the next QP step, in `metabase.query-processor.resolve`."
   [outer-query]
   (update outer-query :query expand-inner))
 
@@ -464,26 +461,3 @@
   `(-> {}
        ~@body
        expand-inner))
-
-(s/defn ^:always-validate wrap-inner-query
-  "Wrap inner QUERY with `:database` ID and other 'outer query' kvs. DB ID is fetched by looking up the Database for the query's `:source-table`."
-  {:style/indent 0}
-  [query :- i/Query]
-  {:database (db/sel :one :field [Table :db_id], :id (:source-table query))
-   :type     :query
-   :query    query})
-
-(s/defn ^:always-validate run-query*
-  "Call `driver/process-query` on expanded inner QUERY, looking up the `Database` ID for the `source-table.`
-
-     (run-query* (query (source-table 5) ...))"
-  [query :- i/Query]
-  (driver/process-query (wrap-inner-query query)))
-
-(defmacro run-query
-  "Build and run a query.
-
-     (run-query (source-table 5) ...)"
-  {:style/indent 0}
-  [& body]
-  `(run-query* (query ~@body)))

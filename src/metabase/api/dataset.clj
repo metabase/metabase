@@ -3,11 +3,11 @@
   (:require [clojure.data.csv :as csv]
             [compojure.core :refer [GET POST]]
             [metabase.api.common :refer :all]
-            (metabase [db :as db]
-                      [driver :as driver])
+            [metabase.db :as db]
             (metabase.models [card :refer [Card]]
                              [database :refer [Database]]
                              [hydrate :refer [hydrate]])
+            [metabase.query-processor :as qp]
             [metabase.util :as u]))
 
 (def ^:const api-max-results-bare-rows
@@ -29,7 +29,7 @@
   (read-check Database database)
   ;; add sensible constraints for results limits on our query
   (let [query (assoc body :constraints dataset-query-api-constraints)]
-    (driver/dataset-query query {:executed_by *current-user-id*})))
+    (qp/dataset-query query {:executed_by *current-user-id*})))
 
 
 (defendpoint POST "/csv"
@@ -37,7 +37,7 @@
   [query]
   {query [Required String->Dict]}
   (read-check Database (:database query))
-  (let [{{:keys [columns rows]} :data :keys [status] :as response} (driver/dataset-query query {:executed_by *current-user-id*})
+  (let [{{:keys [columns rows]} :data :keys [status] :as response} (qp/dataset-query query {:executed_by *current-user-id*})
         columns (map name columns)] ; turn keywords into strings, otherwise we get colons in our output
     (if (= status :completed)
       ;; successful query, send CSV file
@@ -63,7 +63,7 @@
     (let [query   (assoc dataset_query :constraints dataset-query-api-constraints)
           options {:executed_by *current-user-id*}]
       {:card   (hydrate card :creator)
-       :result (driver/dataset-query query options)})))
+       :result (qp/dataset-query query options)})))
 
 
 (define-routes)

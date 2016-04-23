@@ -3,8 +3,8 @@
             [korma.core :as k]
             [metabase.db :as db]
             [metabase.driver.generic-sql :as sql]
-            [metabase.driver.query-processor.expand :as ql]
             [metabase.models.field :refer [Field]]
+            [metabase.query-processor.expand :as ql]
             [metabase.test.data :as data]
             (metabase.test.data [datasets :refer [expect-with-engine]]
                                 [interface :refer [create-database-definition def-database-definition]])

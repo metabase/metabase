@@ -1,10 +1,10 @@
-(ns metabase.driver.query-processor.annotate
+(ns metabase.query-processor.annotate
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.db :refer [sel]]
-            [metabase.driver.query-processor.interface :as i]
             [metabase.models.field :refer [Field]]
+            [metabase.query-processor.interface :as i]
             [metabase.util :as u]))
 
 ;; Fields should be returned in the following order:
@@ -40,14 +40,14 @@
      (collect-fields {:a {:name \"id\", ...}) -> [{:name \"id\", :path [:a], ...}]"
   [this & [keep-date-time-fields?]]
   {:post [(every? (fn [f]
-                    (or (instance? metabase.driver.query_processor.interface.Field f)
-                        (instance? metabase.driver.query_processor.interface.ExpressionRef f)
+                    (or (instance? metabase.query_processor.interface.Field f)
+                        (instance? metabase.query_processor.interface.ExpressionRef f)
                         (when keep-date-time-fields?
-                          (instance? metabase.driver.query_processor.interface.DateTimeField f)))) %)]}
+                          (instance? metabase.query_processor.interface.DateTimeField f)))) %)]}
   (condp instance? this
     ;; For a DateTimeField we'll flatten it back into regular Field but include the :unit info for the frontend.
     ;; Recurse so it is otherwise handled normally
-    metabase.driver.query_processor.interface.DateTimeField
+    metabase.query_processor.interface.DateTimeField
     (let [{:keys [field unit]} this
           fields               (collect-fields (assoc field :unit unit) keep-date-time-fields?)]
       (if keep-date-time-fields?
@@ -55,12 +55,12 @@
           (i/map->DateTimeField {:field field, :unit unit}))
         fields))
 
-    metabase.driver.query_processor.interface.Field
+    metabase.query_processor.interface.Field
     (if-let [parent (:parent this)]
       [this parent]
       [this])
 
-    metabase.driver.query_processor.interface.ExpressionRef
+    metabase.query_processor.interface.ExpressionRef
     [(assoc this :field-display-name (:expression-name this))]
 
     clojure.lang.IPersistentMap
@@ -163,7 +163,7 @@
   "Sort FIELDS by their \"importance\" vectors."
   [query fields]
   (let [field-importance (field-importance-fn query)]
-    (when-not @(resolve 'metabase.driver.query-processor/*disable-qp-logging*)
+    (when-not @(resolve 'metabase.query-processor/*disable-qp-logging*)
       (log/debug (u/format-color 'yellow "Sorted fields:\n%s" (u/pprint-to-str (sort (map field-importance fields))))))
     (sort-by field-importance fields)))
 

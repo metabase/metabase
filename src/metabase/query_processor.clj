@@ -1,4 +1,4 @@
-(ns metabase.driver.query-processor
+(ns metabase.query-processor
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific implementations."
   (:require [clojure.walk :as walk]
             [clojure.tools.logging :as log]
@@ -8,12 +8,13 @@
             [swiss.arrows :refer [<<-]]
             [metabase.db :as db]
             [metabase.driver :as driver]
-            (metabase.driver.query-processor [annotate :as annotate]
-                                             [expand :as expand]
-                                             [interface :refer :all]
-                                             [macros :as macros]
-                                             [resolve :as resolve])
             [metabase.models.field :refer [Field]]
+            [metabase.models.query-execution :refer [QueryExecution]]
+            (metabase.query-processor [annotate :as annotate]
+                                      [expand :as expand]
+                                      [interface :refer :all]
+                                      [macros :as macros]
+                                      [resolve :as resolve])
             [metabase.util :as u])
   (:import (schema.utils NamedError ValidationError)))
 
@@ -395,28 +396,129 @@
 ;;
 ;; Post-processing then happens in order from bottom-to-top; i.e. POST-ANNOTATE gets to modify the results, then LIMIT, then CUMULATIVE-SUM, etc.
 
-(defn process
-  "Process a QUERY and return the results."
-  [driver query]
+(defn process-query
+  "Process an MBQL structured or native query, and return the result."
+  [query]
   (when-not *disable-qp-logging*
     (log/debug (u/format-color 'blue "\nQUERY: 😎\n%s"  (u/pprint-to-str query))))
-  (binding [*driver* driver]
-    (let [driver-process-in-context (partial driver/process-query-in-context driver)
-          driver-process-query      (partial (if (structured-query? query)
-                                               driver/process-structured
-                                               driver/process-native) driver)]
-      ((<<- wrap-catch-exceptions
-            pre-add-settings
-            pre-expand-macros
-            pre-expand-resolve
-            driver-process-in-context
-            post-add-row-count-and-status
-            post-format-rows
-            pre-add-implicit-fields
-            pre-add-implicit-breakout-order-by
-            cumulative-sum
-            limit
-            post-annotate
-            pre-log-query
-            wrap-guard-multiple-calls
-            driver-process-query) (assoc query :driver driver)))))
+  ;; TODO: it probably makes sense to throw an error or return a failure response here if we can't get a driver
+  (let [driver (driver/database-id->driver (:database query))]
+    (binding [*driver* driver]
+      (let [driver-process-in-context (partial driver/process-query-in-context driver)
+            driver-process-query      (partial (if (structured-query? query)
+                                                 driver/process-structured
+                                                 driver/process-native) driver)]
+        ((<<- wrap-catch-exceptions
+              pre-add-settings
+              pre-expand-macros
+              pre-expand-resolve
+              driver-process-in-context
+              post-add-row-count-and-status
+              post-format-rows
+              pre-add-implicit-fields
+              pre-add-implicit-breakout-order-by
+              cumulative-sum
+              limit
+              post-annotate
+              pre-log-query
+              wrap-guard-multiple-calls
+              driver-process-query) (assoc query :driver driver))))))
+
+
+;;; +----------------------------------------------------------------------------------------------------+
+;;; |                                     DATASET-QUERY PUBLIC API                                       |
+;;; +----------------------------------------------------------------------------------------------------+
+
+(declare query-fail query-complete save-query-execution)
+
+(defn dataset-query
+  "Process and run a json based dataset query and return results.
+
+  Takes 2 arguments:
+
+  1.  the json query as a dictionary
+  2.  query execution options specified in a dictionary
+
+  Depending on the database specified in the query this function will delegate to a driver specific implementation.
+  For the purposes of tracking we record each call to this function as a QueryExecution in the database.
+
+  Possible caller-options include:
+
+    :executed_by [int]               (user_id of caller)"
+  {:arglists '([query options])}
+  [query {:keys [executed_by]}]
+  {:pre [(integer? executed_by)]}
+  (let [query-execution {:uuid              (.toString (java.util.UUID/randomUUID))
+                         :executor_id       executed_by
+                         :json_query        query
+                         :query_id          nil
+                         :version           0
+                         :status            :starting
+                         :error             ""
+                         :started_at        (u/new-sql-timestamp)
+                         :finished_at       (u/new-sql-timestamp)
+                         :running_time      0
+                         :result_rows       0
+                         :result_file       ""
+                         :result_data       "{}"
+                         :raw_query         ""
+                         :additional_info   ""
+                         :start_time_millis (System/currentTimeMillis)}]
+    (try
+      (let [query-result (process-query query)]
+        (when-not (contains? query-result :status)
+          (throw (Exception. "invalid response from database driver. no :status provided")))
+        (when (= :failed (:status query-result))
+          (log/error (u/pprint-to-str 'red query-result))
+          (throw (Exception. (str (get query-result :error "general error")))))
+        (query-complete query-execution query-result))
+      (catch Throwable e
+        (log/error (u/format-color 'red "Query failure: %s" (.getMessage e)))
+        (query-fail query-execution (.getMessage e))))))
+
+(defn query-fail
+  "Save QueryExecution state and construct a failed query response"
+  [query-execution error-message]
+  (let [updates {:status       :failed
+                 :error        error-message
+                 :finished_at  (u/new-sql-timestamp)
+                 :running_time (- (System/currentTimeMillis) (:start_time_millis query-execution))}]
+    ;; record our query execution and format response
+    (-> query-execution
+        (dissoc :start_time_millis)
+        (merge updates)
+        (save-query-execution)
+        (dissoc :raw_query :result_rows :version)
+        ;; this is just for the response for clien
+        (assoc :error     error-message
+               :row_count 0
+               :data      {:rows    []
+                           :cols    []
+                           :columns []}))))
+
+(defn query-complete
+  "Save QueryExecution state and construct a completed (successful) query response"
+  [query-execution query-result]
+  ;; record our query execution and format response
+  (-> (assoc query-execution
+        :status       :completed
+        :finished_at  (u/new-sql-timestamp)
+        :running_time (- (System/currentTimeMillis)
+                         (:start_time_millis query-execution))
+        :result_rows  (get query-result :row_count 0))
+      (dissoc :start_time_millis)
+      (save-query-execution)
+      ;; at this point we've saved and we just need to massage things into our final response format
+      (dissoc :error :raw_query :result_rows :version)
+      (merge query-result)))
+
+(defn save-query-execution
+  "Save (or update) a `QueryExecution`."
+  [{:keys [id] :as query-execution}]
+  (if id
+    ;; execution has already been saved, so update it
+    (do
+      (m/mapply db/upd QueryExecution id query-execution)
+      query-execution)
+    ;; first time saving execution, so insert it
+    (m/mapply db/ins QueryExecution query-execution)))
