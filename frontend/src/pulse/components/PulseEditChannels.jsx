@@ -1,6 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
 import _ from "underscore";
+import i from "icepick";
 
 import RecipientPicker from "./RecipientPicker.jsx";
 import SchedulePicker from "./SchedulePicker.jsx";
@@ -54,6 +55,7 @@ export default class PulseEditChannels extends Component {
 
         let channel = {
             channel_type: type,
+            enabled: true,
             recipients: [],
             details: details,
             schedule_type: channelSpec.schedules[0],
@@ -69,7 +71,7 @@ export default class PulseEditChannels extends Component {
 
     removeChannel(index) {
         let { pulse } = this.props;
-        this.props.setPulse({ ...pulse, channels: pulse.channels.filter((c,i) => i !== index) });
+        this.props.setPulse(i.assocIn(pulse, ["channels", index, "enabled"], false));
     }
 
     onChannelPropertyChange(index, name, value) {
@@ -101,11 +103,19 @@ export default class PulseEditChannels extends Component {
     }
 
     toggleChannel(type, enable) {
+        const { pulse } = this.props;
         if (enable) {
-            this.addChannel(type)
+            if (pulse.channels.some(c => c.channel_type === type)) {
+                this.props.setPulse(i.assoc(pulse, "channels", pulse.channels.map(c =>
+                    c.channel_type === type ? i.assoc(c, "enabled", true) : c
+                )));
+            } else {
+                this.addChannel(type)
+            }
         } else {
-            let { pulse } = this.props;
-            this.props.setPulse({ ...pulse, channels: pulse.channels.filter((c) => c.channel_type !== type) });
+            this.props.setPulse(i.assoc(pulse, "channels", pulse.channels.map(c =>
+                c.channel_type === type ? i.assoc(c, "enabled", false) : c
+            )));
 
             MetabaseAnalytics.trackEvent((this.props.pulseId) ? "PulseEdit" : "PulseCreate", "RemoveChannel", type);
         }
@@ -183,14 +193,14 @@ export default class PulseEditChannels extends Component {
     renderChannelSection(channelSpec) {
         let { pulse, user } = this.props;
         let channels = pulse.channels
-            .map((c, index) => c.channel_type === channelSpec.type ? this.renderChannel(c, index, channelSpec) : null)
-            .filter(e => !!e);
+            .map((c, i) => [c, i]).filter(([c, i]) => c.enabled && c.channel_type === channelSpec.type)
+            .map(([channel, index]) => this.renderChannel(channel, index, channelSpec));
         return (
             <li key={channelSpec.type} className="border-row-divider">
                 <div className="flex align-center p3 border-row-divider">
                     {CHANNEL_ICONS[channelSpec.type] && <Icon className="mr1 text-grey-2" name={CHANNEL_ICONS[channelSpec.type]} width={28} />}
                     <h2>{channelSpec.name}</h2>
-                    <Toggle className="flex-align-right" value={pulse.channels.some(c => c.channel_type === channelSpec.type)} onChange={this.toggleChannel.bind(this, channelSpec.type)} />
+                    <Toggle className="flex-align-right" value={channels.length > 0} onChange={this.toggleChannel.bind(this, channelSpec.type)} />
                 </div>
                 {channels.length > 0 && channelSpec.configured ?
                     <ul className="bg-grey-0 px3">{channels}</ul>

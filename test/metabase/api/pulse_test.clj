@@ -58,6 +58,7 @@
   (match-$ channel
     {:id               $
      :pulse_id         $
+     :enabled          $
      :channel_type     $
      :details          $
      :schedule_type    $
@@ -131,7 +132,8 @@
    :created_at   true
    :updated_at   true
    :cards        (mapv pulse-card-details [card1 card2])
-   :channels     [{:channel_type  "email"
+   :channels     [{:enabled       true
+                   :channel_type  "email"
                    :schedule_type "daily"
                    :schedule_hour 12
                    :schedule_day  nil
@@ -139,7 +141,8 @@
                    :recipients    []}]}
   (-> (pulse-response ((user->client :rasta) :post 200 "pulse" {:name     "A Pulse"
                                                                 :cards    [{:id (:id card1)} {:id (:id card2)}]
-                                                                :channels [{:channel_type  "email"
+                                                                :channels [{:enabled       true
+                                                                            :channel_type  "email"
                                                                             :schedule_type "daily"
                                                                             :schedule_hour 12
                                                                             :schedule_day  nil
@@ -178,7 +181,8 @@
                                              :cards    [{:id 100} {:id 200}]
                                              :channels ["abc"]}))
 
-(expect-let [pulse (new-pulse :channels [{:channel_type  "email"
+(expect-let [pulse (new-pulse :channels [{:enabled       true
+                                          :channel_type  "email"
                                           :schedule_type "daily"
                                           :schedule_hour 12
                                           :schedule_day  nil
@@ -191,7 +195,8 @@
    :created_at   true
    :updated_at   true
    :cards        [(pulse-card-details card)]
-   :channels     [{:channel_type  "slack"
+   :channels     [{:enabled       true
+                   :channel_type  "slack"
                    :schedule_type "hourly"
                    :schedule_hour nil
                    :schedule_day  nil
@@ -200,7 +205,8 @@
                    :recipients    []}]}
   (-> (pulse-response ((user->client :rasta) :put 200 (format "pulse/%d" (:id pulse)) {:name     "Updated Pulse"
                                                                                        :cards    [{:id (:id card)}]
-                                                                                       :channels [{:channel_type  "slack"
+                                                                                       :channels [{:enabled       true
+                                                                                                   :channel_type  "slack"
                                                                                                    :schedule_type "hourly"
                                                                                                    :schedule_hour 12
                                                                                                    :schedule_day  "mon"
@@ -211,7 +217,8 @@
 
 
 ;; ## DELETE /api/pulse/:id
-(expect-let [pulse (new-pulse :channels [{:channel_type  "email"
+(expect-let [pulse (new-pulse :channels [{:enabled       true
+                                          :channel_type  "email"
                                           :schedule_type "daily"
                                           :schedule_hour 12
                                           :schedule_day  nil

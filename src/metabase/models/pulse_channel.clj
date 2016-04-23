@@ -150,26 +150,27 @@
          (contains? #{:first :last :mid :other} monthday)
          (contains? #{:first :last :other} monthweek)]}
   (let [schedule-frame              (cond
-                                      (= :mid monthday)    (name :mid)
-                                      (= :first monthweek) (name :first)
-                                      (= :last monthweek)  (name :last)
+                                      (= :mid monthday)    "mid"
+                                      (= :first monthweek) "first"
+                                      (= :last monthweek)  "last"
                                       :else                "invalid")
         monthly-schedule-day-or-nil (when (= :other monthday)
                                       weekday)]
     (k/select PulseChannel
       (k/fields :id :pulse_id :schedule_type :channel_type)
-      (k/where (or (= :schedule_type (name :hourly))
-                   (and (= :schedule_type (name :daily))
-                        (= :schedule_hour hour))
-                   (and (= :schedule_type (name :weekly))
-                        (= :schedule_hour hour)
-                        (= :schedule_day weekday))
-                   (and (= :schedule_type (name :monthly))
-                        (= :schedule_hour hour)
-                        (= :schedule_frame schedule-frame)
-                        (or (= :schedule_day weekday)
-                            ;; this is here specifically to allow for cases where day doesn't have to match
-                            (= :schedule_day monthly-schedule-day-or-nil))))))))
+      (k/where (and (= :enabled true)
+                    (or (= :schedule_type "hourly")
+                        (and (= :schedule_type "daily")
+                             (= :schedule_hour hour))
+                        (and (= :schedule_type "weekly")
+                             (= :schedule_hour hour)
+                             (= :schedule_day weekday))
+                        (and (= :schedule_type "monthly")
+                             (= :schedule_hour hour)
+                             (= :schedule_frame schedule-frame)
+                             (or (= :schedule_day weekday)
+                                 ;; this is here specifically to allow for cases where day doesn't have to match
+                                 (= :schedule_day monthly-schedule-day-or-nil)))))))))
 
 (defn update-recipients!
   "Update the `PulseChannelRecipients` for PULSE-CHANNEL.
@@ -193,11 +194,12 @@
 
 (defn update-pulse-channel
   "Updates an existing `PulseChannel` along with all related data associated with the channel such as `PulseChannelRecipients`."
-  [{:keys [id channel_type details recipients schedule_type schedule_day schedule_hour schedule_frame]
+  [{:keys [id channel_type enabled details recipients schedule_type schedule_day schedule_hour schedule_frame]
     :or   {details          {}
            recipients       []}}]
   {:pre [(integer? id)
          (channel-type? channel_type)
+         (m/boolean? enabled)
          (schedule-type? schedule_type)
          (valid-schedule? schedule_type schedule_hour schedule_day schedule_frame)
          (coll? recipients)
@@ -206,6 +208,7 @@
     (db/upd PulseChannel id
       :details        (cond-> details
                               (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
+      :enabled        enabled
       :schedule_type  schedule_type
       :schedule_hour  (when (not= schedule_type :hourly)
                         schedule_hour)
