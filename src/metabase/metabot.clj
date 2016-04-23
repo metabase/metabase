@@ -57,11 +57,10 @@
   (str "Uh oh! :cry:\n>" (.getMessage e)))
 
 (defmacro ^:private do-async {:style/indent 0} [& body]
-  `(do (future (try ~@body
-                    (catch Throwable e#
-                      (log/error (u/format-color '~'red (u/filtered-stacktrace e#)))
-                      (slack/post-chat-message! *channel-id* (format-exception e#)))))
-       nil))
+  `(future (try ~@body
+                (catch Throwable e#
+                  (log/error (u/format-color '~'red (u/filtered-stacktrace e#)))
+                  (slack/post-chat-message! *channel-id* (format-exception e#))))))
 
 (defn- format-cards
   "Format a sequence of Cards as a nice multiline list for use in responses."
