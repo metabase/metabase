@@ -1,10 +1,10 @@
-(ns metabase.driver.query-processor.macros-test
+(ns metabase.query-processor.macros-test
   (:require [expectations :refer :all]
-            [metabase.driver.query-processor.macros :refer :all]
             [metabase.models.database :refer [Database]]
             [metabase.models.metric :refer [Metric]]
             [metabase.models.segment :refer [Segment]]
             [metabase.models.table :refer [Table]]
+            [metabase.query-processor.macros :refer :all]
             [metabase.test.data.users :refer :all]
             [metabase.test.util :as tu]))
 

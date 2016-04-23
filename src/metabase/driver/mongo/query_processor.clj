@@ -6,22 +6,22 @@
             [clojure.walk :as walk]
             (monger [collection :as mc]
                     [operators :refer :all])
-            [metabase.driver.query-processor :as qp]
-            (metabase.driver.query-processor [annotate :as annotate]
-                                             [interface :refer [qualified-name-components map->DateTimeField map->DateTimeValue]])
             [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
+            [metabase.query-processor :as qp]
+            (metabase.query-processor [annotate :as annotate]
+                                      [interface :refer [qualified-name-components map->DateTimeField map->DateTimeValue]])
             [metabase.util :as u])
   (:import java.sql.Timestamp
            java.util.Date
            (com.mongodb CommandResult DB)
            clojure.lang.PersistentArrayMap
            org.bson.types.ObjectId
-           (metabase.driver.query_processor.interface AgFieldRef
-                                                      DateTimeField
-                                                      DateTimeValue
-                                                      Field
-                                                      RelativeDateTimeValue
-                                                      Value)))
+           (metabase.query_processor.interface AgFieldRef
+                                               DateTimeField
+                                               DateTimeValue
+                                               Field
+                                               RelativeDateTimeValue
+                                               Value)))
 
 (def ^:private ^:const $subtract :$subtract)
 

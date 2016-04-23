@@ -6,7 +6,7 @@
                    [db :as kdb])
             [metabase.driver :as driver]
             [metabase.sync-database.analyze :as analyze]
-            metabase.driver.query-processor.interface
+            metabase.query-processor.interface
             (metabase.models [field :as field]
                              [table :as table])
             [metabase.util :as u]
@@ -15,7 +15,7 @@
            java.util.Map
            clojure.lang.Keyword
            com.mchange.v2.c3p0.ComboPooledDataSource
-           (metabase.driver.query_processor.interface Field Value)))
+           (metabase.query_processor.interface Field Value)))
 
 (declare korma-entity)
 

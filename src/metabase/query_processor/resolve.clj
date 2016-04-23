@@ -1,4 +1,4 @@
-(ns metabase.driver.query-processor.resolve
+(ns metabase.query-processor.resolve
   "Resolve references to `Fields`, `Tables`, and `Databases` in an expanded query dictionary."
   (:refer-clojure :exclude [resolve])
   (:require (clojure [set :as set]
@@ -6,20 +6,20 @@
             [medley.core :as m]
             [schema.core :as s]
             [metabase.db :refer [sel]]
-            [metabase.driver.query-processor.interface :refer :all]
             (metabase.models [database :refer [Database]]
                              [field :as field]
                              [table :refer [Table]])
+            [metabase.query-processor.interface :refer :all]
             [metabase.util :as u])
-  (:import (metabase.driver.query_processor.interface DateTimeField
-                                                      DateTimeValue
-                                                      ExpressionRef
-                                                      Field
-                                                      FieldPlaceholder
-                                                      RelativeDatetime
-                                                      RelativeDateTimeValue
-                                                      Value
-                                                      ValuePlaceholder)))
+  (:import (metabase.query_processor.interface DateTimeField
+                                               DateTimeValue
+                                               ExpressionRef
+                                               Field
+                                               FieldPlaceholder
+                                               RelativeDatetime
+                                               RelativeDateTimeValue
+                                               Value
+                                               ValuePlaceholder)))
 
 ;; # ---------------------------------------------------------------------- UTIL FNS ------------------------------------------------------------
 

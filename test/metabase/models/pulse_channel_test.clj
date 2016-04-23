@@ -120,7 +120,8 @@
 
 ;; create-pulse-channel
 (expect
-  {:channel_type  :email
+  {:enabled       true
+   :channel_type  :email
    :schedule_type :daily
    :schedule_hour 18
    :schedule_day  nil
@@ -129,14 +130,16 @@
                    {:email "foo@bar.com"}
                    (user-details :rasta)]}
   (tu/with-temp Pulse [{:keys [id]}]
-    (create-channel-then-select! {:pulse_id     id
+    (create-channel-then-select! {:pulse_id      id
+                                  :enabled       true
                                   :channel_type  :email
                                   :schedule_type :daily
                                   :schedule_hour 18
                                   :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)} {:id (user->id :crowberto)}]})))
 
 (expect
-  {:channel_type  :slack
+  {:enabled       true
+   :channel_type  :slack
    :schedule_type :hourly
    :schedule_hour nil
    :schedule_day  nil
@@ -144,7 +147,8 @@
    :recipients    []
    :details       {:something "random"}}
   (tu/with-temp Pulse [{:keys [id]}]
-    (create-channel-then-select! {:pulse_id     id
+    (create-channel-then-select! {:pulse_id      id
+                                  :enabled       true
                                   :channel_type  :slack
                                   :schedule_type :hourly
                                   :details       {:something "random"}
@@ -154,7 +158,8 @@
 ;; update-pulse-channel
 ;; simple starting case where we modify the schedule hour and add a recipient
 (expect
-  {:channel_type  :email
+  {:enabled       true
+   :channel_type  :email
    :schedule_type :daily
    :schedule_hour 18
    :schedule_day  nil
@@ -163,6 +168,7 @@
   (tu/with-temp* [Pulse        [{pulse-id :id}]
                   PulseChannel [{channel-id :id, :as channel} {:pulse_id pulse-id}]]
     (update-channel-then-select! {:id            channel-id
+                                  :enabled       true
                                   :channel_type  :email
                                   :schedule_type :daily
                                   :schedule_hour 18
@@ -170,7 +176,8 @@
 
 ;; monthly schedules require a schedule_frame and can optionally omit they schedule_day
 (expect
-  {:channel_type  :email
+  {:enabled        true
+   :channel_type  :email
    :schedule_type :monthly
    :schedule_hour 8
    :schedule_day  nil
@@ -179,6 +186,7 @@
   (tu/with-temp* [Pulse        [{pulse-id :id}]
                   PulseChannel [{channel-id :id :as channel} {:pulse_id pulse-id}]]
     (update-channel-then-select! {:id             channel-id
+                                  :enabled        true
                                   :channel_type   :email
                                   :schedule_type  :monthly
                                   :schedule_hour  8
@@ -188,7 +196,8 @@
 
 ;; weekly schedule should have a day in it, show that we can get full users
 (expect
-  {:channel_type  :email
+  {:enabled        true
+   :channel_type  :email
    :schedule_type :weekly
    :schedule_hour 8
    :schedule_day  "mon"
@@ -197,6 +206,7 @@
   (tu/with-temp* [Pulse        [{pulse-id :id}]
                   PulseChannel [{channel-id :id} {:pulse_id pulse-id}]]
     (update-channel-then-select! {:id            channel-id
+                                  :enabled       true
                                   :channel_type  :email
                                   :schedule_type :weekly
                                   :schedule_hour 8
@@ -205,7 +215,8 @@
 
 ;; hourly schedules don't require day/hour settings (should be nil), fully change recipients
 (expect
-  {:channel_type  :email
+  {:enabled       true
+   :channel_type  :email
    :schedule_type :hourly
    :schedule_hour nil
    :schedule_day  nil
@@ -215,6 +226,7 @@
                   PulseChannel [{channel-id :id} {:pulse_id pulse-id, :details {:emails ["foo@bar.com"]}}]]
     (update-recipients! channel-id [(user->id :rasta)])
     (update-channel-then-select! {:id            channel-id
+                                  :enabled       true
                                   :channel_type  :email
                                   :schedule_type :hourly
                                   :schedule_hour 12
@@ -223,7 +235,8 @@
 
 ;; custom details for channels that need it
 (expect
-  {:channel_type  :email
+  {:enabled       true
+   :channel_type  :email
    :schedule_type :daily
    :schedule_hour 12
    :schedule_day  nil
@@ -233,6 +246,7 @@
   (tu/with-temp* [Pulse        [{pulse-id :id}]
                   PulseChannel [{channel-id :id} {:pulse_id pulse-id}]]
     (update-channel-then-select! {:id            channel-id
+                                  :enabled       true
                                   :channel_type  :email
                                   :schedule_type :daily
                                   :schedule_hour 12
@@ -264,13 +278,14 @@
 (expect
   [[{:schedule_type "hourly", :channel_type "slack"}]
    [{:schedule_type "hourly", :channel_type "slack"}]
-   [{:schedule_type "daily", :channel_type "email"}
+   [{:schedule_type "daily",  :channel_type "email"}
     {:schedule_type "hourly", :channel_type "slack"}]
-   [{:schedule_type "daily", :channel_type "email"}
+   [{:schedule_type "daily",  :channel_type "email"}
     {:schedule_type "hourly", :channel_type "slack"}]]
   (tu/with-temp* [Pulse        [{pulse-id :id}]
                   PulseChannel [_ {:pulse_id pulse-id}]
-                  PulseChannel [_ {:pulse_id pulse-id, :channel_type :slack, :schedule_type :hourly}]]
+                  PulseChannel [_ {:pulse_id pulse-id, :channel_type :slack, :schedule_type :hourly}]
+                  PulseChannel [_ {:pulse_id pulse-id, :channel_type :email, :schedule_type :hourly, :enabled false}]]
     (let [retrieve-channels (fn [hour day]
                               (for [channel (retrieve-scheduled-channels hour day :other :other)]
                                 (dissoc channel :id :pulse_id)))]
@@ -283,17 +298,17 @@
 (expect
   [[{:schedule_type "hourly", :channel_type "slack"}]
    [{:schedule_type "hourly", :channel_type "slack"}
-    {:schedule_type "daily", :channel_type "slack"}]
-   [{:schedule_type "daily", :channel_type "email"}
+    {:schedule_type "daily",  :channel_type "slack"}]
+   [{:schedule_type "daily",  :channel_type "email"}
     {:schedule_type "hourly", :channel_type "slack"}]
    [{:schedule_type "hourly", :channel_type "slack"}
     {:schedule_type "weekly", :channel_type "email"}]]
   (tu/with-temp* [Pulse        [{pulse-1-id :id}]
                   Pulse        [{pulse-2-id :id}]
-                  PulseChannel [_ {:pulse_id pulse-1-id, :channel_type :email, :schedule_type :daily}]
-                  PulseChannel [_ {:pulse_id pulse-1-id, :channel_type :slack, :schedule_type :hourly}]
-                  PulseChannel [_ {:pulse_id pulse-2-id, :channel_type :slack, :schedule_type :daily  :schedule_hour 10, :schedule_day "wed"}]
-                  PulseChannel [_ {:pulse_id pulse-2-id, :channel_type :email, :schedule_type :weekly, :schedule_hour 8, :schedule_day "mon"}]]
+                  PulseChannel [_ {:pulse_id pulse-1-id, :enabled true, :channel_type :email, :schedule_type :daily}]
+                  PulseChannel [_ {:pulse_id pulse-1-id, :enabled true, :channel_type :slack, :schedule_type :hourly}]
+                  PulseChannel [_ {:pulse_id pulse-2-id, :enabled true, :channel_type :slack, :schedule_type :daily  :schedule_hour 10, :schedule_day "wed"}]
+                  PulseChannel [_ {:pulse_id pulse-2-id, :enabled true, :channel_type :email, :schedule_type :weekly, :schedule_hour 8, :schedule_day "mon"}]]
     (let [retrieve-channels (fn [hour day]
                               (for [channel (retrieve-scheduled-channels hour day :other :other)]
                                 (dissoc channel :id :pulse_id)))]

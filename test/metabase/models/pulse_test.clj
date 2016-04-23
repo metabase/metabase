@@ -50,7 +50,8 @@
    :cards        [{:name "Test Card",
                    :description nil,
                    :display "table"}]
-   :channels     [{:schedule_type :daily,
+   :channels     [{:enabled       true
+                   :schedule_type :daily,
                    :schedule_hour 15,
                    :schedule_frame nil,
                    :channel_type  :email,
@@ -97,7 +98,8 @@
 
 ;; update-pulse-channels
 (expect
-  {:channel_type  :email
+  {:enabled       true
+   :channel_type  :email
    :schedule_type :daily
    :schedule_hour 4
    :schedule_day  nil
@@ -105,7 +107,8 @@
    :recipients    [{:email "foo@bar.com"}
                    (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]}
   (tu/with-temp Pulse [{:keys [id]}]
-    (update-pulse-channels {:id id} [{:channel_type  :email
+    (update-pulse-channels {:id id} [{:enabled       true
+                                      :channel_type  :email
                                       :schedule_type :daily
                                       :schedule_hour 4
                                       :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)}]}])
@@ -119,7 +122,8 @@
 (expect
   {:creator_id (user->id :rasta)
    :name       "Booyah!"
-   :channels   [{:schedule_type :daily
+   :channels   [{:enabled       true
+                 :schedule_type :daily
                  :schedule_hour 18
                  :schedule_frame nil
                  :channel_type  :email
@@ -152,7 +156,8 @@
                   {:name "Test Card",
                    :description nil,
                    :display "table"}]
-   :channels     [{:schedule_type :daily,
+   :channels     [{:enabled       true
+                   :schedule_type :daily,
                    :schedule_hour 18,
                    :schedule_frame nil,
                    :channel_type  :email,

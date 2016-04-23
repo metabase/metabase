@@ -3,12 +3,12 @@
   (:require (clojure [pprint :refer [cl-format]]
                      [string :refer [upper-case]])
             [clojure.tools.logging :as log]
-            [metabase.driver :as driver]
             [metabase.email :as email]
             [metabase.email.messages :as messages]
             [metabase.integrations.slack :as slack]
             [metabase.models.card :refer [Card]]
             [metabase.pulse.render :as render]
+            [metabase.query-processor :as qp]
             [metabase.util.urls :as urls]
             [metabase.util :as u]
             [metabase.util.urls :as urls]))
@@ -25,7 +25,7 @@
   (when-let [card (Card card-id)]
     (let [{:keys [creator_id dataset_query]} card]
       (try
-        {:card card :result (driver/dataset-query dataset_query {:executed_by creator_id})}
+        {:card card :result (qp/dataset-query dataset_query {:executed_by creator_id})}
         (catch Throwable t
           (log/warn (format "Error running card query (%n)" card-id) t))))))
 

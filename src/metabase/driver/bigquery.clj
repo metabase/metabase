@@ -9,7 +9,7 @@
                       [driver :as driver])
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
-            metabase.driver.query-processor.interface
+            metabase.query-processor.interface
             (metabase.models [database :refer [Database]]
                              [field :as field]
                              [table :as table])
@@ -26,7 +26,7 @@
            com.google.api.client.json.jackson2.JacksonFactory
            (com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes)
            (com.google.api.services.bigquery.model Table TableCell TableFieldSchema TableList TableList$Tables TableReference TableRow TableSchema QueryRequest QueryResponse)
-           (metabase.driver.query_processor.interface DateTimeValue Value)))
+           (metabase.query_processor.interface DateTimeValue Value)))
 
 (def ^:private ^HttpTransport http-transport (GoogleNetHttpTransport/newTrustedTransport))
 (def ^:private ^JsonFactory   json-factory   (JacksonFactory/getDefaultInstance))
@@ -299,7 +299,7 @@
 ;; Make the dataset-id the "schema" of every field in the query because BigQuery can't figure out fields that are qualified with their just their table name
 (defn- add-dataset-id-to-fields [{{{:keys [dataset-id]} :details} :database, :as query}]
   (walk/postwalk (fn [x]
-                   (if (instance? metabase.driver.query_processor.interface.Field x)
+                   (if (instance? metabase.query_processor.interface.Field x)
                      (assoc x :schema-name dataset-id)
                      x))
                  query))

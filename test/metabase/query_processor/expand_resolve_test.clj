@@ -1,8 +1,8 @@
-(ns metabase.driver.query-processor.expand-resolve-test
+(ns metabase.query-processor.expand-resolve-test
   "Tests query expansion/resolution"
   (:require [expectations :refer :all]
-            (metabase.driver.query-processor [expand :as ql]
-                                             [resolve :as resolve])
+            (metabase.query-processor [expand :as ql]
+                                      [resolve :as resolve])
             [metabase.test.data :refer :all]
             [metabase.util :as u]))
 
@@ -75,7 +75,7 @@
                    :join-tables  nil}
     :fk-field-ids #{}
     :table-ids    #{(id :venues)}}]
-  (let [expanded-form (ql/expand (ql/wrap-inner-query (query venues
+  (let [expanded-form (ql/expand (wrap-inner-query (query venues
                                                         (ql/filter (ql/and (ql/> $price 1))))))]
     (mapv obj->map [expanded-form
                     (resolve/resolve expanded-form)])))
@@ -142,7 +142,7 @@
                                    :schema       "PUBLIC"}]}
     :fk-field-ids #{(id :venues :category_id)}
     :table-ids    #{(id :categories)}}]
-  (let [expanded-form (ql/expand (ql/wrap-inner-query (query venues
+  (let [expanded-form (ql/expand (wrap-inner-query (query venues
                                                         (ql/filter (ql/= $category_id->categories.name
                                                                          "abc")))))]
     (mapv obj->map [expanded-form
@@ -212,7 +212,7 @@
                                    :schema       "PUBLIC"}]}
     :fk-field-ids #{(id :checkins :user_id)}
     :table-ids    #{(id :users)}}]
-  (let [expanded-form (ql/expand (ql/wrap-inner-query (query checkins
+  (let [expanded-form (ql/expand (wrap-inner-query (query checkins
                                                         (ql/filter (ql/> (ql/datetime-field $user_id->users.last_login :year)
                                                                          "1980-01-01")))))]
     (mapv obj->map [expanded-form
@@ -279,7 +279,7 @@
                                    :schema       "PUBLIC"}]}
     :fk-field-ids #{(id :checkins :venue_id)}
     :table-ids    #{(id :venues) (id :checkins)}}]
-  (let [expanded-form (ql/expand (ql/wrap-inner-query (query checkins
+  (let [expanded-form (ql/expand (wrap-inner-query (query checkins
                                                         (ql/aggregation (ql/sum $venue_id->venues.price))
                                                         (ql/breakout (ql/datetime-field $checkins.date :day-of-week)))))]
     (mapv obj->map [expanded-form

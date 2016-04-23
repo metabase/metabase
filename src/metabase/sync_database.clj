@@ -3,7 +3,7 @@
   (:require [clojure.tools.logging :as log]
             [metabase.db :as db]
             [metabase.driver :as driver]
-            [metabase.driver.query-processor :as qp]
+            [metabase.query-processor :as qp]
             [metabase.driver :as driver]
             [metabase.events :as events]
             [metabase.models.raw-table :as raw-table]
