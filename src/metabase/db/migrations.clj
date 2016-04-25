@@ -214,7 +214,7 @@
                 ;; this check gaurds against any table that appears in the schema multiple times
                 (if (contains? @processed-tables {:schema table-schema, :name table-name})
                   ;; this is a dupe of this table, retire it and it's fields
-                  (table/retire-tables [table-id])
+                  (table/retire-tables #{table-id})
                   ;; this is the first time we are encountering this table, so migrate it
                   (do
                     ;; add this table to the set of tables we've processed
