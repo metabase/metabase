@@ -6,6 +6,7 @@
 
 :local(.searchIcon) {
     color: var(--muted-color);
+    margin-left: 10px;
 }
 
 :local(.searchBox) {
