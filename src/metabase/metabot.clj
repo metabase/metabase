@@ -10,11 +10,10 @@
             (manifold [bus :as bus]
                       [deferred :as d]
                       [stream :as s])
-            [metabase.api.common :refer [let-404]]
             [metabase.db :refer [sel]]
             [metabase.integrations.slack :as slack]
             [metabase.models.setting :as setting]
-            [metabase.task.send-pulses :as pulses]
+            [metabase.pulse :as pulse]
             [metabase.util :as u]
             [metabase.util.urls :as urls]))
 
@@ -58,11 +57,10 @@
   (str "Uh oh! :cry:\n>" (.getMessage e)))
 
 (defmacro ^:private do-async {:style/indent 0} [& body]
-  `(do (future (try ~@body
-                    (catch Throwable e#
-                      (log/error (u/format-color '~'red (u/filtered-stacktrace e#)))
-                      (slack/post-chat-message! *channel-id* (format-exception e#)))))
-       nil))
+  `(future (try ~@body
+                (catch Throwable e#
+                  (log/error (u/format-color '~'red (u/filtered-stacktrace e#)))
+                  (slack/post-chat-message! *channel-id* (format-exception e#))))))
 
 (defn- format-cards
   "Format a sequence of Cards as a nice multiline list for use in responses."
@@ -95,17 +93,14 @@
   ([]
    "Show which card? Give me a part of a card name or its ID and I can show it to you. If you don't know which card you want, try `metabot list`.")
   ([card-id-or-name & _]
-   (let-404 [{card-id :id} (id-or-name->card card-id-or-name)]
-     (do-async (pulses/send-pulse! {:cards    [{:id card-id}]
-                                    :channels [{:enabled        true
-                                                :channel_type   "slack"
-                                                :recipients     []
-                                                :details        {:channel *channel-id*}
-                                                :schedule_type  "hourly"
-                                                :schedule_day   "mon"
-                                                :schedule_hour  8
-                                                :schedule_frame "first"}]})))
-   "Ok, just a second..."))
+   (if-let [{card-id :id} (id-or-name->card card-id-or-name)]
+     (do
+       (do-async (let [attachments (pulse/create-and-upload-slack-attachments! [(pulse/execute-card card-id)])]
+                   (slack/post-chat-message! *channel-id*
+                                             nil
+                                             attachments)))
+       "Ok, just a second...")
+     (throw (Exception. "Not Found")))))
 
 
 (defn meme:up-and-to-the-right
@@ -187,7 +182,11 @@
     (when (and (human-message? event)
                (> (event-timestamp-ms event) start-time))
       (binding [*channel-id* (:channel event)]
-        (do-async (handle-slack-message event))))))
+        (do (future (try
+                      (handle-slack-message event)
+                      (catch Throwable t
+                        (slack/post-chat-message! *channel-id* (format-exception t)))))
+            nil)))))
 
 
 ;;; # ------------------------------------------------------------ Websocket Connection Stuff ------------------------------------------------------------

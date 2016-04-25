@@ -13,7 +13,7 @@
                              [pulse-channel :refer [channel-types]])
             [metabase.query-processor :as qp]
             [metabase.pulse :as p]
-            [metabase.task.send-pulses :refer [send-pulse!]]
+            [metabase.pulse.render :as render]
             [metabase.util :as u]))
 
 
@@ -87,9 +87,9 @@
   (let [card (Card id)]
     (read-check Database (:database (:dataset_query card)))
     (let [data (:data (qp/dataset-query (:dataset_query card) {:executed_by *current-user-id*}))]
-      {:status 200, :body (html [:html [:body {:style "margin: 0;"} (binding [p/*include-title* true
-                                                                              p/*include-buttons* true]
-                                                                      (p/render-pulse-card card data))]])})))
+      {:status 200, :body (html [:html [:body {:style "margin: 0;"} (binding [render/*include-title* true
+                                                                              render/*include-buttons* true]
+                                                                      (render/render-pulse-card card data))]])})))
 
 (defendpoint GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a `Card` with ID and other information."
@@ -98,9 +98,9 @@
     (read-check Database (:database (:dataset_query card)))
     (let [result    (qp/dataset-query (:dataset_query card) {:executed_by *current-user-id*})
           data      (:data result)
-          card-type (p/detect-pulse-card-type card data)
-          card-html (html (binding [p/*include-title* true]
-                            (p/render-pulse-card card data)))]
+          card-type (render/detect-pulse-card-type card data)
+          card-html (html (binding [render/*include-title* true]
+                            (render/render-pulse-card card data)))]
       {:id              id
        :pulse_card_type card-type
        :pulse_card_html card-html
@@ -112,8 +112,8 @@
   (let [card (Card id)]
     (read-check Database (:database (:dataset_query card)))
     (let [data (:data (qp/dataset-query (:dataset_query card) {:executed_by *current-user-id*}))
-          ba   (binding [p/*include-title* true]
-                 (p/render-pulse-card-to-png card data))]
+          ba   (binding [render/*include-title* true]
+                 (render/render-pulse-card-to-png card data))]
       {:status 200, :headers {"Content-Type" "image/png"}, :body (new java.io.ByteArrayInputStream ba) })))
 
 (defendpoint POST "/test"
@@ -122,7 +122,7 @@
   {name     [Required NonEmptyString]
    cards    [Required ArrayOfMaps]
    channels [Required ArrayOfMaps]}
-  (send-pulse! body)
+  (p/send-pulse! body)
   {:ok true})
 
 (define-routes)
