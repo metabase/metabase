@@ -232,15 +232,25 @@
                         (k/where      {:id table-id}))
                       ;; migrate all Fields in the Table (skipping :dynamic-schema dbs)
                       (when-not (driver/driver-supports? (driver/engine->driver engine) :dynamic-schema)
-                        (doseq [{field-id :id, column-name :name, :as field} (db/sel :many Field :table_id table-id, :visibility_type [not= "retired"])]
-                          (let [{raw-column-id :id} (db/ins RawColumn
-                                                      :raw_table_id  raw-table-id
-                                                      :name          column-name
-                                                      :is_pk         (= :id (:special_type field))
-                                                      :details       {:base-type (:base_type field)}
-                                                      :active        true)]
-                            ;; update the Field and link it with the RawColumn
-                            (k/update Field
-                              (k/set-fields {:raw_column_id raw-column-id
-                                             :last_analyzed (u/new-sql-timestamp)})
-                              (k/where      {:id field-id}))))))))))))))))
+                        (let [processed-fields (atom #{})]
+                          (doseq [{field-id :id, column-name :name, :as field} (db/sel :many Field :table_id table-id, :visibility_type [not= "retired"])]
+                            ;; guard against duplicate fields with the same name
+                            (if (contains? @processed-fields column-name)
+                              ;; this is a dupe, disable it
+                              (k/update Field
+                                (k/set-fields {:visibility_type "retired"})
+                                (k/where      {:id field-id}))
+                              ;; normal unmigrated field, so lets use it
+                              (let [{raw-column-id :id} (db/ins RawColumn
+                                                          :raw_table_id  raw-table-id
+                                                          :name          column-name
+                                                          :is_pk         (= :id (:special_type field))
+                                                          :details       {:base-type (:base_type field)}
+                                                          :active        true)]
+                                ;; update the Field and link it with the RawColumn
+                                (k/update Field
+                                  (k/set-fields {:raw_column_id raw-column-id
+                                                 :last_analyzed (u/new-sql-timestamp)})
+                                  (k/where      {:id field-id}))
+                                ;; add this column to the set we've processed already
+                                (swap! processed-fields conj column-name)))))))))))))))))
