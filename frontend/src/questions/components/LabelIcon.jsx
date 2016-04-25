@@ -13,7 +13,7 @@ const LabelIcon = ({ icon = "", size = 18, className, style }) =>
     : icon.charAt(0) === "#" ?
         <span className={cx(S.icon, S.colorIcon, className)} style={{ backgroundColor: icon, width: size, height: size }}></span>
     :
-        <Icon className={cx(S.icon, className)} name={icon} />
+        <Icon className={cx(S.icon, className)} name={icon} width={16} height={16} />
 
 LabelIcon.propTypes = {
     className:  PropTypes.string,
