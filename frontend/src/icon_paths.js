@@ -195,8 +195,8 @@ export function loadIcon(name) {
     var icon = {
         attrs: {
             className: 'Icon Icon-' + name,
-            width: '32px',
-            height: '32px',
+            width: '16px',
+            height: '16px',
             viewBox: '0 0 32 32',
             fill: 'currentcolor'
         },
