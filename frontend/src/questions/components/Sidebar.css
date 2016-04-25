@@ -35,6 +35,7 @@
     composes: transition-color from "style";
     composes: transition-background from "style";
     font-size: 1em;
+    line-height: 1;
     color: #CFE4F5;
 }
 
