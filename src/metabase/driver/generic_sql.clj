@@ -15,7 +15,8 @@
            java.util.Map
            clojure.lang.Keyword
            com.mchange.v2.c3p0.ComboPooledDataSource
-           (metabase.query_processor.interface Field Value)))
+           (metabase.query_processor.interface Field Value)
+           (clojure.lang PersistentVector)))
 
 (declare korma-entity)
 
@@ -85,6 +86,9 @@
     "Return a korma form appropriate for converting a Unix timestamp integer field or value to an proper SQL `Timestamp`.
      SECONDS-OR-MILLISECONDS refers to the resolution of the int in question and with be either `:seconds` or `:milliseconds`."))
 
+(extend-protocol jdbc/IResultSetReadColumn
+  (class (object-array []))
+  (result-set-read-column [x _2 _3] (PersistentVector/adopt x)))
 
 (def ^:dynamic ^:private connection-pools
   "A map of our currently open connection pools, keyed by DATABASE `:id`."

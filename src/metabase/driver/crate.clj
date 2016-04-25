@@ -10,8 +10,7 @@
   (:import (clojure.lang Named)))
 
 (defn- column->base-type
-  "Map of Postgres column types -> Field base types.
-   Add more mappings here as you come across them."
+  "Map of Crate column types -> Field base types"
   [_ column-type]
   ({:integer          :IntegerField
     :string           :TextField
@@ -21,10 +20,10 @@
     :long             :BigIntegerField
     :float            :FloatField
     :double           :FloatField
-    :ip               :UnknownField
+    :ip               :TextField
     :timestamp        :DateTimeField
-    :geo_shape        :UnknownField
-    :geo_point        :UnknownField
+    :geo_shape        :DictionaryField
+    :geo_point        :ArrayField
     :object           :DictionaryField
     :array            :ArrayField
     :object_array     :ArrayField
@@ -37,9 +36,9 @@
     :short_array      :ArrayField
     :long_array       :ArrayField
     :double_array     :ArrayField
-    :ip_array         :UnknownField
-    :geo_shape_array  :UnknownField
-    :geo_point_array  :UnknownField
+    :ip_array         :ArrayField
+    :geo_shape_array  :ArrayField
+    :geo_point_array  :ArrayField
     } column-type))
 
 
