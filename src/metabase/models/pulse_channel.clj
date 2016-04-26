@@ -16,14 +16,15 @@
   "Simple `vector` of the days in the week used for reference and lookups.
 
    NOTE: order is important here!!
-         these indexes match the values from clj-time `day-of-week` function (0 = Sunday, 6 = Saturday)"
-  [{:id "sun", :name "Sun"},
-   {:id "mon", :name "Mon"},
+         we use the same ordering as the clj-time `day-of-week` function (1 = Monday, 7 = Sunday) except
+         that we are 0 based instead."
+  [{:id "mon", :name "Mon"},
    {:id "tue", :name "Tue"},
    {:id "wed", :name "Wed"},
    {:id "thu", :name "Thu"},
    {:id "fri", :name "Fri"},
-   {:id "sat", :name "Sat"}])
+   {:id "sat", :name "Sat"},
+   {:id "sun", :name "Sun"}])
 
 (def ^{:arglists '([day])} day-of-week?
   "Is DAY a valid `day-of-week` choice?"
