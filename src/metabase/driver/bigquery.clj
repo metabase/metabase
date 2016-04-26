@@ -86,20 +86,32 @@
 
 (def ^:private ^{:arglists '([database])} ^Bigquery database->client (comp credential->client database->credential))
 
-
 (defn- ^TableList list-tables
-  ([{{:keys [project-id dataset-id]} :details, :as database}]
-   (list-tables (database->client database) project-id dataset-id))
+  "Fetch a page of Tables. By default, fetches the first page; page size is 50. For cases when more than 50 Tables are present, you may
+    fetch subsequent pages by specifying the PAGE-TOKEN; the token for the next page is returned with a page when one exists."
+  ([database]
+   (list-tables database nil))
 
-  ([^Bigquery client, ^String project-id, ^String dataset-id]
+  ([{{:keys [project-id dataset-id]} :details, :as database}, ^String page-token-or-nil]
+   (list-tables (database->client database) project-id dataset-id page-token-or-nil))
+
+  ([^Bigquery client, ^String project-id, ^String dataset-id, ^String page-token-or-nil]
    {:pre [client (seq project-id) (seq dataset-id)]}
-   (execute (.list (.tables client) project-id dataset-id))))
+   (execute (u/prog1 (.list (.tables client) project-id dataset-id)
+              (.setPageToken <> page-token-or-nil)))))
 
 (defn- describe-database [database]
   {:pre [(map? database)]}
-  {:tables (set (for [^TableList$Tables table (.getTables (list-tables database))
-                      :let [^TableReference tableref (.getTableReference table)]]
-                  {:schema nil, :name (.getTableId tableref)}))})
+  ;; first page through all the 50-table pages until we stop getting "next page tokens"
+  (let [tables (loop [tables [], ^TableList table-list (list-tables database)]
+                 (let [tables (concat tables (.getTables table-list))]
+                   (if-let [next-page-token (.getNextPageToken table-list)]
+                     (recur tables (list-tables database next-page-token))
+                     tables)))]
+    ;; after that convert the results to MB format
+    {:tables (set (for [^TableList$Tables table tables
+                        :let [^TableReference tableref (.getTableReference table)]]
+                    {:schema nil, :name (.getTableId tableref)}))}))
 
 (defn- can-connect? [details-map]
   {:pre [(map? details-map)]}

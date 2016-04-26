@@ -244,12 +244,12 @@
   (let [loader *data-loader*
         dbdef  (i/map->DatabaseDefinition (assoc dbdef :short-lived? true))]
     (swap! loader->loaded-db-def conj [loader dbdef])
-    (with-db (binding [*sel-disable-logging* true]
-               (let [db (get-or-create-database! loader dbdef)]
-                 (assert db)
-                 (assert (exists? Database :id (:id db)))
-                 db))
-      (f db))))
+    (binding [*sel-disable-logging* true]
+      (let [db (get-or-create-database! loader dbdef)]
+        (assert db)
+        (assert (exists? Database :id (:id db)))
+        (with-db db
+          (f db))))))
 
 
 (defmacro with-temp-db
