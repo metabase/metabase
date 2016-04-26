@@ -187,7 +187,7 @@
 (defn- post-process-native
   ([^QueryResponse response]
    (post-process-native response query-default-timeout-seconds))
-  ([^QueryResponse response, ^Integer timeout-seconds, should-retry?]
+  ([^QueryResponse response, ^Integer timeout-seconds]
    (if-not (.getJobComplete response)
      ;; 99% of the time by the time this is called `.getJobComplete` will return `true`. On the off chance it doesn't, wait a few seconds for the job to finish.
      (do
