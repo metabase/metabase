@@ -82,9 +82,13 @@ export default class EntityList extends Component {
     emptyState () {
       switch (this.props.name) {
         case 'All questions':
-          return 'No questions have been saved yet.'
+          return {
+            icon: '',
+            message: 'No questions have been saved yet.'
+          }
         case 'Recently viewed':
           return {
+            icon: 'recents',
             message: 'You haven\'t viewed any questions recently.'
           }
         case 'Saved by me':
