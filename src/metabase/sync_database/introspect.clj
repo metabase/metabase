@@ -2,13 +2,13 @@
   "Functions which handle the raw sync process."
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [korma.core :as k]
-            [korma.db :as kdb]
+            (korma [core :as k]
+                   [db :as kdb])
             [schema.core :as schema]
-            [metabase.db :as db]
-            [metabase.driver :as driver]
-            [metabase.models.raw-column :as raw-column]
-            [metabase.models.raw-table :as raw-table]
+            (metabase [db :as db]
+                      [driver :as driver])
+            (metabase.models [raw-column :as raw-column]
+                             [raw-table :as raw-table])
             [metabase.sync-database.interface :as i]
             [metabase.util :as u]))
 

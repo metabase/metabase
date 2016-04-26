@@ -1,17 +1,17 @@
 (ns metabase.sync-database.analyze
   "Functions which handle the in-depth data shape analysis portion of the sync process."
-  (:require [cheshire.core :as json]
-            [clojure.math.numeric-tower :as math]
+  (:require [clojure.math.numeric-tower :as math]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
+            [cheshire.core :as json]
             [korma.core :as k]
             [schema.core :as schema]
             [metabase.db :as db]
             [metabase.db.metadata-queries :as queries]
             [metabase.driver :as driver]
-            [metabase.models.field :as field]
-            [metabase.models.field-values :as field-values]
-            [metabase.models.table :as table]
+            (metabase.models [field :as field]
+                             [field-values :as field-values]
+                             [table :as table])
             [metabase.sync-database.interface :as i]
             [metabase.util :as u]))
 
