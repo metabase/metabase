@@ -21,19 +21,14 @@ export default class Icon extends Component {
     render() {
         const icon = loadIcon(this.props.name);
 
-        const defaultProps = {
-            width: 16,
-            height: 16
-        };
-
         if (!icon) {
             return <span className="hide" />;
         } else if (icon.img) {
-            return (<RetinaImage forceOriginalDimensions={false} {...defaultProps} {...icon.attrs} {...this.props} src={icon.img} />);
+            return (<RetinaImage forceOriginalDimensions={false} {...icon.attrs} {...this.props} src={icon.img} />);
         } else if (icon.svg) {
-            return (<svg {...defaultProps} {...icon.attrs} {...this.props} dangerouslySetInnerHTML={{__html: icon.svg}}></svg>);
+            return (<svg  {...icon.attrs} {...this.props} dangerouslySetInnerHTML={{__html: icon.svg}}></svg>);
         } else {
-            return (<svg {...defaultProps} {...icon.attrs} {...this.props}><path d={icon.path} /></svg>);
+            return (<svg {...icon.attrs} {...this.props}><path d={icon.path} /></svg>);
         }
     }
 }
