@@ -1,6 +1,10 @@
-:local(.list),
+:local(.list) {
+  composes: inline from "style";
+}
+
 :local(.listItem) {
-    composes: inline from "style";
+    composes: inline-block from "style";
+    margin-bottom: 8px;
 }
 
 :local(.label) {
@@ -12,6 +16,7 @@
     padding: 0.25em 0.5em;
     margin: 0 0.25em;
     line-height: 1;
+    white-space: nowrap;
 }
 
 :local(.emojiLabel) {
