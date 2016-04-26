@@ -45,11 +45,8 @@
 
 ;;; ### Misc. Driver Fns
 
-(defn- can-connect?
-  ([_ details]
-   (can-connect? details))
-  ([details]
-   (= 200 (:status (http/get (details->url details "/status"))))))
+(defn- can-connect? [details]
+  (= 200 (:status (http/get (details->url details "/status")))))
 
 
 ;;; ### Query Processing
@@ -66,20 +63,16 @@
          (throw e))))
 
 
-(defn- process-structured
-  ([_ expanded-query-map]
-   (process-structured {:details (-> expanded-query-map :database :details)
-                        :query   (-> expanded-query-map :query)}))
-  ([{:keys [details query]}]
-   (qp/process-structured-query (partial do-query details) query)))
+(defn- process-structured [query]
+  ;; Merge `:settings` into the inner query dict so the QP has access to it
+  (qp/process-structured-query (partial do-query (get-in query [:database :details]))
+                               (assoc (:query query)
+                                      :settings (:settings query))))
 
-(defn- process-native
-  ([_ query]
-   (process-native query))
-  ([{database-id :database, {query :query} :native}]
-   {:pre [(integer? database-id)]}
-   (let-404 [details (sel :one :field [Database :details] :id database-id)]
-     (do-query details query))))
+(defn- process-native [{database-id :database, {query :query} :native}]
+  {:pre [(integer? database-id)]}
+  (let-404 [details (sel :one :field [Database :details] :id database-id)]
+    (do-query details query)))
 
 
 ;;; ### Sync
@@ -137,7 +130,7 @@
        (get-in event [:event (keyword field-name)]))]))
 
 (defn- field-values-lazy-seq
-  ([_ field]
+  ([field]
    (field-values-lazy-seq (:details (table/database (field/table field)))
                           (:name (field/table field))
                           (:name field)
@@ -168,7 +161,7 @@
 (u/strict-extend DruidDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:can-connect?          can-connect?
+         {:can-connect?          (u/drop-first-arg can-connect?)
           :describe-database     (u/drop-first-arg describe-database)
           :describe-table        (u/drop-first-arg describe-table)
           :details-fields        (constantly [{:name         "host"
@@ -179,8 +172,8 @@
                                                :type         :integer
                                                :default      8082}])
           :features              (constantly #{:set-timezone})
-          :field-values-lazy-seq field-values-lazy-seq
-          :process-native        process-native
-          :process-structured    process-structured}))
+          :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)
+          :process-native        (u/drop-first-arg process-native)
+          :process-structured    (u/drop-first-arg process-structured)}))
 
 (driver/register-driver! :druid (DruidDriver.))

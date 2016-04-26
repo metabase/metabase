@@ -2,7 +2,6 @@
   (:require [clojure.core.match :refer [match]]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
-            [metabase.driver :as driver]
             [metabase.query-processor :as qp]
             [metabase.query-processor.interface :as i]
             [metabase.util :as u])
@@ -26,7 +25,10 @@
 (derive ::topN             ::grouped-ag-query)
 (derive ::groupBy          ::grouped-ag-query)
 
-(def ^:private ^:dynamic *query* nil)
+(def ^:private ^:dynamic *query*
+  "The INNER part of the query currently being processed.
+   (`:settings` is merged in from the outer query as well so we can access timezone info)."
+  nil)
 
 (defn- query-type-dispatch-fn [query-type & _] query-type)
 
@@ -164,7 +166,7 @@
   {:pre [(string? format-str)]}
   {:type     :timeFormat
    :format   format-str
-   :timeZone (or (driver/report-timezone)
+   :timeZone (or (get-in *query* [:settings :report-timezone])
                  "UTC")
    :locale   "en-US"})
 
@@ -173,41 +175,43 @@
   {:type     :javascript
    :function (s/replace (apply str function-str-parts) #"\s+" " ")})
 
-(def ^:private ^:const unit->extractionFn
+(defn- unit->extractionFn
   "JODA date format strings for each datetime unit. [Described here.](http://www.joda.org/joda-time/apidocs/org/joda/time/format/DateTimeFormat.html)."
-  {:default         (extract:timeFormat "yyyy-MM-dd'T'HH:mm:ssZ")
-   :minute          (extract:timeFormat "yyyy-MM-dd'T'HH:mm:00Z")
-   :minute-of-hour  (extract:timeFormat "mm")
-   :hour            (extract:timeFormat "yyyy-MM-dd'T'HH:00:00Z")
-   :hour-of-day     (extract:timeFormat "HH")
-   :day             (extract:timeFormat "yyyy-MM-ddZ")
-   :day-of-week     (extract:js "function (timestamp) {"
-                                "  var date = new Date(timestamp);"
-                                "  return date.getDay() + 1;"
-                                "}")
-   :day-of-month    (extract:timeFormat "dd")
-   :day-of-year     (extract:timeFormat "DDD")
-   :week            (extract:js "function (timestamp) {"
-                                "  var date     = new Date(timestamp);"
-                                "  var firstDOW = new Date(date - (date.getDay() * 86400000));"
-                                "  var month    = firstDOW.getMonth() + 1;"
-                                "  var day      = firstDOW.getDate();"
-                                "  return '' + firstDOW.getFullYear() + '-' + (month < 10 ? '0' : '') + month + '-' + (day < 10 ? '0' : '') + day;"
-                                "}")
-   :week-of-year    (extract:timeFormat "ww")
-   :month           (extract:timeFormat "yyyy-MM-01")
-   :month-of-year   (extract:timeFormat "MM")
-   :quarter         (extract:js "function (timestamp) {"
-                                "  var date         = new Date(timestamp);"
-                                "  var month        = date.getMonth() + 1;" ; js months are 0 - 11
-                                "  var quarterMonth = month - ((month - 1) % 3);"
-                                "  return '' + date.getFullYear() + '-' + (quarterMonth < 10 ? '0' : '') + quarterMonth + '-01';"
-                                "}")
-   :quarter-of-year (extract:js "function (timestamp) {"
-                                "  var date = new Date(timestamp);"
-                                "  return Math.floor((date.getMonth() + 3) / 3);"
-                                "}")
-   :year            (extract:timeFormat "yyyy")})
+  [unit]
+  (case unit
+    :default         (extract:timeFormat "yyyy-MM-dd'T'HH:mm:ssZ")
+    :minute          (extract:timeFormat "yyyy-MM-dd'T'HH:mm:00Z")
+    :minute-of-hour  (extract:timeFormat "mm")
+    :hour            (extract:timeFormat "yyyy-MM-dd'T'HH:00:00Z")
+    :hour-of-day     (extract:timeFormat "HH")
+    :day             (extract:timeFormat "yyyy-MM-ddZ")
+    :day-of-week     (extract:js "function (timestamp) {"
+                                 "  var date = new Date(timestamp);"
+                                 "  return date.getDay() + 1;"
+                                 "}")
+    :day-of-month    (extract:timeFormat "dd")
+    :day-of-year     (extract:timeFormat "DDD")
+    :week            (extract:js "function (timestamp) {"
+                                 "  var date     = new Date(timestamp);"
+                                 "  var firstDOW = new Date(date - (date.getDay() * 86400000));"
+                                 "  var month    = firstDOW.getMonth() + 1;"
+                                 "  var day      = firstDOW.getDate();"
+                                 "  return '' + firstDOW.getFullYear() + '-' + (month < 10 ? '0' : '') + month + '-' + (day < 10 ? '0' : '') + day;"
+                                 "}")
+    :week-of-year    (extract:timeFormat "ww")
+    :month           (extract:timeFormat "yyyy-MM-01")
+    :month-of-year   (extract:timeFormat "MM")
+    :quarter         (extract:js "function (timestamp) {"
+                                 "  var date         = new Date(timestamp);"
+                                 "  var month        = date.getMonth() + 1;" ; js months are 0 - 11
+                                 "  var quarterMonth = month - ((month - 1) % 3);"
+                                 "  return '' + date.getFullYear() + '-' + (quarterMonth < 10 ? '0' : '') + quarterMonth + '-01';"
+                                 "}")
+    :quarter-of-year (extract:js "function (timestamp) {"
+                                 "  var date = new Date(timestamp);"
+                                 "  return Math.floor((date.getMonth() + 3) / 3);"
+                                 "}")
+    :year            (extract:timeFormat "yyyy")))
 
 (extend-protocol IDimension
   nil    (->dimension-rvalue [this] (->rvalue this))
@@ -511,7 +515,7 @@
 ;;; ### process-structured-query
 
 (defn process-structured-query
-  "Process a structured query for a Druid DB."
+  "Process a structured (inner) query for a Druid DB."
   [do-query query]
   (binding [*query* query]
     (let [[query-type druid-query] (build-druid-query query)]
