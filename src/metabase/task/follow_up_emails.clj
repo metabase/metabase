@@ -38,12 +38,11 @@
                                                  (k/order :date_joined :ASC)
                                                  (k/limit 1))
                                                first
-                                               :date_joined
-                                               .getTime)]
+                                               :date_joined)]
                  ;; 2. we need to be 2+ weeks (14 days) from creation to send the follow up
                  (when (< (* 14 24 60 60 1000)
-                          (- (System/currentTimeMillis) instance-created))
-                   ;; 3. we need  access to email AND the instance must be opted into anonymous tracking
+                          (- (System/currentTimeMillis) (.getTime ^java.sql.Timestamp instance-created)))
+                   ;; 3. we need access to email AND the instance must be opted into anonymous tracking
                    (when (and (email/email-configured?)
                               (let [tracking? (setting/get :anon-tracking-enabled)]
                                 (or (nil? tracking?) (= "true" tracking?))))

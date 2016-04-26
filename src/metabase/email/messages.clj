@@ -106,7 +106,7 @@
                                {:heading "We’d love your feedback."
                                 :callToAction "It looks like Metabase wasn’t quite a match for you. Would you mind taking a fast 5 question survey to help the Metabase team understand why and make things better in the future?"
                                 :link         "http://www.metabase.com/feedback/this-thing-sucks"}
-                               {:heading "We hope you've been enjoing Metabase."
+                               {:heading "We hope you've been enjoying Metabase."
                                 :callToAction "Would you mind taking a fast 6 question survey to tell us how it’s going?"
                                 :link         "http://www.metabase.com/feedback/best-analytics-evar"}))
         message-body  (stencil/render-file "metabase/email/follow_up_email" context)]
