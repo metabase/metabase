@@ -89,4 +89,3 @@
       (log/error "Problem sending follow-up email" t))
     (finally
       (setting/set :follow-up-email-sent "true"))))
-

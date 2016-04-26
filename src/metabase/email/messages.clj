@@ -90,11 +90,11 @@
 
 (defn send-follow-up-email
   "Format and Send an email to the system admin following up on the installation."
-  [email type]
+  [email msg-type]
   {:pre [(string? email)
          (u/is-email? email)
-         (contains? #{"active" "inactive"} type)]}
-  (let [subject       (if (= "inactive" type)
+         (contains? #{"active" "inactive"} msg-type)]}
+  (let [subject       (if (= "inactive" msg-type)
                         "[Metabase] Where have you been?"
                         "[Metabase] What else can we do for you?")
         data-quote    (quotation/random-quote)
@@ -102,7 +102,7 @@
                               :logoHeader      true
                               :quotation       (:quote data-quote)
                               :quotationAuthor (:author data-quote)}
-                             (if (= "inactive" type)
+                             (if (= "inactive" msg-type)
                                {:callToAction "We haven’t seen you much! Would you mind taking a minute to tell us what we could do better?"
                                 :buttonText   "Button"
                                 :link         "http://www.metabase.com/feedback/this-thing-sucks"}
