@@ -1,8 +1,8 @@
 @import '../Questions.css';
 
 :local(.actionHeader) {
-    composes: flex align-center from "style";
-    composes: my3 from "style";
+    composes: full flex align-center from "style";
+    line-height: 1;
     font-size: 14px;
     color: var(--blue-color);
 }
@@ -14,6 +14,7 @@
 /* ALL CHECKBOX */
 :local(.allCheckbox) {
     composes: icon from "./List.css";
+    margin-left: 10px;
     visibility: visible !important;
 }
 
@@ -21,22 +22,15 @@
     color: var(--blue-color) !important;
 }
 
-:local(.labelButton) {
-    composes: px1 from "style";
-    composes: cursor-pointer from "style";
+:local(.actionButton) {
+    composes: px1 cursor-pointer text-bold flex align-center from "style";
 }
 
-:local(.archiveButton) {
-    composes: px1 from "style";
-    composes: cursor-pointer from "style";
-}
-
-:local(.labelButton) .Icon,
-:local(.archiveButton) .Icon {
+:local(.actionButton) .Icon {
     padding-left: 0.25em;
     padding-right: 0.25em;
 }
 
-:local(.labelButton) .Icon-chevrondown {
+:local(.actionButton) .Icon-chevrondown {
     color: #DEEAF1;
 }

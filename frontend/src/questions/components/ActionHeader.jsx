@@ -24,11 +24,11 @@ const ActionHeader = ({ visibleCount, selectedCount, allAreSelected, sectionIsAr
         <span className={S.selectedCount}>
             {selectedCount} selected
         </span>
-        <span className="flex-align-right">
+        <span className="flex align-center flex-align-right">
             { !sectionIsArchive ?
                 <LabelPopover
                     triggerElement={
-                        <span className={S.labelButton}>
+                        <span className={S.actionButton}>
                             <Icon name="label" />
                             Labels
                             <Icon name="chevrondown" width={12} height={12} />
@@ -38,7 +38,7 @@ const ActionHeader = ({ visibleCount, selectedCount, allAreSelected, sectionIsAr
                     count={selectedCount}
                 />
             : null }
-            <span className={S.archiveButton} onClick={() => setArchived(undefined, !sectionIsArchive, true)}>
+            <span className={S.actionButton} onClick={() => setArchived(undefined, !sectionIsArchive, true)}>
                 <Icon name="archive" />
                 { sectionIsArchive ? "Unarchive" : "Archive" }
             </span>

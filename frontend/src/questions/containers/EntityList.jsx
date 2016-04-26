@@ -136,19 +136,21 @@ export default class EntityList extends Component {
                   { () =>
                         entityIds.length > 0 ? (
                           <div className="wrapper wrapper--trim">
-                            { selectedCount > 0 ?
-                              <ActionHeader
-                                visibleCount={visibleCount}
-                                selectedCount={selectedCount}
-                                allAreSelected={allAreSelected}
-                                sectionIsArchive={sectionIsArchive}
-                                setAllSelected={setAllSelected}
-                                setArchived={setArchived}
-                                labels={labels}
-                                />
-                              :
-                              <SearchHeader searchText={searchText} setSearchText={setSearchText} />
-                            }
+                            <div className="flex align-center my1" style={{height: 40}}>
+                              { selectedCount > 0 ?
+                                <ActionHeader
+                                  visibleCount={visibleCount}
+                                  selectedCount={selectedCount}
+                                  allAreSelected={allAreSelected}
+                                  sectionIsArchive={sectionIsArchive}
+                                  setAllSelected={setAllSelected}
+                                  setArchived={setArchived}
+                                  labels={labels}
+                                  />
+                                :
+                                <SearchHeader searchText={searchText} setSearchText={setSearchText} />
+                              }
+                            </div>
                             <List entityType={entityType} entityIds={entityIds} setItemSelected={setItemSelected} />
                           </div>
                         ) : (
