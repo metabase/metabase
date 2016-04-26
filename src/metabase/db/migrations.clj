@@ -185,21 +185,6 @@
           (k/where      {:id                 origin_id}))))))
 
 
-;(defmigration resolve-potential-duplicate-tables
-;  (when-let [duplicate-tables (not-empty (k/select Table
-;                                           (k/fields :db_id :schema :name)
-;                                           (k/aggregate (count :*) :cnt)
-;                                           (k/where {:active true})
-;                                           (k/group :db_id :schema :name)
-;                                           (k/having {:cnt [> 1]})))]
-;
-;    (when-let [fks (not-empty (db/sel :many ForeignKey))]
-;      (doseq [{:keys [origin_id destination_id]} fks]
-;        (k/update Field
-;          (k/set-fields {:fk_target_field_id destination_id})
-;          (k/where      {:id                 origin_id}))))))
-
-
 ;; populate RawTable and RawColumn information
 ;; NOTE: we only handle active Tables/Fields and we skip any FK relationships (they can safely populate later)
 (defmigration create-raw-tables
