@@ -2,7 +2,7 @@
   (:require [metabase.driver.generic-sql :as sql]
             [korma.core :as k]
             [metabase.models.field :as field]
-            [metabase.driver.sync :as sync]))
+            [metabase.sync-database.analyze :as analyze]))
 
 (defn- field-avg-length [_ field]
   (or (some-> (sql/korma-entity (field/table field))
@@ -29,7 +29,7 @@
 (defn analyze-table
   "Default implementation of `analyze-table` for SQL drivers."
   [driver table new-table-ids]
-  ((sync/make-analyze-table driver
+  ((analyze/make-analyze-table driver
                             :field-avg-length-fn (partial field-avg-length driver)
                             :field-percent-urls-fn (partial field-percent-urls driver))
     driver

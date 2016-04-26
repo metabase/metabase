@@ -1,7 +1,7 @@
 (ns metabase.driver.crate.query-processor
   (:require [korma.core :as k]
             [metabase.driver.generic-sql.query-processor :as qp])
-  (:import (metabase.driver.query_processor.interface CompoundFilter ComparisonFilter)))
+  (:import (metabase.query_processor.interface ComparisonFilter CompoundFilter)))
 
 
 (defn- rewrite-between
