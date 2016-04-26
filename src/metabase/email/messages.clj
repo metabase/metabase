@@ -88,6 +88,34 @@
       :message-type :html
       :message      message-body)))
 
+(defn send-follow-up-email
+  "Format and Send an email to the system admin following up on the installation."
+  [email type]
+  {:pre [(string? email)
+         (u/is-email? email)
+         (contains? #{"active" "inactive"} type)]}
+  (let [subject       (if (= "inactive" type)
+                        "[Metabase] Where have you been?"
+                        "[Metabase] What else can we do for you?")
+        data-quote    (quotation/random-quote)
+        context       (merge {:emailType       "notification"
+                              :logoHeader      true
+                              :quotation       (:quote data-quote)
+                              :quotationAuthor (:author data-quote)}
+                             (if (= "inactive" type)
+                               {:callToAction "We haven’t seen you much! Would you mind taking a minute to tell us what we could do better?"
+                                :buttonText   "Button"
+                                :link         "http://www.metabase.com/feedback/this-thing-sucks"}
+                               {:callToAction "Hey there! We hope you’ve been enjoying Metabase. Do you mind taking a minute to tell us how it’s going?"
+                                :buttonText   "Button"
+                                :link         "http://www.metabase.com/feedback/best-analytics-evar"}))
+        message-body  (stencil/render-file "metabase/email/follow_up_email" context)]
+    (email/send-message
+      :subject      subject
+      :recipients   [email]
+      :message-type :html
+      :message      message-body)))
+
 ;; HACK: temporary workaround to postal requiring a file as the attachment
 (defn- write-byte-array-to-temp-file
   [^bytes img-bytes]
