@@ -178,6 +178,7 @@
                                                :display-name "Broker node port"
                                                :type         :integer
                                                :default      8082}])
+          :features              (constantly #{:set-timezone})
           :field-values-lazy-seq field-values-lazy-seq
           :process-native        process-native
           :process-structured    process-structured}))

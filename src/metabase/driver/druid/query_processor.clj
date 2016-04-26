@@ -1,7 +1,6 @@
 (ns metabase.driver.druid.query-processor
   (:require [clojure.core.match :refer [match]]
             [clojure.string :as s]
-            [clojure.tools.logging]
             [clojure.tools.logging :as log]
             [metabase.driver :as driver]
             [metabase.query-processor :as qp]
