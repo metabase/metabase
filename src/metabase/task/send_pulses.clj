@@ -46,7 +46,9 @@
                              (time/now)
                              (time/to-time-zone (time/now) (time/time-zone-for-id reporting-timezone)))
         curr-hour          (time/hour now)
-        curr-weekday       (->> (time/day-of-week now)
+                           ;; joda time produces values of 1-7 here (Mon -> Sun) and we subtract 1 from it to
+                           ;; make the values zero based to correspond to the indexes in pulse-channel/days-of-week
+        curr-weekday       (->> (- (time/day-of-week now) 1)
                                 (get pulse-channel/days-of-week)
                                 :id)
         curr-monthday      (monthday now)
