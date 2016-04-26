@@ -15,17 +15,22 @@ import { reduxReactRouter } from 'redux-router';
 export { combineReducers } from "redux";
 export { handleActions, createAction } from "redux-actions";
 
-const logger = createLogger();
+import { DEBUG } from "metabase/lib/debug";
+
+let middleware = [thunk, promise];
+if (DEBUG) {
+    middleware.push(createLogger());
+}
 
 // common createStore with middleware applied
 export const createStore = compose(
-  applyMiddleware(thunk, promise, logger),
+  applyMiddleware(...middleware),
   reduxReactRouter({ createHistory })
 )(originalCreateStore);
 
 export const createStoreWithAngularScope = ($scope, $location, ...args) => {
     return compose(
-        applyMiddleware(thunk, promise, logger),
+        applyMiddleware(...middleware),
         reduxReactRouter({ createHistory: createAngularHistory.bind(null, $scope, $location) })
     )(originalCreateStore)(...args);
 }

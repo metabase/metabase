@@ -71,7 +71,7 @@ const ItemBody = pure(({ id, name, labels, created, by }) =>
             <Link to={Urls.card(id)} className={S.itemName}>{name}</Link>
             <Labels labels={labels} />
         </div>
-        <div className={S.itemSubtitle}>
+        <div className={cx(S.itemSubtitle, { "mt1" : labels.length === 0 })}>
           {`Created ${created} by ${by}`}
         </div>
     </div>

@@ -54,7 +54,6 @@
 }
 
 :local(.itemSubtitle) {
-    composes: mt1 from "style";
     color: var(--subtitle-color);
     font-size: 14px;
 }

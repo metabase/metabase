@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 import { connect } from "react-redux";
 
 import S from "../components/List.css";
@@ -14,7 +15,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.j
 
 import { setSearchText, setItemSelected, setAllSelected, setArchived } from "../questions";
 import {
-    getEntityType, getEntityIds,
+    getSection, getEntityType, getEntityIds,
     getSectionName, getSectionLoading, getSectionError,
     getSearchText,
     getVisibleCount, getSelectedCount, getAllAreSelected, getSectionIsArchive,
@@ -23,6 +24,7 @@ import {
 
 const mapStateToProps = (state, props) => {
   return {
+      sectionId:        getSection(state),
       entityType:       getEntityType(state),
       entityIds:        getEntityIds(state),
       loading:          getSectionLoading(state),
@@ -51,6 +53,7 @@ const mapDispatchToProps = {
 export default class EntityList extends Component {
     static propTypes = {
         style:              PropTypes.object.isRequired,
+        sectionId:          PropTypes.string.isRequired,
         name:               PropTypes.string.isRequired,
         loading:            PropTypes.bool.isRequired,
         error:              PropTypes.any,
@@ -68,12 +71,24 @@ export default class EntityList extends Component {
         setArchived:        PropTypes.func.isRequired
     };
 
+    componentDidUpdate(prevProps) {
+        // Scroll to the top of the list if the section changed
+        // A little hacky, something like https://github.com/taion/scroll-behavior might be better
+        if (this.props.sectionId !== prevProps.sectionId) {
+            ReactDOM.findDOMNode(this).scrollTop = 0;
+        }
+    }
+
     emptyState () {
       switch (this.props.name) {
         case 'All questions':
-          return 'No questions have been saved yet.'
+          return {
+            icon: '',
+            message: 'No questions have been saved yet.'
+          }
         case 'Recently viewed':
           return {
+            icon: 'recents',
             message: 'You haven\'t viewed any questions recently.'
           }
         case 'Saved by me':
@@ -125,19 +140,21 @@ export default class EntityList extends Component {
                   { () =>
                         entityIds.length > 0 ? (
                           <div className="wrapper wrapper--trim">
-                            { selectedCount > 0 ?
-                              <ActionHeader
-                                visibleCount={visibleCount}
-                                selectedCount={selectedCount}
-                                allAreSelected={allAreSelected}
-                                sectionIsArchive={sectionIsArchive}
-                                setAllSelected={setAllSelected}
-                                setArchived={setArchived}
-                                labels={labels}
-                                />
-                              :
-                              <SearchHeader searchText={searchText} setSearchText={setSearchText} />
-                            }
+                            <div className="flex align-center my1" style={{height: 40}}>
+                              { selectedCount > 0 ?
+                                <ActionHeader
+                                  visibleCount={visibleCount}
+                                  selectedCount={selectedCount}
+                                  allAreSelected={allAreSelected}
+                                  sectionIsArchive={sectionIsArchive}
+                                  setAllSelected={setAllSelected}
+                                  setArchived={setArchived}
+                                  labels={labels}
+                                  />
+                                :
+                                <SearchHeader searchText={searchText} setSearchText={setSearchText} />
+                              }
+                            </div>
                             <List entityType={entityType} entityIds={entityIds} setItemSelected={setItemSelected} />
                           </div>
                         ) : (

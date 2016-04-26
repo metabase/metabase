@@ -35,6 +35,7 @@
     composes: transition-color from "style";
     composes: transition-background from "style";
     font-size: 1em;
+    line-height: 1;
     color: #CFE4F5;
 }
 
@@ -62,13 +63,16 @@
 }
 
 :local(.name) {
-    composes: ml2 from "style";
-    composes: text-bold from "style";
+    composes: ml2 text-bold from "style";
     color: #9CAEBE;
-
     text-overflow: ellipsis;
     white-space: nowrap;
     overflow-x: hidden;
+}
+
+/* yeessh. this really shouldn't be necessary */
+:local(.name)::-webkit-scrollbar {
+  display: none;
 }
 
 :local(.item):hover :local(.name),
