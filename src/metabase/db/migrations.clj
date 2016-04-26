@@ -2,6 +2,7 @@
   "Clojure-land data migration definitions and fns for running them."
   (:require [clojure.tools.logging :as log]
             [korma.core :as k]
+            [korma.db :as kdb]
             [metabase.db :as db]
             [metabase.driver :as driver]
             [metabase.events.activity-feed :refer [activity-feed-topics]]
@@ -13,7 +14,7 @@
                              [foreign-key :refer [ForeignKey]]
                              [raw-column :refer [RawColumn]]
                              [raw-table :refer [RawTable]]
-                             [table :refer [Table]]
+                             [table :refer [Table] :as table]
                              [setting :as setting])
             [metabase.util :as u]))
 
@@ -189,32 +190,52 @@
 (defmigration create-raw-tables
   (when (= 0 (:cnt (first (k/select RawTable (k/aggregate (count :*) :cnt)))))
     (binding [db/*sel-disable-logging* true]
-      (doseq [{database-id :id, :keys [name engine]} (db/sel :many Database)]
-        (when-let [tables (not-empty (db/sel :many Table :db_id database-id, :active true))]
-          (log/info (format "Migrating raw schema information for %s database '%s'" engine name))
-          (doseq [{table-id :id, table-schema :schema, table-name :name} tables]
-            ;; create the RawTable
-            (let [{raw-table-id :id} (db/ins RawTable
-                                       :database_id  database-id
-                                       :schema       table-schema
-                                       :name         table-name
-                                       :details      {}
-                                       :active       true)]
-              ;; update the Table and link it with the RawTable
-              (k/update Table
-                (k/set-fields {:raw_table_id raw-table-id})
-                (k/where      {:id table-id}))
-              ;; migrate all Fields in the Table (skipping :dynamic-schema dbs)
-              (when-not (driver/driver-supports? (driver/engine->driver engine) :dynamic-schema)
-                (doseq [{field-id :id, column-name :name, :as field} (db/sel :many Field :table_id table-id, :visibility_type [not= "retired"])]
-                  (let [{raw-column-id :id} (db/ins RawColumn
-                                              :raw_table_id  raw-table-id
-                                              :name          column-name
-                                              :is_pk         (= :id (:special_type field))
-                                              :details       {:base-type (:base_type field)}
-                                              :active        true)]
-                    ;; update the Field and link it with the RawColumn
-                    (k/update Field
-                      (k/set-fields {:raw_column_id raw-column-id
-                                     :last_analyzed (u/new-sql-timestamp)})
-                      (k/where      {:id field-id}))))))))))))
+      (kdb/transaction
+        (doseq [{database-id :id, :keys [name engine]} (db/sel :many Database)]
+          (when-let [tables (not-empty (db/sel :many Table :db_id database-id, :active true))]
+            (log/info (format "Migrating raw schema information for %s database '%s'" engine name))
+            (let [processed-tables (atom #{})]
+              (doseq [{table-id :id, table-schema :schema, table-name :name} tables]
+                ;; this check gaurds against any table that appears in the schema multiple times
+                (if (contains? @processed-tables {:schema table-schema, :name table-name})
+                  ;; this is a dupe of this table, retire it and it's fields
+                  (table/retire-tables #{table-id})
+                  ;; this is the first time we are encountering this table, so migrate it
+                  (do
+                    ;; add this table to the set of tables we've processed
+                    (swap! processed-tables conj {:schema table-schema, :name table-name})
+                    ;; create the RawTable
+                    (let [{raw-table-id :id} (db/ins RawTable
+                                               :database_id  database-id
+                                               :schema       table-schema
+                                               :name         table-name
+                                               :details      {}
+                                               :active       true)]
+                      ;; update the Table and link it with the RawTable
+                      (k/update Table
+                        (k/set-fields {:raw_table_id raw-table-id})
+                        (k/where      {:id table-id}))
+                      ;; migrate all Fields in the Table (skipping :dynamic-schema dbs)
+                      (when-not (driver/driver-supports? (driver/engine->driver engine) :dynamic-schema)
+                        (let [processed-fields (atom #{})]
+                          (doseq [{field-id :id, column-name :name, :as field} (db/sel :many Field :table_id table-id, :visibility_type [not= "retired"])]
+                            ;; guard against duplicate fields with the same name
+                            (if (contains? @processed-fields column-name)
+                              ;; this is a dupe, disable it
+                              (k/update Field
+                                (k/set-fields {:visibility_type "retired"})
+                                (k/where      {:id field-id}))
+                              ;; normal unmigrated field, so lets use it
+                              (let [{raw-column-id :id} (db/ins RawColumn
+                                                          :raw_table_id  raw-table-id
+                                                          :name          column-name
+                                                          :is_pk         (= :id (:special_type field))
+                                                          :details       {:base-type (:base_type field)}
+                                                          :active        true)]
+                                ;; update the Field and link it with the RawColumn
+                                (k/update Field
+                                  (k/set-fields {:raw_column_id raw-column-id
+                                                 :last_analyzed (u/new-sql-timestamp)})
+                                  (k/where      {:id field-id}))
+                                ;; add this column to the set we've processed already
+                                (swap! processed-fields conj column-name)))))))))))))))))
