@@ -3,6 +3,7 @@
             [clojure.string :as s]
             [clojure.tools.logging]
             [clojure.tools.logging :as log]
+            [metabase.driver :as driver]
             [metabase.query-processor :as qp]
             [metabase.query-processor.interface :as i]
             [metabase.util :as u])
@@ -164,7 +165,8 @@
   {:pre [(string? format-str)]}
   {:type     :timeFormat
    :format   format-str
-   :timeZone "US/Pacific" ; TODO - should we use `report-timezone` instead (?)
+   :timeZone (or (driver/report-timezone)
+                 "UTC")
    :locale   "en-US"})
 
 (defn- extract:js [& function-str-parts]

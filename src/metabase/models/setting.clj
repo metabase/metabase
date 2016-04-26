@@ -4,7 +4,7 @@
             [environ.core :as env]
             [korma.core :as k]
             [metabase.config :as config]
-            [metabase.db :refer [exists? sel del]]
+            [metabase.db :refer [exists? sel del], :as db]
             [metabase.events :as events]
             [metabase.models [common :as common]
                              [interface :as i]]
@@ -248,6 +248,7 @@
 
 (defn- restore-cache-if-needed []
   (when-not @cached-setting->value
+    (db/setup-db-if-needed)
     (reset! cached-setting->value (into {} (for [{k :key, v :value} (sel :many Setting)]
                                              {(keyword k) v})))))
 
