@@ -1,0 +1,20 @@
+{{> metabase/email/_header }}
+  <div style="padding: 2em 4em; border: 1px solid #dddddd; border-radius: 2px; background-color: white; box-shadow: 0 1px 2px rgba(0, 0, 0, .08); text-align: center;">
+    <div style="padding-bottom: 1em;">
+      <h2 style="font-weight: normal; color: #4C545B;line-height: 1.65rem;">{{heading}}</h2>
+    </div>
+    <p>
+      {{callToAction}}
+    </p>
+    <p>
+      <div style="padding: 1em;">
+        <a style="display: inline-block; box-sizing: border-box; text-decoration: none; font-size: 1.063rem; padding: 0.5rem 1.375rem; background: #FBFCFD; border: 1px solid #ddd; color: #444; cursor: pointer; text-decoration: none; font-weight: bold; border-radius: 4px; background-color: #4990E2; border-color: #4990E2; color: #fff;" href="{{link}}">
+          Take survey
+        </a>
+      </div>
+    </p>
+    <p style="font-size 12px;">
+      This email was sent from your Metabase and only ever happens once, so feel free to ignore it and you won’t be bugged again.
+    </p>
+  </div>
+{{> metabase/email/_footer }}
