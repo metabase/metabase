@@ -93,8 +93,8 @@
   [email msg-type]
   {:pre [(string? email)
          (u/is-email? email)
-         (contains? #{"active" "inactive"} msg-type)]}
-  (let [subject       (if (= "inactive" msg-type)
+         (contains? #{"abandon" "follow-up"} msg-type)]}
+  (let [subject       (if (= "abandon" msg-type)
                         "[Metabase] Help make Metabase better."
                         "[Metabase] Tell us how things are going.")
         data-quote    (quotation/random-quote)
@@ -102,7 +102,7 @@
                               :logoHeader      true
                               :quotation       (:quote data-quote)
                               :quotationAuthor (:author data-quote)}
-                             (if (= "inactive" msg-type)
+                             (if (= "abandon" msg-type)
                                {:heading "We’d love your feedback."
                                 :callToAction "It looks like Metabase wasn’t quite a match for you. Would you mind taking a fast 5 question survey to help the Metabase team understand why and make things better in the future?"
                                 :link         "http://www.metabase.com/feedback/this-thing-sucks"}

@@ -118,3 +118,8 @@
   [reset-token]
   {:pre [(string? reset-token)]}
   (str (setting/get :-site-url) "/auth/reset_password/" reset-token))
+
+(defn instance-created-at
+  "The date the instance was created.  We use the :date_joined of the first user to determine this."
+  []
+  (db/sel :one :field [User :date_joined] (k/order :date_joined :ASC) (k/limit 1)))
