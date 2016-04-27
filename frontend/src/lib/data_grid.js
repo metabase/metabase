@@ -92,7 +92,7 @@ var DataGrid = {
             }
 
             var colDef = _.clone(data.cols[cellCol]);
-            colDef['name'] = colDef['display_name'] = formatValue(val, { column: data.cols[pivotCol] });
+            colDef['name'] = colDef['display_name'] = formatValue(val, { column: data.cols[pivotCol] }) || "";
             return colDef;
         });
 
