@@ -602,3 +602,22 @@
                  (if (contains? slugify-valid-chars c)
                    c
                    \_)))))
+
+(defn do-with-auto-retries
+  "Execute F, a function that takes no arguments, and return the results.
+   If F fails with an exception, retry F up to NUM-RETRIES times until it succeeds.
+
+    Consider using the `auto-retry` macro instead of calling this function directly."
+  [num-retries f]
+  (if (<= num-retries 0)
+    (f)
+    (try (f)
+         (catch Throwable _
+           (do-with-auto-retries (dec num-retries) f)))))
+
+(defmacro auto-retry
+  "Execute BODY and return the results.
+   If BODY fails with an exception, retry execution up to NUM-RETRIES times until it succeeds."
+  {:style/indent 1}
+  [num-retries & body]
+  `(do-with-auto-retries ~num-retries (fn [] ~@body)))
