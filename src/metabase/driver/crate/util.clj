@@ -4,8 +4,7 @@
             [korma.core :as k]
             [clj-time.core :as t]
             [clj-time.coerce :as c]
-            [clj-time.format :as f]
-            [metabase.util :as u])
+            [clj-time.format :as f])
   (:import (java.sql Timestamp)))
 
 (defn unix-timestamp->timestamp [_ expr seconds-or-milliseconds]

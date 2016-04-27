@@ -10,7 +10,8 @@
   (:import (clojure.lang Named)))
 
 (defn- column->base-type
-  "Map of Crate column types -> Field base types"
+  "Map of Crate column types -> Field base types
+  Crate data types -> https://crate.io/docs/reference/sql/data_types.html"
   [_ column-type]
   ({:integer          :IntegerField
     :string           :TextField

@@ -8,7 +8,7 @@
             [metabase.models.database :refer [Database]]
             [metabase.util :as u]))
 
-(defn- value->base-type
+(defn value->base-type
   "Attempt to match a value we get back from the DB with the corresponding base-type`."
   [v]
   (driver/class->base-type (type v)))
