@@ -358,8 +358,8 @@
 
 (defmacro pdoseq
   "(Almost) just like `doseq` but runs in parallel. Doesn't support advanced binding forms like `:let` or `:when` and only supports a single binding </3"
-  [[binding collection] & body]
   {:style/indent 1}
+  [[binding collection] & body]
   `(dorun (pmap (fn [~binding]
                   ~@body)
                 ~collection)))
@@ -608,6 +608,7 @@
    If F fails with an exception, retry F up to NUM-RETRIES times until it succeeds.
 
     Consider using the `auto-retry` macro instead of calling this function directly."
+  {:style/indent 1}
   [num-retries f]
   (if (<= num-retries 0)
     (f)
@@ -620,4 +621,5 @@
    If BODY fails with an exception, retry execution up to NUM-RETRIES times until it succeeds."
   {:style/indent 1}
   [num-retries & body]
-  `(do-with-auto-retries ~num-retries (fn [] ~@body)))
+  `(do-with-auto-retries ~num-retries
+     (fn [] ~@body)))

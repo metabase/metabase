@@ -182,7 +182,7 @@
     (try (destroy-dataset! database-name)
          (catch Throwable _))
     (create-dataset! database-name)
-    (doseq [tabledef table-definitions]
+    (u/pdoseq [tabledef table-definitions]
       (load-tabledef! database-name tabledef)))
   (println (u/format-color 'green "[OK]")))
 
