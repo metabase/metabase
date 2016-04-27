@@ -6,9 +6,9 @@
             (clojure [pprint :refer [pprint]]
                      [string :as s])
             [clojure.tools.logging :as log]
-            [clj-time.core :as t]
-            [clj-time.coerce :as coerce]
-            [clj-time.format :as time]
+            (clj-time [core :as t]
+                      [coerce :as coerce]
+                      [format :as time])
             colorize.core
             [metabase.config :as config])
   (:import clojure.lang.Keyword
