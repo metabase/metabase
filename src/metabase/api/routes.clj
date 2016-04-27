@@ -9,6 +9,7 @@
                           [email :as email]
                           [field :as field]
                           [label :as label]
+                          [log :as log]
                           [metric :as metric]
                           [notify :as notify]
                           [pulse :as pulse]
@@ -44,6 +45,7 @@
                                 {:status 200 :body {:status "ok"}}
                                 {:status 503 :body {:status "initializing" :progress ((resolve 'metabase.core/initialization-progress))}}))
   (context "/label"        [] (+auth label/routes))
+  (context "/log"          [] (+auth log/routes))
   (context "/metric"       [] (+auth metric/routes))
   (context "/notify"       [] (+apikey notify/routes))
   (context "/pulse"        [] (+auth pulse/routes))

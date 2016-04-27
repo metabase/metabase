@@ -16,6 +16,7 @@
                       [db :as db]
                       [driver :as driver]
                       [events :as events]
+                      [logger :as logger]
                       [metabot :as metabot]
                       [middleware :as mb-middleware]
                       [routes :as routes]

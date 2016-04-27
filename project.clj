@@ -109,7 +109,8 @@
                               "-Xms1024m"                             ; give JVM a decent heap size to start with
                               "-Xmx2048m"                             ; hard limit of 2GB so we stop hitting the 4GB container limit on CircleCI
                               "-XX:+CMSClassUnloadingEnabled"         ; let Clojure's dynamically generated temporary classes be GC'ed from PermGen
-                              "-XX:+UseConcMarkSweepGC"]}             ; Concurrent Mark Sweep GC needs to be used for Class Unloading (above)
+                              "-XX:+UseConcMarkSweepGC"]              ; Concurrent Mark Sweep GC needs to be used for Class Unloading (above)
+                   :aot [metabase.logger]}                            ; Log appender class needs to be compiled for log4j to use it 
              :reflection-warnings {:global-vars {*warn-on-reflection* true}} ; run `lein check-reflection-warnings` to check for reflection warnings
              :expectations {:injections [(require 'metabase.test-setup)]
                             :resource-paths ["test_resources"]
