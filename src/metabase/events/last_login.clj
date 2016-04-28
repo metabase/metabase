@@ -25,7 +25,6 @@
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
     (when-let [{object :item} last-login-event]
-      (log/info object)
       ;; just make a simple attempt to set the `:last_login` for the given user to now
       (when-let [user-id (:user_id object)]
         (db/upd User user-id :last_login (u/new-sql-timestamp))))
