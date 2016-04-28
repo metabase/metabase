@@ -49,19 +49,19 @@ export default class FieldList extends Component {
         let tableName = tableMetadata.display_name;
 
         let specialOptions = [];
-        if (customFieldOptions) {
-            specialOptions = Object.keys(customFieldOptions).map(name => ({
-                name: name,
-                value: ["expression", name],
-                customField: customFieldOptions[name]
-            }));
-        }
-
         if (segmentOptions) {
-            specialOptions = specialOptions.concat(segmentOptions.map(segment => ({
+            specialOptions = segmentOptions.map(segment => ({
                 name: segment.name,
                 value: ["SEGMENT", segment.id],
                 segment: segment
+            }));
+        }
+
+        if (customFieldOptions) {
+            specialOptions = specialOptions.concat(Object.keys(customFieldOptions).map(name => ({
+                name: name,
+                value: ["expression", name],
+                customField: customFieldOptions[name]
             })));
         }
 
