@@ -101,6 +101,9 @@ export default class FieldList extends Component {
                 { item.segment &&
                     this.renderSegmentTooltip(item.segment)
                 }
+                { item.customField &&
+                    <span className="h5 text-grey-2 px1">Custom</span>
+                }
                 { item.field && enableTimeGrouping && isDate(item.field) &&
                     <PopoverWithTrigger
                         className={this.props.className}
@@ -129,7 +132,10 @@ export default class FieldList extends Component {
         if (item.segment) {
             name = "star-outline";
         } else if (item.field) {
-            name = ICON_MAPPING[getFieldType(item.field)]
+            name = ICON_MAPPING[getFieldType(item.field)];
+        } else if (item.customField) {
+            // TODO: need to make this better
+            name = 'int';
         }
         return <Icon name={name || 'unknown'} width={18} height={18} />;
     }
@@ -157,8 +163,6 @@ export default class FieldList extends Component {
     getItemClasses(item, itemIndex) {
         if (item.segment) {
             return "List-item--segment";
-        } else if (item.customField) {
-            return "List-item--customfield";
         } else {
             return null;
         }
