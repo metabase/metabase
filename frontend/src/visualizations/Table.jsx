@@ -4,7 +4,7 @@ import TableInteractive from "./TableInteractive.jsx";
 import TableSimple from "./TableSimple.jsx";
 
 import Query from "metabase/lib/query";
-import DataGrid from "metabase/lib/data_grid";
+import * as DataGrid from "metabase/lib/data_grid";
 
 export default class Bar extends Component {
     static displayName = "Table";
