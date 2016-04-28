@@ -185,7 +185,7 @@ CardControllers.controller('CardDetail', [
                     } else if (column.unit != null) {
                         field = ["datetime_field", column.id, "as", column.unit];
                     } else {
-                        field = ["field-id", column.id];
+                        field = column.id;
                     }
 
                     let dataset_query = card.dataset_query,
