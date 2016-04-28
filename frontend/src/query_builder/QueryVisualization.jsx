@@ -86,7 +86,7 @@ export default class QueryVisualization extends Component {
         }
 
         return (
-            <div className="relative flex flex-no-shrink mt3 mb1">
+            <div className="relative flex flex-no-shrink mt3 mb1" style={{ minHeight: "2em" }}>
                 <span className="relative z3">{visualizationSettings}</span>
                 <div className="absolute flex layout-centered left right z2">
                     <RunButton
