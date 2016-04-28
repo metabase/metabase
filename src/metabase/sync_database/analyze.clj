@@ -189,9 +189,9 @@
         ;; set Field metadata we may have detected
         (when (and id (or preview-display special-type))
           (db/upd-non-nil-keys field/Field id
-                               ;; if a field marked `preview-display` as false then set the visibility type to `:details-only` (see models.field/visibility-types)
-                               :visibility_type (when (false? preview-display) :details-only)
-                               :special_type    special-type))
+            ;; if a field marked `preview-display` as false then set the visibility type to `:details-only` (see models.field/visibility-types)
+            :visibility_type (when (false? preview-display) :details-only)
+            :special_type    special-type))
         ;; handle field values, setting them if applicable otherwise clearing them
         (if (and id values (< 0 (count (filter identity values))))
           (field-values/save-field-values id values)
@@ -200,7 +200,7 @@
     ;; update :last_analyzed for all fields in the table
     (k/update field/Field
       (k/set-fields {:last_analyzed (u/new-sql-timestamp)})
-      (k/where {:table_id table-id
+      (k/where {:table_id        table-id
                 :visibility_type [not= "retired"]}))))
 
 (defn analyze-data-shape-for-tables!

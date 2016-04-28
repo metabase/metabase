@@ -3,10 +3,10 @@
             [korma.core :as k]
             [metabase.db :as db]
             [metabase.mock.moviedb :as moviedb]
-            [metabase.models.database :as database]
-            [metabase.models.hydrate :as hydrate]
-            [metabase.models.raw-column :refer [RawColumn], :as raw-column]
-            [metabase.models.raw-table :refer [RawTable], :as raw-table]
+            (metabase.models [database :refer [Database]]
+                             [hydrate :as hydrate]
+                             [raw-column :refer [RawColumn]]
+                             [raw-table :refer [RawTable]])
             [metabase.sync-database.introspect :as introspect]
             [metabase.test.util :as tu]))
 
@@ -104,15 +104,15 @@
      :details             {}
      :created_at          true
      :updated_at          true}]]
-  (tu/with-temp* [database/Database  [{database-id :id}]
-                  raw-table/RawTable  [{raw-table-id1 :id, :as table} {:database_id database-id, :schema "customer1", :name "photos"}]
-                  raw-column/RawColumn [_ {:raw_table_id raw-table-id1, :name "id"}]
-                  raw-column/RawColumn [_ {:raw_table_id raw-table-id1, :name "user_id"}]
-                  raw-table/RawTable  [{raw-table-id2 :id, :as table1} {:database_id database-id, :schema "customer2", :name "photos"}]
-                  raw-column/RawColumn [_ {:raw_table_id raw-table-id2, :name "id"}]
-                  raw-column/RawColumn [_ {:raw_table_id raw-table-id2, :name "user_id"}]
-                  raw-table/RawTable  [{raw-table-id3 :id, :as table2} {:database_id database-id, :schema nil, :name "users"}]
-                  raw-column/RawColumn [_ {:raw_table_id raw-table-id3, :name "id"}]]
+  (tu/with-temp* [Database [{database-id :id}]
+                  RawTable          [{raw-table-id1 :id, :as table}  {:database_id database-id, :schema "customer1", :name "photos"}]
+                  RawColumn         [_                               {:raw_table_id raw-table-id1, :name "id"}]
+                  RawColumn         [_                               {:raw_table_id raw-table-id1, :name "user_id"}]
+                  RawTable          [{raw-table-id2 :id, :as table1} {:database_id database-id, :schema "customer2", :name "photos"}]
+                  RawColumn         [_                               {:raw_table_id raw-table-id2, :name "id"}]
+                  RawColumn         [_                               {:raw_table_id raw-table-id2, :name "user_id"}]
+                  RawTable          [{raw-table-id3 :id, :as table2} {:database_id database-id, :schema nil, :name "users"}]
+                  RawColumn         [_                               {:raw_table_id raw-table-id3, :name "id"}]]
     (let [get-columns #(->> (db/sel :many RawColumn :raw_table_id raw-table-id1 (k/order :id))
                             (mapv tu/boolean-ids-and-timestamps))]
       ;; original list should not have any fks
@@ -207,8 +207,8 @@
      :details      {:count 12000, :base-type "IntegerField"}
      :created_at   true
      :updated_at   true}]]
-  (tu/with-temp* [database/Database  [{database-id :id}]
-                  raw-table/RawTable [{raw-table-id :id, :as table} {:database_id database-id}]]
+  (tu/with-temp* [Database  [{database-id :id}]
+                  RawTable [{raw-table-id :id, :as table} {:database_id database-id}]]
     (let [get-columns #(->> (db/sel :many RawColumn :raw_table_id raw-table-id (k/order :id))
                             (mapv tu/boolean-ids-and-timestamps))]
       ;; original list should be empty
@@ -271,7 +271,7 @@
                     :updated_at   true}]
      :created_at  true
      :updated_at  true}]]
-  (tu/with-temp* [database/Database [{database-id :id, :as db}]]
+  (tu/with-temp* [Database [{database-id :id, :as db}]]
     [(get-tables database-id)
      ;; now add a table
      (do
@@ -321,8 +321,8 @@
                     :updated_at   true}]
      :created_at  true
      :updated_at  true}]]
-  (tu/with-temp* [database/Database  [{database-id :id, :as db}]
-                  raw-table/RawTable [table {:database_id database-id
+  (tu/with-temp* [Database  [{database-id :id, :as db}]
+                  RawTable [table {:database_id database-id
                                              :schema      "aviary"
                                              :name        "toucanery"
                                              :details     {:owner "Cam"}}]]
@@ -413,11 +413,11 @@
                     :updated_at   true}]
      :created_at  true
      :updated_at  true}]]
-  (tu/with-temp* [database/Database    [{database-id :id, :as db}]
-                  raw-table/RawTable   [t1 {:database_id database-id, :schema "a", :name "1"}]
-                  raw-column/RawColumn [c1 {:raw_table_id (:id t1), :name "size"}]
-                  raw-table/RawTable   [t2 {:database_id database-id, :schema "a", :name "2"}]
-                  raw-column/RawColumn [c2 {:raw_table_id (:id t2), :name "beak_size", :fk_target_column_id (:id c1)}]]
+  (tu/with-temp* [Database    [{database-id :id, :as db}]
+                  RawTable   [t1 {:database_id database-id, :schema "a", :name "1"}]
+                  RawColumn [c1 {:raw_table_id (:id t1), :name "size"}]
+                  RawTable   [t2 {:database_id database-id, :schema "a", :name "2"}]
+                  RawColumn [c2 {:raw_table_id (:id t2), :name "beak_size", :fk_target_column_id (:id c1)}]]
     [(get-tables database-id)
      (do
        (disable-raw-tables! [(:id t1) (:id t2)])
@@ -433,27 +433,24 @@
 ;; introspect-database-and-update-raw-tables!
 ;; TODO: test that dynamic-schema dbs skip the table sync
 (expect
-  [[]
-   moviedb/moviedb-raw-tables
-   moviedb/moviedb-raw-tables
-   (conj (vec (drop-last moviedb/moviedb-raw-tables))
-         (-> (last moviedb/moviedb-raw-tables)
-             (assoc :active false)
-             (update :columns #(map (fn [col]
-                                      (assoc col
-                                        :active              false
-                                        :fk_target_column_id false)) %))))]
-  (tu/with-temp* [database/Database [{database-id :id, :as db} {:engine :moviedb}]]
-    [(get-tables database-id)
-     ;; first sync should add all the tables, fields, etc
-     (do
-       (introspect/introspect-database-and-update-raw-tables! (moviedb/->MovieDbDriver) db)
-       (get-tables database-id))
-     ;; run the sync a second time to see how we respond to repeat syncing
-     (do
-       (introspect/introspect-database-and-update-raw-tables! (moviedb/->MovieDbDriver) db)
-       (get-tables database-id))
-     ;; one more time, but this time we'll remove a table and make sure that's handled properly
-     (do
-       (introspect/introspect-database-and-update-raw-tables! (moviedb/->MovieDbDriver) (assoc db :exclude-tables #{"roles"}))
-       (get-tables database-id))]))
+  [#{}
+   (set moviedb/moviedb-raw-tables)
+   (set moviedb/moviedb-raw-tables)
+   (set (conj (vec (drop-last moviedb/moviedb-raw-tables))
+              (-> (last moviedb/moviedb-raw-tables)
+                  (assoc :active false)
+                  (update :columns #(map (fn [col]
+                                           (assoc col
+                                                  :active              false
+                                                  :fk_target_column_id false)) %)))))]
+  (tu/with-temp* [Database [{database-id :id, :as db} {:engine :moviedb}]]
+    (let [introspect-and-get-tables! (fn [db]
+                                       (introspect/introspect-database-and-update-raw-tables! (moviedb/->MovieDbDriver) db)
+                                       (set (get-tables database-id)))]
+      [(set (get-tables database-id))
+       ;; first sync should add all the tables, fields, etc
+       (introspect-and-get-tables! db)
+       ;; run the sync a second time to see how we respond to repeat syncing
+       (introspect-and-get-tables! db)
+       ;; one more time, but this time we'll remove a table and make sure that's handled properly
+       (introspect-and-get-tables! (assoc db :exclude-tables #{"roles"}))])))
