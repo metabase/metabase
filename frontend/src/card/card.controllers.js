@@ -16,7 +16,7 @@ import i from "icepick";
 import moment from "moment";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import DataGrid from "metabase/lib/data_grid";
+import * as DataGrid from "metabase/lib/data_grid";
 import Query from "metabase/lib/query";
 import { createQuery } from "metabase/lib/query";
 import { createCard, serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
