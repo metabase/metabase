@@ -10,7 +10,7 @@ import { isNumeric, isDate, isDimension, isString } from "metabase/lib/schema_me
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 import Urls from "metabase/lib/urls";
 
-import { MinColumnsError, MinRowsError } from "metabase/visualizations/lib/errors";
+import { MinRowsError } from "metabase/visualizations/lib/errors";
 
 import crossfilter from "crossfilter";
 import _ from "underscore";
@@ -56,7 +56,7 @@ export default class LineAreaBarChart extends Component {
     static checkRenderable(cols, rows) {
         if (rows.length < 1) { throw new MinRowsError(1, rows.length); }
         if (!(isDimensionMetric(cols, false) || isDimensionDimensionMetric(cols) || isDimensionMetricMetric(cols))) {
-            throw new Error("This visualization requires one dimension followed by one or more metrics, or two dimensions followed by one metric.");
+            throw new Error("We couldn’t create a " + this.noun + " based on your query.");
         }
     }
 
