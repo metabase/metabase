@@ -59,11 +59,12 @@
 
 (defn- create-dataset! [^String dataset-id]
   {:pre [(seq dataset-id)]}
-  (execute (.insert (.datasets bigquery) project-id (doto (Dataset.)
-                                                      (.setLocation "US")
-                                                      (.setDatasetReference (doto (DatasetReference.)
-                                                                              (.setDatasetId dataset-id))))))
-  (println (u/format-color 'blue "Created BigQuery dataset '%s'." dataset-id)))
+  (let [start-time-ns (System/nanoTime)]
+    (execute (.insert (.datasets bigquery) project-id (doto (Dataset.)
+                                                        (.setLocation "US")
+                                                        (.setDatasetReference (doto (DatasetReference.)
+                                                                                (.setDatasetId dataset-id))))))
+    (println (u/format-color 'blue "Created BigQuery dataset '%s' (%s)." dataset-id (u/format-nanoseconds (- (System/nanoTime) start-time-ns))))))
 
 (defn- destroy-dataset! [^String dataset-id]
   {:pre [(seq dataset-id)]}
@@ -76,18 +77,19 @@
 
 (defn- create-table! [^String dataset-id, ^String table-id, field-name->type]
   {:pre [(seq dataset-id) (seq table-id) (map? field-name->type) (every? (partial contains? valid-field-types) (vals field-name->type))]}
-  (execute (.insert (.tables bigquery) project-id dataset-id (doto (Table.)
-                                                               (.setTableReference (doto (TableReference.)
-                                                                                     (.setProjectId project-id)
-                                                                                     (.setDatasetId dataset-id)
-                                                                                     (.setTableId table-id)))
-                                                               (.setSchema (doto (TableSchema.)
-                                                                             (.setFields (for [[field-name field-type] field-name->type]
-                                                                                           (doto (TableFieldSchema.)
-                                                                                             (.setMode "REQUIRED")
-                                                                                             (.setName (name field-name))
-                                                                                             (.setType (name field-type))))))))))
-  (println (u/format-color 'blue "Created BigQuery table '%s.%s'." dataset-id table-id)))
+  (let [start-time-ns (System/nanoTime)]
+    (execute (.insert (.tables bigquery) project-id dataset-id (doto (Table.)
+                                                                 (.setTableReference (doto (TableReference.)
+                                                                                       (.setProjectId project-id)
+                                                                                       (.setDatasetId dataset-id)
+                                                                                       (.setTableId table-id)))
+                                                                 (.setSchema (doto (TableSchema.)
+                                                                               (.setFields (for [[field-name field-type] field-name->type]
+                                                                                             (doto (TableFieldSchema.)
+                                                                                               (.setMode "REQUIRED")
+                                                                                               (.setName (name field-name))
+                                                                                               (.setType (name field-type))))))))))
+    (println (u/format-color 'blue "Created BigQuery table '%s.%s' (%s)." dataset-id table-id (u/format-nanoseconds (- (System/nanoTime) start-time-ns))))))
 
 (defn- table-row-count ^Integer [^String dataset-id, ^String table-id]
   (first (first (:rows (post-process-native (execute (.query (.jobs bigquery) project-id

@@ -153,7 +153,7 @@
   [driver database tables existing-tables]
   (let [tables-count          (count tables)
         finished-tables-count (atom 0)]
-    (doseq [{table-schema :schema, table-name :name, :as table-def} tables]
+    (u/pdoseq [{table-schema :schema, table-name :name, :as table-def} tables]
       (try
         (let [table-def (if (contains? (driver/features driver) :dynamic-schema)
                           ;; dynamic schemas are handled differently, we'll handle them elsewhere
@@ -167,8 +167,8 @@
         (catch Throwable t
           (log/error (u/format-color 'red "Unexpected error introspecting table schema: %s" (named-table table-schema table-name)) t))
         (finally
-          (swap! finished-tables-count inc)
-          (log/info (u/format-color 'magenta "%s Synced table '%s'." (u/emoji-progress-bar @finished-tables-count tables-count) (named-table table-schema table-name))))))))
+          (u/prog1 (swap! finished-tables-count inc)
+            (log/info (u/format-color 'magenta "%s Synced table '%s'." (u/emoji-progress-bar <> tables-count) (named-table table-schema table-name)))))))))
 
 (defn- disable-old-tables!
   "Any tables/columns that previously existed but aren't included any more get disabled."

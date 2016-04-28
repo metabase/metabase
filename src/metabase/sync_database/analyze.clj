@@ -214,13 +214,13 @@
         tables                (db/sel :many table/Table :db_id database-id, :active true)
         tables-count          (count tables)
         finished-tables-count (atom 0)]
-    (doseq [{table-name :name, :as tbl} tables]
+    (u/pdoseq [{table-name :name, :as table} tables]
       (try
-        (analyze-table-data-shape! driver tbl)
+        (analyze-table-data-shape! driver table)
         (catch Throwable t
           (log/error "Unexpected error analyzing table" t))
         (finally
-          (swap! finished-tables-count inc)
-          (log/info (u/format-color 'blue "%s Analyzed table '%s'." (u/emoji-progress-bar @finished-tables-count tables-count) table-name)))))
+          (u/prog1 (swap! finished-tables-count inc)
+            (log/info (u/format-color 'blue "%s Analyzed table '%s'." (u/emoji-progress-bar <> tables-count) table-name))))))
 
     (log/info (u/format-color 'blue "Analysis of %s database '%s' completed (%s)." (name driver) (:name database) (u/format-nanoseconds (- (System/nanoTime) start-time-ns))))))
