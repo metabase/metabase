@@ -6,4 +6,5 @@ export default class AreaChart extends LineAreaBarChart {
     static displayName = "Area";
     static identifier = "area";
     static iconName = "area";
+    static noun = "area chart";
 }
