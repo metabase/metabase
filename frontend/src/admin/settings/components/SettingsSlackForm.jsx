@@ -165,7 +165,7 @@ export default class SettingsSlackForm extends Component {
                 return (
                     <SettingsEmailFormElement
                         key={element.key}
-                        element={_.extend(element, {value, errorMessage })}
+                        element={_.extend(element, {value, errorMessage, fireOnChange: true })}
                         handleChangeEvent={this.handleChangeEvent.bind(this)} />
                 );
             } else if (element.key === "metabot-enabled") {

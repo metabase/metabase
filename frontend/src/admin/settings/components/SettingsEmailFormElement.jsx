@@ -32,7 +32,8 @@ export default class SettingsEmailFormElement extends Component {
                 type={type}
                 value={element.value}
                 placeholder={element.placeholder}
-                onBlurChange={this.handleInputEvent.bind(this, element)}
+                onChange={element.fireOnChange ? this.handleInputEvent.bind(this, element) : null }
+                onBlurChange={!element.fireOnChange ? this.handleInputEvent.bind(this, element) : null }
                 autoFocus={element.autoFocus}
             />
         );
