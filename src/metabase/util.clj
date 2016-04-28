@@ -6,9 +6,9 @@
             (clojure [pprint :refer [pprint]]
                      [string :as s])
             [clojure.tools.logging :as log]
-            [clj-time.core :as t]
-            [clj-time.coerce :as coerce]
-            [clj-time.format :as time]
+            (clj-time [core :as t]
+                      [coerce :as coerce]
+                      [format :as time])
             colorize.core
             [metabase.config :as config])
   (:import clojure.lang.Keyword
@@ -238,7 +238,7 @@
   "Format a time interval in nanoseconds to something more readable (µs/ms/etc.)
    Useful for logging elapsed time when using `(System/nanotime)`"
   [nanoseconds]
-  (loop [n nanoseconds, [[unit divisor] & more] [[:ns 1000] [:µs 1000] [:ms 1000] [:s 1000] [:mins 60] [:hours 60]]]
+  (loop [n nanoseconds, [[unit divisor] & more] [[:ns 1000] [:µs 1000] [:ms 1000] [:s 60] [:mins 60] [:hours Integer/MAX_VALUE]]]
     (if (and (> n divisor)
              (seq more))
       (recur (/ n divisor) more)
@@ -358,8 +358,8 @@
 
 (defmacro pdoseq
   "(Almost) just like `doseq` but runs in parallel. Doesn't support advanced binding forms like `:let` or `:when` and only supports a single binding </3"
-  [[binding collection] & body]
   {:style/indent 1}
+  [[binding collection] & body]
   `(dorun (pmap (fn [~binding]
                   ~@body)
                 ~collection)))
@@ -602,3 +602,24 @@
                  (if (contains? slugify-valid-chars c)
                    c
                    \_)))))
+
+(defn do-with-auto-retries
+  "Execute F, a function that takes no arguments, and return the results.
+   If F fails with an exception, retry F up to NUM-RETRIES times until it succeeds.
+
+    Consider using the `auto-retry` macro instead of calling this function directly."
+  {:style/indent 1}
+  [num-retries f]
+  (if (<= num-retries 0)
+    (f)
+    (try (f)
+         (catch Throwable _
+           (do-with-auto-retries (dec num-retries) f)))))
+
+(defmacro auto-retry
+  "Execute BODY and return the results.
+   If BODY fails with an exception, retry execution up to NUM-RETRIES times until it succeeds."
+  {:style/indent 1}
+  [num-retries & body]
+  `(do-with-auto-retries ~num-retries
+     (fn [] ~@body)))

@@ -135,8 +135,10 @@
 (defendpoint DELETE "/:id"
   "Delete a `Database`."
   [id]
-  (write-check Database id)
-  (cascade-delete Database :id id))
+  (let-404 [db (Database id)]
+    (write-check db)
+    (u/prog1 (cascade-delete Database :id id)
+      (events/publish-event :database-delete db))))
 
 (defendpoint GET "/:id/metadata"
   "Get metadata about a `Database`, including all of its `Tables` and `Fields`.

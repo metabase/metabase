@@ -6,7 +6,7 @@
 .PopoverContainer {
 	pointer-events: none;
 	position: absolute;
-	z-index: 10000000000000; /* above all the things */
+	z-index: 4;
 }
 
 .PopoverBody {

@@ -16,7 +16,7 @@ import i from "icepick";
 import moment from "moment";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import DataGrid from "metabase/lib/data_grid";
+import * as DataGrid from "metabase/lib/data_grid";
 import Query from "metabase/lib/query";
 import { createQuery } from "metabase/lib/query";
 import { createCard, serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
@@ -185,7 +185,7 @@ CardControllers.controller('CardDetail', [
                     } else if (column.unit != null) {
                         field = ["datetime_field", column.id, "as", column.unit];
                     } else {
-                        field = ["field-id", column.id];
+                        field = column.id;
                     }
 
                     let dataset_query = card.dataset_query,

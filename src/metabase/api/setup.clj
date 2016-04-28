@@ -57,7 +57,7 @@
       :user_id (:id new-user))
     ;; notify that we've got a new user in the system AND that this user logged in
     (events/publish-event :user-create {:user_id (:id new-user)})
-    (events/publish-event :user-login {:user_id (:id new-user) :session_id session-id})
+    (events/publish-event :user-login {:user_id (:id new-user), :session_id session-id, :first_login true})
     {:id session-id}))
 
 

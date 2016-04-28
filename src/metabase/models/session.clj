@@ -1,6 +1,6 @@
 (ns metabase.models.session
   (:require [korma.core :as k]
-            [metabase.db :refer [sel]]
+            [metabase.db :as db]
             (metabase.models [interface :as i]
                              [user :refer [User]])
             [metabase.util :as u]))
@@ -22,4 +22,4 @@
   "Retrieves the first Session `:id` for a given user (if available), or nil otherwise."
   [user-id]
   {:pre [(integer? user-id)]}
-  (sel :one :id Session, :user_id user-id, (k/order :created_at :ASC)))
+  (db/sel :one :field [Session :id], :user_id user-id, (k/order :created_at :ASC)))

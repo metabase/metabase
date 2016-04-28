@@ -217,8 +217,8 @@ export default class TableInteractive extends Component {
 
     tableHeaderRenderer(columnIndex) {
         var column = this.props.data.cols[columnIndex],
-            colVal = (column && column.display_name && column.display_name.toString()) ||
-                     (column && column.name && column.name.toString());
+            colVal = (column && column.display_name && String(column.display_name)) ||
+                     (column && column.name && String(column.name)) || "";
 
         if (column.unit && column.unit !== "default") {
             colVal += ": " + capitalize(column.unit.replace(/-/g, " "))
@@ -265,7 +265,8 @@ export default class TableInteractive extends Component {
         }
 
         var tableColumns = this.props.data.cols.map((column, idx) => {
-            var colVal = (column !== null) ? column.name.toString() : null;
+            var colVal = (column && column.display_name && String(column.display_name)) ||
+                         (column && column.name && String(column.name)) || "";
             var colWidth = this.state.columnWidths[idx];
 
             if (!colWidth) {
