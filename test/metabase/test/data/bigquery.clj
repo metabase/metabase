@@ -92,9 +92,10 @@
     (println (u/format-color 'blue "Created BigQuery table '%s.%s' (%s)." dataset-id table-id (u/format-nanoseconds (- (System/nanoTime) start-time-ns))))))
 
 (defn- table-row-count ^Integer [^String dataset-id, ^String table-id]
-  (first (first (:rows (post-process-native (execute (.query (.jobs bigquery) project-id
-                                                             (doto (QueryRequest.)
-                                                               (.setQuery (format "SELECT COUNT(*) FROM [%s.%s]" dataset-id table-id))))))))))
+  (u/auto-retry 1
+    (first (first (:rows (post-process-native (execute (.query (.jobs bigquery) project-id
+                                                               (doto (QueryRequest.)
+                                                                 (.setQuery (format "SELECT COUNT(*) FROM [%s.%s]" dataset-id table-id)))))))))))
 
 ;; This is a dirty HACK
 (defn- ^DateTime timestamp-korma-form->GoogleDateTime
