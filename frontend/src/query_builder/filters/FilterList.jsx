@@ -34,7 +34,7 @@ export default class FilterList extends Component {
     render() {
         const { filters, tableMetadata } = this.props;
         return (
-        <div className="Query-filterList scroll-show scroll-show--horizontal">
+            <div className="Query-filterList scroll-x scroll-show scroll-show--horizontal">
                 {filters.slice(1).map((filter, index) =>
                     <FilterWidget
                         key={index}

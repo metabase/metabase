@@ -20,7 +20,7 @@ export default class QueryDiff extends Component {
         return (
             <LoadingAndErrorWrapper loading={!tableMetadata}>
             {() =>
-                <div className="my1 flex" style={{ pointerEvents: "none" }}>
+                <div className="my1" style={{ pointerEvents: "none" }}>
                     { defintion.aggregation &&
                         <AggregationWidget
                             aggregation={defintion.aggregation}

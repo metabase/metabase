@@ -26,16 +26,18 @@ export default class RevisionDiff extends Component {
         }
 
         return (
-            <div className="bordered rounded  my2 flex flex-row align-center" style={{borderWidth: 2}}>
-                <div className="m3">
-                    {icon}
-                </div>
-                <div>
-                    { this.props.property === "definition" ?
-                        <QueryDiff diff={this.props.diff} tableMetadata={tableMetadata}/>
-                    :
-                        <TextDiff diff={this.props.diff}/>
-                    }
+            <div className="bordered rounded my2" style={{borderWidth: 2, overflow: 'hidden', maxWidth: 860}}>
+                <div className="flex scroll-x scroll-show scroll-show-horizontal">
+                    <div className="m3">
+                        {icon}
+                    </div>
+                    <div>
+                        { this.props.property === "definition" ?
+                            <QueryDiff diff={this.props.diff} tableMetadata={tableMetadata}/>
+                        :
+                            <TextDiff diff={this.props.diff}/>
+                        }
+                    </div>
                 </div>
             </div>
         );
