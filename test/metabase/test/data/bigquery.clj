@@ -90,13 +90,9 @@
   (println (u/format-color 'blue "Created BigQuery table '%s.%s'." dataset-id table-id)))
 
 (defn- table-row-count ^Integer [^String dataset-id, ^String table-id]
-  (let [f (fn [] (first (first (:rows (post-process-native (execute (.query (.jobs bigquery) project-id
-                                                                            (doto (QueryRequest.)
-                                                                              (.setQuery (format "SELECT COUNT(*) FROM [%s.%s]" dataset-id table-id))))))))))]
-    ;; automatically retry the query in case it fails / times out
-    (try (f)
-         (catch Throwable _
-           (f)))))
+  (first (first (:rows (post-process-native (execute (.query (.jobs bigquery) project-id
+                                                             (doto (QueryRequest.)
+                                                               (.setQuery (format "SELECT COUNT(*) FROM [%s.%s]" dataset-id table-id))))))))))
 
 ;; This is a dirty HACK
 (defn- ^DateTime timestamp-korma-form->GoogleDateTime
@@ -186,7 +182,7 @@
     (try (destroy-dataset! database-name)
          (catch Throwable _))
     (create-dataset! database-name)
-    (doseq [tabledef table-definitions]
+    (u/pdoseq [tabledef table-definitions]
       (load-tabledef! database-name tabledef)))
   (println (u/format-color 'green "[OK]")))
 
