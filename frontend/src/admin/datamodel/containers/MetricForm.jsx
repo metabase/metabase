@@ -64,7 +64,7 @@ export default class MetricForm extends Component {
         return (
             <LoadingAndErrorWrapper loading={!tableMetadata}>
             { () =>
-                <form onSubmit={handleSubmit}>
+                <form className="full" onSubmit={handleSubmit}>
                     <div className="wrapper py4">
                         <FormLabel
                             title={(metric && metric.id != null ? "Edit" : "Create") + " Your Metric"}
@@ -124,8 +124,10 @@ export default class MetricForm extends Component {
                     </div>
 
                     { id.value == null &&
-                        <div  className="border-top wrapper py4">
-                            {this.renderActionButtons()}
+                        <div className="border-top py4">
+                            <div className="wrapper">
+                                {this.renderActionButtons()}
+                            </div>
                         </div>
                     }
                 </form>

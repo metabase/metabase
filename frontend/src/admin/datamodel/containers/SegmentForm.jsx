@@ -65,7 +65,7 @@ export default class SegmentForm extends Component {
         return (
             <LoadingAndErrorWrapper loading={!tableMetadata}>
             { () =>
-                <form onSubmit={handleSubmit}>
+                <form className="full" onSubmit={handleSubmit}>
                     <div className="wrapper py4">
                         <FormLabel
                             title={(segment && segment.id != null ? "Edit" : "Create") + " Your Segment"}
@@ -123,8 +123,10 @@ export default class SegmentForm extends Component {
                     </div>
 
                     { id.value == null &&
-                        <div  className="border-top wrapper py4">
-                            {this.renderActionButtons()}
+                        <div className="border-top py4">
+                            <div className="wrapper">
+                                {this.renderActionButtons()}
+                            </div>
                         </div>
                     }
                 </form>
