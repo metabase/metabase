@@ -16,7 +16,10 @@
     (k/insert Session
               (k/values [{:id         "the-greatest-day-ever"
                           :user_id    user-id
-                          :created_at (metabase.util/->Timestamp "1980-10-19")}
+                          :created_at (metabase.util/->Timestamp "1980-10-19T05:05:05.000Z")}
+                         {:id         "even-more-greatness"
+                          :user_id    user-id
+                          :created_at (metabase.util/->Timestamp "1980-10-19T05:08:05.000Z")}
                          {:id         "the-world-of-bi-changes-forever"
                           :user_id    user-id
                           :created_at (metabase.util/->Timestamp "2015-10-21")}
