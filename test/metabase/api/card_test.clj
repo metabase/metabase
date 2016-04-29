@@ -2,7 +2,8 @@
   "Tests for /api/card endpoints."
   (:require [expectations :refer :all]
             [metabase.db :refer :all]
-            [metabase.http-client :refer :all]
+            [metabase.http-client :refer :all, :as http]
+            [metabase.middleware :as middleware]
             (metabase.models [card :refer [Card]]
                              [card-favorite :refer [CardFavorite]]
                              [card-label :refer [CardLabel]]
@@ -34,6 +35,11 @@
       [(card-returned? (id) card-1-id)
        (card-returned? db-id card-1-id)
        (card-returned? db-id card-2-id)])))
+
+
+(expect (get middleware/response-unauthentic :body) (http/client :get 401 "card"))
+(expect (get middleware/response-unauthentic :body) (http/client :put 401 "card/13"))
+
 
 ;; Make sure `id` is required when `f` is :database
 (expect {:errors {:id "id is required parameter when filter mode is 'database'"}}
@@ -191,6 +197,11 @@
   ((user->client :rasta) :get 200 (str "card/" (:id card))))
 
 ;; ## PUT /api/card/:id
+
+;; updating a card that doesn't exist should give a 404
+(expect "Not found."
+  ((user->client :crowberto) :put 404 "card/12345"))
+
 ;; Test that we can edit a Card
 (let [updated-name (random-name)]
   (expect-with-temp [Card [{card-id :id, original-name :name}]]
