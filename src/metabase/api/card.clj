@@ -180,16 +180,26 @@
    display                NonEmptyString
    visualization_settings Dict
    archived               Boolean}
-  (write-check Card id)
-  (upd-non-nil-keys Card id
-    :dataset_query          dataset_query
-    :description            description
-    :display                display
-    :name                   name
-    :public_perms           public_perms
-    :visualization_settings visualization_settings
-    :archived               archived)
-  (events/publish-event :card-update (assoc (Card id) :actor_id *current-user-id*)))
+  (let-404 [card (Card id)]
+    (write-check card)
+    (upd-non-nil-keys Card id
+                      :dataset_query          dataset_query
+                      :description            description
+                      :display                display
+                      :name                   name
+                      :public_perms           public_perms
+                      :visualization_settings visualization_settings
+                      :archived               archived)
+    (let [event (cond
+                  ;; card was archived
+                  (and archived
+                       (not (:archived card))) :card-archive
+                  ;; card was unarchived
+                  (and (not (nil? archived))
+                       (not archived)
+                       (:archived card))       :card-unarchive
+                  :else                        :card-update)]
+      (events/publish-event event (assoc (Card id) :actor_id *current-user-id*)))))
 
 (defendpoint DELETE "/:id"
   "Delete a `Card`."
