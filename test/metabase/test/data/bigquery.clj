@@ -76,23 +76,25 @@
 
 (defn- create-table! [^String dataset-id, ^String table-id, field-name->type]
   {:pre [(seq dataset-id) (seq table-id) (map? field-name->type) (every? (partial contains? valid-field-types) (vals field-name->type))]}
-  (execute (.insert (.tables bigquery) project-id dataset-id (doto (Table.)
-                                                               (.setTableReference (doto (TableReference.)
-                                                                                     (.setProjectId project-id)
-                                                                                     (.setDatasetId dataset-id)
-                                                                                     (.setTableId table-id)))
-                                                               (.setSchema (doto (TableSchema.)
-                                                                             (.setFields (for [[field-name field-type] field-name->type]
-                                                                                           (doto (TableFieldSchema.)
-                                                                                             (.setMode "REQUIRED")
-                                                                                             (.setName (name field-name))
-                                                                                             (.setType (name field-type))))))))))
+  (u/auto-retry 1
+    (execute (.insert (.tables bigquery) project-id dataset-id (doto (Table.)
+                                                                 (.setTableReference (doto (TableReference.)
+                                                                                       (.setProjectId project-id)
+                                                                                       (.setDatasetId dataset-id)
+                                                                                       (.setTableId table-id)))
+                                                                 (.setSchema (doto (TableSchema.)
+                                                                               (.setFields (for [[field-name field-type] field-name->type]
+                                                                                             (doto (TableFieldSchema.)
+                                                                                               (.setMode "REQUIRED")
+                                                                                               (.setName (name field-name))
+                                                                                               (.setType (name field-type)))))))))))
   (println (u/format-color 'blue "Created BigQuery table '%s.%s'." dataset-id table-id)))
 
 (defn- table-row-count ^Integer [^String dataset-id, ^String table-id]
-  (first (first (:rows (post-process-native (execute (.query (.jobs bigquery) project-id
-                                                             (doto (QueryRequest.)
-                                                               (.setQuery (format "SELECT COUNT(*) FROM [%s.%s]" dataset-id table-id))))))))))
+  (u/auto-retry 1
+    (first (first (:rows (post-process-native (execute (.query (.jobs bigquery) project-id
+                                                               (doto (QueryRequest.)
+                                                                 (.setQuery (format "SELECT COUNT(*) FROM [%s.%s]" dataset-id table-id)))))))))))
 
 ;; This is a dirty HACK
 (defn- ^DateTime timestamp-korma-form->GoogleDateTime
@@ -103,18 +105,18 @@
 
 (defn- insert-data! [^String dataset-id, ^String table-id, row-maps]
   {:pre [(seq dataset-id) (seq table-id) (sequential? row-maps) (seq row-maps) (every? map? row-maps)]}
-  (execute (.insertAll (.tabledata bigquery) project-id dataset-id table-id
-                       (doto (TableDataInsertAllRequest.)
-                         (.setRows (for [row-map row-maps]
-                                     (let [data (TableRow.)]
-                                       (doseq [[k v] row-map
-                                               :let [v (if (:korma.sql.utils/func v)
-                                                         (timestamp-korma-form->GoogleDateTime v)
-                                                         v)]]
-                                         #_(println "V->" v)
-                                         (.set data (name k) v))
-                                       (doto (TableDataInsertAllRequest$Rows.)
-                                         (.setJson data))))))))
+  (u/auto-retry 1
+    (execute (.insertAll (.tabledata bigquery) project-id dataset-id table-id
+                         (doto (TableDataInsertAllRequest.)
+                           (.setRows (for [row-map row-maps]
+                                       (let [data (TableRow.)]
+                                         (doseq [[k v] row-map
+                                                 :let [v (if (:korma.sql.utils/func v)
+                                                           (timestamp-korma-form->GoogleDateTime v)
+                                                           v)]]
+                                           #_(println "V->" v))
+                                         (doto (TableDataInsertAllRequest$Rows.)
+                                           (.setJson data)))))))))
   ;; Wait up to 30 seconds for all the rows to be loaded and become available by BigQuery
   (let [expected-row-count (count row-maps)]
     (loop [seconds-to-wait-for-load 30]
@@ -182,7 +184,7 @@
     (try (destroy-dataset! database-name)
          (catch Throwable _))
     (create-dataset! database-name)
-    (u/pdoseq [tabledef table-definitions]
+    (doseq [tabledef table-definitions]
       (load-tabledef! database-name tabledef)))
   (println (u/format-color 'green "[OK]")))
 
