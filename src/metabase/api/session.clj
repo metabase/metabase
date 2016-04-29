@@ -38,7 +38,7 @@
    password [Required NonEmptyString]}
   (throttle/check (login-throttlers :ip-address) remote-address)
   (throttle/check (login-throttlers :email)      email)
-  (let [user (sel :one :fields [User :id :password_salt :password], :email email (k/where {:is_active true}))]
+  (let [user (sel :one :fields [User :id :password_salt :password :last_login], :email email (k/where {:is_active true}))]
     ;; Don't leak whether the account doesn't exist or the password was incorrect
     (when-not (and user
                    (pass/verify-password password (:password_salt user) (:password user)))
