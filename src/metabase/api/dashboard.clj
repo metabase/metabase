@@ -96,7 +96,7 @@
                         ...}]} ...]}"
   [id :as {{:keys [cards]} :body}]
   (write-check Dashboard id)
-  (let [dashcard-ids (set (db/sel :many :field [DashboardCard :id] :dashboard_id id))]
+  (let [dashcard-ids (set (db/sel :many :id DashboardCard, :dashboard_id id))]
     (doseq [{dashcard-id :id :as dashboard-card} cards]
       ;; ensure the dashcard we are updating is part of the given dashboard
       (when (contains? dashcard-ids dashcard-id)
