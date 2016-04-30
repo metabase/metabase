@@ -1,7 +1,6 @@
 (ns metabase.api.metric-test
   "Tests for /api/metric endpoints."
-  (:require [clojure.tools.macro :refer [symbol-macrolet]]
-            [expectations :refer :all]
+  (:require [expectations :refer :all]
             (metabase [http-client :as http]
                       [middleware :as middleware])
             (metabase.models [database :refer [Database]]
@@ -15,19 +14,19 @@
 
 ;; ## Helper Fns
 
-(defn user-details [user]
+(defn- user-details [user]
   (tu/match-$ user
-    {:id $
-     :email $
-     :date_joined $
-     :first_name $
-     :last_name $
-     :last_login $
+    {:id           $
+     :email        $
+     :date_joined  $
+     :first_name   $
+     :last_name    $
+     :last_login   $
      :is_superuser $
-     :is_qbnewb $
-     :common_name $}))
+     :is_qbnewb    $
+     :common_name  $}))
 
-(defn metric-response [{:keys [created_at updated_at] :as metric}]
+(defn- metric-response [{:keys [created_at updated_at], :as metric}]
   (-> (into {} metric)
       (dissoc :id :table_id)
       (update :creator #(into {} %))
