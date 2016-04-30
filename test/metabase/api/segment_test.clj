@@ -5,12 +5,11 @@
                       [middleware :as middleware])
             (metabase.models [database :refer [Database]]
                              [revision :refer [Revision]]
-                             [segment :refer [Segment]]
+                             [segment :refer [Segment], :as segment]
                              [table :refer [Table]])
-            [metabase.test.util :as tu]
             [metabase.test.data.users :refer :all]
             [metabase.test.data :refer :all]
-            [metabase.models.segment :as segment]))
+            [metabase.test.util :as tu]))
 
 ;; ## Helper Fns
 
