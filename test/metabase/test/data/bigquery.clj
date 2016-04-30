@@ -171,7 +171,6 @@
 (defn- destroy-test-databases!
   {:expectations-options :after-run}
   []
-  (println "TIME TO DESTROY:" @created-databases)
   (u/pdoseq [db-name @created-databases]
     (u/ignore-exceptions
       (destroy-dataset! db-name))))
