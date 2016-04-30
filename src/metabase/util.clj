@@ -511,7 +511,7 @@
                                                      (last args)
                                                      [(last args)]))))
 
-(defmacro try-ignore-exceptions
+(defmacro ignore-exceptions
   "Simple macro which wraps the given expression in a try/catch block and ignores the exception if caught."
   [& body]
   `(try ~@body (catch Throwable ~'_)))
@@ -613,7 +613,8 @@
   (if (<= num-retries 0)
     (f)
     (try (f)
-         (catch Throwable _
+         (catch Throwable e
+           (log/warn (format-color 'red "auto-retry %s: %s" f (.getMessage e)))
            (do-with-auto-retries (dec num-retries) f)))))
 
 (defmacro auto-retry

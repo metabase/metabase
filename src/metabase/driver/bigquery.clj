@@ -33,20 +33,25 @@
 
 (def ^:private ^:const ^String redirect-uri "urn:ietf:wg:oauth:2.0:oob")
 
-(defn- execute
+(defn- execute-no-auto-retry
   "`execute` REQUEST, and catch any `GoogleJsonResponseException` is
-  throws, converting them to `ExceptionInfo` and rethrowing them.
-
-  This automatically retries any failed requests a single time."
+  throws, converting them to `ExceptionInfo` and rethrowing them."
   [^AbstractGoogleClientRequest request]
-  ;; automatically retry each request at least once if it fails
-  (try (u/auto-retry 1
-         (.execute request))
+  (try (.execute request)
        (catch GoogleJsonResponseException e
          (let [^GoogleJsonError error (.getDetails e)]
            (throw (ex-info (or (.getMessage error)
                                (.getStatusMessage e))
                            (into {} error)))))))
+
+(defn- execute
+  "`execute` REQUEST, and catch any `GoogleJsonResponseException` is
+  throws, converting them to `ExceptionInfo` and rethrowing them.
+
+  This automatically retries any failed requests up to 2 times."
+  [^AbstractGoogleClientRequest request]
+  (u/auto-retry 2
+    (execute-no-auto-retry request)))
 
 (defn- ^Bigquery credential->client [^GoogleCredential credential]
   (.build (doto (Bigquery$Builder. http-transport json-factory credential)
@@ -185,7 +190,7 @@
    "STRING"    identity
    "TIMESTAMP" parse-timestamp-str})
 
-(def ^:private ^:const query-default-timeout-seconds 15)
+(def ^:private ^:const query-default-timeout-seconds 30)
 
 (defn- post-process-native
   ([^QueryResponse response]
