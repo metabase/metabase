@@ -111,7 +111,6 @@
                                                :let [v (if (:korma.sql.utils/func v)
                                                          (timestamp-korma-form->GoogleDateTime v)
                                                          v)]]
-                                         #_(println "V->" v)
                                          (.set data (name k) v))
                                        (doto (TableDataInsertAllRequest$Rows.)
                                          (.setJson data))))))))
@@ -172,19 +171,23 @@
 (defn- destroy-test-databases!
   {:expectations-options :after-run}
   []
+  (println "TIME TO DESTROY:" @created-databases)
   (u/pdoseq [db-name @created-databases]
-    (u/try-apply destroy-dataset! db-name)))
+    (u/ignore-exceptions
+      (destroy-dataset! db-name))))
 
 (defn- create-db! [{:keys [database-name table-definitions]}]
   {:pre [(seq database-name) (sequential? table-definitions)]}
   (let [database-name (normalize-name-and-add-prefix database-name)]
-    (swap! created-databases conj database-name)
-    (try (destroy-dataset! database-name)
-         (catch Throwable _))
-    (create-dataset! database-name)
-    (u/pdoseq [tabledef table-definitions]
-      (load-tabledef! database-name tabledef)))
-  (println (u/format-color 'green "[OK]")))
+    (when-not (contains? @created-databases database-name)
+      (u/auto-retry 2
+        (u/ignore-exceptions
+          (destroy-dataset! database-name))
+        (create-dataset! database-name)
+        (u/pdoseq [tabledef table-definitions]
+          (load-tabledef! database-name tabledef))
+        (swap! created-databases conj database-name)
+        (println (u/format-color 'green "[OK]"))))))
 
 
 ;;; # ------------------------------------------------------------ IDatasetLoader ------------------------------------------------------------

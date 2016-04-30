@@ -40,13 +40,13 @@
   This automatically retries any failed requests a single time."
   [^AbstractGoogleClientRequest request]
   ;; automatically retry each request at least once if it fails
-  (try (u/auto-retry 1
-         (.execute request))
-       (catch GoogleJsonResponseException e
-         (let [^GoogleJsonError error (.getDetails e)]
-           (throw (ex-info (or (.getMessage error)
-                               (.getStatusMessage e))
-                           (into {} error)))))))
+  (u/auto-retry 1
+    (try (.execute request)
+         (catch GoogleJsonResponseException e
+           (let [^GoogleJsonError error (.getDetails e)]
+             (throw (ex-info (or (.getMessage error)
+                                 (.getStatusMessage e))
+                             (into {} error))))))))
 
 (defn- ^Bigquery credential->client [^GoogleCredential credential]
   (.build (doto (Bigquery$Builder. http-transport json-factory credential)
