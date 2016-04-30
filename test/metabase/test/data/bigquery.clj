@@ -14,7 +14,7 @@
            (com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest Table TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableFieldSchema TableReference TableRow TableSchema)
            metabase.driver.bigquery.BigQueryDriver))
 
-(resolve-private-fns metabase.driver.bigquery execute post-process-native)
+(resolve-private-fns metabase.driver.bigquery execute execute-no-auto-retry post-process-native)
 
 ;;; # ------------------------------------------------------------ CONNECTION DETAILS ------------------------------------------------------------
 
@@ -67,8 +67,8 @@
 
 (defn- destroy-dataset! [^String dataset-id]
   {:pre [(seq dataset-id)]}
-  (execute (doto (.delete (.datasets bigquery) project-id dataset-id)
-             (.setDeleteContents true)))
+  (execute-no-auto-retry (doto (.delete (.datasets bigquery) project-id dataset-id)
+                           (.setDeleteContents true)))
   (println (u/format-color 'red "Deleted BigQuery dataset '%s'." dataset-id)))
 
 (def ^:private ^:const valid-field-types
@@ -179,7 +179,7 @@
   {:pre [(seq database-name) (sequential? table-definitions)]}
   (let [database-name (normalize-name-and-add-prefix database-name)]
     (when-not (contains? @created-databases database-name)
-      (u/auto-retry 2
+      (u/auto-retry 3
         (u/ignore-exceptions
           (destroy-dataset! database-name))
         (create-dataset! database-name)
