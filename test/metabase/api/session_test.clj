@@ -113,10 +113,10 @@
 ;; Check that password reset returns a valid session token
 (let [user-last-name (random-name)]
   (expect-eval-actual-first
-    (let [{:keys [id]} (sel :one :fields [User :id] :last_name user-last-name)
-          session (sel :one :fields [Session :id] :user_id id)]
+    (let [id         (sel :one :id User, :last_name user-last-name)
+          session-id (sel :one :id Session, :user_id id)]
       {:success    true
-       :session_id (:id session)})
+       :session_id session-id})
     (let [{:keys [email id]} (create-user :password "password", :last_name user-last-name, :reset_triggered (System/currentTimeMillis))
           token              (str id "_" (java.util.UUID/randomUUID))
           _                  (upd User id :reset_token token)]

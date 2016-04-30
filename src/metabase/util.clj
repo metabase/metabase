@@ -388,14 +388,16 @@
      (find-or-add 200) -> 1
      (find-or-add 100) -> 0
 
-   The result of FIRST-FIRST is bound to the anaphor `<>`, which is convenient for logging:
+   The result of FIRST-FORM is bound to the anaphor `<>`, which is convenient for logging:
 
      (prog1 (some-expression)
        (println \"RESULTS:\" <>))
 
   `prog1` is an anaphoric version of the traditional macro of the same name in
    [Emacs Lisp](http://www.gnu.org/software/emacs/manual/html_node/elisp/Sequencing.html#index-prog1)
-   and [Common Lisp](http://www.lispworks.com/documentation/HyperSpec/Body/m_prog1c.htm#prog1)."
+   and [Common Lisp](http://www.lispworks.com/documentation/HyperSpec/Body/m_prog1c.htm#prog1).
+
+  Style note: Prefer `doto` when appropriate, e.g. when dealing with Java objects."
   {:style/indent 1}
   [first-form & body]
   `(let [~'<> ~first-form]
@@ -433,10 +435,10 @@
    ((ns-resolve 'colorize.core color-symb) (pprint-to-str x))))
 
 (def emoji-progress-bar
-  "Create a string that shows sync progress for a database.
+  "Create a string that shows progress for something, e.g. a database sync process.
 
-     (sync-progress-meter-string 10 40)
-       -> \"[************······································] 25%\""
+     (emoji-progress-bar 10 40)
+       -> \"[************······································] 😒   25%"
   (let [^:const meter-width    50
         ^:const progress-emoji ["😱"  ; face screaming in fear
                                 "😢"  ; crying face

@@ -22,8 +22,7 @@
   "Save *all* foreign-key data for a given RAW-TABLE.
    NOTE: this function assumes that FKS is the complete set of fks in the RAW-TABLE."
   [{table-id :id, database-id :database_id, :as table} fks]
-  {:pre [(integer? table-id)
-         (integer? database-id)]}
+  {:pre [(integer? table-id) (integer? database-id)]}
   (kdb/transaction
     ;; start by simply resetting all fks and then we'll add them back as defined
     (k/update raw-column/RawColumn
@@ -32,9 +31,9 @@
 
     ;; now lookup column-ids and set the fks on this table as needed
     (doseq [{:keys [fk-column-name dest-column-name dest-table]} fks]
-      (when-let [source-column-id (db/sel :one :field [raw-column/RawColumn :id], :raw_table_id table-id, :name fk-column-name)]
-        (when-let [dest-table-id (db/sel :one :field [raw-table/RawTable :id], :database_id database-id, :schema (:schema dest-table), :name (:name dest-table))]
-          (when-let [dest-column-id (db/sel :one :id raw-column/RawColumn, :raw_table_id dest-table-id, :name dest-column-name)]
+      (when-let [source-column-id (db/sel :one :id RawColumn, :raw_table_id table-id, :name fk-column-name)]
+        (when-let [dest-table-id (db/sel :one :id RawTable, :database_id database-id, :schema (:schema dest-table), :name (:name dest-table))]
+          (when-let [dest-column-id (db/sel :one :id RawColumn, :raw_table_id dest-table-id, :name dest-column-name)]
             (log/debug (u/format-color 'cyan "Marking foreign key '%s.%s' -> '%s.%s'." (named-table table) fk-column-name (named-table dest-table) dest-column-name))
             (db/upd raw-column/RawColumn source-column-id
               :fk_target_column_id dest-column-id)))))))
@@ -43,9 +42,7 @@
   "Save *all* `RawColumns` for a given RAW-TABLE.
    NOTE: this function assumes that COLUMNS is the complete set of columns in the RAW-TABLE."
   [{:keys [id]} columns]
-  {:pre [(integer? id)
-         (coll? columns)
-         (every? map? columns)]}
+  {:pre [(integer? id) (coll? columns) (every? map? columns)]}
   (kdb/transaction
     (let [existing-columns (into {} (for [{:keys [name] :as column} (db/sel :many :fields [raw-column/RawColumn :id :name] :raw_table_id id)]
                                       {name column}))]
@@ -80,8 +77,7 @@
 (defn- create-raw-table!
   "Create a new `RawTable`, includes saving all specified `:columns`."
   [database-id {table-name :name, table-schema :schema, :keys [details fields]}]
-  {:pre [(integer? database-id)
-         (string? table-name)]}
+  {:pre [(integer? database-id) (string? table-name)]}
   (log/debug (u/format-color 'cyan "Found new table: %s" (named-table table-schema table-name)))
   (let [table (db/ins raw-table/RawTable
                 :database_id  database-id
@@ -106,8 +102,7 @@
 (defn- disable-raw-tables!
   "Disable a list of `RawTable` ids, including all `RawColumns` associated with those tables."
   [table-ids]
-  {:pre [(coll? table-ids)
-         (every? integer? table-ids)]}
+  {:pre [(coll? table-ids) (every? integer? table-ids)]}
   (let [table-ids (filter identity table-ids)]
     (kdb/transaction
       ;; disable the tables
