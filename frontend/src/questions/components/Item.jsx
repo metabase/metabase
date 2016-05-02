@@ -33,7 +33,11 @@ const Item = ({ id, name, created, by, selected, favorite, archived, icon, label
         { !archived ?
             <div className={S.rightIcons}>
                 <LabelPopover
-                    triggerElement={<Icon className={S.tagIcon} name="label" width={20} height={20} />}
+                    triggerElement={
+                        <Tooltip tooltip={"Labels"}>
+                            <Icon className={S.tagIcon} name="label" width={20} height={20} />
+                        </Tooltip>
+                    }
                     triggerClasses={S.trigger}
                     triggerClassesOpen={S.open}
                     item={{ id, labels }}
