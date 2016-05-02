@@ -97,9 +97,9 @@
                            :field-name         :count
                            :field-display-name :count
                            :special-type       :number}
-                          (merge (select-keys ag-field [:base-type :special-type])
-                                 {:field-name         ag-type
-                                  :field-display-name ag-type}))))))
+                          (assoc (select-keys ag-field [:base-type :special-type])
+                                 :field-name         ag-type
+                                 :field-display-name ag-type))))))
 
 (defn- add-unknown-fields-if-needed`
   "When create info maps for any fields we didn't expect to come back from the query.

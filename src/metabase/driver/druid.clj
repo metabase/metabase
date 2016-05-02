@@ -10,6 +10,7 @@
             (metabase.models [database :refer [Database]]
                              [field :as field]
                              [table :as table])
+            [metabase.query-processor.annotate :as annotate]
             [metabase.util :as u]))
 
 ;;; ### Request helper fns
@@ -56,9 +57,9 @@
   (try (vec (POST (details->url details "/druid/v2"), :body query))
        (catch Throwable e
          ;; try to print the error
-         (try (log/error (u/format-color 'red "Error running query:\n  %s"
-                           (:error (json/parse-string (:body (:object (ex-data e))) keyword))))
-              (catch Throwable _))
+         (u/try-ignore-exceptions
+           (log/error (u/format-color 'red "Error running query:\n  %s"
+                        (:error (json/parse-string (:body (:object (ex-data e))) keyword)))))
          ;; re-throw exception either way
          (throw e))))
 
@@ -70,9 +71,13 @@
                                       :settings (:settings query))))
 
 (defn- process-native [{database-id :database, {query :query} :native}]
-  {:pre [(integer? database-id)]}
-  (let-404 [details (sel :one :field [Database :details] :id database-id)]
-    (do-query details query)))
+  {:pre [(integer? database-id) (string? query)]}
+  (let-404 [details (sel :one :field [Database :details], :id database-id)]
+    (let [query (json/parse-string query keyword)]
+      ;; `annotate` happens automatically as part of the QP middleware for MBQL queries but not for native ones.
+      ;; This behavior was originally so we could preserve column order for raw SQL queries.
+      ;; Since Druid results come back as maps for each row there is no order to preserve so we can go ahead and re-use the MBQL-QP annotation code here.
+      (annotate/annotate query (qp/post-process-native query (do-query details query))))))
 
 
 ;;; ### Sync

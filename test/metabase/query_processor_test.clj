@@ -4,17 +4,18 @@
   (:require [clojure.math.numeric-tower :as math]
             [clojure.set :as set]
             [expectations :refer :all]
-            [metabase.db :refer :all]
-            [metabase.driver :as driver]
+            (metabase [db :refer :all]
+                      [driver :as driver])
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
             [metabase.query-processor :refer :all]
             (metabase.query-processor [expand :as ql]
                                       [interface :as qpi])
+            [metabase.test.data :refer :all]
             (metabase.test.data [dataset-definitions :as defs]
                                 [datasets :as datasets :refer [*data-loader* *engine*]]
                                 [interface :refer [create-database-definition], :as i])
-            [metabase.test.data :refer :all]
+            [metabase.test.util :as tu]
             [metabase.util :as u]))
 
 
@@ -272,18 +273,20 @@
 
 ;; # THE TESTS THEMSELVES (!)
 
-;; structured-query?
-(expect false (structured-query? {}))
-(expect false (structured-query? {:type "native"}))
-(expect true  (structured-query? {:type "query"}))
+;; mbql-query?
+(expect false (mbql-query? {}))
+(expect false (mbql-query? {:type "native"}))
+(expect true  (mbql-query? {:type "query"}))
 
-;; rows-query-without-limits?
-(expect false (rows-query-without-limits? {:query {:aggregation {:aggregation-type :count}}}))
-(expect true  (rows-query-without-limits? {:query {:aggregation {:aggregation-type :rows}}}))
-(expect false (rows-query-without-limits? {:query {:aggregation {:aggregation-type :count}
-                                                   :limit       10}}))
-(expect false (rows-query-without-limits? {:query {:aggregation {:aggregation-type :count}
-                                                   :page        1}}))
+(tu/resolve-private-fns metabase.query-processor query-without-aggregations-or-limits?)
+
+;; query-without-aggregations-or-limits?
+(expect false (query-without-aggregations-or-limits? {:query {:aggregation {:aggregation-type :count}}}))
+(expect true  (query-without-aggregations-or-limits? {:query {:aggregation {:aggregation-type :rows}}}))
+(expect false (query-without-aggregations-or-limits? {:query {:aggregation {:aggregation-type :count}
+                                                              :limit       10}}))
+(expect false (query-without-aggregations-or-limits? {:query {:aggregation {:aggregation-type :count}
+                                                              :page        1}}))
 
 ;; ### "COUNT" AGGREGATION
 
