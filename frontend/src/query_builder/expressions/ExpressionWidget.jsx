@@ -55,7 +55,7 @@ export default class ExpressionWidget extends Component {
                         <p className="h5 text-grey-2">
                             Think of this as being kind of like writing a forumla in a spreadsheet program: you can use numbers, fields in this table,
                             mathematic symbols like +, and some functions.  So you could type, Subtotal - Cost.
-                            <a className="link" href="http://www.metabase.com/docs/latest/users-guide/11-calculated-columns.html">Learn more</a>
+                            <a className="link" href="http://www.metabase.com/docs/latest/users-guide/03-asking-questions.html#creating-a-custom-field">Learn more</a>
                         </p>
                     </div>
 
