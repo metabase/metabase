@@ -267,11 +267,13 @@ Once your application is working properly over HTTPS we recommend setting an add
 
 # Setting the JVM Timezone
 
-It's best to set your JVM timezone to match the timezone you'd like all your reports to come in.  You can do this by simply specifying the `JAVA_TIMEZONE` environment variable which is picked up by the Metabase launch script.  For example:
+It's best to set your JVM timezone to match the timezone you'd like all your reports to come in.  You can do this by adding the `JAVA_TIMEZONE` environment variable.
 
-    docker run -d -p 3000:3000 \
-      -e "JAVA_TIMEZONE=US/Pacific" \
-      --name metabase metabase/metabase
+1. Click on `Configuration` on the left hand sidebar
+* Scroll down to `Software Configuration` under the _Web Tier_ section and click the gear icon to edit those settings.
+* Under `Environment Properties` add the following
+   * `JAVA_TIMEZONE` with a value such as `US/Pacific`
+* Scroll to the bottom of the page and click `Apply` in the lower right, then wait for your application to update.
 
 
 # Using Papertrail for logging on AWS
