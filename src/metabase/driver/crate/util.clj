@@ -2,25 +2,14 @@
   (:require [metabase.util.korma-extensions :as kx]
             [korma.sql.utils :as kutils]
             [korma.core :as k]
-            [clj-time.core :as t]
-            [clj-time.coerce :as c]
-            [clj-time.format :as f])
+            [metabase.util :as u])
   (:import (java.sql Timestamp)))
 
 (defn unix-timestamp->timestamp [_ expr seconds-or-milliseconds]
   "Converts datetime string to a valid timestamp"
   (case seconds-or-milliseconds
-    :seconds       (kutils/func (format "TRY_CAST('%s' as TIMESTAMP)" seconds-or-milliseconds) [expr])
-    :milliseconds  (recur nil (kx// expr 1000) :seconds)))
-
-(defn- convert-to-isotime
-  "Prints datetime as ISO time"
-  [sql-time format]
-  (if (= (instance? Timestamp sql-time) true)
-    (f/unparse (f/formatters format)
-               (t/from-time-zone (c/from-sql-time sql-time)
-                                 (t/time-zone-for-offset -2)))
-    sql-time))
+    :seconds      (recur nil (kx/* expr 1000) :milliseconds)
+    :milliseconds (kutils/func (str "TRY_CAST(%s as TIMESTAMP)") [expr])))
 
 (defn- date-trunc [unit expr]
   "date_trunc('interval', timestamp): truncates a timestamp to a given interval"
@@ -33,25 +22,6 @@
 (def ^:private extract-integer
   (comp kx/->integer extract))
 
-(defn date [_ unit expr]
-  (case unit
-    :default         (kx/->timestamp expr)
-    :minute          (date-trunc :minute expr)
-    :minute-of-hour  (extract-integer :minute expr)
-    :hour            (date-trunc :hour expr)
-    :hour-of-day     (extract-integer :hour expr)
-    :day             (date-trunc :day (convert-to-isotime expr :date-hour-minute-second))
-    :day-of-week     (extract-integer :day_of_week expr)
-    :day-of-month    (extract-integer :day_of_month expr)
-    :day-of-year     (extract-integer :day_of_year expr)
-    :week            (date-trunc :week expr)
-    :week-of-year    (extract-integer :week expr)
-    :month           (date-trunc :month expr)
-    :month-of-year   (extract-integer :month expr)
-    :quarter         (date-trunc :quarter expr)
-    :quarter-of-year (extract-integer :quarter expr)
-    :year            (extract-integer :year expr)))
-
 (def ^:private YEAR   (constantly 31536000000))
 (def ^:private MONTH  (constantly 2628000000))
 (def ^:private WEEK   (constantly 604800000))
@@ -59,6 +29,29 @@
 (def ^:private HOUR   (constantly 3600000))
 (def ^:private MINUTE (constantly 60000))
 (def ^:private SECOND (constantly 1000))
+
+(defn date [_ unit expr]
+  (let [v (if (instance? Timestamp expr)
+            (kx/literal (u/date->iso-8601 expr))
+            expr)]
+    (case unit
+      :default         (k/sqlfn :DATE_FORMAT (str "%Y-%m-%d %H:%i:%s") v)
+      :second          (k/sqlfn :DATE_FORMAT (str "%Y-%m-%d %H:%i:%s") (date-trunc :second v))
+      :minute          (k/sqlfn :DATE_FORMAT (str "%Y-%m-%d %H:%i:%s") (date-trunc :minute v))
+      :minute-of-hour  (extract-integer :minute v)
+      :hour            (k/sqlfn :DATE_FORMAT (str "%Y-%m-%d %H:%i:%s") (date-trunc :hour v))
+      :hour-of-day     (extract-integer :hour v)
+      :day             (k/sqlfn :DATE_FORMAT (str "%Y-%m-%d") (date-trunc :day v))
+      :day-of-week     (extract-integer :day_of_week v)
+      :day-of-month    (extract-integer :day_of_month v)
+      :day-of-year     (extract-integer :day_of_year v)
+      :week            (k/sqlfn :DATE_FORMAT (str "%Y-%m-%d") (date-trunc :week v))
+      :week-of-year    (extract-integer :week v)
+      :month           (k/sqlfn :DATE_FORMAT (str "%Y-%m-%d") (date-trunc :month v))
+      :month-of-year   (extract-integer :month v)
+      :quarter         (k/sqlfn :DATE_FORMAT (str "%Y-%m-%d") (date-trunc :quarter v))
+      :quarter-of-year (extract-integer :quarter v)
+      :year            (extract-integer :year v))))
 
 (defn- sql-interval [unit amount]
   (format "CURRENT_TIMESTAMP + %d" (* (unit) amount)))
