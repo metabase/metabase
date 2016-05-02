@@ -6,6 +6,7 @@ import i from "icepick";
 import _ from "underscore";
 
 import { inflect } from "metabase/lib/formatting";
+import MetabaseAnalytics from "metabase/lib/analytics";
 
 import { getVisibleEntities, getSelectedEntities } from "./selectors";
 import { addUndo } from "./undo";
@@ -71,6 +72,7 @@ export const setFavorited = createThunkAction(SET_FAVORITED, (cardId, favorited)
         } else {
             await CardApi.unfavorite({ cardId });
         }
+        MetabaseAnalytics.trackEvent("Questions", favorited ? "Favorite" : "Unfavorite");
         return { id: cardId, favorite: favorited };
     }
 });
@@ -96,6 +98,7 @@ export const setArchived = createThunkAction(SET_ARCHIVED, (cardId, archived, un
                     archived ? "archived" : "unarchived",
                     selected.map(item => setArchived(item.id, !archived))
                 )));
+                MetabaseAnalytics.trackEvent("Questions", archived ? "Bulk Archive" : "Bulk Unarchive", selected.length);
             }
         } else {
             let card = {
@@ -108,6 +111,7 @@ export const setArchived = createThunkAction(SET_ARCHIVED, (cardId, archived, un
                     archived ? "archived" : "unarchived",
                     [setArchived(cardId, !archived)]
                 )));
+                MetabaseAnalytics.trackEvent("Questions", archived ? "Archive" : "Unarchive");
             }
             return response;
         }
@@ -126,6 +130,7 @@ export const setLabeled = createThunkAction(SET_LABELED, (cardId, labelId, label
                     labeled ? "labeled" : "unlabeled",
                     selected.map(item => setLabeled(item.id, labelId, !labeled))
                 )));
+                MetabaseAnalytics.trackEvent("Questions", labeled ? "Bulk Apply Label" : "Bulk Remove Label", selected.length);
             }
         } else {
             const state = getState();
@@ -142,6 +147,7 @@ export const setLabeled = createThunkAction(SET_LABELED, (cardId, labelId, label
                         labeled ? "labeled" : "unlabeled",
                         [setLabeled(cardId, labelId, !labeled)]
                     )));
+                    MetabaseAnalytics.trackEvent("Questions", labeled ? "Apply Label" : "Remove Label");
                 }
                 return { id: cardId, labels: newLabels, _changedLabelSlug: labelSlug, _changedLabeled: labeled };
             }
@@ -154,12 +160,14 @@ export const setItemSelected = createAction(SET_ITEM_SELECTED);
 
 export const setAllSelected = createThunkAction(SET_ALL_SELECTED, (selected) => {
     return async (dispatch, getState) => {
+        const visibleEntities = getVisibleEntities(getState());
         let selectedIds = {}
         if (selected) {
-            for (let entity of getVisibleEntities(getState())) {
+            for (let entity of visibleEntities) {
                 selectedIds[entity.id] = true;
             }
         }
+        MetabaseAnalytics.trackEvent("Questions", selected ? "Select All" : "Unselect All", visibleEntities.length);
         return selectedIds;
     }
 });
