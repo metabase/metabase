@@ -6,8 +6,8 @@
             [medley.core :as m]
             [metabase.db :refer [ins sel upd]]
             (metabase.models [database :refer [Database]]
-                             [query-execution :refer [QueryExecution]])
-            [metabase.models.setting :refer [defsetting]]
+                             [query-execution :refer [QueryExecution]]
+                             [setting :refer [defsetting]])
             [metabase.util :as u])
   (:import clojure.lang.Keyword))
 

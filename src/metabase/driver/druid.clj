@@ -57,7 +57,7 @@
        (catch Throwable e
          ;; try to print the error
          (try (log/error (u/format-color 'red "Error running query:\n  %s"
-                           (:error (json/parse-string (:body (:object (ex-data e))) keyword)))) ; TODO - log/error
+                           (:error (json/parse-string (:body (:object (ex-data e))) keyword))))
               (catch Throwable _))
          ;; re-throw exception either way
          (throw e))))
@@ -82,7 +82,7 @@
          ;; all dimensions are Strings, and all metrics as JS Numbers, I think (?)
          ;; string-encoded booleans + dates are treated as strings (!)
          (if (= :metric druid-field-type)
-           {:field-type :metric, :base-type :FloatField}
+           {:field-type :metric,    :base-type :FloatField}
            {:field-type :dimension, :base-type :TextField})))
 
 (defn- describe-table [database table]

@@ -1,6 +1,5 @@
 (ns metabase.models.segment-test
-  (:require [clojure.tools.macro :refer [symbol-macrolet]]
-            [expectations :refer :all]
+  (:require [expectations :refer :all]
             (metabase.models [database :refer [Database]]
                              [hydrate :refer :all]
                              [segment :refer :all]
@@ -10,26 +9,23 @@
             [metabase.test.util :as tu]
             [metabase.util :as u]))
 
-(defn user-details
+(defn- user-details
   [username]
-  (-> (fetch-user username)
-      (dissoc :date_joined :last_login)))
+  (dissoc (fetch-user username) :date_joined :last_login))
 
-(defn segment-details
-  [{:keys [creator] :as segment}]
+(defn- segment-details
+  [{:keys [creator], :as segment}]
   (-> segment
       (dissoc :id :table_id :created_at :updated_at)
       (assoc :creator (dissoc creator :date_joined :last_login))))
 
-(defn create-segment-then-select
+(defn- create-segment-then-select!
   [table name description creator definition]
-  (-> (create-segment table name description creator definition)
-      segment-details))
+  (segment-details (create-segment table name description creator definition)))
 
-(defn update-segment-then-select
+(defn- update-segment-then-select!
   [segment]
-  (-> (update-segment segment (user->id :crowberto))
-      segment-details))
+  (segment-details (update-segment segment (user->id :crowberto))))
 
 
 ;; create-segment
@@ -42,7 +38,7 @@
    :definition  {:clause ["a" "b"]}}
   (tu/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]]
-    (create-segment-then-select table-id "I only want *these* things" nil (user->id :rasta) {:clause ["a" "b"]})))
+    (create-segment-then-select! table-id "I only want *these* things" nil (user->id :rasta) {:clause ["a" "b"]})))
 
 
 ;; exists-segment?
@@ -114,7 +110,7 @@
   (tu/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]
                   Segment  [{:keys [id]} {:table_id id}]]
-    (update-segment-then-select {:id          id
+    (update-segment-then-select! {:id          id
                                  :name        "Costa Rica"
                                  :description nil
                                  :creator_id  (user->id :crowberto)

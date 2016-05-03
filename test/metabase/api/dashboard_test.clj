@@ -237,9 +237,9 @@
                   DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
                   DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
                   DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
-    [(count (db/sel :many :field [DashboardCard :id] :dashboard_id dashboard-id))
+    [(count (db/sel :many :id DashboardCard, :dashboard_id dashboard-id))
      ((user->client :rasta) :delete 200 (format "dashboard/%d/cards" dashboard-id) :dashcardId dashcard-id)
-     (count (db/sel :many :field [DashboardCard :id] :dashboard_id dashboard-id))]))
+     (count (db/sel :many :id DashboardCard, :dashboard_id dashboard-id))]))
 
 
 ;; ## PUT /api/dashboard/:id/cards
