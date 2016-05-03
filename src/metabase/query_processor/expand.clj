@@ -136,6 +136,11 @@
   ([]  (i/strict-map->AggregationWithoutField {:aggregation-type :count}))
   ([f] (ag-with-field :count f)))
 
+(s/defn ^:ql ^:always-validate cum-count :- i/Aggregation
+  "Aggregation clause. Return the cumulative row count (presumably broken out in some way)."
+  []
+  (i/strict-map->AggregationWithoutField {:aggregation-type :cumulative-count}))
+
 (defn ^:ql ^:deprecated rows
   "Bare rows aggregation. This is the default behavior, so specifying it is deprecated."
   []
