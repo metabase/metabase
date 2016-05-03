@@ -2,14 +2,16 @@
 
 import React, { Component, PropTypes } from "react";
 
+import _ from "underscore";
+
 import DataSelector from './DataSelector.jsx';
 import Icon from "metabase/components/Icon.jsx";
 
 export default class NativeQueryEditor extends Component {
     constructor(props, context) {
         super(props, context);
-        this.onChange = this.onChange.bind(this);
-        this.toggleEditor = this.toggleEditor.bind(this);
+
+        _.bindAll(this, 'onChange', 'toggleEditor', 'updateEditorMode', 'setDatabaseID');
 
         this.state = {
             showEditor: false
@@ -21,7 +23,12 @@ export default class NativeQueryEditor extends Component {
         query: PropTypes.object.isRequired,
         setQueryFn: PropTypes.func.isRequired,
         setDatabaseFn: PropTypes.func.isRequired,
-        autocompleteResultsFn: PropTypes.func.isRequired
+        autocompleteResultsFn: PropTypes.func.isRequired,
+        /// This should return an object with information about the mode the ACE Editor should use to edit the query.
+        /// This object should have 2 properties:
+        /// *  `mode` : the ACE Editor mode name, e.g. 'ace/mode/json'
+        /// *  `description`: name used to describe the text written in that mode, e.g. 'JSON'. Used to fill in the blank in 'This question is written in _______'.
+        getModeInfo: PropTypes.func.isRequired
     };
 
     componentWillMount() {
@@ -44,14 +51,22 @@ export default class NativeQueryEditor extends Component {
         }
     }
 
+    /// Update the mode of the ACE Editor to something like `ace/mode/sql` or `ace/mode/json`.
+    /// The appropriate mode to use is fetched via the delegation pattern with the function `getModeInfo()`, described in detail above
+    updateEditorMode() {
+        let modeInfo = this.props.getModeInfo();
+        if (!modeInfo) return;
+
+        console.log('Setting ACE Editor mode to:', modeInfo.mode);
+
+        let editor = ace.edit("id_sql");
+        editor.getSession().setMode(modeInfo.mode);
+    }
+
     loadAceEditor() {
         var editor = ace.edit("id_sql");
 
-        // TODO: theme?
-
-        // set editor mode appropriately
-        // TODO: at some point we could make this dynamic based on database type
-        editor.getSession().setMode("ace/mode/sql");
+        this.updateEditorMode();
 
         // listen to onChange events
         editor.getSession().on('change', this.onChange);
@@ -123,6 +138,12 @@ export default class NativeQueryEditor extends Component {
         this.setState({ showEditor: !this.state.showEditor })
     }
 
+    /// Change the Database we're currently editing a query for.
+    setDatabaseID(databaseID) {
+        this.props.setDatabaseFn(databaseID);
+        this.updateEditorMode();
+    }
+
     render() {
         // we only render a db selector if there are actually multiple to choose from
         var dbSelector;
@@ -133,12 +154,14 @@ export default class NativeQueryEditor extends Component {
                     <DataSelector
                         databases={this.props.databases}
                         query={this.props.query}
-                        setDatabaseFn={this.props.setDatabaseFn}
+                        setDatabaseFn={this.setDatabaseID}
                     />
                 </div>
             );
         } else {
-            dbSelector = <span className="p2 text-grey-4">This question is written in SQL.</span>;
+            let modeInfo = this.props.getModeInfo(),
+                modeName = modeInfo ? modeInfo.description : 'code'; // Unless something is very broken users will never see 'code', but better safe than sorry
+            dbSelector = <span className="p2 text-grey-4">{'This question is written in ' + modeName + '.'}</span>;
         }
 
         var editorClasses, toggleEditorText, toggleEditorIcon;

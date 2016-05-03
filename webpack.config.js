@@ -136,7 +136,9 @@ var config = module.exports = {
             'ace/ace':              __dirname + '/node_modules/ace-builds/src-min-noconflict/ace.js',
             'ace/ext-language_tools':__dirname+ '/node_modules/ace-builds/src-min-noconflict/ext-language_tools.js',
             'ace/mode-sql':         __dirname + '/node_modules/ace-builds/src-min-noconflict/mode-sql.js',
+            'ace/mode-json':        __dirname + '/node_modules/ace-builds/src-min-noconflict/mode-json.js',
             'ace/snippets/sql':     __dirname + '/node_modules/ace-builds/src-min-noconflict/snippets/sql.js',
+            'ace/snippets/json':    __dirname + '/node_modules/ace-builds/src-min-noconflict/snippets/json.js',
             // react
             'fixed-data-table':     __dirname + '/node_modules/fixed-data-table/dist/fixed-data-table.min.js',
             // misc
