@@ -107,6 +107,7 @@
                                                                    (normalize-token unit))})))
 
 (s/defn ^:ql ^:always-validate expression :- ExpressionRef
+  {:added "0.17.0"}
   [expression-name :- (s/cond-pre s/Str s/Keyword)]
   (i/strict-map->ExpressionRef {:expression-name (name expression-name)}))
 
@@ -173,7 +174,7 @@
 ;;; ## filter
 
 (s/defn ^:private ^:always-validate compound-filter :- i/Filter
-  ([compound-type subclause :- i/Filter]
+  ([compound-type, subclause :- i/Filter]
    (log/warn (u/format-color 'yellow "You shouldn't specify an %s filter with only one subclause." compound-type))
    subclause)
 
@@ -365,6 +366,7 @@
 
 (s/defn ^:ql ^:always-validate expressions
   "Top-level clause. Add additional calculated fields to a query."
+  {:added "0.17.0"}
   [query, m :- {s/Keyword Expression}]
   (assoc query :expressions m))
 

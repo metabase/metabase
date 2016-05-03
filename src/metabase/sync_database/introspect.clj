@@ -22,8 +22,7 @@
   "Save *all* foreign-key data for a given RAW-TABLE.
    NOTE: this function assumes that FKS is the complete set of fks in the RAW-TABLE."
   [{table-id :id, database-id :database_id, :as table} fks]
-  {:pre [(integer? table-id)
-         (integer? database-id)]}
+  {:pre [(integer? table-id) (integer? database-id)]}
   (kdb/transaction
     ;; start by simply resetting all fks and then we'll add them back as defined
     (k/update RawColumn
@@ -43,9 +42,7 @@
   "Save *all* `RawColumns` for a given RAW-TABLE.
    NOTE: this function assumes that COLUMNS is the complete set of columns in the RAW-TABLE."
   [{:keys [id]} columns]
-  {:pre [(integer? id)
-         (coll? columns)
-         (every? map? columns)]}
+  {:pre [(integer? id) (coll? columns) (every? map? columns)]}
   (kdb/transaction
     (let [existing-columns (into {} (for [{:keys [name] :as column} (db/sel :many :fields [RawColumn :id :name] :raw_table_id id)]
                                       {name column}))]
@@ -80,8 +77,7 @@
 (defn- create-raw-table!
   "Create a new `RawTable`, includes saving all specified `:columns`."
   [database-id {table-name :name, table-schema :schema, :keys [details fields]}]
-  {:pre [(integer? database-id)
-         (string? table-name)]}
+  {:pre [(integer? database-id) (string? table-name)]}
   (log/debug (u/format-color 'cyan "Found new table: %s" (named-table table-schema table-name)))
   (let [table (db/ins RawTable
                 :database_id  database-id
@@ -106,8 +102,7 @@
 (defn- disable-raw-tables!
   "Disable a list of `RawTable` ids, including all `RawColumns` associated with those tables."
   [table-ids]
-  {:pre [(coll? table-ids)
-         (every? integer? table-ids)]}
+  {:pre [(coll? table-ids) (every? integer? table-ids)]}
   (let [table-ids (filter identity table-ids)]
     (kdb/transaction
       ;; disable the tables
@@ -213,8 +208,8 @@
         tables           (db->tables driver database)
         existing-tables  (db->existing-tables database)]
 
-    (disable-old-tables! tables existing-tables)
     (introspect-tables! driver database tables existing-tables)
+    (disable-old-tables! tables existing-tables)
     (sync-fks! driver database tables)
 
     (log/info (u/format-color 'magenta "Introspection completed on %s database '%s' (%s)" (name driver) (:name database) (u/format-nanoseconds (- (System/nanoTime) start-time-ns))))))
