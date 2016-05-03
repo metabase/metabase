@@ -101,7 +101,7 @@
 (defn- process-user-activity [topic object]
   ;; we only care about login activity when its the users first session (a.k.a. new user!)
   (when (and (= :user-login topic)
-             (= (:session_id object) (first-session-for-user (:user_id object))))
+             (:first_login object))
     (activity/record-activity
       :topic    :user-joined
       :user-id  (:user_id object)

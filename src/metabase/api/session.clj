@@ -38,14 +38,14 @@
    password [Required NonEmptyString]}
   (throttle/check (login-throttlers :ip-address) remote-address)
   (throttle/check (login-throttlers :email)      email)
-  (let [user (sel :one :fields [User :id :password_salt :password], :email email (k/where {:is_active true}))]
+  (let [user (sel :one :fields [User :id :password_salt :password :last_login], :email email (k/where {:is_active true}))]
     ;; Don't leak whether the account doesn't exist or the password was incorrect
     (when-not (and user
                    (pass/verify-password password (:password_salt user) (:password user)))
       (throw (ex-info "Password did not match stored password." {:status-code 400
                                                                  :errors      {:password "did not match stored password"}})))
     (let [session-id (create-session (:id user))]
-      (events/publish-event :user-login {:user_id (:id user) :session_id session-id})
+      (events/publish-event :user-login {:user_id (:id user), :session_id session-id, :first_login (not (boolean (:last_login user)))})
       {:id session-id})))
 
 
@@ -85,30 +85,30 @@
   "Number of milliseconds a password reset is considered valid."
   (* 48 60 60 1000)) ; token considered valid for 48 hours
 
-(defn- valid-reset-token->user-id
+(defn- valid-reset-token->user
   "Check if a password reset token is valid. If so, return the `User` ID it corresponds to."
   [^String token]
   (when-let [[_ user-id] (re-matches #"(^\d+)_.+$" token)]
     (let [user-id (Integer/parseInt user-id)]
-      (when-let [{:keys [reset_token reset_triggered]} (sel :one :fields [User :reset_triggered :reset_token] :id user-id)]
+      (when-let [{:keys [reset_token reset_triggered], :as user} (sel :one :fields [User :id :last_login :reset_triggered :reset_token] :id user-id)]
         ;; Make sure the plaintext token matches up with the hashed one for this user
         (when (try (creds/bcrypt-verify token reset_token)
                    (catch Throwable _))
           ;; check that the reset was triggered within the last 48 HOURS, after that the token is considered expired
           (let [token-age (- (System/currentTimeMillis) reset_triggered)]
             (when (< token-age reset-token-ttl-ms)
-              user-id)))))))
+              user)))))))
 
 (defendpoint POST "/reset_password"
   "Reset password with a reset token."
   [:as {{:keys [token password]} :body}]
   {token    Required
    password [Required ComplexPassword]}
-  (or (when-let [user-id (valid-reset-token->user-id token)]
+  (or (when-let [{user-id :id, :as user} (valid-reset-token->user token)]
         (set-user-password user-id password)
         ;; after a successful password update go ahead and offer the client a new session that they can use
         (let [session-id (create-session user-id)]
-          (events/publish-event :user-login {:user_id user-id :session_id session-id})
+          (events/publish-event :user-login {:user_id user-id, :session_id session-id, :first_login (not (boolean (:last_login user)))})
           {:success    true
            :session_id session-id}))
       (throw (invalid-param-exception :password "Invalid reset token"))))
@@ -118,7 +118,7 @@
   "Check is a password reset token is valid and isn't expired."
   [token]
   {token Required}
-  {:valid (boolean (valid-reset-token->user-id token))})
+  {:valid (boolean (valid-reset-token->user token))})
 
 
 (defendpoint GET "/properties"

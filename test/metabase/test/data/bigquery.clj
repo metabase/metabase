@@ -14,7 +14,7 @@
            (com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest Table TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableFieldSchema TableReference TableRow TableSchema)
            metabase.driver.bigquery.BigQueryDriver))
 
-(resolve-private-fns metabase.driver.bigquery execute post-process-native)
+(resolve-private-fns metabase.driver.bigquery execute execute-no-auto-retry post-process-native)
 
 ;;; # ------------------------------------------------------------ CONNECTION DETAILS ------------------------------------------------------------
 
@@ -67,8 +67,8 @@
 
 (defn- destroy-dataset! [^String dataset-id]
   {:pre [(seq dataset-id)]}
-  (execute (doto (.delete (.datasets bigquery) project-id dataset-id)
-             (.setDeleteContents true)))
+  (execute-no-auto-retry (doto (.delete (.datasets bigquery) project-id dataset-id)
+                           (.setDeleteContents true)))
   (println (u/format-color 'red "Deleted BigQuery dataset '%s'." dataset-id)))
 
 (def ^:private ^:const valid-field-types
@@ -90,13 +90,9 @@
   (println (u/format-color 'blue "Created BigQuery table '%s.%s'." dataset-id table-id)))
 
 (defn- table-row-count ^Integer [^String dataset-id, ^String table-id]
-  (let [f (fn [] (first (first (:rows (post-process-native (execute (.query (.jobs bigquery) project-id
-                                                                            (doto (QueryRequest.)
-                                                                              (.setQuery (format "SELECT COUNT(*) FROM [%s.%s]" dataset-id table-id))))))))))]
-    ;; automatically retry the query in case it fails / times out
-    (try (f)
-         (catch Throwable _
-           (f)))))
+  (first (first (:rows (post-process-native (execute (.query (.jobs bigquery) project-id
+                                                             (doto (QueryRequest.)
+                                                               (.setQuery (format "SELECT COUNT(*) FROM [%s.%s]" dataset-id table-id))))))))))
 
 ;; This is a dirty HACK
 (defn- ^DateTime timestamp-korma-form->GoogleDateTime
@@ -115,7 +111,6 @@
                                                :let [v (if (:korma.sql.utils/func v)
                                                          (timestamp-korma-form->GoogleDateTime v)
                                                          v)]]
-                                         #_(println "V->" v)
                                          (.set data (name k) v))
                                        (doto (TableDataInsertAllRequest$Rows.)
                                          (.setJson data))))))))
@@ -177,18 +172,21 @@
   {:expectations-options :after-run}
   []
   (u/pdoseq [db-name @created-databases]
-    (u/try-apply destroy-dataset! db-name)))
+    (u/ignore-exceptions
+      (destroy-dataset! db-name))))
 
 (defn- create-db! [{:keys [database-name table-definitions]}]
   {:pre [(seq database-name) (sequential? table-definitions)]}
   (let [database-name (normalize-name-and-add-prefix database-name)]
-    (swap! created-databases conj database-name)
-    (try (destroy-dataset! database-name)
-         (catch Throwable _))
-    (create-dataset! database-name)
-    (doseq [tabledef table-definitions]
-      (load-tabledef! database-name tabledef)))
-  (println (u/format-color 'green "[OK]")))
+    (when-not (contains? @created-databases database-name)
+      (u/auto-retry 3
+        (u/ignore-exceptions
+          (destroy-dataset! database-name))
+        (create-dataset! database-name)
+        (u/pdoseq [tabledef table-definitions]
+          (load-tabledef! database-name tabledef))
+        (swap! created-databases conj database-name)
+        (println (u/format-color 'green "[OK]"))))))
 
 
 ;;; # ------------------------------------------------------------ IDatasetLoader ------------------------------------------------------------

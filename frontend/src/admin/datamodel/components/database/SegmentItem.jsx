@@ -22,7 +22,9 @@ export default class SegmentItem extends Component {
                     {segment.name}
                 </td>
                 <td className="px1 text-ellipsis">
-                    {description}
+                    <div style={{maxWidth: 400, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {description}
+                    </div>
                 </td>
                 <td className="px1 text-centered">
                     <ObjectActionSelect

@@ -33,7 +33,7 @@
 
 (def ^:private ^:const ^String redirect-uri "urn:ietf:wg:oauth:2.0:oob")
 
-(defn- execute
+(defn- execute-no-auto-retry
   "`execute` REQUEST, and catch any `GoogleJsonResponseException` is
   throws, converting them to `ExceptionInfo` and rethrowing them."
   [^AbstractGoogleClientRequest request]
@@ -43,6 +43,15 @@
            (throw (ex-info (or (.getMessage error)
                                (.getStatusMessage e))
                            (into {} error)))))))
+
+(defn- execute
+  "`execute` REQUEST, and catch any `GoogleJsonResponseException` is
+  throws, converting them to `ExceptionInfo` and rethrowing them.
+
+  This automatically retries any failed requests up to 2 times."
+  [^AbstractGoogleClientRequest request]
+  (u/auto-retry 2
+    (execute-no-auto-retry request)))
 
 (defn- ^Bigquery credential->client [^GoogleCredential credential]
   (.build (doto (Bigquery$Builder. http-transport json-factory credential)
@@ -181,8 +190,7 @@
    "STRING"    identity
    "TIMESTAMP" parse-timestamp-str})
 
-(def ^:private ^:const query-timeout-error-message "Query timed out.")
-(def ^:private ^:const query-default-timeout-seconds 20)
+(def ^:private ^:const query-default-timeout-seconds 30)
 
 (defn- post-process-native
   ([^QueryResponse response]
@@ -192,7 +200,7 @@
      ;; 99% of the time by the time this is called `.getJobComplete` will return `true`. On the off chance it doesn't, wait a few seconds for the job to finish.
      (do
        (when (zero? timeout-seconds)
-         (throw (ex-info query-timeout-error-message (into {} response))))
+         (throw (ex-info "Query timed out." (into {} response))))
        (Thread/sleep 1000)
        (post-process-native response (dec timeout-seconds)))
      ;; Otherwise the job *is* complete
@@ -211,17 +219,10 @@
                          (parser v)))))}))))
 
 (defn- process-native* [database query-string]
-  ;; Automatically retry the query a single time if it timed out
-  (let [do-query (fn [] (post-process-native (execute-query database query-string)))]
-    (try
-      (do-query)
-      (catch clojure.lang.ExceptionInfo e
-        (if (= (.getMessage e) query-timeout-error-message)
-          ;; If this was a timeout error, retry
-          (do (log/info "Query timed out, retrying...")
-              (do-query))
-          ;; Otherwise re-throw exception
-          (throw e))))))
+  ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by `execute` so operations going through `process-native*` may be
+  ;; retried up to 3 times.
+  (u/auto-retry 1
+    (post-process-native (execute-query database query-string))))
 
 (defn- process-native [{database-id :database, {native-query :query} :native}]
   (process-native* (Database database-id) native-query))

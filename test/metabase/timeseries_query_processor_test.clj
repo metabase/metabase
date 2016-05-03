@@ -1,4 +1,4 @@
-(ns metabase.driver.timeseries-query-processor-test
+(ns metabase.timeseries-query-processor-test
   "Query processor tests for DBs that are event-based, like Druid.
    There architecture is different enough that we can't test them along with our 'normal' DBs in `query-procesor-test`."
   (:require [expectations :refer :all]

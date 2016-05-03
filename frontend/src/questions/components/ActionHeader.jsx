@@ -39,7 +39,7 @@ const ActionHeader = ({ visibleCount, selectedCount, allAreSelected, sectionIsAr
                 />
             : null }
             <span className={S.actionButton} onClick={() => setArchived(undefined, !sectionIsArchive, true)}>
-                <Icon name="archive" />
+                <Icon name={ sectionIsArchive ? "unarchive" : "archive" } />
                 { sectionIsArchive ? "Unarchive" : "Archive" }
             </span>
         </span>
