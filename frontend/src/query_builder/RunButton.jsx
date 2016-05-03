@@ -1,5 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
+import Icon from "metabase/components/Icon.jsx";
+
 import cx from "classnames";
 
 export default class RunButton extends Component {
@@ -15,11 +17,11 @@ export default class RunButton extends Component {
         let { canRun, isRunning, isDirty, runFn, cancelFn } = this.props;
         let buttonText = null;
         if (isRunning) {
-            buttonText = "Cancel";
+            buttonText = <div className="flex align-center"><Icon className="mr1" name="close" />Cancel</div>;
         } else if (canRun && isDirty) {
             buttonText = "Get Answer";
         } else if (canRun && !isDirty) {
-            buttonText = "Refresh";
+            buttonText = <div className="flex align-center"><Icon className="mr1" name="refresh" />Refresh</div>;
         }
         let actionFn = isRunning ? cancelFn : runFn;
         let classes = cx("Button Button--medium circular RunButton", {
@@ -29,7 +31,9 @@ export default class RunButton extends Component {
             "text-grey-4-hover": !isDirty,
         });
         return (
-            <button className={classes} onClick={actionFn}>{buttonText}</button>
+            <button className={classes} onClick={actionFn}>
+            {buttonText}
+            </button>
         );
     }
 }
