@@ -148,6 +148,20 @@ CardControllers.controller('CardDetail', [
                     prefix: prefix
                 });
                 return apiCall.$promise;
+            },
+            getModeInfo: function() {
+                let databaseID = card ? card.dataset_query.database : null,
+                    database   = _.findWhere(databases, { id: databaseID }),
+                    engine     = database ? database.engine : null;
+
+                // TODO - add custom SQL dialect modes for other engines
+                return (engine === 'druid' || engine === 'mongo') ? {
+                    mode: 'ace/mode/json',
+                    description: 'JSON'
+                } : {
+                    mode: 'ace/mode/sql',
+                    description: 'SQL'
+                };
             }
         };
 
