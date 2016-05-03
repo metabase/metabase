@@ -49,7 +49,6 @@
                               (resolve-private-fns 1)
                               (select 1)
                               (subselect 1)
-                              (symbol-macrolet 1)
                               (sync-in-context 2)
                               (upd 2)
                               (when-testing-engine 1)

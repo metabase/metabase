@@ -7,8 +7,8 @@
             [schema.core :as schema]
             (metabase [db :as db]
                       [driver :as driver])
-            (metabase.models [raw-column :as raw-column]
-                             [raw-table :as raw-table])
+            (metabase.models [raw-column :refer [RawColumn]]
+                             [raw-table :refer [RawTable]])
             [metabase.sync-database.interface :as i]
             [metabase.util :as u]))
 
@@ -22,39 +22,36 @@
   "Save *all* foreign-key data for a given RAW-TABLE.
    NOTE: this function assumes that FKS is the complete set of fks in the RAW-TABLE."
   [{table-id :id, database-id :database_id, :as table} fks]
-  {:pre [(integer? table-id)
-         (integer? database-id)]}
+  {:pre [(integer? table-id) (integer? database-id)]}
   (kdb/transaction
     ;; start by simply resetting all fks and then we'll add them back as defined
-    (k/update raw-column/RawColumn
+    (k/update RawColumn
       (k/where {:raw_table_id table-id})
       (k/set-fields {:fk_target_column_id nil}))
 
     ;; now lookup column-ids and set the fks on this table as needed
     (doseq [{:keys [fk-column-name dest-column-name dest-table]} fks]
-      (when-let [source-column-id (db/sel :one :field [raw-column/RawColumn :id], :raw_table_id table-id, :name fk-column-name)]
-        (when-let [dest-table-id (db/sel :one :field [raw-table/RawTable :id], :database_id database-id, :schema (:schema dest-table), :name (:name dest-table))]
-          (when-let [dest-column-id (db/sel :one :id raw-column/RawColumn, :raw_table_id dest-table-id, :name dest-column-name)]
+      (when-let [source-column-id (db/sel :one :id RawColumn, :raw_table_id table-id, :name fk-column-name)]
+        (when-let [dest-table-id (db/sel :one :id RawTable, :database_id database-id, :schema (:schema dest-table), :name (:name dest-table))]
+          (when-let [dest-column-id (db/sel :one :id RawColumn, :raw_table_id dest-table-id, :name dest-column-name)]
             (log/debug (u/format-color 'cyan "Marking foreign key '%s.%s' -> '%s.%s'." (named-table table) fk-column-name (named-table dest-table) dest-column-name))
-            (db/upd raw-column/RawColumn source-column-id
+            (db/upd RawColumn source-column-id
               :fk_target_column_id dest-column-id)))))))
 
 (defn- save-all-table-columns!
   "Save *all* `RawColumns` for a given RAW-TABLE.
    NOTE: this function assumes that COLUMNS is the complete set of columns in the RAW-TABLE."
   [{:keys [id]} columns]
-  {:pre [(integer? id)
-         (coll? columns)
-         (every? map? columns)]}
+  {:pre [(integer? id) (coll? columns) (every? map? columns)]}
   (kdb/transaction
-    (let [existing-columns (into {} (for [{:keys [name] :as column} (db/sel :many :fields [raw-column/RawColumn :id :name] :raw_table_id id)]
+    (let [existing-columns (into {} (for [{:keys [name] :as column} (db/sel :many :fields [RawColumn :id :name] :raw_table_id id)]
                                       {name column}))]
 
       ;; deactivate any columns which were removed
       (doseq [[column-name {column-id :id}] (sort-by :name existing-columns)]
         (when-not (some #(= column-name (:name %)) columns)
           (log/debug (u/format-color 'cyan "Marked column %s as inactive." column-name))
-          (db/upd raw-column/RawColumn column-id :active false)))
+          (db/upd RawColumn column-id :active false)))
 
       ;; insert or update the remaining columns
       (doseq [{column-name :name, :keys [base-type pk? special-type details]} (sort-by :name columns)]
@@ -64,13 +61,13 @@
               is_pk   (true? pk?)]
           (if-let [{column-id :id} (get existing-columns column-name)]
             ;; column already exists, update it
-            (db/upd raw-column/RawColumn column-id
+            (db/upd RawColumn column-id
               :name      column-name
               :is_pk     is_pk
               :details   details
               :active    true)
             ;; must be a new column, insert it
-            (db/ins raw-column/RawColumn
+            (db/ins RawColumn
               :raw_table_id  id
               :name          column-name
               :is_pk         is_pk
@@ -80,10 +77,9 @@
 (defn- create-raw-table!
   "Create a new `RawTable`, includes saving all specified `:columns`."
   [database-id {table-name :name, table-schema :schema, :keys [details fields]}]
-  {:pre [(integer? database-id)
-         (string? table-name)]}
+  {:pre [(integer? database-id) (string? table-name)]}
   (log/debug (u/format-color 'cyan "Found new table: %s" (named-table table-schema table-name)))
-  (let [table (db/ins raw-table/RawTable
+  (let [table (db/ins RawTable
                 :database_id  database-id
                 :schema       table-schema
                 :name         table-name
@@ -97,7 +93,7 @@
   [{table-id :id, :as table} {:keys [details fields]}]
   ;; NOTE: the schema+name of a table makes up the natural key and cannot be modified on update
   ;;       if they were to be different we'd simply assume that's a new table instead
-  (db/upd raw-table/RawTable table-id
+  (db/upd RawTable table-id
     :details  (or details {})
     :active   true)
   ;; save columns
@@ -106,16 +102,15 @@
 (defn- disable-raw-tables!
   "Disable a list of `RawTable` ids, including all `RawColumns` associated with those tables."
   [table-ids]
-  {:pre [(coll? table-ids)
-         (every? integer? table-ids)]}
+  {:pre [(coll? table-ids) (every? integer? table-ids)]}
   (let [table-ids (filter identity table-ids)]
     (kdb/transaction
       ;; disable the tables
-      (k/update raw-table/RawTable
+      (k/update RawTable
         (k/where {:id [in table-ids]})
         (k/set-fields {:active false}))
       ;; whenever a table is disabled we need to disable all of its fields too (and remove fk references)
-      (k/update raw-column/RawColumn
+      (k/update RawColumn
         (k/where {:raw_table_id [in table-ids]})
         (k/set-fields {:active false, :fk_target_column_id nil})))))
 
@@ -155,7 +150,7 @@
                            (schema/validate i/DescribeDatabase <>))
         ;; This is a protection against cases where the returned table-def has no :schema key
         tables           (map #(update % :schema identity) tables)
-        existing-tables  (into {} (for [{:keys [name schema] :as table} (db/sel :many :fields [raw-table/RawTable :id :schema :name] :database_id database-id)]
+        existing-tables  (into {} (for [{:keys [name schema] :as table} (db/sel :many :fields [RawTable :id :schema :name] :database_id database-id)]
                                     {{:name name, :schema schema} table}))]
 
     ;; introspect each table and save off the schema details we find
@@ -192,7 +187,7 @@
         (try
           (when-let [table-fks (u/prog1 (driver/describe-table-fks driver database table-def)
                                  (schema/validate i/DescribeTableFKs <>))]
-            (when-let [raw-tbl (db/sel :one raw-table/RawTable :database_id database-id, :schema table-schema, :name table-name)]
+            (when-let [raw-tbl (db/sel :one RawTable, :database_id database-id, :schema table-schema, :name table-name)]
               (save-all-table-fks! raw-tbl table-fks)))
           (catch Throwable t
             (log/error (u/format-color 'red "Unexpected error introspecting table fks: %s" (named-table table-schema table-name)) t)))))
