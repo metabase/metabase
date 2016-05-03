@@ -220,6 +220,6 @@
           (log/error "Unexpected error analyzing table" t))
         (finally
           (u/prog1 (swap! finished-tables-count inc)
-            (log/info (u/format-color 'blue "%s Analyzed table '%s'." (u/emoji-progress-bar <> tables-count) table-name))))))
+            (log/info (u/format-color 'blue "%s Analyzed table '%s'." (u/emoji-progress-bar <> tables-count) table-name)))))))
 
   (log/info (u/format-color 'blue "Analysis of %s database '%s' completed." (name driver) (:name database))))
