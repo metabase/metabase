@@ -60,7 +60,7 @@
           :stacktrace     (u/filtered-stacktrace e)
           :query          (dissoc query :database :driver)
           :expanded-query (when (mbql-query? query)
-                            (u/try-ignore-exceptions
+                            (u/ignore-exceptions
                               (dissoc (resolve/resolve (expand/expand query)) :database :driver)))}
          (when-let [data (ex-data e)]
            {:ex-data data})
@@ -314,15 +314,13 @@
   "Add an implicit `limit` clause to MBQL queries without any aggregations, and limit the maximum number of rows that can be returned in post-processing."
   [qp]
   (fn [{{:keys [max-results max-results-bare-rows]} :constraints, :as query}]
-    (if-not (mbql-query? query)
-      (qp query)
-      (let [query   (cond-> query
-                      (query-without-aggregations-or-limits? query) (assoc-in [:query :limit] (or max-results-bare-rows
-                                                                                                  max-results
-                                                                                                  absolute-max-results)))
-            results (qp query)]
-        (update results :rows (partial take (or max-results
-                                                absolute-max-results)))))))
+    (let [query   (cond-> query
+                    (query-without-aggregations-or-limits? query) (assoc-in [:query :limit] (or max-results-bare-rows
+                                                                                                max-results
+                                                                                                absolute-max-results)))
+          results (qp query)]
+      (update results :rows (partial take (or max-results
+                                              absolute-max-results))))))
 
 
 (defn post-annotate
