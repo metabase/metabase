@@ -40,7 +40,8 @@ export default class QueryVisualization extends Component {
         cellIsClickableFn: PropTypes.func,
         cellClickedFn: PropTypes.func,
         isRunning: PropTypes.bool.isRequired,
-        runQueryFn: PropTypes.func.isRequired
+        runQueryFn: PropTypes.func.isRequired,
+        cancelQueryFn: PropTypes.func
     };
 
     static defaultProps = {
@@ -219,7 +220,13 @@ export default class QueryVisualization extends Component {
             loading = (
                 <div className="Loading spread flex flex-column layout-centered text-brand z2">
                     <LoadingSpinner />
-                    <h2 className="Loading-message text-brand text-uppercase mt3">Doing science...</h2>
+                    <h2 className="Loading-message text-brand text-uppercase my3">Doing science...</h2>
+                    <div onClick={this.props.cancelQueryFn} className="mt4 cursor-pointer flex flex-column align-center text-grey-2 text-grey-4-hover">
+                        <div className="circular bordered flex layout-centered" style={{ borderColor: "currentColor", width: 32, height: 32 }}>
+                            <Icon name="close" />
+                        </div>
+                        <div>Cancel</div>
+                    </div>
                 </div>
             );
         }
