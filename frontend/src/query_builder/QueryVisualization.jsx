@@ -89,12 +89,13 @@ export default class QueryVisualization extends Component {
         return (
             <div className="relative flex flex-no-shrink mt3 mb1">
                 <span className="relative z3">{visualizationSettings}</span>
-                <div className="absolute flex layout-centered left right z2">
+                <div className="absolute flex layout-centered left right z3">
                     <RunButton
                         canRun={this.canRun()}
                         isDirty={this.queryIsDirty()}
                         isRunning={this.props.isRunning}
                         runFn={this.runQuery}
+                        cancelFn={this.props.cancelQueryFn}
                     />
                 </div>
                 <div className="absolute right z3 flex align-center">
@@ -221,12 +222,6 @@ export default class QueryVisualization extends Component {
                 <div className="Loading spread flex flex-column layout-centered text-brand z2">
                     <LoadingSpinner />
                     <h2 className="Loading-message text-brand text-uppercase my3">Doing science...</h2>
-                    <div onClick={this.props.cancelQueryFn} className="mt4 cursor-pointer flex flex-column align-center text-grey-2 text-grey-4-hover">
-                        <div className="circular bordered flex layout-centered" style={{ borderColor: "currentColor", width: 32, height: 32 }}>
-                            <Icon name="close" />
-                        </div>
-                        <div>Cancel</div>
-                    </div>
                 </div>
             );
         }
