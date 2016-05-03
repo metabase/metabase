@@ -579,15 +579,16 @@ var Query = {
                     let metric = _.findWhere(tableMetadata.metrics, { id: aggregation[1] });
                     let name = metric ? metric.name : "[Unknown Metric]";
                     return [options.jsx ? <span className="text-green text-bold">{name}</span> : name];
-                case "rows":     return           ["Raw data"];
-                case "count":    return              ["Count"];
-                case "avg":      return            ["Average of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
-                case "distinct": return    ["Distinct values of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
-                case "stddev":   return ["Standard deviation of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
-                case "sum":      return                ["Sum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
-                case "cum_sum":  return     ["Cumulative sum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
-                case "max":      return            ["Maximum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
-                case "min":      return            ["Minimum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "rows":      return           ["Raw data"];
+                case "count":     return              ["Count"];
+                case "cum_count": return   ["Cumulative count"];
+                case "avg":       return            ["Average of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "distinct":  return    ["Distinct values of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "stddev":    return ["Standard deviation of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "sum":       return                ["Sum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "cum_sum":   return     ["Cumulative sum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "max":       return            ["Maximum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
+                case "min":       return            ["Minimum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
             }
         }
         return "";
