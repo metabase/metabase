@@ -150,7 +150,7 @@
   (apply k/fields korma-form (for [field fields]
                                 (as (formatted field) field))))
 
-(defn- filter-subclause->predicate
+(defn filter-subclause->predicate
   "Given a filter SUBCLAUSE, return a Korma filter predicate form for use in korma `where`."
   [{:keys [filter-type field value], :as filter}]
   {:pre [(map? filter) field]}
