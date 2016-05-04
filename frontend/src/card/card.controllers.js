@@ -3,7 +3,7 @@
 import React from "react";
 import ReactDOM from "react-dom";
 
-import DataReference from '../query_builder/DataReference.jsx';
+import DataReference from '../query_builder/dataref/DataReference.jsx';
 import GuiQueryEditor from '../query_builder/GuiQueryEditor.jsx';
 import NativeQueryEditor from '../query_builder/NativeQueryEditor.jsx';
 import QueryHeader from '../query_builder/QueryHeader.jsx';
