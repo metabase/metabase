@@ -354,13 +354,34 @@
 
 
 (defn- wrap-guard-multiple-calls
-  "Throw an exception if a QP function accidentally calls (QP QUERY) more than once."
+  "Throw an exception if a QP function accidentally calls (QP QUERY) more than once.
+   This test is skipped in prod to avoid wasting CPU cycles."
   [qp]
-  (let [called? (atom false)]
+  (if config/is-prod?
+    qp
+    (let [called? (atom false)]
+      (fn [query]
+        (assert (not @called?) "(QP QUERY) IS BEING CALLED MORE THAN ONCE!")
+        (reset! called? true)
+        (qp query)))))
+
+(defn- post-check-results-format
+  "Make sure the results of a QP execution are in the expected format.
+   This takes place *after* the 'annotation' stage of post-processing.
+   This check is skipped in prod to avoid wasting CPU cycles."
+  [qp]
+  (if config/is-prod?
+    qp
     (fn [query]
-      (assert (not @called?) "(QP QUERY) IS BEING CALLED MORE THAN ONCE!")
-      (reset! called? true)
-      (qp query))))
+      (u/prog1 (qp query)
+        (assert (or (map? <>)
+                    (println "Expected results to be a map, got a " (class <>))))
+        (assert (sequential? (:rows <>)))
+        (assert (every? sequential? (:rows <>)))
+        (assert (sequential? (:cols <>)))
+        (assert (every? map? (:cols <>)))
+        (assert (sequential? (:columns <>)))
+        (assert (every? string? (:columns <>)))))))
 
 
 ;;; +-------------------------------------------------------------------------------------------------------+
@@ -417,6 +438,7 @@
               pre-add-implicit-breakout-order-by
               cumulative-sum
               limit
+              post-check-results-format
               post-annotate
               pre-log-query
               wrap-guard-multiple-calls

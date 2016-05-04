@@ -2,6 +2,7 @@
   "MongoDB Driver."
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
+            [cheshire.core :as json]
             (monger [collection :as mc]
                     [command :as cmd]
                     [conversion :as conv]
@@ -10,25 +11,23 @@
             [metabase.driver :as driver]
             (metabase.driver.mongo [query-processor :as qp]
                                    [util :refer [*mongo-connection* with-mongo-connection values->base-type]])
-            [metabase.models.field :as field]
-            [metabase.models.table :as table]
+            (metabase.models [database :refer [Database]]
+                             [field :as field]
+                             [table :as table])
             [metabase.sync-database.analyze :as analyze]
-            [metabase.util :as u]
-            [cheshire.core :as json])
+            [metabase.util :as u])
   (:import com.mongodb.DB))
-
-(declare field-values-lazy-seq)
 
 ;;; ## MongoDriver
 
-(defn- can-connect? [_ details]
+(defn- can-connect? [details]
   (with-mongo-connection [^DB conn, details]
     (= (-> (cmd/db-stats conn)
            (conv/from-db-object :keywordize)
            :ok)
        1.0)))
 
-(defn- humanize-connection-error-message [_ message]
+(defn- humanize-connection-error-message [message]
   (condp re-matches message
     #"^Timed out after \d+ ms while waiting for a server .*$"
     (driver/connection-error-messages :cannot-connect-check-host-and-port)
@@ -42,17 +41,21 @@
     #".*"                               ; default
     message))
 
-(defn- process-query-in-context [_ qp]
+(defn- process-query-in-context [qp]
   (fn [query]
-    (with-mongo-connection [^DB conn, (:database query)]
-      (qp query))))
+    (let [{:keys [database], :as query} (update query :database (fn [database]
+                                                                  (if (integer? database)
+                                                                    (Database database)
+                                                                    database)))]
+      (with-mongo-connection [^DB conn, database]
+        (qp query)))))
 
 
 ;;; ### Syncing
 
 (declare update-field-attrs)
 
-(defn- sync-in-context [_ database do-sync-fn]
+(defn- sync-in-context [database do-sync-fn]
   (with-mongo-connection [_ database]
     (do-sync-fn)))
 
@@ -137,14 +140,14 @@
        :fields (set (for [field (keys parsed-rows)]
                       (describe-table-field field (field parsed-rows))))})))
 
-(defn- analyze-table [_ table new-field-ids]
+(defn- analyze-table [table new-field-ids]
   ;; We only care about 1) table counts and 2) field values
   {:row_count (analyze/table-row-count table)
    :fields    (for [{:keys [id] :as field} (table/fields table)
                     :when (analyze/test-for-cardinality? field (contains? new-field-ids (:id field)))]
                 (analyze/test:cardinality-and-extract-field-values field {:id id}))})
 
-(defn- field-values-lazy-seq [_ {:keys [qualified-name-components table], :as field}]
+(defn- field-values-lazy-seq [{:keys [qualified-name-components table], :as field}]
   (assert (and (map? field)
                (delay? qualified-name-components)
                (delay? table))
@@ -167,8 +170,8 @@
 (u/strict-extend MongoDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table                     analyze-table
-          :can-connect?                      can-connect?
+         {:analyze-table                     (u/drop-first-arg analyze-table)
+          :can-connect?                      (u/drop-first-arg can-connect?)
           :describe-database                 (u/drop-first-arg describe-database)
           :describe-table                    (u/drop-first-arg describe-table)
           :details-fields                    (constantly [{:name         "host"
@@ -194,11 +197,11 @@
                                                            :type         :boolean
                                                            :default      false}])
           :features                          (constantly #{:dynamic-schema :nested-fields})
-          :field-values-lazy-seq             field-values-lazy-seq
-          :humanize-connection-error-message humanize-connection-error-message
-          :process-native                    qp/process-and-run-native
-          :process-structured                qp/process-and-run-structured
-          :process-query-in-context          process-query-in-context
-          :sync-in-context                   sync-in-context}))
+          :field-values-lazy-seq             (u/drop-first-arg field-values-lazy-seq)
+          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
+          :process-native                    (u/drop-first-arg qp/process-and-run-native)
+          :process-structured                (u/drop-first-arg qp/process-and-run-structured)
+          :process-query-in-context          (u/drop-first-arg process-query-in-context)
+          :sync-in-context                   (u/drop-first-arg sync-in-context)}))
 
 (driver/register-driver! :mongo (MongoDriver.))
