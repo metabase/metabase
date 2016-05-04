@@ -1,13 +1,13 @@
 import React, { Component, PropTypes } from "react";
 
-import DataReferenceQueryButton from './DataReferenceQueryButton.jsx';
+import QueryButton from './QueryButton.jsx';
 import { createCard } from "metabase/lib/card";
 import { createQuery } from "metabase/lib/query";
 import { foreignKeyCountsByOriginTable } from 'metabase/lib/schema_metadata';
 import inflection from 'inflection';
 import cx from "classnames";
 
-export default class DataReferenceTable extends Component {
+export default class TablePane extends Component {
     constructor(props, context) {
         super(props, context);
         this.setQueryAllRows = this.setQueryAllRows.bind(this);
@@ -56,7 +56,7 @@ export default class DataReferenceTable extends Component {
             var queryButton;
             if (table.rows != null) {
                 var text = `See the raw data for ${table.display_name}`
-                queryButton = (<DataReferenceQueryButton className="border-bottom border-top mb3" icon="illustration-icon-table" text={text} onClick={this.setQueryAllRows} />);
+                queryButton = (<QueryButton className="border-bottom border-top mb3" icon="illustration-icon-table" text={text} onClick={this.setQueryAllRows} />);
             }
             var panes = {
                 "fields": table.fields.length,

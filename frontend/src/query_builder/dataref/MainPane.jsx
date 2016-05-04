@@ -6,7 +6,7 @@ import inflection from 'inflection';
 import cx from "classnames";
 
 
-export default class DataReferenceMain extends Component {
+export default class MainPane extends Component {
 
     static propTypes = {
         Metabase: PropTypes.func.isRequired,

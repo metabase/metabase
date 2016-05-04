@@ -1,8 +1,8 @@
 import React, { Component, PropTypes } from "react";
 
-import DataReferenceMain from './DataReferenceMain.jsx';
-import DataReferenceTable from './DataReferenceTable.jsx';
-import DataReferenceField from './DataReferenceField.jsx';
+import MainPane from './MainPane.jsx';
+import TablePane from './TablePane.jsx';
+import FieldPane from './FieldPane.jsx';
 import Icon from "metabase/components/Icon.jsx";
 
 export default class DataReference extends Component {
@@ -56,13 +56,13 @@ export default class DataReference extends Component {
     render() {
         var content;
         if (this.state.stack.length === 0) {
-            content = <DataReferenceMain {...this.props} showTable={this.showTable} />
+            content = <MainPane {...this.props} showTable={this.showTable} />
         } else {
             var page = this.state.stack[this.state.stack.length - 1];
             if (page.type === "table") {
-                content = <DataReferenceTable {...this.props} table={page.table} showField={this.showField} />
+                content = <TablePane {...this.props} table={page.table} showField={this.showField} />
             } else if (page.type === "field") {
-                content = <DataReferenceField {...this.props} field={page.field}/>
+                content = <FieldPane {...this.props} field={page.field}/>
             }
         }
 

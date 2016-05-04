@@ -1,7 +1,9 @@
 import React, { Component, PropTypes } from "react";
 
-import DataReferenceQueryButton from './DataReferenceQueryButton.jsx';
+import QueryButton from './QueryButton.jsx';
+
 import Icon from "metabase/components/Icon.jsx";
+
 import Query from "metabase/lib/query";
 import { createCard } from "metabase/lib/card";
 import { createQuery } from "metabase/lib/query";
@@ -11,7 +13,7 @@ import inflection from 'inflection';
 import cx from "classnames";
 import _ from "underscore";
 
-export default class DataReferenceField extends Component {
+export default class FieldPane extends Component {
     constructor(props, context) {
         super(props, context);
         this.filterBy = this.filterBy.bind(this);
@@ -136,13 +138,13 @@ export default class DataReferenceField extends Component {
         }
 
         if (this.props.field.special_type === "number") {
-            usefulQuestions.push(<li className="border-row-divider" key="sum"><DataReferenceQueryButton icon="illustration-icon-scalar" text={"Sum of all values of " + fieldName} onClick={this.setQuerySum} /></li>);
+            usefulQuestions.push(<li className="border-row-divider" key="sum"><QueryButton icon="illustration-icon-scalar" text={"Sum of all values of " + fieldName} onClick={this.setQuerySum} /></li>);
         }
-        usefulQuestions.push(<li className="border-row-divider" key="distinct-values"><DataReferenceQueryButton icon="illustration-icon-table" text={"All distinct values of " + fieldName} onClick={this.setQueryDistinct} /></li>);
+        usefulQuestions.push(<li className="border-row-divider" key="distinct-values"><QueryButton icon="illustration-icon-table" text={"All distinct values of " + fieldName} onClick={this.setQueryDistinct} /></li>);
         let queryCountGroupedByText = "Number of " + inflection.pluralize(tableName) + " grouped by " + fieldName;
         if (validBreakout) {
-            usefulQuestions.push(<li className="border-row-divider" key="count-bar"><DataReferenceQueryButton icon="illustration-icon-bars" text={queryCountGroupedByText} onClick={this.setQueryCountGroupedBy.bind(null, "bar")} /></li>);
-            usefulQuestions.push(<li className="border-row-divider" key="count-pie"><DataReferenceQueryButton icon="illustration-icon-pie" text={queryCountGroupedByText} onClick={this.setQueryCountGroupedBy.bind(null, "pie")} /></li>);
+            usefulQuestions.push(<li className="border-row-divider" key="count-bar"><QueryButton icon="illustration-icon-bars" text={queryCountGroupedByText} onClick={this.setQueryCountGroupedBy.bind(null, "bar")} /></li>);
+            usefulQuestions.push(<li className="border-row-divider" key="count-pie"><QueryButton icon="illustration-icon-pie" text={queryCountGroupedByText} onClick={this.setQueryCountGroupedBy.bind(null, "pie")} /></li>);
         }
 
         let descriptionClasses = cx({ "text-grey-3": !this.props.field.description });
