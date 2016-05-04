@@ -404,11 +404,15 @@
                          (update :driver name)))))))
     (qp query)))
 
+;; The following are just assertions that check the behavior of the QP. It doesn't make sense to run them on prod because at best they
+;; just waste CPU cycles and at worst cause a query to fail when it would otherwise succeed.
+;; TODO - Should we make these test only (as opposed to test / dev)? If so, it would be nice if they could be moved into test namespaces
+;; and somehow injected into the middleware stack.
 
 (def ^:private guard-multiple-calls
-  "Throw an exception if a QP function accidentally calls (QP QUERY) more than once (this is only done during testing)."
-  (if-not config/is-test?
-    ;; if this isn't testing then we'll just return the `qp` function as-is
+  "Throw an exception if a QP function accidentally calls (QP QUERY) more than once.
+   This test is skipped in prod to avoid wasting CPU cycles."
+  (if config/is-prod?
     identity
     (fn [qp]
       (let [called? (atom false)]
@@ -416,7 +420,25 @@
           (assert (not @called?) "(QP QUERY) IS BEING CALLED MORE THAN ONCE!")
           (reset! called? true)
           (qp query))))))
-;; TODO - maybe the QP middleware pattern should have a way to inject arbitary middleware? Then this function can be injected by the test code and not even be present in the normal MB code
+
+
+(def ^:private post-check-results-format
+  "Make sure the results of a QP execution are in the expected format.
+   This takes place *after* the 'annotation' stage of post-processing.
+   This check is skipped in prod to avoid wasting CPU cycles."
+  (if config/is-prod?
+    identity
+    (fn [qp]
+      (fn [query]
+        (u/prog1 (qp query)
+          (assert (or (map? <>)
+                      (println "Expected results to be a map, got a " (class <>))))
+          (assert (sequential? (:rows <>)))
+          (assert (every? sequential? (:rows <>)))
+          (assert (sequential? (:cols <>)))
+          (assert (every? map? (:cols <>)))
+          (assert (sequential? (:columns <>)))
+          (assert (every? string? (:columns <>))))))))
 
 
 ;;; +-------------------------------------------------------------------------------------------------------+
@@ -474,6 +496,7 @@
               cumulative-sum
               cumulative-count
               limit
+              post-check-results-format
               post-annotate
               pre-log-query
               guard-multiple-calls

@@ -72,7 +72,7 @@
                          (assoc (:query query)
                                 :settings (:settings query))))
 
-(defn- process-native [{database-id :database, {query :query} :native}]
+(defn- process-native [{database-id :database, {query :query} :native, :as outer-query}]
   {:pre [(integer? database-id) query]}
   (let-404 [details (sel :one :field [Database :details], :id database-id)]
     (let [query (if (string? query)
@@ -81,7 +81,7 @@
       ;; `annotate` happens automatically as part of the QP middleware for MBQL queries but not for native ones.
       ;; This behavior was originally so we could preserve column order for raw SQL queries.
       ;; Since Druid results come back as maps for each row there is no order to preserve so we can go ahead and re-use the MBQL-QP annotation code here.
-      (annotate/annotate query (qp/post-process-native query (do-query details query))))))
+      (annotate/annotate outer-query (qp/post-process-native query (do-query details query))))))
 
 
 ;;; ### Sync
