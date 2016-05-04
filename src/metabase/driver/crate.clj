@@ -21,7 +21,7 @@
     :long             :BigIntegerField
     :float            :FloatField
     :double           :FloatField
-    :ip               :TextField
+    :ip               :UnknownField
     :timestamp        :DateTimeField
     :geo_shape        :DictionaryField
     :geo_point        :ArrayField
