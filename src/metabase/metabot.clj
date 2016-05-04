@@ -92,7 +92,7 @@
   "Implementation of the `metabot show card <name-or-id>` command."
   ([]
    "Show which card? Give me a part of a card name or its ID and I can show it to you. If you don't know which card you want, try `metabot list`.")
-  ([card-id-or-name & _]
+  ([card-id-or-name]
    (if-let [{card-id :id} (id-or-name->card card-id-or-name)]
      (do
        (do-async (let [attachments (pulse/create-and-upload-slack-attachments! [(pulse/execute-card card-id)])]
@@ -100,7 +100,10 @@
                                              nil
                                              attachments)))
        "Ok, just a second...")
-     (throw (Exception. "Not Found")))))
+     (throw (Exception. "Not Found"))))
+  ;; If the card name comes without spaces, e.g. (show 'my 'wacky 'card) turn it into a string an recur: (show "my wacky card")
+  ([word & more]
+   (show (apply str (interpose " " (cons word more))))))
 
 
 (defn meme:up-and-to-the-right
