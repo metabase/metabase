@@ -190,7 +190,7 @@
    "STRING"    identity
    "TIMESTAMP" parse-timestamp-str})
 
-(def ^:private ^:const query-default-timeout-seconds 30)
+(def ^:private ^:const query-default-timeout-seconds 60)
 
 (defn- post-process-native
   ([^QueryResponse response]
