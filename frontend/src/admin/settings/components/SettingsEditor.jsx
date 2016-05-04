@@ -1,6 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
+import MetabaseSettings from "metabase/lib/settings";
 
 import SettingsHeader from "./SettingsHeader.jsx";
 import SettingsSetting from "./SettingsSetting.jsx";
@@ -60,6 +61,23 @@ export default class SettingsEditor extends Component {
         this.updateSetting(setting, event.target.value);
     }
 
+    renderVersionUpdateNotice() {
+        let versionInfo = _.findWhere(this.props.settings, {key: "version-info"});
+        versionInfo = versionInfo ? JSON.parse(versionInfo.value) : null;
+
+        console.log(versionInfo);
+
+        if (!versionInfo || MetabaseSettings.get("version") === versionInfo.latest.version) {
+            return null;
+        } else {
+            return (
+                <div className="text-centered">
+                    Metabase {versionInfo.latest.version} is available!
+                </div>
+            );
+        }
+    }
+
     renderSettingsPane() {
         let section = this.props.sections[this.state.currentSection];
 
@@ -117,6 +135,7 @@ export default class SettingsEditor extends Component {
                 <ul className="AdminList-items pt1">
                     {sections}
                 </ul>
+                {this.renderVersionUpdateNotice()}
             </div>
         );
     }

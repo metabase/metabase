@@ -168,5 +168,7 @@ SettingsAdminControllers.controller('SettingsEditor', ['$scope', '$location', 'S
             updatedSection.settings = sectionSettings;
             return updatedSection;
         });
+
+        $scope.settings = settings;
     }
 ]);
