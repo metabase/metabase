@@ -520,10 +520,10 @@
         (apply dissoc result keys-to-remove)))))
 
 
-;;; ### process-structured-query
+;;; ### process-mbql-query
 
-(defn process-structured-query
-  "Process a structured (inner) query for a Druid DB."
+(defn process-mbql-query
+  "Process an MBQL (inner) query for a Druid DB."
   [do-query query]
   (binding [*query* query]
     (let [[query-type druid-query] (build-druid-query query)]

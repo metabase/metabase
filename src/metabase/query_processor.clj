@@ -460,7 +460,7 @@
     (binding [*driver* driver]
       (let [driver-process-in-context (partial driver/process-query-in-context driver)
             driver-process-query      (partial (if (mbql-query? query)
-                                                 driver/process-structured
+                                                 driver/process-mbql
                                                  driver/process-native) driver)]
         ((<<- wrap-catch-exceptions
               pre-add-settings

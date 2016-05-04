@@ -66,11 +66,11 @@
            (throw (Exception. message e))))))
 
 
-(defn- process-structured [query]
+(defn- process-mbql [query]
   ;; Merge `:settings` into the inner query dict so the QP has access to it
-  (qp/process-structured-query (partial do-query (get-in query [:database :details]))
-                               (assoc (:query query)
-                                      :settings (:settings query))))
+  (qp/process-mbql-query (partial do-query (get-in query [:database :details]))
+                         (assoc (:query query)
+                                :settings (:settings query))))
 
 (defn- process-native [{database-id :database, {query :query} :native}]
   {:pre [(integer? database-id) query]}
@@ -183,6 +183,6 @@
           :features              (constantly #{:set-timezone})
           :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)
           :process-native        (u/drop-first-arg process-native)
-          :process-structured    (u/drop-first-arg process-structured)}))
+          :process-mbql          (u/drop-first-arg process-mbql)}))
 
 (driver/register-driver! :druid (DruidDriver.))

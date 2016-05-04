@@ -142,7 +142,7 @@
         :rows    [[1 \"Lucky Bird\"]
                   [2 \"Rasta Can\"]]}")
 
-  (process-structured [this, ^Map query]
+  (process-mbql [this, ^Map query]
     "Process a native or structured QUERY. This function is called by `metabase.driver/process-query` after performing various driver-unspecific
      steps like Query Expansion and other preprocessing.
 
