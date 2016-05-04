@@ -88,7 +88,7 @@ export default class QueryVisualization extends Component {
 
         return (
             <div className="relative flex flex-no-shrink mt3 mb1">
-                <span className="relative z3">{visualizationSettings}</span>
+                <span className="relative z4">{visualizationSettings}</span>
                 <div className="absolute flex layout-centered left right z3">
                     <RunButton
                         canRun={this.canRun()}
@@ -98,7 +98,7 @@ export default class QueryVisualization extends Component {
                         cancelFn={this.props.cancelQueryFn}
                     />
                 </div>
-                <div className="absolute right z3 flex align-center">
+                <div className="absolute right z4 flex align-center">
                     {!this.queryIsDirty() && this.renderCount()}
                     {this.renderDownloadButton()}
                 </div>
