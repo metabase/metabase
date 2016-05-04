@@ -44,12 +44,11 @@
   "Process and run a native MongoDB query."
   [{{query :query} :native, database :database, :as outer-query}]
   {:pre [query]}
-  (let [query   (u/prog1 (if (string? query)
-                           (json/parse-string query keyword)
-                           query)
-                  (println "QUERY ->" <>))
-        results  (mc/aggregate *mongo-connection* "users" query
-                               :allow-disk-use true)]
+  (let [query   (if (string? query)
+                  (json/parse-string query keyword)
+                  query)
+        results (mc/aggregate *mongo-connection* "users" query
+                              :allow-disk-use true)]
     ;; As with Druid, we want to use `annotate` on the results of native queries.
     ;; Because the Generic SQL driver was written in ancient times, it has its own internal implementation of `annotate`
     ;; (which preserves the order of columns in the results) and as a result the `annotate` middleware isn't applied for `:native` queries.
