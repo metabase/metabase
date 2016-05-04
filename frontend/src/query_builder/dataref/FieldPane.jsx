@@ -1,8 +1,8 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 
 import QueryButton from './QueryButton.jsx';
-
-import Icon from "metabase/components/Icon.jsx";
+import UseForButton from "./UseForButton.jsx";
 
 import Query from "metabase/lib/query";
 import { createCard } from "metabase/lib/card";
@@ -16,19 +16,18 @@ import _ from "underscore";
 export default class FieldPane extends Component {
     constructor(props, context) {
         super(props, context);
-        this.filterBy = this.filterBy.bind(this);
-        this.groupBy = this.groupBy.bind(this);
-        this.setQueryCountGroupedBy = this.setQueryCountGroupedBy.bind(this);
-        this.setQueryDistinct = this.setQueryDistinct.bind(this);
-        this.setQuerySum = this.setQuerySum.bind(this);
 
         this.state = {
             table: undefined,
             tableForeignKeys: undefined
         };
+
+        _.bindAll(this, "filterBy", "groupBy", "setQuerySum", "setQueryDistinct", "setQueryCountGroupedBy");
     }
 
     static propTypes = {
+        field: PropTypes.object.isRequired,
+        query: PropTypes.object,
         loadTableFn: PropTypes.func.isRequired,
         runQueryFn: PropTypes.func.isRequired,
         setQueryFn: PropTypes.func.isRequired,
@@ -117,51 +116,50 @@ export default class FieldPane extends Component {
         // TODO: allow for filters/grouping via foreign keys
         if (!query.query || query.query.source_table == undefined || query.query.source_table === field.table_id) {
             // NOTE: disabled this for now because we need a way to capture the completed filter before adding it to the query, or to pop open the filter widget here?
-            // useForCurrentQuestion.push(
-            //     <li key="filter-by" className="mt1">
-            //         <a className="Button Button--white text-default text-brand-hover border-brand-hover no-decoration" onClick={this.filterBy}>
-            //             <Icon className="mr1" name="add" width="12px" height="12px"/> Filter by {name}
-            //             </a>
-            //     </li>
-            // );
+            // useForCurrentQuestion.push(<UseForButton title={"Filter by " + name} onClick={this.filterBy} />);
 
             // current field must be a valid breakout option for this table AND cannot already be in the breakout clause of our query
             if (validBreakout && this.state.table.id === this.props.query.query.source_table && (query.query.breakout && !_.contains(query.query.breakout, field.id))) {
-                useForCurrentQuestion.push(
-                    <li key="group-by" className="mt1">
-                        <a className="Button Button--white text-default text-brand-hover border-brand-hover no-decoration" onClick={this.groupBy}>
-                            <Icon className="mr1" name="add" width="12px" height="12px" /> Group by {name}
-                        </a>
-                    </li>
-                );
+                useForCurrentQuestion.push(<UseForButton title={"Group by " + name} onClick={this.groupBy} />);
             }
         }
 
-        if (this.props.field.special_type === "number") {
-            usefulQuestions.push(<li className="border-row-divider" key="sum"><QueryButton icon="illustration-icon-scalar" text={"Sum of all values of " + fieldName} onClick={this.setQuerySum} /></li>);
+        if (field.special_type === "number") {
+            usefulQuestions.push(<QueryButton icon="illustration-icon-scalar" text={"Sum of all values of " + fieldName} onClick={this.setQuerySum} />);
         }
-        usefulQuestions.push(<li className="border-row-divider" key="distinct-values"><QueryButton icon="illustration-icon-table" text={"All distinct values of " + fieldName} onClick={this.setQueryDistinct} /></li>);
+        usefulQuestions.push(<QueryButton icon="illustration-icon-table" text={"All distinct values of " + fieldName} onClick={this.setQueryDistinct} />);
         let queryCountGroupedByText = "Number of " + inflection.pluralize(tableName) + " grouped by " + fieldName;
         if (validBreakout) {
-            usefulQuestions.push(<li className="border-row-divider" key="count-bar"><QueryButton icon="illustration-icon-bars" text={queryCountGroupedByText} onClick={this.setQueryCountGroupedBy.bind(null, "bar")} /></li>);
-            usefulQuestions.push(<li className="border-row-divider" key="count-pie"><QueryButton icon="illustration-icon-pie" text={queryCountGroupedByText} onClick={this.setQueryCountGroupedBy.bind(null, "pie")} /></li>);
+            usefulQuestions.push(<QueryButton icon="illustration-icon-bars" text={queryCountGroupedByText} onClick={this.setQueryCountGroupedBy.bind(null, "bar")} />);
+            usefulQuestions.push(<QueryButton icon="illustration-icon-pie" text={queryCountGroupedByText} onClick={this.setQueryCountGroupedBy.bind(null, "pie")} />);
         }
-
-        let descriptionClasses = cx({ "text-grey-3": !this.props.field.description });
-        let description = (<p className={descriptionClasses}>{this.props.field.description || "No description set."}</p>);
 
         return (
             <div>
                 <h1>{fieldName}</h1>
-                {description}
+                <p className={cx({ "text-grey-3": !field.description })}>
+                    {field.description || "No description set."}
+                </p>
                 {useForCurrentQuestion.length > 0 ?
                     <div>
                         <p className="text-bold">Use for current question</p>
-                        <ul className="my2">{useForCurrentQuestion}</ul>
+                        <ul className="my2">
+                        {useForCurrentQuestion.map((item, index) =>
+                            <li className="mt1" key={index}>
+                                {item}
+                            </li>
+                        )}
+                        </ul>
                     </div>
                 : null }
                 <p className="text-bold">Potentially useful questions</p>
-                <ul>{usefulQuestions}</ul>
+                <ul>
+                {usefulQuestions.map((item, index) =>
+                    <li className="border-row-divider" key={index}>
+                        {item}
+                    </li>
+                )}
+                </ul>
                 <div>{error}</div>
             </div>
         );
