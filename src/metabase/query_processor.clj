@@ -438,7 +438,7 @@
           (assert (sequential? (:cols <>)))
           (assert (every? map? (:cols <>)))
           (assert (sequential? (:columns <>)))
-          (assert (every? string? (:columns <>))))))))
+          (assert (every? u/string-or-keyword? (:columns <>))))))))
 
 
 ;;; +-------------------------------------------------------------------------------------------------------+

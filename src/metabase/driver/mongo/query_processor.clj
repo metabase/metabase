@@ -395,8 +395,8 @@
                     (u/->Timestamp (:___date v))
                     v)}))))
 
-(defn process-and-run-structured
-  "Process and run a structured MongoDB query."
+(defn process-and-run-mbql
+  "Process and run an MBQL query."
   [{database :database, {{source-table-name :name} :source-table} :query, :as query}]
   {:pre [(map? database)
          (string? source-table-name)]}

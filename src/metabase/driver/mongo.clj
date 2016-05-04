@@ -200,7 +200,7 @@
           :field-values-lazy-seq             (u/drop-first-arg field-values-lazy-seq)
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
           :process-native                    (u/drop-first-arg qp/process-and-run-native)
-          :process-structured                (u/drop-first-arg qp/process-and-run-mbql)
+          :process-mbql                      (u/drop-first-arg qp/process-and-run-mbql)
           :process-query-in-context          (u/drop-first-arg process-query-in-context)
           :sync-in-context                   (u/drop-first-arg sync-in-context)}))
 
