@@ -139,7 +139,10 @@
   (dispatch-fn "understand" :metabot))
 
 (defn- eval-command-str [s]
-  (when (seq s)
+  ;; if someone just typed "metabot" (no command) act like they typed "metabot help"
+  (let [s (if (seq s)
+            s
+            "help")]
     (when-let [tokens (seq (edn/read-string (str "(" (-> s
                                                          (str/replace "“" "\"") ; replace smart quotes
                                                          (str/replace "”" "\"")) ")")))]
@@ -148,9 +151,13 @@
 
 ;;; # ------------------------------------------------------------ Metabot Input Handling ------------------------------------------------------------
 
-(defn- message->command-str [{:keys [text]}]
+(defn- message->command-str
+  "Get the command portion of a message *event* directed at Metabot.
+
+     (message->command-str {:text \"metabot list\"}) -> \"list\""
+  [{:keys [text]}]
   (when (seq text)
-    (second (re-matches #"^mea?ta?boa?t\s+(.*)$" text))))
+    (second (re-matches #"^mea?ta?boa?t\s*(.*)$" text)))) ; handle typos like metaboat or meatbot
 
 (defn- respond-to-message! [message response]
   (when response
@@ -162,11 +169,15 @@
 (defn- handle-slack-message [message]
   (respond-to-message! message (eval-command-str (message->command-str message))))
 
-(defn- human-message? [{event-type :type, subtype :subtype}]
+(defn- human-message?
+  "Was this Slack WebSocket event one about a *human* sending a message?"
+  [{event-type :type, subtype :subtype}]
   (and (= event-type "message")
        (not (contains? #{"bot_message" "message_changed" "message_deleted"} subtype))))
 
-(defn- event-timestamp-ms [{:keys [ts], :or {ts "0"}}]
+(defn- event-timestamp-ms
+  "Get the UNIX timestamp of a Slack WebSocket event, in milliseconds."
+  [{:keys [ts], :or {ts "0"}}]
   (* (Double/parseDouble ts) 1000))
 
 
@@ -179,6 +190,7 @@
     (throw (Exception.)))
 
   (when-let [event (json/parse-string event keyword)]
+    ;; Only respond to events where a *human* sends a message that have happened *after* the MetaBot launches
     (when (and (human-message? event)
                (> (event-timestamp-ms event) start-time))
       (binding [*channel-id* (:channel event)]

@@ -197,7 +197,7 @@
           :field-values-lazy-seq             field-values-lazy-seq
           :humanize-connection-error-message humanize-connection-error-message
           :process-native                    qp/process-and-run-native
-          :process-structured                qp/process-and-run-structured
+          :process-mbql                      qp/process-and-run-structured
           :process-query-in-context          process-query-in-context
           :sync-in-context                   sync-in-context}))
 

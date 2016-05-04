@@ -331,7 +331,7 @@
          (log/error (u/format-color 'red "Couldn't convert korma form to SQL:\n%s" (sqlqp/pprint-korma-form korma-form)))
          (throw e))))
 
-(defn- post-process-structured [dataset-id table-name {:keys [columns rows]}]
+(defn- post-process-mbql [dataset-id table-name {:keys [columns rows]}]
   ;; Since we don't alias column names the come back like "veryNiceDataset_shakepeare_corpus". Strip off the dataset and table IDs
   (let [demangle-name (u/rpartial s/replace (re-pattern (str \^ dataset-id \_ table-name \_)) "")
         columns       (for [column columns]
@@ -339,12 +339,12 @@
     (for [row rows]
       (zipmap columns row))))
 
-(defn- process-structured [{{{:keys [dataset-id]} :details, :as database} :database, {{table-name :name} :source-table} :query, :as query}]
+(defn- process-mbql [{{{:keys [dataset-id]} :details, :as database} :database, {{table-name :name} :source-table} :query, :as query}]
   {:pre [(map? database) (seq dataset-id) (seq table-name)]}
   (let [korma-form (korma-form query (entity dataset-id table-name))
         sql        (korma-form->sql korma-form)]
     (sqlqp/log-korma-form korma-form sql)
-    (post-process-structured dataset-id table-name (process-native* database sql))))
+    (post-process-mbql dataset-id table-name (process-native* database sql))))
 
 ;; This provides an implementation of `prepare-value` that prevents korma from converting forms to prepared statement parameters (`?`)
 ;; TODO - Move this into `metabase.driver.generic-sql` and document it as an alternate implementation for `prepare-value` (?)
@@ -445,6 +445,6 @@
                                                :required     true}])
           :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)
           :process-native        (u/drop-first-arg process-native)
-          :process-structured    (u/drop-first-arg process-structured)}))
+          :process-mbql          (u/drop-first-arg process-mbql)}))
 
 (driver/register-driver! :bigquery (BigQueryDriver.))
