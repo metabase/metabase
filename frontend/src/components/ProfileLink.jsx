@@ -5,6 +5,7 @@ import _ from "underscore";
 
 import MetabaseSettings from "metabase/lib/settings";
 import Modal from "metabase/components/Modal.jsx";
+import Logs from "metabase/components/Logs.jsx";
 
 import UserAvatar from './UserAvatar.jsx';
 import Icon from './Icon.jsx';
@@ -16,7 +17,10 @@ export default class ProfileLink extends Component {
     constructor(props, context) {
         super(props, context);
 
-        this.state = { dropdownOpen: false, aboutModalOpen: false };
+        this.state = {
+            dropdownOpen: false,
+            modalOpen: null
+        };
 
         _.bindAll(this, "toggleDropdown", "closeDropdown", "openModal", "closeModal");
     }
@@ -34,17 +38,17 @@ export default class ProfileLink extends Component {
         this.setState({ dropdownOpen: false });
     }
 
-    openModal() {
-        this.setState({ dropdownOpen: false, aboutModalOpen: true });
+    openModal(modalName) {
+        this.setState({ dropdownOpen: false, modalOpen: modalName });
     }
 
     closeModal() {
-        this.setState({ aboutModalOpen: false });
+        this.setState({ modalOpen: null });
     }
 
     render() {
         const { user, context } = this.props;
-        const { aboutModalOpen, dropdownOpen } = this.state;
+        const { modalOpen, dropdownOpen } = this.state;
         const { tag, date } = MetabaseSettings.get('version');
 
         let dropDownClasses = cx({
@@ -97,8 +101,16 @@ export default class ProfileLink extends Component {
                                     </a>
                                 </li>
 
+                                { user.is_superuser &&
+                                    <li>
+                                        <a data-metabase-event={"Navbar;Profile Dropdown;Debugging "+tag} onClick={this.openModal.bind(this, "logs")} className="Dropdown-item block text-white no-decoration">
+                                            Logs
+                                        </a>
+                                    </li>
+                                }
+
                                 <li>
-                                    <a data-metabase-event={"Navbar;Profile Dropdown;About "+tag} onClick={this.openModal} className="Dropdown-item block text-white no-decoration">
+                                    <a data-metabase-event={"Navbar;Profile Dropdown;About "+tag} onClick={this.openModal.bind(this, "about")} className="Dropdown-item block text-white no-decoration">
                                         About Metabase
                                     </a>
                                 </li>
@@ -110,7 +122,7 @@ export default class ProfileLink extends Component {
                         </div>
                     : null }
 
-                    { aboutModalOpen ?
+                    { modalOpen === "about" ?
                         <Modal className="Modal Modal--small">
                             <div className="px4 pt4 pb2 text-centered relative">
                                 <span className="absolute top right p4 text-normal text-grey-3 cursor-pointer" onClick={this.closeModal}>
@@ -129,6 +141,10 @@ export default class ProfileLink extends Component {
                                 <span className="block"><span className="text-bold">Metabase</span> is a Trademark of Metabase, Inc</span>
                                 <span>and is built with care in San Francisco, CA</span>
                             </div>
+                        </Modal>
+                    : modalOpen === "logs" ?
+                        <Modal className="Modal Modal--wide" onClose={this.closeModal}>
+                            <Logs onClose={this.closeModal} />
                         </Modal>
                     : null }
                 </div>
