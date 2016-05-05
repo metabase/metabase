@@ -26,8 +26,9 @@ export default class NativeQueryEditor extends Component {
         autocompleteResultsFn: PropTypes.func.isRequired,
         /// This should return an object with information about the mode the ACE Editor should use to edit the query.
         /// This object should have 2 properties:
-        /// *  `mode` : the ACE Editor mode name, e.g. 'ace/mode/json'
-        /// *  `description`: name used to describe the text written in that mode, e.g. 'JSON'. Used to fill in the blank in 'This question is written in _______'.
+        /// *  `mode` :         the ACE Editor mode name, e.g. 'ace/mode/json'
+        /// *  `description`:   name used to describe the text written in that mode, e.g. 'JSON'. Used to fill in the blank in 'This question is written in _______'.
+        /// *  `requiresTable`: whether the DB selector should be a DB + Table selector. Mongo needs both DB + Table.
         getModeInfo: PropTypes.func.isRequired
     };
 

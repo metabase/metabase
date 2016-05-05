@@ -160,7 +160,8 @@ CardControllers.controller('CardDetail', [
                           engine === 'postgres'                    ? 'ace/mode/pgsql' :
                           engine === 'sqlserver'                   ? 'ace/mode/sqlserver' :
                                                                      'ace/mode/sql',
-                    description: engine === 'druid' || engine === 'mongo' ? 'JSON' : 'SQL'
+                    description: engine === 'druid' || engine === 'mongo' ? 'JSON' : 'SQL',
+                    requiresTable: engine === 'mongo'
                 };
             }
         };
