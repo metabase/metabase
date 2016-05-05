@@ -20,16 +20,22 @@
 
 (def ^:private formatter (time/formatter "MMM dd HH:mm:ss" (t/default-time-zone)))
 
-(defn -append [_ ^LoggingEvent event]
+(defn -append
+  "docstring"
+  [_ ^LoggingEvent event]
   (let [ts    (time/unparse formatter (coerce/from-long (.getTimeStamp event)))
         level (.getLevel event)
         fqns  (.getLoggerName event)
         msg   (.getMessage event)]
-    (swap! messages conj (format "%s %s %s :: %s" ts level fqns msg))
+    (swap! messages conj (format "%s \033[1m%s %s\033[0m :: %s" ts level fqns msg))
     nil))
 
-(defn -close [_]
+(defn -close
+  "docstring"
+  [_]
   nil)
 
-(defn -requiresLayout [_]
+(defn -requiresLayout
+  "docstring"
+  [_]
   false)

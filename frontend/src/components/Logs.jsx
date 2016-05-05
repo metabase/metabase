@@ -2,7 +2,6 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
-import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper.jsx";
 
 import reactAnsiStyle from "react-ansi-style";
 import "react-ansi-style/inject-css";
