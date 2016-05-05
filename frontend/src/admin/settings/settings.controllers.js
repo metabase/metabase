@@ -42,11 +42,6 @@ const SECTIONS = [
                 key: "anon-tracking-enabled",
                 display_name: "Anonymous Tracking",
                 type: "boolean"
-            },
-            {
-                key: "check-for-updates",
-                display_name: "Check for updates",
-                type: "boolean"
             }
         ]
     },
@@ -121,6 +116,16 @@ const SECTIONS = [
                 required: true,
                 autoFocus: false
             },
+        ]
+    },
+    {
+        name: "Updates",
+        settings: [
+            {
+                key: "check-for-updates",
+                display_name: "Check for updates",
+                type: "boolean"
+            }
         ]
     }
 ];

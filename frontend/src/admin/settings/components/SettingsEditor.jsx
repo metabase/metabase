@@ -1,12 +1,12 @@
 import React, { Component, PropTypes } from "react";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import MetabaseSettings from "metabase/lib/settings";
 
 import SettingsHeader from "./SettingsHeader.jsx";
 import SettingsSetting from "./SettingsSetting.jsx";
 import SettingsEmailForm from "./SettingsEmailForm.jsx";
 import SettingsSlackForm from "./SettingsSlackForm.jsx";
+import SettingsUpdatesForm from "./SettingsUpdatesForm.jsx";
 
 import _ from "underscore";
 import cx from 'classnames';
@@ -61,23 +61,6 @@ export default class SettingsEditor extends Component {
         this.updateSetting(setting, event.target.value);
     }
 
-    renderVersionUpdateNotice() {
-        let versionInfo = _.findWhere(this.props.settings, {key: "version-info"});
-        versionInfo = versionInfo ? JSON.parse(versionInfo.value) : null;
-
-        console.log(versionInfo);
-
-        if (!versionInfo || MetabaseSettings.get("version") === versionInfo.latest.version) {
-            return null;
-        } else {
-            return (
-                <div className="text-centered">
-                    Metabase {versionInfo.latest.version} is available!
-                </div>
-            );
-        }
-    }
-
     renderSettingsPane() {
         let section = this.props.sections[this.state.currentSection];
 
@@ -99,6 +82,18 @@ export default class SettingsEditor extends Component {
                         ref="slackForm"
                         elements={section.settings}
                         updateSlackSettings={this.props.updateSlackSettings}
+                    />
+                </div>
+            );
+        } else if (section.name === "Updates") {
+            return (
+                <div className="px2">
+                    <SettingsUpdatesForm
+                        ref="updatesForm"
+                        settings={this.props.settings}
+                        elements={section.settings}
+                        updateSetting={this.updateSetting}
+                        handleChangeEvent={this.handleChangeEvent}
                     />
                 </div>
             );
@@ -135,7 +130,6 @@ export default class SettingsEditor extends Component {
                 <ul className="AdminList-items pt1">
                     {sections}
                 </ul>
-                {this.renderVersionUpdateNotice()}
             </div>
         );
     }

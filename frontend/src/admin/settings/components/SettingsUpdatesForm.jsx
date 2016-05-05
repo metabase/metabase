@@ -1,6 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
+import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
 import SettingsEmailFormElement from "./SettingsEmailFormElement.jsx";
 import SettingsSetting from "./SettingsSetting.jsx";
@@ -12,7 +13,7 @@ import RetinaImage from "react-retina-image";
 import cx from "classnames";
 import _ from "underscore";
 
-export default class SettingsSlackForm extends Component {
+export default class SettingsUpdatesForm extends Component {
 
     constructor(props, context) {
         super(props, context);
@@ -28,7 +29,6 @@ export default class SettingsSlackForm extends Component {
     static propTypes = {
         elements: PropTypes.array,
         formErrors: PropTypes.object,
-        updateSlackSettings: PropTypes.func.isRequired
     };
 
     componentWillMount() {
@@ -152,79 +152,50 @@ export default class SettingsSlackForm extends Component {
         }
     }
 
+    renderVersionUpdateNotice() {
+        let versionInfo = _.findWhere(this.props.settings, {key: "version-info"}),
+            currentVersion = MetabaseSettings.get("version").tag;
+
+        versionInfo = versionInfo ? JSON.parse(versionInfo.value) : null;
+
+        console.log(versionInfo);
+
+        if (!versionInfo || currentVersion === versionInfo.latest.version) {
+            return (
+                <div className="p2 bg-brand bordered rounded border-brand text-white text-bold">
+                    You're running Metabase {currentVersion} which is the latest and greatest!
+                </div>
+            );
+        } else {
+            return (
+                <div className="p2 bg-green bordered rounded border-green flex flex-row align-center justify-between">
+                    <span className="text-white text-bold">Metabase {versionInfo.latest.version} is available.  You're running {currentVersion}</span>
+                    <a className="Button Button--white Button--medium borderless" href="http://www.metabase.com/start">Update</a>
+                </div>
+            );
+        }
+    }
+
+
     render() {
         let { elements } = this.props;
-        let { formData, formErrors, submitting, valid, validationErrors } = this.state;
 
-        let settings = elements.map((element, index) => {
-            // merge together data from a couple places to provide a complete view of the Element state
-            let errorMessage = (formErrors && formErrors.elements) ? formErrors.elements[element.key] : validationErrors[element.key],
-                value = formData[element.key] || element.defaultValue;
-
-            if (element.key === "slack-token") {
-                return (
-                    <SettingsEmailFormElement
-                        key={element.key}
-                        element={_.extend(element, {value, errorMessage, fireOnChange: true })}
-                        handleChangeEvent={this.handleChangeEvent.bind(this)} />
-                );
-            } else if (element.key === "metabot-enabled") {
-                return (
-                    <SettingsSetting
-                        key={element.key}
-                        setting={_.extend(element, {value, errorMessage })}
-                        updateSetting={(setting, value) => this.handleChangeEvent(setting, value)}
-                        disabled={!this.state.formData["slack-token"]}
-                    />
-                );
-            }
+        let settings = elements.map((setting, index) => {
+            return <SettingsSetting key={setting.key} setting={setting} updateSetting={this.props.updateSetting} handleChangeEvent={this.props.handleChangeEvent} autoFocus={index === 0}/>
         });
 
-        let saveSettingsButtonStates = {
-            default: "Save changes",
-            working: "Saving...",
-            success: "Changes saved!"
-        };
-
-        let disabled = (!valid || submitting !== "default"),
-            saveButtonText = saveSettingsButtonStates[submitting];
-
         return (
-            <form noValidate>
-                <div className="px2" style={{maxWidth: "585px"}}>
-                    <h1>
-                        Metabase
-                        <RetinaImage
-                            className="mx1"
-                            src="/app/img/slack_emoji.png"
-                            width={79}
-                            forceOriginalDimensions={false /* broken in React v0.13 */}
-                        />
-                        Slack
-                    </h1>
-                    <h3 className="text-grey-1">Answers sent right to your Slack #channels</h3>
-
-                    <div className="pt3">
-                        <a href="https://api.slack.com/docs/oauth-test-tokens" target="_blank" className="Button Button--primary" style={{padding:0}}>
-                            <div className="float-left py2 pl2">Get an API token from Slack</div>
-                            <Icon className="float-right p2 text-white cursor-pointer" style={{opacity:0.6}} name="external" width={18} height={18}/>
-                        </a>
-                    </div>
-                    <div className="py2">
-                        Once you're there, click <strong>"Create token"</strong> next to the team that you want to integrate with Metabase, then copy and paste the token into the field below.
-                        Slack test tokens work fine with Metabase.
-                    </div>
-                </div>
+            <div style={{width: "585px"}}>
                 <ul>
                     {settings}
-                    <li className="m2 mb4">
-                        <button className={cx("Button mr2", {"Button--primary": !disabled}, {"Button--success-new": submitting === "success"})} disabled={disabled} onClick={this.updateSlackSettings.bind(this)}>
-                            {saveButtonText}
-                        </button>
-                        { formErrors && formErrors.message ? <span className="pl2 text-error text-bold">{formErrors.message}</span> : null}
-                    </li>
                 </ul>
-            </form>
+
+                <div className="px2">
+                    <div className="pt2 border-top">
+                        {this.renderVersionUpdateNotice()}
+                    </div>
+                </div>
+            </div>
         );
     }
 }
