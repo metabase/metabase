@@ -154,13 +154,13 @@ CardControllers.controller('CardDetail', [
                     database   = _.findWhere(databases, { id: databaseID }),
                     engine     = database ? database.engine : null;
 
-                // TODO - add custom SQL dialect modes for other engines
-                return (engine === 'druid' || engine === 'mongo') ? {
-                    mode: 'ace/mode/json',
-                    description: 'JSON'
-                } : {
-                    mode: 'ace/mode/sql',
-                    description: 'SQL'
+                return {
+                    mode: engine === 'druid' || engine === 'mongo' ? 'ace/mode/json'  :
+                          engine === 'mysql'                       ? 'ace/mode/mysql' :
+                          engine === 'postgres'                    ? 'ace/mode/pgsql' :
+                          engine === 'sqlserver'                   ? 'ace/mode/sqlserver' :
+                                                                     'ace/mode/sql',
+                    description: engine === 'druid' || engine === 'mongo' ? 'JSON' : 'SQL'
                 };
             }
         };
