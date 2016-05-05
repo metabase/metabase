@@ -1,6 +1,7 @@
 (ns metabase.api.util
-  (:require [compojure.core :refer [defroutes POST]]
-            [metabase.api.common :refer :all]))
+  (:require [compojure.core :refer [defroutes GET POST]]
+            [metabase.api.common :refer :all]
+            [metabase.logger :as logger]))
 
 
 (defendpoint POST "/password_check"
@@ -10,5 +11,10 @@
   ;; checking happens in the
   {:valid true})
 
+(defendpoint GET "/logs"
+  "Logs."
+  []
+  (check-superuser)
+  (logger/get-messages))
 
 (define-routes)
