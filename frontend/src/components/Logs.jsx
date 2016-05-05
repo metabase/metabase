@@ -2,6 +2,7 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper.jsx";
 
 import reactAnsiStyle from "react-ansi-style";
 import "react-ansi-style/inject-css";
@@ -31,7 +32,7 @@ export default class Logs extends Component {
 
     componentWillMount() {
         this.timer = setInterval(async () => {
-            let response = await fetch("/api/log", { credentials: 'same-origin' });
+            let response = await fetch("/api/util/logs", { credentials: 'same-origin' });
             let logs = await response.json()
             this.setState({ logs: logs.reverse() })
         }, 1000);

@@ -101,11 +101,13 @@ export default class ProfileLink extends Component {
                                     </a>
                                 </li>
 
-                                <li>
-                                    <a data-metabase-event={"Navbar;Profile Dropdown;Debugging "+tag} onClick={this.openModal.bind(this, "logs")} className="Dropdown-item block text-white no-decoration">
-                                        Logs
-                                    </a>
-                                </li>
+                                { user.is_superuser &&
+                                    <li>
+                                        <a data-metabase-event={"Navbar;Profile Dropdown;Debugging "+tag} onClick={this.openModal.bind(this, "logs")} className="Dropdown-item block text-white no-decoration">
+                                            Logs
+                                        </a>
+                                    </li>
+                                }
 
                                 <li>
                                     <a data-metabase-event={"Navbar;Profile Dropdown;About "+tag} onClick={this.openModal.bind(this, "about")} className="Dropdown-item block text-white no-decoration">
@@ -141,8 +143,8 @@ export default class ProfileLink extends Component {
                             </div>
                         </Modal>
                     : modalOpen === "logs" ?
-                        <Modal className="Modal">
-                            <Logs />
+                        <Modal className="Modal Modal--wide" onClose={this.closeModal}>
+                            <Logs onClose={this.closeModal} />
                         </Modal>
                     : null }
                 </div>
