@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 
 import QueryButton from './QueryButton.jsx';
@@ -23,8 +24,10 @@ export default class TablePane extends Component {
     static propTypes = {
         query: PropTypes.object.isRequired,
         loadTableFn: PropTypes.func.isRequired,
+        show: PropTypes.func.isRequired,
         closeFn: PropTypes.func.isRequired,
-        setCardAndRun: PropTypes.func.isRequired
+        setCardAndRun: PropTypes.func.isRequired,
+        table: PropTypes.object
     };
 
     componentWillMount() {
@@ -60,49 +63,48 @@ export default class TablePane extends Component {
             }
             var panes = {
                 "fields": table.fields.length,
+                "metrics": table.metrics.length,
+                "segments": table.segments.length,
                 // "metrics": 0,
-                "connections": this.state.tableForeignKeys.length
+                // "connections": this.state.tableForeignKeys.length
             };
-            var tabs = Object.keys(panes).map((name) => {
-                var count = panes[name];
-                var classes = cx({
-                    'Button': true,
-                    'Button--small': true,
-                    'Button--active': name === this.state.pane
-                });
-                return (
-                    <a key={name} className={classes} onClick={this.showPane.bind(null, name)}>
-                        <span className="DataReference-paneCount">{count}</span><span>{inflection.inflect(name, count)}</span>
-                    </a>
-                );
-            });
+            var tabs = Object.entries(panes).map(([name, count]) =>
+                <a key={name} className={cx("Button Button--small", { "Button--active": name === this.state.pane })} onClick={this.showPane.bind(null, name)}>
+                    <span className="DataReference-paneCount">{count}</span><span>{inflection.inflect(name, count)}</span>
+                </a>
+            );
 
             var pane;
-            if (this.state.pane === "fields") {
-                var fields = table.fields.map((field, index) => {
-                    return (
-                        <li key={field.id} className="p1 border-row-divider">
-                            <a className="text-brand text-brand-darken-hover no-decoration" onClick={this.props.showField.bind(null, field)}>{field.display_name}</a>
-                        </li>
-                    );
-                });
-                pane = <ul>{fields}</ul>;
-            } else if (this.state.pane === "connections") {
+            if (this.state.pane === "connections") {
                 const fkCountsByTable = foreignKeyCountsByOriginTable(this.state.tableForeignKeys);
-
-                var connections = this.state.tableForeignKeys.sort(function(a, b) {
-                    return a.origin.table.display_name.localeCompare(b.origin.table.display_name);
-                }).map((fk, index) => {
-                    const via = (fkCountsByTable[fk.origin.table.id] > 1) ? (<span className="text-grey-3 text-light h5"> via {fk.origin.display_name}</span>) : null;
-
-                    return (
-                        <li key={fk.id} className="p1 border-row-divider">
-                            <a className="text-brand text-brand-darken-hover no-decoration" onClick={this.props.showField.bind(null, fk.origin)}>{fk.origin.table.display_name}{via}</a>
-                        </li>
-                    );
-                });
-                pane = <ul>{connections}</ul>;
-            }
+                pane = (
+                    <ul>
+                    { this.state.tableForeignKeys
+                        .sort((a, b) => a.origin.table.display_name.localeCompare(b.origin.table.display_name))
+                        .map((fk, index) =>
+                            <li key={fk.id} className="p1 border-row-divider">
+                                <a className="text-brand text-brand-darken-hover no-decoration" onClick={() => this.props.show("field", fk.origin)}>{fk.origin.table.display_name}
+                                { fkCountsByTable[fk.origin.table.id] > 1 ?
+                                    <span className="text-grey-3 text-light h5"> via {fk.origin.display_name}</span>
+                                : null }
+                                </a>
+                            </li>
+                        )
+                    }
+                    </ul>
+                );
+            } else if (this.state.pane) {
+                const itemType = this.state.pane.replace(/s$/, "");
+                pane = (
+                    <ul>
+                        { table[this.state.pane].map((item, index) =>
+                            <li key={item.id} className="p1 border-row-divider">
+                                <a className="text-brand text-brand-darken-hover no-decoration" onClick={() => this.props.show(itemType, item)}>{item.display_name || item.name}</a>
+                            </li>
+                        )}
+                    </ul>
+                );
+            } else
 
             var descriptionClasses = cx({ "text-grey-3": !table.description });
             var description = (<p className={descriptionClasses}>{table.description || "No description set."}</p>);

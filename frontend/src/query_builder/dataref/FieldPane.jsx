@@ -1,7 +1,8 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 
-import QueryButton from './QueryButton.jsx';
+import DetailPane from "./DetailPane.jsx";
+import QueryButton from "./QueryButton.jsx";
 import UseForButton from "./UseForButton.jsx";
 
 import Query from "metabase/lib/query";
@@ -10,7 +11,6 @@ import { createQuery } from "metabase/lib/query";
 import { isDimension } from "metabase/lib/schema_metadata";
 import inflection from 'inflection';
 
-import cx from "classnames";
 import _ from "underscore";
 
 export default class FieldPane extends Component {
@@ -135,33 +135,13 @@ export default class FieldPane extends Component {
         }
 
         return (
-            <div>
-                <h1>{fieldName}</h1>
-                <p className={cx({ "text-grey-3": !field.description })}>
-                    {field.description || "No description set."}
-                </p>
-                {useForCurrentQuestion.length > 0 ?
-                    <div>
-                        <p className="text-bold">Use for current question</p>
-                        <ul className="my2">
-                        {useForCurrentQuestion.map((item, index) =>
-                            <li className="mt1" key={index}>
-                                {item}
-                            </li>
-                        )}
-                        </ul>
-                    </div>
-                : null }
-                <p className="text-bold">Potentially useful questions</p>
-                <ul>
-                {usefulQuestions.map((item, index) =>
-                    <li className="border-row-divider" key={index}>
-                        {item}
-                    </li>
-                )}
-                </ul>
-                <div>{error}</div>
-            </div>
+            <DetailPane
+                name={fieldName}
+                description={field.description}
+                useForCurrentQuestion={useForCurrentQuestion}
+                usefulQuestions={usefulQuestions}
+                error={error}
+            />
         );
     }
 }
