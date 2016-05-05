@@ -7,7 +7,9 @@
             [cheshire.core :as json]
             (monger [collection :as mc]
                     [operators :refer :all])
+            [metabase.db :as db]
             [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
+            [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
             (metabase.query-processor [annotate :as annotate]
                                       [interface :refer [qualified-name-components map->DateTimeField map->DateTimeValue]])
@@ -42,12 +44,12 @@
 
 (defn process-and-run-native
   "Process and run a native MongoDB query."
-  [{{query :query} :native, database :database, :as outer-query}]
-  {:pre [query]}
+  [{{query :query} :native, database :database, table-id :table, :as outer-query}]
+  {:pre [query (map? database) (integer? table-id)]}
   (let [query   (if (string? query)
                   (json/parse-string query keyword)
                   query)
-        results (mc/aggregate *mongo-connection* "users" query
+        results (mc/aggregate *mongo-connection* (db/sel :one :field [Table :name], :id table-id) query
                               :allow-disk-use true)]
     ;; As with Druid, we want to use `annotate` on the results of native queries.
     ;; Because the Generic SQL driver was written in ancient times, it has its own internal implementation of `annotate`

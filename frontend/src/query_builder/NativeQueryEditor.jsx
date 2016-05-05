@@ -11,7 +11,7 @@ export default class NativeQueryEditor extends Component {
     constructor(props, context) {
         super(props, context);
 
-        _.bindAll(this, 'onChange', 'toggleEditor', 'updateEditorMode', 'setDatabaseID');
+        _.bindAll(this, 'onChange', 'toggleEditor', 'updateEditorMode', 'setDatabaseID', 'setTableID');
 
         this.state = {
             showEditor: false
@@ -23,6 +23,7 @@ export default class NativeQueryEditor extends Component {
         query: PropTypes.object.isRequired,
         setQueryFn: PropTypes.func.isRequired,
         setDatabaseFn: PropTypes.func.isRequired,
+        setTableFn: PropTypes.func.isRequired,
         autocompleteResultsFn: PropTypes.func.isRequired,
         /// This should return an object with information about the mode the ACE Editor should use to edit the query.
         /// This object should have 2 properties:
@@ -145,24 +146,67 @@ export default class NativeQueryEditor extends Component {
         this.updateEditorMode();
     }
 
+    setTableID(tableID) {
+        this.props.setTableFn(tableID);
+    }
+
     render() {
+        let modeInfo = this.props.getModeInfo();
+
         // we only render a db selector if there are actually multiple to choose from
         var dbSelector;
-        if(this.state.showEditor && this.props.databases && this.props.databases.length > 1) {
-            dbSelector = (
-                <div className="GuiBuilder-section GuiBuilder-data flex align-center">
-                    <span className="GuiBuilder-section-label Query-label">Database</span>
-                    <DataSelector
-                        databases={this.props.databases}
-                        query={this.props.query}
-                        setDatabaseFn={this.setDatabaseID}
-                    />
-                </div>
-            );
+        if (this.state.showEditor && this.props.databases && this.props.databases.length > 1) {
+            if (modeInfo.requiresTable) {
+                // The following is the worst code ever written.
+                // In order to use the second DataSelector below for Table selection,
+                // we dress up the selected Database's Tables to make them look like Databases,
+                // then pass them to the DataSelector along with a faked query and kindly ask it to pick a Database for us.
+                // Obviously this is hacky / wonky but it works for the time being :/
+
+                let databases = this.props.databases,
+                    dbID      = this.props.query.database,
+                    database  = databases ? _.find(databases, (db) => db.id === dbID) : null,
+                    tables    = database ? database.tables : [];
+
+                // so the tables can pretend to be databases
+                for (var i = 0; i < tables.length; i++) {
+                    let table = tables[i];
+                    table.tables = [];
+                }
+
+                dbSelector = (
+                    <div className="GuiBuilder-section GuiBuilder-data flex align-center">
+                        <span className="GuiBuilder-section-label Query-label">Table</span>
+                        <DataSelector
+                            databases={this.props.databases}
+                            query={this.props.query}
+                            setDatabaseFn={this.setDatabaseID}
+                        />
+                        <DataSelector
+                            databases={tables}
+                            query={{
+                                    type: "native",
+                                    native: {},
+                                    database: this.props.query.table || tables[0].id
+                                }}
+                            setDatabaseFn={this.setTableID}
+                        />
+                    </div>
+                );
+            } else {
+                dbSelector = (
+                    <div className="GuiBuilder-section GuiBuilder-data flex align-center">
+                        <span className="GuiBuilder-section-label Query-label">Database</span>
+                        <DataSelector
+                            databases={this.props.databases}
+                            query={this.props.query}
+                            setDatabaseFn={this.setDatabaseID}
+                        />
+                    </div>
+                );
+            }
         } else {
-            let modeInfo = this.props.getModeInfo(),
-                modeName = modeInfo ? modeInfo.description : 'code'; // Unless something is very broken users will never see 'code', but better safe than sorry
-            dbSelector = <span className="p2 text-grey-4">{'This question is written in ' + modeName + '.'}</span>;
+            dbSelector = <span className="p2 text-grey-4">{'This question is written in ' + modeInfo.description + '.'}</span>;
         }
 
         var editorClasses, toggleEditorText, toggleEditorIcon;
