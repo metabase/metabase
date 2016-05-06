@@ -127,6 +127,10 @@
     "*OPTIONAL*. Return a humanized (user-facing) version of an connection error message string.
      Generic error messages are provided in the constant `connection-error-messages`; return one of these whenever possible.")
 
+  (mbql->native [this, ^Map query]
+    "Transpile an MBQL structured query into the appropriate native query form for the given driver.  For example, a
+     driver like Postgres should build a valid SQL expression and return that.")
+
   (notify-database-updated [this, ^DatabaseInstance database]
     "*OPTIONAL*. Notify the driver that the attributes of the DATABASE have changed.  This is specifically relevant in
      the event that the driver was doing some caching or connection pooling.")
@@ -218,6 +222,7 @@
    :describe-table-fks                (constantly nil)
    :features                          (constantly nil)
    :humanize-connection-error-message (u/drop-first-arg identity)
+   :mbql->native                      #(throw (RuntimeException. "Driver has not implemented `mbql->native` function."))
    :notify-database-updated           (constantly nil)
    :process-query-in-context          (u/drop-first-arg identity)
    :sync-in-context                   (fn [_ _ f] (f))
