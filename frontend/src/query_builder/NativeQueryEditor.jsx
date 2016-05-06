@@ -154,47 +154,10 @@ export default class NativeQueryEditor extends Component {
         let modeInfo = this.props.getModeInfo();
 
         // we only render a db selector if there are actually multiple to choose from
-        var dbSelector;
-        if (this.state.showEditor && this.props.databases && this.props.databases.length > 1) {
-            if (modeInfo.requiresTable) {
-                // The following is the worst code ever written.
-                // In order to use the second DataSelector below for Table selection,
-                // we dress up the selected Database's Tables to make them look like Databases,
-                // then pass them to the DataSelector along with a faked query and kindly ask it to pick a Database for us.
-                // Obviously this is hacky / wonky but it works for the time being :/
-
-                let databases = this.props.databases,
-                    dbID      = this.props.query.database,
-                    database  = databases ? _.find(databases, (db) => db.id === dbID) : null,
-                    tables    = database ? database.tables : [];
-
-                // so the tables can pretend to be databases
-                for (var i = 0; i < tables.length; i++) {
-                    let table = tables[i];
-                    table.tables = [];
-                }
-
-                dbSelector = (
-                    <div className="GuiBuilder-section GuiBuilder-data flex align-center">
-                        <span className="GuiBuilder-section-label Query-label">Table</span>
-                        <DataSelector
-                            databases={this.props.databases}
-                            query={this.props.query}
-                            setDatabaseFn={this.setDatabaseID}
-                        />
-                        <DataSelector
-                            databases={tables}
-                            query={{
-                                    type: "native",
-                                    native: {},
-                                    database: this.props.query.table || tables[0].id
-                                }}
-                            setDatabaseFn={this.setTableID}
-                        />
-                    </div>
-                );
-            } else {
-                dbSelector = (
+        var dataSelectors = [];
+        if (this.state.showEditor && this.props.databases && (this.props.databases.length > 1 || modeInfo.requiresTable)) {
+            if (this.props.databases.length > 1) {
+                dataSelectors.push(
                     <div className="GuiBuilder-section GuiBuilder-data flex align-center">
                         <span className="GuiBuilder-section-label Query-label">Database</span>
                         <DataSelector
@@ -203,10 +166,36 @@ export default class NativeQueryEditor extends Component {
                             setDatabaseFn={this.setDatabaseID}
                         />
                     </div>
+                )
+            }
+            if (modeInfo.requiresTable) {
+                let databases = this.props.databases,
+                    dbId      = this.props.query.database,
+                    database  = databases ? _.findWhere(databases, { id: dbId }) : null,
+                    tables    = database ? database.tables : [];
+
+                dataSelectors.push(
+                    <div className="GuiBuilder-section GuiBuilder-data flex align-center">
+                        <span className="GuiBuilder-section-label Query-label">Table</span>
+                        <DataSelector
+                            ref="dataSection"
+                            includeTables={true}
+                            query={{
+                                type: "query",
+                                query: { source_table: this.props.query.table },
+                                database: dbId
+                            }}
+                            databases={[database]}
+                            tables={tables}
+                            setDatabaseFn={this.setDatabaseID}
+                            setSourceTableFn={this.setTableID}
+                            isInitiallyOpen={false}
+                        />
+                    </div>
                 );
             }
         } else {
-            dbSelector = <span className="p2 text-grey-4">{'This question is written in ' + modeInfo.description + '.'}</span>;
+            dataSelectors = <span className="p2 text-grey-4">{'This question is written in ' + modeInfo.description + '.'}</span>;
         }
 
         var editorClasses, toggleEditorText, toggleEditorIcon;
@@ -224,7 +213,7 @@ export default class NativeQueryEditor extends Component {
             <div className="wrapper">
                 <div className="NativeQueryEditor bordered rounded shadowed">
                     <div className="flex">
-                        {dbSelector}
+                        {dataSelectors}
                         <a className="Query-label no-decoration flex-align-right flex align-center px2" onClick={this.toggleEditor}>
                             <span className="mx2">{toggleEditorText}</span>
                             <Icon name={toggleEditorIcon} width="20" height="20"/>
