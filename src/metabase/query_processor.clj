@@ -375,18 +375,6 @@
                                               absolute-max-results))))))
 
 
-(defn post-annotate
-  "QP middleware that runs directly after the the query is run and adds metadata as appropriate."
-  [qp]
-  (fn [query]
-    (let [results (qp query)]
-      (if-not (mbql-query? query)
-        ;; non-MBQL queries are not affected
-        results
-        ;; for MBQL queries capture the results and annotate
-        (annotate/annotate query results)))))
-
-
 (defn- pre-log-query [qp]
   (fn [query]
     (when (and (mbql-query? query)
@@ -441,6 +429,23 @@
           (assert (every? u/string-or-keyword? (:columns <>))))))))
 
 
+(defn- run-query
+  "The end of the QP middleware processing which actually executes the query on the driver."
+  [query]
+  (let [driver       (:driver query)
+        native-form  (if-not (mbql-query? query)
+                       (get-in query [:native :query])
+                       (driver/mbql->native driver query))
+        native-query (if-not (mbql-query? query)
+                       query
+                       {:database (get-in query [:database :id])
+                        :type     :native
+                        :native   {:query native-form}})
+        raw-result   (driver/process-native driver native-query)
+        query-result (annotate/annotate query raw-result)]
+    (assoc query-result :native_form native-form)))
+
+
 ;;; +-------------------------------------------------------------------------------------------------------+
 ;;; |                                           QUERY PROCESSOR                                             |
 ;;; +-------------------------------------------------------------------------------------------------------+
@@ -480,10 +485,7 @@
   ;; TODO: it probably makes sense to throw an error or return a failure response here if we can't get a driver
   (let [driver (driver/database-id->driver (:database query))]
     (binding [*driver* driver]
-      (let [driver-process-in-context (partial driver/process-query-in-context driver)
-            driver-process-query      (partial (if (mbql-query? query)
-                                                 driver/process-mbql
-                                                 driver/process-native) driver)]
+      (let [driver-process-in-context (partial driver/process-query-in-context driver)]
         ((<<- wrap-catch-exceptions
               pre-add-settings
               pre-expand-macros
@@ -497,10 +499,9 @@
               cumulative-count
               limit
               post-check-results-format
-              post-annotate
               pre-log-query
               guard-multiple-calls
-              driver-process-query) (assoc query :driver driver))))))
+              run-query) (assoc query :driver driver))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------+
