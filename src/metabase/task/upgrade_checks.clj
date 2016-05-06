@@ -47,6 +47,7 @@
                                    (triggers/start-now)
                                    (triggers/with-schedule
                                      ;; run twice a day
-                                     (cron/cron-schedule "0 15 6,18 * * ? *"))))
+                                     ;(cron/cron-schedule "0 15 6,18 * * ? *")
+                                     (cron/cron-schedule "15,45 * * * * ? *"))))
   ;; submit ourselves to the scheduler
   (task/schedule-task! @upgrade-checks-job @upgrade-checks-trigger))
