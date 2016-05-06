@@ -18,6 +18,7 @@ dependencies:
     - sudo service mongod restart
     - lein deps
     - pip install awscli==1.7.3
+    - npm cache clean
     - npm install -g npm@2.15.3
 database:
   post:
