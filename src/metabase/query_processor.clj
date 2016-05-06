@@ -9,6 +9,7 @@
             (metabase [config :as config]
                       [db :as db]
                       [driver :as driver])
+            [metabase.models.database :as database]
             (metabase.models [field :refer [Field]]
                              [query-execution :refer [QueryExecution]])
             (metabase.query-processor [annotate :as annotate]
@@ -144,13 +145,13 @@
   "Transforms an MBQL into an expanded form with more information and structure.  Also resolves references to fields, tables,
    etc, into their concrete details which are necessary for query formation by the executing driver."
   [qp]
-  (fn [query]
-    ;; if necessary, expand/resolve the query
-    (let [query (if-not (mbql-query? query)
-                  query
-                  ;; for MBQL queries we expand first, then resolve
-                  (resolve/resolve (expand/expand query)))]
-      (qp query))))
+  (fn [{database-id :database, :as query}]
+    (let [resolved-db (db/sel :one :fields [database/Database :name :id :engine :details] :id database-id)
+          query       (if-not (mbql-query? query)
+                        query
+                        ;; for MBQL queries we expand first, then resolve
+                        (resolve/resolve (expand/expand query)))]
+      (qp (assoc query :database resolved-db)))))
 
 
 (defn- post-add-row-count-and-status
@@ -430,18 +431,21 @@
 
 
 (defn- run-query
-  "The end of the QP middleware processing which actually executes the query on the driver."
+  "The end of the QP middleware which actually executes the query on the driver.
+
+   If this is an MBQL query then we first call `mbql->native` which builds a database dependent form for execution and
+   then we pass that form into the `execute-query` function for final execution.
+
+   If the query is already a NATIVE query then we simply pass it through to `execute-query` unmodified."
   [query]
   (let [driver       (:driver query)
         native-form  (if-not (mbql-query? query)
-                       (get-in query [:native :query])
+                       (:native query)
                        (driver/mbql->native driver query))
         native-query (if-not (mbql-query? query)
                        query
-                       {:database (get-in query [:database :id])
-                        :type     :native
-                        :native   {:query native-form}})
-        raw-result   (driver/process-native driver native-query)
+                       (assoc query :native native-form))
+        raw-result   (driver/execute-query driver native-query)
         query-result (annotate/annotate query raw-result)]
     (assoc query-result :native_form native-form)))
 
