@@ -627,3 +627,9 @@
   [num-retries & body]
   `(do-with-auto-retries ~num-retries
      (fn [] ~@body)))
+
+(defn string-or-keyword?
+  "Is X a `String` or a `Keyword`?"
+  [x]
+  (or (string? x)
+      (keyword? x)))

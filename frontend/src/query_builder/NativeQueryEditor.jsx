@@ -11,7 +11,7 @@ export default class NativeQueryEditor extends Component {
     constructor(props, context) {
         super(props, context);
 
-        _.bindAll(this, 'onChange', 'toggleEditor', 'updateEditorMode', 'setDatabaseID');
+        _.bindAll(this, 'onChange', 'toggleEditor', 'updateEditorMode', 'setDatabaseID', 'setTableID');
 
         this.state = {
             showEditor: false
@@ -23,11 +23,13 @@ export default class NativeQueryEditor extends Component {
         query: PropTypes.object.isRequired,
         setQueryFn: PropTypes.func.isRequired,
         setDatabaseFn: PropTypes.func.isRequired,
+        setTableFn: PropTypes.func.isRequired,
         autocompleteResultsFn: PropTypes.func.isRequired,
         /// This should return an object with information about the mode the ACE Editor should use to edit the query.
         /// This object should have 2 properties:
-        /// *  `mode` : the ACE Editor mode name, e.g. 'ace/mode/json'
-        /// *  `description`: name used to describe the text written in that mode, e.g. 'JSON'. Used to fill in the blank in 'This question is written in _______'.
+        /// *  `mode` :         the ACE Editor mode name, e.g. 'ace/mode/json'
+        /// *  `description`:   name used to describe the text written in that mode, e.g. 'JSON'. Used to fill in the blank in 'This question is written in _______'.
+        /// *  `requiresTable`: whether the DB selector should be a DB + Table selector. Mongo needs both DB + Table.
         getModeInfo: PropTypes.func.isRequired
     };
 
@@ -144,24 +146,56 @@ export default class NativeQueryEditor extends Component {
         this.updateEditorMode();
     }
 
+    setTableID(tableID) {
+        this.props.setTableFn(tableID);
+    }
+
     render() {
+        let modeInfo = this.props.getModeInfo();
+
         // we only render a db selector if there are actually multiple to choose from
-        var dbSelector;
-        if(this.state.showEditor && this.props.databases && this.props.databases.length > 1) {
-            dbSelector = (
-                <div className="GuiBuilder-section GuiBuilder-data flex align-center">
-                    <span className="GuiBuilder-section-label Query-label">Database</span>
-                    <DataSelector
-                        databases={this.props.databases}
-                        query={this.props.query}
-                        setDatabaseFn={this.setDatabaseID}
-                    />
-                </div>
-            );
+        var dataSelectors = [];
+        if (this.state.showEditor && this.props.databases && (this.props.databases.length > 1 || modeInfo.requiresTable)) {
+            if (this.props.databases.length > 1) {
+                dataSelectors.push(
+                    <div className="GuiBuilder-section GuiBuilder-data flex align-center">
+                        <span className="GuiBuilder-section-label Query-label">Database</span>
+                        <DataSelector
+                            databases={this.props.databases}
+                            query={this.props.query}
+                            setDatabaseFn={this.setDatabaseID}
+                        />
+                    </div>
+                )
+            }
+            if (modeInfo.requiresTable) {
+                let databases = this.props.databases,
+                    dbId      = this.props.query.database,
+                    database  = databases ? _.findWhere(databases, { id: dbId }) : null,
+                    tables    = database ? database.tables : [];
+
+                dataSelectors.push(
+                    <div className="GuiBuilder-section GuiBuilder-data flex align-center">
+                        <span className="GuiBuilder-section-label Query-label">Table</span>
+                        <DataSelector
+                            ref="dataSection"
+                            includeTables={true}
+                            query={{
+                                type: "query",
+                                query: { source_table: this.props.query.table },
+                                database: dbId
+                            }}
+                            databases={[database]}
+                            tables={tables}
+                            setDatabaseFn={this.setDatabaseID}
+                            setSourceTableFn={this.setTableID}
+                            isInitiallyOpen={false}
+                        />
+                    </div>
+                );
+            }
         } else {
-            let modeInfo = this.props.getModeInfo(),
-                modeName = modeInfo ? modeInfo.description : 'code'; // Unless something is very broken users will never see 'code', but better safe than sorry
-            dbSelector = <span className="p2 text-grey-4">{'This question is written in ' + modeName + '.'}</span>;
+            dataSelectors = <span className="p2 text-grey-4">{'This question is written in ' + modeInfo.description + '.'}</span>;
         }
 
         var editorClasses, toggleEditorText, toggleEditorIcon;
@@ -179,7 +213,7 @@ export default class NativeQueryEditor extends Component {
             <div className="wrapper">
                 <div className="NativeQueryEditor bordered rounded shadowed">
                     <div className="flex">
-                        {dbSelector}
+                        {dataSelectors}
                         <a className="Query-label no-decoration flex-align-right flex align-center px2" onClick={this.toggleEditor}>
                             <span className="mx2">{toggleEditorText}</span>
                             <Icon name={toggleEditorIcon} width="20" height="20"/>

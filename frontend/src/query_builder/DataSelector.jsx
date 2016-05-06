@@ -8,6 +8,7 @@ import { isQueryable } from 'metabase/lib/table';
 import { titleize, humanize } from 'metabase/lib/formatting';
 
 import _ from "underscore";
+import cx from "classnames";
 
 export default class DataSelector extends Component {
     constructor(props, context) {
@@ -178,10 +179,11 @@ export default class DataSelector extends Component {
 
     renderTablePicker() {
         const schema = this.state.selectedSchema;
+        const hasMultipleDatabases = this.props.databases.length > 1;
         let header = (
             <span className="flex align-center">
-                <span className="flex align-center text-slate cursor-pointer" onClick={this.onBack}>
-                    <Icon name="chevronleft" width={18} height={18} />
+                <span className={cx("flex align-center text-slate", { "cursor-pointer": hasMultipleDatabases })} onClick={hasMultipleDatabases && this.onBack}>
+                    { hasMultipleDatabases && <Icon name="chevronleft" width={18} height={18} /> }
                     <span className="ml1">{schema.database.name}</span>
                 </span>
                 { schema.name &&
