@@ -3,6 +3,8 @@ import ReactDOM from "react-dom";
 
 import { isObscured } from "metabase/lib/dom";
 
+import Tooltip from "./Tooltip.jsx";
+
 import cx from "classnames";
 
 // higher order component that takes a component which takes props "isOpen" and optionally "onClose"
@@ -87,8 +89,13 @@ export default ComposedComponent => class extends Component {
     }
 
     render() {
-        const { triggerElement, triggerClasses, triggerClassesOpen } = this.props;
+        const { triggerClasses, triggerClassesOpen } = this.props;
         const { isOpen } = this.state;
+        let { triggerElement } = this.props;
+        if (triggerElement && triggerElement.type === Tooltip) {
+            // Disables tooltip when open:
+            triggerElement = React.cloneElement(triggerElement, { isEnabled: triggerElement.props.isEnabled && !isOpen });
+        }
         return (
             <a ref="trigger" onClick={() => this.toggle()} className={cx("no-decoration", triggerClasses, isOpen ? triggerClassesOpen : null)}>
                 {triggerElement}

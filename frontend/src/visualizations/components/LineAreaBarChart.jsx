@@ -10,7 +10,7 @@ import { isNumeric, isDate, isDimension, isString } from "metabase/lib/schema_me
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 import Urls from "metabase/lib/urls";
 
-import { MinColumnsError, MinRowsError } from "metabase/visualizations/lib/errors";
+import { MinRowsError } from "metabase/visualizations/lib/errors";
 
 import crossfilter from "crossfilter";
 import _ from "underscore";
@@ -26,6 +26,22 @@ const isNonNumericDimension = (col) =>
 const isMetric = (col) =>
     isNumeric(col)
 
+const isDimensionMetric = (cols, strict = true) =>
+    (!strict || cols.length === 2) &&
+    isAnyDimension(cols[0]) &&
+    isMetric(cols[1])
+
+const isDimensionDimensionMetric = (cols, strict = true) =>
+    (!strict || cols.length === 3) &&
+    isAnyDimension(cols[0]) &&
+    isNonNumericDimension(cols[1]) &&
+    isMetric(cols[2])
+
+const isDimensionMetricMetric = (cols, strict = true) =>
+    (!strict || cols.length >= 3) &&
+    isAnyDimension(cols[0]) &&
+    cols.slice(1).reduce((acc, col) => acc && isMetric(col), true)
+
 export default class LineAreaBarChart extends Component {
     static noHeader = true;
     static supportsSeries = true;
@@ -34,12 +50,14 @@ export default class LineAreaBarChart extends Component {
     static settings = [ColorSetting()];
 
     static isSensible(cols, rows) {
-        return rows.length > 1 && cols.length > 1;
+        return isDimensionMetric(cols) || isDimensionDimensionMetric(cols) || isDimensionMetricMetric(cols);
     }
 
     static checkRenderable(cols, rows) {
-        if (cols.length < 2) { throw new MinColumnsError(2, cols.length); }
         if (rows.length < 1) { throw new MinRowsError(1, rows.length); }
+        if (!(isDimensionMetric(cols, false) || isDimensionDimensionMetric(cols) || isDimensionMetricMetric(cols))) {
+            throw new Error("We couldn’t create a " + this.noun + " based on your query.");
+        }
     }
 
     static seriesAreCompatible(initialSeries, newSeries) {
@@ -97,11 +115,7 @@ export default class LineAreaBarChart extends Component {
         let s = series && series.length === 1 && series[0];
         if (s && s.data) {
             // Dimension-Dimension-Metric
-            if (s.data.cols.length === 3 &&
-                isAnyDimension(s.data.cols[0]) &&
-                isNonNumericDimension(s.data.cols[1]) &&
-                isMetric(s.data.cols[2])
-            ) {
+            if (isDimensionDimensionMetric(s.data.cols)) {
                 let dataset = crossfilter(s.data.rows);
                 let groups = [0,1].map(i => dataset.dimension(d => d[i]).group());
                 let cardinalities = groups.map(group => group.size())
@@ -126,10 +140,7 @@ export default class LineAreaBarChart extends Component {
                     nextState.isMultiseries = true;
                 }
             // Dimension-Metric-Metric+
-            } else if (s.data.cols.length >= 3 &&
-                       isAnyDimension(s.data.cols[0]) &&
-                       s.data.cols.slice(1).reduce((acc, col) => acc && isMetric(col), true)
-            ) {
+            } else if (isDimensionMetricMetric(s.data.cols)) {
                 nextState.series = s.data.cols.slice(1).map((col, index) => ({
                     card: { ...s.card, name: col.display_name || col.name, id: null },
                     data: {

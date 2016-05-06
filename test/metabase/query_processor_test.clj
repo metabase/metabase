@@ -4,23 +4,24 @@
   (:require [clojure.math.numeric-tower :as math]
             [clojure.set :as set]
             [expectations :refer :all]
-            [metabase.db :refer :all]
-            [metabase.driver :as driver]
+            (metabase [db :refer :all]
+                      [driver :as driver])
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
             [metabase.query-processor :refer :all]
             (metabase.query-processor [expand :as ql]
                                       [interface :as qpi])
+            [metabase.test.data :refer :all]
             (metabase.test.data [dataset-definitions :as defs]
                                 [datasets :as datasets :refer [*data-loader* *engine*]]
                                 [interface :refer [create-database-definition], :as i])
-            [metabase.test.data :refer :all]
+            [metabase.test.util :as tu]
             [metabase.util :as u]))
 
 
-;; ## Dataset-Independent QP Tests
+;;; ------------------------------------------------------------ Dataset-Independent QP Tests ------------------------------------------------------------
 
-;; ### Helper Fns + Macros
+;;; ------------------------------------------------------------ Helper Fns + Macros ------------------------------------------------------------
 
 ;; Event-Based DBs aren't tested here, but in `event-query-processor-test` instead.
 (def ^:private ^:const timeseries-engines #{:druid})
@@ -270,22 +271,27 @@
   (first (rows results)))
 
 
-;; # THE TESTS THEMSELVES (!)
+;;; +----------------------------------------------------------------------------------------------------------------------+
+;;; |                                               THE TESTS THEMSELVES (!)                                               |
+;;; +----------------------------------------------------------------------------------------------------------------------+
 
-;; structured-query?
-(expect false (structured-query? {}))
-(expect false (structured-query? {:type "native"}))
-(expect true  (structured-query? {:type "query"}))
+;; mbql-query?
+(expect false (mbql-query? {}))
+(expect false (mbql-query? {:type "native"}))
+(expect true  (mbql-query? {:type "query"}))
 
-;; rows-query-without-limits?
-(expect false (rows-query-without-limits? {:query {:aggregation {:aggregation-type :count}}}))
-(expect true  (rows-query-without-limits? {:query {:aggregation {:aggregation-type :rows}}}))
-(expect false (rows-query-without-limits? {:query {:aggregation {:aggregation-type :count}
-                                                   :limit       10}}))
-(expect false (rows-query-without-limits? {:query {:aggregation {:aggregation-type :count}
-                                                   :page        1}}))
+(tu/resolve-private-fns metabase.query-processor query-without-aggregations-or-limits?)
 
-;; ### "COUNT" AGGREGATION
+;; query-without-aggregations-or-limits?
+(expect false (query-without-aggregations-or-limits? {:query {:aggregation {:aggregation-type :count}}}))
+(expect true  (query-without-aggregations-or-limits? {:query {:aggregation {:aggregation-type :rows}}}))
+(expect false (query-without-aggregations-or-limits? {:query {:aggregation {:aggregation-type :count}
+                                                              :limit       10}}))
+(expect false (query-without-aggregations-or-limits? {:query {:aggregation {:aggregation-type :count}
+                                                              :page        1}}))
+
+
+;;; ------------------------------------------------------------ "COUNT" AGGREGATION ------------------------------------------------------------
 
 (qp-expect-with-all-engines
     {:rows    [[100]]
@@ -296,7 +302,7 @@
        (format-rows-by [int])))
 
 
-;; ### "SUM" AGGREGATION
+;;; ------------------------------------------------------------ "SUM" AGGREGATION ------------------------------------------------------------
 (qp-expect-with-all-engines
     {:rows    [[203]]
      :columns ["sum"]
@@ -306,7 +312,7 @@
        (format-rows-by [int])))
 
 
-;; ## "AVG" AGGREGATION
+;;; ------------------------------------------------------------ "AVG" AGGREGATION ------------------------------------------------------------
 (qp-expect-with-all-engines
     {:rows    [[35.5059]]
      :columns ["avg"]
@@ -316,7 +322,7 @@
        (format-rows-by [(partial u/round-to-decimals 4)])))
 
 
-;; ### "DISTINCT COUNT" AGGREGATION
+;;; ------------------------------------------------------------ "DISTINCT COUNT" AGGREGATION ------------------------------------------------------------
 (qp-expect-with-all-engines
     {:rows    [[15]]
      :columns ["count"]
@@ -325,7 +331,7 @@
                           (ql/aggregation (ql/distinct $user_id)))))
 
 
-;; ## "ROWS" AGGREGATION
+;;; ------------------------------------------------------------ "ROWS" AGGREGATION ------------------------------------------------------------
 ;; Test that a rows aggregation just returns rows as-is.
 (qp-expect-with-all-engines
     {:rows    [[ 1 "Red Medicine"                  4 10.0646 -165.374 3]
@@ -345,10 +351,10 @@
                            (ql/order-by (ql/asc $id)))))
 
 
-;; ## "PAGE" CLAUSE
+;;; ------------------------------------------------------------ "PAGE" CLAUSE ------------------------------------------------------------
 ;; Test that we can get "pages" of results.
 
-;; ### PAGE - Get the first page
+;; get the first page
 (expect-with-non-timeseries-dbs
   [[1 "African"]
    [2 "American"]
@@ -360,7 +366,7 @@
          (ql/order-by (ql/asc $id)))
        rows (format-rows-by [int str])))
 
-;; ### PAGE - Get the second page
+;; get the second page
 (expect-with-non-timeseries-dbs
   [[ 6 "Bakery"]
    [ 7 "Bar"]
@@ -373,7 +379,7 @@
        rows (format-rows-by [int str])))
 
 
-;; ## "ORDER_BY" CLAUSE
+;;; ------------------------------------------------------------ "ORDER_BY" CLAUSE ------------------------------------------------------------
 ;; Test that we can tell the Query Processor to return results ordered by multiple fields
 (expect-with-non-timeseries-dbs
   [[1 12 375]
@@ -395,9 +401,9 @@
        rows (format-rows-by [int int int])))
 
 
-;; ## "FILTER" CLAUSE
+;;; ------------------------------------------------------------ "FILTER" CLAUSE ------------------------------------------------------------
 
-;; ### FILTER -- "AND", ">", ">="
+;;; FILTER -- "AND", ">", ">="
 (expect-with-non-timeseries-dbs
   [[55 "Dal Rae Restaurant"       67 33.983  -118.096 4]
    [61 "Lawry's The Prime Rib"    67 34.0677 -118.376 4]
@@ -410,7 +416,7 @@
         (ql/order-by (ql/asc $id)))
       rows formatted-venues-rows))
 
-;; ### FILTER -- "AND", "<", ">", "!="
+;;; FILTER -- "AND", "<", ">", "!="
 (expect-with-non-timeseries-dbs
   [[21 "PizzaHacker"          58 37.7441 -122.421 2]
    [23 "Taqueria Los Coyotes" 50 37.765  -122.42  2]]
@@ -421,7 +427,7 @@
         (ql/order-by (ql/asc $id)))
       rows formatted-venues-rows))
 
-;; ### FILTER WITH A FALSE VALUE
+;;; FILTER WITH A FALSE VALUE
 ;; Check that we're checking for non-nil values, not just logically true ones.
 ;; There's only one place (out of 3) that I don't like
 (expect-with-non-timeseries-dbs
@@ -469,7 +475,7 @@
        rows (format-rows-by [int str ->bool] :format-nil-values)))
 
 
-;; ### FILTER -- "BETWEEN", single subclause (neither "AND" nor "OR")
+;;; FILTER -- "BETWEEN", single subclause (neither "AND" nor "OR")
 (expect-with-non-timeseries-dbs
   [[21 "PizzaHacker"    58 37.7441 -122.421 2]
    [22 "Gordo Taqueria" 50 37.7822 -122.484 1]]
@@ -478,7 +484,7 @@
         (ql/order-by (ql/asc $id)))
       rows formatted-venues-rows))
 
-;; ### FILTER -- "BETWEEN" with dates
+;;; FILTER -- "BETWEEN" with dates
 (qp-expect-with-all-engines
     {:rows    [[29]]
      :columns ["count"]
@@ -487,7 +493,7 @@
                           (ql/aggregation (ql/count))
                           (ql/filter (ql/between $date "2015-04-01" "2015-05-01")))))
 
-;; ### FILTER -- "OR", "<=", "="
+;;; FILTER -- "OR", "<=", "="
 (expect-with-non-timeseries-dbs
   [[1 "Red Medicine"                  4 10.0646 -165.374 3]
    [2 "Stout Burgers & Beers"        11 34.0996 -118.329 2]
@@ -499,14 +505,14 @@
         (ql/order-by (ql/asc $id)))
       rows formatted-venues-rows))
 
-;; ### FILTER -- "INSIDE"
+;;; FILTER -- "INSIDE"
 (expect-with-non-timeseries-dbs
   [[1 "Red Medicine" 4 10.0646 -165.374 3]]
   (-> (run-query venues
         (ql/filter (ql/inside $latitude $longitude 10.0649 -165.379 10.0641 -165.371)))
       rows formatted-venues-rows))
 
-;;; ## FILTER - `is-null` & `not-null` on datetime columns
+;;; FILTER - `is-null` & `not-null` on datetime columns
 (expect-with-non-timeseries-dbs
   [1000]
   (first-row (run-query checkins
@@ -523,7 +529,7 @@
         (nil? result))))
 
 
-;; ## "FIELDS" CLAUSE
+;;; ------------------------------------------------------------ "FIELDS" CLAUSE ------------------------------------------------------------
 ;; Test that we can restrict the Fields that get returned to the ones specified, and that results come back in the order of the IDs in the `fields` clause
 (qp-expect-with-all-engines
     {:rows    [["Red Medicine" 1]
@@ -545,8 +551,8 @@
                               (ql/order-by (ql/asc $id)))))
 
 
-;; ## "BREAKOUT"
-;; ### "BREAKOUT" - SINGLE COLUMN
+;;; ------------------------------------------------------------ "BREAKOUT" ------------------------------------------------------------
+;;; single column
 (qp-expect-with-all-engines
     {:rows    [[1 31] [2 70] [3 75] [4 77] [5 69] [6 70] [7 76] [8 81] [9 68] [10 78] [11 74] [12 59] [13 76] [14 62] [15 34]],
      :columns [(format-name "user_id")
@@ -558,7 +564,7 @@
                               (ql/breakout $user_id)
                               (ql/order-by (ql/asc $user_id)))))
 
-;; ### BREAKOUT w/o AGGREGATION
+;;; BREAKOUT w/o AGGREGATION
 ;; This should act as a "distinct values" query and return ordered results
 (qp-expect-with-all-engines
     {:cols    [(checkins-col :user_id)]
@@ -569,7 +575,7 @@
                           (ql/limit 10))))
 
 
-;; ### "BREAKOUT" - MULTIPLE COLUMNS W/ IMPLICT "ORDER_BY"
+;;; "BREAKOUT" - MULTIPLE COLUMNS W/ IMPLICT "ORDER_BY"
 ;; Fields should be implicitly ordered :ASC for all the fields in `breakout` that are not specified in `order_by`
 (qp-expect-with-all-engines
     {:rows    [[1 1 1] [1 5 1] [1 7 1] [1 10 1] [1 13 1] [1 16 1] [1 26 1] [1 31 1] [1 35 1] [1 36 1]]
@@ -584,7 +590,7 @@
                                   (ql/breakout $user_id $venue_id)
                                   (ql/limit 10))))
 
-;; ### "BREAKOUT" - MULTIPLE COLUMNS W/ EXPLICIT "ORDER_BY"
+;;; "BREAKOUT" - MULTIPLE COLUMNS W/ EXPLICIT "ORDER_BY"
 ;; `breakout` should not implicitly order by any fields specified in `order_by`
 (qp-expect-with-all-engines
     {:rows    [[15 2 1] [15 3 1] [15 7 1] [15 14 1] [15 16 1] [15 18 1] [15 22 1] [15 23 2] [15 24 1] [15 27 1]],
@@ -602,10 +608,7 @@
 
 
 
-
-;; # POST PROCESSING TESTS
-
-;; ## LIMIT-MAX-RESULT-ROWS
+;;; ------------------------------------------------------------ LIMIT-MAX-RESULT-ROWS ------------------------------------------------------------
 ;; Apply limit-max-result-rows to an infinite sequence and make sure it gets capped at `absolute-max-results`
 (expect absolute-max-results
   (->> (((resolve 'metabase.query-processor/limit) identity) {:rows (repeat [:ok])})
@@ -629,9 +632,9 @@
      (->> res :query :limit)]))
 
 
-;; ## CUMULATIVE SUM
+;;; ------------------------------------------------------------ CUMULATIVE SUM ------------------------------------------------------------
 
-;; ### cum_sum w/o breakout should be treated the same as sum
+;;; cum_sum w/o breakout should be treated the same as sum
 (qp-expect-with-all-engines
     {:rows    [[120]]
      :columns ["sum"]
@@ -640,17 +643,17 @@
                           (ql/aggregation (ql/cum-sum $id)))))
 
 
-;; ### Simple cumulative sum where breakout field is same as cum_sum field
+;;; Simple cumulative sum where breakout field is same as cum_sum field
 (qp-expect-with-all-engines
     {:rows    [[1] [3] [6] [10] [15] [21] [28] [36] [45] [55] [66] [78] [91] [105] [120]]
      :columns (->columns "id")
      :cols    [(users-col :id)]}
-  (format-rows-by [int] (run-query users
-                          (ql/aggregation (ql/cum-sum $id))
-                          (ql/breakout $id))))
+    (format-rows-by [int] (run-query users
+                            (ql/aggregation (ql/cum-sum $id))
+                            (ql/breakout $id))))
 
 
-;; ### Cumulative sum w/ a different breakout field
+;;; Cumulative sum w/ a different breakout field
 (qp-expect-with-all-engines
     {:rows    [["Broen Olujimi"        14]
                ["Conchúr Tihomir"      21]
@@ -676,7 +679,7 @@
                               (ql/breakout $name))))
 
 
-;; ### Cumulative sum w/ a different breakout field that requires grouping
+;;; Cumulative sum w/ a different breakout field that requires grouping
 (qp-expect-with-all-engines
     {:columns [(format-name "price")
                "sum"]
@@ -691,10 +694,64 @@
                               (ql/breakout $price))))
 
 
-;;; ## STDDEV AGGREGATION
-;;; SQL-Only for the time being
+;;; ------------------------------------------------------------ CUMULATIVE COUNT ------------------------------------------------------------
 
-;; ## "STDDEV" AGGREGATION
+(defn- cumulative-count-col [col-fn col-name]
+  (assoc (aggregate-col :count (col-fn col-name))
+         :base_type    :IntegerField
+         :special_type :number))
+
+;;; cum_count w/o breakout should be treated the same as count
+(qp-expect-with-all-engines
+    {:rows    [[15]]
+     :columns ["count"]
+     :cols    [(cumulative-count-col users-col :id)]}
+  (format-rows-by [int] (run-query users
+                          (ql/aggregation (ql/cum-count)))))
+
+;;; Cumulative count w/ a different breakout field
+(qp-expect-with-all-engines
+    {:rows    [["Broen Olujimi"        1]
+               ["Conchúr Tihomir"      2]
+               ["Dwight Gresham"       3]
+               ["Felipinho Asklepios"  4]
+               ["Frans Hevel"          5]
+               ["Kaneonuskatew Eiran"  6]
+               ["Kfir Caj"             7]
+               ["Nils Gotam"           8]
+               ["Plato Yeshua"         9]
+               ["Quentin Sören"       10]
+               ["Rüstem Hebel"        11]
+               ["Shad Ferdynand"      12]
+               ["Simcha Yan"          13]
+               ["Spiros Teofil"       14]
+               ["Szymon Theutrich"    15]]
+     :columns [(format-name "name")
+               "count"]
+     :cols    [(users-col :name)
+               (cumulative-count-col users-col :id)]}
+  (format-rows-by [str int] (run-query users
+                              (ql/aggregation (ql/cum-count))
+                              (ql/breakout $name))))
+
+
+;;; Cumulative count w/ a different breakout field that requires grouping
+(qp-expect-with-all-engines
+    {:columns [(format-name "price")
+               "count"]
+     :cols    [(venues-col :price)
+               (cumulative-count-col venues-col :id)]
+     :rows    [[1 22]
+               [2 81]
+               [3 94]
+               [4 100]]}
+  (format-rows-by [int int] (run-query venues
+                              (ql/aggregation (ql/cum-count))
+                              (ql/breakout $price))))
+
+
+;;; ------------------------------------------------------------ STDDEV AGGREGATION ------------------------------------------------------------
+
 (qp-expect-with-engines (engines-that-support :standard-deviation-aggregations)
   {:columns ["stddev"]
    :cols    [(aggregate-col :stddev (venues-col :latitude))]
@@ -713,9 +770,9 @@
                [:status :error]))
 
 
-;;; ## order_by aggregate fields (SQL-only for the time being)
+;;; ------------------------------------------------------------ order_by aggregate fields ------------------------------------------------------------
 
-;;; ### order_by aggregate ["count"]
+;;; order_by aggregate ["count"]
 (qp-expect-with-all-engines
   {:columns [(format-name "price")
              "count"]
@@ -731,7 +788,7 @@
                               (ql/order-by (ql/asc (ql/aggregate-field 0))))))
 
 
-;;; ### order_by aggregate ["sum" field-id]
+;;; order_by aggregate ["sum" field-id]
 (qp-expect-with-all-engines
   {:columns [(format-name "price")
              "sum"]
@@ -747,7 +804,7 @@
                               (ql/order-by (ql/desc (ql/aggregate-field 0))))))
 
 
-;;; ### order_by aggregate ["distinct" field-id]
+;;; order_by aggregate ["distinct" field-id]
 (qp-expect-with-all-engines
   {:columns [(format-name "price")
              "count"]
@@ -763,7 +820,7 @@
                               (ql/order-by (ql/asc (ql/aggregate-field 0))))))
 
 
-;;; ### order_by aggregate ["avg" field-id]
+;;; order_by aggregate ["avg" field-id]
 (expect-with-non-timeseries-dbs
   {:columns [(format-name "price")
              "avg"]
@@ -779,7 +836,7 @@
          (ql/order-by (ql/asc (ql/aggregate-field 0))))
        :data (format-rows-by [int int])))
 
-;;; ### order_by aggregate ["stddev" field-id]
+;;; order_by aggregate ["stddev" field-id]
 ;; MySQL has a nasty tendency to return different results on different systems so just round everything to the nearest int.
 ;; It also seems to give slightly different results than less-sucky DBs as evidenced below
 (datasets/expect-with-engines (engines-that-support :standard-deviation-aggregations)
@@ -797,7 +854,9 @@
          (ql/order-by (ql/desc (ql/aggregate-field 0))))
        :data (format-rows-by [int (comp int math/round)])))
 
-;;; ### make sure that rows where visibility_type = details-only are included and properly marked up
+
+;;; ------------------------------------------------------------ :details-only fields  ------------------------------------------------------------
+;; make sure that rows where visibility_type = details-only are included and properly marked up
 (expect-with-non-timeseries-dbs
   [(set (venues-cols))
    #{(venues-col :category_id)
@@ -819,7 +878,7 @@
          (get-col-names))]))
 
 
-;;; ## :sensitive fields
+;;; ------------------------------------------------------------ :sensitive fields ------------------------------------------------------------
 ;;; Make sure :sensitive information fields are never returned by the QP
 (qp-expect-with-all-engines
     {:columns (->columns "id" "name" "last_login")
@@ -1145,9 +1204,11 @@
        rows (format-rows-by [identity int])))
 
 
-;;; # New Filter Types - CONTAINS, STARTS_WITH, ENDS_WITH
+;;; +----------------------------------------------------------------------------------------------------------------------+
+;;; |                                  NEW FILTER TYPES - CONTAINS, STARTS_WITH, ENDS_WITH                                 |
+;;; +----------------------------------------------------------------------------------------------------------------------+
 
-;;; ## STARTS_WITH
+;;; ------------------------------------------------------------ STARTS_WITH ------------------------------------------------------------
 (expect-with-non-timeseries-dbs
   [[41 "Cheese Steak Shop" 18 37.7855 -122.44  1]
    [74 "Chez Jay"           2 34.0104 -118.493 2]]
@@ -1157,7 +1218,7 @@
       rows formatted-venues-rows))
 
 
-;;; ## ENDS_WITH
+;;; ------------------------------------------------------------ ENDS_WITH ------------------------------------------------------------
 (expect-with-non-timeseries-dbs
   [[ 5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]
    [ 7 "Don Day Korean Restaurant"    44 34.0689 -118.305 2]
@@ -1169,7 +1230,7 @@
         (ql/order-by (ql/asc $id)))
       rows formatted-venues-rows))
 
-;;; ## CONTAINS
+;;; ------------------------------------------------------------ CONTAINS ------------------------------------------------------------
 (expect-with-non-timeseries-dbs
   [[31 "Bludso's BBQ"             5 33.8894 -118.207 2]
    [34 "Beachwood BBQ & Brewing" 10 33.7701 -118.191 2]
@@ -1179,7 +1240,7 @@
         (ql/order-by (ql/asc $id)))
       rows formatted-venues-rows))
 
-;;; ## Nested AND / OR
+;;; ------------------------------------------------------------ Nested AND / OR ------------------------------------------------------------
 
 (expect-with-non-timeseries-dbs
   [[81]]
@@ -1191,7 +1252,7 @@
        rows (format-rows-by [int])))
 
 
-;;; ## = / != with multiple values
+;;; ------------------------------------------------------------ = / != with multiple values ------------------------------------------------------------
 
 (expect-with-non-timeseries-dbs
   [[81]]
@@ -1209,11 +1270,11 @@
 
 
 ;; +-------------------------------------------------------------------------------------------------------------+
-;; |                                                NEW DATE STUFF                                               |
+;; |                                       DATE BUCKETING & RELATIVE DATES                                       |
 ;; +-------------------------------------------------------------------------------------------------------------+
 
 
-;; ## BUCKETING
+;;; ------------------------------------------------------------ BUCKETING ------------------------------------------------------------
 
 (defn- sad-toucan-incidents-with-bucketing [unit]
   (->> (with-db (get-or-create-database! defs/sad-toucan-incidents)
@@ -1564,7 +1625,11 @@
   (date-bucketing-unit-when-you :breakout-by "hour", :filter-by "day"))
 
 
-;;; `not` filter -- Test that we can negate the various other filter clauses
+;;; +----------------------------------------------------------------------------------------------------------------------+
+;;; |                                                      NOT FILTER                                                      |
+;;; +----------------------------------------------------------------------------------------------------------------------+
+
+;; `not` filter -- Test that we can negate the various other filter clauses
 ;; The majority of these tests aren't necessary since `not` automatically translates them to simpler, logically equivalent expressions
 ;; but I already wrote them so in this case it doesn't hurt to have a little more test coverage than we need
 ;; TODO - maybe it makes sense to have a separate namespace to test the Query eXpander so we don't need to run all these extra queries?
@@ -1664,7 +1729,9 @@
                                                                     (ql/contains $name "BBQ"))))))
 
 
-;;; MIN & MAX
+;;; +----------------------------------------------------------------------------------------------------------------------+
+;;; |                                                      MIN & MAX                                                       |
+;;; +----------------------------------------------------------------------------------------------------------------------+
 
 (expect-with-non-timeseries-dbs [1] (first-row (run-query venues
                                                  (ql/aggregation (ql/min $price)))))
@@ -1687,7 +1754,9 @@
             (ql/breakout $price)))))
 
 
-;;; ------------------------------------------------------------ EXPRESSIONS ------------------------------------------------------------
+;;; +----------------------------------------------------------------------------------------------------------------------+
+;;; |                                                     EXPRESSIONS                                                      |
+;;; +----------------------------------------------------------------------------------------------------------------------+
 
 ;; Test the expansion of the expressions clause
 (expect

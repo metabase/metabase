@@ -101,7 +101,7 @@
 (defn- process-user-activity [topic object]
   ;; we only care about login activity when its the users first session (a.k.a. new user!)
   (when (and (= :user-login topic)
-             (= (:session_id object) (first-session-for-user (:user_id object))))
+             (:first_login object))
     (activity/record-activity
       :topic    :user-joined
       :user-id  (:user_id object)
@@ -116,8 +116,8 @@
       (case (events/topic->model topic)
         "card"      (process-card-activity topic object)
         "dashboard" (process-dashboard-activity topic object)
-        "install"   (when-not (db/sel :one :fields [Activity :id])
-                      (db/ins Activity :topic "install" :model "install"))
+        "install"   (when-not (db/exists? Activity)
+                      (db/ins Activity, :topic "install", :model "install"))
         "metric"    (process-metric-activity topic object)
         "pulse"     (process-pulse-activity topic object)
         "segment"   (process-segment-activity topic object)

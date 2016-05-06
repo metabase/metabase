@@ -16,6 +16,7 @@ export default class OnClickOutsideWrapper extends ClickOutComponent {
         this.timeout = setTimeout(() => {
             popoverStack.push(this);
             // HACK: set the z-index of the parent element to ensure it's always on top
+            // NOTE: this actually doesn't seem to be working correctly for popovers since PopoverBody creates a stacking context
             ReactDOM.findDOMNode(this).parentNode.style.zIndex = popoverStack.length + 2; // HACK: add 2 to ensure it's in front of main and nav elements
         }, 10);
     }

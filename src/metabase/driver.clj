@@ -6,8 +6,8 @@
             [medley.core :as m]
             [metabase.db :refer [ins sel upd]]
             (metabase.models [database :refer [Database]]
-                             [query-execution :refer [QueryExecution]])
-            [metabase.models.setting :refer [defsetting]]
+                             [query-execution :refer [QueryExecution]]
+                             [setting :refer [defsetting]])
             [metabase.util :as u])
   (:import clojure.lang.Keyword))
 
@@ -142,7 +142,7 @@
         :rows    [[1 \"Lucky Bird\"]
                   [2 \"Rasta Can\"]]}")
 
-  (process-structured [this, ^Map query]
+  (process-mbql [this, ^Map query]
     "Process a native or structured QUERY. This function is called by `metabase.driver/process-query` after performing various driver-unspecific
      steps like Query Expansion and other preprocessing.
 
@@ -309,7 +309,7 @@
   {:pre [engine]}
   (or ((keyword engine) @registered-drivers)
       (let [namespce (symbol (format "metabase.driver.%s" (name engine)))]
-        (u/try-ignore-exceptions (require namespce))
+        (u/ignore-exceptions (require namespce))
         ((keyword engine) @registered-drivers))))
 
 

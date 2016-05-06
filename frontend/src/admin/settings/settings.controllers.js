@@ -117,6 +117,16 @@ const SECTIONS = [
                 autoFocus: false
             },
         ]
+    },
+    {
+        name: "Updates",
+        settings: [
+            {
+                key: "check-for-updates",
+                display_name: "Check for updates",
+                type: "boolean"
+            }
+        ]
     }
 ];
 
@@ -163,5 +173,7 @@ SettingsAdminControllers.controller('SettingsEditor', ['$scope', '$location', 'S
             updatedSection.settings = sectionSettings;
             return updatedSection;
         });
+
+        $scope.settings = settings;
     }
 ]);

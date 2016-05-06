@@ -73,7 +73,6 @@
 
 .Query-filterList {
     display: flex;
-    overflow-x: auto;
     overflow-y: hidden;
     white-space: nowrap;
     min-height: 55px;

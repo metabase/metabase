@@ -71,7 +71,7 @@ export default class MetadataTableList extends Component {
         }
 
         return (
-            <div className="MetadataEditor-table-list AdminList">
+            <div className="MetadataEditor-table-list AdminList flex-no-shrink">
                 <div className="AdminList-search">
                     <Icon name="search" width="16" height="16"/>
                     <input

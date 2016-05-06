@@ -428,7 +428,8 @@
   (do
     (k/delete Activity)
     (process-activity-event {:topic :user-login
-                             :item  {:user_id    user-id
-                                     :session_id session-id}})
+                             :item  {:user_id     user-id
+                                     :session_id  session-id
+                                     :first_login true}})
     (-> (db/sel :one Activity :topic "user-joined")
         (select-keys [:topic :user_id :model :model_id :details]))))

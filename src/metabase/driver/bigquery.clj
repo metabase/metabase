@@ -33,7 +33,7 @@
 
 (def ^:private ^:const ^String redirect-uri "urn:ietf:wg:oauth:2.0:oob")
 
-(defn- execute
+(defn- execute-no-auto-retry
   "`execute` REQUEST, and catch any `GoogleJsonResponseException` is
   throws, converting them to `ExceptionInfo` and rethrowing them."
   [^AbstractGoogleClientRequest request]
@@ -43,6 +43,15 @@
            (throw (ex-info (or (.getMessage error)
                                (.getStatusMessage e))
                            (into {} error)))))))
+
+(defn- execute
+  "`execute` REQUEST, and catch any `GoogleJsonResponseException` is
+  throws, converting them to `ExceptionInfo` and rethrowing them.
+
+  This automatically retries any failed requests up to 2 times."
+  [^AbstractGoogleClientRequest request]
+  (u/auto-retry 2
+    (execute-no-auto-retry request)))
 
 (defn- ^Bigquery credential->client [^GoogleCredential credential]
   (.build (doto (Bigquery$Builder. http-transport json-factory credential)
@@ -181,8 +190,7 @@
    "STRING"    identity
    "TIMESTAMP" parse-timestamp-str})
 
-(def ^:private ^:const query-timeout-error-message "Query timed out.")
-(def ^:private ^:const query-default-timeout-seconds 20)
+(def ^:private ^:const query-default-timeout-seconds 60)
 
 (defn- post-process-native
   ([^QueryResponse response]
@@ -192,7 +200,7 @@
      ;; 99% of the time by the time this is called `.getJobComplete` will return `true`. On the off chance it doesn't, wait a few seconds for the job to finish.
      (do
        (when (zero? timeout-seconds)
-         (throw (ex-info query-timeout-error-message (into {} response))))
+         (throw (ex-info "Query timed out." (into {} response))))
        (Thread/sleep 1000)
        (post-process-native response (dec timeout-seconds)))
      ;; Otherwise the job *is* complete
@@ -211,17 +219,10 @@
                          (parser v)))))}))))
 
 (defn- process-native* [database query-string]
-  ;; Automatically retry the query a single time if it timed out
-  (let [do-query (fn [] (post-process-native (execute-query database query-string)))]
-    (try
-      (do-query)
-      (catch clojure.lang.ExceptionInfo e
-        (if (= (.getMessage e) query-timeout-error-message)
-          ;; If this was a timeout error, retry
-          (do (log/info "Query timed out, retrying...")
-              (do-query))
-          ;; Otherwise re-throw exception
-          (throw e))))))
+  ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by `execute` so operations going through `process-native*` may be
+  ;; retried up to 3 times.
+  (u/auto-retry 1
+    (post-process-native (execute-query database query-string))))
 
 (defn- process-native [{database-id :database, {native-query :query} :native}]
   (process-native* (Database database-id) native-query))
@@ -330,7 +331,7 @@
          (log/error (u/format-color 'red "Couldn't convert korma form to SQL:\n%s" (sqlqp/pprint-korma-form korma-form)))
          (throw e))))
 
-(defn- post-process-structured [dataset-id table-name {:keys [columns rows]}]
+(defn- post-process-mbql [dataset-id table-name {:keys [columns rows]}]
   ;; Since we don't alias column names the come back like "veryNiceDataset_shakepeare_corpus". Strip off the dataset and table IDs
   (let [demangle-name (u/rpartial s/replace (re-pattern (str \^ dataset-id \_ table-name \_)) "")
         columns       (for [column columns]
@@ -338,12 +339,12 @@
     (for [row rows]
       (zipmap columns row))))
 
-(defn- process-structured [{{{:keys [dataset-id]} :details, :as database} :database, {{table-name :name} :source-table} :query, :as query}]
+(defn- process-mbql [{{{:keys [dataset-id]} :details, :as database} :database, {{table-name :name} :source-table} :query, :as query}]
   {:pre [(map? database) (seq dataset-id) (seq table-name)]}
   (let [korma-form (korma-form query (entity dataset-id table-name))
         sql        (korma-form->sql korma-form)]
     (sqlqp/log-korma-form korma-form sql)
-    (post-process-structured dataset-id table-name (process-native* database sql))))
+    (post-process-mbql dataset-id table-name (process-native* database sql))))
 
 ;; This provides an implementation of `prepare-value` that prevents korma from converting forms to prepared statement parameters (`?`)
 ;; TODO - Move this into `metabase.driver.generic-sql` and document it as an alternate implementation for `prepare-value` (?)
@@ -444,6 +445,6 @@
                                                :required     true}])
           :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)
           :process-native        (u/drop-first-arg process-native)
-          :process-structured    (u/drop-first-arg process-structured)}))
+          :process-mbql          (u/drop-first-arg process-mbql)}))
 
 (driver/register-driver! :bigquery (BigQueryDriver.))

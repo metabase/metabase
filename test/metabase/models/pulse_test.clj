@@ -1,6 +1,5 @@
 (ns metabase.models.pulse-test
-  (:require [clojure.tools.macro :refer [symbol-macrolet]]
-            [expectations :refer :all]
+  (:require [expectations :refer :all]
             [medley.core :as m]
             [metabase.db :as db]
             (metabase.models [card :refer [Card]]
@@ -19,7 +18,7 @@
   (dissoc (fetch-user username) :date_joined :last_login))
 
 ;; create a channel then select its details
-(defn create-pulse-then-select
+(defn- create-pulse-then-select!
   [name creator cards channels]
   (let [{:keys [cards channels] :as pulse} (create-pulse name creator cards channels)]
     (-> pulse
@@ -29,7 +28,7 @@
                            (-> (dissoc channel :id :pulse_id :created_at :updated_at)
                                (m/dissoc-in [:details :emails])))))))
 
-(defn update-pulse-then-select
+(defn- update-pulse-then-select!
   [pulse]
   (let [{:keys [cards channels] :as pulse} (update-pulse pulse)]
     (-> pulse
@@ -133,7 +132,7 @@
                  :description nil
                  :display     "table"}]}
   (tu/with-temp Card [{:keys [id]} {:name "Test Card"}]
-    (create-pulse-then-select "Booyah!" (user->id :rasta) [id] [{:channel_type  :email
+    (create-pulse-then-select! "Booyah!" (user->id :rasta) [id] [{:channel_type  :email
                                                                  :schedule_type :daily
                                                                  :schedule_hour 18
                                                                  :recipients    [{:email "foo@bar.com"}]}])))
@@ -167,7 +166,7 @@
   (tu/with-temp* [Pulse [{pulse-id :id}]
                   Card  [{card-id-1 :id} {:name "Test Card"}]
                   Card  [{card-id-2 :id} {:name "Bar Card", :display :bar}]]
-    (update-pulse-then-select {:id         pulse-id
+    (update-pulse-then-select! {:id         pulse-id
                                :name       "We like to party"
                                :creator_id (user->id :crowberto)
                                :cards      [card-id-2 card-id-1]

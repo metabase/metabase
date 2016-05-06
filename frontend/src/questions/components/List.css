@@ -72,14 +72,22 @@
 :local(.rightIcons) {
     composes: icons;
 }
+
 :local(.extraIcons) {
     composes: icons;
     composes: absolute top full-height from "style";
-    left: 100%;
+    right: -40px;
+}
+
+/* hack fix for IE 11 which was hiding the archive icon */
+@media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
+  :local(.extraIcons) {
+      composes: icons;
+  }
 }
 
 :local(.icon) {
-    composes: cursor-pointer from "style";
+    composes: relative cursor-pointer from "style";
     color: var(--muted-color);
 }
 

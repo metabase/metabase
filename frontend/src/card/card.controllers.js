@@ -3,7 +3,7 @@
 import React from "react";
 import ReactDOM from "react-dom";
 
-import DataReference from '../query_builder/DataReference.jsx';
+import DataReference from '../query_builder/dataref/DataReference.jsx';
 import GuiQueryEditor from '../query_builder/GuiQueryEditor.jsx';
 import NativeQueryEditor from '../query_builder/NativeQueryEditor.jsx';
 import QueryHeader from '../query_builder/QueryHeader.jsx';
@@ -16,7 +16,7 @@ import i from "icepick";
 import moment from "moment";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import DataGrid from "metabase/lib/data_grid";
+import * as DataGrid from "metabase/lib/data_grid";
 import Query from "metabase/lib/query";
 import { createQuery } from "metabase/lib/query";
 import { createCard, serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
@@ -149,6 +149,20 @@ CardControllers.controller('CardDetail', [
                     prefix: prefix
                 });
                 return apiCall.$promise;
+            },
+            getModeInfo: function() {
+                let databaseID = card ? card.dataset_query.database : null,
+                    database   = _.findWhere(databases, { id: databaseID }),
+                    engine     = database ? database.engine : null;
+
+                return {
+                    mode: engine === 'druid' || engine === 'mongo' ? 'ace/mode/json'  :
+                          engine === 'mysql'                       ? 'ace/mode/mysql' :
+                          engine === 'postgres'                    ? 'ace/mode/pgsql' :
+                          engine === 'sqlserver'                   ? 'ace/mode/sqlserver' :
+                                                                     'ace/mode/sql',
+                    description: engine === 'druid' || engine === 'mongo' ? 'JSON' : 'SQL'
+                };
             }
         };
 
@@ -187,7 +201,7 @@ CardControllers.controller('CardDetail', [
                     } else if (column.unit != null) {
                         field = ["datetime_field", column.id, "as", column.unit];
                     } else {
-                        field = ["field-id", column.id];
+                        field = column.id;
                     }
 
                     let dataset_query = card.dataset_query,

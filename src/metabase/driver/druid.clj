@@ -10,6 +10,7 @@
             (metabase.models [database :refer [Database]]
                              [field :as field]
                              [table :as table])
+            [metabase.query-processor.annotate :as annotate]
             [metabase.util :as u]))
 
 ;;; ### Request helper fns
@@ -55,24 +56,32 @@
   {:pre [(map? query)]}
   (try (vec (POST (details->url details "/druid/v2"), :body query))
        (catch Throwable e
-         ;; try to print the error
-         (try (log/error (u/format-color 'red "Error running query:\n  %s"
-                           (:error (json/parse-string (:body (:object (ex-data e))) keyword)))) ; TODO - log/error
-              (catch Throwable _))
-         ;; re-throw exception either way
-         (throw e))))
+         ;; try to extract the error
+         (let [message (or (u/ignore-exceptions
+                             (:error (json/parse-string (:body (:object (ex-data e))) keyword)))
+                           (.getMessage e))]
+
+           (log/error (u/format-color 'red "Error running query:\n%s" message))
+           ;; Re-throw a new exception with `message` set to the extracted message
+           (throw (Exception. message e))))))
 
 
-(defn- process-structured [query]
+(defn- process-mbql [query]
   ;; Merge `:settings` into the inner query dict so the QP has access to it
-  (qp/process-structured-query (partial do-query (get-in query [:database :details]))
-                               (assoc (:query query)
-                                      :settings (:settings query))))
+  (qp/process-mbql-query (partial do-query (get-in query [:database :details]))
+                         (assoc (:query query)
+                                :settings (:settings query))))
 
 (defn- process-native [{database-id :database, {query :query} :native}]
-  {:pre [(integer? database-id)]}
-  (let-404 [details (sel :one :field [Database :details] :id database-id)]
-    (do-query details query)))
+  {:pre [(integer? database-id) query]}
+  (let-404 [details (sel :one :field [Database :details], :id database-id)]
+    (let [query (if (string? query)
+                  (json/parse-string query keyword)
+                  query)]
+      ;; `annotate` happens automatically as part of the QP middleware for MBQL queries but not for native ones.
+      ;; This behavior was originally so we could preserve column order for raw SQL queries.
+      ;; Since Druid results come back as maps for each row there is no order to preserve so we can go ahead and re-use the MBQL-QP annotation code here.
+      (annotate/annotate query (qp/post-process-native query (do-query details query))))))
 
 
 ;;; ### Sync
@@ -82,7 +91,7 @@
          ;; all dimensions are Strings, and all metrics as JS Numbers, I think (?)
          ;; string-encoded booleans + dates are treated as strings (!)
          (if (= :metric druid-field-type)
-           {:field-type :metric, :base-type :FloatField}
+           {:field-type :metric,    :base-type :FloatField}
            {:field-type :dimension, :base-type :TextField})))
 
 (defn- describe-table [database table]
@@ -174,6 +183,6 @@
           :features              (constantly #{:set-timezone})
           :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)
           :process-native        (u/drop-first-arg process-native)
-          :process-structured    (u/drop-first-arg process-structured)}))
+          :process-mbql          (u/drop-first-arg process-mbql)}))
 
 (driver/register-driver! :druid (DruidDriver.))

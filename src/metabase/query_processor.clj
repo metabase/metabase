@@ -6,10 +6,11 @@
             [medley.core :as m]
             schema.utils
             [swiss.arrows :refer [<<-]]
-            [metabase.db :as db]
-            [metabase.driver :as driver]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.query-execution :refer [QueryExecution]]
+            (metabase [config :as config]
+                      [db :as db]
+                      [driver :as driver])
+            (metabase.models [field :refer [Field]]
+                             [query-execution :refer [QueryExecution]])
             (metabase.query-processor [annotate :as annotate]
                                       [expand :as expand]
                                       [interface :refer :all]
@@ -40,14 +41,13 @@
 ;;; +----------------------------------------------------------------------------------------------------+
 
 
-(defn structured-query?
-  "Predicate function which returns `true` if the given query represents a structured style query, `false` otherwise."
+(defn mbql-query?
+  "Is the given query an MBQL query?"
   [query]
   (= :query (keyword (:type query))))
 
-(defn rows-query-without-limits?
-  "Predicate function which returns `true` if the given query is a :rows type aggregated structured query
-   without a `:limit` or `:page` clause which constrains its resulting rows, `false` otherwise."
+(defn- query-without-aggregations-or-limits?
+  "Is the given query an MBQL query without a `:limit`, `:aggregation`, or `:page` clause?"
   [{{{ag-type :aggregation-type} :aggregation, :keys [limit page]} :query}]
   (and (not limit)
        (not page)
@@ -60,14 +60,13 @@
           :error          (or (.getMessage e) (str e))
           :stacktrace     (u/filtered-stacktrace e)
           :query          (dissoc query :database :driver)
-          :expanded-query (when (structured-query? query)
-                            (try (dissoc (resolve/resolve (expand/expand query)) :database :driver)
-                                 (catch Throwable _)))}
+          :expanded-query (when (mbql-query? query)
+                            (u/ignore-exceptions
+                              (dissoc (resolve/resolve (expand/expand query)) :database :driver)))}
          (when-let [data (ex-data e)]
            {:ex-data data})
          additional-info))
 
-;; TODO - should this be moved to metabase.util ?
 (defn- explain-schema-validation-error
   "Return a nice error message to explain the schema validation error."
   [error]
@@ -131,9 +130,9 @@
   [qp]
   (fn [query]
     ;; if necessary, handle macro substitution
-    (let [query (if-not (structured-query? query)
+    (let [query (if-not (mbql-query? query)
                   query
-                  ;; for structured queries run our macro expansion
+                  ;; for MBQL queries run our macro expansion
                   (u/prog1 (macros/expand-macros query)
                     (when (and (not *disable-qp-logging*)
                                (not= <> query))
@@ -147,9 +146,9 @@
   [qp]
   (fn [query]
     ;; if necessary, expand/resolve the query
-    (let [query (if-not (structured-query? query)
+    (let [query (if-not (mbql-query? query)
                   query
-                  ;; for structured queries we expand first, then resolve
+                  ;; for MBQL queries we expand first, then resolve
                   (resolve/resolve (expand/expand query)))]
       (qp query))))
 
@@ -158,7 +157,7 @@
   "Wrap the results of a successfully processed query in the format expected by the frontend (add `row_count` and `status`)."
   [qp]
   (fn [{{:keys [max-results max-results-bare-rows]} :constraints, :as query}]
-    (let [results-limit (or (when (rows-query-without-limits? query)
+    (let [results-limit (or (when (query-without-aggregations-or-limits? query)
                               max-results-bare-rows)
                             max-results
                             absolute-max-results)
@@ -192,7 +191,7 @@
 
 
 (defn- should-add-implicit-fields? [{{:keys [fields breakout], {ag-type :aggregation-type} :aggregation} :query, :as query}]
-  (and (structured-query? query)
+  (and (mbql-query? query)
        (not (or ag-type
                 (seq breakout)
                 (seq fields)))))
@@ -210,9 +209,8 @@
                       :parent_id       nil
                       (k/order :position :asc)
                       (k/order :id :desc))]
-    (let [field (-> (resolve/rename-mb-field-keys field)
-                    map->Field
-                    (resolve/resolve-table {source-table-id source-table}))]
+    (let [field (resolve/resolve-table (map->Field (resolve/rename-mb-field-keys field))
+                                       {source-table-id source-table})]
       (if (datetime-field? field)
         (map->DateTimeField {:field field, :unit :default})
         field))))
@@ -239,21 +237,20 @@
   "`Fields` specified in `breakout` should add an implicit ascending `order-by` subclause *unless* that field is *explicitly* referenced in `order-by`."
   [qp]
   (fn [{{breakout-fields :breakout, order-by :order-by} :query, :as query}]
-    (if (structured-query? query)
+    (if (mbql-query? query)
       (let [order-by-fields                   (set (map :field order-by))
             implicit-breakout-order-by-fields (filter (partial (complement contains?) order-by-fields)
                                                       breakout-fields)]
         (qp (cond-> query
               (seq implicit-breakout-order-by-fields) (update-in [:query :order-by] concat (for [field implicit-breakout-order-by-fields]
                                                                                              {:field field, :direction :ascending})))))
-      ;; for non-structured queries we do nothing
+      ;; for non-MBQL queries we do nothing
       (qp query))))
 
 
 (defn- pre-cumulative-sum
   "Rewrite queries containing a cumulative sum (`cum_sum`) aggregation to simply fetch the values of the aggregate field instead.
    (Cumulative sum is a special case; it is implemented in post-processing).
-
    Return a pair of [`cumulative-sum-field?` `query`]."
   [{{{ag-type :aggregation-type, ag-field :field} :aggregation, breakout-fields :breakout} :query, :as query}]
   (let [cum-sum?                    (= ag-type :cumulative-sum)
@@ -269,9 +266,10 @@
     (cond
       ;; If there's only one breakout field that is the same as the cum_sum field, re-write this as a "rows" aggregation
       ;; to just fetch all the values of the field in question.
-      cum-sum-with-same-breakout? [ag-field (update-in query [:query] #(-> %
-                                                                           (dissoc :breakout :aggregation)
-                                                                           (assoc :fields [ag-field])))]
+      cum-sum-with-same-breakout? [ag-field (update query :query (fn [query]
+                                                                   (-> query
+                                                                       (dissoc :breakout :aggregation)
+                                                                       (assoc :fields [ag-field]))))]
 
       ;; Otherwise if we're breaking out on different fields, rewrite the query as a "sum" aggregation
       cum-sum-with-breakout? [ag-field (assoc-in query [:query :aggregation] {:aggregation-type :sum, :field ag-field})]
@@ -279,7 +277,7 @@
       ;; Cumulative sum without any breakout fields should just be treated the same way as "sum". Rewrite query as such
       cum-sum? [false (assoc-in query [:query :aggregation] {:aggregation-type :sum, :field ag-field})]
 
-      ;; Otherwise if this isn't a cum_sum query return it as-is
+      ;; Otherwise if this isn't a cumulative sum query return it as-is
       :else [false query])))
 
 
@@ -287,14 +285,14 @@
   "Cumulative sum the values of the aggregate `Field` in RESULTS."
   [cum-sum-field {rows :rows, cols :cols, :as results}]
   (let [ ;; Determine the index of the field we need to cumulative sum
-        cum-sum-field-index (u/first-index-satisfying #(or (= (:name %) "sum")
-                                                           (= (:id %) (:field-id cum-sum-field)))
-                                                      cols)
-        _                   (assert (integer? cum-sum-field-index))
+        cum-sum-field-index (u/prog1 (u/first-index-satisfying (fn [{:keys [name id]}]
+                                                                 (or (= name "sum")
+                                                                     (= id   (:field-id cum-sum-field))))
+                                                               cols)
+                              (assert (integer? <>)))
         ;; Now make a sequence of cumulative sum values for each row
-        values              (->> rows
-                                 (map #(nth % cum-sum-field-index))
-                                 (reductions +))
+        values              (reductions + (for [row rows]
+                                            (nth row cum-sum-field-index)))
         ;; Update the values in each row
         rows                (map (fn [row value]
                                    (assoc (vec row) cum-sum-field-index value))
@@ -304,22 +302,74 @@
 
 (defn- cumulative-sum [qp]
   (fn [query]
-    (if (structured-query? query)
+    (if (mbql-query? query)
       (let [[cumulative-sum-field query] (pre-cumulative-sum query)]
         (cond->> (qp query)
                  cumulative-sum-field (post-cumulative-sum cumulative-sum-field)))
-      ;; for non-structured queries we do nothing
+      ;; for non-MBQL queries we do nothing
+      (qp query))))
+
+
+(defn- pre-cumulative-count
+  "Rewrite queries containing a cumulative count (`cum_count`) aggregation as `count` aggregation queries instead.
+   (Cumulative count is a special case; it is implemented in post-processing).
+
+   Returns a pair like `[is-cumulative-count-query? query]`."
+  [{{{ag-type :aggregation-type} :aggregation, breakout-fields :breakout} :query, :as query}]
+  (let [cum-count?               (= ag-type :cumulative-count)
+        cum-count-with-breakout? (and cum-count?
+                                    (seq breakout-fields))]
+
+    ;; Cumulative count is only applicable if it has breakout field(s)
+    ;; Cumulative counting happens in post-processing
+    (cond
+      ;; If we have breakout field(s), rewrite the query as a "count" aggregation
+      cum-count-with-breakout? [true (assoc-in query [:query :aggregation] {:aggregation-type :count})]
+
+      ;; Cumulative count without any breakout fields should just be treated the same way as "count". Rewrite query as such
+      cum-count? [false (assoc-in query [:query :aggregation] {:aggregation-type :count})]
+
+      ;; Otherwise if this isn't a cumulative count query return it as-is
+      :else [false query])))
+
+
+(defn- post-cumulative-count
+  "Cumulative count the values of the aggregate `Field` in RESULTS."
+  [{rows :rows, cols :cols, :as results}]
+  (let [ ;; Determine the index of the count field; this is what we need to cumulative count
+        cum-count-field-index (u/prog1 (u/first-index-satisfying (comp (partial = "count") :name)
+                                                                 cols)
+                                (assert (integer? <>)))
+        ;; Now make a sequence of cumulative count values for each row
+        values                 (reductions + (for [row rows]
+                                               (nth row cum-count-field-index)))
+        ;; Update the values in each row
+        rows                   (map (fn [row value]
+                                      (assoc (vec row) cum-count-field-index value))
+                                    rows values)]
+    (assoc results :rows rows)))
+
+
+(defn- cumulative-count [qp]
+  (fn [query]
+    (if (mbql-query? query)
+      (let [[is-cumulative-count? query] (pre-cumulative-count query)
+            results                      (qp query)]
+        (if is-cumulative-count?
+          (post-cumulative-count results)
+          results))
+      ;; for non-MBQL queries we do nothing
       (qp query))))
 
 
 (defn- limit
-  "Add an implicit `limit` clause to queries with `rows` aggregations, and limit the maximum number of rows that can be returned in post-processing."
+  "Add an implicit `limit` clause to MBQL queries without any aggregations, and limit the maximum number of rows that can be returned in post-processing."
   [qp]
   (fn [{{:keys [max-results max-results-bare-rows]} :constraints, :as query}]
     (let [query   (cond-> query
-                    (rows-query-without-limits? query) (assoc-in [:query :limit] (or max-results-bare-rows
-                                                                                     max-results
-                                                                                     absolute-max-results)))
+                    (query-without-aggregations-or-limits? query) (assoc-in [:query :limit] (or max-results-bare-rows
+                                                                                                max-results
+                                                                                                absolute-max-results)))
           results (qp query)]
       (update results :rows (partial take (or max-results
                                               absolute-max-results))))))
@@ -329,17 +379,17 @@
   "QP middleware that runs directly after the the query is run and adds metadata as appropriate."
   [qp]
   (fn [query]
-    (if-not (structured-query? query)
-      ;; non-structured queries are not affected
-      (qp query)
-      ;; for structured queries capture the results and annotate
-      (let [results (qp query)]
+    (let [results (qp query)]
+      (if-not (mbql-query? query)
+        ;; non-MBQL queries are not affected
+        results
+        ;; for MBQL queries capture the results and annotate
         (annotate/annotate query results)))))
 
 
 (defn- pre-log-query [qp]
   (fn [query]
-    (when (and (structured-query? query)
+    (when (and (mbql-query? query)
                (not *disable-qp-logging*))
       (log/debug (u/format-color 'magenta "\nPREPROCESSED/EXPANDED: 😻\n%s"
                    (u/pprint-to-str
@@ -355,14 +405,18 @@
     (qp query)))
 
 
-(defn- wrap-guard-multiple-calls
-  "Throw an exception if a QP function accidentally calls (QP QUERY) more than once."
-  [qp]
-  (let [called? (atom false)]
-    (fn [query]
-      (assert (not @called?) "(QP QUERY) IS BEING CALLED MORE THAN ONCE!")
-      (reset! called? true)
-      (qp query))))
+(def ^:private guard-multiple-calls
+  "Throw an exception if a QP function accidentally calls (QP QUERY) more than once (this is only done during testing)."
+  (if-not config/is-test?
+    ;; if this isn't testing then we'll just return the `qp` function as-is
+    identity
+    (fn [qp]
+      (let [called? (atom false)]
+        (fn [query]
+          (assert (not @called?) "(QP QUERY) IS BEING CALLED MORE THAN ONCE!")
+          (reset! called? true)
+          (qp query))))))
+;; TODO - maybe the QP middleware pattern should have a way to inject arbitary middleware? Then this function can be injected by the test code and not even be present in the normal MB code
 
 
 ;;; +-------------------------------------------------------------------------------------------------------+
@@ -405,8 +459,8 @@
   (let [driver (driver/database-id->driver (:database query))]
     (binding [*driver* driver]
       (let [driver-process-in-context (partial driver/process-query-in-context driver)
-            driver-process-query      (partial (if (structured-query? query)
-                                                 driver/process-structured
+            driver-process-query      (partial (if (mbql-query? query)
+                                                 driver/process-mbql
                                                  driver/process-native) driver)]
         ((<<- wrap-catch-exceptions
               pre-add-settings
@@ -418,10 +472,11 @@
               pre-add-implicit-fields
               pre-add-implicit-breakout-order-by
               cumulative-sum
+              cumulative-count
               limit
               post-annotate
               pre-log-query
-              wrap-guard-multiple-calls
+              guard-multiple-calls
               driver-process-query) (assoc query :driver driver))))))
 
 

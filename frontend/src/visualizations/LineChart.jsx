@@ -6,4 +6,5 @@ export default class LineChart extends LineAreaBarChart {
     static displayName = "Line";
     static identifier = "line";
     static iconName = "line";
+    static noun = "line chart";
 }

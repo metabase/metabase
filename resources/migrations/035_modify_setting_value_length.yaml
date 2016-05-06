@@ -1,0 +1,12 @@
+databaseChangeLog:
+  - changeSet:
+      id: 35
+      author: agilliland
+      changes:
+        - modifyDataType:
+            tableName: setting
+            columnName: value
+            newDataType: TEXT
+        - addNotNullContstraint:
+            tableName: setting
+            columnNames: value

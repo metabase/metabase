@@ -26,7 +26,7 @@ export default class SettingsSlackForm extends Component {
     }
 
     static propTypes = {
-        elements: PropTypes.object,
+        elements: PropTypes.array,
         formErrors: PropTypes.object,
         updateSlackSettings: PropTypes.func.isRequired
     };
@@ -165,7 +165,7 @@ export default class SettingsSlackForm extends Component {
                 return (
                     <SettingsEmailFormElement
                         key={element.key}
-                        element={_.extend(element, {value, errorMessage })}
+                        element={_.extend(element, {value, errorMessage, fireOnChange: true })}
                         handleChangeEvent={this.handleChangeEvent.bind(this)} />
                 );
             } else if (element.key === "metabot-enabled") {
@@ -205,13 +205,14 @@ export default class SettingsSlackForm extends Component {
                     <h3 className="text-grey-1">Answers sent right to your Slack #channels</h3>
 
                     <div className="pt3">
-                        <a href="https://api.slack.com/web#authentication" target="_blank" className="Button Button--primary" style={{padding:0}}>
+                        <a href="https://api.slack.com/docs/oauth-test-tokens" target="_blank" className="Button Button--primary" style={{padding:0}}>
                             <div className="float-left py2 pl2">Get an API token from Slack</div>
                             <Icon className="float-right p2 text-white cursor-pointer" style={{opacity:0.6}} name="external" width={18} height={18}/>
                         </a>
                     </div>
                     <div className="py2">
                         Once you're there, click <strong>"Create token"</strong> next to the team that you want to integrate with Metabase, then copy and paste the token into the field below.
+                        Slack test tokens work fine with Metabase.
                     </div>
                 </div>
                 <ul>

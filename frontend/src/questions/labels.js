@@ -3,6 +3,8 @@ import { AngularResourceProxy, createAction, createThunkAction } from "metabase/
 import { reset } from 'redux-form';
 import { normalize, Schema, arrayOf } from 'normalizr';
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 const label = new Schema('labels');
 const LabelApi = new AngularResourceProxy("Label", ["list", "create", "update", "delete"]);
 
@@ -26,8 +28,10 @@ export const saveLabel = createThunkAction(SAVE_LABEL, (values) => {
         try {
             let response;
             if (values.id == null) {
+                MetabaseAnalytics.trackEvent("Labels", "Create");
                 response = await LabelApi.create(values);
             } else {
+                MetabaseAnalytics.trackEvent("Labels", "Update");
                 response = await LabelApi.update(values);
             }
             if (response.id != null) {
@@ -50,6 +54,7 @@ export const saveLabel = createThunkAction(SAVE_LABEL, (values) => {
 export const deleteLabel = createThunkAction(DELETE_LABEL, (id) => {
     return async (dispatch, getState) => {
         try {
+            MetabaseAnalytics.trackEvent("Labels", "Delete");
             await LabelApi.delete({ id });
             return id;
         } catch (e) {

@@ -311,7 +311,7 @@
   (binding [*query* outer-query]
       (apply-clauses driver (k/select* entity) inner-query)))
 
-(defn process-structured
+(defn process-mbql
   "Convert QUERY into a korma `select` form, execute it, and annotate the results."
   [driver {{:keys [source-table]} :query, database :database, settings :settings, :as outer-query}]
   (let [timezone     (:report-timezone settings)

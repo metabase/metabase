@@ -342,7 +342,7 @@
           :field-values-lazy-seq   field-values-lazy-seq
           :notify-database-updated notify-database-updated
           :process-native          (resolve 'metabase.driver.generic-sql.native/process-and-run)
-          :process-structured      (resolve 'metabase.driver.generic-sql.query-processor/process-structured)
+          :process-mbql            (resolve 'metabase.driver.generic-sql.query-processor/process-mbql)
           :table-rows-seq          table-rows-seq}))
 
 
