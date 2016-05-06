@@ -107,6 +107,22 @@
 
           Is this property required? Defaults to `false`.")
 
+  (execute-query ^Map [this, ^Map query]
+    "Execute a query against the database and return the results.
+
+     The query passed in will contain:
+
+         {:database ^DatabaseInstance
+          :native   {... driver specific query form ...}
+          :settings {:report-timezone \"US/Pacific\"
+                     :other-setting   \"and its value\"}}
+
+     Results should look like:
+
+         {:columns [\"id\", \"name\"]
+          :rows    [[1 \"Lucky Bird\"]
+                    [2 \"Rasta Can\"]]}")
+
   (features ^java.util.Set [this]
     "*OPTIONAL*. A set of keyword names of optional features supported by this driver, such as `:foreign-keys`. Valid features are:
 
@@ -127,7 +143,7 @@
     "*OPTIONAL*. Return a humanized (user-facing) version of an connection error message string.
      Generic error messages are provided in the constant `connection-error-messages`; return one of these whenever possible.")
 
-  (mbql->native [this, ^Map query]
+  (mbql->native ^Map [this, ^Map query]
     "Transpile an MBQL structured query into the appropriate native query form for the given driver.  For example, a
      driver like Postgres should build a valid SQL expression and return that.")
 
@@ -217,16 +233,18 @@
 
 (def IDriverDefaultsMixin
   "Default implementations of `IDriver` methods marked *OPTIONAL*."
-  {:analyze-table                     (constantly nil)
-   :date-interval                     (u/drop-first-arg u/relative-date)
-   :describe-table-fks                (constantly nil)
-   :features                          (constantly nil)
-   :humanize-connection-error-message (u/drop-first-arg identity)
-   :mbql->native                      #(throw (RuntimeException. "Driver has not implemented `mbql->native` function."))
-   :notify-database-updated           (constantly nil)
-   :process-query-in-context          (u/drop-first-arg identity)
-   :sync-in-context                   (fn [_ _ f] (f))
-   :table-rows-seq                    (constantly nil)})
+  (let [not-implemented #(throw (RuntimeException. "Driver has not implemented `mbql->native` function."))]
+    {:analyze-table                     (constantly nil)
+     :date-interval                     (u/drop-first-arg u/relative-date)
+     :describe-table-fks                (constantly nil)
+     :execute-query                     not-implemented
+     :features                          (constantly nil)
+     :humanize-connection-error-message (u/drop-first-arg identity)
+     :mbql->native                      not-implemented
+     :notify-database-updated           (constantly nil)
+     :process-query-in-context          (u/drop-first-arg identity)
+     :sync-in-context                   (fn [_ _ f] (f))
+     :table-rows-seq                    (constantly nil)}))
 
 
 ;;; ## CONFIG
