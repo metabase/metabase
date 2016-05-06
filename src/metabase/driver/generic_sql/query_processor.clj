@@ -358,4 +358,6 @@
   (let [entity        ((resolve 'metabase.driver.generic-sql/korma-entity) database source-table)
         korma-form    (build-korma-form driver outer-query entity)
         form-with-sql (kengine/bind-query korma-form (kengine/->sql korma-form))]
-    (replace-params (:sql-str form-with-sql) (:params form-with-sql))))
+    ;; (replace-params (:sql-str form-with-sql) (:params form-with-sql))
+    {:query  (:sql-str form-with-sql)
+     :params (:params form-with-sql)}))
