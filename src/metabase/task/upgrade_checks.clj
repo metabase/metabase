@@ -6,6 +6,7 @@
             (clojurewerkz.quartzite [jobs :as jobs]
                                     [triggers :as triggers])
             [clojurewerkz.quartzite.schedule.cron :as cron]
+            [metabase.config :as config]
             [metabase.task :as task]
             [metabase.models.setting :as setting]))
 
@@ -16,8 +17,8 @@
 (defonce ^:private upgrade-checks-trigger (atom nil))
 
 (defn- get-version-info []
-  ;; TODO: determine the proper final url for our version-info file
-  (let [{:keys [status body]} (http/get "http://localhost:4000/version-info.json" {:content-type "application/json"})]
+  (let [version-info-url      (config/config-str :mb-version-info-url)
+        {:keys [status body]} (http/get version-info-url {:content-type "application/json"})]
     (when (not= status 200)
       (throw (Exception. (format "[%d]: %s" status body))))
     (json/parse-string body keyword)))
