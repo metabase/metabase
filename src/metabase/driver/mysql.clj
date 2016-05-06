@@ -59,16 +59,25 @@
     :VARCHAR    :TextField
     :YEAR       :IntegerField} (keyword (s/replace (name column-type) #"\sUNSIGNED$" "")))) ; strip off " UNSIGNED" from end if present
 
-(defn- connection-details->spec [_ details]
+(def ^:private ^:const connection-args
+  "Map of args for the MySQL JDBC connection string.
+   Full list of is options is available here: http://dev.mysql.com/doc/connector-j/6.0/en/connector-j-reference-configuration-properties.html"
+  {:zeroDateTimeBehavior :convertToNull ; 0000-00-00 dates are valid in MySQL; convert these to `null` when they come back because they're illegal in Java
+   :useUnicode           :true          ; Force UTF-8 encoding of results
+   :characterEncoding    :UTF8
+   :characterSetResults  :UTF8})
+
+(def ^:private ^:const connection-args-string
+  (apply str "?" (interpose \& (for [[k v] connection-args]
+                                 (str (name k) \= (name v))))))
+
+(defn- connection-details->spec [details]
   (-> details
       (set/rename-keys {:dbname :db})
       kdb/mysql
-      ;; 0000-00-00 dates are valid in MySQL, but JDBC barfs when queries return them because java.sql.Date doesn't allow it.
-      ;; Add a param to the end of the connection string that tells MySQL to convert 0000-00-00 dates to NULL when returning them.
-      ;; Also add params to force UTF-8 encoding of results
-      (update :subname (u/rpartial str "?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF8&characterSetResults=UTF8"))))
+      (update :subname (u/rpartial str connection-args-string))))
 
-(defn- unix-timestamp->timestamp [_ expr seconds-or-milliseconds]
+(defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (k/sqlfn :FROM_UNIXTIME (case seconds-or-milliseconds
                             :seconds      expr
                             :milliseconds (kx// expr (k/raw 1000)))))
@@ -81,7 +90,7 @@
 (defn- trunc-with-format [format-str expr]
   (str-to-date format-str (date-format format-str expr)))
 
-(defn- date [_ unit expr]
+(defn- date [unit expr]
   (case unit
     :default         expr
     :minute          (trunc-with-format "%Y-%m-%d %H:%i" expr)
@@ -115,10 +124,10 @@
     :quarter-of-year (kx/quarter expr)
     :year            (kx/year expr)))
 
-(defn- date-interval [_ unit amount]
+(defn- date-interval [unit amount]
   (kutils/generated (format "DATE_ADD(NOW(), INTERVAL %d %s)" (int amount) (s/upper-case (name unit)))))
 
-(defn- humanize-connection-error-message [_ message]
+(defn- humanize-connection-error-message [message]
   (condp re-matches message
         #"^Communications link failure\s+The last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.$"
         (driver/connection-error-messages :cannot-connect-check-host-and-port)
@@ -143,7 +152,7 @@
 (u/strict-extend MySQLDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:date-interval                     date-interval
+         {:date-interval                     (u/drop-first-arg date-interval)
           :details-fields                    (constantly [{:name         "host"
                                                            :display-name "Host"
                                                            :default      "localhost"}
@@ -163,20 +172,21 @@
                                                            :display-name "Database password"
                                                            :type         :password
                                                            :placeholder  "*******"}])
-          :humanize-connection-error-message humanize-connection-error-message})
+          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
          {:active-tables             sql/post-filtered-active-tables
           :column->base-type         (u/drop-first-arg column->base-type)
-          :connection-details->spec  connection-details->spec
-          :date                      date
+          :connection-details->spec  (u/drop-first-arg connection-details->spec)
+          :date                      (u/drop-first-arg date)
           :excluded-schemas          (constantly #{"INFORMATION_SCHEMA"})
           :string-length-fn          (constantly :CHAR_LENGTH)
           ;; If this fails you need to load the timezone definitions from your system into MySQL;
           ;; run the command `mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql`
           ;; See https://dev.mysql.com/doc/refman/5.7/en/time-zone-support.html for details
+          ;; TODO - This can also be set via `sessionVariables` in the connection string, if that's more useful (?)
           :set-timezone-sql          (constantly "SET @@session.time_zone = ?;")
-          :unix-timestamp->timestamp unix-timestamp->timestamp}))
+          :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
 (driver/register-driver! :mysql (MySQLDriver.))

@@ -16,7 +16,7 @@
                  [org.clojure/core.memoize "0.5.9"]                   ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
                  [org.clojure/data.csv "0.1.3"]                       ; CSV parsing / generation
                  [org.clojure/java.classpath "0.2.3"]
-                 [org.clojure/java.jdbc "0.5.8"]                      ; basic jdbc access from clojure
+                 [org.clojure/java.jdbc "0.4.2"]                      ; basic jdbc access from clojure. *** DON'T UPDATE THIS UNTIL KORMA IS UPDATED TO STOP USING DEPRECATED FN SIGNATURES ***
                  [org.clojure/math.numeric-tower "0.0.4"]             ; math functions like `ceil`
                  [org.clojure/tools.logging "0.3.1"]                  ; logging framework
                  [org.clojure/tools.namespace "0.2.10"]
@@ -52,7 +52,7 @@
                                com.sun.jmx/jmxri]]
                  [medley "0.7.4"]                                     ; lightweight lib of useful functions
                  [metabase/throttle "1.0.1"]                          ; Tools for throttling access to API endpoints and other code pathways
-                 [mysql/mysql-connector-java "6.0.2"]                 ; MySQL JDBC driver
+                 [mysql/mysql-connector-java "5.1.38"]                ; MySQL JDBC driver *** DON'T UPDATE THIS YET - NEW VERSION IS JAVA 8+ ONLY: http://dev.mysql.com/doc/connector-j/6.0/en/connector-j-whats-new.html ***
                  [net.sf.cssbox/cssbox "4.11"                         ; HTML / CSS rendering
                   :exclusions [org.slf4j/slf4j-api]]
                  [net.sourceforge.jtds/jtds "1.3.1"]                  ; Open Source SQL Server driver
@@ -93,7 +93,7 @@
                                 #"^metabase\.sample-data$"
                                 #"^metabase\.http-client$"]}
   :profiles {:dev {:dependencies [[org.clojure/tools.nrepl "0.2.12"]  ; REPL <3
-                                  [expectations "2.1.3"]              ; unit tests
+                                  [expectations "2.1.3"]              ; unit tests *** DON'T UPDATE THIS UNTIL WE REMOVE USES OF DEPRECATED EXPECT-LET IN THE CODEBASE ***
                                   [ring/ring-mock "0.3.0"]]
                    :plugins [[docstring-checker "1.0.0"]              ; Check that all public vars have docstrings. Run with 'lein docstring-checker'
                              [jonase/eastwood "0.2.3"

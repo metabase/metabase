@@ -109,12 +109,9 @@
 (defn- delete-old-revisions
   "Delete old revisions of ENTITY with ID when there are more than `max-revisions` in the DB."
   [entity id]
-  {:pre [(i/metabase-entity? entity)
-         (integer? id)]}
-  ;; for some reason (offset max-revisions isn't working)
-  (let [old-revisions (drop max-revisions (db/sel :many :id Revision, :model (:name entity), :model_id id, (k/order :timestamp :DESC)))]
-    (when (seq old-revisions)
-      (k/delete Revision (k/where {:id [in old-revisions]})))))
+  {:pre [(i/metabase-entity? entity) (integer? id)]}
+  (when-let [old-revisions (seq (drop max-revisions (db/sel :many :id Revision, :model (:name entity), :model_id id, (k/order :timestamp :DESC))))]
+    (db/cascade-delete Revision :id [in old-revisions])))
 
 (defn push-revision
   "Record a new `Revision` for ENTITY with ID.
@@ -158,7 +155,7 @@
       ;; Do the reversion of the object
       (revert-to-revision entity id user-id serialized-instance)
       ;; Push a new revision to record this change
-      (let [last-revision (db/sel :one Revision :model (:name entity), :model_id id (k/order :id :DESC))
+      (let [last-revision (db/sel :one Revision, :model (:name entity), :model_id id, (k/order :id :DESC))
             new-revision  (db/ins Revision
                             :model        (:name entity)
                             :model_id     id
