@@ -26,7 +26,7 @@ export default class SettingsSlackForm extends Component {
     }
 
     static propTypes = {
-        elements: PropTypes.object,
+        elements: PropTypes.array,
         formErrors: PropTypes.object,
         updateSlackSettings: PropTypes.func.isRequired
     };

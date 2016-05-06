@@ -225,6 +225,11 @@
                                           (TimeZone/getDefault))]
                (.getDisplayName timezone (.inDaylightTime timezone (java.util.Date.)) TimeZone/SHORT)))))
 
+
+(defsetting check-for-updates "Identify when new versions of Metabase are available." "true")
+(defsetting version-info "Information about available versions of Metabase." "{}")
+
+
 (defn public-settings
   "Return a simple map of key/value pairs which represent the public settings for the front-end application."
   []
@@ -259,6 +264,11 @@
 (i/defentity Setting
   "The model that underlies `defsetting`."
   :setting)
+
+(u/strict-extend (class Setting)
+  i/IEntity
+  (merge i/IEntityDefaults
+         {:types (constantly {:value :clob})}))
 
 (defn- settings-list
   "Return a list of all Settings (as created with `defsetting`).

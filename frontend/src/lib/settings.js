@@ -35,6 +35,15 @@ const MetabaseSettings = {
         return (mb_settings.setup_token !== undefined && mb_settings.setup_token !== null);
     },
 
+    newVersionAvailable: function(settings) {
+        let versionInfo = _.findWhere(settings, {key: "version-info"}),
+            currentVersion = MetabaseSettings.get("version").tag;
+
+        versionInfo = versionInfo ? JSON.parse(versionInfo.value) : null;
+
+        return (versionInfo && currentVersion !== versionInfo.latest.version);
+    },
+
     passwordComplexity: function(capitalize) {
         const complexity = this.get('password_complexity');
 
