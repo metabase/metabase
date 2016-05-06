@@ -1,6 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
+import MetabaseSettings from "metabase/lib/settings";
 
 import SettingsHeader from "./SettingsHeader.jsx";
 import SettingsSetting from "./SettingsSetting.jsx";
@@ -112,14 +113,23 @@ export default class SettingsEditor extends Component {
 
     renderSettingsSections() {
         const sections = _.map(this.props.sections, (section, idx) => {
-            const classes = cx("AdminList-item", "flex", "align-center", "no-decoration", {
+            const classes = cx("AdminList-item", "flex", "align-center", "justify-between", "no-decoration", {
                 "selected": this.state.currentSection === idx
             });
+
+            // if this is the Updates section && there is a new version then lets add a little indicator
+            let newVersionIndicator;
+            if (section.name === "Updates" && MetabaseSettings.newVersionAvailable(this.props.settings)) {
+                newVersionIndicator = (
+                    <span style={{padding: "4px 8px 4px 8px"}} className="bg-brand rounded text-white text-bold h6">1</span>
+                );
+            }
 
             return (
                 <li key={section.name}>
                     <a href="#" className={classes} onClick={this.selectSection.bind(null, idx)}>
-                        {section.name}
+                        <span>{section.name}</span>
+                        {newVersionIndicator}
                     </a>
                 </li>
             );
