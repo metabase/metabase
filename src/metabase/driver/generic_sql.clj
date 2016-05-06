@@ -338,6 +338,7 @@
           :describe-database       describe-database
           :describe-table          describe-table
           :describe-table-fks      describe-table-fks
+          :execute-query           (resolve 'metabase.driver.generic-sql.native/execute-query)
           :features                features
           :field-values-lazy-seq   field-values-lazy-seq
           :mbql->native            (resolve 'metabase.driver.generic-sql.query-processor/mbql->native)
