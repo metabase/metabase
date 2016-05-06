@@ -3,7 +3,7 @@
             [korma.sql.utils :as kutils]
             [korma.core :as k]
             [metabase.util :as u]
-            [metabase.driver :as driver])
+            [metabase.driver.generic-sql.query-processor :as qp])
   (:import (java.sql Timestamp)))
 
 (defn unix-timestamp->timestamp [_ expr seconds-or-milliseconds]
@@ -14,30 +14,35 @@
 
 (defn- date-trunc [unit expr]
   "date_trunc('interval', timezone, timestamp): truncates a timestamp to a given interval"
-  (if (or (nil? (driver/report-timezone)) (= (count (driver/report-timezone)) 0))
-    (k/sqlfn :DATE_TRUNC (kx/literal unit) expr)
-    (k/sqlfn :DATE_TRUNC (kx/literal unit) (driver/report-timezone) expr)))
+  (let [timezone    (get-in qp/*query* [:settings :report-timezone])]
+    (if (= (nil? timezone) true)
+      (k/sqlfn :DATE_TRUNC (kx/literal unit) expr)
+      (k/sqlfn :DATE_TRUNC (kx/literal unit) timezone expr))))
 
 (defn- date-format [format expr]
   "date_format('format_string', timezone, timestamp): formats the timestamp as string"
-  (if (or (nil? (driver/report-timezone)) (= (count (driver/report-timezone)) 0))
-    (k/sqlfn :DATE_FORMAT format expr)
-    (k/sqlfn :DATE_FORMAT format (driver/report-timezone) expr)))
+  (let [timezone    (get-in qp/*query* [:settings :report-timezone])]
+    (if (nil? timezone)
+      (k/sqlfn :DATE_FORMAT format expr)
+      (k/sqlfn :DATE_FORMAT format timezone expr))))
 
 (defn- extract    [unit expr]
   "extract(field from expr): extracts subfields of a timestamp"
-  (kutils/func (format "EXTRACT(%s FROM %%s)" (name unit)) [expr]))
+  (case unit
+    ;; Crate DOW starts with Monday (1) to Sunday (7)
+    :day_of_week (kx/+ (kx/mod (kutils/func (format "EXTRACT(%s FROM %%s)" (name unit)) [expr]) 7) 1)
+    (kutils/func (format "EXTRACT(%s FROM %%s)" (name unit)) [expr])))
 
 (def ^:private extract-integer
   (comp kx/->integer extract))
 
-(def ^:private YEAR   (constantly 31536000000))
-(def ^:private MONTH  (constantly 2628000000))
-(def ^:private WEEK   (constantly 604800000))
-(def ^:private DAY    (constantly 86400000))
-(def ^:private HOUR   (constantly 3600000))
-(def ^:private MINUTE (constantly 60000))
-(def ^:private SECOND (constantly 1000))
+(def ^:private ^:const second 1000)
+(def ^:private ^:const minute (* 60 second))
+(def ^:private ^:const hour   (* 60 minute))
+(def ^:private ^:const day    (* 24 hour))
+(def ^:private ^:const week   (* 7 day))
+(def ^:private ^:const year   (* 365 day))
+(def ^:private ^:const month  (Math/round (float (/ year 12))))
 
 (defn date [_ unit expr]
   (let [v (if (instance? Timestamp expr)
@@ -54,7 +59,8 @@
       :day-of-week     (extract-integer :day_of_week v)
       :day-of-month    (extract-integer :day_of_month v)
       :day-of-year     (extract-integer :day_of_year v)
-      :week            (date-format (str "%Y-%m-%d") (date-trunc :week v))
+      ;; Crate weeks start on Monday, so shift this date into the proper bucket and then decrement the resulting day
+      :week            (date-format (str "%Y-%m-%d") (kx/- (date-trunc :week (kx/+ v day)) day))
       :week-of-year    (extract-integer :week v)
       :month           (date-format (str "%Y-%m-%d") (date-trunc :month v))
       :month-of-year   (extract-integer :month v)
@@ -63,17 +69,16 @@
       :year            (extract-integer :year v))))
 
 (defn- sql-interval [unit amount]
-  (format "CURRENT_TIMESTAMP + %d" (* (unit) amount)))
+  (format "CURRENT_TIMESTAMP + %d" (* unit amount)))
 
 (defn date-interval [_ unit amount]
   "defines the sql command required for date-interval calculation"
   (case unit
     :quarter (recur nil :month (kx/* amount 3))
-    :year (k/raw (sql-interval YEAR amount))
-    :month (k/raw (sql-interval MONTH amount))
-    :week (k/raw (sql-interval WEEK amount))
-    :day (k/raw (sql-interval DAY amount))
-    :hour (k/raw (sql-interval HOUR amount))
-    :minute (k/raw (sql-interval MINUTE amount))
-    :second (k/raw (sql-interval SECOND amount))
-    ))
+    :year (k/raw (sql-interval year amount))
+    :month (k/raw (sql-interval month amount))
+    :week (k/raw (sql-interval week amount))
+    :day (k/raw (sql-interval day amount))
+    :hour (k/raw (sql-interval hour amount))
+    :minute (k/raw (sql-interval minute amount))
+    :second (k/raw (sql-interval second amount))))

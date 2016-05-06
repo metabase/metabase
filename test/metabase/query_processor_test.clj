@@ -842,10 +842,10 @@
 (datasets/expect-with-engines (engines-that-support :standard-deviation-aggregations)
   {:columns [(format-name "price")
              "stddev"]
-   :rows    [[3 (if (or (= *engine* :mysql) (= *engine* :crate)) 25 26)]
+   :rows    [[3 (if (contains? #{:mysql :crate} *engine*) 25 26)]
              [1 24]
              [2 21]
-             [4 (if (or (= *engine* :mysql) (= *engine* :crate)) 14 15)]]
+             [4 (if (contains? #{:mysql :crate} *engine*) 14 15)]]
    :cols    [(venues-col :price)
              (aggregate-col :stddev (venues-col :category_id))]}
   (->> (run-query venues

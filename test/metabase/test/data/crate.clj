@@ -1,13 +1,13 @@
 (ns metabase.test.data.crate
   "Code for creating / destroying a Crate database from a `DatabaseDefinition`."
-  (:require [environ.core :refer [env]]
-            metabase.driver.crate
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as s]
+            [metabase.driver.generic-sql :as sql]
+            [metabase.util :as u]
             (metabase.test.data [generic-sql :as generic]
                                 [interface :as i])
-            [metabase.driver.generic-sql :as sql]
-            [clojure.java.jdbc :as jdbc]
-            [metabase.util :as u]
-            [clojure.string :as s])
+            [clojure.tools.logging :as log]
+            [korma.core :as k])
   (:import metabase.driver.crate.CrateDriver))
 
 (def ^:private ^:const field-base-type->sql-type
@@ -25,9 +25,9 @@
 
 (defn- timestamp->CrateDateTime
   [value]
-  (if (= (instance? java.sql.Timestamp value) true)
+  (if (instance? java.sql.Timestamp value)
     (.getTime (u/->Timestamp value))
-    (if (= (and (= (instance? clojure.lang.PersistentArrayMap value) true) (contains? value :korma.sql.utils/generated)) true)
+    (if (and (instance? clojure.lang.PersistentArrayMap value) (contains? value :korma.sql.utils/generated))
       (+ (read-string (s/replace (:korma.sql.utils/generated value) #"CURRENT_TIMESTAMP \+" "")) (.getTime (u/new-sql-timestamp)))
       value)))
 
@@ -47,15 +47,15 @@
     (let [insert!   ((apply comp wrap-insert-fns) (fn [row-or-rows]
                                                     (apply jdbc/insert!
                                                            (generic/database->spec driver :db dbdef)
-                                                           (keyword (get tabledef :table-name))
+                                                           (keyword (:table-name tabledef))
                                                            :transaction? false
                                                            (escape-field-names row-or-rows))))
           rows      (apply list (generic/load-data-get-rows driver dbdef tabledef))]
       (insert! rows))))
 
-(defn- database->connection-details [_ _ {:keys [_ _]}]
-  (merge {:host         "localhost"
-          :port         4300}))
+(def ^:private database->connection-details
+  (constantly {:host "localhost"
+               :port 4300}))
 
 (extend CrateDriver
   generic/IGenericSQLDatasetLoader

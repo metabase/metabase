@@ -59,7 +59,7 @@
          (dissoc opts :hosts)))
 
 (defn- connection-details->spec [_ details]
-  (-> details crate-spec))
+  (crate-spec details))
 
 (defn- can-connect [driver details]
   (let [connection (connection-details->spec driver details)]

@@ -2,14 +2,15 @@
   (:require [korma.core :as k]
             [metabase.driver.generic-sql.query-processor :as qp]
             [korma.sql.fns :as kfns]
-            [korma.sql.engine :as kengine])
+            [korma.sql.engine :as kengine]
+            [metabase.query-processor.interface :as i])
   (:import (metabase.query_processor.interface ComparisonFilter CompoundFilter)))
 
 (defn- rewrite-between
   "Rewrite [:between <field> <min> <max>] -> [:and [:>= <field> <min>] [:<= <field> <max>]]"
   [clause]
-  (CompoundFilter. :and [(ComparisonFilter. :>= (:field clause) (:min-val clause))
-                         (ComparisonFilter. :<= (:field clause) (:max-val clause))]))
+  (i/strict-map->CompoundFilter {:compound-type :and :subclauses [(ComparisonFilter. :>= (:field clause) (:min-val clause))
+                                       (ComparisonFilter. :<= (:field clause) (:max-val clause))]}))
 
 (defn resolve-subclauses
   "resolve filters recursively"

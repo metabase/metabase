@@ -88,7 +88,7 @@
 
 (extend-protocol jdbc/IResultSetReadColumn
   (class (object-array []))
-  (result-set-read-column [x _2 _3] (PersistentVector/adopt x)))
+  (result-set-read-column [x _ _] (PersistentVector/adopt x)))
 
 (def ^:dynamic ^:private connection-pools
   "A map of our currently open connection pools, keyed by DATABASE `:id`."
