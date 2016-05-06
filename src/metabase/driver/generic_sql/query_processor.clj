@@ -1,6 +1,8 @@
 (ns metabase.driver.generic-sql.query-processor
   "The Query Processor is responsible for translating the Metabase Query Language into korma SQL forms."
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [clj-time.coerce :as tc]
+            [clj-time.format :as tf]
+            [clojure.java.jdbc :as jdbc]
             (clojure [string :as s]
                      [walk :as walk])
             [clojure.tools.logging :as log]
@@ -14,7 +16,9 @@
             [metabase.query-processor :as qp]
             metabase.query-processor.interface
             [metabase.util :as u]
-            [metabase.util.korma-extensions :as kx])
+            [metabase.util.korma-extensions :as kx]
+            [clojure.pprint :as pprint]
+            [clj-time.core :as t])
   (:import java.sql.Timestamp
            java.util.Date
            (metabase.query_processor.interface AgFieldRef
@@ -325,3 +329,33 @@
                             (f))))]
     (log-korma-form korma-form)
     (do-with-try-catch f)))
+
+(def ^:private formatter (tf/formatter "YYYY-MM-dd" (t/default-time-zone)))
+
+;; TODO: we may need to make this part of ISQLDriver interface and let other dbs override as needed
+;; Boolean, Long, Double, String, Timestamp
+(defn- sql-param
+  "Format a single value properly for inclusion in a SQL statement"
+  [param]
+  ;; TODO: we need to handle sql date/time/timestamp values here (do actual jdbc drivers have functions for this?)
+  (cond
+    (u/is-temporal? param) (str "'" (tf/unparse formatter (tc/from-sql-time param)) "'")
+    (string? param)        (str "'" param "'")
+    :else                  (str param)))
+
+(defn- replace-params
+  "Replace any positional parameters in a SQL statement `?` with a value from a list of parameters.
+   e.g. SELECT * FROM mytable WHERE id = ?, [1]  ->  SELECT * FROM mytable WHERE id = 1"
+  [sql params]
+  (if (empty? params) sql
+                      (let [param (first params)
+                            new-str (s/replace-first sql #"\?" (sql-param param))]
+                        (replace-params new-str (rest params)))))
+
+(defn mbql->native
+  "Transpile MBQL query into a native SQL statement."
+  [driver {{:keys [source-table]} :query, database :database, :as outer-query}]
+  (let [entity        ((resolve 'metabase.driver.generic-sql/korma-entity) database source-table)
+        korma-form    (build-korma-form driver outer-query entity)
+        form-with-sql (kengine/bind-query korma-form (kengine/->sql korma-form))]
+    (replace-params (:sql-str form-with-sql) (:params form-with-sql))))
