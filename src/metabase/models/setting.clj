@@ -265,6 +265,11 @@
   "The model that underlies `defsetting`."
   :setting)
 
+(u/strict-extend (class Setting)
+  i/IEntity
+  (merge i/IEntityDefaults
+         {:types (constantly {:value :clob})}))
+
 (defn- settings-list
   "Return a list of all Settings (as created with `defsetting`).
    This excludes Settings created with the option `:internal`."
