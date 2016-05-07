@@ -446,7 +446,12 @@
                        query
                        (assoc query :native native-form))
         raw-result   (driver/execute-query driver native-query)
-        query-result (annotate/annotate query raw-result)]
+        query-result (if-not (mbql-query? query)
+                       (assoc raw-result :columns (mapv name (:columns raw-result))
+                                         :cols    (for [[column first-value] (partition 2 (interleave (:columns raw-result) (first (:rows raw-result))))]
+                                                    {:name      (name column)
+                                                     :base_type (driver/class->base-type (type first-value))}))
+                       (annotate/annotate query raw-result))]
     (assoc query-result :native_form native-form)))
 
 
