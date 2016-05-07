@@ -118,14 +118,14 @@
   "Update the working `Table` and `Field` metadata for a given `Table` based on the latest raw schema information.
    This function uses the data in `RawTable` and `RawColumn` to update the working data models as needed."
   [{raw-table-id :raw_table_id, table-id :id, :as existing-table}]
-  (when-let [{database-id :database_id, :as raw-tbl} (db/sel :one RawTable :id raw-table-id)]
+  (when-let [{database-id :database_id, :as raw-table} (db/sel :one RawTable :id raw-table-id)]
     (try
-      (if-not (:active raw-tbl)
+      (if-not (:active raw-table)
         ;; looks like the table has been deactivated, so lets retire this Table and its fields
         (table/retire-tables #{table-id})
         ;; otherwise update based on the RawTable/RawColumn information
         (do
-          (save-table-fields! (table/update-table existing-table raw-tbl))
+          (save-table-fields! (table/update-table existing-table raw-table))
 
           ;; handle setting any fk relationships
           (when-let [table-fks (k/select RawColumn
@@ -174,13 +174,13 @@
 (defn- create-and-update-tables!
   "Create/update tables (and their fields)."
   [database existing-tables raw-tables]
-  (doseq [{raw-table-id :id, :as raw-tbl} (non-blacklisted-tables raw-tables)]
+  (doseq [{raw-table-id :id, :as raw-table} (non-blacklisted-tables raw-tables)]
     (try
-      (if-let [existing-table (get existing-tables raw-table-id)]
-        ;; table already exists, update it
-        (save-table-fields! (table/update-table existing-table raw-tbl))
-        ;; must be a new table, insert it
-        (save-table-fields! (table/create-table (:id database) (assoc raw-tbl :raw-table-id raw-table-id))))
+      (save-table-fields! (if-let [existing-table (get existing-tables raw-table-id)]
+                            ;; table already exists, update it
+                            (table/update-table existing-table raw-table)
+                            ;; must be a new table, insert it
+                            (table/create-table (:id database) (assoc raw-table :raw-table-id raw-table-id))))
       (catch Throwable e
         (log/error (u/format-color 'red "Unexpected error syncing table") e)))))
 
