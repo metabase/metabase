@@ -10,8 +10,9 @@
          :row_count 2
          :data {:rows [[100]
                        [99]]
-                :columns [:id]
-                :cols [{:name :id, :base_type :IntegerField}]}}
+                :columns ["ID"]
+                :cols [{:name "ID", :base_type :IntegerField}]
+                :native_form {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2;"}}}
   (qp/process-query {:native   {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2;"}
                      :type     :native
                      :database (id)}))
@@ -22,10 +23,11 @@
      :row_count 2
      :data {:rows [[100 "Mohawk Bend" 46]
                    [99 "Golden Road Brewing" 10]]
-            :columns [:id :name :category_id]
-            :cols [{:name :id, :base_type :IntegerField}
-                   {:name :name, :base_type :TextField}
-                   {:name :category_id, :base_type :IntegerField}]}}
+            :columns ["ID" "NAME" "CATEGORY_ID"]
+            :cols [{:name "ID", :base_type :IntegerField}
+                   {:name "NAME", :base_type :TextField}
+                   {:name "CATEGORY_ID", :base_type :IntegerField}]
+            :native_form {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES ORDER BY ID DESC LIMIT 2;"}}}
   (qp/process-query {:native   {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES ORDER BY ID DESC LIMIT 2;"}
                      :type     :native
                      :database (id)}))

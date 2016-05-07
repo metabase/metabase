@@ -100,7 +100,7 @@
              [3 "ouija_board"]]}
   (-> (data/dataset metabase.driver.postgres-test/dots-in-names
         (data/run-query objects.stuff))
-      :data (dissoc :cols)))
+      :data (dissoc :cols :native_form)))
 
 
 ;;; # Make sure that duplicate column names (e.g. caused by using a FK) still return both columns
@@ -120,4 +120,4 @@
   (-> (data/dataset metabase.driver.postgres-test/duplicate-names
         (data/run-query people
           (ql/fields $name $bird_id->birds.name)))
-      :data (dissoc :cols)))
+      :data (dissoc :cols :native_form)))
