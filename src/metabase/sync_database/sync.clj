@@ -143,6 +143,51 @@
       (catch Throwable t
         (log/error (u/format-color 'red "Unexpected error syncing table") t)))))
 
+(def ^:private ^:const blacklisted-table-names
+  "Names of Tables to skip syncing. These should be lowercased, as we'll compare them with lowercased names of `raw-tables` below."
+  #{"_metabase_metadata"})
+
+(defn- non-blacklisted-tables
+  "Filter out Tables that we don't want to sync.
+   This includes the `_metabase_metadata` Table, if present, as well as Tables for frameworks like Rails or Django."
+  [raw-tables]
+  (for [table raw-tables
+        :when (not (contains? blacklisted-table-names (s/lower-case (:name table))))]
+    table))
+
+(defn- create-and-update-tables!
+  "Create/update tables (and their fields)."
+  [database existing-tables raw-tables]
+  (doseq [{raw-table-id :id, :as raw-tbl} (non-blacklisted-tables raw-tables)]
+    (try
+      (if-let [existing-table (get existing-tables raw-table-id)]
+        ;; table already exists, update it
+        (save-table-fields! (table/update-table existing-table raw-tbl))
+        ;; must be a new table, insert it
+        (save-table-fields! (table/create-table (:id database) (assoc raw-tbl :raw-table-id raw-table-id))))
+      (catch Throwable e
+        (log/error (u/format-color 'red "Unexpected error syncing table") e)))))
+
+(defn- set-fk-relationships!
+  "Handle setting any FK relationships. This must be done after fully syncing the tables/fields because we need all tables/fields in place."
+  [database]
+  (when-let [db-fks (k/select RawColumn
+                      (k/fields [:id :source-column]
+                                [:fk_target_column_id :target-column])
+                      ;; NOTE: something really wrong happening with SQLKorma here which requires us
+                      ;;       to be explicit about :metabase_table.raw_table_id in the join condition
+                      ;;       without this it seems to want to join against metabase_field !?
+                      (k/join RawTable (= :raw_table.id :raw_column.raw_table_id))
+                      (k/where {:raw_table.database_id (:id database)})
+                      (k/where (not= :raw_column.fk_target_column_id nil)))]
+    (save-fks! db-fks)))
+
+(defn- maybe-sync-metabase-metadata-table!
+  "Sync the `_metabase_metadata` table, a special table with Metabase metadata, if present.
+   If per chance there were multiple `_metabase_metadata` tables in different schemas, just sync the first one we find."
+  [database raw-tables]
+  (when-let [metadata-table (first (filter #(= (s/lower-case (:name %)) "_metabase_metadata") raw-tables))]
+    (sync-metabase-metadata-table! (driver/engine->driver (:engine database)) database metadata-table)))
 
 (defn update-data-models-from-raw-tables!
   "Update the working `Table` and `Field` metadata for *all* tables in a `Database` based on the latest raw schema information.
@@ -160,33 +205,7 @@
   (let [raw-tables      (raw-table/active-tables database-id)
         existing-tables (into {} (for [{raw-table-id :raw_table_id, :as table} (db/sel :many Table, :db_id database-id, :active true)]
                                    {raw-table-id table}))]
-    ;; create/update tables (and their fields)
-    ;; NOTE: we make sure to skip the _metabase_metadata table here.  it's not a normal table.
-    (doseq [{raw-table-id :id, :as raw-tbl} (filter #(not= "_metabase_metadata" (s/lower-case (:name %))) raw-tables)]
-      (try
-        (if-let [existing-table (get existing-tables raw-table-id)]
-          ;; table already exists, update it
-          (-> (table/update-table existing-table raw-tbl)
-              save-table-fields!)
-          ;; must be a new table, insert it
-          (-> (table/create-table database-id (assoc raw-tbl :raw-table-id raw-table-id))
-              save-table-fields!))
-        (catch Throwable t
-          (log/error (u/format-color 'red "Unexpected error syncing table") t))))
 
-    ;; handle setting any fk relationships
-    ;; NOTE: this must be done after fully syncing the tables/fields because we need all tables/fields in place
-    (when-let [db-fks (k/select RawColumn
-                        (k/fields [:id :source-column]
-                                  [:fk_target_column_id :target-column])
-                        ;; NOTE: something really wrong happening with SQLKorma here which requires us
-                        ;;       to be explicit about :metabase_table.raw_table_id in the join condition
-                        ;;       without this it seems to want to join against metabase_field !?
-                        (k/join RawTable (= :raw_table.id :raw_column.raw_table_id))
-                        (k/where {:raw_table.database_id database-id})
-                        (k/where (not= :raw_column.fk_target_column_id nil)))]
-      (save-fks! db-fks))
-
-    ;; NOTE: if per chance there were multiple _metabase_metadata tables in different schemas, we just take the first
-    (when-let [_metabase_metadata (first (filter #(= (s/lower-case (:name %)) "_metabase_metadata") raw-tables))]
-      (sync-metabase-metadata-table! (driver/engine->driver (:engine database)) database _metabase_metadata))))
+    (create-and-update-tables! database existing-tables raw-tables)
+    (set-fk-relationships! database)
+    (maybe-sync-metabase-metadata-table! database raw-tables)))
