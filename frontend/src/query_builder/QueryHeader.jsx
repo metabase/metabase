@@ -171,14 +171,6 @@ export default class QueryHeader extends Component {
                         />
                     </ModalWithTrigger>
                 ]);
-            } else {
-                buttonSections.push([
-                    <QueryModeToggle
-                        key="queryModeToggle"
-                        currentQueryMode={this.props.card.dataset_query.type}
-                        setQueryModeFn={this.props.setQueryModeFn}
-                    />
-                ]);
             }
         }
 
@@ -304,6 +296,15 @@ export default class QueryHeader extends Component {
             <a key="dataReference" className={dataReferenceButtonClasses} title="Get help on what data means">
                 <Icon name='reference' width="16px" height="16px" onClick={this.onToggleDataReference}></Icon>
             </a>
+        ]);
+
+        // native mode toggle
+        buttonSections.push([
+            <QueryModeToggle
+                key="queryModeToggle"
+                currentQueryMode={this.props.card.dataset_query.type}
+                setQueryModeFn={this.props.setQueryModeFn}
+            />
         ]);
 
         return (

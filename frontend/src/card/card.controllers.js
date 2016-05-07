@@ -96,9 +96,29 @@ CardControllers.controller('CardDetail', [
             },
             setQueryModeFn: function(type) {
                 if (!card.dataset_query.type || type !== card.dataset_query.type) {
-                    // switching to a new query type represents a brand new card & query on the given mode
-                    let newCard = startNewCard(type, card.dataset_query.database);
-                    setCard(newCard, {resetDirty: true, runQuery: false});
+                    let database = card.dataset_query.database,
+                        datasetQuery = angular.copy(card.dataset_query);
+
+                    // if we are going from MBQL -> Native then attempt to carry over the query
+                    if (type === "native") {
+                        if (queryResult && queryResult.data && queryResult.data.native_form) {
+                            // since we have the native form from the last execution of our query, just use that
+                            datasetQuery.type = "native";
+                            datasetQuery.native = angular.copy(queryResult.data.native_form);
+                        } else {
+                            // we have no previous basis for the native form, so just create a new one
+                            let nativeQuery = createQuery("native", database);
+
+                            datasetQuery.type = "native";
+                            datasetQuery.native = nativeQuery.native;
+                        }
+
+                    // if we are going from Native -> MQBL then we simply want to start a new query (with database)
+                    } else {
+                        datasetQuery = createQuery("query", database);
+                    }
+
+                    onQueryChanged(datasetQuery);
                     MetabaseAnalytics.trackEvent('QueryBuilder', 'Query Started', type);
                 }
             },
