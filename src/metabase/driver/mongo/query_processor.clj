@@ -409,3 +409,40 @@
                          :allow-disk-use true)
            unescape-names
            unstringify-dates))))
+
+(defn mbql->native
+  "Process and run an MBQL query."
+  [{database :database, {{source-table-name :name} :source-table} :query, :as query}]
+  {:pre [(map? database)
+         (string? source-table-name)]}
+  (binding [*query* query]
+    (let [generated-pipeline (generate-aggregation-pipeline (:query query))]
+      (log-monger-form generated-pipeline)
+      {:query      generated-pipeline
+       :collection source-table-name
+       :mbql?      true})))
+
+(defn execute-query
+  "Process and run a native MongoDB query."
+  [{{:keys [collection query mbql?]} :native, database :database}]
+  {:pre [query
+         (string? collection)
+         (map? database)]}
+  (let [query   (if (string? query)
+                  (json/parse-string query keyword)
+                  query)
+        results (mc/aggregate *mongo-connection* collection query
+                              :allow-disk-use true)
+        results (if (sequential? results)
+                  results
+                  [results])
+        ;; if we formed the query using MBQL then we apply a couple post processing functions
+        results (if-not mbql? results
+                              (-> results
+                                  unescape-names
+                                  unstringify-dates))
+        columns (vec (keys (first results)))]
+    {:columns   columns
+     :rows      (for [row results]
+                  (mapv row columns))
+     :annotate? true}))

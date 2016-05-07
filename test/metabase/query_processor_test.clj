@@ -1224,11 +1224,13 @@
              ["foursquare" 100]
              ["twitter"     98]
              ["yelp"        90]]
-   :columns ["source.service" "count"]}
+   :columns ["source.service" "count"]
+   :native_form true}
   (->> (dataset geographical-tips
          (run-query tips
            (ql/aggregation (ql/count))
            (ql/breakout $tips.source.service)))
+       boolean-native-form
        :data (#(dissoc % :cols)) (format-rows-by [str int])))
 
 ;;; Nested Field in FIELDS
