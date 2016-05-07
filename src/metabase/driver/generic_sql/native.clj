@@ -33,7 +33,12 @@
 
                ;; Now run the query itself
                (log/debug (u/format-color 'green "%s" sql))
-               (jdbc/query t-conn sql :identifiers identity)
+               (let [[columns & [first-row :as rows]] (jdbc/query t-conn sql, :as-arrays? true)]
+                 {:rows    rows
+                  :columns columns
+                  :cols    (for [[column first-value] (partition 2 (interleave columns first-row))]
+                             {:name      column
+                              :base_type (value->base-type first-value)})})
 
                ;; Rollback any changes made during this transaction just to be extra-double-sure JDBC doesn't try to commit them automatically for us
                (finally (.rollback jdbc-connection))))))
@@ -65,7 +70,9 @@
                (let [statement (if params
                                  (into [sql] params)
                                  sql)]
-                 (jdbc/query t-conn statement :identifiers identity))
+                 (let [[columns & rows] (jdbc/query t-conn statement, :identifiers identity, :as-arrays? true)]
+                   {:rows    rows
+                    :columns columns}))
 
                ;; Rollback any changes made during this transaction just to be extra-double-sure JDBC doesn't try to commit them automatically for us
                (finally (.rollback jdbc-connection))))))
