@@ -144,8 +144,24 @@
         (log/error (u/format-color 'red "Unexpected error syncing table") t)))))
 
 (def ^:private ^:const blacklisted-table-names
-  "Names of Tables to skip syncing. These should be lowercased, as we'll compare them with lowercased names of `raw-tables` below."
-  #{"_metabase_metadata"})
+  "Names of Tables to skip syncing. These should be lowercased, as we'll compare them with lowercased names of `raw-tables` below.
+   These are Tables that are known to not contain useful data, such as migration or web framework internal tables."
+  #{"_metabase_metadata"
+    ;; Django
+    "django_admin_log"
+    "django_content_type"
+    "django_session"
+    "django_site"
+    "south_migrationhistory"
+    ;; PostGIS
+    "spatial_ref_sys"
+    ;; nginx
+    "nginx_access_log"
+    ;; Liquibase
+    "databasechangelog"
+    "databasechangeloglock"
+    ;; Lobos
+    "lobos_migrations"})
 
 (defn- non-blacklisted-tables
   "Filter out Tables that we don't want to sync.
