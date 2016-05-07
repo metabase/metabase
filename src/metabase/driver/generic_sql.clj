@@ -229,7 +229,7 @@
        ~@body)))
 
 (defn fast-active-tables
-  "Default, fast implementation of `IDriver/active-tables` best suited for DBs with lots of system tables (like Oracle).
+  "Default, fast implementation of `ISQLDriver/active-tables` best suited for DBs with lots of system tables (like Oracle).
    Fetch list of schemas, then for each one not in `excluded-schemas`, fetch its Tables, and combine the results.
 
    This is as much as 15x faster for Databases with lots of system tables than `post-filtered-active-tables` (4 seconds vs 60)."
@@ -242,7 +242,7 @@
             :schema schema}))))
 
 (defn post-filtered-active-tables
-  "Alternative implementation of `IDriver/active-tables` best suited for DBs with little or no support for schemas.
+  "Alternative implementation of `ISQLDriver/active-tables` best suited for DBs with little or no support for schemas.
    Fetch *all* Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
   [driver, ^DatabaseMetaData metadata]
   (set (for [table (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
@@ -273,7 +273,9 @@
                                    (if-not (contains? pks (:name field)) field
                                                                          (assoc field :pk? true))))))))
 
-(defn- describe-database [driver database]
+(defn describe-database
+  "Default implementation of `describe-database` for JDBC-based drivers."
+  [driver database]
   (with-metadata [metadata driver database]
     {:tables (active-tables driver, ^DatabaseMetaData metadata)}))
 

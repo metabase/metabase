@@ -1,6 +1,8 @@
 (ns metabase.driver.postgres
-  (:require (clojure [set :refer [rename-keys]]
+  (:require [clojure.java.jdbc :as jdbc]
+            (clojure [set :refer [rename-keys], :as set]
                      [string :as s])
+            [clojure.tools.logging :as log]
             (korma [core :as k]
                    [db :as kdb])
             [korma.sql.utils :as kutils]
@@ -15,7 +17,7 @@
 (defn- column->base-type
   "Map of Postgres column types -> Field base types.
    Add more mappings here as you come across them."
-  [_ column-type]
+  [column-type]
   ({:bigint        :BigIntegerField
     :bigserial     :BigIntegerField
     :bit           :UnknownField
@@ -76,7 +78,7 @@
 
 (defn- column->special-type
   "Attempt to determine the special-type of a Field given its name and Postgres column type."
-  [_ column-name column-type]
+  [column-name column-type]
   ;; this is really, really simple right now.  if its postgres :json type then it's :json special-type
   (when (= column-type :json)
     :json))
@@ -91,7 +93,7 @@
   "Params to include in the JDBC connection spec to disable SSL."
   {:sslmode "disable"})
 
-(defn- connection-details->spec [_ {:keys [ssl] :as details-map}]
+(defn- connection-details->spec [{:keys [ssl] :as details-map}]
   (-> details-map
       (update :port (fn [port]
                       (if (string? port) (Integer/parseInt port)
@@ -103,10 +105,10 @@
       (rename-keys {:dbname :db})
       kdb/postgres))
 
-(defn- unix-timestamp->timestamp [_ expr seconds-or-milliseconds]
+(defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
     :seconds      (k/sqlfn :TO_TIMESTAMP expr)
-    :milliseconds (recur nil (kx// expr 1000) :seconds)))
+    :milliseconds (recur (kx// expr 1000) :seconds)))
 
 (defn- date-trunc [unit expr] (k/sqlfn :DATE_TRUNC (kx/literal unit) expr))
 (defn- extract    [unit expr] (kutils/func (format "EXTRACT(%s FROM %%s)" (name unit))
@@ -116,7 +118,7 @@
 
 (def ^:private ^:const one-day (k/raw "INTERVAL '1 day'"))
 
-(defn- date [_ unit expr]
+(defn- date [unit expr]
   (case unit
     :default         expr
     :minute          (date-trunc :minute expr)
@@ -138,10 +140,10 @@
     :quarter-of-year (extract-integer :quarter expr)
     :year            (extract-integer :year expr)))
 
-(defn- date-interval [_ unit amount]
+(defn- date-interval [unit amount]
   (k/raw (format "(NOW() + INTERVAL '%d %s')" (int amount) (name unit))))
 
-(defn- humanize-connection-error-message [_ message]
+(defn- humanize-connection-error-message [message]
   (condp re-matches message
     #"^FATAL: database \".*\" does not exist$"
     (driver/connection-error-messages :database-name-incorrect)
@@ -170,6 +172,26 @@
     (java.util.UUID/fromString value)
     value))
 
+
+(defn- materialized-views
+  "Fetch the Materialized Views for a Postgres DATABASE.
+   These are returned as a set of maps, the same format as `:tables` returned by `describe-database`."
+  [database]
+  (try (set (for [{:keys [schemaname matviewname]} (jdbc/query (sql/db->jdbc-connection-spec database)
+                                                               ["SELECT schemaname, matviewname FROM pg_matviews;"])]
+              {:schema schemaname
+               :name   matviewname}))
+       (catch Throwable e
+         (log/error "Failed to fetch materialized views for this database:" (.getMessage e)))))
+
+(defn- describe-database
+  "Custom implementation of `describe-database` for Postgres.
+   Postgres Materialized Views are not returned by normal JDBC methods: see [issue #2355](https://github.com/metabase/metabase/issues/2355); we have to manually fetch them.
+   This implementation combines the results from the generic SQL default implementation with materialized views fetched from `materialized-views`."
+  [driver database]
+  (update (sql/describe-database driver database) :tables (u/rpartial set/union (materialized-views database))))
+
+
 (defrecord PostgresDriver []
   clojure.lang.Named
   (getName [_] "PostgreSQL"))
@@ -177,19 +199,20 @@
 (def PostgresISQLDriverMixin
   "Implementations of `ISQLDriver` methods for `PostgresDriver`."
   (merge (sql/ISQLDriverDefaultsMixin)
-         {:column->base-type         column->base-type
-          :column->special-type      column->special-type
-          :connection-details->spec  connection-details->spec
-          :date                      date
+         {:column->base-type         (u/drop-first-arg column->base-type)
+          :column->special-type      (u/drop-first-arg column->special-type)
+          :connection-details->spec  (u/drop-first-arg connection-details->spec)
+          :date                      (u/drop-first-arg date)
           :prepare-value             (u/drop-first-arg prepare-value)
           :set-timezone-sql          (constantly "UPDATE pg_settings SET setting = ? WHERE name ILIKE 'timezone';")
           :string-length-fn          (constantly :CHAR_LENGTH)
-          :unix-timestamp->timestamp unix-timestamp->timestamp}))
+          :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
 (u/strict-extend PostgresDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:date-interval                     date-interval
+         {:date-interval                     (u/drop-first-arg date-interval)
+          :describe-database                 describe-database
           :details-fields                    (constantly [{:name         "host"
                                                            :display-name "Host"
                                                            :default      "localhost"}
@@ -213,7 +236,7 @@
                                                            :display-name "Use a secure connection (SSL)?"
                                                            :type         :boolean
                                                            :default      false}])
-          :humanize-connection-error-message humanize-connection-error-message})
+          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
 
   sql/ISQLDriver PostgresISQLDriverMixin)
 
