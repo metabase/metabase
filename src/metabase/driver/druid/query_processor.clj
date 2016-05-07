@@ -2,6 +2,7 @@
   (:require [clojure.core.match :refer [match]]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
+            [cheshire.core :as json]
             [metabase.query-processor :as qp]
             [metabase.query-processor.interface :as i]
             [metabase.util :as u])
@@ -531,3 +532,32 @@
       (->> (do-query druid-query)
            (post-process query-type)
            remove-bonus-keys))))
+
+(defn mbql->native
+  "Transpile an MBQL (inner) query into a native form suitable for a Druid DB."
+  [query]
+  ;; Merge `:settings` into the inner query dict so the QP has access to it
+  (let [mbql-query (assoc (:query query)
+                     :settings (:settings query))]
+    (binding [*query* mbql-query]
+      (let [[query-type druid-query] (build-druid-query mbql-query)]
+        {:query      druid-query
+         :query-type query-type}))))
+
+(defn execute-query
+  "Execute a query for a Druid DB."
+  [do-query {database :database, {:keys [query query-type]} :native}]
+  {:pre [database query]}
+  (let [details    (:details database)
+        query      (if (string? query)
+                     (json/parse-string query keyword)
+                     query)
+        query-type (or query-type (keyword "metabase.driver.druid.query-processor" (name (:queryType query))))
+        results    (->> (do-query details query)
+                        (post-process query-type)
+                        remove-bonus-keys)
+        columns    (vec (keys (first results)))]
+    {:columns   columns
+     :rows      (for [row results]
+                  (mapv row columns))
+     :annotate? true}))
