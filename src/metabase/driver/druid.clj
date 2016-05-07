@@ -7,8 +7,7 @@
             [metabase.db :refer [sel]]
             [metabase.driver :as driver]
             [metabase.driver.druid.query-processor :as qp]
-            (metabase.models [database :refer [Database]]
-                             [field :as field]
+            (metabase.models [field :as field]
                              [table :as table])
             [metabase.query-processor.annotate :as annotate]
             [metabase.util :as u]))
@@ -72,9 +71,9 @@
                          (assoc (:query query)
                                 :settings (:settings query))))
 
-(defn- process-native [{database-id :database, {query :query} :native, :as outer-query}]
-  {:pre [(integer? database-id) query]}
-  (let-404 [details (sel :one :field [Database :details], :id database-id)]
+(defn- process-native [{database :database, {query :query} :native, :as outer-query}]
+  {:pre [database query]}
+  (let-404 [details (:details database)]
     (let [query (if (string? query)
                   (json/parse-string query keyword)
                   query)]

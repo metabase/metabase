@@ -224,8 +224,8 @@
   (u/auto-retry 1
     (post-process-native (execute-query database query-string))))
 
-(defn- process-native [{database-id :database, {native-query :query} :native}]
-  (process-native* (Database database-id) native-query))
+(defn- process-native [{database :database, {native-query :query} :native}]
+  (process-native* database native-query))
 
 
 (defn- field-values-lazy-seq [{field-name :name, :as field-instance}]
