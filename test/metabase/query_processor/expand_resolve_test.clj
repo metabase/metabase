@@ -35,11 +35,7 @@
                                                                 :datetime-unit nil}
                                             :value             1}}}}
    ;; resolved form
-   {:database     {:name    "test-data"
-                   :details {:short-lived? nil
-                             :db           "mem:test-data;USER=GUEST;PASSWORD=guest"}
-                   :id      (id)
-                   :engine  :h2}
+   {:database     (id)
     :type         :query
     :query        {:source-table {:schema "PUBLIC"
                                   :name   "VENUES"
@@ -96,11 +92,7 @@
                                                                 :datetime-unit nil}
                                             :value             "abc"}}}}
    ;; resolved form
-   {:database     {:name    "test-data"
-                   :details {:short-lived? nil
-                             :db           "mem:test-data;USER=GUEST;PASSWORD=guest"}
-                   :id      (id)
-                   :engine  :h2}
+   {:database     (id)
     :type         :query
     :query        {:source-table {:schema "PUBLIC"
                                   :name   "VENUES"
@@ -164,11 +156,7 @@
                                                                 :datetime-unit :year}
                                             :value             "1980-01-01"}}}}
    ;; resolved form
-   {:database     {:name    "test-data"
-                   :details {:short-lived? nil
-                             :db           "mem:test-data;USER=GUEST;PASSWORD=guest"}
-                   :id      (id)
-                   :engine  :h2}
+   {:database     (id)
     :type         :query
     :query        {:source-table {:schema "PUBLIC"
                                   :name   "CHECKINS"
@@ -233,11 +221,7 @@
                                :fk-field-id   nil
                                :datetime-unit :day-of-week}]}}
    ;; resolved form
-   {:database     {:name    "test-data"
-                   :details {:short-lived? nil
-                             :db           "mem:test-data;USER=GUEST;PASSWORD=guest"}
-                   :id      (id)
-                   :engine  :h2}
+   {:database     (id)
     :type         :query
     :query        {:source-table {:schema "PUBLIC"
                                   :name   "CHECKINS"
