@@ -233,7 +233,7 @@
 
 (def IDriverDefaultsMixin
   "Default implementations of `IDriver` methods marked *OPTIONAL*."
-  (let [not-implemented #(throw (RuntimeException. "Driver has not implemented `mbql->native` function."))]
+  (let [not-implemented (fn [_ _] (throw (RuntimeException. "Driver has not implemented `mbql->native` function.")))]
     {:analyze-table                     (constantly nil)
      :date-interval                     (u/drop-first-arg u/relative-date)
      :describe-table-fks                (constantly nil)
