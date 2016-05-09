@@ -138,6 +138,16 @@ export function humanize(...args) {
     return inflection.humanize(...args);
 }
 
+export function duration(milliseconds) {
+    if (milliseconds < 60000) {
+        let seconds = Math.round(milliseconds / 1000);
+        return seconds + " " + inflect("second", seconds);
+    } else {
+        let minutes = Math.round(milliseconds / 1000 / 60);
+        return minutes + " " + inflect("minute", minutes);
+    }
+}
+
 // Removes trailing "id" from field names
 export function stripId(name) {
     return name && name.replace(/ id$/i, "");

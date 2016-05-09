@@ -583,6 +583,10 @@ CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', funct
         dataset: {
             url: '/api/dataset',
             method: 'POST'
+        },
+        dataset_duration: {
+            url: '/api/dataset/duration',
+            method: 'POST'
         }
     });
 }]);
