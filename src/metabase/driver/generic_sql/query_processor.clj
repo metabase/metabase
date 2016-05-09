@@ -288,46 +288,12 @@
         (recur korma-form more)
         korma-form))))
 
-(defn- do-with-timezone [driver timezone f]
-  (log/debug (u/format-color 'blue (sql/set-timezone-sql driver)))
-  (try (kdb/transaction (k/exec-raw [(sql/set-timezone-sql driver) [timezone]])
-                        (f))
-       (catch Throwable e
-         (log/error (u/format-color 'red "Failed to set timezone:\n%s"
-                      (with-out-str (jdbc/print-sql-exception-chain e))))
-         (f))))
-
-(defn- do-with-try-catch [f]
-  (try
-    (f)
-    (catch java.sql.SQLException e
-      (jdbc/print-sql-exception-chain e)
-      (let [^String message (or (->> (.getMessage e)                       ; error message comes back like "Error message ... [status-code]" sometimes
-                                     (re-find  #"(?s)(^.*)\s+\[[\d-]+\]$") ; status code isn't useful and makes unit tests hard to write so strip it off
-                                     second)                               ; (?s) = Pattern.DOTALL - tell regex `.` to match newline characters as well
-                                (.getMessage e))]
-        (throw (Exception. message))))))
-
 (defn build-korma-form
   "Build the korma form we will call `k/exec` on."
   [driver {inner-query :query :as outer-query} entity]
   (binding [*query* outer-query]
       (apply-clauses driver (k/select* entity) inner-query)))
 
-(defn process-mbql
-  "Convert QUERY into a korma `select` form, execute it, and annotate the results."
-  [driver {{:keys [source-table]} :query, database :database, settings :settings, :as outer-query}]
-  (let [timezone     (:report-timezone settings)
-        entity       ((resolve 'metabase.driver.generic-sql/korma-entity) database source-table)
-        korma-form   (build-korma-form driver outer-query entity)
-        f             (partial k/exec korma-form)
-        f             (fn []
-                        (kdb/with-db (:db entity)
-                          (if (seq timezone)
-                            (do-with-timezone driver timezone f)
-                            (f))))]
-    (log-korma-form korma-form)
-    (do-with-try-catch f)))
 
 (def ^:private formatter (tf/formatter "YYYY-MM-dd" (t/default-time-zone)))
 

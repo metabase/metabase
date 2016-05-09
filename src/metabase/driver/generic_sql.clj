@@ -343,8 +343,6 @@
           :field-values-lazy-seq   field-values-lazy-seq
           :mbql->native            (resolve 'metabase.driver.generic-sql.query-processor/mbql->native)
           :notify-database-updated notify-database-updated
-          :process-native          (resolve 'metabase.driver.generic-sql.native/process-and-run)
-          :process-mbql            (resolve 'metabase.driver.generic-sql.query-processor/process-mbql)
           :table-rows-seq          table-rows-seq}))
 
 

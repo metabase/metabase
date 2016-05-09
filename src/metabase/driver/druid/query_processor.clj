@@ -468,10 +468,6 @@
       [:many     _] ::groupBy)))
 
 
-(defn- log-druid-query [druid-query]
-  (log/debug (u/format-color 'blue "DRUID QUERY:😋\n%s\n" (u/pprint-to-str druid-query))))
-
-
 (defn- build-druid-query [query]
   {:pre [(map? query)]}
   (let [query-type (druid-query-type query)]
@@ -521,17 +517,7 @@
         (apply dissoc result keys-to-remove)))))
 
 
-;;; ### process-mbql-query
-
-(defn process-mbql-query
-  "Process an MBQL (inner) query for a Druid DB."
-  [do-query query]
-  (binding [*query* query]
-    (let [[query-type druid-query] (build-druid-query query)]
-      (log-druid-query druid-query)
-      (->> (do-query druid-query)
-           (post-process query-type)
-           remove-bonus-keys))))
+;;; ### MBQL Processor
 
 (defn mbql->native
   "Transpile an MBQL (inner) query into a native form suitable for a Druid DB."

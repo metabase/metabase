@@ -113,7 +113,7 @@
      The query passed in will contain:
 
          {:database ^DatabaseInstance
-          :native   {... driver specific query form ...}
+          :native   {... driver specific query form such as one returned from a call to `mbql->native` ...}
           :settings {:report-timezone \"US/Pacific\"
                      :other-setting   \"and its value\"}}
 
@@ -144,32 +144,20 @@
      Generic error messages are provided in the constant `connection-error-messages`; return one of these whenever possible.")
 
   (mbql->native ^Map [this, ^Map query]
-    "Transpile an MBQL structured query into the appropriate native query form for the given driver.  For example, a
-     driver like Postgres should build a valid SQL expression and return that.")
+    "Transpile an MBQL structured query into the appropriate native query form.
+
+     The input query will be a fully expanded MBQL query (https://github.com/metabase/metabase/wiki/Expanded-Queries) with
+     all the necessary pieces of information to build a properly formatted native query for the given database.
+
+     The result of this function will be passed directly into calls to `execute-query`.
+
+     For example, a driver like Postgres would build a valid SQL expression and return a map such as:
+
+       {:query \"SELECT * FROM my_table\"}")
 
   (notify-database-updated [this, ^DatabaseInstance database]
     "*OPTIONAL*. Notify the driver that the attributes of the DATABASE have changed.  This is specifically relevant in
      the event that the driver was doing some caching or connection pooling.")
-
-  (process-native [this, {^Integer database-id :database, {^String native-query :query} :native, :as ^Map query}]
-    "Process a native QUERY. This function is called by `metabase.driver/process-query`.
-
-     Results should look something like:
-
-       {:columns [\"id\", \"bird_name\"]
-        :cols    [{:name \"id\", :base_type :IntegerField}
-                  {:name \"bird_name\", :base_type :TextField}]
-        :rows    [[1 \"Lucky Bird\"]
-                  [2 \"Rasta Can\"]]}")
-
-  (process-mbql [this, ^Map query]
-    "Process a native or structured QUERY. This function is called by `metabase.driver/process-query` after performing various driver-unspecific
-     steps like Query Expansion and other preprocessing.
-
-     Results should look something like:
-
-       [{:id 1, :name \"Lucky Bird\"}
-        {:id 2, :name \"Rasta Can\"}]")
 
   (process-query-in-context [this, ^IFn qp]
     "*OPTIONAL*. Similar to `sync-in-context`, but for running queries rather than syncing. This should be used to do things like open DB connections
@@ -233,18 +221,15 @@
 
 (def IDriverDefaultsMixin
   "Default implementations of `IDriver` methods marked *OPTIONAL*."
-  (let [not-implemented (fn [_ _] (throw (RuntimeException. "Driver has not implemented `mbql->native` function.")))]
-    {:analyze-table                     (constantly nil)
-     :date-interval                     (u/drop-first-arg u/relative-date)
-     :describe-table-fks                (constantly nil)
-     :execute-query                     not-implemented
-     :features                          (constantly nil)
-     :humanize-connection-error-message (u/drop-first-arg identity)
-     :mbql->native                      not-implemented
-     :notify-database-updated           (constantly nil)
-     :process-query-in-context          (u/drop-first-arg identity)
-     :sync-in-context                   (fn [_ _ f] (f))
-     :table-rows-seq                    (constantly nil)}))
+  {:analyze-table                     (constantly nil)
+   :date-interval                     (u/drop-first-arg u/relative-date)
+   :describe-table-fks                (constantly nil)
+   :features                          (constantly nil)
+   :humanize-connection-error-message (u/drop-first-arg identity)
+   :notify-database-updated           (constantly nil)
+   :process-query-in-context          (u/drop-first-arg identity)
+   :sync-in-context                   (fn [_ _ f] (f))
+   :table-rows-seq                    (constantly nil)})
 
 
 ;;; ## CONFIG
