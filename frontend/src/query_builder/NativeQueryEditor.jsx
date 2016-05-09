@@ -165,7 +165,7 @@ export default class NativeQueryEditor extends Component {
         if (this.state.showEditor && this.props.databases && (this.props.databases.length > 1 || modeInfo.requiresTable)) {
             if (this.props.databases.length > 1) {
                 dataSelectors.push(
-                    <div className="GuiBuilder-section GuiBuilder-data flex align-center">
+                    <div key="db_selector" className="GuiBuilder-section GuiBuilder-data flex align-center">
                         <span className="GuiBuilder-section-label Query-label">Database</span>
                         <DataSelector
                             databases={this.props.databases}
@@ -183,7 +183,7 @@ export default class NativeQueryEditor extends Component {
                     selectedTable = this.props.query.native.collection ? _.findWhere(tables, { name: this.props.query.native.collection }) : null;
 
                 dataSelectors.push(
-                    <div className="GuiBuilder-section GuiBuilder-data flex align-center">
+                    <div key="table_selector" className="GuiBuilder-section GuiBuilder-data flex align-center">
                         <span className="GuiBuilder-section-label Query-label">Table</span>
                         <DataSelector
                             ref="dataSection"

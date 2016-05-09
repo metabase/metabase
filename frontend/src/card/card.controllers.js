@@ -104,7 +104,19 @@ CardControllers.controller('CardDetail', [
                         if (queryResult && queryResult.data && queryResult.data.native_form) {
                             // since we have the native form from the last execution of our query, just use that
                             datasetQuery.type = "native";
-                            datasetQuery.native = angular.copy(queryResult.data.native_form);
+                            datasetQuery.native = {
+                                query: queryResult.data.native_form.query
+                            };
+
+                            // when the driver requires JSON we need to stringify our query result native form
+                            if (_.contains(["mongo", "druid"], tableMetadata.db.engine)) {
+                                datasetQuery.native.query = JSON.stringify(queryResult.data.native_form.query);
+                            }
+
+                            // only on Mongo (for now) do we need to support an extra key for the collection
+                            if (tableMetadata.db.engine === "mongo") {
+                                datasetQuery.native.collection = queryResult.data.native_form.collection;
+                            }
                         } else {
                             // we have no previous basis for the native form, so just create a new one
                             let nativeQuery = createQuery("native", database);
