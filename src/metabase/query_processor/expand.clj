@@ -365,6 +365,7 @@
 
 (s/defn ^:ql ^:always-validate expressions
   "Top-level clause. Add additional calculated fields to a query."
+  {:added "0.17.0"}
   [query, m :- {s/Keyword Expression}]
   (assoc query :expressions m))
 
@@ -375,10 +376,10 @@
                                                          (float arg) ; convert args to floats so things like 5 / 10 -> 0.5 instead of 0
                                                          arg)))}))
 
-(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} + "Arithmetic addition function."       (partial expression-fn :+))
-(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} - "Arithmetic subtraction function."    (partial expression-fn :-))
-(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} * "Arithmetic multiplication function." (partial expression-fn :*))
-(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} / "Arithmetic division function."       (partial expression-fn :/))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} + "Arithmetic addition function."       (partial expression-fn :+))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} - "Arithmetic subtraction function."    (partial expression-fn :-))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} * "Arithmetic multiplication function." (partial expression-fn :*))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} / "Arithmetic division function."       (partial expression-fn :/))
 
 ;;; EXPRESSION PARSING
 
@@ -388,8 +389,7 @@
 (def ^:private token->ql-fn
   "A map of keywords (e.g., `:=`), to the matching vars (e.g., `#'=`)."
   (into {} (for [[symb varr] (ns-publics *ns*)
-                 :let        [metta (meta varr)]
-                 :when       (:ql metta)]
+                 :when       (:ql (meta varr))]
              {(keyword symb) varr})))
 
 (defn- fn-for-token

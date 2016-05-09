@@ -85,30 +85,46 @@
                                 (apply str)
                                 keyword)))
 
+(defn- ag-type->field-name
+  "Return the (keyword) name that should be used for the column in the results. This is the same as the name of the aggregation,
+   except for `distinct`, which is called `:count` for unknown reasons and/or historical accident."
+  [ag-type]
+  {:pre [(keyword? ag-type)]}
+  (if (= ag-type :distinct)
+    :count
+    ag-type))
+
 (defn- add-aggregate-field-if-needed
   "Add a Field containing information about an aggregate column such as `:count` or `:distinct` if needed."
   [{{ag-type :aggregation-type, ag-field :field} :aggregation} fields]
   (if (or (not ag-type)
           (= ag-type :rows))
     fields
-    (conj fields (merge {:source :aggregation}
-                        (if (contains? #{:count :distinct} ag-type)
-                          {:base-type          :IntegerField
-                           :field-name         :count
-                           :field-display-name :count
-                           :special-type       :number}
-                          (merge (select-keys ag-field [:base-type :special-type])
-                                 {:field-name         ag-type
-                                  :field-display-name ag-type}))))))
+    (conj fields (merge (let [field-name (ag-type->field-name ag-type)]
+                          {:source             :aggregation
+                           :field-name         field-name
+                           :field-display-name field-name
+                           :base-type          (:base-type ag-field)
+                           :special-type       (:special-type ag-field)})
+                        ;; Always treat count or distinct count as an integer even if the DB in question returns it as something wacky like a BigDecimal or Float
+                        (when (contains? #{:count :distinct} ag-type)
+                          {:base-type    :IntegerField
+                           :special-type :number})
+                        ;; For the time being every Expression is an arithmetic operator and returns a floating-point number, so hardcoding these types is fine;
+                        ;; In the future when we extend Expressions to handle more functionality we'll want to introduce logic that associates a return type with a given expression.
+                        ;; But this will work for the purposes of a patch release.
+                        (when (instance? metabase.query_processor.interface.ExpressionRef ag-field)
+                          {:base-type    :FloatField
+                           :special-type :number})))))
 
-(defn- add-unknown-fields-if-needed`
+(defn- add-unknown-fields-if-needed
   "When create info maps for any fields we didn't expect to come back from the query.
    Ideally, this should never happen, but on the off chance it does we still want to return it in the results."
   [actual-keys fields]
   {:pre [(set? actual-keys)
          (every? keyword? actual-keys)]}
-  (let [expected-keys (set (map :field-name fields))
-        _             (assert (every? keyword? expected-keys))
+  (let [expected-keys (u/prog1 (set (map :field-name fields))
+                        (assert (every? keyword? <>)))
         missing-keys  (set/difference actual-keys expected-keys)]
     (when (seq missing-keys)
       (log/warn (u/format-color 'yellow "There are fields we weren't expecting in the results: %s\nExpected: %s\nActual: %s"
