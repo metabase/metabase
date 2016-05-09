@@ -4,8 +4,10 @@
             [korma.core :as k]
             [metabase.db :refer :all]
             [metabase.driver :as driver]
-            (metabase.models [field :refer [Field]]
+            (metabase.models [database :refer [Database]]
+                             [field :refer [Field]]
                              [table :refer [Table] :as table])
+            [metabase.query-processor :as qp]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
             [metabase.test.util :refer [expect-eval-actual-first resolve-private-fns]])
@@ -66,6 +68,18 @@
                                             :port 3000
                                             :dbname "bad-db-name?connectTimeoutMS=50"}))
 
+(expect-when-testing-mongo
+  {:status :completed
+   :row_count 1
+   :data {:rows [[1]]
+          :columns ["count"]
+          :cols [{:description nil, :table_id nil, :special_type nil, :name "count", :extra_info {}, :id nil, :target nil, :display_name "count", :preview-display true, :base_type :UnknownField}]
+          :native_form {:collection "venues"
+                        :query "[{\"$project\": {\"_id\": \"$_id\"}}, {\"$match\": {\"_id\": {\"$eq\": 1}}}, {\"$group\": {\"_id\": null, \"count\": {\"$sum\": 1}}}, {\"$sort\": {\"_id\": 1}}, {\"$project\": {\"_id\": false, \"count\": true}}]"}}}
+  (qp/process-query {:native   {:query "[{\"$project\": {\"_id\": \"$_id\"}}, {\"$match\": {\"_id\": {\"$eq\": 1}}}, {\"$group\": {\"_id\": null, \"count\": {\"$sum\": 1}}}, {\"$sort\": {\"_id\": 1}}, {\"$project\": {\"_id\": false, \"count\": true}}]"
+                                :collection "venues"}
+                     :type     :native
+                     :database (:id (mongo-db))}))
 
 ;; ## Tests for individual syncing functions
 
