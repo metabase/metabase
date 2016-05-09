@@ -8,8 +8,8 @@
                    [db :as kdb])
             (korma.sql [engine :as kengine]
                        [fns :as kfns])
-            [metabase.config :as config]
-            [metabase.driver :as driver]
+            (metabase [config :as config]
+                      [driver :as driver])
             [metabase.driver.generic-sql :as sql]
             [metabase.query-processor :as qp]
             metabase.query-processor.interface
@@ -314,14 +314,14 @@
 (defn process-structured
   "Convert QUERY into a korma `select` form, execute it, and annotate the results."
   [driver {{:keys [source-table]} :query, database :database, settings :settings, :as outer-query}]
-  (let [timezone     (:report-timezone settings)
-        entity       ((resolve 'metabase.driver.generic-sql/korma-entity) database source-table)
-        korma-form   (build-korma-form driver outer-query entity)
-        f             (partial k/exec korma-form)
-        f             (fn []
-                        (kdb/with-db (:db entity)
-                          (if (seq timezone)
-                            (do-with-timezone driver timezone f)
-                            (f))))]
+  (let [timezone   (:report-timezone settings)
+        entity     ((resolve 'metabase.driver.generic-sql/korma-entity) database source-table)
+        korma-form (build-korma-form driver outer-query entity)
+        f          (partial k/exec korma-form)
+        f          (fn []
+                     (kdb/with-db (:db entity)
+                       (if (seq timezone)
+                         (do-with-timezone driver timezone f)
+                         (f))))]
     (log-korma-form korma-form)
     (do-with-try-catch f)))

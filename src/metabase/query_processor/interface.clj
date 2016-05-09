@@ -46,7 +46,8 @@
 (s/defrecord JoinTable [source-field :- JoinTableField
                         pk-field     :- JoinTableField
                         table-id     :- IntGreaterThanZero
-                        table-name   :- s/Str])
+                        table-name   :- s/Str
+                        schema       :- (s/maybe s/Str)])
 
 ;;; # ------------------------------------------------------------ PROTOCOLS ------------------------------------------------------------
 
