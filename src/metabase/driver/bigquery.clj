@@ -154,9 +154,9 @@
    :fields (set (table-schema->metabase-field-info (.getSchema (get-table database table-name))))})
 
 
-(defn- ^QueryResponse execute-query
+(defn- ^QueryResponse execute-bigquery
   ([{{:keys [project-id]} :details, :as database} query-string]
-   (execute-query (database->client database) project-id query-string))
+   (execute-bigquery (database->client database) project-id query-string))
 
   ([^Bigquery client, ^String project-id, ^String query-string]
    {:pre [client (seq project-id) (seq query-string)]}
@@ -222,7 +222,7 @@
   ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by `execute` so operations going through `process-native*` may be
   ;; retried up to 3 times.
   (u/auto-retry 1
-    (post-process-native (execute-query database query-string))))
+    (post-process-native (execute-bigquery database query-string))))
 
 (defn- process-native [{database :database, {native-query :query} :native}]
   (process-native* database native-query))
@@ -346,6 +346,21 @@
     (sqlqp/log-korma-form korma-form sql)
     (post-process-mbql dataset-id table-name (process-native* database sql))))
 
+(defn- mbql->native [{{{:keys [dataset-id]} :details, :as database} :database, {{table-name :name} :source-table} :query, :as query}]
+  {:pre [(map? database) (seq dataset-id) (seq table-name)]}
+  (let [korma-form (korma-form query (entity dataset-id table-name))
+        sql        (korma-form->sql korma-form)]
+    (sqlqp/log-korma-form korma-form sql)
+    {:query      sql
+     :table-name table-name
+     :mbql?      true}))
+
+(defn- execute-query [{{{:keys [dataset-id]} :details, :as database} :database, {sql :query, :keys [table-name mbql?]} :native}]
+  (let [results (process-native* database sql)]
+    (if mbql?
+      (post-process-mbql dataset-id table-name results)
+      results)))
+
 ;; This provides an implementation of `prepare-value` that prevents korma from converting forms to prepared statement parameters (`?`)
 ;; TODO - Move this into `metabase.driver.generic-sql` and document it as an alternate implementation for `prepare-value` (?)
 ;;        Or perhaps investigate a lower-level way to disable the functionality in korma, perhaps by swapping out a function somewhere
@@ -443,8 +458,8 @@
                                                :display-name "Auth Code"
                                                :placeholder  "4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek"
                                                :required     true}])
+          :execute-query         (u/drop-first-arg execute-query)
           :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)
-          :process-native        (u/drop-first-arg process-native)
-          :process-mbql          (u/drop-first-arg process-mbql)}))
+          :mbql->native          (u/drop-first-arg mbql->native)}))
 
 (driver/register-driver! :bigquery (BigQueryDriver.))
