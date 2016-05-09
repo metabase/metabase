@@ -2,11 +2,11 @@
 var Urls = {
     card: function(card_id) {
         // NOTE that this is for an ephemeral card link, not an editable card
-        return "/card/"+card_id;
+        return "card/"+card_id;
     },
 
     dashboard: function(dashboard_id) {
-        return "/dash/"+dashboard_id;
+        return "dash/"+dashboard_id;
     },
 
     modelToUrl: function(model, model_id) {
@@ -19,11 +19,11 @@ var Urls = {
     },
 
     pulse: function(pulse_id) {
-        return "/pulse/#"+pulse_id;
+        return "pulse/"+pulse_id;
     },
 
     tableRowsQuery: function(database_id, table_id, metric_id, segment_id) {
-        let url = "/q/?db="+database_id+"&table="+table_id;
+        let url = "q/?db="+database_id+"&table="+table_id;
 
         if (metric_id) {
             url = url + "&metric="+metric_id;

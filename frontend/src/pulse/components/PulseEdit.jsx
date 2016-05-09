@@ -55,7 +55,7 @@ export default class PulseEdit extends Component {
 
         MetabaseAnalytics.trackEvent((this.props.pulseId) ? "PulseEdit" : "PulseCreate", "Complete", this.props.pulse.cards.length);
 
-        this.props.onChangeLocation("/pulse");
+        this.props.onChangeLocation("pulse");
     }
 
     async delete() {
@@ -63,7 +63,7 @@ export default class PulseEdit extends Component {
 
         MetabaseAnalytics.trackEvent("PulseDelete", "Complete");
 
-        this.props.onChangeLocation("/pulse");
+        this.props.onChangeLocation("pulse");
     }
 
     setPulse(pulse) {
@@ -148,7 +148,7 @@ export default class PulseEdit extends Component {
                         failedText="Save failed"
                         successText="Saved"
                     />
-                    <a className="text-bold flex-align-right no-decoration text-brand-hover" href="/pulse">Cancel</a>
+                    <a className="text-bold flex-align-right no-decoration text-brand-hover" href="pulse">Cancel</a>
                 </div>
             </div>
         );

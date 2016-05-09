@@ -21,7 +21,7 @@ export default class DatabaseList extends Component {
         return (
             <div className="wrapper">
                 <section className="PageHeader px2 clearfix">
-                    <a className="Button Button--primary float-right" href="/admin/databases/create">Add database</a>
+                    <a className="Button Button--primary float-right" href="admin/databases/create">Add database</a>
                     <h2 className="PageTitle">Databases</h2>
                 </section>
                 <section>
@@ -38,7 +38,7 @@ export default class DatabaseList extends Component {
                                 databases.map(database =>
                                     <tr key={database.id}>
                                         <td>
-                                            <a className="text-bold link" href={"/admin/databases/"+database.id}>{database.name}</a>
+                                            <a className="text-bold link" href={"admin/databases/"+database.id}>{database.name}</a>
                                         </td>
                                         <td>
                                             {engines && engines[database.engine] ? engines[database.engine]['driver-name'] : database.engine}

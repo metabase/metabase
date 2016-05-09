@@ -54,7 +54,7 @@ export default class SegmentForm extends Component {
         return (
             <div>
                 <button className={cx("Button", { "Button--primary": !invalid, "disabled": invalid })} onClick={handleSubmit}>Save changes</button>
-                <a className="Button Button--borderless mx1" href={"/admin/datamodel/database/" + tableMetadata.db_id + "/table/" + tableMetadata.id}>Cancel</a>
+                <a className="Button Button--borderless mx1" href={"admin/datamodel/database/" + tableMetadata.db_id + "/table/" + tableMetadata.id}>Cancel</a>
             </div>
         )
     }

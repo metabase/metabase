@@ -11,7 +11,7 @@ export default class NotFound extends Component {
                     <p className="h4">You might've been tricked by a ninja, but in all likelihood, you were just given a bad link.</p>
                     <p className="h4 my4">You can always:</p>
                     <div className="flex align-center">
-                        <a className="Button Button--primary" href="/q">
+                        <a className="Button Button--primary" href="q">
                             <div className="p1">Ask a new question.</div>
                         </a>
                         <span className="mx2">or</span>

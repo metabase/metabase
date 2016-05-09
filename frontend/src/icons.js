@@ -61,7 +61,7 @@ angular.module('metabase.icons', [])
         .directive('mbLogoIcon', function () {
             return {
                 restrict: 'E',
-                templateUrl: '/app/components/icons/logo.html',
+                templateUrl: 'app/components/icons/logo.html',
                 scope: ICON_SCOPE,
                 compile: iconCompile
             };

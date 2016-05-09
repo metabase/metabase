@@ -105,7 +105,7 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
 
                 MetabaseAnalytics.trackEvent("Databases", "Create", database.engine);
 
-                $location.url('/admin/databases?created');
+                $location.url('admin/databases?created');
             }, function(error) {
                 $scope.$broadcast("form:api-error", error);
                 MetabaseAnalytics.trackEvent("Databases", "Create Failed", database.engine);
@@ -139,14 +139,14 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             }, function(result) {
                 MetabaseAnalytics.trackEvent("Databases", "Delete", "Using Detail");
 
-                $location.path('/admin/databases/');
+                $location.path('admin/databases/');
             }, function(error) {
                 console.log('error deleting database', error);
             });
         };
 
         $scope.redirectToDatabases = function() {
-            $scope.$apply(() => $location.path('/admin/databases/'));
+            $scope.$apply(() => $location.path('admin/databases/'));
         };
 
         function loadExistingDB() {
@@ -160,7 +160,7 @@ DatabasesControllers.controller('DatabaseEdit', ['$scope', '$routeParams', '$loc
             }, function(error) {
                 console.log('error loading database', error);
                 if (error.status == 404) {
-                    $location.path('/admin/databases/');
+                    $location.path('admin/databases/');
                 }
             });
         }

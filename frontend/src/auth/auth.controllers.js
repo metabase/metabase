@@ -42,7 +42,7 @@ AuthControllers.controller('Login', ['$scope', '$location', '$timeout', 'AuthUti
 
         // do a quick check if the user is already logged in.  if so then send them somewhere better.
         if (AppState.model.currentUser) {
-            $location.path('/');
+            $location.path('');
         }
     }
 ]);
@@ -63,11 +63,11 @@ AuthControllers.controller('Logout', ['$scope', '$location', '$timeout', 'ipCook
             $scope.$emit('appstate:logout', sessionId);
 
             // only sensible place to go after logout is login page
-            $location.path('/auth/login');
+            $location.path('auth/login');
         }, 300);
     } else {
         // only sensible place to go after logout is login page
-        $location.path('/auth/login');
+        $location.path('auth/login');
     }
 }]);
 
@@ -95,7 +95,7 @@ AuthControllers.controller('PasswordReset', ['$scope', '$routeParams', '$locatio
         token: $routeParams.token
     }, function(result) {
         if (!result.valid) {
-            $location.path('/auth/password_reset_token_expired');
+            $location.path('auth/password_reset_token_expired');
             return;
         }
 

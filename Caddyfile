@@ -1,0 +1,7 @@
+localhost:2020
+
+log
+
+proxy /metabase localhost:3000 {
+    without /metabase
+}

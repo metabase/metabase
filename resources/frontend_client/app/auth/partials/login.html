@@ -32,7 +32,7 @@
                         <button class="Button Grid-cell" ng-class="{'Button--primary': form.$valid}" ng-click="login(email, password, remember_me)" ng-disabled="!form.$valid">
                             Sign in
                         </button>
-                        <a class="Grid-cell py2 sm-py0 text-grey-3 md-text-right text-centered flex-full link" href="/auth/forgot_password">I seem to have forgotten my password</a>
+                        <a class="Grid-cell py2 sm-py0 text-grey-3 md-text-right text-centered flex-full link" href="auth/forgot_password">I seem to have forgotten my password</a>
                     </div>
                 </form>
             </div>
@@ -40,4 +40,4 @@
     </div>
 </div>
 
-<div ng-include="'/app/auth/partials/auth_scene.html'"></div>
+<div ng-include="'app/auth/partials/auth_scene.html'"></div>

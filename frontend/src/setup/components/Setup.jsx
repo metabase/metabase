@@ -82,7 +82,7 @@ export default class Setup extends Component {
                                         <NewsletterForm initialEmail={userDetails.email} />
                                     </div>
                                     <div className="pt4 pb2">
-                                        <a className="Button Button--primary" href="/?new" onClick={this.completeSetup.bind(this)}>Take me to Metabase</a>
+                                        <a className="Button Button--primary" href="?new" onClick={this.completeSetup.bind(this)}>Take me to Metabase</a>
                                     </div>
                                 </section>
                             : null }

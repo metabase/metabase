@@ -96,7 +96,7 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
             // This function performs whatever state cleanup and next steps are required when a user tries to access
             // something they are not allowed to.
             invalidAccess: function(user, url, message) {
-                $location.path('/unauthorized/');
+                $location.path('unauthorized/');
             },
 
             setAppContext: function(appContext) {
@@ -108,11 +108,11 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
                 // establish our application context based on the route (URI)
                 // valid app contexts are: 'setup', 'auth', 'main', 'admin', or 'unknown'
                 var routeContext;
-                if ($location.path().indexOf('/auth/') === 0) {
+                if ($location.path().indexOf('/auth/') >= 0) {
                     routeContext = 'auth';
-                } else if ($location.path().indexOf('/setup/') === 0) {
+                } else if ($location.path().indexOf('/setup/') >= 0) {
                     routeContext = 'setup';
-                } else if ($location.path().indexOf('/admin/') === 0) {
+                } else if ($location.path().indexOf('/admin/') >= 0) {
                     routeContext = 'admin';
                 } else if ($location.path() === '/') {
                     routeContext = 'home';
@@ -144,11 +144,11 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
                 // handle routing protections for /setup/
                 if ($location.path().indexOf('/setup') === 0 && !MetabaseSettings.hasSetupToken()) {
                     // someone trying to access setup process without having a setup token, so block that.
-                    $location.path('/');
+                    $location.path('');
                     return;
                 } else if ($location.path().indexOf('/setup') !== 0 && MetabaseSettings.hasSetupToken()) {
                     // someone who has a setup token but isn't routing to setup yet, so send them there!
-                    $location.path('/setup/');
+                    $location.path('setup/');
                     return;
                 }
 
@@ -161,7 +161,7 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
                         // if the user is asking for a url outside of /auth/* then record the url then send them
                         // to login page, otherwise we will let the user continue on to their requested page
                         service.model.requestedUrl = $location.path();
-                        $location.path('/auth/login');
+                        $location.path('auth/login');
                     }
 
                     return;
@@ -182,7 +182,7 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
                     $location.path(service.model.requestedUrl);
                     delete service.model.requestedUrl;
                 } else {
-                    $location.path('/');
+                    $location.path('');
                 }
             }
         };
@@ -237,13 +237,13 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
 
             // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
             $timeout(function() {
-                $location.path('/auth/login');
+                $location.path('auth/login');
             }, 300);
         });
 
         // $http interceptor received a 403 response
         $rootScope.$on("event:auth-forbidden", function() {
-            $location.path("/unauthorized");
+            $location.path("unauthorized");
         });
 
         return service;
@@ -263,13 +263,13 @@ MetabaseServices.service('MetabaseCore', ['User', function(User) {
 var CoreServices = angular.module('metabase.core.services', ['ngResource', 'ngCookies']);
 
 CoreServices.factory('Activity', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/activity', {}, {
+    return $resource('api/activity', {}, {
         list: {
             method: 'GET',
             isArray: true
         },
         recent_views: {
-            url: '/api/activity/recent_views',
+            url: 'api/activity/recent_views',
             method: 'GET',
             isArray: true
         }
@@ -277,14 +277,14 @@ CoreServices.factory('Activity', ['$resource', '$cookies', function($resource, $
 }]);
 
 CoreServices.factory('Card', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/card/:cardId', {}, {
+    return $resource('api/card/:cardId', {}, {
         list: {
-            url: '/api/card',
+            url: 'api/card',
             method: 'GET',
             isArray: true
         },
         create: {
-            url: '/api/card',
+            url: 'api/card',
             method: 'POST'
         },
         get: {
@@ -306,28 +306,28 @@ CoreServices.factory('Card', ['$resource', '$cookies', function($resource, $cook
             }
         },
         isfavorite: {
-            url: '/api/card/:cardId/favorite',
+            url: 'api/card/:cardId/favorite',
             method: 'GET',
             params: {
                 cardId: '@cardId'
             }
         },
         favorite: {
-            url: '/api/card/:cardId/favorite',
+            url: 'api/card/:cardId/favorite',
             method: 'POST',
             params: {
                 cardId: '@cardId'
             }
         },
         unfavorite: {
-            url: '/api/card/:cardId/favorite',
+            url: 'api/card/:cardId/favorite',
             method: 'DELETE',
             params: {
                 cardId: '@cardId'
             }
         },
         updateLabels: {
-            url: '/api/card/:cardId/labels',
+            url: 'api/card/:cardId/labels',
             method: 'POST',
             params: {
                 cardId: '@cardId',
@@ -338,14 +338,14 @@ CoreServices.factory('Card', ['$resource', '$cookies', function($resource, $cook
 }]);
 
 CoreServices.factory('Dashboard', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/dashboard/:dashId', {}, {
+    return $resource('api/dashboard/:dashId', {}, {
         list: {
-            url:'/api/dashboard',
+            url:'api/dashboard',
             method:'GET',
             isArray:true
         },
         create: {
-            url:'/api/dashboard',
+            url:'api/dashboard',
             method:'POST'
         },
         get: {
@@ -361,17 +361,17 @@ CoreServices.factory('Dashboard', ['$resource', '$cookies', function($resource, 
             params:{dashId:'@dashId'}
         },
         addcard: {
-            url:'/api/dashboard/:dashId/cards',
+            url:'api/dashboard/:dashId/cards',
             method:'POST',
             params:{dashId:'@dashId'}
         },
         removecard: {
-            url:'/api/dashboard/:dashId/cards',
+            url:'api/dashboard/:dashId/cards',
             method:'DELETE',
             params:{dashId:'@dashId'}
         },
         reposition_cards: {
-            url:'/api/dashboard/:dashId/cards',
+            url:'api/dashboard/:dashId/cards',
             method:'PUT',
             params:{dashId:'@dashId'}
         }
@@ -379,83 +379,83 @@ CoreServices.factory('Dashboard', ['$resource', '$cookies', function($resource, 
 }]);
 
 CoreServices.factory('Email', ['$resource', function($resource) {
-    return $resource('/api/email', {}, {
+    return $resource('api/email', {}, {
 
         updateSettings: {
-            url: '/api/email/',
+            url: 'api/email/',
             method: 'PUT'
         },
 
         sendTest: {
-            url: '/api/email/test',
+            url: 'api/email/test',
             method: 'POST'
         }
     });
 }]);
 
 CoreServices.factory('Slack', ['$resource', function($resource) {
-    return $resource('/api/slack', {}, {
+    return $resource('api/slack', {}, {
 
         updateSettings: {
-            url: '/api/slack/settings',
+            url: 'api/slack/settings',
             method: 'PUT'
         }
     });
 }]);
 
 CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', function($resource, $cookies, MetabaseCore) {
-    return $resource('/api/meta', {}, {
+    return $resource('api/meta', {}, {
         db_list: {
-            url: '/api/database/',
+            url: 'api/database/',
             method: 'GET',
             isArray: true
         },
         db_list_with_tables: {
             method: 'GET',
-            url: '/api/database/',
+            url: 'api/database/',
             params: {
                 include_tables: 'true'
             },
             isArray: true
         },
         db_create: {
-            url: '/api/database/',
+            url: 'api/database/',
             method: 'POST'
         },
         db_add_sample_dataset: {
-            url: '/api/database/sample_dataset',
+            url: 'api/database/sample_dataset',
             method: 'POST'
         },
         db_get: {
-            url: '/api/database/:dbId',
+            url: 'api/database/:dbId',
             method: 'GET',
             params: {
                 dbId: '@dbId'
             }
         },
         db_update: {
-            url: '/api/database/:dbId',
+            url: 'api/database/:dbId',
             method: 'PUT',
             params: {
                 dbId: '@id'
             }
         },
         db_delete: {
-            url: '/api/database/:dbId',
+            url: 'api/database/:dbId',
             method: 'DELETE',
             params: {
                 dbId: '@dbId'
             }
         },
         db_metadata: {
-            url: '/api/database/:dbId/metadata',
+            url: 'api/database/:dbId/metadata',
             method: 'GET',
             params: {
                 dbId: '@dbId'
             }
         },
         db_tables: {
-            url: '/api/database/:dbId/tables',
+            url: 'api/database/:dbId/tables',
             method: 'GET',
             params: {
                 dbId: '@dbId'
@@ -463,7 +463,7 @@ CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', funct
             isArray: true
         },
         db_idfields: {
-            url: '/api/database/:dbId/idfields',
+            url: 'api/database/:dbId/idfields',
             method: 'GET',
             params: {
                 dbId: '@dbId'
@@ -471,7 +471,7 @@ CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', funct
             isArray: true
         },
         db_autocomplete_suggestions: {
-            url: '/api/database/:dbId/autocomplete_suggestions?prefix=:prefix',
+            url: 'api/database/:dbId/autocomplete_suggestions?prefix=:prefix',
             method: 'GET',
             params: {
                 dbId: '@dbId'
@@ -479,14 +479,14 @@ CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', funct
             isArray: true
         },
         db_sync_metadata: {
-            url: '/api/database/:dbId/sync',
+            url: 'api/database/:dbId/sync',
             method: 'POST',
             params: {
                 dbId: '@dbId'
             }
         },
         table_list: {
-            url: '/api/table/',
+            url: 'api/table/',
             method: 'GET',
             params: {
                 tableId: '@tableId'
@@ -494,21 +494,21 @@ CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', funct
             isArray: true
         },
         table_get: {
-            url: '/api/table/:tableId',
+            url: 'api/table/:tableId',
             method: 'GET',
             params: {
                 tableId: '@tableId'
             }
         },
         table_update: {
-            url: '/api/table/:tableId',
+            url: 'api/table/:tableId',
             method: 'PUT',
             params: {
                 tableId: '@id'
             }
         },
         table_fields: {
-            url: '/api/table/:tableId/fields',
+            url: 'api/table/:tableId/fields',
             method: 'GET',
             params: {
                 tableId: '@tableId'
@@ -516,7 +516,7 @@ CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', funct
             isArray: true
         },
         table_fks: {
-            url: '/api/table/:tableId/fks',
+            url: 'api/table/:tableId/fks',
             method: 'GET',
             params: {
                 tableId: '@tableId'
@@ -524,35 +524,35 @@ CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', funct
             isArray: true
         },
         table_reorder_fields: {
-            url: '/api/table/:tableId/reorder',
+            url: 'api/table/:tableId/reorder',
             method: 'POST',
             params: {
                 tableId: '@tableId'
             }
         },
         table_query_metadata: {
-            url: '/api/table/:tableId/query_metadata',
+            url: 'api/table/:tableId/query_metadata',
             method: 'GET',
             params: {
                 dbId: '@tableId'
             }
         },
         table_sync_metadata: {
-            url: '/api/table/:tableId/sync',
+            url: 'api/table/:tableId/sync',
             method: 'POST',
             params: {
                 tableId: '@tableId'
             }
         },
         field_get: {
-            url: '/api/field/:fieldId',
+            url: 'api/field/:fieldId',
             method: 'GET',
             params: {
                 fieldId: '@fieldId'
             }
         },
         field_summary: {
-            url: '/api/field/:fieldId/summary',
+            url: 'api/field/:fieldId/summary',
             method: 'GET',
             params: {
                 fieldId: '@fieldId'
@@ -560,42 +560,42 @@ CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', funct
             isArray: true
         },
         field_values: {
-            url: '/api/field/:fieldId/values',
+            url: 'api/field/:fieldId/values',
             method: 'GET',
             params: {
                 fieldId: '@fieldId'
             }
         },
         field_value_map_update: {
-            url: '/api/field/:fieldId/value_map_update',
+            url: 'api/field/:fieldId/value_map_update',
             method: 'POST',
             params: {
                 fieldId: '@fieldId'
             }
         },
         field_update: {
-            url: '/api/field/:fieldId',
+            url: 'api/field/:fieldId',
             method: 'PUT',
             params: {
                 fieldId: '@id'
             }
         },
         dataset: {
-            url: '/api/dataset',
+            url: 'api/dataset',
             method: 'POST'
         }
     });
 }]);
 
 CoreServices.factory('Pulse', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/pulse/:pulseId', {}, {
+    return $resource('api/pulse/:pulseId', {}, {
         list: {
-            url: '/api/pulse',
+            url: 'api/pulse',
             method: 'GET',
             isArray: true
         },
         create: {
-            url: '/api/pulse',
+            url: 'api/pulse',
             method: 'POST'
         },
         get: {
@@ -611,15 +611,15 @@ CoreServices.factory('Pulse', ['$resource', '$cookies', function($resource, $coo
             params: { pulseId: '@pulseId' }
         },
         test: {
-            url: '/api/pulse/test',
+            url: 'api/pulse/test',
             method: 'POST'
         },
         form_input: {
-            url: '/api/pulse/form_input',
+            url: 'api/pulse/form_input',
             method: 'GET',
         },
         preview_card: {
-            url: '/api/pulse/preview_card_info/:id',
+            url: 'api/pulse/preview_card_info/:id',
             params: { id: '@id' },
             method: 'GET',
         }
@@ -627,9 +627,9 @@ CoreServices.factory('Pulse', ['$resource', '$cookies', function($resource, $coo
 }]);
 
 CoreServices.factory('Segment', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/segment/:segmentId', {}, {
+    return $resource('api/segment/:segmentId', {}, {
         create: {
-            url: '/api/segment',
+            url: 'api/segment',
             method: 'POST'
         },
         get: {
@@ -648,9 +648,9 @@ CoreServices.factory('Segment', ['$resource', '$cookies', function($resource, $c
 }]);
 
 CoreServices.factory('Metric', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/metric/:metricId', {}, {
+    return $resource('api/metric/:metricId', {}, {
         create: {
-            url: '/api/metric',
+            url: 'api/metric',
             method: 'POST'
         },
         get: {
@@ -669,9 +669,9 @@ CoreServices.factory('Metric', ['$resource', '$cookies', function($resource, $co
 }]);
 
 CoreServices.factory('Revision', ['$resource', function($resource) {
-    return $resource('/api/revision', {}, {
+    return $resource('api/revision', {}, {
         list: {
-            url: '/api/revision',
+            url: 'api/revision',
             method: 'GET',
             isArray: true,
             params: {
@@ -680,7 +680,7 @@ CoreServices.factory('Revision', ['$resource', function($resource) {
             }
         },
         revert: {
-            url: '/api/revision/revert',
+            url: 'api/revision/revert',
             method: 'POST',
             params: {
                 'entity': '@entity',
@@ -693,7 +693,7 @@ CoreServices.factory('Revision', ['$resource', function($resource) {
 
 // Revisions V2
 CoreServices.factory('Revisions', ['$resource', function($resource) {
-    return $resource('/api/:entity/:id/revisions', {}, {
+    return $resource('api/:entity/:id/revisions', {}, {
         get: {
             method: 'GET',
             isArray: true,
@@ -706,14 +706,14 @@ CoreServices.factory('Revisions', ['$resource', function($resource) {
 }]);
 
 CoreServices.factory('Label', ['$resource', function($resource) {
-    return $resource('/api/label/:id', {}, {
+    return $resource('api/label/:id', {}, {
         list: {
-            url: '/api/label',
+            url: 'api/label',
             method: 'GET',
             isArray: true
         },
         create: {
-            url: '/api/label',
+            url: 'api/label',
             method: 'POST'
         },
         update: {
@@ -732,7 +732,7 @@ CoreServices.factory('Label', ['$resource', function($resource) {
 }]);
 
 CoreServices.factory('Session', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/session/', {}, {
+    return $resource('api/session/', {}, {
         create: {
             method: 'POST',
             ignoreAuthModule: true // this ensures a 401 response doesn't trigger another auth-required event
@@ -741,34 +741,34 @@ CoreServices.factory('Session', ['$resource', '$cookies', function($resource, $c
             method: 'DELETE'
         },
         properties: {
-            url: '/api/session/properties',
+            url: 'api/session/properties',
             method: 'GET'
         },
         forgot_password: {
-            url: '/api/session/forgot_password',
+            url: 'api/session/forgot_password',
             method: 'POST'
         },
         reset_password: {
-            url: '/api/session/reset_password',
+            url: 'api/session/reset_password',
             method: 'POST'
         },
         password_reset_token_valid: {
-            url: '/api/session/password_reset_token_valid',
+            url: 'api/session/password_reset_token_valid',
             method: 'GET'
         }
     });
 }]);
 
 CoreServices.factory('Settings', ['$resource', function($resource) {
-    return $resource('/api/setting', {}, {
+    return $resource('api/setting', {}, {
         list: {
-            url: '/api/setting',
+            url: 'api/setting',
             method: 'GET',
             isArray: true,
         },
         // POST endpoint handles create + update in this case
         put: {
-            url: '/api/setting/:key',
+            url: 'api/setting/:key',
             method: 'PUT',
             params: {
                 key: '@key'
@@ -776,12 +776,12 @@ CoreServices.factory('Settings', ['$resource', function($resource) {
         },
         // set multiple values at once
         setAll: {
-            url: '/api/setting/',
+            url: 'api/setting/',
             method: 'PUT',
             isArray: true
         },
         delete: {
-            url: '/api/setting/:key',
+            url: 'api/setting/:key',
             method: 'DELETE',
             params: {
                 key: '@key'
@@ -791,56 +791,56 @@ CoreServices.factory('Settings', ['$resource', function($resource) {
 }]);
 
 CoreServices.factory('Setup', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/setup/', {}, {
+    return $resource('api/setup/', {}, {
         create: {
             method: 'POST'
         },
         validate_db: {
-            url: '/api/setup/validate',
+            url: 'api/setup/validate',
             method: 'POST'
         }
     });
 }]);
 
 CoreServices.factory('User', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/user/:userId', {}, {
+    return $resource('api/user/:userId', {}, {
         create: {
-            url: '/api/user',
+            url: 'api/user',
             method: 'POST'
         },
         list: {
-            url: '/api/user/',
+            url: 'api/user/',
             method: 'GET',
             isArray: true
         },
         current: {
-            url: '/api/user/current/',
+            url: 'api/user/current/',
             method: 'GET',
             ignoreAuthModule: true // this ensures a 401 response doesn't trigger another auth-required event
         },
         get: {
-            url: '/api/user/:userId',
+            url: 'api/user/:userId',
             method: 'GET',
             params: {
                 'userId': '@userId'
             }
         },
         update: {
-            url: '/api/user/:userId',
+            url: 'api/user/:userId',
             method: 'PUT',
             params: {
                 'userId': '@id'
             }
         },
         update_password: {
-            url: '/api/user/:userId/password',
+            url: 'api/user/:userId/password',
             method: 'PUT',
             params: {
                 'userId': '@id'
             }
         },
         update_qbnewb: {
-            url: '/api/user/:userId/qbnewb',
+            url: 'api/user/:userId/qbnewb',
             method: 'PUT',
             params: {
                 'userId': '@id'
@@ -853,7 +853,7 @@ CoreServices.factory('User', ['$resource', '$cookies', function($resource, $cook
             }
         },
         send_invite: {
-            url: '/api/user/:userId/send_invite',
+            url: 'api/user/:userId/send_invite',
             method: 'POST',
             params: {
                 'userId': '@id'
@@ -863,9 +863,9 @@ CoreServices.factory('User', ['$resource', '$cookies', function($resource, $cook
 }]);
 
 CoreServices.factory('Util', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/util/', {}, {
+    return $resource('api/util/', {}, {
         password_check: {
-            url: '/api/util/password_check',
+            url: 'api/util/password_check',
             method: 'POST'
         }
     });
