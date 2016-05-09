@@ -68,6 +68,13 @@
                                             :port 3000
                                             :dbname "bad-db-name?connectTimeoutMS=50"}))
 
+(def ^:const ^:private native-query
+  "[{\"$project\": {\"_id\": \"$_id\"}},
+    {\"$match\": {\"_id\": {\"$eq\": 1}}},
+    {\"$group\": {\"_id\": null, \"count\": {\"$sum\": 1}}},
+    {\"$sort\": {\"_id\": 1}},
+    {\"$project\": {\"_id\": false, \"count\": true}}]")
+
 (expect-when-testing-mongo
   {:status :completed
    :row_count 1
@@ -75,16 +82,8 @@
           :columns ["count"]
           :cols [{:description nil, :table_id nil, :special_type nil, :name "count", :extra_info {}, :id nil, :target nil, :display_name "count", :preview-display true, :base_type :UnknownField}]
           :native_form {:collection "venues"
-                        :query "[{\"$project\": {\"_id\": \"$_id\"}},
-                                 {\"$match\": {\"_id\": {\"$eq\": 1}}},
-                                 {\"$group\": {\"_id\": null, \"count\": {\"$sum\": 1}}},
-                                 {\"$sort\": {\"_id\": 1}},
-                                 {\"$project\": {\"_id\": false, \"count\": true}}]"}}}
-  (qp/process-query {:native   {:query "[{\"$project\": {\"_id\": \"$_id\"}},
-                                         {\"$match\": {\"_id\": {\"$eq\": 1}}},
-                                         {\"$group\": {\"_id\": null, \"count\": {\"$sum\": 1}}},
-                                         {\"$sort\": {\"_id\": 1}},
-                                         {\"$project\": {\"_id\": false, \"count\": true}}]"
+                        :query      native-query}}}
+  (qp/process-query {:native   {:query      native-query
                                 :collection "venues"}
                      :type     :native
                      :database (:id (mongo-db))}))
