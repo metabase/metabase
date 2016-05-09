@@ -330,15 +330,14 @@
 (defn IDriverSQLDefaultsMixin
   "Default implementations of methods in `IDriver` for SQL drivers."
   []
-  (require 'metabase.driver.generic-sql.native
-           'metabase.driver.generic-sql.query-processor)
+  (require 'metabase.driver.generic-sql.query-processor)
   (merge driver/IDriverDefaultsMixin
          {:analyze-table           analyze-table
           :can-connect?            can-connect?
           :describe-database       describe-database
           :describe-table          describe-table
           :describe-table-fks      describe-table-fks
-          :execute-query           (resolve 'metabase.driver.generic-sql.native/execute-query)
+          :execute-query           (resolve 'metabase.driver.generic-sql.query-processor/execute-query)
           :features                features
           :field-values-lazy-seq   field-values-lazy-seq
           :mbql->native            (resolve 'metabase.driver.generic-sql.query-processor/mbql->native)
