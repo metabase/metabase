@@ -224,9 +224,6 @@
   (u/auto-retry 1
     (post-process-native (execute-bigquery database query-string))))
 
-(defn- process-native [{database :database, {native-query :query} :native}]
-  (process-native* database native-query))
-
 
 (defn- field-values-lazy-seq [{field-name :name, :as field-instance}]
   {:pre [(map? field-instance)]}
@@ -338,13 +335,6 @@
                         (keyword (demangle-name column)))]
     (for [row rows]
       (zipmap columns row))))
-
-(defn- process-mbql [{{{:keys [dataset-id]} :details, :as database} :database, {{table-name :name} :source-table} :query, :as query}]
-  {:pre [(map? database) (seq dataset-id) (seq table-name)]}
-  (let [korma-form (korma-form query (entity dataset-id table-name))
-        sql        (korma-form->sql korma-form)]
-    (sqlqp/log-korma-form korma-form sql)
-    (post-process-mbql dataset-id table-name (process-native* database sql))))
 
 (defn- mbql->native [{{{:keys [dataset-id]} :details, :as database} :database, {{table-name :name} :source-table} :query, :as query}]
   {:pre [(map? database) (seq dataset-id) (seq table-name)]}

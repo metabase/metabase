@@ -438,14 +438,13 @@
 
    If the query is already a NATIVE query then we simply pass it through to `execute-query` unmodified."
   [query]
-  (let [driver       (:driver query)
-        native-form  (if-not (mbql-query? query)
+  (let [native-form  (if-not (mbql-query? query)
                        (:native query)
-                       (driver/mbql->native driver query))
+                       (driver/mbql->native (:driver query) query))
         native-query (if-not (mbql-query? query)
                        query
                        (assoc query :native native-form))
-        raw-result   (driver/execute-query driver native-query)
+        raw-result   (driver/execute-query (:driver query) native-query)
         query-result (if-not (or (mbql-query? query)
                                  (:annotate? raw-result))
                        (assoc raw-result :columns (mapv name (:columns raw-result))

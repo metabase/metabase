@@ -107,7 +107,7 @@
 
           Is this property required? Defaults to `false`.")
 
-  (execute-query ^Map [this, ^Map query]
+  (execute-query ^java.util.Map [this, ^Map query]
     "Execute a query against the database and return the results.
 
      The query passed in will contain:
@@ -143,7 +143,7 @@
     "*OPTIONAL*. Return a humanized (user-facing) version of an connection error message string.
      Generic error messages are provided in the constant `connection-error-messages`; return one of these whenever possible.")
 
-  (mbql->native ^Map [this, ^Map query]
+  (mbql->native ^java.util.Map [this, ^Map query]
     "Transpile an MBQL structured query into the appropriate native query form.
 
      The input query will be a fully expanded MBQL query (https://github.com/metabase/metabase/wiki/Expanded-Queries) with
