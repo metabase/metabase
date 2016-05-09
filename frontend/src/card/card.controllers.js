@@ -161,7 +161,6 @@ CardControllers.controller('CardDetail', [
             query: null,
             setQueryFn: onQueryChanged,
             setDatabaseFn: setDatabase,
-            setTableFn: setTable,            // this is used for native queries, vs. setSourceTable, which is used for MBQL
             setSourceTableFn: setSourceTable,
             autocompleteResultsFn: function(prefix) {
                 var apiCall = Metabase.db_autocomplete_suggestions({
@@ -612,16 +611,16 @@ CardControllers.controller('CardDetail', [
                         newCard.dataset_query.native.query = existingQuery;
                     }
 
-                    setCard(newCard, {runQuery: false});
-
-                    // set the initial Table ID for the query if this is a native query
+                    // set the initial collection for the query if this is a native query
                     // this is only used for Mongo queries which need to be ran against a specific collection
                     if (newCard.dataset_query.type === 'native') {
                         let database = _.findWhere(databases, { id: databaseId }),
                             tables   = database ? database.tables : [],
                             table    = tables.length > 0 ? tables[0] : null;
-                        if (table) newCard.dataset_query.table = table.id;
+                        if (table) newCard.dataset_query.native.collection = table.name;
                     }
+
+                    setCard(newCard, {runQuery: false});
 
                 } else {
                     // if we are editing a saved query we don't want to replace the card, so just start a fresh query only
@@ -637,13 +636,6 @@ CardControllers.controller('CardDetail', [
                 }
             }
             return card.dataset_query;
-        }
-
-        /// Sets the table ID for a *native* query.
-        function setTable(tableID) {
-            let query = card.dataset_query;
-            query.table = tableID;
-            setQuery(query);
         }
 
         // This is for MBQL queries
