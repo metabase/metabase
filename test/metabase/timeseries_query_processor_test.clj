@@ -390,7 +390,7 @@
              ["2013-01-23+0000" 1]]}
   (data (data/run-query checkins
           (ql/aggregation (ql/count))
-          (ql/breakout $timestamp)
+          (ql/breakout (ql/datetime-field $timestamp :day))
           (ql/limit 5))))
 
 ;;; date bucketing - minute

@@ -103,7 +103,7 @@
       (if-not datetime-field?
         field
         (map->DateTimeField {:field field
-                             :unit  (or datetime-unit :day)})))
+                             :unit  (or datetime-unit :default)})))
     ;; If that fails just return ourselves as-is
     this))
 
