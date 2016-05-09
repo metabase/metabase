@@ -6,7 +6,7 @@ import ChartTooltip from "./ChartTooltip.jsx";
 
 import ColorSetting from "./settings/ColorSetting.jsx";
 
-import { isNumeric, isDate, isDimension, isString } from "metabase/lib/schema_metadata";
+import { isNumeric, isDate, isDimension, isMetric } from "metabase/lib/schema_metadata";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 import Urls from "metabase/lib/urls";
 
@@ -17,30 +17,44 @@ import _ from "underscore";
 import cx from "classnames";
 import i from "icepick";
 
-const isAnyDimension = (col) =>
-    (isDimension(col) || isString(col))
+const DIMENSION_METRIC = "DIMENSION_METRIC";
+const DIMENSION_METRIC_METRIC = "DIMENSION_METRIC_METRIC";
+const DIMENSION_DIMENSION_METRIC = "DIMENSION_DIMENSION_METRIC";
 
-const isNonNumericDimension = (col) =>
-    !isNumeric(col) && isAnyDimension(col)
-
-const isMetric = (col) =>
-    isNumeric(col)
+const MAX_SERIES = 10;
 
 const isDimensionMetric = (cols, strict = true) =>
     (!strict || cols.length === 2) &&
-    isAnyDimension(cols[0]) &&
+    isDimension(cols[0]) &&
     isMetric(cols[1])
 
 const isDimensionDimensionMetric = (cols, strict = true) =>
     (!strict || cols.length === 3) &&
-    isAnyDimension(cols[0]) &&
-    isNonNumericDimension(cols[1]) &&
+    isDimension(cols[0]) &&
+    isDimension(cols[1]) &&
     isMetric(cols[2])
 
 const isDimensionMetricMetric = (cols, strict = true) =>
     (!strict || cols.length >= 3) &&
-    isAnyDimension(cols[0]) &&
+    isDimension(cols[0]) &&
     cols.slice(1).reduce((acc, col) => acc && isMetric(col), true)
+
+const getChartTypeFromData = (cols, rows, strict = true) => {
+    // this should take precendence for backwards compatibilty
+    if (isDimensionMetricMetric(cols, strict)) {
+        return DIMENSION_METRIC_METRIC;
+    } else if (isDimensionDimensionMetric(cols, strict)) {
+        let dataset = crossfilter(rows);
+        let groups = [0,1].map(i => dataset.dimension(d => d[i]).group());
+        let cardinalities = groups.map(group => group.size())
+        if (Math.min(...cardinalities) < MAX_SERIES) {
+            return DIMENSION_DIMENSION_METRIC;
+        }
+    } else if (isDimensionMetric(cols, strict)) {
+        return DIMENSION_METRIC;
+    }
+    return null;
+}
 
 export default class LineAreaBarChart extends Component {
     static noHeader = true;
@@ -50,12 +64,12 @@ export default class LineAreaBarChart extends Component {
     static settings = [ColorSetting()];
 
     static isSensible(cols, rows) {
-        return isDimensionMetric(cols) || isDimensionDimensionMetric(cols) || isDimensionMetricMetric(cols);
+        return getChartTypeFromData(cols, rows, false) != null;
     }
 
     static checkRenderable(cols, rows) {
         if (rows.length < 1) { throw new MinRowsError(1, rows.length); }
-        if (!(isDimensionMetric(cols, false) || isDimensionDimensionMetric(cols) || isDimensionMetricMetric(cols))) {
+        if (getChartTypeFromData(cols, rows) == null) {
             throw new Error("We couldn’t create a " + this.noun + " based on your query.");
         }
     }
@@ -114,8 +128,10 @@ export default class LineAreaBarChart extends Component {
         };
         let s = series && series.length === 1 && series[0];
         if (s && s.data) {
-            // Dimension-Dimension-Metric
-            if (isDimensionDimensionMetric(s.data.cols)) {
+            let type = getChartTypeFromData(s.data.cols, s.data.rows, false);
+            if (type === DIMENSION_METRIC) {
+                // no transform
+            } else if (type === DIMENSION_DIMENSION_METRIC) {
                 let dataset = crossfilter(s.data.rows);
                 let groups = [0,1].map(i => dataset.dimension(d => d[i]).group());
                 let cardinalities = groups.map(group => group.size())
@@ -125,22 +141,20 @@ export default class LineAreaBarChart extends Component {
                 if (isDate(s.data.cols[seriesDimensionIndex]) && !isDate(s.data.cols[axisDimensionIndex])) {
                     [seriesDimensionIndex, axisDimensionIndex] = [axisDimensionIndex, seriesDimensionIndex];
                 }
-                // only if the selected dimension has cardinality < 10
-                if (cardinalities[seriesDimensionIndex] < 10) {
-                    nextState.series = groups[seriesDimensionIndex].reduce(
-                        (p, v) => p.concat([[...v.slice(0, seriesDimensionIndex), ...v.slice(seriesDimensionIndex+1)]]),
-                        (p, v) => null, () => []
-                    ).all().map(o => ({
-                        card: { ...s.card, name: o.key, id: null },
-                        data: {
-                            rows: o.value,
-                            cols: [...s.data.cols.slice(0,seriesDimensionIndex), ...s.data.cols.slice(seriesDimensionIndex+1)]
-                        }
-                    }));
-                    nextState.isMultiseries = true;
-                }
-            // Dimension-Metric-Metric+
-            } else if (isDimensionMetricMetric(s.data.cols)) {
+                nextState.isMultiseries = true;
+                nextState.series = groups[seriesDimensionIndex].reduce(
+                    (p, v) => p.concat([[...v.slice(0, seriesDimensionIndex), ...v.slice(seriesDimensionIndex+1)]]),
+                    (p, v) => null, () => []
+                ).all().map(o => ({
+                    card: { ...s.card, name: o.key, id: null },
+                    data: {
+                        rows: o.value,
+                        cols: [...s.data.cols.slice(0,seriesDimensionIndex), ...s.data.cols.slice(seriesDimensionIndex+1)]
+                    }
+                }));
+            } else if (type === DIMENSION_METRIC_METRIC) {
+                nextState.isMultiseries = true;
+                nextState.isStacked = true;
                 nextState.series = s.data.cols.slice(1).map((col, index) => ({
                     card: { ...s.card, name: col.display_name || col.name, id: null },
                     data: {
@@ -148,11 +162,9 @@ export default class LineAreaBarChart extends Component {
                         cols: [s.data.cols[0], s.data.cols[index + 1]]
                     }
                 }));
-                nextState.isMultiseries = true;
-                nextState.isStacked = true;
             }
         }
-        this.setState(nextState)
+        this.setState(nextState);
     }
 
     getHoverClasses() {
