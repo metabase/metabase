@@ -110,11 +110,12 @@
   (features ^java.util.Set [this]
     "*OPTIONAL*. A set of keyword names of optional features supported by this driver, such as `:foreign-keys`. Valid features are:
 
-     *  `:foreign-keys`
-     *  `:nested-fields`
-     *  `:set-timezone`
-     *  `:standard-deviation-aggregations`
-     *  `:expressions`")
+  *  `:foreign-keys` - Does this database support foreign key relationships?
+  *  `:nested-fields` - Does this database support nested fields (e.g. Mongo)?
+  *  `:set-timezone` - Does this driver support setting a timezone for the query?
+  *  `:standard-deviation-aggregations` - Does this driver support [standard deviation aggregations](https://github.com/metabase/metabase/wiki/Query-Language-'98#stddev-aggregation)?
+  *  `:expressions` - Does this driver support [expressions](https://github.com/metabase/metabase/wiki/Query-Language-'98#expressions) (e.g. adding the values of 2 columns together)?
+  *  `:dynamic-schema` -  Does this Database have no fixed definitions of schemas? (e.g. Mongo)")
 
   (field-values-lazy-seq ^clojure.lang.Sequential [this, ^FieldInstance field]
     "Return a lazy sequence of all values of FIELD.
@@ -134,7 +135,7 @@
   (process-native [this, {^Integer database-id :database, {^String native-query :query} :native, :as ^Map query}]
     "Process a native QUERY. This function is called by `metabase.driver/process-query`.
 
-     Results should look something like:
+ Results should look something like:
 
        {:columns [\"id\", \"bird_name\"]
         :cols    [{:name \"id\", :base_type :IntegerField}
@@ -146,7 +147,7 @@
     "Process a native or structured QUERY. This function is called by `metabase.driver/process-query` after performing various driver-unspecific
      steps like Query Expansion and other preprocessing.
 
-     Results should look something like:
+ Results should look something like:
 
        [{:id 1, :name \"Lucky Bird\"}
         {:id 2, :name \"Rasta Can\"}]")
