@@ -3,11 +3,9 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as s]
             [metabase.driver.generic-sql :as sql]
-            [metabase.util :as u]
             (metabase.test.data [generic-sql :as generic]
                                 [interface :as i])
-            [clojure.tools.logging :as log]
-            [korma.core :as k])
+            [metabase.util :as u])
   (:import metabase.driver.crate.CrateDriver))
 
 (def ^:private ^:const field-base-type->sql-type

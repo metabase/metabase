@@ -1,12 +1,12 @@
 (ns metabase.driver.crate
-  (:require [metabase.driver :as driver]
+  (:require [clojure.set :as set]
+            [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
-            [clojure.set :as set]
-            (korma [core :as k])
             (metabase.driver.crate [query-processor :as qp]
                                    [util :as u]
                                    [generic-sql :as gs]
-                                   [native :as n]))
+                                   [native :as n])
+            [korma.core :as k])
   (:import (clojure.lang Named)))
 
 (defn- column->base-type
