@@ -10,7 +10,7 @@ export function computeFilterTimeRange(filter) {
     }
 
     let [operator, field, ...values] = expandedFilter;
-    let bucketing = parseFieldBucketing(field);
+    let bucketing = parseFieldBucketing(field, "day");
 
     let start, end;
     if (operator === "=" && values[0]) {
@@ -146,17 +146,17 @@ export function absolute(date) {
     }
 }
 
-export function parseFieldBucketing(field) {
+export function parseFieldBucketing(field, defaultUnit = null) {
     if (Array.isArray(field)) {
         if (field[0] === "datetime_field") {
             return field[3];
         } if (field[0] === "fk->") {
-            return "day";
+            return defaultUnit;
         } else {
             console.warn("Unknown field format", field);
         }
     }
-    return "day";
+    return defaultUnit;
 }
 
 export function parseFieldTarget(field) {
