@@ -1,5 +1,6 @@
 (ns metabase.driver.bigquery
-  (:require (clojure [string :as s]
+  (:require (clojure [set :as set]
+                     [string :as s]
                      [walk :as walk])
             [clojure.tools.logging :as log]
             (korma [core :as k]
@@ -9,11 +10,11 @@
                       [driver :as driver])
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
-            metabase.query-processor.interface
             (metabase.models [database :refer [Database]]
                              [field :as field]
                              [table :as table])
             [metabase.sync-database.analyze :as analyze]
+            metabase.query-processor.interface
             [metabase.util :as u]
             [metabase.util.korma-extensions :as kx])
   (:import (java.util Collections Date)
@@ -207,9 +208,10 @@
      (let [^TableSchema schema (.getSchema response)
            parsers             (for [^TableFieldSchema field (.getFields schema)]
                                  (type->parser (.getType field)))
-           cols                (table-schema->metabase-field-info schema)]
-       {:columns (map :name cols)
-        :cols    cols
+           columns             (for [column (table-schema->metabase-field-info schema)]
+                                 (set/rename-keys column {:base-type :base_type}))]
+       {:columns (map :name columns)
+        :cols    columns
         :rows    (for [^TableRow row (.getRows response)]
                    (for [[^TableCell cell, parser] (partition 2 (interleave (.getF row) parsers))]
                      (when-let [v (.getV cell)]
