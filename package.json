@@ -71,14 +71,17 @@
     "babel-preset-es2015": "^6.6.0",
     "babel-preset-react": "^6.5.0",
     "babel-preset-stage-0": "^6.5.0",
+    "closure-loader": "^0.1.11",
     "css-loader": "^0.23.1",
     "eslint": "^2.2.0",
     "eslint-loader": "^1.3.0",
     "eslint-plugin-react": "^4.1.0",
+    "exports-loader": "^0.6.3",
     "extract-text-webpack-plugin": "^1.0.1",
     "file-loader": "^0.8.5",
     "glob": "^5.0.15",
     "html-webpack-plugin": "^2.14.0",
+    "imports-loader": "^0.6.5",
     "istanbul-instrumenter-loader": "^0.2.0",
     "jasmine-core": "^2.3.4",
     "json-loader": "^0.5.4",
@@ -112,6 +115,7 @@
     "build-hot": "NODE_ENV=hot ./node_modules/.bin/webpack && NODE_ENV=hot node_modules/webpack-dev-server/bin/webpack-dev-server.js --hot --inline --content-base frontend",
     "shrinkwrap": "npm prune && npm shrinkwrap --dev && ./bin/clean-shrinkwrap",
     "start": "npm run build && lein ring server",
-    "storybook": "./node_modules/.bin/start-storybook -p 9001"
+    "storybook": "./node_modules/.bin/start-storybook -p 9001",
+    "build-cljs": "java -cp /usr/local/Cellar/clojurescript/1.8.40/libexec/cljs.jar:src clojure.main build.clj"
   }
 }

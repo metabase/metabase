@@ -45,6 +45,8 @@ import undo from 'metabase/questions/undo';
 
 import { registerAnalyticsClickListener } from "metabase/lib/analytics";
 
+import "cljs/metabase/client/hello";
+
 // Declare app level module which depends on filters, and services
 var Metabase = angular.module('metabase', [
     'ngRoute',

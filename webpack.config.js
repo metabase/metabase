@@ -90,14 +90,34 @@ var config = module.exports = {
     module: {
         loaders: [
             {
+                test: /google-closure-library\/closure\/goog\/base/,
+                loaders: [
+                    'imports?this=>{goog:{}}&goog=>this.goog',
+                    'exports?goog',
+                ],
+            },
+            // Loader for closure library
+            {
+                test: /google-closure-library\/closure\/goog\/.*\.js/,
+                exclude: [/base\.js$/],
+                loader: "closure",
+            },
+            // Loader for project js files
+            {
+                test: /.*\.js$/,
+                exclude: [/\/node_modules\//, /\/src\//],
+                loader: "closure!clojurescript",
+            },
+
+            {
                 test: /\.(js|jsx)$/,
-                exclude: /node_modules/,
+                exclude: [/\/node_modules\//, /\/out\//],
                 loader: "babel",
                 query: BABEL_CONFIG
             },
             {
                 test: /\.(js|jsx)$/,
-                exclude: /node_modules|\.spec\.js/,
+                exclude: [/\/node_modules\//, /\/out\//, /\.spec\.js$/],
                 loader: 'eslint'
             },
             {
@@ -122,6 +142,7 @@ var config = module.exports = {
         extensions: ["", ".webpack.js", ".web.js", ".js", ".jsx", ".css"],
         alias: {
             'metabase':             SRC_PATH,
+            'cljs':                 __dirname + '/out',
             'style':                SRC_PATH + '/css/core/index.css',
 
             // angular
@@ -180,7 +201,10 @@ var config = module.exports = {
             'process.env': {
                 NODE_ENV: JSON.stringify(NODE_ENV)
             }
-        })
+        }),
+        new webpack.ProvidePlugin({
+             goog: 'google-closure-library/closure/goog/base',
+         }),
     ],
 
     postcss: function (webpack) {
@@ -189,6 +213,13 @@ var config = module.exports = {
             require("postcss-url")(),
             require("postcss-cssnext")(CSSNEXT_CONFIG)
         ]
+    },
+    closureLoader: {
+        paths: [
+            __dirname + '/out'
+        ],
+        es6mode: true,
+        watch: false
     }
 };
 
