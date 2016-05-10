@@ -6,7 +6,7 @@ import { normalize, Schema, arrayOf } from "normalizr";
 
 import moment from "moment";
 import { augmentDatabase } from "metabase/lib/table";
-import { timeout } from "metabase/lib/promise";
+import { delay } from "metabase/lib/promise";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
@@ -99,8 +99,17 @@ export const removeCardFromDashboard = createAction(REMOVE_CARD_FROM_DASH);
 
 export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card) {
     return async function(dispatch, getState) {
-        let result = await timeout(MetabaseApi.dataset(card.dataset_query), DATASET_TIMEOUT * 1000, "Card took longer than " + DATASET_TIMEOUT + " seconds to load.");
-        return { id: card.id, result };
+        let timeout = delay(DATASET_TIMEOUT * 1000);
+        try {
+            let result = await MetabaseApi.dataset({ timeout }, card.dataset_query);
+            return { id: card.id, result };
+        } catch (error) {
+            if (error && error.status === 0) {
+                throw "Card took longer than " + DATASET_TIMEOUT + " seconds to load.";
+            } else {
+                throw error;
+            }
+        }
     };
 });
 

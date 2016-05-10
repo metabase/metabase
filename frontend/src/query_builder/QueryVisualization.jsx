@@ -40,7 +40,8 @@ export default class QueryVisualization extends Component {
         cellIsClickableFn: PropTypes.func,
         cellClickedFn: PropTypes.func,
         isRunning: PropTypes.bool.isRequired,
-        runQueryFn: PropTypes.func.isRequired
+        runQueryFn: PropTypes.func.isRequired,
+        cancelQueryFn: PropTypes.func
     };
 
     static defaultProps = {
@@ -87,16 +88,17 @@ export default class QueryVisualization extends Component {
 
         return (
             <div className="relative flex flex-no-shrink mt3 mb1" style={{ minHeight: "2em" }}>
-                <span className="relative z3">{visualizationSettings}</span>
-                <div className="absolute flex layout-centered left right z2">
+                <span className="relative z4">{visualizationSettings}</span>
+                <div className="absolute flex layout-centered left right z3">
                     <RunButton
                         canRun={this.canRun()}
                         isDirty={this.queryIsDirty()}
                         isRunning={this.props.isRunning}
                         runFn={this.runQuery}
+                        cancelFn={this.props.cancelQueryFn}
                     />
                 </div>
-                <div className="absolute right z3 flex align-center">
+                <div className="absolute right z4 flex align-center">
                     {!this.queryIsDirty() && this.renderCount()}
                     {this.renderDownloadButton()}
                 </div>
@@ -219,7 +221,7 @@ export default class QueryVisualization extends Component {
             loading = (
                 <div className="Loading spread flex flex-column layout-centered text-brand z2">
                     <LoadingSpinner />
-                    <h2 className="Loading-message text-brand text-uppercase mt3">Doing science...</h2>
+                    <h2 className="Loading-message text-brand text-uppercase my3">Doing science...</h2>
                 </div>
             );
         }

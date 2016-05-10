@@ -582,7 +582,17 @@ CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', funct
         },
         dataset: {
             url: '/api/dataset',
-            method: 'POST'
+            method: 'POST',
+            then: function(resolve) {
+                // enable cancelling of the request using this technique:
+                // http://www.nesterovsky-bros.com/weblog/2015/02/02/CancelAngularjsResourceRequest.aspx
+                if (this.params) {
+                    this.timeout = this.params.timeout;
+                    delete this.params.timeout;
+                }
+                delete this.then;
+                resolve(this);
+            }
         }
     });
 }]);
